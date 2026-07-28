@@ -221,45 +221,47 @@ export default function EventCard({
           title={live ? "Live now" : categoryLabel}
         />
 
-        {/* Title + meta — title is the link target, meta line below
-            carries time + venue + free chip. Status badge inline
-            when the event is cancelled / postponed (rare). */}
+        {/* Title + meta share one 44px link target. The old title-only anchor
+            relied on an invisible absolute child to stretch the hit area,
+            which worked with a pointer but remained a tiny focus target in
+            accessibility and audit tooling. */}
         <div className="min-w-0 flex-1">
           <Link
             href={`/events/${event.slug}`}
             prefetch={false}
-            className={`block truncate text-[14px] font-semibold tracking-tight outline-none focus-visible:underline ${
+            className={`flex min-h-11 min-w-0 flex-col justify-center outline-none after:absolute after:inset-0 focus-visible:underline ${
               isCancelled ? "line-through opacity-70" : ""
             }`}
             style={{ color: "var(--app-ink)" }}
           >
-            <span className="absolute inset-0" aria-hidden />
-            {event.title}
+            <span className="block truncate text-[14px] font-semibold tracking-tight">
+              {event.title}
+            </span>
+            <span
+              className="block truncate text-[11px] font-normal leading-tight"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <span className="font-mono tabular-nums">{date.time}</span>
+              {venueLabel && (
+                <>
+                  {" · "}
+                  {venueLabel}
+                </>
+              )}
+              {event.is_free && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-positive)" }}>Free</span>
+                </>
+              )}
+              {statusText && (
+                <>
+                  {" · "}
+                  <span style={{ color: statusBg }}>{statusText}</span>
+                </>
+              )}
+            </span>
           </Link>
-          <p
-            className="truncate text-[11px] leading-tight"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <span className="font-mono tabular-nums">{date.time}</span>
-            {venueLabel && (
-              <>
-                {" · "}
-                {venueLabel}
-              </>
-            )}
-            {event.is_free && (
-              <>
-                {" · "}
-                <span style={{ color: "var(--app-positive)" }}>Free</span>
-              </>
-            )}
-            {statusText && (
-              <>
-                {" · "}
-                <span style={{ color: statusBg }}>{statusText}</span>
-              </>
-            )}
-          </p>
         </div>
 
         {/* Distance — only when we have a user origin. Tabular nums

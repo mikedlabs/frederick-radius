@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ASK_CLIENT_DEADLINE_MS,
+  askEvidenceLabels,
   askFailureForAbortReason,
   askQuestionPath,
   askResultHeading,
@@ -31,6 +32,22 @@ describe("Ask Radius question links", () => {
       ),
     ).toBe("closer");
     expect(askQuestionPath("x".repeat(400))).toBe(`/ask?q=${"x".repeat(300)}`);
+  });
+});
+
+describe("Ask Radius evidence labels", () => {
+  it("describes ordinary source cards as evidence, not recommendations", () => {
+    expect(askEvidenceLabels({})).toEqual({
+      sourceLabel: "Source",
+      explanationLabel: "What Radius found",
+    });
+  });
+
+  it("uses recommendation language only for an explicit ranked primary result", () => {
+    expect(askEvidenceLabels({ isPrimaryRankedResult: true })).toEqual({
+      sourceLabel: "Best match",
+      explanationLabel: "Why it fits",
+    });
   });
 });
 

@@ -75,14 +75,16 @@ describe("Ask Radius agent timeout fallback", () => {
     expect(mocks.runRadiusAgent).not.toHaveBeenCalled();
     expect(mocks.generateText).not.toHaveBeenCalled();
     expect(result).toMatchObject({
-      status: "empty",
+      status: "matches",
       usedModel: false,
       intent: { kind: "place", label: "Dinner", timeNeed: "tonight" },
     });
-    expect(result.sources).toEqual([]);
-    expect(result.answer).toContain("couldn’t verify a downtown dinner match open around 6:00 PM");
-    expect(result.answer).toContain("90 minutes before your 7:30 PM show");
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.answer).toContain("couldn’t verify a downtown dinner match open around 6:00 PM from fresh hours");
+    expect(result.answer).toContain("leave 90 minutes before your 7:30 PM show");
+    expect(result.answer).toContain("check their hours before you leave");
     expect(result.answer).toContain("does not have verified noise-level data");
+    expect(result.sources.every((source) => !/^Open\b/i.test(source.status ?? ""))).toBe(true);
     expect(result.answer).not.toMatch(/(?:is|are|feels?|should be) quiet/i);
     expect(result.answer).not.toMatch(/live[- ]music|music calendar|can.t verify/i);
   });
@@ -99,9 +101,11 @@ describe("Ask Radius agent timeout fallback", () => {
       },
     );
 
-    expect(result.status).toBe("empty");
-    expect(result.sources).toEqual([]);
+    expect(result.status).toBe("matches");
+    expect(result.sources.length).toBeGreaterThan(0);
     expect(result.answer).toContain("couldn’t verify a dinner place open at 7:30 PM from fresh hours");
+    expect(result.answer).toContain("check their hours before you leave");
+    expect(result.sources.every((source) => !/^Open\b/i.test(source.status ?? ""))).toBe(true);
     expect(result.answer).not.toContain("scheduled to be open");
   });
 });

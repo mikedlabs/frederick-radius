@@ -147,11 +147,11 @@ describe("Radius tool registry", () => {
 
       if (url.hash) {
         expect(tool.href).toBe("/beer#find-your-pour");
-        const beerFlight = readFileSync(
-          join(process.cwd(), "src/components/beer/BeerTasteFlight.tsx"),
+        const beerFinder = readFileSync(
+          join(process.cwd(), "src/components/beer/BeerSpinner.tsx"),
           "utf8",
         );
-        expect(beerFlight).toContain(`id="${url.hash.slice(1)}"`);
+        expect(beerFinder).toContain(`id="${url.hash.slice(1)}"`);
       }
     }
   });

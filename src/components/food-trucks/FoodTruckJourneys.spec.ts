@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import FoodTruckJourneys, { modeForFoodTruckHash } from "./FoodTruckJourneys";
 
 describe("FoodTruckJourneys", () => {
-  it("presents three clear journeys and renders only the primary panel", () => {
+  it("presents three clear journeys and mounts only the primary panel content", () => {
     const html = renderToStaticMarkup(
       createElement(FoodTruckJourneys, {
         nearby: createElement("p", null, "Nearby panel"),
@@ -22,6 +22,10 @@ describe("FoodTruckJourneys", () => {
     expect(html).toContain('id="food-truck-panel-near"');
     expect(html).toMatch(/id="food-truck-panel-near"[^>]*hidden/);
     expect(html).not.toMatch(/id="food-truck-panel-week"[^>]*hidden/);
+    expect(html).toContain("Week panel");
+    expect(html).not.toContain("Nearby panel");
+    expect(html).not.toContain("Truck panel");
+    expect(html).toMatch(/id="food-truck-panel-week"[^>]*tabindex="0"/);
   });
 
   it("preserves existing schedule and vendor deep links", () => {

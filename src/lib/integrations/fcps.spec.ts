@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getFcpsAlerts, getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import {
+  currentFcpsOperationsNotices,
+  getFcpsAlerts,
+  getFcpsAlertsResult,
+  type FcpsAlert,
+} from "@/lib/integrations/fcps";
 
 function rss(items: string, lastBuildDate = "Tue, 21 Jul 2026 18:00:00 GMT"): string {
   return `<?xml version="1.0" encoding="utf-8"?>
@@ -117,5 +122,39 @@ describe("FCPS RSS availability", () => {
       ),
     );
     await expect(getFcpsAlerts()).resolves.toMatchObject([{ status: "closed" }]);
+  });
+});
+
+describe("current FCPS operations state", () => {
+  const alert = (
+    id: string,
+    status: FcpsAlert["status"],
+    publishedAt: string,
+  ): FcpsAlert => ({
+    id,
+    title: id,
+    description: "",
+    status,
+    published_at: publishedAt,
+    url: `https://www.fcps.org/${id}`,
+  });
+
+  it("lets a newer reopening supersede an older closure", () => {
+    const notices = currentFcpsOperationsNotices([
+      alert("closed", "closed", "2026-07-27T12:00:00.000Z"),
+      alert("reopened", "open", "2026-07-27T15:00:00.000Z"),
+    ]);
+
+    expect(notices.map((notice) => notice.id)).toEqual(["reopened"]);
+  });
+
+  it("retains multiple notices that share the newest operating state", () => {
+    const notices = currentFcpsOperationsNotices([
+      alert("old-open", "open", "2026-07-27T11:00:00.000Z"),
+      alert("delay-a", "delayed", "2026-07-27T15:00:00.000Z"),
+      alert("delay-b", "delayed", "2026-07-27T14:00:00.000Z"),
+    ]);
+
+    expect(notices.map((notice) => notice.id)).toEqual(["delay-a", "delay-b"]);
   });
 });

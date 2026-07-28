@@ -102,7 +102,7 @@ export default async function LocalSportsSchedule({
         </div>
         <a
           href="/api/calendar/sports.ics"
-          className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
         >
           <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
@@ -200,7 +200,7 @@ export default async function LocalSportsSchedule({
                       href={game.watchUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold"
                       style={{
                         borderColor: "var(--app-border)",
                         color: "var(--app-ink)",
@@ -215,7 +215,7 @@ export default async function LocalSportsSchedule({
                       href={game.statsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="tap-44 inline-flex items-center rounded-full border px-3 text-[11px] font-semibold"
+                      className="inline-flex min-h-11 items-center rounded-full border px-3 text-[11px] font-semibold"
                       style={{
                         borderColor: "var(--app-border)",
                         color: "var(--app-ink)",
@@ -229,7 +229,7 @@ export default async function LocalSportsSchedule({
                       href={game.ticketsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="tap-44 inline-flex items-center rounded-full px-3 text-[11px] font-semibold"
+                      className="inline-flex min-h-11 items-center rounded-full px-3 text-[11px] font-semibold"
                       style={{
                         background: "var(--app-ink)",
                         color: "var(--app-bg)",
@@ -242,7 +242,7 @@ export default async function LocalSportsSchedule({
                     href={game.recapUrl || game.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="tap-44 inline-flex items-center gap-1 rounded-full px-2 text-[11px] font-semibold"
+                    className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[11px] font-semibold"
                     style={{ color: "var(--app-brand-press)" }}
                   >
                     {game.recapUrl ? "Recap" : "Official listing"}

@@ -1,5 +1,10 @@
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import {
+  HOURS_REFRESH_CYCLE_DAYS,
+  HOURS_REFRESH_MIN_SUCCESS_RATIO,
+  hoursRefreshCycleDay,
+} from "@/lib/hours-refresh-targets";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 
 export type HoursRefreshArtifactEntry = {
@@ -14,12 +19,38 @@ export type HoursRefreshArtifactSummary = {
   matchedRows: number;
   unmatchedRows: number;
   withSchedule: number;
+  freshRefreshRows: number;
   freshRows: number;
   staleRows: number;
   invalidTimestamps: number;
   coveragePct: number;
   newestRefresh?: string;
   oldestRefresh?: string;
+  cycle: HoursRefreshCycleSummary;
+};
+
+export type HoursRefreshCycleState =
+  | "empty"
+  | "warming"
+  | "healthy"
+  | "stalled";
+
+export type HoursRefreshCycleBucket = {
+  cycleDay: number;
+  expected: number;
+  refreshed: number;
+  withSchedule: number;
+  complete: boolean;
+};
+
+export type HoursRefreshCycleSummary = {
+  days: number;
+  state: HoursRefreshCycleState;
+  completedDays: number;
+  missingDays: number[];
+  underfilledDays: number[];
+  refreshCoveragePct: number;
+  buckets: HoursRefreshCycleBucket[];
 };
 
 export function summarizeHoursRefreshArtifact(
@@ -34,9 +65,26 @@ export function summarizeHoursRefreshArtifact(
   const timestamps: string[] = [];
   let matchedRows = 0;
   let withSchedule = 0;
+  let freshRefreshRows = 0;
   let freshRows = 0;
   let staleRows = 0;
   let invalidTimestamps = 0;
+  const expectedByDay = Array.from(
+    { length: HOURS_REFRESH_CYCLE_DAYS },
+    () => 0,
+  );
+  const refreshedByDay = Array.from(
+    { length: HOURS_REFRESH_CYCLE_DAYS },
+    () => 0,
+  );
+  const schedulesByDay = Array.from(
+    { length: HOURS_REFRESH_CYCLE_DAYS },
+    () => 0,
+  );
+
+  for (const slug of expectedGoogleBackedSlugs) {
+    expectedByDay[hoursRefreshCycleDay(slug)] += 1;
+  }
 
   for (const [slug, row] of rows) {
     if (!expectedGoogleBackedSlugs.has(slug)) continue;
@@ -49,19 +97,76 @@ export function summarizeHoursRefreshArtifact(
       invalidTimestamps += 1;
       continue;
     }
-    if (!hasSchedule) continue;
     timestamps.push(new Date(parsed).toISOString());
-    if (isHoursFresh(row.refreshed_at, now)) freshRows += 1;
-    else staleRows += 1;
+    const fresh = isHoursFresh(row.refreshed_at, now);
+    const cycleDay = hoursRefreshCycleDay(slug);
+    if (fresh) {
+      freshRefreshRows += 1;
+      refreshedByDay[cycleDay] += 1;
+      if (hasSchedule) {
+        freshRows += 1;
+        schedulesByDay[cycleDay] += 1;
+      }
+    } else if (hasSchedule) {
+      staleRows += 1;
+    }
   }
 
   timestamps.sort();
+  const buckets = expectedByDay.map(
+    (expected, cycleDay): HoursRefreshCycleBucket => {
+      const refreshed = refreshedByDay[cycleDay];
+      return {
+        cycleDay,
+        expected,
+        refreshed,
+        withSchedule: schedulesByDay[cycleDay],
+        complete:
+          expected === 0 ||
+          refreshed / expected >= HOURS_REFRESH_MIN_SUCCESS_RATIO,
+      };
+    },
+  );
+  const missingDays = buckets
+    .filter((bucket) => bucket.expected > 0 && bucket.refreshed === 0)
+    .map((bucket) => bucket.cycleDay);
+  const underfilledDays = buckets
+    .filter(
+      (bucket) =>
+        bucket.expected > 0 &&
+        bucket.refreshed > 0 &&
+        !bucket.complete,
+    )
+    .map((bucket) => bucket.cycleDay);
+  const completedDays = buckets.filter((bucket) => bucket.complete).length;
+  const oldestRefresh = timestamps[0];
+  const warmupWindowMs = (HOURS_REFRESH_CYCLE_DAYS - 1) * 86_400_000;
+  const oldestRefreshMs = oldestRefresh
+    ? Date.parse(oldestRefresh)
+    : Number.NaN;
+  let cycleState: HoursRefreshCycleState;
+  if (matchedRows === 0 || timestamps.length === 0) {
+    cycleState = "empty";
+  } else if (freshRefreshRows === 0) {
+    cycleState = "stalled";
+  } else if (completedDays === HOURS_REFRESH_CYCLE_DAYS) {
+    cycleState = "healthy";
+  } else if (
+    Number.isFinite(oldestRefreshMs) &&
+    now.getTime() - oldestRefreshMs >= warmupWindowMs
+  ) {
+    cycleState = "stalled";
+  } else {
+    cycleState = "warming";
+  }
+
   return {
     expectedGoogleBackedPlaces: expectedGoogleBackedSlugs.size,
     rows: rows.length,
     matchedRows,
     unmatchedRows: rows.length - matchedRows,
     withSchedule,
+    freshRefreshRows,
     freshRows,
     staleRows,
     invalidTimestamps,
@@ -71,8 +176,22 @@ export function summarizeHoursRefreshArtifact(
         : Math.round(
             (freshRows / expectedGoogleBackedSlugs.size) * 1000,
           ) / 10,
-    oldestRefresh: timestamps[0],
+    oldestRefresh,
     newestRefresh: timestamps.at(-1),
+    cycle: {
+      days: HOURS_REFRESH_CYCLE_DAYS,
+      state: cycleState,
+      completedDays,
+      missingDays,
+      underfilledDays,
+      refreshCoveragePct:
+        expectedGoogleBackedSlugs.size === 0
+          ? 0
+          : Math.round(
+              (freshRefreshRows / expectedGoogleBackedSlugs.size) * 1000,
+            ) / 10,
+      buckets,
+    },
   };
 }
 

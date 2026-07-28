@@ -57,7 +57,7 @@ export default function RhythmPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/pulse"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="inline-flex min-h-11 items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />

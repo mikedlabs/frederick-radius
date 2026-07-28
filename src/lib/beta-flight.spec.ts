@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { pickAerials, coordLabel, flightLabel, type AerialEntry } from "./beta-flight";
+import {
+  pickAerials,
+  coordLabel,
+  flightLabel,
+  flightStatusLine,
+  type AerialEntry,
+  type FlightSlide,
+} from "./beta-flight";
 
 // July in Eastern time — the season under test is summer.
 const NOW = new Date("2026-07-19T16:00:00Z");
@@ -62,6 +69,34 @@ describe("labels", () => {
   it("prints altitude and month, omitting a missing altitude", () => {
     expect(flightLabel(210.8, "2024-10-06T19:23:08.000Z")).toBe("211 m up · Oct 2024");
     expect(flightLabel(null, "2024-10-06T19:23:08.000Z")).toBe("Oct 2024");
+  });
+
+  it("never turns missing hours coverage into a claim that nothing is open", () => {
+    const slide: FlightSlide = {
+      src: "/a.jpg",
+      coordLabel: "39.4° N",
+      flightLabel: "",
+      total: 76,
+      reliable: 0,
+      open: 0,
+    };
+    expect(flightStatusLine(slide)).toBe(
+      "76 places within a half mile, but none has current hours. Radius cannot confirm what is open.",
+    );
+  });
+
+  it("states the coverage denominator beside a confirmed-open count", () => {
+    const slide: FlightSlide = {
+      src: "/a.jpg",
+      coordLabel: "39.4° N",
+      flightLabel: "",
+      total: 76,
+      reliable: 7,
+      open: 2,
+    };
+    expect(flightStatusLine(slide)).toBe(
+      "7 of 76 places within a half mile have current hours. 2 are confirmed open now.",
+    );
   });
 });
 

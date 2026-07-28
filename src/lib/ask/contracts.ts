@@ -15,6 +15,11 @@ export type AskSource = {
   phone?: string;
   region?: CountyRegion;
   confidence?: "high" | "medium";
+  /**
+   * Server assertion that this exact source is the primary result of a
+   * discovery ranking. Omit it for citations and retrieval-order sources.
+   */
+  isPrimaryRankedResult?: true;
   photo_url?: string;
   /** Google rating (0-5) + review count — the strongest trust signal, shown on
    *  the source card. ~90% of places carry one. */

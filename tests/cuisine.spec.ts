@@ -85,12 +85,12 @@ describe("knownFor", () => {
         short_blurb: "Sumittra Thai Cuisine Sumittra Thai Cuisine 12 E Patrick St",
       }),
     ).toBe(null);
-    // Name echoed once then real info → keep the info, drop the echo.
+    // A name echo followed by repeated hedging is not decision-useful copy.
     expect(
       knownFor({
         name: "Cafe Nola",
         short_blurb: "Cafe Nola They have bands sometimes on the weekends and are sometimes open",
       }),
-    ).toBe("They have bands sometimes on the weekends and are sometimes open");
+    ).toBe(null);
   });
 });

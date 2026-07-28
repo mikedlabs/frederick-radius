@@ -4,16 +4,17 @@ Three-part audit of the data layer: the complete source inventory, the
 quality/gaps report, and an externally-verified scout of NEW Frederick-specific
 sources. Read like MAP_AUDIT.md / EXPERIENCE_REVIEW.md: a working document.
 
-> **Status update, 2026-07-23:** This document preserves the July 2 audit
+> **Status update, 2026-07-27:** This document preserves the July 2 audit
 > snapshot below. Since then, hours freshness is strict by default, stale
-> schedules are withheld from open-now claims, and the rolling refresh can
-> persist to `place_hours_refresh`. The public snapshot currently has 3 of
-> 1,616 places inside the seven-day hours window; 1,192 source schedules remain
-> available for rolling refresh. Event adapters now report failed and partial
-> sources instead of turning every outage into an empty result. Downtown
-> Frederick events use the public Vibemap WordPress endpoint. The remaining
-> operational blockers are enabling and completing the paid hours and
-> business-status cycles, then merging their reviewed data PRs.
+> schedules are withheld from open-now claims, and the rolling refresh persists
+> to `place_hours_refresh`. The current public snapshot has 159 of 1,613 places
+> with a current publishable schedule; the source artifact carries 167 fresh
+> schedules for 1,524 Google-backed places. Open Now remains unavailable until
+> the reviewed public set reaches its 60% gate (968 places). Event adapters now
+> report failed and partial sources instead of turning every outage into an
+> empty result. Downtown Frederick events use the public Vibemap WordPress
+> endpoint. The remaining hours work is completing the rolling paid cycle and
+> merging its reviewed data PRs.
 
 ## The synthesis
 
@@ -73,8 +74,8 @@ but need a PIA request to the county health dept — owner letter, not code.
 
 - **Unified event set** — `src/lib/loaders/unifiedEvents.ts` — THE assembly (curated seeds + iCal live + Ticketmaster + Bandsintown + venue lineups), deduped/classified/time-sanity-guarded — `unstable_cache` 300s tagged `events`; kept hot by `/api/cron/warm-events` every 5 min.
 - **Curated event seeds** — `src/data/events.ts` (~47) — hand-curated.
-- **Live iCal/RSS feeds (request-time)** — `src/lib/integrations/ical-live.ts` (`revalidate: 3600`): Celebrate Frederick, Frederick County calendar, City of Frederick calendar, GFF Google Calendar, Mount Airy, Thurmont, Frederick History, Monocacy Brewing, Maryland School for the Deaf, recreater.com, Delaplaine. DFP (downtownfrederick.org) feed **removed June 2026** — they killed every machine-readable export (documented in `api/ingest/all/route.ts`); gated behind `DFP_ICAL_URL`.
-- **Ingest crons (DB-persisting)** — `/api/ingest/all` (daily 09:00: Celebrate Frederick + county calendar → Supabase `events` via `src/lib/ingest/ical.ts`/`upsert.ts`, logged in `ingest_runs`), `/api/ingest/fcpl` (09:15, Frederick County Public Libraries, `src/lib/ingest/fcpl.ts`), `/api/ingest/fcvfra` (09:20, fire/rescue association events, `src/lib/ingest/fcvfra.ts`); plus manual routes `arcgis`, `celebrate`, `civicengage`, `county`, `seed`. Cache-key rule: bump `ingested-series-vN` after shape changes (PR #509).
+- **Live iCal/RSS feeds (request-time)** — `src/lib/integrations/ical-live.ts` (`revalidate: 3600`): Celebrate Frederick, Frederick County calendar, City of Frederick calendar, GFF Google Calendar, Mount Airy, Thurmont, Frederick History, Monocacy Brewing, Maryland School for the Deaf, recreater.com, Delaplaine. DFP (downtownfrederick.org) feed **removed June 2026** because its machine-readable exports stopped working; it remains gated behind `DFP_ICAL_URL`.
+- **Ingest crons (DB-persisting)** — `/api/ingest/civicengage` (daily 09:00: Frederick County and municipal CivicEngage calendars → `raw_events` + user-facing `ingested_events`, with per-domain `ingest_runs` heartbeats), `/api/ingest/fcpl` (09:15, Frederick County Public Libraries, `src/lib/ingest/fcpl.ts`), `/api/ingest/fcvfra` (09:20, fire/rescue association events, `src/lib/ingest/fcvfra.ts`); plus manual routes `all`, `arcgis`, `celebrate`, `county`, `seed`. The legacy `county` route redirects to the county subset of the scheduled CivicEngage path. Cache-key rule: bump `ingested-series-vN` after shape changes (PR #509).
 - **Ticketmaster** — `ticketmaster.ts` (keyed Discovery v2) — uncached fetch wrapped by unifiedEvents' 300s cache — concerts + Keys games.
 - **Bandsintown** — `bandsintown.ts` (keyed) against curated artist registry `src/data/bandsintown-artists.ts` — same caching.
 - **SeatGeek** — `seatgeek.ts` (keyed, `revalidate: 3600`) — ticketed shows near Frederick; only 1 importer.

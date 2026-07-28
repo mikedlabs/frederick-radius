@@ -1,15 +1,16 @@
 import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
-import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
+import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import {
-  getChartIncidentsFrederick,
   qualifiesForToday,
   chartTodayTitle,
   chartFreshnessTail,
   chartRoad,
+  type ChartIncident,
 } from "@/lib/integrations/mdot-chart";
 import { activeEventNotices } from "@/lib/events/notices";
 import { summarizeAirQualityAlert } from "@/lib/air-quality";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 
 type UnifiedAlert = {
   source: "NWS" | "NPS" | "MDOT";
@@ -27,20 +28,34 @@ type UnifiedAlert = {
   external?: boolean;
 };
 
+const EASTERN_TIME_ZONE = "America/New_York";
+const EASTERN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: EASTERN_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function easternDateKey(value: Date): string {
+  return EASTERN_DATE_FORMATTER.formatToParts(value)
+    .filter((part) => part.type === "year" || part.type === "month" || part.type === "day")
+    .map((part) => part.value)
+    .join("-");
+}
+
 /** Pull "Until 8:00 PM" out of an ISO expiry. The single most
  *  useful bit of info on a weather alert — "is it over yet?". */
-function untilLabel(iso?: string): string {
+export function untilLabel(iso?: string, now = new Date()): string {
   if (!iso) return "";
   const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return "";
+  if (Number.isNaN(t.getTime()) || Number.isNaN(now.getTime())) return "";
   const time = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
+    timeZone: EASTERN_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
   }).format(t);
-  const sameDay =
-    new Date().toDateString() === t.toDateString();
-  return sameDay ? `Until ${time}` : `Until ${time} ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(t)}`;
+  const sameDay = easternDateKey(now) === easternDateKey(t);
+  return sameDay ? `Until ${time}` : `Until ${time} ${new Intl.DateTimeFormat("en-US", { timeZone: EASTERN_TIME_ZONE, weekday: "short" }).format(t)}`;
 }
 
 /** Take the raw NWS `areaDesc` (a giant semicolon list of counties)
@@ -93,6 +108,7 @@ function normalize(
   nws: NwsAlert[],
   nps: NpsAlert[],
   traffic: UnifiedAlert[],
+  now: Date,
 ): UnifiedAlert[] {
   const out: UnifiedAlert[] = [];
   for (const a of nws) {
@@ -101,7 +117,7 @@ function normalize(
     // CivicAlerts banner is now the single source of truth for the
     // alert. Show every active NWS alert here with the full title +
     // "Until 8 PM" tail + scope chip.
-    const until = untilLabel(a.ends_at);
+    const until = untilLabel(a.ends_at, now);
     out.push({
       source: "NWS",
       severity,
@@ -144,7 +160,7 @@ function normalize(
 
 /** Map the qualifying CHART incidents to at most one Heads-up traffic row.
  *  Cleaned title, mono freshness tail, road scope chip, in-app deep link. */
-function trafficAlerts(now: Date, incidents: Awaited<ReturnType<typeof getChartIncidentsFrederick>>): UnifiedAlert[] {
+function trafficAlerts(now: Date, incidents: ChartIncident[]): UnifiedAlert[] {
   const qualifying = incidents.filter((i) => qualifiesForToday(i, now));
   if (qualifying.length === 0) return [];
   const top = qualifying[0];
@@ -185,16 +201,21 @@ const STYLES = {
  * moment a real feed exists — absent until then, never faked.
  */
 export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
-  const [nws, nps, chart] = await Promise.all([
-    includeWeather ? getNwsAlerts() : Promise.resolve([]),
+  const [situation, nps] = await Promise.all([
+    getCurrentSituationSnapshot(),
     getNpsAlerts(),
-    // The CHART map and Pulse keep their two-minute feed cache. Today is an
-    // ISR briefing with a declared five-minute cadence; letting this nested
-    // fetch keep its 120-second default silently lowered the entire /today
-    // route to two-minute regenerations. Match the page boundary here.
-    getChartIncidentsFrederick({ revalidateSeconds: 300 }),
   ]);
-  const alerts = normalize(nws, nps, trafficAlerts(new Date(), chart));
+  const weatherIsFresh =
+    situation.sources.weather.availability === "available" &&
+    situation.sources.weather.freshness === "fresh";
+  const trafficIsFresh =
+    situation.sources.traffic.availability === "available" &&
+    situation.sources.traffic.freshness === "fresh";
+  const now = new Date(situation.generatedAt);
+  const nws =
+    includeWeather && weatherIsFresh ? situation.sources.weather.data : [];
+  const chart = trafficIsFresh ? situation.sources.traffic.data : [];
+  const alerts = normalize(nws, nps, trafficAlerts(now, chart), now);
   // Owner event notices (event-notices.json) — "Alive @ Five is cancelled
   // tonight" is exactly the news this slot exists for. They render as their
   // OWN rows below the weather alert (never folded into the one-alert
@@ -202,7 +223,7 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   // cancellation are BOTH active, and the "+1 more" link points at /pulse,
   // which doesn't carry notices). Owner-authored and rare, so capped at 2.
    
-  const notices = activeEventNotices(new Date()).slice(0, 2);
+  const notices = activeEventNotices(now).slice(0, 2);
   if (alerts.length === 0 && notices.length === 0) return null;
 
   const top = alerts[0];

@@ -21,7 +21,7 @@ describe("brewery media publishing", () => {
 
     expect(asset).toEqual({
       src:
-        "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Fphoto-one&w=1200&slug=test-brewery",
+        "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Fphoto-one&w=1200&slug=test-brewery&fallback=signal",
       attribution,
     });
     expect(asset?.src).not.toContain("blob.vercel-storage.com");

@@ -10,8 +10,51 @@ import { applyAskOutdoorSafety } from "@/lib/ask/outdoor-safety";
 import { isOutdoorRecommendation } from "@/lib/weather-safety";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
+import {
+  powerOutageAskResult,
+  wantsPowerOutage,
+} from "@/lib/ask/power-outage";
+import {
+  publicSafetyActivityAskResult,
+  roadStatusAskResult,
+  schoolStatusAskResult,
+  wantsPublicSafetyActivity,
+  wantsRoadStatus,
+  wantsSchoolStatus,
+  wantsWaterAdvisory,
+  waterAdvisoryAskResult,
+} from "@/lib/ask/civic-status";
+import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import { getCivicPressReleasesResult } from "@/lib/integrations/civic-press";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import {
+  selectChartIncidentsResult,
+  type CurrentSituationSnapshot,
+} from "@/lib/live/currentSituationModel";
+import { withPrimaryRankedResult } from "@/lib/ask/presentation";
 
 const ASK_SAFETY_DEADLINE_MS = 1_500;
+const ASK_CIVIC_DEADLINE_MS = 2_000;
+
+async function failSoftWithin<T>(
+  promise: Promise<T>,
+  fallback: T,
+  deadlineMs: number,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), deadlineMs);
+  });
+  try {
+    return await Promise.race([
+      promise.catch(() => fallback),
+      timedOut,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 /**
  * POST /api/ask  → { configured, answer, sources }
@@ -80,6 +123,72 @@ export async function POST(req: NextRequest) {
     approximateOrigin: null,
     approximateStatus: "missing",
   });
+  // Utility status is a direct live-data question. Do not send it through the
+  // place catalog or the outdoor-safety rewrite: both can turn "is my power
+  // out?" into unrelated businesses or air-quality cards. FirstEnergy's county
+  // report cannot resolve a street address, so the answer keeps that limit and
+  // hands off to the official outage map.
+  if (wantsPowerOutage(query)) {
+    const outageResult = await failSoftWithin(
+      getFrederickOutagesResult(),
+      {
+        data: { total_out: 0, total_served: 0, munis: [] },
+        available: false,
+      },
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    return NextResponse.json(powerOutageAskResult(outageResult, context.label));
+  }
+  // Traffic, school, public-safety, and public-water status questions are
+  // civic lookups, not discovery prompts. Keep them out of catalog retrieval
+  // so a failed official feed never turns into unrelated place cards.
+  if (wantsRoadStatus(query)) {
+    const situation = await failSoftWithin<CurrentSituationSnapshot | null>(
+      getCurrentSituationSnapshot(),
+      null,
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    const traffic = situation
+      ? selectChartIncidentsResult(situation)
+      : { data: [], available: false };
+    return NextResponse.json(roadStatusAskResult(traffic, {
+      label: context.label,
+      origin: context.origin,
+      canShowDistance: context.canShowDistance,
+      query,
+    }));
+  }
+  if (wantsSchoolStatus(query)) {
+    const schools = await failSoftWithin(
+      getFcpsAlertsResult(),
+      { data: [], available: false },
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    return NextResponse.json(schoolStatusAskResult(schools, {
+      label: context.label,
+    }));
+  }
+  if (wantsPublicSafetyActivity(query)) {
+    return NextResponse.json(publicSafetyActivityAskResult({
+      label: context.label,
+    }));
+  }
+  if (wantsWaterAdvisory(query)) {
+    const notices = await failSoftWithin(
+      getCivicPressReleasesResult(),
+      {
+        items: [],
+        sourceHealth: {
+          degraded: true,
+          unavailable: ["City of Frederick", "Frederick County"],
+        },
+      },
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    return NextResponse.json(waterAdvisoryAskResult(notices, {
+      label: context.label,
+    }));
+  }
   // Outdoor safety is a final response constraint, not a suggestion to the
   // model. Load cached NWS alerts and measured AirNow AQI with retrieval,
   // then remove any outdoor answer/source/plan before JSON reaches the client.
@@ -100,16 +209,18 @@ export async function POST(req: NextRequest) {
       deadlineMs: ASK_SAFETY_DEADLINE_MS,
     }),
   ]);
-  const result = applyAskOutdoorSafety(
-    rawResult,
-    query,
-    hold,
-    (source) => {
-      const place = source.href.startsWith("/places/")
-        ? clientPlaceBySlug(source.href.slice("/places/".length))
-        : null;
-      return isOutdoorRecommendation(place ?? source);
-    },
+  const result = withPrimaryRankedResult(
+    applyAskOutdoorSafety(
+      rawResult,
+      query,
+      hold,
+      (source) => {
+        const place = source.href.startsWith("/places/")
+          ? clientPlaceBySlug(source.href.slice("/places/".length))
+          : null;
+        return isOutdoorRecommendation(place ?? source);
+      },
+    ),
   );
   if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.

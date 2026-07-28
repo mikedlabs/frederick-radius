@@ -4,27 +4,21 @@ const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
   buildDedup: vi.fn(),
   classifyDescription: vi.fn(),
-  rankPlaces: vi.fn(),
-  hoursCoverage: vi.fn(),
   auditCoordDivergence: vi.fn(),
-  getLiveEvents: vi.fn(),
   getAnomalies: vi.fn(),
-  hydrateSnapshots: vi.fn(),
-  persistCurrentSnapshots: vi.fn(),
-  pruneOldSnapshots: vi.fn(),
-  prunePushLog: vi.fn(),
-  pruneNfcEvents: vi.fn(),
-  consumeFeedMetrics: vi.fn(),
+  hydrateSnapshotsStrict: vi.fn(),
   sendAnomalyAlert: vi.fn(),
   computePlaceTrustReport: vi.fn(),
+  summarizeHoursRefreshArtifact: vi.fn(),
   curatedFreshnessAnomalies: vi.fn(),
-  liveSourceAnomalies: vi.fn(),
-  pruneExpiredReports: vi.fn(),
   evaluateDbHealth: vi.fn(),
+  getRecentIngestRuns: vi.fn(),
   runTripwires: vi.fn(),
   deliverDataHealthReport: vi.fn(),
-  startIngestRun: vi.fn(),
-  finishIngestRun: vi.fn(),
+  startIngestRunStrict: vi.fn(),
+  finishIngestRunStrict: vi.fn(),
+  readStoredFoodTruckSchedule: vi.fn(),
+  evaluateFoodTruckScheduleHealth: vi.fn(),
 }));
 
 vi.mock("../../ingest/_auth", () => ({
@@ -32,34 +26,20 @@ vi.mock("../../ingest/_auth", () => ({
 }));
 vi.mock("@/data/places", () => ({ PLACES: [] }));
 vi.mock("@/data/places-dfp.json", () => ({ default: [] }));
+vi.mock("@/data/places-client.json", () => ({
+  default: [{ slug: "test-place", google_place_id: "ChIJ-test-place" }],
+}));
+vi.mock("@/data/places-hours-refresh.json", () => ({ default: {} }));
 vi.mock("@/lib/dedup", () => ({ buildDedup: mocks.buildDedup }));
 vi.mock("@/lib/copy-quality", () => ({
   classifyDescription: mocks.classifyDescription,
 }));
-vi.mock("@/lib/loaders/places", () => ({
-  rankPlaces: mocks.rankPlaces,
-  hoursCoverage: mocks.hoursCoverage,
-}));
 vi.mock("@/lib/coord-audit", () => ({
   auditCoordDivergence: mocks.auditCoordDivergence,
 }));
-vi.mock("@/lib/integrations/ical-live", () => ({
-  getLiveEvents: mocks.getLiveEvents,
-}));
 vi.mock("@/lib/integrations/feed-snapshot", () => ({
   getAnomalies: mocks.getAnomalies,
-  hydrateSnapshots: mocks.hydrateSnapshots,
-  persistCurrentSnapshots: mocks.persistCurrentSnapshots,
-  pruneOldSnapshots: mocks.pruneOldSnapshots,
-}));
-vi.mock("@/lib/push-fanout", () => ({
-  prunePushLog: mocks.prunePushLog,
-}));
-vi.mock("@/lib/nfc-retention", () => ({
-  pruneNfcEvents: mocks.pruneNfcEvents,
-}));
-vi.mock("@/lib/integrations/event-schema", () => ({
-  consumeFeedMetrics: mocks.consumeFeedMetrics,
+  hydrateSnapshotsStrict: mocks.hydrateSnapshotsStrict,
 }));
 vi.mock("@/lib/integrations/alerts", () => ({
   sendAnomalyAlert: mocks.sendAnomalyAlert,
@@ -67,15 +47,19 @@ vi.mock("@/lib/integrations/alerts", () => ({
 vi.mock("@/lib/quality/trust-report", () => ({
   computePlaceTrustReport: mocks.computePlaceTrustReport,
 }));
+vi.mock("@/lib/quality/operator-coverage", () => ({
+  summarizeHoursRefreshArtifact: mocks.summarizeHoursRefreshArtifact,
+}));
+vi.mock("@/lib/provenance", () => ({
+  isGooglePlaceId: (value: unknown) =>
+    typeof value === "string" && value.startsWith("ChIJ"),
+}));
 vi.mock("@/lib/quality/curated-freshness", () => ({
   curatedFreshnessAnomalies: mocks.curatedFreshnessAnomalies,
-  liveSourceAnomalies: mocks.liveSourceAnomalies,
-}));
-vi.mock("@/lib/loaders/communityReports", () => ({
-  pruneExpiredReports: mocks.pruneExpiredReports,
 }));
 vi.mock("@/lib/quality/db-health", () => ({
   evaluateDbHealth: mocks.evaluateDbHealth,
+  getRecentIngestRuns: mocks.getRecentIngestRuns,
 }));
 vi.mock("@/lib/quality/tripwires", () => ({
   runTripwires: mocks.runTripwires,
@@ -84,14 +68,36 @@ vi.mock("@/lib/integrations/github-alerts", () => ({
   deliverDataHealthReport: mocks.deliverDataHealthReport,
 }));
 vi.mock("@/lib/ingest/run-log", () => ({
-  startIngestRun: mocks.startIngestRun,
-  finishIngestRun: mocks.finishIngestRun,
+  startIngestRunStrict: mocks.startIngestRunStrict,
+  finishIngestRunStrict: mocks.finishIngestRunStrict,
+}));
+vi.mock("@/lib/food-trucks/schedule-store", () => ({
+  readStoredFoodTruckSchedule: mocks.readStoredFoodTruckSchedule,
+}));
+vi.mock("@/lib/quality/food-truck-schedule-health", () => ({
+  evaluateFoodTruckScheduleHealth:
+    mocks.evaluateFoodTruckScheduleHealth,
 }));
 
 import { GET } from "./route";
 
 function request() {
   return new Request("https://frederickradius.app/api/cron/data-health");
+}
+
+function healthyPhaseRun(source: string) {
+  const now = new Date().toISOString();
+  return {
+    source,
+    status: "ok",
+    startedAt: now,
+    endedAt: now,
+    recordsIn: 12,
+    recordsUpserted: 12,
+    recordsFailed: 0,
+    error: null,
+    stale: false,
+  };
 }
 
 describe("GET /api/cron/data-health", () => {
@@ -101,25 +107,24 @@ describe("GET /api/cron/data-health", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("DATA_RETENTION_PRUNE", "1");
+    vi.stubEnv("DATA_RETENTION_PRUNE", "0");
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
-    mocks.rankPlaces.mockReturnValue([]);
-    mocks.hoursCoverage.mockReturnValue(0.7);
     mocks.auditCoordDivergence.mockReturnValue([]);
-    mocks.getLiveEvents.mockResolvedValue({
-      events: [],
-      sources_succeeded: [],
-      sources_failed: [],
-    });
     mocks.getAnomalies.mockReturnValue([]);
-    mocks.hydrateSnapshots.mockResolvedValue(undefined);
-    mocks.persistCurrentSnapshots.mockResolvedValue(0);
-    mocks.pruneOldSnapshots.mockResolvedValue(0);
-    mocks.prunePushLog.mockResolvedValue(0);
-    mocks.pruneNfcEvents.mockResolvedValue(0);
-    mocks.consumeFeedMetrics.mockReturnValue({});
+    mocks.hydrateSnapshotsStrict.mockResolvedValue(undefined);
     mocks.computePlaceTrustReport.mockReturnValue({
+      fresh_hours: {
+        fresh_count: 70,
+        total_count: 100,
+        coverage_pct: 70,
+        target_count: 60,
+        target_pct: 60,
+        open_now_eligible: true,
+        below_gate: false,
+        checked_at: "2026-07-27T12:00:00.000Z",
+        source: "current-verified-hours",
+      },
       provenance: {
         coverage_pct: 100,
         below_gate: false,
@@ -132,13 +137,52 @@ describe("GET /api/cron/data-health", () => {
         stale_sample: [],
       },
     });
+    mocks.summarizeHoursRefreshArtifact.mockReturnValue({
+      expectedGoogleBackedPlaces: 100,
+      rows: 24,
+      matchedRows: 24,
+      unmatchedRows: 0,
+      withSchedule: 20,
+      freshRefreshRows: 24,
+      freshRows: 20,
+      staleRows: 0,
+      invalidTimestamps: 0,
+      coveragePct: 20,
+      oldestRefresh: "2026-07-27T08:00:00.000Z",
+      newestRefresh: "2026-07-27T08:00:00.000Z",
+      cycle: {
+        days: 7,
+        state: "warming",
+        completedDays: 1,
+        missingDays: [1, 2, 3, 4, 5, 6],
+        underfilledDays: [],
+        refreshCoveragePct: 24,
+        buckets: [],
+      },
+    });
     mocks.curatedFreshnessAnomalies.mockReturnValue([]);
-    mocks.liveSourceAnomalies.mockReturnValue([]);
-    mocks.pruneExpiredReports.mockResolvedValue(0);
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+    mocks.getRecentIngestRuns.mockResolvedValue([
+      healthyPhaseRun("data-health:feeds"),
+    ]);
     mocks.runTripwires.mockResolvedValue({ anomalies: [], checks: [] });
     mocks.deliverDataHealthReport.mockResolvedValue("skipped");
-    mocks.startIngestRun.mockResolvedValue(null);
-    mocks.finishIngestRun.mockResolvedValue(undefined);
+    mocks.startIngestRunStrict.mockResolvedValue("report-run");
+    mocks.finishIngestRunStrict.mockResolvedValue(undefined);
+    mocks.readStoredFoodTruckSchedule.mockResolvedValue({});
+    mocks.evaluateFoodTruckScheduleHealth.mockReturnValue({
+      green: true,
+      generatedAt: "2026-07-28T08:00:00.000Z",
+      ageHours: 1,
+      stopCount: 2,
+      sourceCount: 1,
+      failedSources: [],
+      anomalies: [],
+    });
   });
 
   it("returns 503 and names the infrastructure failure when DB health cannot run", async () => {
@@ -197,13 +241,31 @@ describe("GET /api/cron/data-health", () => {
     });
   });
 
-  it("persists one cron snapshot only for feeds that answered", async () => {
-    mocks.getLiveEvents.mockResolvedValue({
-      events: [],
-      sources_succeeded: ["county", "fcpl"],
-      sources_failed: ["city-frederick"],
+  it("keeps the headline red when current fresh hours are zero", async () => {
+    mocks.computePlaceTrustReport.mockReturnValue({
+      fresh_hours: {
+        fresh_count: 0,
+        total_count: 1_528,
+        coverage_pct: 0,
+        target_count: 917,
+        target_pct: 60,
+        open_now_eligible: false,
+        below_gate: true,
+        checked_at: "2026-07-27T12:00:00.000Z",
+        source: "current-verified-hours",
+      },
+      provenance: {
+        coverage_pct: 100,
+        below_gate: false,
+        missing_sample: [],
+      },
+      confidence: {},
+      open_assertions: {
+        asserting: 0,
+        stale_or_missing: 0,
+        stale_sample: [],
+      },
     });
-    mocks.persistCurrentSnapshots.mockResolvedValue(2);
     mocks.evaluateDbHealth.mockResolvedValue({
       status: "available",
       reason: null,
@@ -214,55 +276,171 @@ describe("GET /api/cron/data-health", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.persistCurrentSnapshots).toHaveBeenCalledWith(["county", "fcpl"]);
-    expect(body.feeds.persisted_snapshots).toBe(2);
+    expect(body.summary.headline).toContain("red: open-now-eligibility");
+    expect(body.summary.gates).toContainEqual({
+      name: "open-now-eligibility",
+      green: false,
+    });
+    expect(body.hours).toMatchObject({
+      fresh_count: 0,
+      total_count: 1_528,
+      coverage_pct: 0,
+      target_count: 917,
+      target_pct: 60,
+      open_now_eligible: false,
+      below_gate: true,
+      source: "current-verified-hours",
+    });
+    expect(body.hours.note).toContain("Stored or historical schedules do not");
   });
 
-  it("starts independent cleanup and health checks without waiting for snapshot persistence", async () => {
-    let releasePersistence: ((value: number) => void) | undefined;
-    mocks.persistCurrentSnapshots.mockReturnValue(
-      new Promise<number>((resolve) => {
-        releasePersistence = resolve;
+  it("reports the committed hours refresh cycle separately from Open Now coverage", async () => {
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.summarizeHoursRefreshArtifact).toHaveBeenCalledWith(
+      {},
+      new Set(["test-place"]),
+    );
+    expect(body.hours.refresh_cycle).toMatchObject({
+      days: 7,
+      state: "warming",
+      completedDays: 1,
+      missingDays: [1, 2, 3, 4, 5, 6],
+      refreshCoveragePct: 24,
+    });
+    expect(body.hours.refresh_rows).toEqual({
+      expected: 100,
+      fresh: 24,
+      with_fresh_schedule: 20,
+      invalid_timestamps: 0,
+      unmatched: 0,
+      oldest_refresh: "2026-07-27T08:00:00.000Z",
+      newest_refresh: "2026-07-27T08:00:00.000Z",
+    });
+  });
+
+  it("is read-mostly and trusts only a recent completed feed-worker heartbeat", async () => {
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.gates).toContainEqual({
+      name: "feed-worker",
+      green: true,
+    });
+    expect(body.phases.feeds).toMatchObject({
+      green: true,
+      status: "ok",
+      sources_checked: 12,
+      snapshots_persisted: 12,
+    });
+    expect(body.note).toContain("separately scheduled");
+  });
+
+  it("returns 503 and reports a missing feed-worker heartbeat", async () => {
+    mocks.getRecentIngestRuns.mockResolvedValue([]);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.summary.gates).toContainEqual({
+      name: "feed-worker",
+      green: false,
+    });
+    expect(body.summary.headline).toContain("feed-worker");
+    expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anomalies: expect.arrayContaining([
+          expect.objectContaining({
+            source: "data-health:feeds",
+            kind: "tripwire_failed",
+          }),
+        ]),
       }),
     );
-    mocks.evaluateDbHealth.mockResolvedValue({
-      status: "available",
-      reason: null,
-      anomalies: [],
-    });
-
-    const responsePromise = GET(request());
-
-    await vi.waitFor(() => {
-      expect(mocks.pruneOldSnapshots).toHaveBeenCalledWith(90);
-      expect(mocks.prunePushLog).toHaveBeenCalledWith(90);
-      expect(mocks.pruneNfcEvents).toHaveBeenCalledWith(90);
-      expect(mocks.pruneExpiredReports).toHaveBeenCalledTimes(1);
-      expect(mocks.evaluateDbHealth).toHaveBeenCalledTimes(1);
-      expect(mocks.runTripwires).toHaveBeenCalledTimes(1);
-    });
-
-    releasePersistence?.(0);
-    const response = await responsePromise;
-    expect(response.status).toBe(200);
   });
 
-  it("keeps retention non-destructive until the backup-aware flag is enabled", async () => {
-    vi.stubEnv("DATA_RETENTION_PRUNE", "0");
-    mocks.evaluateDbHealth.mockResolvedValue({
-      status: "available",
-      reason: null,
-      anomalies: [],
-    });
+  it("names controlled feed-worker failures in the delivered report", async () => {
+    mocks.getRecentIngestRuns.mockResolvedValue([
+      {
+        ...healthyPhaseRun("data-health:feeds"),
+        status: "partial",
+        recordsFailed: 1,
+        error: "Live sources failed: city-frederick.",
+      },
+    ]);
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(503);
+    expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anomalies: expect.arrayContaining([
+          expect.objectContaining({
+            source: "data-health:feeds",
+            detail: expect.stringContaining("city-frederick"),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("reads required phase heartbeats before starting DB-heavy checks", async () => {
+    await GET(request());
+
+    const phaseReadOrder =
+      mocks.getRecentIngestRuns.mock.invocationCallOrder[0];
+    expect(phaseReadOrder).toBeLessThan(
+      mocks.evaluateDbHealth.mock.invocationCallOrder[0],
+    );
+    expect(phaseReadOrder).toBeLessThan(
+      mocks.runTripwires.mock.invocationCallOrder[0],
+    );
+    expect(phaseReadOrder).toBeLessThan(
+      mocks.readStoredFoodTruckSchedule.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("requires a fresh retention heartbeat only when deletion is explicitly enabled", async () => {
+    vi.stubEnv("DATA_RETENTION_PRUNE", "1");
+    mocks.getRecentIngestRuns.mockResolvedValue([
+      healthyPhaseRun("data-health:feeds"),
+    ]);
 
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body.feeds.retention_prune_enabled).toBe(false);
-    expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
-    expect(mocks.prunePushLog).not.toHaveBeenCalled();
-    expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
-    expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
+    expect(response.status).toBe(503);
+    expect(body.phases.retention).toMatchObject({
+      enabled: true,
+      green: false,
+      status: null,
+    });
+    expect(body.summary.gates).toContainEqual({
+      name: "data-retention",
+      green: false,
+    });
+  });
+
+  it("never places internal worker failures in the public JSON", async () => {
+    mocks.evaluateDbHealth.mockRejectedValue(
+      new Error("postgres://user:secret@example.invalid/database"),
+    );
+
+    const response = await GET(request());
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(bodyText).not.toContain("user:secret");
+    expect(bodyText).toContain("reporter deadline");
   });
 });

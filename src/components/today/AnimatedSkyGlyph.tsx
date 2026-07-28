@@ -58,7 +58,7 @@ export default function AnimatedSkyGlyph({
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke="var(--app-accent)"
+                  stroke="var(--sky-sun-color)"
                   strokeWidth={2.2}
                   strokeLinecap="round"
                 />
@@ -66,7 +66,7 @@ export default function AnimatedSkyGlyph({
             })}
           </svg>
           <svg viewBox="0 0 100 100" className="sky-core" aria-hidden>
-            <circle cx={50} cy={50} r={20} fill="var(--app-accent)" />
+            <circle cx={50} cy={50} r={20} fill="var(--sky-sun-color)" />
             <circle cx={50} cy={50} r={20} fill="url(#sun-glow)" />
             <defs>
               <radialGradient id="sun-glow" cx={0.45} cy={0.4}>

@@ -7,7 +7,10 @@ import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
 import { BETA_ID_COOKIE } from "@/lib/beta-constants";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
-import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
+import {
+  OPEN_FEEDBACK_EVENT,
+  PENDING_FEEDBACK_KEY,
+} from "@/lib/feedback-ui";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
@@ -53,11 +56,24 @@ export default function FeedbackWidget() {
   }, [isPublicFoodTruckBoard]);
 
   useEffect(() => {
-    if (!show) return;
-    const openFeedback = () => setOpen(true);
+    const openFeedback = () => {
+      try {
+        window.sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
+      } catch {
+        // Storage is optional; opening the sheet is not.
+      }
+      setOpen(true);
+    };
     window.addEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
+    try {
+      if (window.sessionStorage.getItem(PENDING_FEEDBACK_KEY) === "1") {
+        openFeedback();
+      }
+    } catch {
+      // The event listener remains the fallback.
+    }
     return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
-  }, [show]);
+  }, []);
 
   function close() {
     setOpen(false);

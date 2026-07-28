@@ -13,7 +13,7 @@
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/ingest/all",
+      "path": "/api/ingest/civicengage",
       "schedule": "0 9 * * *"
     },
     {
@@ -39,6 +39,14 @@
     {
       "path": "/api/cron/business-status",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/data-health-feeds",
+      "schedule": "5 9 * * *"
+    },
+    {
+      "path": "/api/cron/data-health-retention",
+      "schedule": "10 9 * * *"
     },
     {
       "path": "/api/cron/data-health",
@@ -86,7 +94,7 @@
     },
     {
       "path": "/api/cron/food-truck-schedules",
-      "schedule": "0 11 * * *"
+      "schedule": "15 */4 * * *"
     }
   ],
   "headers": [

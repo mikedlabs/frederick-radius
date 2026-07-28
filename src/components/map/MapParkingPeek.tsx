@@ -96,7 +96,7 @@ export default function MapParkingPeek({
           <span className="map-peek-source">
             {updated
               ? `Parking feed updated ${updated}`
-              : "Availability not reported · City garage information"}
+              : "City garage information"}
           </span>
         </span>
       </div>

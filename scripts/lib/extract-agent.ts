@@ -1,5 +1,10 @@
 import { cleanFeedText } from "../../src/lib/format/text";
 import { clampDescription } from "../../src/lib/events/normalize";
+import {
+  extractPageAnchors,
+  normalizePageAnchor,
+  type PageAnchor,
+} from "./official-commerce-links";
 
 /**
  * Extraction engine — the shared core behind every "go get the buried
@@ -35,8 +40,17 @@ function htmlToText(html: string, maxChars: number): string {
     .slice(0, maxChars);
 }
 
+export type PageSnapshot = {
+  text: string;
+  links: PageAnchor[];
+  /** Final URL after redirects; this is the page on which links were found. */
+  finalUrl: string;
+};
+
 /**
- * Fetch a public page and reduce it to model-friendly text.
+ * Fetch a public page as model-friendly text plus the real anchors needed by
+ * deterministic extractors. Keeping href collection here means every profile
+ * gets the same redirect handling, scheme validation, and render fallback.
  *
  * Real-world reality (learned by testing actual venue sites): many
  * calendars are JS-rendered (events aren't in the static HTML) or the
@@ -44,16 +58,19 @@ function htmlToText(html: string, maxChars: number): string {
  * real headless browser (Playwright, already a project dep) so those
  * sources work too. Plain fetch is the fast default for static pages.
  */
-export async function fetchPageText(
+export async function fetchPageSnapshot(
   url: string,
   opts: { render?: boolean; maxChars?: number } = {},
-): Promise<string | null> {
+): Promise<PageSnapshot | null> {
   const maxChars = opts.maxChars ?? 18_000;
 
   if (opts.render) {
+    let browser: Awaited<ReturnType<
+      (typeof import("@playwright/test"))["chromium"]["launch"]
+    >> | null = null;
     try {
       const { chromium } = await import("@playwright/test");
-      const browser = await chromium.launch();
+      browser = await chromium.launch();
       const page = await browser.newPage({
         userAgent: UA,
         // Opt-in escape hatch for environments behind a TLS-intercepting
@@ -65,11 +82,23 @@ export async function fetchPageText(
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
       await page.waitForTimeout(1200); // let late calendar widgets settle
       const text = (await page.innerText("body")).replace(/\s+/g, " ").trim().slice(0, maxChars);
-      await browser.close();
-      return text || null;
+      if (!text) return null;
+      const finalUrl = page.url();
+      const rawLinks = await page.locator("a[href]").evaluateAll((nodes) =>
+        nodes.slice(0, 500).map((node) => ({
+          href: (node as HTMLAnchorElement).getAttribute("href") ?? "",
+          text: (node as HTMLAnchorElement).innerText ?? "",
+        })),
+      );
+      const links = rawLinks
+        .map((link) => normalizePageAnchor(link.href, link.text, finalUrl))
+        .filter((link): link is PageAnchor => link !== null);
+      return { text, links, finalUrl };
     } catch (err) {
       console.log(`  ✗ ${url} (render) → ${(err as Error).message}`);
       return null;
+    } finally {
+      await browser?.close();
     }
   }
 
@@ -82,11 +111,27 @@ export async function fetchPageText(
       console.log(`  ✗ ${url} → HTTP ${r.status}${r.status === 403 ? " (try render:true)" : ""}`);
       return null;
     }
-    return htmlToText(await r.text(), maxChars);
+    const html = await r.text();
+    const finalUrl = r.url || url;
+    const text = htmlToText(html, maxChars);
+    if (!text) return null;
+    return {
+      text,
+      links: extractPageAnchors(html, finalUrl),
+      finalUrl,
+    };
   } catch (err) {
     console.log(`  ✗ ${url} → ${(err as Error).message}`);
     return null;
   }
+}
+
+/** Backward-compatible text-only view used by existing extraction profiles. */
+export async function fetchPageText(
+  url: string,
+  opts: { render?: boolean; maxChars?: number } = {},
+): Promise<string | null> {
+  return (await fetchPageSnapshot(url, opts))?.text ?? null;
 }
 
 /**

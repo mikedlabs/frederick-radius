@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
-import { nwsDisplaySeverity } from "./CivicAlerts";
+import { nwsDisplaySeverity, untilLabel } from "./CivicAlerts";
 
 function alert(overrides: Partial<NwsAlert> = {}): NwsAlert {
   return {
@@ -45,5 +45,23 @@ Smoke was expected at Red to Very Unhealthy (Purple Alert) levels Friday night i
       headline: "Routine statement",
       description: "No immediate action required.",
     }))).toBe("info");
+  });
+});
+
+describe("untilLabel", () => {
+  it("compares alert days in Frederick time across the UTC midnight boundary", () => {
+    expect(
+      untilLabel(
+        "2026-07-29T02:00:00.000Z",
+        new Date("2026-07-28T23:30:00.000Z"),
+      ),
+    ).toBe("Until 10:00 PM");
+
+    expect(
+      untilLabel(
+        "2026-07-29T04:30:00.000Z",
+        new Date("2026-07-29T03:50:00.000Z"),
+      ),
+    ).toBe("Until 12:30 AM Wed");
   });
 });

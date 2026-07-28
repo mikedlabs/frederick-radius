@@ -1,15 +1,18 @@
 /**
  * In-app actions for a place — so users do things without leaving the app.
  *
- * Key idea: we do NOT need per-place reservation/order IDs populated.
- * Search-prefilled deep links (name + Frederick MD) reliably land the user
- * on the right OpenTable / Resy / DoorDash page — exactly how Google Maps
- * and Yelp implement "Reserve". Exact IDs (opentable_id, resy_slug,
- * order_url) are used when present for a direct link; otherwise the
- * prefilled search is the graceful, always-correct fallback.
+ * Direct IDs and URLs are capabilities: Reserve and Order. Provider-wide
+ * searches are discovery fallbacks and say so explicitly. Keeping those two
+ * states separate prevents the sheet from implying that a restaurant accepts
+ * online reservations or orders when Radius has not confirmed that it does.
  */
 import type { Place } from "@/data/places";
-import { parkMobileWebUrl, parkMobileFindUrl, openTableUrl, resyUrl } from "@/lib/integrations/deeplinks";
+import {
+  commerceActionLabel,
+  isCommerceSearchLink,
+  resolveCommerceLinks,
+} from "@/lib/commerce/links";
+import { parkMobileWebUrl, parkMobileFindUrl } from "@/lib/integrations/deeplinks";
 import { BRAND } from "@/lib/brand";
 
 export type PlaceAction = {
@@ -31,8 +34,6 @@ export type PlaceAction = {
   accent: string;
 };
 
-// Exported for the place page's Website action: on a food place the
-// website IS the menu answer, so the label says so ("Website · menu").
 export const FOOD_CATS = new Set(["restaurant", "bar", "brewery", "pizza", "bakery", "coffee", "food", "food-truck"]);
 const RESERVE_CATS = new Set(["restaurant", "bar", "brewery"]);
 
@@ -43,6 +44,16 @@ function q(s: string): string {
 export function placeActions(p: Place): PlaceAction[] {
   const actions: PlaceAction[] = [];
   const nameCity = `${p.name} ${p.city ?? "Frederick"} MD`;
+  const directCommerce = resolveCommerceLinks(p).filter(
+    (link) => !isCommerceSearchLink(link),
+  );
+  const directReservation = directCommerce.find(
+    (link) => link.type === "reservation",
+  );
+  const directOrder =
+    directCommerce.find((link) => link.type === "order") ??
+    directCommerce.find((link) => link.type === "delivery");
+  const directMenu = directCommerce.find((link) => link.type === "menu");
 
   // Directions — always available (we always have coords)
   actions.push({
@@ -66,62 +77,57 @@ export function placeActions(p: Place): PlaceAction[] {
     });
   }
 
-  // Reserve a table — restaurants/bars/breweries
-  if (RESERVE_CATS.has(p.category)) {
-    if (p.opentable_id) {
-      // opentable_id is the restref integer (per places.ts). It must go
-      // through the restref client redirect, NOT /r/restaurant/profile/
-      // — the latter expects a slug and 404s on a restref id. One source
-      // of truth for the URL lives in deeplinks.openTableUrl.
-      actions.push({
-        key: "reserve",
-        label: "Reserve",
-        href: openTableUrl(p.opentable_id),
-        external: true,
-        icon: "reserve",
-        accent: "var(--app-brand)",
-      });
-    } else if (p.resy_slug) {
-      actions.push({
-        key: "reserve",
-        label: "Reserve",
-        href: resyUrl(p.resy_slug),
-        external: true,
-        icon: "reserve",
-        accent: "var(--app-brand)",
-      });
-    } else {
-      // Prefilled OpenTable search — always lands correctly, no ID needed
-      actions.push({
-        key: "reserve",
-        label: "Reserve",
-        href: `https://www.opentable.com/s?term=${q(p.name)}&covers=2&latitude=${p.geom.lat}&longitude=${p.geom.lng}`,
-        external: true,
-        icon: "reserve",
-        accent: "var(--app-brand)",
-      });
-    }
+  // A direct, source-backed capability wins even when an upstream category is
+  // imperfect. Only dining categories without one receive the honest search
+  // fallback.
+  if (directReservation) {
+    actions.push({
+      key: "reserve",
+      label: commerceActionLabel(directReservation),
+      href: directReservation.url,
+      external: true,
+      icon: "reserve",
+      accent: "var(--app-brand)",
+    });
+  } else if (RESERVE_CATS.has(p.category)) {
+    actions.push({
+      key: "reserve-search",
+      label: "Search OpenTable",
+      href: `https://www.opentable.com/s?term=${q(p.name)}&covers=2&latitude=${p.geom.lat}&longitude=${p.geom.lng}`,
+      external: true,
+      icon: "reserve",
+      accent: "var(--app-brand)",
+    });
   }
 
-  // Order / delivery — food categories
-  if (FOOD_CATS.has(p.category)) {
-    if (p.order_url) {
-      actions.push({ key: "order", label: "Order", href: p.order_url, external: true, icon: "order", accent: BRAND.colors.brick });
-    } else if (p.doordash_url) {
-      actions.push({ key: "order", label: "DoorDash", href: p.doordash_url, external: true, icon: "order", accent: BRAND.colors.brick });
-    } else {
-      actions.push({
-        key: "order",
-        label: "Order",
-        href: `https://www.doordash.com/search/store/${q(nameCity)}`,
-        external: true,
-        icon: "order",
-        accent: BRAND.colors.brick,
-      });
-    }
-    if (p.menu_url) {
-      actions.push({ key: "menu", label: "Menu", href: p.menu_url, external: true, icon: "menu", accent: "var(--app-ink-2)" });
-    }
+  if (directOrder) {
+    actions.push({
+      key: "order",
+      label: commerceActionLabel(directOrder),
+      href: directOrder.url,
+      external: true,
+      icon: "order",
+      accent: BRAND.colors.brick,
+    });
+  } else if (FOOD_CATS.has(p.category)) {
+    actions.push({
+      key: "order-search",
+      label: "Search DoorDash",
+      href: `https://www.doordash.com/search/store/${q(nameCity)}`,
+      external: true,
+      icon: "order",
+      accent: BRAND.colors.brick,
+    });
+  }
+  if (directMenu) {
+    actions.push({
+      key: "menu",
+      label: commerceActionLabel(directMenu),
+      href: directMenu.url,
+      external: true,
+      icon: "menu",
+      accent: "var(--app-ink-2)",
+    });
   }
 
   // Parking. Verified zone → that ParkMobile session. A parking place
@@ -203,6 +209,10 @@ export function groupPlaceActions(
     "website",
     "parking",
     "instagram",
+    // Provider searches are fallbacks, not confirmed capabilities. They stay
+    // behind direct actions and the business's own website.
+    "reserve-search",
+    "order-search",
     "directions",
   ];
   const rank = new Map(secondaryOrder.map((key, index) => [key, index]));

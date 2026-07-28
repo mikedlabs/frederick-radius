@@ -149,7 +149,7 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
                 key={`${vendor.name}-${href}`}
                 href={href}
                 aria-label={`Find ${vendor.name} in the vendor roster`}
-                className="mr-1 underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
+                className="mr-1 inline-flex min-h-11 items-center underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
               >
                 {label}
               </Link>
@@ -217,7 +217,7 @@ function OwnerDoor({
         <div>
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>For truck owners</p>
           <p className="mt-1 font-serif text-[21px] leading-tight" style={{ color: "var(--app-ink)" }}>
-            {lead ? "Put your truck on the county board." : "Make this listing useful before someone arrives."}
+            {lead ? "Your truck belongs on the county board." : "Make this listing useful before someone arrives."}
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             {lead
@@ -265,6 +265,7 @@ export default async function FoodTrucksPage({
     beacons: getFreshestBeaconByTruck(),
     schedule: getFoodTruckSchedule(),
   });
+  const nearbyAsOf = new Date().toISOString();
   const scheduledSlugs = new Set(
     schedule.stops.flatMap((stop) => stop.vendors.map((vendor) => vendor.slug).filter(Boolean) as string[]),
   );
@@ -313,7 +314,7 @@ export default async function FoodTrucksPage({
   };
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-5 sm:space-y-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }} />
       <PageBloom variant="single" />
 
@@ -333,8 +334,8 @@ export default async function FoodTrucksPage({
             role + label give the stop a name once it takes focus. */}
         <div
           className="food-truck-hero-lineup"
-          role="group"
-          aria-label="Local food-truck vendor identities"
+          role="region"
+          aria-label="Featured local food trucks"
           tabIndex={0}
         >
           {HERO_TRUCKS.map((truck, index) => (
@@ -349,7 +350,14 @@ export default async function FoodTrucksPage({
 
       <FoodTruckJourneys
         defaultMode={nearbyTrucks.length > 0 ? "near" : "week"}
-        nearby={<FoodTruckNearMe trucks={nearbyTrucks} accent={FOOD_ACCENT} />}
+        nearby={(
+          <FoodTruckNearMe
+            trucks={nearbyTrucks}
+            stops={schedule.stops}
+            asOf={nearbyAsOf}
+            accent={FOOD_ACCENT}
+          />
+        )}
         week={
           <section id="this-week" className="scroll-mt-24 space-y-4">
         <div className="flex items-end justify-between gap-4 border-b pb-3" style={{ borderColor: "var(--app-border)" }}>

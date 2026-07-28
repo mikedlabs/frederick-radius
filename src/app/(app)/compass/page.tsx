@@ -22,16 +22,6 @@ export default function CompassPage() {
   return (
     <div className="relative">
       <PageBloom variant="warm" />
-      {/* The live deck was mounted here and is pulled back out (owner call,
-          2026-07-28: "this looks bad and not what i want at all"). It failed
-          on its own terms, not just on taste: twenty near-identical squares
-          whose headline was a count each, when the brand guide says counts
-          are supporting detail and never the headline, and half of them read
-          "None" or "Clear" outside business hours, so the board was a wall of
-          nothing at exactly the times someone would check it.
-          src/lib/deck/readings.ts stays: ten verified county feeds with
-          honest unavailable states are worth keeping for whatever presents
-          them next. /api/deck still serves it. */}
       <CompassHub />
     </div>
   );

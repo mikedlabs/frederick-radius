@@ -29,6 +29,7 @@ import WithinReach from "./WithinReach";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { isOpenNow } from "@/lib/hours";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import Link from "next/link";
 import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -573,6 +574,10 @@ export default function RadiusBuilder({
     () => inside.filter((p) => isOpenNow(p.open_status)).length,
     [inside],
   );
+  const mayReportNoneOpen = useMemo(
+    () => mayAssertNoneOpen(inside.map((place) => place.open_status)),
+    [inside],
+  );
 
   // What the view actually shows. When the open-now filter is on, it's
   // the confirmed-open subset; otherwise it's everything in the radius.
@@ -1109,7 +1114,12 @@ export default function RadiusBuilder({
                 </p>
               ) : (
                 <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                  {radiusResultLine(inside.length, openNowCount, openOnly)}
+                  {radiusResultLine(
+                    inside.length,
+                    openNowCount,
+                    openOnly,
+                    mayReportNoneOpen,
+                  )}
                 </p>
               )}
             </div>
@@ -1143,7 +1153,12 @@ export default function RadiusBuilder({
             Within reach of {center.label}
           </h2>
           <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {radiusResultLine(inside.length, openNowCount, openOnly)}
+            {radiusResultLine(
+              inside.length,
+              openNowCount,
+              openOnly,
+              mayReportNoneOpen,
+            )}
           </p>
         </div>
 
@@ -1191,7 +1206,9 @@ export default function RadiusBuilder({
             className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            Nothing inside this radius is confirmed open right now.{" "}
+            {mayReportNoneOpen
+              ? "No place inside this radius is open right now."
+              : "No place inside this radius has current hours showing it open."}{" "}
             <button
               type="button"
               onClick={() => setOpenOnly(false)}

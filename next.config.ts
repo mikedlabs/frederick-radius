@@ -239,6 +239,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Older iOS and a few link-preview crawlers still probe these historical
+  // root names. Rewrite both to the one canonical App Router metadata icon so
+  // a future brand rebuild updates every caller without duplicated PNG files.
+  async rewrites() {
+    return [
+      {
+        source: "/apple-touch-icon.png",
+        destination: "/apple-icon.png",
+      },
+      {
+        source: "/apple-touch-icon-precomposed.png",
+        destination: "/apple-icon.png",
+      },
+    ];
+  },
   // Permanent route consolidation — duplicate editorial pages and
   // legacy /today URL fold into their canonical homes. Preserves
   // crawler equity and any bookmarks pointing at the old paths.

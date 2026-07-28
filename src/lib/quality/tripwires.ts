@@ -407,23 +407,16 @@ export type TripwireReport = {
 };
 
 /**
- * The semantic half of Ask, checked for a pulse.
+ * Ask's private local-search index, checked for a pulse.
  *
- * hybridPlaceSearch() fuses Postgres FTS + pgvector and returns [] on ANY
- * failure so lexical search always survives. That contract is right, but it
- * also means an EMPTY index is indistinguishable from a healthy one at the
- * call site: hybridSearchConfigured() only proves a database and a gateway
- * key exist, never that a single document was ever embedded. The index is
- * populated by the gated `/api/cron/radius-search` job (with
- * `npm run build:radius-search` as the one-off bootstrap). Without the
- * feature flag or a successful first run, the app degrades to keyword-only
- * search without a word of complaint. (Found July 2026:
- * radius_search_documents held ZERO rows in production while the feature had
- * been shipped for months.)
+ * Postgres FTS is the required baseline. Direct OpenAI embeddings are an
+ * optional recall layer because AI Gateway does not support embedding models.
+ * The index is populated by `/api/cron/radius-search`, with
+ * `npm run build:radius-search` as the one-off bootstrap.
  *
- * Red when the index is empty, or has fallen far behind the catalog it is
- * supposed to cover. Silent when hybrid search is deliberately off
- * (RADIUS_HYBRID_SEARCH=0) or there is no database here — neither is a fault.
+ * Red when searchable rows are empty or stale. Vector coverage is only a
+ * fault when OPENAI_API_KEY is configured and the optional backfill is
+ * expected to be operating.
  */
 export async function semanticIndexTripwire(): Promise<Anomaly[]> {
   if (process.env.RADIUS_HYBRID_SEARCH === "0") return []; // switched off on purpose
@@ -434,28 +427,42 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
       select count(*)::int as total, count(embedding)::int as embedded
       from radius_search_documents
     `) as unknown as Array<{ total: number; embedded: number }>;
+    const total = rows?.[0]?.total ?? 0;
     const embedded = rows?.[0]?.embedded ?? 0;
     const expected = publicPlaces().length;
-    if (embedded === 0) {
+    if (total === 0) {
       return [
         {
           source: "semantic-search",
           kind: "index_empty",
           detail:
-            `radius_search_documents holds 0 embedded documents, so every semantic lookup returns nothing and Ask is running on keyword matching alone. ` +
-            `Enable the gated radius-search cron or run \`npm run build:radius-search\` (needs DATABASE_URL + AI Gateway auth) to embed the ${expected} public places.`,
+            `radius_search_documents holds 0 searchable documents, so Ask cannot use its private local index. ` +
+            `Enable the radius-search cron or run \`npm run build:radius-search\` with DATABASE_URL to index the ${expected} public places.`,
         },
       ];
     }
-    // Well behind the catalog: new places are invisible to meaning-based search.
-    if (expected > 0 && embedded < expected * 0.8) {
+    if (expected > 0 && total < expected * 0.8) {
       return [
         {
           source: "semantic-search",
           kind: "index_stale",
           detail:
-            `radius_search_documents covers ${embedded} of ${expected} public places (${Math.round((embedded / expected) * 100)}%). ` +
-            `Check the radius-search cron or re-run \`npm run build:radius-search\`; both are incremental and only embed what changed.`,
+            `radius_search_documents covers ${total} of ${expected} public places (${Math.round((total / expected) * 100)}%). ` +
+            `Check the radius-search cron or re-run \`npm run build:radius-search\`; both are incremental.`,
+        },
+      ];
+    }
+    if (
+      process.env.OPENAI_API_KEY &&
+      embedded < Math.max(1, total * 0.8)
+    ) {
+      return [
+        {
+          source: "semantic-search",
+          kind: "embedding_stale",
+          detail:
+            `${embedded} of ${total} local search documents have optional semantic vectors. ` +
+            `OPENAI_API_KEY is configured, so check the radius-search cron or re-run \`npm run build:radius-search\` to continue the backfill.`,
         },
       ];
     }

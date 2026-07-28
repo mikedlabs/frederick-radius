@@ -25,7 +25,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { MapPin, Search, Settings, ArrowRight, Layers } from "lucide-react";
+import { MapPin, Search, Settings, ArrowRight, Layers, ChevronDown } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -177,6 +177,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // currently selected list filter (null = show all).
   const savedTags = useAllSavedTags();
   const [activeList, setActiveList] = useState<string | null>(null);
+  const [organizerOpen, setOrganizerOpen] = useState(false);
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -499,7 +500,12 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // Saved events happening TODAY — the other half of the actionable lead. The
   // full Events section below keeps the whole saved set; this is just "tonight".
   const eventsToday = useMemo(
-    () => events.filter((e) => isEventToday(e.starts_at, now)),
+    () =>
+      events.filter((event) => {
+        if (!isEventToday(event.starts_at, now)) return false;
+        const endMs = Date.parse(event.ends_at || event.starts_at);
+        return !Number.isFinite(endMs) || endMs >= now.getTime();
+      }),
     [events, now],
   );
 
@@ -639,6 +645,10 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   } else if (events.length > 0) {
     standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
   }
+  // Wallet is the calm default. Legacy stored "wallet" preferences map to the
+  // organizer's list view; Map only mounts after the person opens the advanced
+  // disclosure and explicitly keeps that preference.
+  const organizerView: "list" | "map" = view === "map" ? "map" : "list";
 
   return (
     <div className="space-y-4">
@@ -654,65 +664,182 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         }
       />
 
-      {/* ── ON NOW — a ruled running line under the masthead, not a boxed
-          module. Saved places open this minute, closing-soonest first; each
-          name RAISES its card in the wallet below, so the strip and the deck
-          are one instrument. Self-hides when nothing of yours is live. */}
-      {liveNowPlaces.length > 0 && (
-        <div className="sv-onnow" role="group" aria-label="Open right now">
-          <span className="sv-onnow-label">
-            <span aria-hidden className="sw-dot" />
-            On now
-          </span>
-          <div className="sv-onnow-scroll">
-            {liveNowPlaces.map((p) => {
-              const allDay = p.open_status.state === "open" && p.open_status.allDay;
-              const till =
-                !allDay && (p.open_status.state === "open" || p.open_status.state === "closing-soon")
-                  ? fmtClockShort(p.open_status.closesAt)
-                  : null;
-              const when = allDay ? "24 hours" : till ? `till ${till}` : "open now";
-              return (
-                <button
-                  key={p.slug}
-                  type="button"
-                  className="sv-onnow-chip"
-                  onClick={() => raiseCard(p.slug)}
-                  aria-label={`${p.name}, open now${allDay ? ", 24 hours" : till ? ` till ${till}` : ""}. Raise its card`}
-                >
-                  <b>{p.name}</b>
-                  {when}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Saved events happening today ride the same line's register. */}
-      {eventsToday.length > 0 && (
-        <ul className="space-y-2">
-          {eventsToday.slice(0, 3).map((e) => (
-            <li key={`${e.slug}-${e.starts_at}`}>
-              <EventRow event={e} today />
-            </li>
-          ))}
-        </ul>
+      {(liveNowPlaces.length > 0 || eventsToday.length > 0) && (
+        <section aria-labelledby="saved-useful-now" className="space-y-2">
+          <h2
+            id="saved-useful-now"
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Useful now
+          </h2>
+          {/* Saved places open this minute, closing-soonest first; each name
+              raises its card in the wallet below. */}
+          {liveNowPlaces.length > 0 && (
+            <div className="sv-onnow" role="group" aria-label="Open right now">
+              <span className="sv-onnow-label">
+                <span aria-hidden className="sw-dot" />
+                Open
+              </span>
+              <div className="sv-onnow-scroll">
+                {liveNowPlaces.map((p) => {
+                  const allDay = p.open_status.state === "open" && p.open_status.allDay;
+                  const till =
+                    !allDay && (p.open_status.state === "open" || p.open_status.state === "closing-soon")
+                      ? fmtClockShort(p.open_status.closesAt)
+                      : null;
+                  const when = allDay ? "24 hours" : till ? `till ${till}` : "open now";
+                  return (
+                    <button
+                      key={p.slug}
+                      type="button"
+                      className="sv-onnow-chip"
+                      onClick={() => raiseCard(p.slug)}
+                      aria-label={`${p.name}, open now${allDay ? ", 24 hours" : till ? ` till ${till}` : ""}. Raise its card`}
+                    >
+                      <b>{p.name}</b>
+                      {when}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {eventsToday.length > 0 && (
+            <ul className="space-y-2">
+              {eventsToday.slice(0, 3).map((e) => (
+                <li key={`${e.slug}-${e.starts_at}`}>
+                  <EventRow event={e} today />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {places.length > 0 && (
-        <section aria-label="Saved places" className="space-y-3">
-          {/* ONE quiet control row: view + sort together. No section header —
-              the wallet IS the page. */}
+        <section aria-labelledby="saved-places-heading" className="space-y-2.5">
+          <header className="flex items-baseline gap-2.5">
+            <h2
+              id="saved-places-heading"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Saved places
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {places.length}
+            </span>
+          </header>
+          <SavedWallet
+            places={places}
+            savedAt={savedAtBySlug}
+            openSlug={raisedSlug}
+            onOpenSlug={setRaisedSlug}
+          />
+        </section>
+      )}
+
+      {/* Upcoming remains part of the default page, before any organizer or
+          collection-history controls. */}
+      {events.length > 0 && (
+        <section aria-label="Upcoming saved events" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-brand)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Upcoming
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {upcomingEvents.length}
+            </span>
+          </header>
+          {upcomingEvents.length > 0 ? (
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
+          ) : (
+            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              There are no upcoming events. Your saved events have all passed.
+            </p>
+          )}
+          {pastEvents.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowPast((v) => !v)}
+                className="tap-44 text-[11px] font-semibold underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-expanded={showPast}
+              >
+                {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
+              </button>
+              {showPast && (
+                <div className="opacity-70">
+                  <SavedEventWallet
+                    events={pastEvents}
+                    savedAt={savedAtByEventSlug}
+                    now={now}
+                    startRaised={false}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      <details
+        id="saved-organizer"
+        onToggle={(event) => setOrganizerOpen(event.currentTarget.open)}
+        className="group overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
+        style={{ borderColor: "var(--app-border-strong)" }}
+      >
+        <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
+            style={{
+              color: "var(--app-cool)",
+              background: "color-mix(in srgb, var(--app-cool) 11%, transparent)",
+            }}
+          >
+            <Layers className="h-4 w-4" strokeWidth={2.1} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Organize and revisit
+            </span>
+            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              Lists, map, notes, visits, and sharing
+            </span>
+          </span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </summary>
+        <div className="space-y-5 border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+
+      {places.length > 0 && (
+        <section aria-label="Organize saved places" className="space-y-3">
+          {/* The calm wallet is already above. This disclosed workspace offers
+              the two analytical views: grouped list or map. */}
           <div className="flex items-center justify-between gap-2">
             <div
               role="tablist"
-              aria-label="View saved places as a wallet, list, or map"
+              aria-label="Organize saved places as a list or map"
               className="inline-flex rounded-full border p-0.5"
               style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
             >
-              {(["wallet", "list", "map"] as const).map((v) => {
-                const active = view === v;
+              {(["list", "map"] as const).map((v) => {
+                const active = organizerView === v;
                 return (
                   <button
                     key={v}
@@ -727,14 +854,13 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
                       boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
                     }}
                   >
-                    {v === "wallet" && <Layers className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
                     {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-                    {v === "wallet" ? "Wallet" : v === "list" ? "List" : "Map"}
+                    {v === "list" ? "List" : "Map"}
                   </button>
                 );
               })}
             </div>
-            {view !== "map" && (
+            {organizerView !== "map" && (
               <SortDropdown
                 options={SORT_OPTIONS}
                 value={sort}
@@ -771,14 +897,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             </div>
           )}
 
-          {view === "wallet" ? (
-            <SavedWallet
-              places={places}
-              savedAt={savedAtBySlug}
-              openSlug={raisedSlug}
-              onOpenSlug={setRaisedSlug}
-            />
-          ) : view === "map" ? (
+          {organizerView === "map" && organizerOpen ? (
             (() => {
               const mapPlaces = places.filter((p) => p.geom);
               return mapPlaces.length > 0 ? (
@@ -1004,63 +1123,6 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         </section>
       )}
 
-      {/* Events — a wallet DECK in the same craft as the place cards above:
-          laminated category-hued faces, serif titles, a mono ledger on the
-          raised stub. The two decks read as one collection. */}
-      {events.length > 0 && (
-        <section aria-label="Saved events" className="space-y-2">
-          <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-brand)" }}
-            />
-            <h2
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Events
-            </h2>
-            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {upcomingEvents.length} upcoming
-            </span>
-          </header>
-          {upcomingEvents.length > 0 ? (
-            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
-          ) : (
-            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-              There are no upcoming events. Your saved events have all passed.
-            </p>
-          )}
-
-          {/* Past saved events — kept, but tucked behind a toggle; the same
-              deck, calm and dimmed, with no card raised by default. */}
-          {pastEvents.length > 0 && (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setShowPast((v) => !v)}
-                className="tap-44 text-[11px] font-semibold underline-offset-2 hover:underline"
-                style={{ color: "var(--app-ink-3)" }}
-                aria-expanded={showPast}
-              >
-                {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
-              </button>
-              {showPast && (
-                <div className="opacity-70">
-                  <SavedEventWallet
-                    events={pastEvents}
-                    savedAt={savedAtByEventSlug}
-                    now={now}
-                    startRaised={false}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
       {/* My taps — beers saved from the beer taste finder (/beer). Its own
           store type in the shared saved system; self-hides when empty. */}
       <MyTaps />
@@ -1101,6 +1163,8 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           {userEmail && " · routes and taps stay on this device"}
         </p>
       </footer>
+        </div>
+      </details>
     </div>
   );
 }

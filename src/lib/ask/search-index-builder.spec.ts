@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   embedMany: vi.fn(),
+  embeddingModel: vi.fn(),
   getSql: vi.fn(),
   decoratePlace: vi.fn(),
   publicPlaces: vi.fn(),
@@ -9,6 +10,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("ai", () => ({
   embedMany: mocks.embedMany,
+}));
+vi.mock("@ai-sdk/openai", () => ({
+  openai: {
+    embedding: mocks.embeddingModel,
+  },
 }));
 vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
@@ -20,6 +26,7 @@ vi.mock("@/lib/loaders/places", () => ({
 
 import {
   buildRadiusSearchDocument,
+  EMBEDDING_BATCH_TIMEOUT_MS,
   radiusSearchCronBatch,
   refreshRadiusSearchIndex,
 } from "./search-index-builder";
@@ -56,7 +63,11 @@ function queryText(strings: TemplateStringsArray): string {
 }
 
 function sqlWith(
-  existing: Array<{ source_id: string; content_hash: string }> = [],
+  existing: Array<{
+    source_id: string;
+    content_hash: string;
+    has_embedding: boolean;
+  }> = [],
 ) {
   return vi.fn(
     (strings: TemplateStringsArray, ..._values: unknown[]) => {
@@ -72,9 +83,11 @@ function sqlWith(
 describe("Radius search index builder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.AI_GATEWAY_API_KEY = "test-gateway-key";
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.RADIUS_EMBEDDING_MODEL;
     mocks.decoratePlace.mockImplementation((place) => place);
     mocks.publicPlaces.mockReturnValue(places);
+    mocks.embeddingModel.mockReturnValue({ provider: "openai" });
     mocks.embedMany.mockImplementation(
       async ({ values }: { values: string[] }) => ({
         embeddings: values.map(() => Array(1536).fill(0.01)),
@@ -84,7 +97,9 @@ describe("Radius search index builder", () => {
   });
 
   afterEach(() => {
-    delete process.env.AI_GATEWAY_API_KEY;
+    vi.useRealTimers();
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.RADIUS_EMBEDDING_MODEL;
   });
 
   it("bounds the hosted batch configuration", () => {
@@ -94,10 +109,14 @@ describe("Radius search index builder", () => {
     expect(radiusSearchCronBatch("9999")).toBe(512);
   });
 
-  it("skips unchanged content and advances only the bounded slice", async () => {
+  it("indexes changed full-text content without an OpenAI key", async () => {
     const unchanged = buildRadiusSearchDocument(places[0] as never);
     const sql = sqlWith([
-      { source_id: unchanged.id, content_hash: unchanged.contentHash },
+      {
+        source_id: unchanged.id,
+        content_hash: unchanged.contentHash,
+        has_embedding: false,
+      },
     ]);
     mocks.getSql.mockReturnValue(sql);
 
@@ -108,10 +127,15 @@ describe("Radius search index builder", () => {
       changed: 2,
       processed: 1,
       remaining: 1,
-      tokenUsage: 10,
+      embedded: 0,
+      tokenUsage: 0,
+      embeddingEnabled: false,
+      embeddingRemaining: 0,
+      embeddingCurrent: true,
       current: false,
     });
-    expect(mocks.embedMany).toHaveBeenCalledTimes(1);
+    expect(mocks.embeddingModel).not.toHaveBeenCalled();
+    expect(mocks.embedMany).not.toHaveBeenCalled();
     const insertCall = sql.mock.calls.find(([strings]) =>
       queryText(strings).includes(
         "insert into public.radius_search_documents",
@@ -120,7 +144,71 @@ describe("Radius search index builder", () => {
     expect(insertCall?.[1]).toEqual(["bravo"]);
   });
 
+  it("backfills a null embedding even when the content hash is unchanged", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const unchanged = buildRadiusSearchDocument(places[0] as never);
+    const sql = sqlWith([
+      {
+        source_id: unchanged.id,
+        content_hash: unchanged.contentHash,
+        has_embedding: false,
+      },
+      {
+        source_id: buildRadiusSearchDocument(places[1] as never).id,
+        content_hash: buildRadiusSearchDocument(places[1] as never).contentHash,
+        has_embedding: true,
+      },
+      {
+        source_id: buildRadiusSearchDocument(places[2] as never).id,
+        content_hash: buildRadiusSearchDocument(places[2] as never).contentHash,
+        has_embedding: true,
+      },
+    ]);
+    mocks.getSql.mockReturnValue(sql);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      changed: 0,
+      processed: 0,
+      remaining: 0,
+      embedded: 1,
+      tokenUsage: 10,
+      embeddingEnabled: true,
+      embeddingRemaining: 0,
+      embeddingCurrent: true,
+      current: true,
+    });
+    expect(mocks.embeddingModel).toHaveBeenCalledWith(
+      "text-embedding-3-small",
+    );
+    expect(mocks.embedMany).toHaveBeenCalledTimes(1);
+    expect(
+      sql.mock.calls.some(([strings]) =>
+        queryText(strings).includes(
+          "update public.radius_search_documents as document",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts the old Gateway-style model value with the direct provider", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.RADIUS_EMBEDDING_MODEL =
+      "openai/text-embedding-3-small";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+
+    await refreshRadiusSearchIndex();
+
+    expect(mocks.embeddingModel).toHaveBeenCalledWith(
+      "text-embedding-3-small",
+    );
+  });
+
   it("checks storage before making a paid embedding call", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
     const sql = vi
       .fn()
       .mockRejectedValueOnce(new Error("relation does not exist"));
@@ -130,6 +218,111 @@ describe("Radius search index builder", () => {
       code: "storage_unavailable",
     });
     expect(mocks.embedMany).not.toHaveBeenCalled();
+  });
+
+  it("skips a concurrent refresh before any storage or paid work", async () => {
+    const tx = vi.fn(
+      (strings: TemplateStringsArray) =>
+        Promise.resolve(
+          queryText(strings).includes("pg_try_advisory_xact_lock")
+            ? [{ acquired: false }]
+            : [],
+        ),
+    );
+    const sql = Object.assign(sqlWith(), {
+      begin: vi.fn(
+        async (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+      ),
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(refreshRadiusSearchIndex()).rejects.toMatchObject({
+      code: "refresh_in_progress",
+    });
+    expect(mocks.embedMany).not.toHaveBeenCalled();
+    expect(
+      tx.mock.calls.some(([strings]) =>
+        queryText(strings).includes("statement_timeout"),
+      ),
+    ).toBe(true);
+  });
+
+  it("finishes every full-text batch when the optional provider fails", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue(
+      Array.from({ length: 70 }, (_, index) => ({
+        ...places[0],
+        slug: `place-${index}`,
+        name: `Place ${index}`,
+      })),
+    );
+    mocks.embedMany.mockRejectedValue(new Error("provider unavailable"));
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      changed: 70,
+      processed: 70,
+      remaining: 0,
+      embedded: 0,
+      embeddingEnabled: true,
+      embeddingRemaining: 70,
+      embeddingCurrent: false,
+      current: true,
+      embeddingWarning: {
+        code: "provider_unavailable",
+      },
+    });
+    expect(
+      sql.mock.calls.filter(([strings]) =>
+        queryText(strings).includes(
+          "insert into public.radius_search_documents",
+        ),
+      ),
+    ).toHaveLength(2);
+    const finalInsertOrder = sql.mock.invocationCallOrder.filter(
+      (_, index) =>
+        queryText(
+          sql.mock.calls[index]?.[0] as unknown as TemplateStringsArray,
+        ).includes("insert into public.radius_search_documents"),
+    );
+    expect(Math.max(...finalInsertOrder)).toBeLessThan(
+      mocks.embedMany.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("times out a hanging optional provider and returns a degraded full-text result", async () => {
+    vi.useFakeTimers();
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+    mocks.embedMany.mockImplementation(() => new Promise(() => undefined));
+
+    const pending = refreshRadiusSearchIndex();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.embedMany).toHaveBeenCalledOnce();
+    const call = mocks.embedMany.mock.calls[0][0] as {
+      abortSignal: AbortSignal;
+    };
+
+    await vi.advanceTimersByTimeAsync(EMBEDDING_BATCH_TIMEOUT_MS);
+    const result = await pending;
+
+    expect(call.abortSignal.aborted).toBe(true);
+    expect(result).toMatchObject({
+      current: true,
+      processed: 1,
+      embedded: 0,
+      embeddingRemaining: 1,
+      embeddingCurrent: false,
+      embeddingWarning: {
+        code: "provider_unavailable",
+      },
+    });
   });
 
   it("does not clear the index when the canonical catalog is empty", async () => {
@@ -144,7 +337,8 @@ describe("Radius search index builder", () => {
     expect(mocks.embedMany).not.toHaveBeenCalled();
   });
 
-  it("rejects a wrong-dimension model before writing", async () => {
+  it("keeps full-text search healthy when a model returns wrong dimensions", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);
     mocks.publicPlaces.mockReturnValue([places[0]]);
@@ -153,8 +347,17 @@ describe("Radius search index builder", () => {
       usage: { tokens: 2 },
     });
 
-    await expect(refreshRadiusSearchIndex()).rejects.toMatchObject({
-      code: "invalid_embedding",
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      current: true,
+      embedded: 0,
+      embeddingRemaining: 1,
+      embeddingCurrent: false,
+      tokenUsage: 2,
+      embeddingWarning: {
+        code: "invalid_dimensions",
+      },
     });
     expect(
       sql.mock.calls.some(([strings]) =>
@@ -162,6 +365,34 @@ describe("Radius search index builder", () => {
           "insert into public.radius_search_documents",
         ),
       ),
+    ).toBe(true);
+    expect(
+      sql.mock.calls.some(([strings]) =>
+        queryText(strings).includes(
+          "update public.radius_search_documents as document",
+        ),
+      ),
     ).toBe(false);
+  });
+
+  it("does not make a paid call for a model that would mix vector spaces", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.RADIUS_EMBEDDING_MODEL = "text-embedding-3-large";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      current: true,
+      embedded: 0,
+      embeddingRemaining: 1,
+      embeddingCurrent: false,
+      embeddingWarning: {
+        code: "invalid_configuration",
+      },
+    });
+    expect(mocks.embedMany).not.toHaveBeenCalled();
   });
 });

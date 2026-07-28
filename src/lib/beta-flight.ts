@@ -24,6 +24,9 @@ import "server-only";
  */
 import AERIAL_RAW from "../../public/images/seasons/aerial-manifest.json" with { type: "json" };
 import { nearbyOpenCounts } from "@/lib/loaders/places";
+import type { FlightSlide } from "@/lib/beta-flight-shared";
+export { flightStatusLine } from "@/lib/beta-flight-shared";
+export type { FlightSlide } from "@/lib/beta-flight-shared";
 
 export type AerialEntry = {
   src: string;
@@ -32,18 +35,6 @@ export type AerialEntry = {
   altM: number | null;
   takenAt: string | null;
   season: string;
-};
-
-export type FlightSlide = {
-  src: string;
-  /** "39.4147° N · 77.4256° W" — the drone's own fix. */
-  coordLabel: string;
-  /** "210 m up · Oct 2024" (altitude omitted when the fix lacks one). */
-  flightLabel: string;
-  /** Places within a half mile of the fix. */
-  total: number;
-  /** Of those, open right now. */
-  open: number;
 };
 
 const HALF_MILE_M = 805;
@@ -129,7 +120,7 @@ export function buildFlightSlides(now: Date = new Date()): FlightSlide[] {
   // The decorate pass can throw at request time (bad hours data, etc.),
   // and this runs synchronously in the page body — fail to the static
   // plate, never to a 500 on the gate.
-  let counts: { total: number; open: number }[];
+  let counts: { total: number; reliable: number; open: number }[];
   try {
     counts = nearbyOpenCounts(picked, HALF_MILE_M, now);
   } catch {
@@ -140,6 +131,7 @@ export function buildFlightSlides(now: Date = new Date()): FlightSlide[] {
     coordLabel: coordLabel(e.lat, e.lng),
     flightLabel: flightLabel(e.altM, e.takenAt),
     total: counts[i]?.total ?? 0,
+    reliable: counts[i]?.reliable ?? 0,
     open: counts[i]?.open ?? 0,
   }));
 }

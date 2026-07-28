@@ -86,4 +86,41 @@ describe("hasImplausibleStartTime", () => {
     // 11:00Z is 7 AM Eastern in June — implausible for theater.
     expect(hasImplausibleStartTime({ starts_at: "2026-06-13T11:00:00.000Z", category: "theater" })).toBe(true);
   });
+  it("withholds the live feed's late-night Musical Storytime AM/PM error", () => {
+    expect(
+      hasImplausibleStartTime({
+        title: "Musical Storytime",
+        category: "music",
+        starts_at: "2026-07-28T03:15:00.000Z",
+        ends_at: "2026-07-28T15:45:00.000Z",
+      }),
+    ).toBe(true);
+  });
+  it("withholds an implausibly long routine program even when its start hour is plausible", () => {
+    expect(
+      hasImplausibleStartTime({
+        title: "Preschool Storytime",
+        starts_at: "2026-07-28T15:15:00.000Z",
+        ends_at: "2026-07-29T15:45:00.000Z",
+      }),
+    ).toBe(true);
+  });
+  it("keeps legitimate evening family programs", () => {
+    expect(
+      hasImplausibleStartTime({
+        title: "Pajama Storytime",
+        starts_at: "2026-07-28T22:30:00.000Z",
+        ends_at: "2026-07-28T23:15:00.000Z",
+      }),
+    ).toBe(false);
+  });
+  it("does not treat every preschool event as a routine storytime", () => {
+    expect(
+      hasImplausibleStartTime({
+        title: "Preschool Family Camp-In",
+        starts_at: "2026-07-29T01:30:00.000Z",
+        ends_at: "2026-07-29T03:30:00.000Z",
+      }),
+    ).toBe(false);
+  });
 });

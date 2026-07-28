@@ -131,7 +131,7 @@ export default async function EventsIndexPage() {
           Event listings come from Celebrate Frederick, the Frederick
           County calendar, Ticketmaster (music + Frederick Keys home
           games), Bandsintown, the Weinberg Center lineup, and the county
-          municipal calendars. Refreshed about every five minutes.
+          municipal calendars. Live feeds are checked about every 15 minutes.
         </p>
         <p>
           Missing an event?{" "}

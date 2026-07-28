@@ -17,6 +17,10 @@
 # A row may set resolve_json_path. When present the worker fetches url,
 # reads that dotted path from the JSON response to get a second URL, then
 # fetches and stores that. This supports two step APIs such as NWS.
+#
+# rows_required is reserved for baseline datasets whose successful normalized
+# output cannot validly be empty. Do not use it for alerts, incidents, events,
+# seasonal schedules, or on-demand work where zero rows can be an honest result.
 
 version: 1
 
@@ -36,6 +40,7 @@ sources:
     contact: https://www.openbrewerydb.org
     status: active
     collection: pipeline
+    rows_required: true
     last_validated: 2026-07-23T04:55:34.946Z
     last_success: 2026-07-23T04:55:34.946Z
     schema_file: schemas/open_brewery_db.json
@@ -99,6 +104,7 @@ sources:
     contact: https://www.weather.gov/disclaimer
     status: active
     collection: pipeline
+    rows_required: true
     last_validated: 2026-07-23T04:55:37.536Z
     last_success: 2026-07-23T04:55:37.536Z
     schema_file: schemas/nws_forecast.json
@@ -234,6 +240,7 @@ sources:
     contact: https://downtownfrederick.org
     status: active
     collection: runtime
+    evidence_aliases: [dfp, dfp_ical]
     last_validated: 2026-07-19
     last_success: 2026-07-19
     schema_file: null
@@ -264,6 +271,7 @@ sources:
     contact: https://celebratefrederick.com
     status: active
     collection: runtime
+    evidence_aliases: [celebrate, celebrate_frederick]
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -287,6 +295,7 @@ sources:
     contact: https://www.hood.edu
     status: active
     collection: runtime
+    evidence_aliases: [hood]
     last_validated: 2026-05-18
     last_success: null
     schema_file: null
@@ -309,6 +318,7 @@ sources:
     contact: https://www.frederickcountymd.gov
     status: active
     collection: runtime
+    evidence_aliases: [county, frederick_county_calendar]
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -335,6 +345,7 @@ sources:
     contact: https://www.cityoffrederickmd.gov
     status: active
     collection: runtime
+    evidence_aliases: [city-frederick]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -352,6 +363,7 @@ sources:
     contact: https://thegreatfrederickfair.com
     status: active
     collection: runtime
+    evidence_aliases: [fair]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -369,6 +381,7 @@ sources:
     contact: https://www.mountairymd.gov
     status: active
     collection: runtime
+    evidence_aliases: [mount-airy]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -386,6 +399,7 @@ sources:
     contact: https://www.thurmont.com
     status: active
     collection: runtime
+    evidence_aliases: [thurmont]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -403,6 +417,7 @@ sources:
     contact: https://frederickhistory.org
     status: active
     collection: runtime
+    evidence_aliases: [heritage-frederick]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -420,6 +435,7 @@ sources:
     contact: https://monocacybrewing.com
     status: active
     collection: runtime
+    evidence_aliases: [monocacy]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -437,6 +453,7 @@ sources:
     contact: https://www.msd.edu
     status: active
     collection: runtime
+    evidence_aliases: [msd]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -454,6 +471,7 @@ sources:
     contact: https://delaplaine.org
     status: active
     collection: runtime
+    evidence_aliases: [delaplaine]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -471,6 +489,7 @@ sources:
     contact: https://isfmd.org
     status: active
     collection: runtime
+    evidence_aliases: [isf]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -488,6 +507,7 @@ sources:
     contact: https://www.twinspires.org
     status: active
     collection: runtime
+    evidence_aliases: [elc]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -505,6 +525,7 @@ sources:
     contact: https://www.civilwarmed.org
     status: active
     collection: runtime
+    evidence_aliases: [civil-war-med]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -522,6 +543,7 @@ sources:
     contact: https://marylandensemble.org
     status: active
     collection: runtime
+    evidence_aliases: [maryland-ensemble]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -539,6 +561,7 @@ sources:
     contact: https://catoctinlandtrust.org
     status: active
     collection: runtime
+    evidence_aliases: [catoctin]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -556,6 +579,7 @@ sources:
     contact: https://www.frederick.edu
     status: active
     collection: runtime
+    evidence_aliases: [fcc]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -573,6 +597,7 @@ sources:
     contact: https://msmary.edu
     status: active
     collection: runtime
+    evidence_aliases: [mount-st-marys]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -891,6 +916,7 @@ sources:
     contact: https://www.frederickcountymd.gov/105/Transit-Services
     status: active
     collection: workflow
+    rows_required: true
     last_validated: 2026-07-22
     last_success: 2026-07-22
     schema_file: null
@@ -1636,6 +1662,7 @@ sources:
     contact: Frederick County Division of Parks and Recreation
     status: active
     collection: runtime
+    evidence_aliases: [parks]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -1765,6 +1792,28 @@ sources:
       Pinned to Frederick County gauge site numbers in the
       integration. No key required (US federal public-domain data).
       Pairs with cof_floodplain (still pending) when that activates.
+
+  - id: fredscanner
+    name: Frederick Scanner Public Incidents
+    owner: Frederick Scanner
+    url: https://frederickscanner.com/fredscannerpro/tweets.html
+    endpoint_type: html
+    format: text
+    refresh_cadence: realtime
+    license: public incident page; non-medical public-safety details only
+    contact: https://www.frederickscanner.com/
+    status: active
+    collection: runtime
+    evidence_aliases: [frederick-scanner, fredscanner]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/scannerIncidents.ts
+    notes: |
+      The runtime adapter reads the public incident page and falls back to the
+      public UMD RSS mirror. It applies the product's non-medical allowlist,
+      rejects malformed successful responses, and may use an owner-approved
+      Slack feed when both optional settings are configured.
 
   - id: frederick_news_post
     name: Frederick News-Post — Local News RSS

@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { Amenity } from "@/lib/loaders/amenities";
+import { hoursRefreshCycleDay } from "@/lib/hours-refresh-targets";
 import {
   summarizeAmenityCoverage,
   summarizeEventQuality,
   summarizeHoursRefreshArtifact,
 } from "./operator-coverage";
+
+function slugForCycleDay(cycleDay: number): string {
+  for (let index = 0; index < 1_000; index++) {
+    const slug = `coverage-cycle-${cycleDay}-${index}`;
+    if (hoursRefreshCycleDay(slug) === cycleDay) return slug;
+  }
+  throw new Error(`Unable to find a slug for cycle day ${cycleDay}.`);
+}
 
 describe("operator data coverage", () => {
   it("separates an empty hours artifact from stored source schedules", () => {
@@ -42,6 +51,7 @@ describe("operator data coverage", () => {
       matchedRows: 1,
       unmatchedRows: 1,
       withSchedule: 1,
+      freshRefreshRows: 1,
       freshRows: 1,
       staleRows: 0,
       invalidTimestamps: 0,
@@ -77,12 +87,16 @@ describe("operator data coverage", () => {
       matchedRows: 2,
       unmatchedRows: 1,
       withSchedule: 1,
+      freshRefreshRows: 0,
       freshRows: 0,
       staleRows: 1,
       invalidTimestamps: 1,
       coveragePct: 0,
       oldestRefresh: "2026-06-01T12:00:00.000Z",
       newestRefresh: "2026-06-01T12:00:00.000Z",
+      cycle: {
+        state: "stalled",
+      },
     });
   });
 
@@ -101,10 +115,121 @@ describe("operator data coverage", () => {
     expect(summary).toMatchObject({
       matchedRows: 1,
       withSchedule: 0,
+      freshRefreshRows: 1,
       freshRows: 0,
       staleRows: 0,
       coveragePct: 0,
     });
+  });
+
+  it("shows whether the deterministic seven-day hours cycle is warming, healthy, or stalled", () => {
+    const slugs = Array.from({ length: 7 }, (_, cycleDay) =>
+      slugForCycleDay(cycleDay),
+    );
+    const expected = new Set(slugs);
+    const now = new Date("2026-07-28T12:00:00Z");
+    const freshArtifact = Object.fromEntries(
+      slugs.map((slug, cycleDay) => [
+        slug,
+        {
+          weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+          refreshed_at: new Date(
+            now.getTime() - cycleDay * 86_400_000,
+          ).toISOString(),
+        },
+      ]),
+    );
+
+    const healthy = summarizeHoursRefreshArtifact(
+      freshArtifact,
+      expected,
+      now,
+    );
+    expect(healthy.cycle).toMatchObject({
+      days: 7,
+      state: "healthy",
+      completedDays: 7,
+      missingDays: [],
+      underfilledDays: [],
+      refreshCoveragePct: 100,
+    });
+    expect(healthy.cycle.buckets).toHaveLength(7);
+    expect(
+      healthy.cycle.buckets.every(
+        (bucket) =>
+          bucket.expected === 1 &&
+          bucket.refreshed === 1 &&
+          bucket.withSchedule === 1 &&
+          bucket.complete,
+      ),
+    ).toBe(true);
+
+    const warming = summarizeHoursRefreshArtifact(
+      {
+        [slugs[0]]: {
+          business_status: "OPERATIONAL",
+          refreshed_at: now.toISOString(),
+        },
+      },
+      expected,
+      now,
+    );
+    expect(warming.cycle).toMatchObject({
+      state: "warming",
+      completedDays: 1,
+      missingDays: [1, 2, 3, 4, 5, 6],
+      refreshCoveragePct: 14.3,
+    });
+    expect(warming.freshRefreshRows).toBe(1);
+    expect(warming.freshRows).toBe(0);
+
+    const stalled = summarizeHoursRefreshArtifact(
+      {
+        [slugs[0]]: {
+          weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+          refreshed_at: new Date(
+            now.getTime() - 6 * 86_400_000,
+          ).toISOString(),
+        },
+      },
+      expected,
+      now,
+    );
+    expect(stalled.cycle).toMatchObject({
+      state: "stalled",
+      completedDays: 1,
+      missingDays: [1, 2, 3, 4, 5, 6],
+    });
+  });
+
+  it("marks a partially written cycle bucket as underfilled", () => {
+    const dayZeroSlugs = Array.from(
+      { length: 1_000 },
+      (_, index) => `coverage-cycle-underfilled-${index}`,
+    )
+      .filter((slug) => hoursRefreshCycleDay(slug) === 0)
+      .slice(0, 3);
+    if (dayZeroSlugs.length !== 3) {
+      throw new Error("Unable to find three day-zero slugs.");
+    }
+
+    const summary = summarizeHoursRefreshArtifact(
+      {
+        [dayZeroSlugs[0]]: {
+          weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+          refreshed_at: "2026-07-28T11:00:00Z",
+        },
+      },
+      new Set(dayZeroSlugs),
+      new Date("2026-07-28T12:00:00Z"),
+    );
+
+    expect(summary.cycle.buckets[0]).toMatchObject({
+      expected: 3,
+      refreshed: 1,
+      complete: false,
+    });
+    expect(summary.cycle.underfilledDays).toContain(0);
   });
 
   it("makes event category, venue, centroid, and duration gaps explicit", () => {

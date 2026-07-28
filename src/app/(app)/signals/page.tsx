@@ -79,6 +79,18 @@ export default async function CivicSignalsPage() {
           published finding keeps its dates, calculation, source, and limits
           attached.
         </p>
+        <Link
+          href="#source-desk"
+          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated)",
+            color: "var(--app-ink)",
+          }}
+        >
+          See source status
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        </Link>
       </header>
 
       <section aria-labelledby="published-signals" className="space-y-3">

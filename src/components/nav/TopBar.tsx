@@ -1,17 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Search, LayoutGrid, ChevronLeft } from "lucide-react";
-import SearchOverlay from "@/components/search/SearchOverlay";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { Search, LayoutGrid, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
-import { consumeFindRequest } from "@/lib/findBridge";
+import {
+  consumeFindRequest,
+  requestFind,
+  type FindTarget,
+} from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+
+const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
   return pathname === "/map"
@@ -21,19 +35,24 @@ export function pageOwnsPrimarySearch(pathname: string): boolean {
 }
 
 export function shouldShowGlobalMobileSearch(pathname: string): boolean {
-  // Search is permanent app chrome on mobile. Some workspaces also carry a
-  // local, context-specific query field, but that should not make the global
-  // county search disappear or force users to remember which screen owns it.
+  // A search action is permanent app chrome on mobile. On /map that action
+  // focuses the map's own field; everywhere else it opens global Find.
   void pathname;
   return true;
+}
+
+export function topBarFindTarget(pathname: string): FindTarget {
+  return pathname === "/map" ? "map" : "global";
 }
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
+  const searchPathRef = useRef<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // Has the user navigated WITHIN the app since arriving? The TopBar lives in
   // the (app) layout, which persists across navigations, so counting pathname
@@ -69,6 +88,17 @@ export default function TopBar() {
   // action so the app's primary utility never moves between screens.
   const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
   const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
+  const findTarget = topBarFindTarget(pathname);
+  const openPrimaryFind = useCallback((opener: HTMLElement | null) => {
+    searchOpenerRef.current = opener;
+    if (topBarFindTarget(pathname) === "map") {
+      setSearchOpen(false);
+      requestFind("map");
+      return;
+    }
+    searchPathRef.current = pathname;
+    setSearchOpen(true);
+  }, [pathname]);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -104,21 +134,31 @@ export default function TopBar() {
       consumeFindRequest("global");
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      searchPathRef.current = pathname;
       setSearchOpen(true);
     };
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, []);
+  }, [pathname]);
+
+  // Search belongs to the route that opened it. The persistent app layout must
+  // not let a still-loading overlay appear over a different destination after
+  // browser Back or another navigation wins the race.
+  useEffect(() => {
+    if (!searchOpen || searchPathRef.current === pathname) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; discard the pending overlay before its lazy bundle resolves
+    setSearchOpen(false);
+  }, [pathname, searchOpen]);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        searchOpenerRef.current =
-          document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        setSearchOpen(true);
+        openPrimaryFind(
+          document.activeElement instanceof HTMLElement ? document.activeElement : null,
+        );
       }
       // Forward slash as a quick-open (don't trigger when typing into another input)
       if (e.key === "/" && !searchOpen) {
@@ -134,15 +174,15 @@ export default function TopBar() {
           || role === "combobox";
         if (!editable) {
           e.preventDefault();
-          searchOpenerRef.current =
-            document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          setSearchOpen(true);
+          openPrimaryFind(
+            document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          );
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [searchOpen]);
+  }, [openPrimaryFind, searchOpen]);
 
   return (
     <>
@@ -173,11 +213,11 @@ export default function TopBar() {
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-1.5 inline-flex h-11 items-center gap-1 rounded-full pl-1 pr-2.5 font-semibold tracking-tight transition active:scale-[0.96]"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-              <span className="text-[15px]">Back</span>
+              <span className="hidden text-[15px] min-[390px]:inline">Back</span>
             </button>
           ) : (
             <Link
@@ -226,7 +266,7 @@ export default function TopBar() {
                     </span>
                   </>
                 ) : (
-                  <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight lg:block" style={{ color: "var(--app-ink)" }}>
                     All tools
                   </span>
                 )}
@@ -245,8 +285,7 @@ export default function TopBar() {
               <button
                 type="button"
                 onClick={(event) => {
-                  searchOpenerRef.current = event.currentTarget;
-                  setSearchOpen(true);
+                  openPrimaryFind(event.currentTarget);
                 }}
                 aria-label="Ask or find across Frederick County"
                 className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
@@ -267,17 +306,16 @@ export default function TopBar() {
           {showMobileSearch && (
             <button
               type="button"
-              aria-label="Ask or find across Frederick County"
-              aria-haspopup="dialog"
-              aria-controls={searchOpen ? "radius-find-dialog" : undefined}
-              aria-expanded={searchOpen}
-              title="Ask or find across Frederick County"
+              aria-label={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
+              aria-haspopup={findTarget === "map" ? undefined : "dialog"}
+              aria-controls={findTarget === "map" ? "map-search-input" : searchOpen ? "radius-find-dialog" : undefined}
+              aria-expanded={findTarget === "map" ? undefined : searchOpen}
+              title={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
               onClick={(event) => {
                 haptic("light");
-                searchOpenerRef.current = event.currentTarget;
-                setSearchOpen(true);
+                openPrimaryFind(event.currentTarget);
               }}
-              className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
@@ -319,7 +357,7 @@ export default function TopBar() {
             aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
             title="Open all tools"
-            className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
+            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
@@ -331,11 +369,117 @@ export default function TopBar() {
         </div>
       </header>
 
-      <SearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        openerRef={searchOpenerRef}
-      />
+      {searchOpen ? (
+        <Suspense
+          fallback={(
+            <SearchOverlayFallback
+              onClose={closeSearch}
+              openerRef={searchOpenerRef}
+            />
+          )}
+        >
+          <SearchOverlay
+            open
+            onClose={closeSearch}
+            openerRef={searchOpenerRef}
+          />
+        </Suspense>
+      ) : null}
     </>
+  );
+}
+
+function SearchOverlayFallback({
+  onClose,
+  openerRef,
+}: {
+  onClose: () => void;
+  openerRef: RefObject<HTMLElement | null>;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useFocusTrap(dialogRef, true);
+
+  const dismiss = useCallback(() => {
+    onClose();
+    window.requestAnimationFrame(() => openerRef.current?.focus?.());
+  }, [onClose, openerRef]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      dismiss();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [dismiss]);
+
+  return (
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      id="radius-find-dialog"
+      className="fixed inset-0 z-[var(--z-overlay)] bg-[var(--app-bg)]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Loading search"
+    >
+      <div
+        className="mx-auto flex min-h-14 max-w-screen-sm items-center gap-3 px-4"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <Search
+          className="h-5 w-5 shrink-0"
+          strokeWidth={2}
+          style={{ color: "var(--app-brand-press)" }}
+          aria-hidden
+        />
+        <span
+          className="min-w-0 flex-1 font-serif text-[20px] font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Ask or find
+        </span>
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={dismiss}
+          className="grid h-11 w-11 place-items-center rounded-full border"
+          style={{
+            borderColor: "var(--app-border)",
+            color: "var(--app-ink-2)",
+          }}
+          aria-label="Close search"
+        >
+          <X className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </button>
+      </div>
+      <div className="mx-auto max-w-screen-sm px-4 pt-3" role="status" aria-live="polite">
+        <span className="sr-only">Loading search.</span>
+        <div
+          aria-hidden
+          className="h-12 w-full animate-pulse rounded-full"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+        <div
+          aria-hidden
+          className="mt-5 h-3 w-28 animate-pulse rounded-full"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+        <div
+          aria-hidden
+          className="mt-3 h-16 w-full animate-pulse rounded-[var(--app-radius-md)]"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+      </div>
+    </div>
   );
 }

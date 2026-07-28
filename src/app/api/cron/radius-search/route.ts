@@ -1,9 +1,10 @@
 /**
- * Bounded daily maintenance for Radius' private hybrid-search index.
+ * Bounded daily maintenance for Radius' private local-search index.
  *
- * The initial fill advances in cost-capped slices; later runs only embed
- * places whose search content changed. The writer is content-hash based and
- * upserts by (kind, source_id), so duplicate cron delivery is idempotent.
+ * The initial full-text fill advances in bounded slices. Optional OpenAI
+ * embeddings use the same limit when configured; later runs only revisit
+ * changed content or rows that still need a vector. The writer is
+ * content-hash based and idempotent by (kind, source_id).
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       enabled: false,
       note:
-        "Set RADIUS_SEARCH_CRON=1 to enable the bounded semantic-index refresh.",
+        "Set RADIUS_SEARCH_CRON=1 to enable the bounded local-search refresh.",
     });
   }
 
@@ -36,19 +37,44 @@ export async function GET(request: Request) {
     const result = await refreshRadiusSearchIndex({
       maxDocuments: batch,
     });
+    if (result.embeddingWarning) {
+      console.warn(
+        `[cron/radius-search] ${result.embeddingWarning.code}: ${result.embeddingWarning.message}`,
+      );
+    }
+    const note = !result.current
+      ? `${result.remaining} full-text place documents will continue on the next run.`
+      : result.embeddingWarning
+        ? result.embeddingWarning.code === "invalid_configuration" ||
+          result.embeddingWarning.code === "invalid_dimensions"
+          ? "The full-text place index is current. Optional semantic search needs a configuration review before the next scheduled run."
+          : "The full-text place index is current. Optional semantic recall will retry automatically."
+        : !result.embeddingCurrent
+          ? `The full-text place index is current. ${result.embeddingRemaining} optional semantic vectors remain.`
+          : "The place search index is current.";
     return NextResponse.json({
       enabled: true,
       healthy: true,
+      degraded: Boolean(result.embeddingWarning),
       batch_limit: batch,
       ...result,
-      note: result.current
-        ? "The place search index is current."
-        : `${result.remaining} changed place documents will continue on the next run.`,
+      note,
     });
   } catch (error) {
     console.error("[cron/radius-search] refresh failed:", error);
     const known =
       error instanceof RadiusSearchRefreshError ? error : null;
+    if (known?.code === "refresh_in_progress") {
+      return NextResponse.json(
+        {
+          enabled: true,
+          healthy: true,
+          skipped: true,
+          note: known.message,
+        },
+        { status: 202 },
+      );
+    }
     return NextResponse.json(
       {
         enabled: true,

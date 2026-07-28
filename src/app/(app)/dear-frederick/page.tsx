@@ -26,17 +26,14 @@ export default function DearFrederickIndex() {
     <div className="relative space-y-7">
       <PageBloom variant="warm-cool" />
 
-      <header className="max-w-[42rem] space-y-3">
+      <header className="max-w-[42rem] space-y-2">
         <h1 className="display-1 font-editorial" style={{ color: "var(--app-ink)" }}>
           Dear Frederick
         </h1>
         <p className="font-serif text-[17px] leading-[1.6]" style={{ color: "var(--app-ink)" }}>
-          People write letters to Frederick. Not to the paper or the county council, to the place
-          itself, about what it has meant to them.
-        </p>
-        <p className="text-[14px] leading-[1.65]" style={{ color: "var(--app-ink-2)" }}>
-          They come in the mail, some signed and some not, and they are gathered here just as they
-          were written. Read them below.
+          People write letters to Frederick, not to the paper or county council,
+          but to the place itself. Some are signed, some are not, and each is
+          gathered here as written.
         </p>
       </header>
 
@@ -58,23 +55,23 @@ export default function DearFrederickIndex() {
           Write your own
         </h2>
         <p className="mt-1 text-[13.5px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
-          Put it on paper and mail it, or send us a photo of the page. Sign it or leave it anonymous.
-        </p>
-        <p className="mt-2 font-mono text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
-          Dear Frederick
-          <br />
-          PO Box 334
-          <br />
-          Frederick, MD 21705
+          Mail a handwritten letter, or send a photo of the page. Sign it or
+          leave it anonymous.
         </p>
         <Link
           href="/dear-frederick/submit"
-          className="tap-44 mt-3 inline-flex items-center gap-1.5 text-[14px] font-semibold"
+          className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold"
           style={{ color: "var(--app-cool)" }}
         >
           Submit a letter
           <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </Link>
+        <p
+          className="mt-2 border-t pt-2 font-mono text-[12.5px] leading-relaxed"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+        >
+          Dear Frederick · PO Box 334 · Frederick, MD 21705
+        </p>
       </section>
 
       {/* The letters, framed like documents, in a plain responsive grid so

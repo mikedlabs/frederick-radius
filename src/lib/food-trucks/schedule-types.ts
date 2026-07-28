@@ -13,8 +13,13 @@ export type FoodTruckScheduleStop = {
   startsAt: string;
   endsAt?: string;
   venueName: string;
+  /** Canonical Radius place used to join the stop to venue details. */
+  venuePlaceSlug?: string;
   address?: string;
   municipality?: string;
+  /** Verified venue coordinates. Never inferred from a calendar placeholder. */
+  lat?: number;
+  lng?: number;
   vendors: FoodTruckScheduleVendor[];
   sourceName: string;
   sourceUrl: string;

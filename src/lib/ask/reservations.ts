@@ -37,6 +37,10 @@ export function parseReservationRequest(query: string, now = new Date()): Reserv
  */
 export function cleanReservationSearchQuery(query: string): string {
   return query
+    .replace(
+      /\b(?:can\s+you\s+|please\s+)?(?:book|reserve)\s+(?:it|one|that)(?:\s+(?:on|through|with))?\s*(?:open\s*table|opentable)?\b/gi,
+      " ",
+    )
     .replace(/\b(?:use|check|try|search|open)?\s*(?:open\s*table|opentable)(?:\s+to)?\b/gi, " ")
     .replace(/\b(?:make|book|reserve)(?:\s+(?:me|us))?\s+(?:a\s+)?(?:reservation|table|res|rez|rev)\b/gi, " ")
     .replace(/\b(?:reservation|reservations|booking)\b/gi, " ")
@@ -47,6 +51,7 @@ export function cleanReservationSearchQuery(query: string): string {
     .replace(/\b20\d{2}-\d{1,2}-\d{1,2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/gi, " ")
     .replace(/\b(?:i\s+want|i(?:'d|\s+would)\s+like|can\s+you|please)\b/gi, " ")
     .replace(/^\s*(?:and|then|so)\b|\b(?:and|then|so)\b\s*$/gi, " ")
+    .replace(/[,.!?;:]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

@@ -24,11 +24,17 @@ import crypto from "node:crypto";
 export type PulsePointIncident = {
   id: string;
   type: string;          // friendly label, never medical
+  /** Presentation boundary, not an official PulsePoint field. Routine service
+   * calls stay available in the Fire & rescue detail without becoming a
+   * countywide alert. */
+  severity: PulsePointIncidentSeverity;
   address: string;       // PulsePoint already block-level obfuscates
   received_at: string;
   lat?: number;
   lng?: number;
 };
+
+export type PulsePointIncidentSeverity = "routine" | "notable" | "severe";
 
 export type PulsePointIncidentsResult = {
   data: PulsePointIncident[];
@@ -36,26 +42,86 @@ export type PulsePointIncidentsResult = {
   available: boolean;
   /** Distinguishes a missing deployment setting from an upstream failure. */
   configured: boolean;
+  asOf?: string;
+  asOfBasis?: "provider" | "retrieval";
 };
 
 // Non-medical public-safety call types only. Unknown/medical codes are
 // intentionally excluded so no patient incident can ever leak.
-const CALL_TYPES: Record<string, string> = {
-  AA: "Auto Aid", MU: "Mutual Aid", ST: "Structure Fire", SF: "Structure Fire",
-  RF: "Residential Fire", CF: "Commercial Fire", OF: "Outside Fire",
-  VEG: "Vegetation Fire", WF: "Wildland Fire", VF: "Vehicle Fire",
-  AF: "Auto Fire", FIRE: "Fire", FL: "Fire", FA: "Fire Alarm",
-  AFA: "Fire Alarm", SD: "Smoke Detector", SMOKE: "Smoke Investigation",
-  OI: "Odor Investigation", CO: "Carbon Monoxide", GAS: "Gas Leak",
-  HMR: "Hazmat", HZ: "Hazmat", EX: "Explosion", FUEL: "Fuel Spill",
-  ELF: "Electrical Hazard", WIRE: "Wires Down", TC: "Traffic Collision",
-  TCE: "Traffic Collision", TCS: "Traffic Collision", VW: "Vehicle Wreck",
-  RES: "Rescue", WR: "Water Rescue", TR: "Technical Rescue",
-  CR: "Cliff Rescue", ER: "Elevator Rescue", LR: "Ladder Request",
-  LO: "Lockout", PA: "Public Assist", PS: "Public Service",
-  AC: "Aircraft Emergency", TD: "Tree Down", FW: "Fireworks",
-  ALARM: "Alarm", INV: "Investigation",
+type PulsePointCallProfile = {
+  label: string;
+  severity: PulsePointIncidentSeverity;
 };
+
+/**
+ * PulsePoint reports operational call types, not countywide warning severity.
+ * A dispatched unit does not automatically mean the public needs an alert.
+ * Keep routine calls in the detail feed, use "notable" for real activity that
+ * is useful to see there, and reserve "severe" for clear fire/rescue/hazard
+ * types that may justify global alert treatment.
+ */
+const CALL_TYPES: Record<string, PulsePointCallProfile> = {
+  AA: { label: "Auto Aid", severity: "routine" },
+  MU: { label: "Mutual Aid", severity: "routine" },
+  ST: { label: "Structure Fire", severity: "severe" },
+  SF: { label: "Structure Fire", severity: "severe" },
+  RF: { label: "Residential Fire", severity: "severe" },
+  CF: { label: "Commercial Fire", severity: "severe" },
+  OF: { label: "Outside Fire", severity: "notable" },
+  VEG: { label: "Vegetation Fire", severity: "severe" },
+  WF: { label: "Wildland Fire", severity: "severe" },
+  VF: { label: "Vehicle Fire", severity: "notable" },
+  AF: { label: "Auto Fire", severity: "notable" },
+  FIRE: { label: "Fire", severity: "notable" },
+  FL: { label: "Fire", severity: "notable" },
+  FA: { label: "Fire Alarm", severity: "routine" },
+  AFA: { label: "Fire Alarm", severity: "routine" },
+  SD: { label: "Smoke Detector", severity: "routine" },
+  SMOKE: { label: "Smoke Investigation", severity: "notable" },
+  OI: { label: "Odor Investigation", severity: "routine" },
+  CO: { label: "Carbon Monoxide", severity: "notable" },
+  GAS: { label: "Gas Leak", severity: "severe" },
+  HMR: { label: "Hazmat", severity: "severe" },
+  HZ: { label: "Hazmat", severity: "severe" },
+  EX: { label: "Explosion", severity: "severe" },
+  FUEL: { label: "Fuel Spill", severity: "notable" },
+  ELF: { label: "Electrical Hazard", severity: "notable" },
+  WIRE: { label: "Wires Down", severity: "notable" },
+  TC: { label: "Traffic Collision", severity: "notable" },
+  TCE: { label: "Traffic Collision", severity: "notable" },
+  TCS: { label: "Traffic Collision", severity: "notable" },
+  VW: { label: "Vehicle Wreck", severity: "notable" },
+  RES: { label: "Rescue", severity: "notable" },
+  WR: { label: "Water Rescue", severity: "severe" },
+  TR: { label: "Technical Rescue", severity: "severe" },
+  CR: { label: "Cliff Rescue", severity: "severe" },
+  ER: { label: "Elevator Rescue", severity: "notable" },
+  LR: { label: "Ladder Request", severity: "routine" },
+  LO: { label: "Lockout", severity: "routine" },
+  PA: { label: "Public Assist", severity: "routine" },
+  PS: { label: "Public Service", severity: "routine" },
+  AC: { label: "Aircraft Emergency", severity: "severe" },
+  TD: { label: "Tree Down", severity: "notable" },
+  FW: { label: "Fireworks", severity: "routine" },
+  ALARM: { label: "Alarm", severity: "routine" },
+  INV: { label: "Investigation", severity: "routine" },
+};
+
+export function pulsePointCallProfile(code: string): PulsePointCallProfile | null {
+  return CALL_TYPES[code.trim().toUpperCase()] ?? null;
+}
+
+export function isPulsePointAlert(
+  incident: Pick<PulsePointIncident, "severity">,
+): boolean {
+  return incident.severity === "severe";
+}
+
+export function isPulsePointNotable(
+  incident: Pick<PulsePointIncident, "severity">,
+): boolean {
+  return incident.severity !== "routine";
+}
 
 function agencyId(): string | null {
   return process.env.PULSEPOINT_AGENCY_ID || null;
@@ -102,6 +168,13 @@ type RawIncident = {
 function num(v: unknown): number | undefined {
   const n = typeof v === "number" ? v : parseFloat(String(v));
   return Number.isFinite(n) ? n : undefined;
+}
+
+function responseDate(res: Response): string | undefined {
+  const raw = res.headers.get("date");
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
 }
 
 export async function getPulsePointIncidentsResult(): Promise<PulsePointIncidentsResult> {
@@ -154,27 +227,37 @@ export async function getPulsePointIncidentsResult(): Promise<PulsePointIncident
       const code = String(raw.PulsePointIncidentCallType ?? raw.CallType ?? "")
         .trim()
         .toUpperCase();
-      const label = CALL_TYPES[code];
-      if (!label) continue; // unknown or medical → excluded
+      const profile = pulsePointCallProfile(code);
+      if (!profile) continue; // unknown or medical → excluded
       const id = String(raw.ID ?? `${code}-${raw.CallReceivedDateTime}`);
       if (seen.has(id)) continue;
+      const received = raw.CallReceivedDateTime
+        ? new Date(raw.CallReceivedDateTime)
+        : null;
+      if (!received || !Number.isFinite(received.getTime())) continue;
       seen.add(id);
       items.push({
         id,
-        type: label,
+        type: profile.label,
+        severity: profile.severity,
         address: String(raw.FullDisplayAddress ?? "").trim() || "Frederick County",
-        received_at: raw.CallReceivedDateTime
-          ? new Date(raw.CallReceivedDateTime).toISOString()
-          : new Date().toISOString(),
+        received_at: received.toISOString(),
         lat: num(raw.Latitude),
         lng: num(raw.Longitude),
       });
     }
     items.sort((a, b) => +new Date(b.received_at) - +new Date(a.received_at));
+    const retrievedAt = responseDate(res);
+    const providerAsOf = items[0]?.received_at;
     return {
       data: items.slice(0, 20),
       available: true,
       configured: true,
+      ...(retrievedAt
+        ? { asOf: retrievedAt, asOfBasis: "retrieval" as const }
+        : providerAsOf
+          ? { asOf: providerAsOf, asOfBasis: "provider" as const }
+          : {}),
     };
   } catch {
     return { data: [], available: false, configured: true };

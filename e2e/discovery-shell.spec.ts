@@ -345,7 +345,7 @@ test.describe("mobile discovery shell", () => {
     await expect(page).not.toHaveURL(/[?&]t=/);
   });
 
-  test("All tools starts with quick access and reveals one chosen topic", async ({ page }) => {
+  test("All tools starts with quick access and reveals one chosen outcome", async ({ page }) => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     const toolSearch = page.getByRole("searchbox", { name: "Search all tools" });
@@ -362,13 +362,13 @@ test.describe("mobile discovery shell", () => {
     await expect(page.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
 
-    const topics = page.getByRole("group", { name: "Browse by topic" });
-    const food = topics.getByRole("button", { name: /Eat & drink/ });
-    const outdoors = topics.getByRole("button", { name: /Outdoors/ });
-    await expect(food).toHaveAttribute("aria-pressed", "false");
-    await outdoors.click();
-    await expect(food).toHaveAttribute("aria-pressed", "false");
-    await expect(outdoors).toHaveAttribute("aria-pressed", "true");
+    const outcomes = page.getByRole("group", { name: "Choose what you need" });
+    const goingOut = outcomes.getByRole("button", { name: /Eat, drink, or go out/ });
+    const explore = outcomes.getByRole("button", { name: /Explore Frederick/ });
+    await expect(goingOut).toHaveAttribute("aria-expanded", "false");
+    await explore.click();
+    await expect(goingOut).toHaveAttribute("aria-expanded", "false");
+    await expect(explore).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("heading", { name: "Outdoors" })).toBeVisible();
   });
 

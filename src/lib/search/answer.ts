@@ -77,7 +77,12 @@ export function primaryAnswerFor(query: string): PrimaryAnswer | null {
 
   // No specific craving, but the user asked what's open — answer that directly.
   if (queryWantsOpenNow(q)) {
-    return { key: "open-now", label: "Open right now", href: "/open-now", kicker: "Everything open across the county" };
+    return {
+      key: "open-now",
+      label: "Open right now",
+      href: "/open-now",
+      kicker: "See confirmed-open places across the county.",
+    };
   }
   return null;
 }

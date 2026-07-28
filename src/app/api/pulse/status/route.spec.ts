@@ -1,72 +1,81 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
-import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
-import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
-import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
+import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
 
-vi.mock("@/lib/integrations/nws-alerts", () => ({ getNwsAlertsResult: vi.fn() }));
-vi.mock("@/lib/integrations/fcps", () => ({ getFcpsAlertsResult: vi.fn() }));
-vi.mock("@/lib/integrations/mdot-chart", () => ({ getChartIncidentsFrederickResult: vi.fn() }));
-vi.mock("@/lib/integrations/firstenergy", () => ({ getFrederickOutagesResult: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getCurrentSituationSnapshot: vi.fn(),
+}));
 
-import { GET } from "@/app/api/pulse/status/route";
+vi.mock("@/lib/live/currentSituation", () => ({
+  getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
+}));
 
-const emptyOutages = { total_out: 0, total_served: 0, munis: [] };
+import { GET } from "./route";
+
+function snapshot(
+  overrides: Partial<CurrentSituationSnapshot["summary"]> = {},
+): CurrentSituationSnapshot {
+  return {
+    generatedAt: "2026-07-28T16:00:00.000Z",
+    summary: {
+      status: "quiet",
+      coverage: "complete",
+      tone: "quiet",
+      activeCount: 0,
+      activeByCategory: {
+        weather: 0,
+        schools: 0,
+        roads: 0,
+        power: 0,
+        fireRescue: 0,
+        air: 0,
+      },
+      degradedSources: [],
+      ...overrides,
+    },
+  } as CurrentSituationSnapshot;
+}
 
 describe("GET /api/pulse/status", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(getNwsAlertsResult).mockResolvedValue({ alerts: [], available: true });
-    vi.mocked(getFcpsAlertsResult).mockResolvedValue({ data: [], available: true });
-    vi.mocked(getChartIncidentsFrederickResult).mockResolvedValue({ data: [], available: true });
-    vi.mocked(getFrederickOutagesResult).mockResolvedValue({ data: emptyOutages, available: true });
   });
 
-  it("reports a source failure instead of presenting a quiet all-clear", async () => {
-    vi.mocked(getFcpsAlertsResult).mockResolvedValue({ data: [], available: false });
+  it("preserves the legacy status response and cache contract", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
 
     const response = await GET();
-    await expect(response.json()).resolves.toMatchObject({
-      active: false,
-      count: 0,
-      tone: "quiet",
-      ok: false,
-    });
-  });
 
-  it("ignores Low traffic for the county alert but includes High traffic", async () => {
-    vi.mocked(getChartIncidentsFrederickResult).mockResolvedValue({
-      available: true,
-      data: [{ severity: "Low" } as Awaited<ReturnType<typeof getChartIncidentsFrederickResult>>["data"][number]],
-    });
-    let response = await GET();
-    await expect(response.json()).resolves.toMatchObject({
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=60, s-maxage=300",
+    );
+    await expect(response.json()).resolves.toEqual({
       active: false,
       count: 0,
       tone: "quiet",
       ok: true,
+      lastUpdated: "2026-07-28T16:00:00.000Z",
     });
+  });
 
-    vi.mocked(getChartIncidentsFrederickResult).mockResolvedValue({
-      available: true,
-      data: [{ severity: "High" } as Awaited<ReturnType<typeof getChartIncidentsFrederickResult>>["data"][number]],
-    });
-    response = await GET();
-    await expect(response.json()).resolves.toMatchObject({
+  it("reports active verified signals while preserving partial coverage", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(
+      snapshot({
+        status: "active",
+        coverage: "partial",
+        tone: "alert",
+        activeCount: 2,
+        degradedSources: ["fcps"],
+      }),
+    );
+
+    const response = await GET();
+    await expect(response.json()).resolves.toEqual({
       active: true,
-      count: 1,
+      count: 2,
       tone: "alert",
-      ok: true,
+      ok: false,
+      lastUpdated: "2026-07-28T16:00:00.000Z",
     });
-  });
-
-  it("does not count a normal-operations school notice as an alert", async () => {
-    vi.mocked(getFcpsAlertsResult).mockResolvedValue({
-      available: true,
-      data: [{ status: "open" } as Awaited<ReturnType<typeof getFcpsAlertsResult>>["data"][number]],
-    });
-
-    const response = await GET();
-    await expect(response.json()).resolves.toMatchObject({ active: false, count: 0, tone: "quiet" });
   });
 });

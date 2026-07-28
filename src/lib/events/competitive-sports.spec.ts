@@ -4,6 +4,8 @@ import { isCompetitiveSportsEvent } from "./competitive-sports";
 describe("isCompetitiveSportsEvent", () => {
   it.each([
     "Board Game Night",
+    "Game Night: Texas Hold’em Poker",
+    "Thursday Night Trivia",
     "Frederick Key's Tickets",
     "Mount 101 Bible Study & Sports Night",
     "Basketball Skills Camp Session 2",

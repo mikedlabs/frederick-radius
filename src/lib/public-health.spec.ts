@@ -1,0 +1,228 @@
+import { describe, expect, it, vi } from "vitest";
+import type { SourceLedgerRow } from "@/lib/quality/source-ledger";
+import {
+  createCoalescedPublicHealthLoader,
+  getPublicHealthSnapshot,
+  type PublicHealthSnapshot,
+  summarizePublicSourceHealth,
+} from "./public-health";
+
+function source(
+  id: string,
+  state: SourceLedgerRow["state"],
+  publishedAt: string | null,
+  manifestStatus = "active",
+): SourceLedgerRow {
+  return {
+    id,
+    name: `Source ${id}`,
+    owner: null,
+    manifestStatus,
+    collection: "runtime",
+    configured: true,
+    keyless: true,
+    missingSettings: [],
+    state,
+    available: state === "healthy" || state === "healthy_empty",
+    reason: "Internal detail that must not become public.",
+    lastAttemptAt: publishedAt,
+    lastAttemptOutcome: publishedAt ? "success" : null,
+    lastSuccessAt: publishedAt,
+    lastPublishedAt: publishedAt,
+    recordCount: null,
+    latestError: "secret upstream detail",
+    freshness: {
+      state: publishedAt ? "current" : "unknown",
+      ageHours: null,
+      maxAgeHours: 3,
+    },
+    evidenceKinds: [],
+  };
+}
+
+function snapshot(generatedAt: string): PublicHealthSnapshot {
+  return {
+    service: "frederick-radius",
+    status: "operational",
+    generatedAt,
+    deployment: { environment: "production", revision: "abcdef012345" },
+    database: { status: "reachable", latencyMs: 12 },
+    data: {
+      status: "current",
+      tracked: 1,
+      current: 1,
+      stale: 0,
+      attention: 0,
+      unknown: 0,
+      lastPublishedAt: generatedAt,
+    },
+  };
+}
+
+describe("public health summary", () => {
+  it("publishes bounded source counts without names or internal errors", () => {
+    const result = summarizePublicSourceHealth([
+      source("current", "healthy", "2026-07-28T14:00:00.000Z"),
+      source("empty", "healthy_empty", "2026-07-28T15:00:00.000Z"),
+      source("late", "stale", "2026-07-27T12:00:00.000Z"),
+      source("failed", "failing", null),
+      source("unknown", "unknown", null),
+      source("planned", "inactive", null, "pending_review"),
+    ]);
+
+    expect(result).toEqual({
+      status: "degraded",
+      tracked: 5,
+      current: 2,
+      stale: 1,
+      attention: 1,
+      unknown: 1,
+      lastPublishedAt: "2026-07-28T15:00:00.000Z",
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /Source current|secret upstream|pending_review/,
+    );
+  });
+
+  it("returns a compact operational snapshot when dependencies answer", async () => {
+    const result = await getPublicHealthSnapshot({
+      now: () => new Date("2026-07-28T16:00:00.000Z"),
+      environment: "production",
+      revision: "abcdef0123456789abcdef",
+      probeDatabase: async () => undefined,
+      loadSourceLedger: async () => [
+        source("current", "healthy", "2026-07-28T15:00:00.000Z"),
+      ],
+    });
+
+    expect(result).toMatchObject({
+      service: "frederick-radius",
+      status: "operational",
+      generatedAt: "2026-07-28T16:00:00.000Z",
+      deployment: {
+        environment: "production",
+        revision: "abcdef012345",
+      },
+      database: { status: "reachable" },
+      data: {
+        status: "current",
+        tracked: 1,
+        current: 1,
+      },
+    });
+    expect(result.database.latencyMs).toEqual(expect.any(Number));
+  });
+
+  it("marks the whole service degraded when source evidence needs attention", async () => {
+    const result = await getPublicHealthSnapshot({
+      probeDatabase: async () => undefined,
+      loadSourceLedger: async () => [
+        source("current", "healthy", "2026-07-28T15:00:00.000Z"),
+        source("late", "stale", "2026-07-27T12:00:00.000Z"),
+      ],
+    });
+
+    expect(result).toMatchObject({
+      status: "degraded",
+      database: { status: "reachable" },
+      data: {
+        status: "degraded",
+        tracked: 2,
+        current: 1,
+        stale: 1,
+      },
+    });
+  });
+
+  it("returns before a hung database and does not expose thrown details", async () => {
+    const secret = "postgres://user:password@example.internal/database";
+    const result = await getPublicHealthSnapshot({
+      now: () => new Date("2026-07-28T16:00:00.000Z"),
+      environment: secret,
+      revision: secret,
+      databaseDeadlineMs: 5,
+      probeDatabase: () => new Promise<void>(() => undefined),
+      loadSourceLedger: async () => {
+        throw new Error(secret);
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: "degraded",
+      deployment: { environment: "unknown", revision: null },
+      database: { status: "timeout", latencyMs: null },
+      data: { status: "unavailable", tracked: null },
+    });
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("keeps internal database and source errors out of the response", async () => {
+    const secret = "API_KEY=do-not-leak";
+    const databaseFailure = await getPublicHealthSnapshot({
+      probeDatabase: async () => {
+        throw new Error(secret);
+      },
+      loadSourceLedger: async () => [],
+    });
+    expect(databaseFailure.database.status).toBe("unavailable");
+    expect(JSON.stringify(databaseFailure)).not.toContain(secret);
+
+    const sourceFailure = await getPublicHealthSnapshot({
+      probeDatabase: async () => undefined,
+      loadSourceLedger: async () => {
+        throw new Error(secret);
+      },
+    });
+    expect(sourceFailure.data.status).toBe("unavailable");
+    expect(JSON.stringify(sourceFailure)).not.toContain(secret);
+  });
+
+  it("coalesces concurrent checks and reuses the completed snapshot", async () => {
+    let resolveLoad: ((value: PublicHealthSnapshot) => void) | undefined;
+    const load = vi.fn(
+      () =>
+        new Promise<PublicHealthSnapshot>((resolve) => {
+          resolveLoad = resolve;
+        }),
+    );
+    let nowMs = 1_000;
+    const health = createCoalescedPublicHealthLoader(load, {
+      nowMs: () => nowMs,
+      ttlMs: 30_000,
+    });
+
+    const first = health();
+    const second = health();
+    const third = health();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    resolveLoad?.(snapshot("2026-07-28T16:00:00.000Z"));
+    const resolved = await Promise.all([first, second, third]);
+    expect(resolved.every((value) => value === resolved[0])).toBe(true);
+
+    nowMs += 29_999;
+    await expect(health()).resolves.toBe(resolved[0]);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes after expiry and caps an oversized TTL at 30 seconds", async () => {
+    let nowMs = 5_000;
+    const load = vi
+      .fn<() => Promise<PublicHealthSnapshot>>()
+      .mockResolvedValueOnce(snapshot("2026-07-28T16:00:00.000Z"))
+      .mockResolvedValueOnce(snapshot("2026-07-28T16:00:30.000Z"));
+    const health = createCoalescedPublicHealthLoader(load, {
+      nowMs: () => nowMs,
+      ttlMs: 600_000,
+    });
+
+    const first = await health();
+    nowMs += 29_999;
+    await expect(health()).resolves.toBe(first);
+
+    nowMs += 1;
+    const refreshed = await health();
+    expect(refreshed.generatedAt).toBe("2026-07-28T16:00:30.000Z");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+});

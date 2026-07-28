@@ -28,6 +28,11 @@ const NOISE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]|•|#[A-Za-z]|\b[A-Z][a-z]
 const PHONE = /\(\d{3}\)\s*\d{3}[-.\s]?\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/;
 const CONTACT = /\b(feel free to|reach out|contact us|call us|give us a call|email us|book (?:now|online)|find us on|follow us|dm us)\b/i;
 const LINK = /https?:\/\/|www\.\S|\S+@\S+\.\w/i;
+// Low-information scrape prose can be grammatical and still tell the reader
+// nothing useful. Repeated hedging and "sometimes open" are strong signals
+// that a directory excerpt was assembled from uncertain fragments.
+const LOW_INFORMATION =
+  /\b(?:is|are)\s+sometimes\s+open\b|\bsometimes\b[\s\S]{0,120}\bsometimes\b/i;
 
 /** Classify a place description against the voice-guide scraped patterns. */
 export function classifyDescription(
@@ -47,6 +52,7 @@ export function classifyDescription(
   if (MARKETING.test(t)) return "scraped";
   if (NOISE.test(t)) return "scraped";
   if (PHONE.test(t) || CONTACT.test(t) || LINK.test(t)) return "scraped";
+  if (LOW_INFORMATION.test(t)) return "scraped";
 
   // Single run-on: long with fewer than two sentence stops.
   const stops = (t.match(/[.!?](\s|$)/g) ?? []).length;

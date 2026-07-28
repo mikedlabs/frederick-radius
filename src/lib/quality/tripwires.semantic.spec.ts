@@ -35,14 +35,18 @@ function sqlReturning(row: { total: number; embedded: number }) {
 
 describe("semanticIndexTripwire", () => {
   const ORIGINAL = process.env.RADIUS_HYBRID_SEARCH;
+  const ORIGINAL_OPENAI = process.env.OPENAI_API_KEY;
 
   beforeEach(() => {
     mockPlaces.count = 1000;
     delete process.env.RADIUS_HYBRID_SEARCH;
+    delete process.env.OPENAI_API_KEY;
   });
   afterEach(() => {
     if (ORIGINAL === undefined) delete process.env.RADIUS_HYBRID_SEARCH;
     else process.env.RADIUS_HYBRID_SEARCH = ORIGINAL;
+    if (ORIGINAL_OPENAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = ORIGINAL_OPENAI;
   });
 
   it("stays silent when there is no database (fail-soft contract)", async () => {
@@ -56,7 +60,7 @@ describe("semanticIndexTripwire", () => {
     expect(await semanticIndexTripwire()).toEqual([]);
   });
 
-  it("goes red when the index is empty — the shipped-but-dead case", async () => {
+  it("goes red when the searchable index is empty", async () => {
     mockSql.current = sqlReturning({ total: 0, embedded: 0 });
     const out = await semanticIndexTripwire();
     expect(out).toHaveLength(1);
@@ -67,14 +71,28 @@ describe("semanticIndexTripwire", () => {
   });
 
   it("goes red when the index has fallen well behind the catalog", async () => {
-    mockSql.current = sqlReturning({ total: 500, embedded: 500 }); // 50% of 1000
+    mockSql.current = sqlReturning({ total: 500, embedded: 0 }); // 50% of 1000
     const out = await semanticIndexTripwire();
     expect(out).toHaveLength(1);
     expect(out[0].kind).toBe("index_stale");
   });
 
-  it("stays green when coverage is healthy", async () => {
-    mockSql.current = sqlReturning({ total: 980, embedded: 980 }); // 98%
+  it("stays green with healthy FTS coverage and no OpenAI key", async () => {
+    mockSql.current = sqlReturning({ total: 980, embedded: 0 }); // vectors optional
+    expect(await semanticIndexTripwire()).toEqual([]);
+  });
+
+  it("reports a stalled optional vector backfill when OpenAI is configured", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    mockSql.current = sqlReturning({ total: 980, embedded: 100 });
+    const out = await semanticIndexTripwire();
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe("embedding_stale");
+  });
+
+  it("stays green when configured vector coverage is healthy", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    mockSql.current = sqlReturning({ total: 980, embedded: 900 });
     expect(await semanticIndexTripwire()).toEqual([]);
   });
 

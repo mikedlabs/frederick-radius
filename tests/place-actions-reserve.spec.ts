@@ -18,8 +18,14 @@ function base(extra: Partial<Place>): Place {
   } as Place;
 }
 
+function reservationAction(p: Place) {
+  return placeActions(p).find(
+    (a) => a.key === "reserve" || a.key === "reserve-search",
+  );
+}
+
 function reserveHref(p: Place): string | undefined {
-  return placeActions(p).find((a) => a.key === "reserve")?.href;
+  return reservationAction(p)?.href;
 }
 
 describe("placeActions — reserve handoff", () => {
@@ -30,7 +36,12 @@ describe("placeActions — reserve handoff", () => {
   });
 
   it("falls back to a geo-anchored OpenTable search when there is no id", () => {
-    const href = reserveHref(base({}));
+    const action = reservationAction(base({}));
+    const href = action?.href;
+    expect(action).toMatchObject({
+      key: "reserve-search",
+      label: "Search OpenTable",
+    });
     expect(href).toContain("opentable.com/s?");
     expect(href).toContain("latitude=39.4143");
     expect(href).toContain("longitude=-77.4105");

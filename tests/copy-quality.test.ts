@@ -18,7 +18,14 @@ test("STYLE.md scraped patterns are caught", () => {
   assert.equal(classifyDescription("Bar", "A hidden gem nestled in the heart of vibrant downtown."), "scraped");
   assert.equal(classifyDescription("Spot", "BEST CRAB CAKES!! 🦀 COME HUNGRY"), "scraped");
   assert.equal(classifyDescription("Y", "Cozy."), "scraped"); // too short
-  console.log("6 scraped fixtures caught");
+  assert.equal(
+    classifyDescription(
+      "Cafe Nola",
+      "They have bands sometimes on the weekends and are sometimes open.",
+    ),
+    "scraped",
+  );
+  console.log("7 scraped fixtures caught");
 });
 
 test("clean prose passes, reviewed and empty handled", () => {

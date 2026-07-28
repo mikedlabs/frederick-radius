@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
-import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
@@ -47,6 +46,11 @@ import type { FoodTruckMapPin } from "@/components/map/types";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
 import { FOOD_TRUCK_BY_SLUG } from "@/data/food-trucks";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import {
+  selectMapRoadPins,
+  type CurrentSituationSnapshot,
+} from "@/lib/live/currentSituationModel";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -426,7 +430,7 @@ async function BrowseMapArea() {
   const now = new Date();
   const allPlaces = openPlaces(now);
   const [
-    incidents,
+    situationSnapshot,
     fixit,
     mapillaryTrash,
     trailLines,
@@ -450,7 +454,11 @@ async function BrowseMapArea() {
     // upstream can't stall a revalidation render; every one of these
     // self-hides when empty, so a trimmed-out layer degrades exactly as
     // a failed one already did.
-    withTimeout(getChartIncidentsFrederick(), 4500, []),
+    withTimeout<CurrentSituationSnapshot | null>(
+      getCurrentSituationSnapshot(),
+      4500,
+      null,
+    ),
     withTimeout(getFixItIssues(30), 4500, []),
     withTimeout(fetchMapillaryTrash(), 3000, []),
     withTimeout(getFrederickTrailShapes(), 4000, EMPTY_FC),
@@ -492,6 +500,9 @@ async function BrowseMapArea() {
     withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 5000, [] as EventWithMeta[]),
     withTimeout(getFreshestBeaconByTruck(), 2000, new Map()),
   ]);
+  const incidents = situationSnapshot
+    ? selectMapRoadPins(situationSnapshot).official
+    : [];
 
   const foodTruckPins: FoodTruckMapPin[] = [...foodTruckBeacons.values()].flatMap((beacon) => {
     const truck = FOOD_TRUCK_BY_SLUG.get(beacon.truckSlug);

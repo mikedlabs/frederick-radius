@@ -15,6 +15,16 @@ describe("Ask Radius navigation context", () => {
     ]);
   });
 
+  it("automatically prefetches only the four permanent app destinations", () => {
+    expect(TABS).toHaveLength(4);
+    expect(TABS.map(({ href, prefetch }) => ({ href, prefetch }))).toEqual([
+      { href: "/today", prefetch: "auto" },
+      { href: "/map", prefetch: "auto" },
+      { href: "/events", prefetch: "auto" },
+      { href: "/my-radius", prefetch: "auto" },
+    ]);
+  });
+
   it("makes Ask discoverable from an installed app", () => {
     expect(manifest().shortcuts).toContainEqual({
       name: "Ask Radius",

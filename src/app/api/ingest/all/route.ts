@@ -26,12 +26,6 @@ const SOURCES = [
     defaultMunicipality: "frederick",
     defaultVenueLatLng: { lng: -77.4109, lat: 39.4137 },
   },
-  {
-    source_slug: "frederick_county_calendar",
-    url: "https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
-    defaultMunicipality: "frederick",
-    defaultVenueLatLng: { lng: -77.4109, lat: 39.4143 },
-  },
 ];
 
 export async function GET(request: Request) {

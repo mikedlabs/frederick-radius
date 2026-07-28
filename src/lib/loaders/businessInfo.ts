@@ -1,5 +1,13 @@
 import RAW from "@/data/business-info.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
+import {
+  detectProvider,
+  isCommerceSearchLink,
+} from "@/lib/commerce/links";
+import type {
+  CommerceLink,
+  CommerceLinkType,
+} from "@/lib/commerce/types";
 import { deepCleanStrings } from "@/lib/format/text";
 
 /**
@@ -20,9 +28,20 @@ export type BusinessInfo = {
   specials?: string[];
   hours_text?: string;
   reservations_url?: string;
+  commerce_links?: BusinessInfoCommerceLink[];
   notable?: string;
   name?: string;
   source: { url: string; fetchedAt: string };
+};
+
+export type BusinessInfoCommerceLink = {
+  type: Extract<
+    CommerceLinkType,
+    "menu" | "order" | "reservation" | "catering" | "gift_card"
+  >;
+  url: string;
+  anchor_text?: string;
+  source_url: string;
 };
 
 // Boundary cleaning, never render-time (same pass fieldNotes.ts runs):
@@ -49,6 +68,82 @@ const QUARANTINED = new Set(
 export function businessInfoFor(slug: string): BusinessInfo | null {
   if (QUARANTINED.has(slug)) return null;
   return DATA[slug] ?? null;
+}
+
+/**
+ * Convert source-backed commerce facts from the business-info feed into the
+ * same model as curated place links. These links came from the business's
+ * official website, but they were extracted rather than human-verified, so
+ * they retain imported provenance and never receive a Verified label.
+ */
+export function commerceLinksFromBusinessInfo(
+  slug: string,
+  info: BusinessInfo | null,
+): CommerceLink[] {
+  if (!info) return [];
+
+  const allowedTypes = new Set<BusinessInfoCommerceLink["type"]>([
+    "menu",
+    "order",
+    "reservation",
+    "catering",
+    "gift_card",
+  ]);
+  const seenTypes = new Set<BusinessInfoCommerceLink["type"]>();
+  const links: CommerceLink[] = [];
+
+  const add = (
+    type: BusinessInfoCommerceLink["type"],
+    rawUrl: string | undefined,
+  ) => {
+    if (seenTypes.has(type) || !rawUrl?.trim()) return;
+    let url: URL;
+    try {
+      url = new URL(rawUrl.trim());
+    } catch {
+      return;
+    }
+    if (url.protocol !== "https:" && url.protocol !== "http:") return;
+    if (!url.hostname || url.username || url.password) return;
+    url.hash = "";
+    const provider = detectProvider(url.toString());
+    if (isCommerceSearchLink({ provider, url: url.toString() })) return;
+
+    links.push({
+      place_id: slug,
+      type,
+      url: url.toString(),
+      provider,
+      source: "imported",
+      last_verified_at: info.source.fetchedAt,
+      notes: "Published on the business's official website.",
+    });
+    seenTypes.add(type);
+  };
+
+  // The extractor preserves every classified anchor in score order. The
+  // public commerce block stays calm by exposing the strongest link per type.
+  for (const raw of info.commerce_links ?? []) {
+    if (
+      !raw ||
+      typeof raw !== "object" ||
+      !allowedTypes.has(raw.type) ||
+      typeof raw.url !== "string"
+    ) {
+      continue;
+    }
+    add(raw.type, raw.url);
+  }
+
+  // Backward compatibility for the two records written before direct anchor
+  // collection. It fills only when no deterministic reservation link exists.
+  add("reservation", info.reservations_url);
+  return links;
+}
+
+/** Commerce facts for one place, honoring the same enrichment quarantine. */
+export function businessInfoCommerceLinks(slug: string): CommerceLink[] {
+  return commerceLinksFromBusinessInfo(slug, businessInfoFor(slug));
 }
 
 /** Whether a place has any surface-worthy buried info on file. */

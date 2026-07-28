@@ -58,6 +58,34 @@ export function mayAssertNoneOpen(
   return decided / statuses.length >= minimumCoverage;
 }
 
+/**
+ * Turn a confirmed-open count into a compact UI label without turning an
+ * hours-coverage gap into a claim that a place is closed.
+ */
+export function openNowCountLabel(
+  confirmedOpen: number,
+  mayReportNoneOpen: boolean,
+): string {
+  if (confirmedOpen > 0) {
+    return `${confirmedOpen.toLocaleString("en-US")} confirmed open`;
+  }
+  return mayReportNoneOpen ? "None open now" : "Open hours unconfirmed";
+}
+
+/**
+ * The filter remains useful when at least one result is confirmed open. With
+ * a zero count, it only becomes available after the same coverage gate that
+ * permits the UI to say none are open.
+ */
+export function mayOfferOpenNow(statuses: readonly OpenStatus[]): boolean {
+  return (
+    statuses.some(
+      (status) =>
+        status.state === "open" || status.state === "closing-soon",
+    ) || mayAssertNoneOpen(statuses)
+  );
+}
+
 export function hasReliableHours(
   place: HoursAvailabilityPlace,
   now: Date = new Date(),

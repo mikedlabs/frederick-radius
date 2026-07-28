@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
-import { rankPlaces } from "@/lib/loaders/places";
+import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { isRecommendable } from "@/lib/relevance";
 import {
@@ -18,10 +18,9 @@ import ScopeBar from "@/components/nav/ScopeBar";
 import CategorySection from "./CategorySection";
 
 /**
- * CategoryView — the context-aware category pattern. Coffee is the first
- * surface on it (Pass 3); other categories stay on the legacy layout until
- * this proves out. Reusable: it takes any category + the resolved home
- * town and renders the full answer spine.
+ * CategoryView — the context-aware category pattern currently used by Coffee.
+ * It remains reusable for other leaf categories once their existing facets
+ * and navigation can move without losing useful browsing paths.
  *
  * The point this proves: the page ranks from the user's town for real
  * (the "Worth your time" lead uses the balanced `categoryScore`), it is honest when it
@@ -38,11 +37,11 @@ export default function CategoryView({
 }) {
   const town = homeMuni ? (MUNICIPALITY_BY_SLUG[homeMuni] ?? null) : null;
   const origin: LngLat = town?.centroid ?? FREDERICK_CENTER;
-  const ctx = { town: town?.slug ?? null };
+  const ctx = { town: town?.slug ?? null, category: category.slug };
 
   // One ranked, distance-decorated set from the resolved origin; every
   // section is a pure slice of it (no second loader pass).
-  const all = rankPlaces({ category: category.slug, origin });
+  const all = rankPlaces({ category: category.slug, origin }).map(slimForList);
   // Recommendation eligibility: the promoted sections lead with `rec`,
   // which drops institutions (schools/daycares/admissions offices). Full
   // browse below keeps `all` — they stay findable, just not recommended.

@@ -24,7 +24,8 @@ export type ChartIncident = {
   location: string;
   lng: number;
   lat: number;
-  started_at: string;
+  /** CHART's provider timestamp. Null means the feed did not provide one. */
+  started_at: string | null;
   expected_end?: string;
   severity: "Low" | "Medium" | "High";
   lanes_affected?: string;
@@ -149,12 +150,28 @@ export function dedupeChartIncidents(incidents: ChartIncident[]): ChartIncident[
     if (
       !previous ||
       SEVERITY_RANK[incident.severity] > SEVERITY_RANK[previous.severity] ||
-      (incident.severity === previous.severity && Date.parse(incident.started_at) > Date.parse(previous.started_at))
+      (
+        incident.severity === previous.severity &&
+        sortableStartedAt(incident.started_at) > sortableStartedAt(previous.started_at)
+      )
     ) {
       byKey.set(key, incident);
     }
   }
   return [...byKey.values()];
+}
+
+function sortableStartedAt(value: string | null): number {
+  if (!value) return Number.NEGATIVE_INFINITY;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function responseDate(res: Response): string | undefined {
+  const value = res.headers.get("date");
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -311,8 +328,9 @@ export function chartFreshnessTail(
     const end = new Date(incident.expected_end);
     if (!Number.isNaN(end.getTime()) && end > now) return `Clears ~${fmtEastern(end)}`;
   }
-  const start = new Date(incident.started_at);
-  if (!Number.isNaN(start.getTime())) {
+  if (incident.started_at) {
+    const start = new Date(incident.started_at);
+    if (Number.isNaN(start.getTime())) return "Active now";
     const mins = Math.round((now.getTime() - start.getTime()) / 60000);
     if (mins < 1) return "Just reported";
     if (mins < 60) return `Started ${mins}m ago`;
@@ -339,6 +357,7 @@ export function qualifiesForToday(incident: ChartIncident, now: Date = new Date(
   if (incident.type !== "Incident" && incident.type !== "Weather") return false;
   const road = incident.road?.toUpperCase().replace(/\s+/g, " ").trim();
   if (!road || !TODAY_ROADS.has(road)) return false;
+  if (!incident.started_at) return false;
   const start = Date.parse(incident.started_at);
   if (!Number.isFinite(start)) return false;
   const age = now.getTime() - start;
@@ -371,6 +390,7 @@ export async function getChartIncidentsFrederickResult(
       next: { revalidate: revalidateSeconds },
     });
     if (!res.ok) return { data: [], available: false };
+    const asOf = responseDate(res);
     const data = await res.json().catch(() => null);
     if (!data) return { data: [], available: false };
     // The CHARTExport feed wraps events under `data`: { data: [...],
@@ -406,15 +426,16 @@ export async function getChartIncidentsFrederickResult(
         location: clean,
         lat,
         lng,
-        started_at: startMs ? new Date(startMs).toISOString() : new Date().toISOString(),
+        started_at: startMs ? new Date(startMs).toISOString() : null,
         severity: severity(raw, text),
         lanes_affected: cleanChartLaneStatus(raw.lanesStatus),
       });
     }
     return {
       data: dedupeChartIncidents(incidents)
-        .sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at)),
+        .sort((a, b) => sortableStartedAt(b.started_at) - sortableStartedAt(a.started_at)),
       available: true,
+      ...(asOf ? { asOf } : {}),
     };
   } catch {
     return { data: [], available: false };

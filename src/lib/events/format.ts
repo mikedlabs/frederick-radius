@@ -29,7 +29,6 @@ export function formatEventWhen(e: Event): string {
     month: "2-digit",
     day: "2-digit",
   });
-  const sameDay = dayKeyFmt.format(start) === dayKeyFmt.format(end);
   const dateFmt = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
@@ -47,10 +46,19 @@ export function formatEventWhen(e: Event): string {
   // Calling a 6 PM artist talk "All day" is worse than withholding its unknown
   // end, so zero-duration rows print the known start time only.
   if (e.is_all_day) {
+    // RFC 5545 date-only DTEND is exclusive. Display the final INCLUDED
+    // instant/day: [Jul 7, Jul 8) is one all-day event on Jul 7, while
+    // [Jul 7, Jul 10) runs through Jul 9.
+    const displayEnd =
+      Number.isFinite(end.getTime()) && end.getTime() > start.getTime()
+        ? new Date(end.getTime() - 1)
+        : start;
+    const sameDay = dayKeyFmt.format(start) === dayKeyFmt.format(displayEnd);
     return sameDay
       ? `${dateFmt.format(start)} · All day`
-      : `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
+      : `${dateFmt.format(start)} – ${dateFmt.format(displayEnd)}`;
   }
+  const sameDay = dayKeyFmt.format(start) === dayKeyFmt.format(end);
   if (e.starts_at === e.ends_at) {
     return `${dateFmt.format(start)} · ${timeFmt.format(start)}`;
   }

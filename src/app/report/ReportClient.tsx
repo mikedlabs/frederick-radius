@@ -252,23 +252,29 @@ export default function ReportClient({
           without this X the only way out is the browser chrome. Prefer real
           history; fall back to /map (the surface that links here) when the
           user landed cold via a deep link. */}
-      <button
-        type="button"
-        onClick={() => {
-          if (typeof window !== "undefined" && window.history.length > 1) {
+      <Link
+        href="/map"
+        onClick={(event) => {
+          let sameOriginReferrer = false;
+          try {
+            sameOriginReferrer = Boolean(document.referrer) &&
+              new URL(document.referrer).origin === window.location.origin;
+          } catch {
+            sameOriginReferrer = false;
+          }
+          if (sameOriginReferrer && window.history.length > 1) {
+            event.preventDefault();
             router.back();
-          } else {
-            router.push("/map");
           }
         }}
         aria-label="Close and go back"
-        className="tap-44 absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-ink)]/15 bg-white text-[var(--app-ink)] shadow"
+        className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--app-ink)]/15 bg-white text-[var(--app-ink)] shadow"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
           <line x1="6" y1="6" x2="18" y2="18" />
           <line x1="18" y1="6" x2="6" y2="18" />
         </svg>
-      </button>
+      </Link>
 
       {/* Control card */}
       <div className="absolute inset-x-0 bottom-0 space-y-2.5 rounded-t-[var(--app-radius-lg,18px)] border-t border-[var(--app-ink)]/10 bg-[var(--app-bg)]/97 p-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.6rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur">

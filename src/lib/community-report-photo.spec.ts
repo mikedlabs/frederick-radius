@@ -36,7 +36,12 @@ describe("community report photo cleanup", () => {
 
   it("deletes managed photos and ignores unrelated URLs", async () => {
     await expect(deleteCommunityReportPhoto(MANAGED)).resolves.toBe(true);
-    expect(mocks.del).toHaveBeenCalledWith(MANAGED);
+    expect(mocks.del).toHaveBeenCalledWith(
+      MANAGED,
+      expect.objectContaining({
+        abortSignal: expect.any(AbortSignal),
+      }),
+    );
 
     mocks.del.mockClear();
     await expect(

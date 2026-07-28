@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+  type ReactNode,
+} from "react";
 import {
   motion,
   AnimatePresence,
+  useDragControls,
   useMotionValue,
   useTransform,
   useReducedMotion,
@@ -35,13 +45,30 @@ type Props = {
   onClose: () => void;
   /** Accessible name for the dialog. */
   ariaLabel: string;
+  /**
+   * The trigger captured before a lazy fallback takes focus. Without this,
+   * a lazily mounted sheet remembers the fallback's Close button, which is
+   * removed as soon as the real chunk arrives and cannot receive focus later.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   children: (dismiss: () => void) => ReactNode;
 };
 
-export default function BottomSheet({ present, onClose, ariaLabel, children }: Props) {
+const SheetDragContext = createContext<
+  ((event: ReactPointerEvent<HTMLElement>) => void) | null
+>(null);
+
+export default function BottomSheet({
+  present,
+  onClose,
+  ariaLabel,
+  returnFocusRef,
+  children,
+}: Props) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
+  const dragControls = useDragControls();
   const backdropOpacity = useTransform(y, [0, 300], [0.45, 0]);
   const sheetRef = useRef<HTMLDivElement>(null);
   // Remember what was focused before opening so we can restore it on close —
@@ -49,7 +76,11 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
   const lastFocused = useRef<HTMLElement | null>(null);
   const openPath = useRef(pathname);
   const onCloseRef = useRef(onClose);
-  const [open, setOpen] = useState(false);
+  // A sheet that was already in the shell mounts closed and follows `present`
+  // below. A code-split sheet first mounts with `present=true`; initializing
+  // from that value prevents Suspense from replacing its fallback with one
+  // blank frame before the opening effect runs.
+  const [open, setOpen] = useState(present);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -61,7 +92,10 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
   useEffect(() => {
     if (present) {
       openPath.current = window.location.pathname;
-      lastFocused.current = (document.activeElement as HTMLElement | null) ?? null;
+      lastFocused.current =
+        returnFocusRef?.current ??
+        (document.activeElement as HTMLElement | null) ??
+        null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming presence prop to drive the open animation
       setOpen(true);
       haptic("light");
@@ -70,7 +104,7 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
       // focus restoration and the body-scroll lock cannot remain active.
       setOpen(false);
     }
-  }, [present]);
+  }, [present, returnFocusRef]);
 
   // App layouts persist across client navigations. A sheet that launched a
   // detail page must not remain mounted over the destination if a navigation
@@ -151,13 +185,19 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
             exit={{ y: "100%" }}
             transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 600 }}
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y }}
             className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
           >
-            {children(dismiss)}
+            <SheetDragContext.Provider
+              value={(event) => dragControls.start(event)}
+            >
+              {children(dismiss)}
+            </SheetDragContext.Provider>
           </motion.div>
         </div>
       )}
@@ -171,6 +211,7 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
  * Every sheet uses the same row so dismissal reads identically.
  */
 export function SheetHandle({ onClose, closeLabel }: { onClose: () => void; closeLabel: string }) {
+  const startDrag = useContext(SheetDragContext);
   return (
     <div
       className="flex items-center justify-between gap-2 pb-1 pt-2"
@@ -191,9 +232,14 @@ export function SheetHandle({ onClose, closeLabel }: { onClose: () => void; clos
       </button>
       <span
         aria-hidden
-        className="block h-1 w-10 rounded-full"
-        style={{ background: "var(--app-border)" }}
-      />
+        className="grid h-11 w-16 touch-none cursor-grab place-items-center active:cursor-grabbing"
+        onPointerDown={(event) => startDrag?.(event)}
+      >
+        <span
+          className="block h-1 w-10 rounded-full"
+          style={{ background: "var(--app-border)" }}
+        />
+      </span>
       <span className="w-[64px]" aria-hidden />
     </div>
   );

@@ -89,37 +89,39 @@ export default async function NonprofitsPage({
       </header>
 
       {/* Cause filter */}
-      <nav aria-label="Filter by cause" className="flex flex-wrap gap-1.5">
-        <Link
-          href="/nonprofits"
-          className="tap-44 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-          style={
-            active
-              ? { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
-              : { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
-          }
-        >
-          All
-        </Link>
-        {counts.map(({ category, count }) => {
-          const meta = NONPROFIT_CATEGORY_BY_SLUG[category];
-          const on = active === category;
-          return (
-            <Link
-              key={category}
-              href={`/nonprofits?cause=${category}`}
-              className="tap-44 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-              style={
-                on
-                  ? { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
-                  : { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
-              }
-            >
-              {meta.label}{" "}
-              <span className="font-mono text-[10.5px] tabular-nums opacity-70">{count}</span>
-            </Link>
-          );
-        })}
+      <nav aria-label="Filter by cause" className="-mx-4 overflow-hidden px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <Link
+            href="/nonprofits"
+            className="tap-44 inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+            style={
+              active
+                ? { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
+                : { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
+            }
+          >
+            All
+          </Link>
+          {counts.map(({ category, count }) => {
+            const meta = NONPROFIT_CATEGORY_BY_SLUG[category];
+            const on = active === category;
+            return (
+              <Link
+                key={category}
+                href={`/nonprofits?cause=${category}`}
+                className="tap-44 inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                style={
+                  on
+                    ? { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
+                    : { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
+                }
+              >
+                {meta.label}{" "}
+                <span className="font-mono text-[10.5px] tabular-nums opacity-70">{count}</span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* List */}

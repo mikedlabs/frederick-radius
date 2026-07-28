@@ -32,12 +32,16 @@ type WantAnswer = {
   also: WantRow[];
   browseHref: string;
   contextLabel: string;
+  contextSource?: "town" | "device" | "home" | "ip" | "county" | "none";
+  mayAssertNoneOpen?: boolean;
 };
 
-type LiveShelf = {
+export type LiveShelf = {
   picks: DaypartPick[];
   href: string;
   contextLabel: string;
+  contextSource: NonNullable<WantAnswer["contextSource"]>;
+  mayAssertNoneOpen: boolean;
 };
 
 /**
@@ -85,16 +89,84 @@ export function daypartBrowseHref(
   return `/nearby?${params.toString()}`;
 }
 
+/** Turn the live decision response into the shelf verbatim, including an empty
+ * answer. A successful scoped zero is information; only a rejected request may
+ * retain the countywide server fallback. */
+export function liveShelfFromWantAnswer(
+  answer: WantAnswer,
+  row: DaypartRow,
+  scope: Scope | null,
+): LiveShelf {
+  const picks = [answer.hero, ...answer.also]
+    .filter((candidate): candidate is WantRow => Boolean(candidate))
+    .slice(0, 4)
+    .map((candidate) => ({
+      slug: candidate.slug,
+      name: candidate.name,
+      rating: null,
+      photo: candidate.photo,
+      photoCredit: null,
+      where: candidate.where,
+      distance: candidate.distance,
+      fact: candidate.fact,
+      confidence: candidate.confidence ?? "confirmed",
+    }));
+
+  return {
+    picks,
+    href:
+      daypartBrowseHref(row.category, row.label, scope) ||
+      answer.browseHref ||
+      row.href,
+    contextLabel: answer.contextLabel || "Across Frederick County",
+    contextSource: answer.contextSource ?? "county",
+    mayAssertNoneOpen: answer.mayAssertNoneOpen === true,
+  };
+}
+
+export function daypartEmptyCopy(
+  contextLabel: string,
+  countywide: boolean,
+  mayReportNoneOpen: boolean,
+): string {
+  const scope =
+    countywide
+      ? "across Frederick County"
+      : contextLabel === "Near you"
+        ? "near you"
+        : contextLabel.startsWith("Near ")
+          ? `${contextLabel.charAt(0).toLocaleLowerCase()}${contextLabel.slice(1)}`
+          : `in ${contextLabel}`;
+  return mayReportNoneOpen
+    ? `No place is open ${scope} right now.`
+    : `No place ${scope} has current hours showing it open.`;
+}
+
+/**
+ * Only an explicit town scope filters the candidate set geographically.
+ * Device, home, and IP origins rank the same countywide set; their labels must
+ * not be turned into fake hard scopes such as "in Ranked from Brunswick."
+ */
+export function isDaypartCountywideContext(
+  source: NonNullable<WantAnswer["contextSource"]>,
+): boolean {
+  return source !== "town";
+}
+
 /** The live ranker can honestly return no open places. Keep that answer in the
  * existing shelf instead of turning it into another full-size card. */
 export function DaypartEmptyState({
   href = "/open-now",
   label = "Places open now",
   contextLabel = "Across Frederick County",
+  countywide = true,
+  mayReportNoneOpen = false,
 }: {
   href?: string;
   label?: string;
   contextLabel?: string;
+  countywide?: boolean;
+  mayReportNoneOpen?: boolean;
 } = {}) {
   return (
     <section aria-label="Open places right now" className="mt-6">
@@ -102,7 +174,7 @@ export function DaypartEmptyState({
         title={label}
         meta={contextLabel}
         href={href}
-        cta="Check nearby"
+        cta={countywide ? "Browse places" : "Expand to county"}
       />
       <div
         role="status"
@@ -115,7 +187,11 @@ export function DaypartEmptyState({
         }}
       >
         <p className="text-[12px] leading-snug">
-          Live hours aren&rsquo;t available right now.
+          {daypartEmptyCopy(
+            contextLabel,
+            countywide,
+            mayReportNoneOpen,
+          )}
         </p>
       </div>
     </section>
@@ -152,6 +228,7 @@ export default function DaypartNeeds({
     [baseActive, liveActive],
   );
   const contextLabel = liveActive?.contextLabel ?? "Across Frederick County";
+  const contextSource = liveActive?.contextSource ?? "county";
   const awaitingLive =
     Boolean(activeCategory) &&
     active?.picks.length === 0 &&
@@ -169,35 +246,10 @@ export default function DaypartNeeds({
       .then((raw) => {
         if (!current) return;
         const answer = raw as WantAnswer;
-        const open = [answer.hero, ...answer.also]
-          .filter((row): row is WantRow => Boolean(row))
-          .slice(0, 4)
-          .map((row) => ({
-            slug: row.slug,
-            name: row.name,
-            rating: null,
-            photo: row.photo,
-            photoCredit: null,
-            where: row.where,
-            distance: row.distance,
-            fact: row.fact,
-            confidence: row.confidence ?? "confirmed",
-          }));
-        if (open.length === 0 && baseActive.picks.length > 0) return;
+        const shelf = liveShelfFromWantAnswer(answer, baseActive, getScope());
         setLiveShelves((previous) => ({
           ...previous,
-          [baseActive.category]: {
-            picks: open,
-            href:
-              daypartBrowseHref(
-                baseActive.category,
-                baseActive.label,
-                getScope(),
-              ) ||
-              answer.browseHref ||
-              baseActive.href,
-            contextLabel: answer.contextLabel || "Across Frederick County",
-          },
+          [baseActive.category]: shelf,
         }));
       })
       .catch(() => {
@@ -237,13 +289,18 @@ export default function DaypartNeeds({
 
   // Once the location-aware ranker has answered, a zero-result shelf should
   // not keep a heading, tab row, count line, and empty card in prime Today
-  // space. Collapse it to one honest route to places opening later.
+  // space. Collapse it to one honest result plus a countywide escape hatch.
   if (!awaitingLive && active.picks.length === 0) {
+    const countywide = isDaypartCountywideContext(contextSource);
+    const countyHref =
+      daypartBrowseHref(active.category, active.label, "county") || active.href;
     return (
       <DaypartEmptyState
-        href={active.href}
+        href={countywide ? active.href : countyHref}
         label="Places open now"
         contextLabel={contextLabel}
+        countywide={countywide}
+        mayReportNoneOpen={liveActive?.mayAssertNoneOpen === true}
       />
     );
   }

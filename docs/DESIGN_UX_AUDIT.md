@@ -275,7 +275,8 @@ pending**. The unwired ones are silently capping the experience.
 | AI | `ANTHROPIC_API_KEY` |
 
 ### Cron jobs (vercel.json) — depend on the keys + DB above
-`/api/ingest/all` (daily 09:00), `/api/cron/notify-civic-alerts`
+`/api/ingest/civicengage`, `/api/ingest/fcpl`, and `/api/ingest/fcvfra`
+(daily), plus `/api/cron/notify-civic-alerts`
 (every 30m → needs VAPID), `/api/cron/business-status` (daily),
 `/api/cron/data-health` (daily). If their upstream keys are unset they
 run but no-op.

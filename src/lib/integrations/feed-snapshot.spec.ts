@@ -2,16 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
+  getSql: vi.fn(),
 }));
 
 vi.mock("@/lib/db/client", () => ({
   getDb: mocks.getDb,
+  getSql: mocks.getSql,
 }));
 
 import {
+  _resetHydrateThrottle,
+  compactDuplicateSnapshots,
+  getFeedSnapshotStorageTelemetry,
+  hydrateSnapshotsStrict,
   persistCurrentSnapshots,
+  persistCurrentSnapshotsStrict,
   pruneOldSnapshots,
   recordSnapshot,
+  SNAPSHOT_COMPACTION_BATCH_SIZE,
+  SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT,
   SNAPSHOT_PRUNE_BATCH_SIZE,
 } from "./feed-snapshot";
 
@@ -70,6 +79,7 @@ function pruneDb(deletedIds = ["one", "two"]) {
 describe("feed snapshot persistence boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getSql.mockReturnValue(null);
   });
 
   it("never touches the database when an ordinary feed records a snapshot", () => {
@@ -144,6 +154,31 @@ describe("feed snapshot persistence boundary", () => {
     warn.mockRestore();
   });
 
+  it("lets the bounded feed worker report a persistence failure", async () => {
+    const database = insertDb();
+    database.values.mockRejectedValue(new Error("write unavailable"));
+    mocks.getDb.mockReturnValue(database.db);
+
+    recordSnapshot("__test_strict_persist__", [row()]);
+
+    await expect(
+      persistCurrentSnapshotsStrict(["__test_strict_persist__"]),
+    ).rejects.toThrow("write unavailable");
+  });
+
+  it("lets cron workers report snapshot hydration query failures", async () => {
+    const limit = vi.fn().mockRejectedValue(new Error("read unavailable"));
+    const orderBy = vi.fn(() => ({ limit }));
+    const from = vi.fn(() => ({ orderBy }));
+    const select = vi.fn(() => ({ from }));
+    mocks.getDb.mockReturnValue({ select });
+    _resetHydrateThrottle();
+
+    await expect(hydrateSnapshotsStrict()).rejects.toThrow(
+      "read unavailable",
+    );
+  });
+
   it("caps retention deletes to one bounded oldest-first batch", async () => {
     const database = pruneDb();
     mocks.getDb.mockReturnValue(database.db);
@@ -155,5 +190,107 @@ describe("feed snapshot persistence boundary", () => {
     expect(database.limit).toHaveBeenCalledWith(SNAPSHOT_PRUNE_BATCH_SIZE);
     expect(database.deleteRows).toHaveBeenCalledTimes(1);
     expect(database.returning).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates a retention failure to the cron health gate", async () => {
+    const database = pruneDb();
+    database.returning.mockRejectedValue(new Error("statement timeout"));
+    mocks.getDb.mockReturnValue(database.db);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(pruneOldSnapshots(90)).rejects.toThrow("statement timeout");
+    expect(warn).toHaveBeenCalledWith(
+      "[feed-snapshot] retention prune failed:",
+      "statement timeout",
+    );
+
+    warn.mockRestore();
+  });
+
+  it("compacts only a bounded batch with a newer same-source daily keeper", async () => {
+    const query = vi.fn().mockResolvedValue([
+      { id: "duplicate-one" },
+      { id: "duplicate-two" },
+    ]);
+    mocks.getSql.mockReturnValue(query);
+
+    await expect(
+      compactDuplicateSnapshots(SNAPSHOT_COMPACTION_BATCH_SIZE * 100),
+    ).resolves.toBe(2);
+
+    expect(query).toHaveBeenCalledTimes(1);
+    const strings = (query.mock.calls[0][0] as TemplateStringsArray).join("?");
+    expect(strings).toContain("keeper.source = candidate.source");
+    expect(strings).toContain("date_trunc('day', candidate.taken_at");
+    expect(strings).toContain("keeper.taken_at > candidate.taken_at");
+    expect(strings).toContain("DELETE FROM feed_snapshots");
+    expect(query.mock.calls[0]).toContain(SNAPSHOT_COMPACTION_BATCH_SIZE);
+  });
+
+  it("does not report a failed compaction as a successful zero-row batch", async () => {
+    const query = vi.fn().mockRejectedValue(new Error("statement timeout"));
+    mocks.getSql.mockReturnValue(query);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(compactDuplicateSnapshots()).rejects.toThrow(
+      "statement timeout",
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "[feed-snapshot] duplicate compaction failed:",
+      "statement timeout",
+    );
+
+    warn.mockRestore();
+  });
+
+  it("reports bounded backlog telemetry instead of an exact duplicate scan", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          approximate_rows: "711327",
+          total_bytes: "248512512",
+          oldest_at: "2026-05-28T12:00:00.000Z",
+          newest_at: "2026-07-27T12:45:00.000Z",
+          rows_last_24_hours: "20",
+        },
+      ])
+      .mockResolvedValueOnce([
+        { duplicate_candidates: String(SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT) },
+      ]);
+    mocks.getSql.mockReturnValue(query);
+
+    await expect(getFeedSnapshotStorageTelemetry()).resolves.toMatchObject({
+      approximateRows: 711327,
+      rowsLast24Hours: 20,
+      duplicateCandidates: SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT - 1,
+      duplicateCountCapped: true,
+    });
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails closed when storage telemetry is malformed", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          approximate_rows: "not-a-count",
+          total_bytes: "248512512",
+          oldest_at: null,
+          newest_at: null,
+          rows_last_24_hours: "20",
+        },
+      ])
+      .mockResolvedValueOnce([{ duplicate_candidates: "0" }]);
+    mocks.getSql.mockReturnValue(query);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await expect(getFeedSnapshotStorageTelemetry()).resolves.toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      "[feed-snapshot] storage telemetry failed:",
+      "Snapshot telemetry returned an invalid numeric value.",
+    );
+
+    warn.mockRestore();
   });
 });

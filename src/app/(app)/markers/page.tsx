@@ -43,7 +43,7 @@ export default async function MarkersPage() {
           serif title sits on a soft dark gradient so it stays readable. */}
       <header className="space-y-3">
         <div className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
-          <div className="relative h-48 w-full sm:h-60">
+          <div className="relative h-40 w-full sm:h-60">
             <Image
               src={wikimediaUrl(MARKERS_HERO.file, 1200)}
               alt=""
@@ -70,8 +70,8 @@ export default async function MarkersPage() {
           </div>
         </div>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Read roadside marker text returned by MDOT and browse National Register
-          sites from the National Park Service. For longer local stories, see{" "}
+          Search roadside marker text from MDOT and National Register sites from
+          the National Park Service. For longer local stories, see{" "}
           <a href="/history" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             Frederick history
           </a>

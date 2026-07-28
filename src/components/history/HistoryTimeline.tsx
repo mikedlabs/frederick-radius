@@ -10,9 +10,9 @@ import { ERAS, TIMELINE_FROM, TIMELINE_TO, eraForYear } from "@/lib/history-era"
  * the user can feel the density of the period — Civil War years bunch,
  * the Industrial era thins, modern years are dense again.
  *
- * Each tick is an anchor link that jumps to the entry on the same
- * page (we render `#h-<slug>` anchors on the cards). Pure server
- * component — no client JS, no hover state required to read.
+ * The ticks are a density overview, not separate controls. Eighteen 8px
+ * anchors packed into a phone-width rail created overlapping, impossible tap
+ * targets; the full entries remain directly below in readable cards.
  *
  * The ribbon is the page's identity move: the moment a visitor opens
  * /history they see it's a timeline, not an essay.
@@ -113,12 +113,10 @@ export default function HistoryTimeline() {
           const era = eraForYear(e._y);
           const isMoment = e.kind === "moment";
           return (
-            <a
+            <span
               key={e.slug}
-              href={`#h-${e.slug}`}
-              aria-label={`${e.title} (${e._y})`}
-              title={`${e.year}: ${e.title}`}
-              className="group absolute"
+              aria-hidden
+              className="absolute"
               style={{
                 left: `${pct(e._y)}%`,
                 top: 4,
@@ -129,7 +127,7 @@ export default function HistoryTimeline() {
             >
               <span
                 aria-hidden
-                className="block h-full w-[2px] mx-auto rounded-full transition-transform group-hover:scale-y-110"
+                className="mx-auto block h-full w-[2px] rounded-full"
                 style={{
                   background: era.color,
                   boxShadow: `0 0 6px color-mix(in srgb, ${era.color} 55%, transparent)`,
@@ -146,7 +144,7 @@ export default function HistoryTimeline() {
                   }}
                 />
               )}
-            </a>
+            </span>
           );
         })}
 

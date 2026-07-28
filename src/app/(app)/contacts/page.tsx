@@ -55,8 +55,8 @@ export default function ContactsPage() {
           className="text-[15px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Search for a service, or scan by what you need. Keep the most important
-          numbers on your phone, and reach an emergency line right from the top.
+          Search for a service or browse by what you need. Emergency lines stay
+          at the top.
         </p>
       </header>
 

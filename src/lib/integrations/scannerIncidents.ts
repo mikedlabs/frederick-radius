@@ -30,6 +30,9 @@ const DIRECT_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** Lagged public fallback (UMD news-apps RSS mirror), only if the direct page
  *  is unreachable. */
 const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
+const DIRECT_PAGE_MARKER_RE = /\bLatest Incidents\s*:/i;
+const DIRECT_EMPTY_MARKER_RE =
+  /\bNew incident log started\.\s*This will start populating soon\./i;
 
 export type ScannerIncident = PublicIncident & {
   /** LATEST dispatch post for this call (ISO) — drives freshness sort and the
@@ -41,6 +44,18 @@ export type ScannerIncident = PublicIncident & {
   /** How many dispatch posts this call has produced (>=1). A growing count is
    *  the honest, unit-free signal that a call is active and escalating. */
   updates: number;
+};
+
+export type ScannerFeedSource = "direct" | "slack" | "rss";
+
+export type ScannerIncidentsResult = {
+  data: ScannerIncident[];
+  /** True only when a source returned its expected, parseable shape. */
+  available: boolean;
+  source?: ScannerFeedSource;
+  /** Provider event time or HTTP response time; see `asOfBasis`. */
+  asOf?: string;
+  asOfBasis?: "provider" | "retrieval";
 };
 
 /** One parsed post plus its wall-clock time, before we fold it into a call. */
@@ -147,15 +162,49 @@ function lineFromMessage(m: SlackMessage): string | null {
   return cands.find((s) => s.length > 0) ?? null;
 }
 
-async function fetchFromSlack(): Promise<ScannerIncident[]> {
+function responseDate(res: Response): string | undefined {
+  const raw = res.headers.get("date");
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+}
+
+function newestIncidentAt(incidents: readonly ScannerIncident[]): string | undefined {
+  return incidents
+    .map((incident) => incident.at)
+    .filter((value) => Number.isFinite(Date.parse(value)))
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0];
+}
+
+function successfulScannerResult(
+  source: ScannerFeedSource,
+  data: ScannerIncident[],
+  retrievedAt?: string,
+): ScannerIncidentsResult {
+  const providerAsOf = newestIncidentAt(data);
+  return {
+    data,
+    available: true,
+    source,
+    ...(retrievedAt
+      ? { asOf: retrievedAt, asOfBasis: "retrieval" as const }
+      : providerAsOf
+        ? { asOf: providerAsOf, asOfBasis: "provider" as const }
+        : {}),
+  };
+}
+
+async function fetchFromSlack(): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(
       `https://slack.com/api/conversations.history?channel=${encodeURIComponent(channel())}&limit=80`,
       { headers: { Authorization: `Bearer ${token()}` }, next: { revalidate: 60 } },
     );
-    if (!res.ok) return [];
+    if (!res.ok) return { data: [], available: false, source: "slack" };
     const data = (await res.json()) as { ok?: boolean; messages?: SlackMessage[] };
-    if (!data.ok || !Array.isArray(data.messages)) return [];
+    if (!data.ok || !Array.isArray(data.messages)) {
+      return { data: [], available: false, source: "slack" };
+    }
 
     const entries: IncidentEntry[] = [];
     for (const m of data.messages) {
@@ -169,9 +218,9 @@ async function fetchFromSlack(): Promise<ScannerIncident[]> {
       if (!inc) continue;
       entries.push({ inc, atMs });
     }
-    return aggregate(entries);
+    return successfulScannerResult("slack", aggregate(entries), responseDate(res));
   } catch {
-    return [];
+    return { data: [], available: false, source: "slack" };
   }
 }
 
@@ -195,14 +244,16 @@ function decodeEntities(s: string): string {
  * description = "LOCATION, Bldg:… Radio: 9C Units: E31". We split those into
  * the parts the shared allowlist expects, then classify.
  */
-async function fetchFromRss(): Promise<ScannerIncident[]> {
+async function fetchFromRss(): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(RSS_URL, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
+    if (!res.ok) return { data: [], available: false, source: "rss" };
     const xml = await res.text();
+    if (!/<(?:rss|feed)\b/i.test(xml)) {
+      return { data: [], available: false, source: "rss" };
+    }
     const items = xml.split(/<item[\s>]/i).slice(1);
 
-    const now = Date.now();
     const entries: IncidentEntry[] = [];
     for (const chunk of items) {
       const title = rssTag(chunk, "title");
@@ -223,13 +274,13 @@ async function fetchFromRss(): Promise<ScannerIncident[]> {
       const inc = classifyPublicIncident(type, location, time);
       if (!inc) continue;
 
-      const parsed = pub ? Date.parse(pub) : now;
-      const atMs = Number.isFinite(parsed) ? parsed : now;
+      const atMs = pub ? Date.parse(pub) : NaN;
+      if (!Number.isFinite(atMs)) continue;
       entries.push({ inc, atMs });
     }
-    return aggregate(entries);
+    return successfulScannerResult("rss", aggregate(entries), responseDate(res));
   } catch {
-    return [];
+    return { data: [], available: false, source: "rss" };
   }
 }
 
@@ -256,15 +307,16 @@ function directTimestamp(line: string, clock: string): number | null {
  * unreachable — so a real fetch failure falls back, but a genuinely quiet
  * window doesn't show stale data.
  */
-async function fetchFromDirect(): Promise<ScannerIncident[] | null> {
+async function fetchFromDirect(): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(DIRECT_URL, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
       next: { revalidate: 60 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { data: [], available: false, source: "direct" };
     const html = await res.text();
-    const lines = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    const paragraphMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+    const lines = paragraphMatches
       .map((m) =>
         m[1]
           .replace(/<[^>]+>/g, " ")
@@ -275,29 +327,44 @@ async function fetchFromDirect(): Promise<ScannerIncident[] | null> {
       )
       .filter(Boolean)
       .slice(0, 120); // newest-first; only the recent head matters
+    const hasDispatchLine = lines.some(
+      (line) =>
+        parseIncidentLine(line) !== null &&
+        /\bposted\s+\d{1,2}\/\d{1,2}\/\d{4}\b/i.test(line),
+    );
+    const hasValidEmptyBoard =
+      DIRECT_PAGE_MARKER_RE.test(html) &&
+      DIRECT_EMPTY_MARKER_RE.test(html);
+    // The direct endpoint occasionally answers 200 with a generic HTML error
+    // page. A paragraph alone is not evidence that the dispatch board loaded:
+    // require either a dated dispatch-shaped row or the board's explicit empty
+    // sentinel before suppressing the Slack/RSS fallback.
+    if (!hasDispatchLine && !hasValidEmptyBoard) {
+      return { data: [], available: false, source: "direct" };
+    }
 
-    const now = Date.now();
     const entries: IncidentEntry[] = [];
     for (const line of lines) {
       const inc = publicIncident(line);
       if (!inc) continue;
-      const atMs = directTimestamp(line, inc.time) ?? now;
+      const atMs = directTimestamp(line, inc.time);
+      if (atMs === null) continue;
       entries.push({ inc, atMs });
     }
-    return aggregate(entries);
+    return successfulScannerResult("direct", aggregate(entries), responseDate(res));
   } catch {
-    return null;
+    return { data: [], available: false, source: "direct" };
   }
 }
 
 /** Live from frederickscanner.com directly; a configured Slack token or the
  *  lagged RSS mirror only stand in if the direct page is unreachable. */
-async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
+export async function loadScannerIncidentsResult(): Promise<ScannerIncidentsResult> {
   const direct = await fetchFromDirect();
-  if (direct !== null) return direct; // fetch worked (even a quiet []), trust it
+  if (direct.available) return direct;
   if (scannerConfigured()) {
     const slack = await fetchFromSlack();
-    if (slack.length > 0) return slack;
+    if (slack.available) return slack;
   }
   return fetchFromRss();
 }
@@ -307,15 +374,25 @@ async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
  * public RSS; a configured Slack token takes over for real-time.
  * (v2: source now RSS-by-default, not Slack-only.)
  */
-export const getScannerIncidents = unstable_cache(
-  fetchScannerIncidents,
-  // v4: window widened 1h → 12h. Bump so the durable cache can't keep serving
-  // the old 1-hour-computed (near-empty) value across the deploy (PR #509).
-  ["scanner-incidents-v4"],
+export const getScannerIncidentsResult = unstable_cache(
+  loadScannerIncidentsResult,
+  // v5 adds explicit availability and rejects malformed 200 responses.
+  ["scanner-incidents-v5"],
   { revalidate: 60, tags: ["scanner-incidents"] },
 );
 
+/** Compatibility wrapper for existing detail surfaces. */
+export async function getScannerIncidents(): Promise<ScannerIncident[]> {
+  return (await getScannerIncidentsResult()).data;
+}
+
 export type GeocodedIncident = ScannerIncident & { lng: number; lat: number };
+
+export type GeocodedScannerIncidentsResult = Omit<ScannerIncidentsResult, "data"> & {
+  data: GeocodedIncident[];
+  rawCount: number;
+  geocodedCount: number;
+};
 
 /**
  * Recent public incidents that resolved to a real in-county coordinate — the
@@ -324,9 +401,17 @@ export type GeocodedIncident = ScannerIncident & { lng: number; lat: number };
  * the first hit and an unresolvable block simply gets no pin (never a wrong
  * one). Capped per call so a cold cache can't fan out unboundedly.
  */
-export async function getGeocodedScannerIncidents(): Promise<GeocodedIncident[]> {
-  const incidents = await getScannerIncidents();
-  if (incidents.length === 0) return [];
+export async function getGeocodedScannerIncidentsResult(): Promise<GeocodedScannerIncidentsResult> {
+  const result = await getScannerIncidentsResult();
+  const incidents = result.data;
+  if (incidents.length === 0) {
+    return {
+      ...result,
+      data: [],
+      rawCount: 0,
+      geocodedCount: 0,
+    };
+  }
 
   const out: GeocodedIncident[] = [];
   await Promise.all(
@@ -338,5 +423,15 @@ export async function getGeocodedScannerIncidents(): Promise<GeocodedIncident[]>
     }),
   );
   out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  return out;
+  return {
+    ...result,
+    data: out,
+    rawCount: incidents.length,
+    geocodedCount: out.length,
+  };
+}
+
+/** Compatibility wrapper for map and Pulse consumers. */
+export async function getGeocodedScannerIncidents(): Promise<GeocodedIncident[]> {
+  return (await getGeocodedScannerIncidentsResult()).data;
 }

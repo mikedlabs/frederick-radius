@@ -374,8 +374,8 @@ export default function WantAnswerPanel({
           ) : (
             <p className="px-4 pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {answer.mayAssertNoneOpen
-                ? "Nothing’s open for this right now."
-                : "None of these have hours we can confirm right now."}
+                ? "No matching place is open right now."
+                : "No matching place is confirmed open right now."}
               {answer.later[0] ? ` Earliest: ${answer.later[0].name}, ${answer.later[0].fact.replace(/^Opens /, "").toLowerCase()}.` : ""}
             </p>
           )}

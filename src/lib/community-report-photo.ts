@@ -18,12 +18,25 @@ export function isManagedCommunityReportPhoto(value: string | null | undefined):
   }
 }
 
-/** Best-effort removal used before deleting the corresponding database row. */
-export async function deleteCommunityReportPhoto(value: string | null | undefined): Promise<boolean> {
+const BLOB_DELETE_TIMEOUT_MS = 5_000;
+
+/** Best-effort removal after an expired report row has been deleted. The
+ * request is abortable so retention cannot lose its final audit-heartbeat
+ * headroom to a stalled Blob API call. */
+export async function deleteCommunityReportPhoto(
+  value: string | null | undefined,
+  timeoutMs = BLOB_DELETE_TIMEOUT_MS,
+): Promise<boolean> {
   if (!isManagedCommunityReportPhoto(value)) return true;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
   try {
-    await del(value);
+    const boundedTimeoutMs =
+      Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? Math.min(Math.floor(timeoutMs), BLOB_DELETE_TIMEOUT_MS)
+        : BLOB_DELETE_TIMEOUT_MS;
+    await del(value, {
+      abortSignal: AbortSignal.timeout(boundedTimeoutMs),
+    });
     return true;
   } catch (error) {
     console.warn(

@@ -28,7 +28,7 @@ export default function PlaceDescriptionCredit({
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-1 inline-flex items-center gap-1 text-xs underline-offset-2 hover:underline"
+      className="inline-flex min-h-11 items-center gap-1 text-xs underline-offset-2 hover:underline"
       style={{ color: "var(--app-ink-3)" }}
     >
       {label}

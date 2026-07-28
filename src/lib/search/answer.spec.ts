@@ -20,6 +20,9 @@ describe("primaryAnswerFor", () => {
     const a = primaryAnswerFor("what's open right now");
     expect(a?.key).toBe("open-now");
     expect(a?.href).toBe("/open-now");
+    expect(a?.kicker).toBe(
+      "See confirmed-open places across the county.",
+    );
   });
 
   it("does not treat 'open mic' as an open-now query", () => {

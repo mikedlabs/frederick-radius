@@ -19,8 +19,10 @@
  */
 import { writeFileSync } from "node:fs";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
+import { mergeClientCommerceLinks } from "./lib/client-commerce-links";
 
 const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
 const HOURS_OUT = new URL("../src/data/places-client-hours.json", import.meta.url).pathname;
@@ -44,7 +46,12 @@ const slim = publicPlaces().map((p) => {
     first_seen_at?: unknown;
     hours_source?: unknown;
     open_status?: unknown;
+    commerce_links?: unknown;
   };
+  const commerceLinks = mergeClientCommerceLinks(
+    d.commerce_links,
+    businessInfoCommerceLinks(d.slug),
+  );
   // Keep google_photo_url (the single hero); drop the heavy arrays /
   // detail-only text the Search & Saved cards never render.
   //
@@ -85,13 +92,19 @@ const slim = publicPlaces().map((p) => {
     first_seen_at: _fsa,
     hours_source: _hs,
     open_status: _os,
+    commerce_links: _cl,
     ...rest
   } = d;
   void _gp; void _gpaHero; void _gpa; void _gh; void _rs; void _ra;
   void _rau; void _rap; void _rgm; void _pgm;
   void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _os;
+  void _cl;
   return {
     ...rest,
+    // The business-info workflow writes through a review PR. Once accepted,
+    // its exact direct links join the client artifact here, so map sheets and
+    // cards can act on them without importing the server-only source file.
+    ...(commerceLinks ? { commerce_links: commerceLinks } : {}),
     // The build only emits a hero after the server-side exact-attribution
     // policy accepts its photo/source pair. Keep that verdict as one byte-ish
     // boolean instead of shipping the full author/profile/report record with

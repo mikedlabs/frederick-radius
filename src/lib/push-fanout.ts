@@ -2,6 +2,7 @@ import "server-only";
 import { asc, eq, inArray, lt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
+import { withStatementTimeout } from "@/lib/db/statement-timeout";
 import { sendPush, configurePush } from "@/lib/push";
 import { shouldDeliver } from "./push-delivery";
 import type { PushPayload } from "./push";
@@ -140,28 +141,31 @@ export const PUSH_LOG_PRUNE_BATCH_SIZE = 5_000;
 export async function prunePushLog(
   days: number,
   batchSize = PUSH_LOG_PRUNE_BATCH_SIZE,
+  statementTimeoutMs?: number,
 ): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const cutoff = new Date(Date.now() - days * 86_400_000);
   const limit = Math.max(1, Math.min(Math.floor(batchSize), PUSH_LOG_PRUNE_BATCH_SIZE));
   try {
-    const doomed = db
-      .select({ id: push_log.id })
-      .from(push_log)
-      .where(lt(push_log.sent_at, cutoff))
-      .orderBy(asc(push_log.sent_at))
-      .limit(limit);
-    const deleted = await db
-      .delete(push_log)
-      .where(inArray(push_log.id, doomed))
-      .returning({ id: push_log.id });
-    return deleted.length;
+    return await withStatementTimeout(db, statementTimeoutMs, async (executor) => {
+      const doomed = executor
+        .select({ id: push_log.id })
+        .from(push_log)
+        .where(lt(push_log.sent_at, cutoff))
+        .orderBy(asc(push_log.sent_at))
+        .limit(limit);
+      const deleted = await executor
+        .delete(push_log)
+        .where(inArray(push_log.id, doomed))
+        .returning({ id: push_log.id });
+      return deleted.length;
+    });
   } catch (err) {
     console.error(
       "[push-fanout] prune failed:",
       err instanceof Error ? err.message : err,
     );
-    return 0;
+    throw err;
   }
 }

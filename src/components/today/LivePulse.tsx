@@ -2,9 +2,16 @@ import { Activity, AlertTriangle, Zap, Bus, Construction, School, ChevronRight, 
 import Link from "next/link";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
-import { getFcpsAlerts } from "@/lib/integrations/fcps";
+import {
+  currentFcpsOperationsNotices,
+  getFcpsAlerts,
+} from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
-import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
+import {
+  getPulsePointIncidents,
+  isPulsePointAlert,
+  isPulsePointNotable,
+} from "@/lib/integrations/pulsepoint";
 
 export default async function LivePulse() {
   const [incidents, outages, fcps, fixit, safety] = await Promise.all([
@@ -24,13 +31,20 @@ export default async function LivePulse() {
     detail?: string;
   }> = [];
 
-  // Active fire / rescue (PulsePoint scanner) — most immediately relevant
-  if (safety.length > 0) {
-    const top = safety[0];
+  // The Today briefing promotes meaningful fire/rescue activity, not every
+  // dispatched service call. Routine alarms, lockouts, and public assists are
+  // still available in the full Pulse detail.
+  const severeSafety = safety.filter(isPulsePointAlert);
+  const notableSafety = safety.filter(
+    (incident) => isPulsePointNotable(incident) && !isPulsePointAlert(incident),
+  );
+  const promotedSafety = [...severeSafety, ...notableSafety];
+  if (promotedSafety.length > 0) {
+    const top = promotedSafety[0];
     items.push({
       icon: Siren,
-      color: "var(--app-danger)",
-      label: `${safety.length} active fire/rescue call${safety.length === 1 ? "" : "s"}`,
+      color: severeSafety.length > 0 ? "var(--app-danger)" : "var(--app-warning)",
+      label: `${promotedSafety.length} active fire/rescue ${promotedSafety.length === 1 ? "call" : "calls"}`,
       value: `${top.type} · ${top.address}`,
       detail: "PulsePoint · live dispatch",
       href: "/pulse?open=safety",
@@ -38,7 +52,12 @@ export default async function LivePulse() {
   }
 
   // Schools — most urgent if there's a closure/delay
-  const closure = fcps.find((a) => a.status === "closed" || a.status === "delayed" || a.status === "early_dismissal");
+  const closure = currentFcpsOperationsNotices(fcps).find(
+    (alert) =>
+      alert.status === "closed" ||
+      alert.status === "delayed" ||
+      alert.status === "early_dismissal",
+  );
   if (closure) {
     items.push({
       icon: School,

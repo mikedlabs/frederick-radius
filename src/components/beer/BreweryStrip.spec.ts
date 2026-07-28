@@ -10,7 +10,9 @@ describe("BreweryStrip", () => {
       createElement(BreweryStrip, { photos: {} }),
     );
 
-    expect(html.match(/href="\/places\//g)).toHaveLength(BREWERIES.length);
+    // Each card exposes the photo and the detail copy as separate links so
+    // Google attribution never becomes an invalid nested anchor.
+    expect(html.match(/href="\/places\//g)).toHaveLength(BREWERIES.length * 2);
     expect(html).toContain("A downtown brewery whose house catalog moves");
     expect(html).toContain("View taproom details");
     expect(html).not.toContain('target="_blank"');

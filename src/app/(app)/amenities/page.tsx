@@ -289,7 +289,7 @@ export default async function AmenitiesPage({
         </p>
         <Link
           href="/submit/place"
-          className="tap-44-y shrink-0 text-[12px] font-semibold"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-[12px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
           Add it

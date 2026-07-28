@@ -2,15 +2,18 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Copy, PenLine } from "lucide-react";
 import { PLACES } from "@/data/places";
-import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
+import { getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
+import PLACES_CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import {
   getAnomalies,
+  getFeedSnapshotStorageTelemetry,
   getSnapshots,
   hydrateSnapshots,
 } from "@/lib/integrations/feed-snapshot";
@@ -18,6 +21,17 @@ import { getDriftStats, getDrift, getDecisions as getDriftDecisions } from "@/li
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
+import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
+import { isGooglePlaceId } from "@/lib/provenance";
+import { getSourceHealthLedger } from "@/lib/quality/source-ledger.server";
+import {
+  buildRuntimeProbeEvidence,
+  sourceLedgerNeedsAction,
+} from "@/lib/quality/source-ledger";
+import {
+  FeedSnapshotStorage,
+  SourceHealthLedger,
+} from "@/components/admin/SourceHealthLedger";
 import {
   AdminShell,
   Section,
@@ -93,8 +107,6 @@ function sweepAgeDays(lastSweepAt: string | null | undefined): number | null {
 }
 
 async function Board() {
-  const all = rankPlaces({});
-  const coverage = hoursCoverage(all);
   const folded = Object.entries(DEDUP).filter(([s, v]) => v.canonical !== s).length;
   const clusters = new Set(Object.values(DEDUP).map((v) => v.canonical)).size;
   // Hydrate the in-memory rolling buffer from Postgres BEFORE the
@@ -104,7 +116,11 @@ async function Board() {
   // No-op when DATABASE_URL is unset (the buffer is the source of
   // truth in dev).
   await hydrateSnapshots();
-  await getLiveEvents(60).catch(() => null);
+  const liveCheck = await getLiveEvents(60).catch(() => null);
+  const liveCheckedAt = new Date().toISOString();
+  const currentFeedEvidence = liveCheck
+    ? buildRuntimeProbeEvidence(liveCheck, liveCheckedAt)
+    : [];
   const feedMetrics = consumeFeedMetrics();
   const anomalies = getAnomalies();
   const curatedAnomalies = curatedFreshnessAnomalies();
@@ -140,21 +156,38 @@ async function Board() {
   const feeds = feedStatuses();
   const dark = darkFeedCount();
 
-  // Geocode-failure queue (obs-3). The ingest pipeline logs every location
-  // it could not parse/geocode to `unparseable_locations`, but nothing read
-  // it — failures accumulated invisibly. Fail-soft to [] without a DB.
-  const unparseable = await getUnparseableLocationSummary();
+  // These operator-only database reads are independent. Run them together so
+  // the source ledger and bounded storage telemetry do not extend the page by
+  // the sum of each query.
+  const [unparseable, ingestRuns, sourceLedger, snapshotStorage] =
+    await Promise.all([
+      getUnparseableLocationSummary(),
+      getRecentIngestRuns(),
+      getSourceHealthLedger({ currentEvidence: currentFeedEvidence }),
+      getFeedSnapshotStorageTelemetry(),
+    ]);
   const unparseableTotal = unparseable.reduce((a, r) => a + r.count, 0);
-
-  // Ingest-run telemetry (obs-2): the most recent run per cron-driven source,
-  // so a silent partial-failure ingest is visible. Staleness is computed in the
-  // loader (keeps this server render pure). Fail-soft to [] without a DB.
-  const ingestRuns = await getRecentIngestRuns();
+  const sourceLedgerProblems = sourceLedger.filter(sourceLedgerNeedsAction);
 
   // Trust layer (Phase 1): provenance coverage, the confidence ladder, and
   // the stale open-assertion count that the freshness flip would blank.
   const trust = computePlaceTrustReport();
   const conf = trust.confidence;
+  const googleBackedSlugs = new Set(
+    (
+      PLACES_CLIENT_RAW as Array<{
+        slug: string;
+        google_place_id?: string;
+      }>
+    )
+      .filter((place) => isGooglePlaceId(place.google_place_id))
+      .map((place) => place.slug),
+  );
+  const hoursArtifact = summarizeHoursRefreshArtifact(
+    HOURS_REFRESH_RAW as Record<string, unknown>,
+    googleBackedSlugs,
+  );
+  const hoursCycle = hoursArtifact.cycle;
 
   // THE ONE NUMBER — the nightly cron collapses every gate (catalog gates +
   // the end-to-end tripwires: photo rot, transit zero-routes, empty event
@@ -169,7 +202,16 @@ async function Board() {
     ["Open assertions", String(trust.open_assertions.asserting), `${trust.open_assertions.stale_or_missing} stale, the freshness flip's blast radius`],
     ["Places (raw)", String(PLACES.length), ""],
     ["Duplicate clusters", String(clusters), `${folded} records fold`],
-    ["Hours coverage", `${(coverage * 100).toFixed(1)}%`, "target 60%, gate hides Open-now below it"],
+    [
+      "Current fresh hours",
+      `${trust.fresh_hours.fresh_count} / ${trust.fresh_hours.total_count} (${trust.fresh_hours.coverage_pct}%)`,
+      `target ${trust.fresh_hours.target_count} (${trust.fresh_hours.target_pct}%); Open Now ${trust.fresh_hours.open_now_eligible ? "eligible" : "unavailable"}`,
+    ],
+    [
+      "Hours refresh cycle",
+      `${hoursCycle.completedDays} / ${hoursCycle.days} buckets`,
+      `${hoursCycle.state}; ${hoursArtifact.freshRefreshRows} of ${hoursArtifact.expectedGoogleBackedPlaces} Google-backed places refreshed within policy`,
+    ],
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
     ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE === "1" ? "on" : "off", "default off = today's production"],
@@ -210,16 +252,45 @@ async function Board() {
       fix: "See Ingest runs. A dead cron means that source's events go quietly stale.",
     });
   }
+  if (sourceLedgerProblems.length > 0) {
+    actions.push({
+      label: `${sourceLedgerProblems.length} source ledger entr${sourceLedgerProblems.length === 1 ? "y needs" : "ies need"} attention`,
+      fix: "See Source health ledger. It separates configuration, the latest attempt, publication, and freshness.",
+    });
+  }
+  if (!snapshotStorage) {
+    actions.push({
+      label: "Snapshot storage telemetry is unavailable",
+      fix: "Check the production database connection and the bounded feed-snapshot telemetry query before treating storage as healthy.",
+    });
+  } else if (snapshotStorage.duplicateCandidates > 0) {
+    actions.push({
+      label: `${snapshotStorage.duplicateCountCapped ? "At least " : ""}${snapshotStorage.duplicateCandidates.toLocaleString()} completed-day snapshots can be compacted`,
+      fix: "Review Snapshot storage, then use the dry-run-first bounded maintenance command. It preserves one row per source and UTC day.",
+    });
+  }
   if (anomalies.length > 0) {
     actions.push({
       label: `${anomalies.length} feed anomal${anomalies.length === 1 ? "y" : "ies"} flagged`,
       fix: "Compare the flagged sources against the Distribution snapshot before trusting the batch.",
     });
   }
-  if (hoursSnapshotAnomaly) {
+  if (trust.fresh_hours.below_gate) {
     actions.push({
-      label: "The committed open-now hours snapshot is empty or stale",
+      label: `Only ${trust.fresh_hours.fresh_count} of ${trust.fresh_hours.total_count} public places have current verified hours`,
+      fix: hoursSnapshotAnomaly?.detail ??
+        `Open Now stays unavailable until ${trust.fresh_hours.target_count} places (${trust.fresh_hours.target_pct}%) have fresh schedules.`,
+    });
+  } else if (hoursSnapshotAnomaly) {
+    actions.push({
+      label: "The committed hours snapshot is empty or stale",
       fix: hoursSnapshotAnomaly.detail,
+    });
+  }
+  if (hoursCycle.state === "stalled") {
+    actions.push({
+      label: `The hours refresh cycle is stalled at ${hoursCycle.completedDays} of ${hoursCycle.days} buckets`,
+      fix: `Missing cycle days: ${hoursCycle.missingDays.join(", ") || "none"}. Underfilled cycle days: ${hoursCycle.underfilledDays.join(", ") || "none"}. Check the Vercel hours-refresh runs before the next data-steward pull.`,
     });
   }
   if (flaggedCoords > 0) {
@@ -278,6 +349,9 @@ async function Board() {
           </div>
         )}
       </Section>
+
+      <SourceHealthLedger rows={sourceLedger} />
+      <FeedSnapshotStorage telemetry={snapshotStorage} />
 
       {/* ── Tripwires — the one number. Written nightly by the data-health
           cron; red means a politely-degrading failure class (photo rot,
@@ -392,6 +466,39 @@ async function Board() {
             ))}
           </TBody>
         </Table>
+        <Disclosure
+          summary={`Hours cycle detail · ${hoursCycle.completedDays}/${hoursCycle.days} buckets · ${hoursCycle.state}`}
+        >
+          <Table>
+            <THead>
+              <Th align="right">Cycle day</Th>
+              <Th align="right">Expected</Th>
+              <Th align="right">Refreshed</Th>
+              <Th align="right">Schedules</Th>
+              <Th>Status</Th>
+            </THead>
+            <TBody>
+              {hoursCycle.buckets.map((bucket) => (
+                <Tr key={bucket.cycleDay}>
+                  <Td align="right" mono>{bucket.cycleDay}</Td>
+                  <Td align="right" mono>{bucket.expected}</Td>
+                  <Td align="right" mono>{bucket.refreshed}</Td>
+                  <Td align="right" mono>{bucket.withSchedule}</Td>
+                  <Td
+                    semibold
+                    tone={bucket.complete ? "positive" : "warning"}
+                  >
+                    {bucket.complete
+                      ? "Minimum met"
+                      : bucket.refreshed > 0
+                        ? "Underfilled"
+                        : "Waiting"}
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+        </Disclosure>
       </section>
 
       <Section
@@ -670,7 +777,10 @@ async function Board() {
             </THead>
             <TBody>
               {ingestRuns.map((r) => {
-                const bad = r.status === "error" || r.recordsFailed > 0 || r.stale;
+                const bad =
+                  r.status !== "ok" ||
+                  r.recordsFailed > 0 ||
+                  r.stale;
                 return (
                   <Tr key={r.source}>
                     <Td semibold>{r.source}</Td>
@@ -693,8 +803,9 @@ async function Board() {
           <>
             Locations the ingest pipeline could not parse or geocode, logged to{" "}
             <code>unparseable_locations</code> per source. The event still ships
-            (never dropped), but it lands on a feed-default centroid until the
-            address is fixed upstream or a parser rule is added.
+            in discovery. Surfaces may place it at the municipality level, but
+            Radius must not claim a precise venue or distance until the address
+            is fixed upstream or a parser rule is added.
           </>
         }
       >

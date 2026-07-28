@@ -53,7 +53,9 @@ function trustedEndMs(e: { starts_at: string; ends_at?: string }): number {
  * today" but let ALREADY-ENDED afternoon events keep ranking ahead of a
  * live evening draw (the 7:55 PM audit render led with 2-4 PM library
  * crafts while a Keys game was live). This is the shared floor:
- *   - all-day events end with their Eastern calendar day, never mid-day;
+ *   - all-day events with a valid exclusive end remain current until that
+ *     instant (including every day of a multi-day span); legacy rows without a
+ *     usable end fall back to their Eastern start day;
  *   - a timed event ends at its trustedEndMs (real end, capped at 8h), so a
  *     noon show with an end-of-day stamp finally demotes to "Earlier today"
  *     instead of riding the live rail until midnight.
@@ -63,6 +65,11 @@ export function isEventEnded(
   now: Date,
 ): boolean {
   if (e.is_all_day) {
+    const start = Date.parse(e.starts_at);
+    const end = e.ends_at ? Date.parse(e.ends_at) : NaN;
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      return now.getTime() >= end;
+    }
     return easternDayKey(new Date(e.starts_at)) < easternDayKey(now);
   }
   return trustedEndMs(e) < now.getTime();

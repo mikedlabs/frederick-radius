@@ -1219,6 +1219,22 @@
     "sapporo-ii-japanese-restaurant": {
       "name": "Sapporo II Japanese Restaurant"
     },
+    "7th-sister": {
+      "category": "restaurant",
+      "subcategories": [
+        "bar"
+      ],
+      "commerce_links": [
+        {
+          "provider": "website",
+          "type": "reservation",
+          "url": "https://7thsister.com/reservations",
+          "source": "imported",
+          "last_verified_at": "2026-05-31T18:17:34.525Z",
+          "notes": "The business publishes this link on its official website."
+        }
+      ]
+    },
     "rides-for-good": {
       "short_blurb": "This volunteer program matches Frederick County residents who need rides with community volunteers for essential appointments and services."
     }

@@ -13,24 +13,34 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 
-/** Insert a `running` row; returns its id (or null when no DB / on error). */
-export async function startIngestRun(sourceSlug: string): Promise<string | null> {
+async function insertIngestRun(sourceSlug: string): Promise<string | null> {
   const sql = getSql();
   if (!sql) return null;
+  const rows = (await sql`
+    INSERT INTO ingest_runs (source_slug, started_at, status)
+    VALUES (${sourceSlug}, now(), 'running')
+    RETURNING id
+  `) as unknown as Array<{ id: string }>;
+  return rows[0]?.id ?? null;
+}
+
+/** Insert a `running` row; returns its id (or null when no DB / on error). */
+export async function startIngestRun(sourceSlug: string): Promise<string | null> {
   try {
-    const rows = (await sql`
-      INSERT INTO ingest_runs (source_slug, started_at, status)
-      VALUES (${sourceSlug}, now(), 'running')
-      RETURNING id
-    `) as unknown as Array<{ id: string }>;
-    return rows[0]?.id ?? null;
+    return await insertIngestRun(sourceSlug);
   } catch {
     return null;
   }
 }
 
+/** Phase-worker variant: database errors reject instead of looking like a
+ * successful telemetry no-op. */
+export function startIngestRunStrict(sourceSlug: string): Promise<string | null> {
+  return insertIngestRun(sourceSlug);
+}
+
 export type IngestRunResult = {
-  status: "ok" | "error";
+  status: "ok" | "partial" | "error";
   records_in?: number;
   records_upserted?: number;
   records_failed?: number;
@@ -38,25 +48,41 @@ export type IngestRunResult = {
 };
 
 /** Stamp a run's completion (status + counts + error). No-op without a runId. */
-export async function finishIngestRun(
+async function updateIngestRun(
   runId: string | null,
   result: IngestRunResult,
 ): Promise<void> {
   if (!runId) return;
   const sql = getSql();
   if (!sql) return;
+  await sql`
+    UPDATE ingest_runs
+    SET ended_at = now(),
+        status = ${result.status},
+        records_in = ${result.records_in ?? 0},
+        records_upserted = ${result.records_upserted ?? 0},
+        records_failed = ${result.records_failed ?? 0},
+        error = ${result.error ?? null}
+    WHERE id = ${runId}
+  `;
+}
+
+export async function finishIngestRun(
+  runId: string | null,
+  result: IngestRunResult,
+): Promise<void> {
   try {
-    await sql`
-      UPDATE ingest_runs
-      SET ended_at = now(),
-          status = ${result.status},
-          records_in = ${result.records_in ?? 0},
-          records_upserted = ${result.records_upserted ?? 0},
-          records_failed = ${result.records_failed ?? 0},
-          error = ${result.error ?? null}
-      WHERE id = ${runId}
-    `;
+    await updateIngestRun(runId, result);
   } catch {
     /* telemetry only — never surface to the ingest */
   }
+}
+
+/** Phase-worker variant: a failed completion write must reject so the route
+ * cannot claim that its heartbeat was safely recorded. */
+export function finishIngestRunStrict(
+  runId: string | null,
+  result: IngestRunResult,
+): Promise<void> {
+  return updateIngestRun(runId, result);
 }

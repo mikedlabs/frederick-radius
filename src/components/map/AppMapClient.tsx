@@ -82,11 +82,14 @@ export default function AppMapClient({
   initialCenter,
   initialZoom,
   initialBounds,
+  initialBoundsPadding,
   cameraMinZoom,
   cameraMaxBounds,
+  compactSubjectMap = false,
   initialAmenityGroups,
   dock,
   activeSlugs = null,
+  showSearchControls = true,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -150,9 +153,17 @@ export default function AppMapClient({
   /** Optional first-paint extent. The main map uses this for a responsive
    *  whole-county opening instead of guessing one zoom for every screen. */
   initialBounds?: [[number, number], [number, number]];
+  /** Padding around a supplied first-paint extent. Subject maps do not have
+   *  the browse dock, so they can use the map area more efficiently. */
+  initialBoundsPadding?:
+    | number
+    | { top: number; right: number; bottom: number; left: number };
   /** Browse-only camera constraints; embeds keep AppMap's tighter defaults. */
   cameraMinZoom?: number;
   cameraMaxBounds?: [[number, number], [number, number]];
+  /** A small, single-subject overview (for example, every brewery). Pins are
+   *  clustered at county zoom, remain tappable, and skip irrelevant controls. */
+  compactSubjectMap?: boolean;
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
@@ -162,6 +173,10 @@ export default function AppMapClient({
   /** Slugs matching the active What/Open-now filter — the map fades the
    *  rest instead of removing them. Forwarded to AppMap. */
   activeSlugs?: string[] | null;
+  /** Dock-less embeds normally inherit the full map search deck. Set false
+   *  when the surrounding page already defines the map's single purpose
+   *  (for example, breweries or trails). Locate and camera controls remain. */
+  showSearchControls?: boolean;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
@@ -196,11 +211,14 @@ export default function AppMapClient({
           initialCenter={initialCenter}
           initialZoom={initialZoom}
           initialBounds={initialBounds}
+          initialBoundsPadding={initialBoundsPadding}
           cameraMinZoom={cameraMinZoom}
           cameraMaxBounds={cameraMaxBounds}
+          compactSubjectMap={compactSubjectMap}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
           activeSlugs={activeSlugs}
+          showSearchControls={showSearchControls}
         />
       </div>
     );
@@ -208,7 +226,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
     </div>
   );
 }
