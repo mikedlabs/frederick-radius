@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { gte } from "drizzle-orm";
 import { getDb, getSql } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
+import type { PaidUpstream } from "@/lib/usage-meter";
 import {
   AdminShell,
   SectionLabel,
@@ -38,13 +39,16 @@ export const dynamic = "force-dynamic";
 /** Unit-price ESTIMATES per 1,000 calls, in dollars. Update from the provider
  *  pricing pages when they change; the UI labels every figure an estimate. */
 const UPSTREAMS: Array<{
-  key: string;
+  key: PaidUpstream;
   label: string;
   per1000: number;
   note: string;
 }> = [
   { key: "google_photo", label: "Google place photos", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
   { key: "anthropic_ask", label: "Ask Radius AI", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
+  { key: "google_routes_matrix", label: "Google Routes matrix", per1000: 10, note: "Current travel-time calls are 1×1 matrices. Google bills per returned element; traffic-aware drive elements use the Pro SKU, while walk elements can cost less. One-hour cache hits do not increment." },
+  { key: "mapbox_directions", label: "Mapbox walking directions", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
+  { key: "mapbox_matrix", label: "Mapbox Radius matrix", per1000: 2, note: "Counted by destination element, not HTTP request. Each settled Within reach shortlist uses 2–9 elements; traffic results cache for five minutes and walk/bike results for one day." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, note: "After the free tier. Platform caching means real hits run lower than this count." },
   { key: "mapbox_geocode", label: "Mapbox geocoding", per1000: 0.75, note: "Event-address enrichment only. Disabled unless MAPBOX_GEOCODING_ENABLED=1." },
   { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, note: "After the 50k/month free tier; cached for 30 days per location." },
@@ -144,7 +148,7 @@ export default async function CostsAdmin() {
   const controls: Array<{ label: string; ok: boolean; why: string }> = [
     { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
     { label: "Photo blob mirror", ok: Boolean(process.env.BLOB_READ_WRITE_TOKEN), why: "Mirrors each Google photo once so repeat views never re-bill Google." },
-    { label: "Google Places key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Set a hard budget cap + alerts in the Google Cloud console." },
+    { label: "Google Maps key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Places and Routes share this deployment key. Set quota limits and billing alerts in Google Cloud." },
     { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
     { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },
     { label: "Hybrid search index", ok: searchDocumentCount > 0, why: searchDocumentCount > 0 ? `${searchDocumentCount.toLocaleString()} local records are available to meaning + exact-match retrieval.` : "Apply migration 0025, then run npm run build:radius-search once." },
@@ -263,12 +267,14 @@ export default async function CostsAdmin() {
       </section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Counts are an upper bound on billable calls: platform fetch caching means
-        some metered requests never reach the network. Unit prices are estimates
-        pinned in code (src/app/admin/costs/page.tsx); update them when provider
-        pricing changes. The month projection extends what has already been spent
-        at the median daily rate of the last seven full days, so one spiky day
-        does not distort it.
+        Counts record validated paid fetch attempts. Cache-aware paths exclude
+        cache hits; a few older fetch-cache counters remain an upper bound.
+        Providers can still reject or fail an attempted call, so their consoles
+        remain the billing source of truth. Unit prices are estimates pinned in
+        code (src/app/admin/costs/page.tsx); update them when provider pricing
+        changes. The month projection extends what has already been spent at the
+        median daily rate of the last seven full days, so one spiky day does not
+        distort it.
       </p>
     </AdminShell>
   );

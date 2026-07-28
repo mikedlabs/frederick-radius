@@ -86,3 +86,49 @@ export function finishIngestRunStrict(
 ): Promise<void> {
   return updateIngestRun(runId, result);
 }
+
+/**
+ * Persist one completed failure row per named runtime source.
+ *
+ * Successful event probes already publish a durable `feed_snapshots` row. A
+ * failed source has no snapshot to write, so without this batch the public
+ * ledger can only see its older success and misclassifies the outage as
+ * generic staleness. One INSERT keeps the failure evidence bounded and avoids
+ * turning a broad outage into dozens of sequential database round trips.
+ */
+export async function recordSourceProbeFailuresStrict(
+  sourceSlugs: readonly string[],
+  attemptedAt: string,
+): Promise<number> {
+  const unique = [...new Set(
+    sourceSlugs.map((source) => source.trim()).filter(Boolean),
+  )];
+  if (unique.length === 0) return 0;
+  if (!Number.isFinite(Date.parse(attemptedAt))) {
+    throw new Error("Source probe failure evidence needs a valid timestamp.");
+  }
+  const sql = getSql();
+  if (!sql) return 0;
+  await sql`
+    INSERT INTO ingest_runs (
+      source_slug,
+      started_at,
+      ended_at,
+      status,
+      records_in,
+      records_upserted,
+      records_failed,
+      error
+    )
+    SELECT failed.source_slug,
+           ${attemptedAt}::timestamptz,
+           now(),
+           'error',
+           0,
+           0,
+           1,
+           'The fresh runtime feed check failed.'
+    FROM unnest(${unique}::text[]) AS failed(source_slug)
+  `;
+  return unique.length;
+}

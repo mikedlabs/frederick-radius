@@ -33,6 +33,7 @@ export type PatchFields = {
   /** Human-confirmed contact and location corrections. These fields take
    * precedence over stale scrape data and automated coordinate snapping. */
   address?: string;
+  postal_code?: string;
   city?: string;
   website?: string;
   phone?: string;
@@ -63,6 +64,11 @@ export type PatchFields = {
    *  as closing at 10:00). Provide the COMPLETE corrected week — it replaces
    *  the whole `hours` object, not a single day. */
   hours?: Hours;
+  /** ISO timestamp when the patched schedule itself was checked against a
+   *  first-party source. Required before a manual hours patch may support
+   *  open/closed claims; a general record edit timestamp is not evidence that
+   *  the hours were rechecked. */
+  hours_updated_at?: string;
   /** Curated commerce links (menu / order / reserve / delivery / catering).
    *  Owner- or editor-provided; wins over the legacy flat *_url fields. */
   commerce_links?: CommerceLink[];
@@ -124,8 +130,11 @@ export function patchRecord<T extends { slug: string }>(
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.subcategories) (out as Record<string, unknown>).subcategories = x.subcategories;
-  if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  if (x.short_blurb !== undefined) {
+    (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  }
   if (x.address) (out as Record<string, unknown>).address = x.address;
+  if (x.postal_code) (out as Record<string, unknown>).postal_code = x.postal_code;
   if (x.city) (out as Record<string, unknown>).city = x.city;
   if (x.website) (out as Record<string, unknown>).website = x.website;
   if (x.phone) (out as Record<string, unknown>).phone = x.phone;
@@ -134,7 +143,19 @@ export function patchRecord<T extends { slug: string }>(
   // hours runs here (before applyEnrichment) so the loader's
   // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule
   // over the typo'd Google parse — no change to applyEnrichment needed.
-  if (x.hours) (out as Record<string, unknown>).hours = x.hours;
+  if (x.hours) {
+    (out as Record<string, unknown>).hours = x.hours;
+    if (x.hours_updated_at) {
+      (out as Record<string, unknown>).hours_updated_at = x.hours_updated_at;
+      (out as Record<string, unknown>).hours_verified = true;
+    } else {
+      // The schedule changed, so verification evidence attached to the old
+      // schedule cannot carry forward. Keep the replacement private from
+      // open/closed claims until this exact set of hours is checked.
+      (out as Record<string, unknown>).hours_verified = false;
+      delete (out as Record<string, unknown>).hours_updated_at;
+    }
+  }
   if (x.commerce_links) (out as Record<string, unknown>).commerce_links = x.commerce_links;
   // clearGoogle / clearPhoto are applied in decoratePlace AFTER applyEnrichment
   // (which re-derives google_rating/photo from the raw enrichment, so nulling

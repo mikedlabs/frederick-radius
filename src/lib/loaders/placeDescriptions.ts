@@ -22,6 +22,25 @@ export type PlaceDescriptionEntry = {
 };
 
 const DATA = RAW as Record<string, PlaceDescriptionEntry>;
+const SOURCE_KINDS = new Set<PlaceDescriptionSourceKind>([
+  "business_website",
+  "official_source",
+  "field_note",
+  "radius_editorial",
+]);
+
+function validDate(value?: string): boolean {
+  return Boolean(value && !Number.isNaN(Date.parse(value)));
+}
+
+function validHttpsUrl(value?: string): boolean {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Return only editor-approved, source-backed Radius copy.
@@ -39,8 +58,14 @@ export function approvedPlaceDescription(
   const blurb = cleanFeedText(entry.blurb).trim();
   if (classifyDescription(name, blurb, true) !== "reviewed") return null;
   if (!/[.!?]$/.test(blurb)) return null;
-  if (entry.source.kind !== "radius_editorial" && !entry.source.url) return null;
-  if (!entry.reviewed_at || !entry.reviewer_note?.trim()) return null;
+  if (!entry.source || !SOURCE_KINDS.has(entry.source.kind)) return null;
+  if (
+    entry.source.kind !== "radius_editorial" &&
+    (!validHttpsUrl(entry.source.url) || !validDate(entry.source.fetched_at))
+  ) {
+    return null;
+  }
+  if (!validDate(entry.reviewed_at) || !entry.reviewer_note?.trim()) return null;
 
   return { ...entry, blurb };
 }

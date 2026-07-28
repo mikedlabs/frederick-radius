@@ -70,10 +70,10 @@ export type Event = {
    */
   placement?: "venue" | "geocoded" | "needs_review";
   /**
-   * Canonical source page for a live/aggregated event (the feed item's
-   * own URL). Seed events leave this unset and link to the in-app detail
-   * instead; the detail route surfaces it as an "Official page" link so
-   * a feed event still has provenance and a path back to its organizer.
+   * Canonical source page for an event. Live rows use the feed item's own
+   * URL; curated rows may use a direct organizer page when it corroborates
+   * the specific event. Leave this unset when only a nearby or conflicting
+   * page is available. The detail route surfaces it as an "Official page."
    */
   source_url?: string | null;
   source:
@@ -214,67 +214,6 @@ function aliveAtFiveSeason(): Event[] {
 
 export const EVENTS: Event[] = [
   {
-    slug: "first-friday-june-2026-frederick",
-    title: "First Friday: June Art Walk",
-    description:
-      "Downtown Frederick's monthly evening street festival. Galleries open late, sidewalks programmed with music, restaurants spill onto the patios. The Delaplaine and dozens of N Market shops host the headline openings.",
-    starts_at: iso(at(22, 17, 0)),
-    ends_at: iso(at(22, 21, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "First Friday of every month",
-    venue_name: "Downtown Frederick",
-    address: "N Market St, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4165 },
-    municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-6-12"],
-    is_free: true,
-    organizer: "Downtown Frederick Partnership",
-    source: "dfp",
-    is_verified: true,
-  },
-  {
-    slug: "carroll-creek-color-launch-2026",
-    title: "Color on the Creek: Opening Weekend",
-    description:
-      "The annual sailboat installation returns to Carroll Creek. 100+ illuminated mini sailboats designed by local artists and community groups float the linear park from June to September.",
-    starts_at: iso(at(18, 18, 0)),
-    ends_at: iso(at(20, 22, 0)),
-    timezone: "America/New_York",
-    venue_place_slug: "carroll-creek-linear-park-frederick",
-    venue_name: "Carroll Creek Linear Park",
-    address: "Carroll Creek, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4137 },
-    municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-0-5", "kids-6-12"],
-    is_free: true,
-    organizer: "Color on the Creek",
-    source: "celebrate",
-    is_verified: true,
-  },
-  {
-    slug: "saturday-farmers-market-frederick-2026-05-17",
-    title: "West Frederick Farmers Market",
-    description:
-      "Year-round Saturday market with 60+ vendors: produce, breads, flowers, ferments, and coffee. Rain or shine; pets welcome.",
-    starts_at: iso(at(3, 10, 0)),
-    ends_at: iso(at(3, 13, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "Every Saturday, year-round",
-    venue_name: "Frederick Fairgrounds",
-    address: "797 E Patrick St, Frederick, MD 21701",
-    geom: { lng: -77.3923, lat: 39.4147 },
-    municipality: "frederick",
-    category: "market",
-    audience: ["adults", "kids-0-5", "kids-6-12"],
-    is_free: true,
-    source: "celebrate",
-    is_verified: true,
-  },
-  {
     slug: "great-frederick-fair-2026",
     title: "The Great Frederick Fair",
     description:
@@ -313,6 +252,7 @@ export const EVENTS: Event[] = [
     audience: ["adults", "kids-0-5", "kids-6-12", "groups"],
     is_free: true,
     organizer: "Celebrate Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/in-the-street/",
     source: "celebrate",
     is_verified: true,
   },
@@ -483,27 +423,6 @@ export const EVENTS: Event[] = [
   // Lineup verified May 2026 via maximumcountry.com.
   ...aliveAtFiveSeason(),
   {
-    slug: "fourth-friday-may-2026-frederick",
-    title: "4th Friday Art Walk: Downtown",
-    description:
-      "Late-month gallery + studio walk through Downtown Frederick. Open studios at the Delaplaine, Sky Stage performances, shops open late on N Market and East Patrick.",
-    starts_at: iso(at(8, 17, 0)),
-    ends_at: iso(at(8, 21, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "Last Friday of every month",
-    venue_name: "Downtown Frederick",
-    address: "N Market St, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4165 },
-    municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-6-12"],
-    is_free: true,
-    organizer: "Downtown Frederick Partnership",
-    source: "dfp",
-    is_verified: true,
-  },
-  {
     slug: "frederick-festival-of-the-arts-2026",
     title: "Frederick Festival of the Arts",
     description:
@@ -542,6 +461,7 @@ export const EVENTS: Event[] = [
     audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
     is_free: true,
     organizer: "City of Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/summer-concert-series-twentydollarprophet/",
     source: "celebrate",
     is_verified: true,
   },
@@ -592,6 +512,7 @@ export const EVENTS: Event[] = [
     audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
     is_free: true,
     organizer: "Celebrate Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/fredericks-4th-an-independence-day-celebration-2/",
     source: "celebrate",
     is_verified: true,
   },

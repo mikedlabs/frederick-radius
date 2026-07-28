@@ -348,7 +348,13 @@ describe("askFrederick structured answers", () => {
     expect(result.plan?.stops.length).toBeGreaterThanOrEqual(2);
     expect(result.plan?.stops.every((stop) => stop.href.startsWith("/"))).toBe(true);
     expect(result.plan?.stops.every((stop) => stop.status !== "Check hours")).toBe(true);
-    expect(result.answer).toContain("Hours are not confirmed for every stop");
+    const hasUnconfirmedHours = result.plan?.stops.some(
+      (stop) => stop.status === "Hours unconfirmed",
+    );
+    expect(
+      result.answer?.includes("Hours are not confirmed for every stop") ??
+        false,
+    ).toBe(hasUnconfirmedHours);
   });
 
   it("builds a lower-walking parent draft and labels unconfirmed hours", async () => {

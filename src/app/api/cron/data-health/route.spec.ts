@@ -27,7 +27,13 @@ vi.mock("../../ingest/_auth", () => ({
 vi.mock("@/data/places", () => ({ PLACES: [] }));
 vi.mock("@/data/places-dfp.json", () => ({ default: [] }));
 vi.mock("@/data/places-client.json", () => ({
-  default: [{ slug: "test-place", google_place_id: "ChIJ-test-place" }],
+  default: [{
+    slug: "test-place",
+    name: "Test Place",
+    short_blurb: "",
+    description_reviewed: false,
+    google_place_id: "ChIJ-test-place",
+  }],
 }));
 vi.mock("@/data/places-hours-refresh.json", () => ({ default: {} }));
 vi.mock("@/lib/dedup", () => ({ buildDedup: mocks.buildDedup }));
@@ -110,6 +116,7 @@ describe("GET /api/cron/data-health", () => {
     vi.stubEnv("DATA_RETENTION_PRUNE", "0");
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
+    mocks.classifyDescription.mockReturnValue("none");
     mocks.auditCoordDivergence.mockReturnValue([]);
     mocks.getAnomalies.mockReturnValue([]);
     mocks.hydrateSnapshotsStrict.mockResolvedValue(undefined);
@@ -325,6 +332,25 @@ describe("GET /api/cron/data-health", () => {
       oldest_refresh: "2026-07-27T08:00:00.000Z",
       newest_refresh: "2026-07-27T08:00:00.000Z",
     });
+  });
+
+  it("scores and counts the exact public client catalog", async () => {
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.places).toBe(1);
+    expect(body.copy).toEqual({
+      none: 1,
+      scraped: 0,
+      auto_clean: 0,
+      reviewed: 0,
+    });
+    expect(mocks.classifyDescription).toHaveBeenCalledWith(
+      "Test Place",
+      "",
+      false,
+    );
   });
 
   it("is read-mostly and trusts only a recent completed feed-worker heartbeat", async () => {

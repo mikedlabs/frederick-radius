@@ -19,7 +19,7 @@
  */
 
 import { LIVE_MUSIC_SQUARESPACE_VENUES } from "@/data/live-music-venues";
-import { isNonMusicTitle } from "@/lib/events/live-music";
+import { inferredNonMusicCategory } from "@/lib/events/live-music";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { cleanFeedText } from "@/lib/format/text";
 import { clampDescription } from "@/lib/events/normalize";
@@ -155,7 +155,7 @@ async function fetchVenue(
         // music tonight" (Jul-8 audit). A clearly non-music title gets
         // no category here and falls back to the venue's own category
         // downstream (venueEventToCard).
-        category: isNonMusicTitle(title) ? undefined : "music",
+        category: inferredNonMusicCategory(title) ?? "music",
         source: { url: venue.squarespace, fetchedAt },
       });
     }

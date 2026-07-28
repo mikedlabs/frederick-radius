@@ -19,7 +19,7 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
+import { placeRefreshIdentities } from "@/lib/loaders/placeRefreshIdentities";
 import { getDb } from "@/lib/db/client";
 import { placeHoursRefresh } from "@/lib/db/schema";
 import {
@@ -37,8 +37,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Canonical public targets are verified unique by Google ID before bucketing.
-// Keep headroom so a deterministic slice can never strand the tail forever.
+// Canonical pre-status targets are verified unique by Google ID before
+// bucketing. Keep headroom so a deterministic slice can never strand the tail
+// forever.
 const BATCH_CAP = 400;
 const CONCURRENCY = 5;
 
@@ -93,11 +94,12 @@ export async function GET(request: Request) {
     );
   }
 
-  // Today's slice of the cycle. Source tier is deliberately irrelevant: if a
-  // public record has a Google place ID, the same truth/freshness policy
-  // applies to it. The cap still provides a hard upper bound on paid calls.
+  // Today's slice of the cycle. This provider snapshot is deliberately
+  // upstream of live status and season: a closed or off-season place remains
+  // refreshable, which is how a later reopening is discovered. The cap still
+  // provides a hard upper bound on paid calls.
   const today = Math.floor(Date.now() / 86400000) % HOURS_REFRESH_CYCLE_DAYS;
-  const places = publicPlaces().map((place) => decoratePlace(place));
+  const places = placeRefreshIdentities();
   const placesWithGoogleId = places.filter((place) =>
     Boolean(place.google_place_id),
   );

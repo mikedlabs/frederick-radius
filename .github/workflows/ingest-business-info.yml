@@ -6,7 +6,7 @@ name: Ingest business deep-info
 # Incremental + batched, so it works through the ~600 eligible businesses
 # a chunk at a time and refreshes stale entries.
 #
-# Requires repo secret: ANTHROPIC_API_KEY
+# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
 # Tuning: config/business-info.json
 
 on:
@@ -30,6 +30,7 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    environment: Production
     # Opt the JS actions into Node 24 now (GitHub forces it June 16 2026);
     # clears the Node-20 deprecation warning. Job-level env is valid YAML
     # (unlike the top-level block that broke parsing before).
@@ -40,6 +41,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify extractor secret
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error title=Missing ANTHROPIC_API_KEY::Add the Actions secret to the GitHub Production environment before running first-party copy extraction."
+            exit 1
+          fi
       - run: npm ci
       - name: Install Chromium (for the render fallback on JS-only sites)
         run: npx playwright install --with-deps chromium

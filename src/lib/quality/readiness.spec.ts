@@ -27,6 +27,24 @@ describe("recommendationTier", () => {
     expect(recommendationTier(noCoords).tier).toBe(4);
   });
 
+  it("keeps an intentional civic record with Google's vague service type", () => {
+    expect(
+      tier({
+        source: "discovered",
+        category: "civic",
+        primary_type: "service",
+        address: "300 S Seton Ave",
+        google_photo_url: "senior-center.jpg",
+      }),
+    ).not.toBe(4);
+    expect(
+      tier({
+        source: "dfp",
+        primary_type: "service",
+      }),
+    ).toBe(4);
+  });
+
   it("Tier 3 — flags a temporarily-closed place for review (never hidden)", () => {
     expect(tier({ is_operational: "closed_temporarily" })).toBe(3);
   });

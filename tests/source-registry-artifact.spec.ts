@@ -37,6 +37,17 @@ describe("generated source registry", () => {
     ]);
   });
 
+  it("maps cron-ingest run slugs to their manifest sources", () => {
+    const byId = new Map(GENERATED.map((source) => [source.id, source]));
+
+    expect(byId.get("fcpl_libraries")?.evidenceAliases).toContain(
+      "frederick.librarycalendar.com",
+    );
+    expect(byId.get("fcvfra_events")?.evidenceAliases).toContain(
+      "fcvfra.com",
+    );
+  });
+
   it("fails closed on health fields that could silently suppress a source", () => {
     const base = `
 sources:

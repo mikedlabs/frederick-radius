@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   coveragePriorities,
+  decisionCopyIssue,
   decisionCopyCounts,
   hasActionableContact,
   hasPublishedFreshHours,
@@ -99,6 +100,54 @@ describe("coverage quality metrics", () => {
         hasUsefulDecisionCopy(entry, decisionCopyCounts(repeated)),
       ),
     ).toBe(false);
+    expect(
+      decisionCopyIssue(boilerplate, decisionCopyCounts([boilerplate])),
+    ).toBe("category_template");
+    expect(
+      decisionCopyIssue(place(), decisionCopyCounts([place()])),
+    ).toBe("missing");
+    expect(
+      decisionCopyIssue(repeated[0], decisionCopyCounts(repeated)),
+    ).toBe("shared_boilerplate");
+  });
+
+  it("rejects directory address prefixes without rejecting useful street context", () => {
+    const fullStreetDump = place({
+      name: "The Vox Lounge",
+      short_blurb:
+        "228 North Market Street Frederick, MD 21701 The Vox Lounge is a music venue.",
+    });
+    const cityZipDump = place({
+      name: "Swinging Bridge",
+      short_blurb:
+        "Frederick, MD, 21701 The bridge in Baker Park was stabilized.",
+    });
+    const useful = place({
+      name: "Patrick Street Bakery",
+      short_blurb:
+        "This bakery on East Patrick Street makes laminated pastries each morning.",
+    });
+    const usefulWithExactLocation = place({
+      name: "Carroll Creek Parking Deck",
+      short_blurb:
+        "This city garage sits near Carroll Creek at 44 E Patrick Street.",
+    });
+
+    expect(
+      decisionCopyIssue(fullStreetDump, decisionCopyCounts([fullStreetDump])),
+    ).toBe("address_dump");
+    expect(
+      decisionCopyIssue(cityZipDump, decisionCopyCounts([cityZipDump])),
+    ).toBe("address_dump");
+    expect(
+      decisionCopyIssue(useful, decisionCopyCounts([useful])),
+    ).toBeNull();
+    expect(
+      decisionCopyIssue(
+        usefulWithExactLocation,
+        decisionCopyCounts([usefulWithExactLocation]),
+      ),
+    ).toBeNull();
   });
 
   it("keeps empty towns visible and ranks only dimensions below target", () => {

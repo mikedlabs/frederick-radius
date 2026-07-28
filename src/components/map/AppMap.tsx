@@ -227,6 +227,9 @@ import LiveBuses from "./LiveBuses";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LiveIncidents from "./LiveIncidents";
+import LiveRotorcraft, {
+  type RotorcraftLayerStatus,
+} from "./LiveRotorcraft";
 import TrafficCameras from "./TrafficCameras";
 import FireStations from "./FireStations";
 import CivicPlaces from "./CivicPlaces";
@@ -243,6 +246,17 @@ import {
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
 import MapDock from "./MapDock";
+import MapEdgeTools from "./MapEdgeTools";
+import type { MapEdgeOverlayId, MapEdgeOverlayState } from "./mapEdgeToolsModel";
+import {
+  MAPBOX_TRAFFIC_CLOSURE_FILTER,
+  MAPBOX_TRAFFIC_CLOSURE_PAINT,
+  MAPBOX_TRAFFIC_FLOW_FILTER,
+  MAPBOX_TRAFFIC_FLOW_PAINT,
+  MAPBOX_TRAFFIC_MIN_ZOOM,
+  MAPBOX_TRAFFIC_SOURCE,
+  MAPBOX_TRAFFIC_SOURCE_LAYER,
+} from "./mapboxTraffic";
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
 import MapFoodTruckPeek from "./MapFoodTruckPeek";
@@ -256,13 +270,14 @@ import MapDiscoveryPeek from "./MapDiscoveryPeek";
 import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, LoaderCircle, LocateFixed, Shrink, Truck } from "lucide-react";
+import { ArrowRight, ChevronRight, Shrink, Truck } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { activeFoodTruckPins } from "./foodTruckPins";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
+import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 
 /** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
  *  from "now" by the delta so getOpenStatus (which reads Frederick time)
@@ -746,6 +761,39 @@ export default function AppMap({
   // back so it's not in the way of the map you're reading; it returns the
   // moment the map settles. Never fades while a pane is open (you're mid-edit).
   const [mapMoving, setMapMoving] = useState(false);
+  // The outer-edge tools introduce themselves, then soften when the map is
+  // quiet. Any real map/tool interaction wakes them; active layer buttons stay
+  // fully visible through CSS even after the inactive chrome fades.
+  const [edgeToolsAwake, setEdgeToolsAwake] = useState(true);
+  const edgeToolsIdleTimerRef = useRef<number | null>(null);
+  const edgeToolsLastWakeRef = useRef(0);
+  const wakeMapEdgeTools = useCallback(() => {
+    if (!dock) return;
+    const now = window.performance.now();
+    if (
+      now - edgeToolsLastWakeRef.current < 300 &&
+      edgeToolsIdleTimerRef.current !== null
+    ) {
+      return;
+    }
+    edgeToolsLastWakeRef.current = now;
+    setEdgeToolsAwake(true);
+    if (edgeToolsIdleTimerRef.current !== null) {
+      window.clearTimeout(edgeToolsIdleTimerRef.current);
+    }
+    edgeToolsIdleTimerRef.current = window.setTimeout(() => {
+      edgeToolsIdleTimerRef.current = null;
+      setEdgeToolsAwake(false);
+    }, 5_000);
+  }, [dock]);
+  useEffect(() => {
+    wakeMapEdgeTools();
+    return () => {
+      if (edgeToolsIdleTimerRef.current !== null) {
+        window.clearTimeout(edgeToolsIdleTimerRef.current);
+      }
+    };
+  }, [wakeMapEdgeTools]);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [eventGroup, setEventGroup] = useState<MapEventGroup | null>(null);
   // DOM pins outside the camera must not remain in the keyboard sequence.
@@ -1027,6 +1075,11 @@ export default function AppMap({
   const [showRadar, setShowRadar] = useState(
     () => deepLinkLayers.has("radar") || (layerPrefs.radar ?? false),
   );
+  // Mapbox Traffic v1 — opt-in and OFF by default. Mounting the vector source
+  // only while enabled keeps the clean map from requesting traffic tiles.
+  const [showTraffic, setShowTraffic] = useState(
+    () => deepLinkLayers.has("traffic") || (layerPrefs.traffic ?? false),
+  );
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
   const [radarHealth, setRadarHealth] = useState<LiveLayerHealth>(() =>
@@ -1042,6 +1095,20 @@ export default function AppMap({
   const [incidentHealth, setIncidentHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "FrederickScanner", disabled: true }),
   );
+  const [liveIncidents, setLiveIncidents] = useState<LiveIncidentSignal[]>([]);
+  const [focusedIncidentId, setFocusedIncidentId] = useState<string | null>(
+    null,
+  );
+  // Public ADS-B rotorcraft activity. The server keeps Trooper identification
+  // aggregate-only and turns FMH trajectories into a fixed-heliport signal;
+  // the browser never receives an exact public-safety aircraft position.
+  const [showRotorcraft, setShowRotorcraft] = useState(
+    () =>
+      deepLinkLayers.has("air") ||
+      (layerPrefs.aviation ?? false),
+  );
+  const [rotorcraftStatus, setRotorcraftStatus] =
+    useState<RotorcraftLayerStatus | null>(null);
   // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
   const [showCameras, setShowCameras] = useState(
     () => deepLinkLayers.has("cameras") || (layerPrefs.cameras ?? false),
@@ -1135,12 +1202,34 @@ export default function AppMap({
       cemeteries: showCemeteries,
       parking: showParking,
       radar: showRadar,
+      traffic: showTraffic,
       incidents: showIncidents,
+      aviation: showRotorcraft,
       cameras: showCameras,
       firestations: showFireStations,
       civicplaces: showCivicPlaces,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras, showFireStations, showCivicPlaces]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras, showFireStations, showCivicPlaces]);
+
+  // Traffic and aircraft activity are first-class share/deep-link layers.
+  // Preserve any sibling `show` values written by search or civic links.
+  useEffect(() => {
+    if (!dock) return;
+    const url = new URL(window.location.href);
+    const shown = new Set(
+      (url.searchParams.get("show") ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+    if (showTraffic) shown.add("traffic");
+    else shown.delete("traffic");
+    if (showRotorcraft) shown.add("air");
+    else shown.delete("air");
+    if (shown.size > 0) url.searchParams.set("show", [...shown].join(","));
+    else url.searchParams.delete("show");
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [dock, showRotorcraft, showTraffic]);
 
   // An explicitly selected public-essential layer is the foreground task.
   // Keep its clusters/icons above the always-on place dots; otherwise the
@@ -2153,6 +2242,7 @@ export default function AppMap({
           else if (layerKey === "transit") setShowTransit(true);
           else if (layerKey === "radar") setShowRadar(true);
           else if (layerKey === "incidents") setShowIncidents(true);
+          else if (layerKey === "air") setShowRotorcraft(true);
           else if (layerKey === "cameras") setShowCameras(true);
           else if (layerKey === "trails") setShowTrails(true);
           else if (layerKey === "civic") setShowCivic(true);
@@ -2578,6 +2668,113 @@ export default function AppMap({
     [],
   );
 
+  const orderedLiveIncidents = useMemo(
+    () =>
+      [...liveIncidents].sort(
+        (a, b) =>
+          Date.parse(b.lastReportedAt) - Date.parse(a.lastReportedAt),
+      ),
+    [liveIncidents],
+  );
+  const recentIncidentCount = useMemo(
+    () =>
+      orderedLiveIncidents.filter(
+        (incident) => {
+          const ageMs =
+            discoveryClockMs - Date.parse(incident.lastReportedAt);
+          return ageMs >= 0 && ageMs <= 60 * 60_000;
+        },
+      ).length,
+    [discoveryClockMs, orderedLiveIncidents],
+  );
+  const latestIncidentSummary = useMemo(() => {
+    const incident = orderedLiveIncidents[0];
+    if (!incident) return null;
+    const minutesAgo = Math.max(
+      0,
+      Math.round(
+        (discoveryClockMs - Date.parse(incident.lastReportedAt)) / 60_000,
+      ),
+    );
+    return {
+      id: incident.id,
+      kind: incident.kind,
+      location: incident.location,
+      sourceLabel:
+        incident.status === "corroborated"
+          ? "Frederick Scanner + MDOT CHART"
+          : "Frederick Scanner",
+      ageLabel:
+        minutesAgo < 1
+          ? "just now"
+          : minutesAgo < 60
+            ? `${minutesAgo} min ago`
+            : `${Math.round(minutesAgo / 60)}h ago`,
+    };
+  }, [discoveryClockMs, orderedLiveIncidents]);
+  const edgeOverlayState: MapEdgeOverlayState = {
+    incidents: showIncidents,
+    aviation: showRotorcraft,
+    traffic: showTraffic,
+    radar: showRadar,
+    parking: showParking,
+    transit: showTransit,
+    trails: showTrails,
+    cameras: showCameras,
+    aerial: showAerial,
+  };
+  const toggleEdgeOverlay = (
+    id: MapEdgeOverlayId,
+    next: boolean,
+  ) => {
+    wakeMapEdgeTools();
+    haptic("light");
+    track("map_edge_tool", { tool: id, on: next });
+    switch (id) {
+      case "incidents":
+        setShowIncidents(next);
+        break;
+      case "aviation":
+        setShowRotorcraft(next);
+        break;
+      case "traffic":
+        setShowTraffic(next);
+        break;
+      case "radar":
+        setShowRadar(next);
+        break;
+      case "parking":
+        setShowParking(next);
+        break;
+      case "transit":
+        setShowTransit(next);
+        break;
+      case "trails":
+        setShowTrails(next);
+        break;
+      case "cameras":
+        setShowCameras(next);
+        break;
+      case "aerial":
+        setShowAerial(next);
+        break;
+    }
+  };
+  const focusIncidentFromEdge = (id: string) => {
+    const incident = orderedLiveIncidents.find((item) => item.id === id);
+    if (!incident) return;
+    setShowIncidents(true);
+    setFocusedIncidentId(id);
+    cameraIntentRef.current = true;
+    mapRef.current?.getMap().easeTo({
+      center: [incident.coordinate.lng, incident.coordinate.lat],
+      zoom: 14.5,
+      duration: prefersReducedMotion() ? 0 : 800,
+      easing: CAM_EASE,
+      essential: true,
+    });
+  };
+
   return (
     <div
       className={
@@ -2591,15 +2788,23 @@ export default function AppMap({
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
+        wakeMapEdgeTools();
         const target = event.target as Element;
         if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
           cameraIntentRef.current = true;
+          window.dispatchEvent(new Event("fr:map-edge-gesture"));
         }
         if (dockPaneOpen && target.closest(".mapboxgl-canvas-container")) {
           window.dispatchEvent(new Event("fr:map-gesture"));
         }
       }}
-      onWheelCapture={() => { cameraIntentRef.current = true; }}
+      onPointerMoveCapture={wakeMapEdgeTools}
+      onFocusCapture={wakeMapEdgeTools}
+      onKeyDownCapture={wakeMapEdgeTools}
+      onWheelCapture={() => {
+        cameraIntentRef.current = true;
+        wakeMapEdgeTools();
+      }}
     >
       {/* ── The search bar. On /map browse it's FOLDED INTO the dock's top
           row (MapDock) so there is one instrument and one map-search; the
@@ -2832,6 +3037,8 @@ export default function AppMap({
           ]}
           onClick={onClick}
           onLoad={(e) => {
+            edgeToolsLastWakeRef.current = Number.NEGATIVE_INFINITY;
+            wakeMapEdgeTools();
             // `reuseMaps` can retain the camera from a prior visit even when
             // this route has an explicit return/share camera. Restore it
             // before any settled move is allowed to rewrite `?c=`.
@@ -3030,6 +3237,32 @@ export default function AppMap({
               `terrain` prop on <Map> — see the note above — and
               applyFrederickPalette installs its own `fr-dem` source + hillshade,
               so this was a duplicate terrain-DEM tile pyramid with no consumer.) */}
+          {showTraffic && (
+            <Source
+              id="mapbox-traffic"
+              type="vector"
+              url={MAPBOX_TRAFFIC_SOURCE}
+            >
+              <Layer
+                id="mapbox-traffic-flow"
+                type="line"
+                source-layer={MAPBOX_TRAFFIC_SOURCE_LAYER}
+                minzoom={MAPBOX_TRAFFIC_MIN_ZOOM}
+                filter={MAPBOX_TRAFFIC_FLOW_FILTER}
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={MAPBOX_TRAFFIC_FLOW_PAINT}
+              />
+              <Layer
+                id="mapbox-traffic-closures"
+                type="line"
+                source-layer={MAPBOX_TRAFFIC_SOURCE_LAYER}
+                minzoom={MAPBOX_TRAFFIC_MIN_ZOOM}
+                filter={MAPBOX_TRAFFIC_CLOSURE_FILTER}
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={MAPBOX_TRAFFIC_CLOSURE_PAINT}
+              />
+            </Source>
+          )}
           {/* Municipality labels use semantic zoom on the full county map:
               larger communities orient the broad view, mid-sized towns join
               next, and the smallest labels wait until town zoom. Compact and
@@ -3084,7 +3317,20 @@ export default function AppMap({
               FredScanner feed is configured; polls only while its toggle is on. */}
           <LiveIncidents
             show={showIncidents}
+            probe={Boolean(dock)}
             onHealth={setIncidentHealth}
+            onSnapshot={setLiveIncidents}
+            focusIncidentId={focusedIncidentId}
+            onFocusIncidentChange={setFocusedIncidentId}
+          />
+
+          {/* Public helicopter activity. Trooper flights are county-level
+              status only; possible FMH movement pulses the fixed heliport.
+              Generic observations are deliberately coarse and delayed. */}
+          <LiveRotorcraft
+            show={showRotorcraft}
+            probe={Boolean(dock)}
+            onStatus={setRotorcraftStatus}
           />
 
           {/* MDOT CHART traffic cameras — pinned where they are; tap to watch
@@ -4425,6 +4671,33 @@ export default function AppMap({
           )}
         </Map>
 
+        {dock && !mapError && !selectedTransitStop && (
+          <MapEdgeTools
+            awake={edgeToolsAwake}
+            onWake={wakeMapEdgeTools}
+            locating={locating}
+            located={Boolean(userLoc)}
+            onLocate={goNearMe}
+            overlays={edgeOverlayState}
+            unavailable={{
+              parking: parking.length === 0,
+              transit: transitHealth.status === "unavailable",
+              trails: trailLines.features.length === 0,
+              aerial: AERIAL_PHOTOS.length === 0,
+            }}
+            onToggle={toggleEdgeOverlay}
+            incidentHealth={incidentHealth}
+            recentIncidentCount={recentIncidentCount}
+            latestIncident={
+              incidentHealth.status !== "ready"
+                ? null
+                : latestIncidentSummary
+            }
+            onFocusIncident={focusIncidentFromEdge}
+            rotorcraftStatus={rotorcraftStatus}
+          />
+        )}
+
         {/* ── The dock: one instrument for the browse map. Scrim + card;
             collapsed face is the What · When · Where caption. ── */}
         {dock && (
@@ -4480,9 +4753,13 @@ export default function AppMap({
             showRadar={showRadar}
             setShowRadar={setShowRadar}
             radarHealth={radarHealth}
+            showTraffic={showTraffic}
+            setShowTraffic={setShowTraffic}
             showIncidents={showIncidents}
             setShowIncidents={setShowIncidents}
             incidentHealth={incidentHealth}
+            showRotorcraft={showRotorcraft}
+            setShowRotorcraft={setShowRotorcraft}
             showCameras={showCameras}
             setShowCameras={setShowCameras}
             cameraHealth={cameraHealth}
@@ -4535,33 +4812,6 @@ export default function AppMap({
             aria-label="Show the whole county"
           >
             <Shrink className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-          </button>
-        )}
-
-        {/* Persistent "near me" locate button — locate is the most-used
-            map gesture, so it lives ON the map (above the zoom cluster),
-            not only inside the Where pane. Dock surface only; hidden while
-            a dock pane or the list is open. While locating, the icon swaps to
-            a spinner (static under reduced motion) so the ~8s geolocation wait
-            reads as working, not stuck. */}
-        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
-          <button
-            type="button"
-            className="map-locate-fab tap-44"
-            onClick={goNearMe}
-            aria-label="Find places near me"
-            aria-busy={locating || undefined}
-            data-on={userLoc ? true : undefined}
-          >
-            {locating ? (
-              <LoaderCircle
-                className="h-5 w-5 animate-spin motion-reduce:animate-none"
-                strokeWidth={2.2}
-                aria-hidden
-              />
-            ) : (
-              <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
-            )}
           </button>
         )}
 

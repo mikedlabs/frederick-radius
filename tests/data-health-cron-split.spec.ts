@@ -7,7 +7,7 @@ type Cron = {
 };
 
 describe("data-health cron phases", () => {
-  it("schedules bounded workers before the final reporter", () => {
+  it("keeps source probes inside the hourly ledger's three-hour evidence window", () => {
     const config = JSON.parse(
       readFileSync("vercel.json", "utf8"),
     ) as { crons: Cron[] };
@@ -16,7 +16,7 @@ describe("data-health cron phases", () => {
     );
 
     expect(schedules.get("/api/cron/data-health-feeds"))
-      .toBe("5 9 * * *");
+      .toBe("5 */2 * * *");
     expect(schedules.get("/api/cron/data-health-retention"))
       .toBe("10 9 * * *");
     expect(schedules.get("/api/cron/data-health"))

@@ -86,6 +86,13 @@ jobs:
       - name: Feed health (informational)
         run: npm run feed:health || true
 
+      # Build the accepted provider identity set before either refresh reads
+      # live business status. Public places-client.json intentionally omits
+      # closed and off-season rows, so it cannot safely validate the database
+      # snapshot without creating a closure/reopening feedback loop.
+      - name: Rebuild canonical place refresh identities
+        run: npm run build:place-refresh-identities
+
       # Core place freshness cannot silently no-op. A missing secret, database
       # failure, or failed paid refresh turns the workflow red. Let this step
       # finish independently so it cannot hide a separate hours-snapshot
@@ -140,11 +147,12 @@ jobs:
           body: |
             Automated nightly refresh from the data-steward workflow.
 
-            Ran: refresh:business-status, refresh:hours, build:park-amenities,
-            build:client-places, and the data-quality scorecard. Transit refresh
-            runs in its own independent job. Critical gates block this PR;
-            existing high-severity coverage debt remains visible without
-            blocking an incremental refresh. Review the diff before merging.
+            Ran: build:place-refresh-identities, refresh:business-status,
+            refresh:hours, build:park-amenities, build:client-places, and the
+            data-quality scorecard. Transit refresh runs in its own independent
+            job. Critical gates block this PR; existing high-severity coverage
+            debt remains visible without blocking an incremental refresh.
+            Review the diff before merging.
           labels: |
             data-pipeline
             automated

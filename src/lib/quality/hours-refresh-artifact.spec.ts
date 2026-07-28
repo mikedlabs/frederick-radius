@@ -5,8 +5,11 @@ import {
 } from "../../../scripts/pull-hours-refresh.mjs";
 import {
   hoursRefreshForAcceptedIdentity,
+  canonicalPlaceRefreshIdentities,
   resolveRefreshedBusinessStatusForAcceptedIdentity,
 } from "@/lib/loaders/places";
+import PLACE_REFRESH_IDENTITIES_RAW from "@/data/place-refresh-identities.json" with { type: "json" };
+import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 
 const NOW = new Date("2026-07-26T13:00:00.000Z");
 const recent = "2026-07-26T12:00:00.000Z";
@@ -166,7 +169,7 @@ describe("hours refresh artifact safety", () => {
         now: NOW,
         knownSlugs: ["cafe"],
       }),
-    ).toThrow("no rows for the current public catalog");
+    ).toThrow("no rows for the canonical refresh identity catalog");
   });
 
   it("rejects a stale writer even when old database rows still exist", () => {
@@ -191,7 +194,7 @@ describe("hours refresh artifact safety", () => {
     ).toThrow("no usable hours schedules");
   });
 
-  it("refuses an unexpected shrink of the current catalog snapshot", () => {
+  it("refuses an unexpected shrink of the canonical refresh snapshot", () => {
     expect(() =>
       buildHoursRefreshArtifact(
         [row("cafe")],
@@ -242,7 +245,7 @@ describe("hours refresh artifact safety", () => {
     expect(result.artifact).not.toHaveProperty("old-slug");
   });
 
-  it("rejects a database identity that no longer matches the public catalog", () => {
+  it("rejects a database identity that no longer matches the canonical refresh catalog", () => {
     expect(() =>
       buildHoursRefreshArtifact(
         [row("cafe", { place_id: "ChIJ-old-cafe" })],
@@ -254,11 +257,11 @@ describe("hours refresh artifact safety", () => {
         },
       ),
     ).toThrow(
-      "Hours snapshot row cafe has place_id ChIJ-old-cafe, but the public catalog maps it to ChIJ-current-cafe.",
+      "Hours snapshot row cafe has place_id ChIJ-old-cafe, but the canonical refresh identity artifact maps it to ChIJ-current-cafe.",
     );
   });
 
-  it("requires place_id when validating against the current public catalog", () => {
+  it("requires place_id when validating against the canonical refresh catalog", () => {
     expect(() =>
       buildHoursRefreshArtifact(
         [row("cafe", { place_id: undefined })],
@@ -301,7 +304,7 @@ describe("hours refresh artifact safety", () => {
         ],
       }),
     ).toThrow(
-      "The public catalog maps Google Place ID ChIJ-shared to both cafe and bakery.",
+      "The canonical refresh identity artifact maps Google Place ID ChIJ-shared to both cafe and bakery.",
     );
 
     expect(() =>
@@ -357,5 +360,73 @@ describe("hours refresh artifact safety", () => {
         { now: NOW, knownSlugs: ["cafe"] },
       ),
     ).toThrow("dated in the future");
+  });
+
+  it("retains closed and off-season rows outside the public client snapshot", () => {
+    const identityArtifact = PLACE_REFRESH_IDENTITIES_RAW as {
+      identities: Array<{ slug: string; google_place_id: string }>;
+    };
+    const identities = identityArtifact.identities;
+    const identityBySlug = new Map(
+      identities.map((identity) => [
+        identity.slug,
+        identity.google_place_id,
+      ]),
+    );
+    const publicSlugs = new Set(
+      (CLIENT_PLACES_RAW as Array<{ slug: string }>).map(
+        (place) => place.slug,
+      ),
+    );
+    const closedIdentities = {
+      "coin-exchange": "ChIJ37JmvFnayYkR-ukC9NF8a30",
+      "cozy-castle-events-new-market": "ChIJZ-FEIHAb54gRW8ptIcjg3DI",
+      "mountain-memories-at-thorpewood-thurmont":
+        "ChIJNRRUvijByYkR7SGuUA-ogE4",
+      "sleep-inn-suites-emmitsburg-emmitsburg":
+        "ChIJearaAzqxyYkR0Apme4KaC-k",
+      "the-banner-school": "ChIJQQ024r_ayYkRb0_55d_UjIk",
+      "the-village-potter-new-market": "ChIJ9WZbAujTyYkRHM2hsiNtALk",
+      vr: "ChIJ_1xH8ZvbyYkRYjKmS8aOuYA",
+    } as const;
+    const closedSlug = "the-banner-school";
+    const seasonalSlug = "sailing-through-the-winter-solstice";
+
+    for (const [slug, googlePlaceId] of Object.entries(closedIdentities)) {
+      expect(publicSlugs.has(slug), slug).toBe(false);
+      expect(identityBySlug.get(slug), slug).toBe(googlePlaceId);
+    }
+    expect(publicSlugs.has(seasonalSlug)).toBe(false);
+    expect(identityBySlug.get(seasonalSlug)).toBe(
+      "ChIJdwLwxD7byYkR1McOcsHb0Mc",
+    );
+    expect(identities).toEqual(canonicalPlaceRefreshIdentities());
+
+    const result = buildHoursRefreshArtifact(
+      [
+        row(closedSlug, {
+          place_id: identityBySlug.get(closedSlug),
+          weekday_hours: null,
+          business_status: "CLOSED_PERMANENTLY",
+        }),
+        row(seasonalSlug, {
+          place_id: identityBySlug.get(seasonalSlug),
+        }),
+      ],
+      {
+        now: NOW,
+        knownPlaces: identities,
+      },
+    );
+
+    expect(result.artifact).toHaveProperty(
+      `${closedSlug}.business_status`,
+      "CLOSED_PERMANENTLY",
+    );
+    expect(result.artifact).toHaveProperty(
+      `${closedSlug}.place_id`,
+      identityBySlug.get(closedSlug),
+    );
+    expect(result.summary.unmatched_rows).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Hours } from "@/data/places";
 import {
+  hasReviewRequiredExtendedWindow,
   hasReviewedAllWeek24hVisitability,
   isAllWeekAllDay,
   is24hVisitabilityReviewCurrent,
@@ -49,7 +50,48 @@ describe("all-week 24-hour visitability policy", () => {
 
   it("does not interfere with ordinary opening hours", () => {
     const ordinary = { ...allWeek24h, sun: [{ open: "08:00", close: "20:00" }] };
-    expect(mayPublishVisitabilityHours("ordinary-place", ordinary)).toBe(true);
+    const ordinaryWeek = {
+      sun: [{ open: "08:00", close: "20:00" }],
+      mon: [{ open: "08:00", close: "20:00" }],
+    };
+    expect(hasReviewRequiredExtendedWindow(ordinaryWeek)).toBe(false);
+    expect(mayPublishVisitabilityHours("ordinary-place", ordinaryWeek)).toBe(true);
+    // The all-week fixture still contains six 24-hour days and therefore
+    // remains review-required even though Sunday is ordinary.
+    expect(mayPublishVisitabilityHours("ordinary-place", ordinary)).toBe(false);
+  });
+
+  it("suppresses one implausible near-all-day window until reviewed", () => {
+    const providerTypo: Hours = {
+      thu: [{ open: "09:30", close: "05:30" }],
+    };
+    expect(hasReviewRequiredExtendedWindow(providerTypo)).toBe(true);
+    expect(
+      mayPublishVisitabilityHours("unreviewed-provider-typo", providerTypo),
+    ).toBe(false);
+  });
+
+  it("allows a reviewed public 24-hour place through the extended-window guard", () => {
+    const oneAllDayWindow: Hours = {
+      wed: [{ open: "00:00", close: "24:00" }],
+    };
+    const now = new Date("2026-07-15T12:00:00Z");
+    expect(hasReviewRequiredExtendedWindow(oneAllDayWindow)).toBe(true);
+    expect(
+      mayPublishVisitabilityHours(
+        "frederick-health-hospital",
+        oneAllDayWindow,
+        now,
+      ),
+    ).toBe(true);
+  });
+
+  it("fails closed on malformed structured time values", () => {
+    expect(
+      hasReviewRequiredExtendedWindow({
+        mon: [{ open: "9 AM", close: "17:00" }],
+      }),
+    ).toBe(true);
   });
 
   it("suppresses a known unreviewed provider row at the decorated boundary", () => {

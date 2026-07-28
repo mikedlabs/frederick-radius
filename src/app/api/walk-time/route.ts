@@ -14,8 +14,8 @@
  *      to frederickradius.app). Server-to-server the restriction STILL
  *      applies — Mapbox matches the Referer header — so the upstream
  *      fetch must send MAPBOX_SERVER_HEADERS.
- *   2. Edge-cache by URL. The client rounds the origin to 3 decimals
- *      (~100m — see src/lib/walkTime.ts) before building the URL, so
+ *   2. Cache by rounded origin and destination. The client rounds the origin
+ *      to 3 decimals (~100m — see src/lib/walkTime.ts), so
  *      nearby users share one cache entry AND no precise user location
  *      ever appears in a URL, cache key, or log. The route re-rounds
  *      defensively before calling upstream.
@@ -26,11 +26,13 @@
  * straight-line estimate. The chip must never break because of this.
  */
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
 import { isValidCoord } from "@/lib/geo";
+import { meterUsage } from "@/lib/usage-meter";
 import {
   normalizeWalkRouteCoordinates,
   roundCoord,
@@ -42,6 +44,54 @@ export const runtime = "nodejs";
 // Cache each routed leg for a day. The street network doesn't change
 // minute to minute and Mapbox bills per call.
 export const revalidate = 86400;
+
+type MapboxDirectionsData = {
+  code?: string;
+  routes?: Array<{
+    duration?: number;
+    distance?: number;
+    geometry?: { type?: string; coordinates?: unknown };
+  }>;
+};
+
+class MapboxDirectionsError extends Error {
+  constructor(readonly status: number) {
+    super(`Mapbox Directions HTTP ${status}`);
+  }
+}
+
+async function fetchWalkRouteUncached(
+  origin: string,
+  destinationLng: number,
+  destinationLat: number,
+  includeGeometry: boolean,
+): Promise<MapboxDirectionsData> {
+  const routeShape = includeGeometry
+    ? "overview=simplified&geometries=geojson"
+    : "overview=false";
+  const upstream =
+    `https://api.mapbox.com/directions/v5/mapbox/walking/${origin};${destinationLng},${destinationLat}` +
+    `?${routeShape}&access_token=${MAPBOX_SERVER_TOKEN}`;
+
+  // The meter lives inside the cache-miss function: a validated request that
+  // reuses this routed leg does not increment or reach Mapbox.
+  meterUsage("mapbox_directions");
+  // MAPBOX_SERVER_HEADERS is load-bearing: the URL-restricted token 403s any
+  // server fetch that does not present the app's Referer.
+  const response = await fetch(upstream, {
+    headers: MAPBOX_SERVER_HEADERS,
+    cache: "no-store",
+    signal: AbortSignal.timeout(6_000),
+  });
+  if (!response.ok) throw new MapboxDirectionsError(response.status);
+  return (await response.json()) as MapboxDirectionsData;
+}
+
+const fetchWalkRoute = unstable_cache(
+  fetchWalkRouteUncached,
+  ["mapbox-walk-directions-v1"],
+  { revalidate: 86400 },
+);
 
 export async function GET(req: NextRequest) {
   if (!isSameOriginRequest(req)) {
@@ -78,35 +128,12 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, reason: "no-token" });
   }
 
-  // Snap the origin to the ~100m grid so the upstream fetch cache
-  // (keyed by URL) collapses nearby requests too, even if a caller
-  // skipped the client-side rounding.
+  // Snap the origin to the ~100m grid so the route cache collapses nearby
+  // requests too, even if a caller skipped the client-side rounding.
   const o = `${roundCoord(olng)},${roundCoord(olat)}`;
-  const routeShape = includeGeometry
-    ? "overview=simplified&geometries=geojson"
-    : "overview=false";
-  const upstream =
-    `https://api.mapbox.com/directions/v5/mapbox/walking/${o};${dlng},${dlat}` +
-    `?${routeShape}&access_token=${MAPBOX_SERVER_TOKEN}`;
 
   try {
-    // MAPBOX_SERVER_HEADERS is load-bearing: the URL-restricted token
-    // 403s any server fetch that doesn't present the app's Referer.
-    const r = await fetch(upstream, {
-      headers: MAPBOX_SERVER_HEADERS,
-      next: { revalidate: 86400 },
-    });
-    if (!r.ok) {
-      return Response.json({ ok: false, reason: `upstream-${r.status}` });
-    }
-    const data = (await r.json()) as {
-      code?: string;
-      routes?: Array<{
-        duration?: number;
-        distance?: number;
-        geometry?: { type?: string; coordinates?: unknown };
-      }>;
-    };
+    const data = await fetchWalkRoute(o, dlng, dlat, includeGeometry);
     const route = data.routes?.[0];
     if (data.code !== "Ok" || !route || !Number.isFinite(route.duration)) {
       return Response.json({ ok: false, reason: "no-route" });
@@ -131,7 +158,13 @@ export async function GET(req: NextRequest) {
         },
       },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof MapboxDirectionsError) {
+      return Response.json({
+        ok: false,
+        reason: `upstream-${error.status}`,
+      });
+    }
     return Response.json({ ok: false, reason: "fetch-error" });
   }
 }

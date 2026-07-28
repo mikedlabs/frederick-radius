@@ -2,6 +2,7 @@ import type { DayOfWeek, Hours, HoursWindow } from "@/data/places";
 import { isAllDayWindow } from "@/lib/hours";
 
 const DAYS: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export const MAX_UNREVIEWED_VISITABILITY_WINDOW_MINUTES = 20 * 60;
 
 /**
  * A provider's "open 24 hours" value is not automatically a promise that a
@@ -76,6 +77,52 @@ export function isAllWeekAllDay(hours: Hours | undefined): boolean {
   });
 }
 
+function timeToMinutes(value: string): number | null {
+  const match = value.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 24 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    (hours === 24 && minutes !== 0)
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+}
+
+/**
+ * Provider schedules occasionally contain a single implausible window such as
+ * "9:30 AM–5:30 AM" or one isolated "Open 24 hours" day. Those rows are just
+ * as capable of creating a false open-now claim as an unreviewed seven-day
+ * 24/7 schedule.
+ *
+ * Treat any window lasting at least 20 hours as review-required. The threshold
+ * is deliberately conservative: ordinary long restaurant, retail, and venue
+ * days still pass, while near-all-day claims remain silent until a first-party
+ * source confirms public visitability.
+ */
+export function hasReviewRequiredExtendedWindow(
+  hours: Hours | undefined,
+): boolean {
+  if (!hours) return false;
+  return Object.values(hours).some((windows) =>
+    windows?.some((window) => {
+      const open = timeToMinutes(window.open);
+      const close = timeToMinutes(window.close);
+      if (open == null || close == null) return true;
+      let duration = close - open;
+      if (duration <= 0) duration += 24 * 60;
+      return duration >= MAX_UNREVIEWED_VISITABILITY_WINDOW_MINUTES;
+    }),
+  );
+}
+
 export function is24hVisitabilityReviewCurrent(
   reviewAfter: string,
   now: Date = new Date(),
@@ -96,13 +143,15 @@ export function hasReviewedAllWeek24hVisitability(
 
 /**
  * Whether a schedule is safe to use for public hours and "Open now" claims.
- * Ordinary schedules pass through. An all-week/all-day schedule must have a
- * reviewed public-visitability exemption.
+ * Ordinary schedules pass through. Any near-all-day window, including an
+ * all-week/all-day schedule, must have a current public-visitability review.
  */
 export function mayPublishVisitabilityHours(
   slug: string,
   hours: Hours | undefined,
   now: Date = new Date(),
 ): boolean {
-  return !isAllWeekAllDay(hours) || hasReviewedAllWeek24hVisitability(slug, now);
+  const needsReview =
+    isAllWeekAllDay(hours) || hasReviewRequiredExtendedWindow(hours);
+  return !needsReview || hasReviewedAllWeek24hVisitability(slug, now);
 }

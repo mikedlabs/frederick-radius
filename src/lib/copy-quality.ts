@@ -34,14 +34,53 @@ const LINK = /https?:\/\/|www\.\S|\S+@\S+\.\w/i;
 const LOW_INFORMATION =
   /\b(?:is|are)\s+sometimes\s+open\b|\bsometimes\b[\s\S]{0,120}\bsometimes\b/i;
 
+/**
+ * Editor approval is a provenance decision, not a way around the mechanical
+ * safety checks. Approved copy may begin with the place name when the rest is
+ * a real sentence ("Baker Park has ..."), but a short name echo, address dump,
+ * contact prompt, or marketing fragment must still be rejected.
+ */
+export function isDescriptionMechanicallySafe(
+  name: string,
+  description: string,
+): boolean {
+  if (description.length < 25) return false;
+
+  const normalizedName = (name ?? "").trim().toLowerCase();
+  const normalizedDescription = description.toLowerCase();
+  if (normalizedName && normalizedDescription.startsWith(normalizedName)) {
+    const remainderWords = description
+      .slice(normalizedName.length)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (remainderWords.length < 5) return false;
+  }
+
+  if (STREET_SUFFIX.test(description) || ZIP.test(description)) return false;
+  if (SECOND_PERSON.test(description)) return false;
+  if (MARKETING.test(description)) return false;
+  if (NOISE.test(description)) return false;
+  if (PHONE.test(description) || CONTACT.test(description) || LINK.test(description)) return false;
+  if (LOW_INFORMATION.test(description)) return false;
+
+  const stops = (description.match(/[.!?](\s|$)/g) ?? []).length;
+  return description.length <= 320 || stops >= 2;
+}
+
 /** Classify a place description against the voice-guide scraped patterns. */
 export function classifyDescription(
   name: string,
   description: string | undefined | null,
   reviewed = false,
 ): CopyQuality {
-  if (reviewed) return "reviewed";
   const t = (description ?? "").trim();
+  if (reviewed) {
+    if (!t) return "none";
+    return isDescriptionMechanicallySafe(name, t)
+      ? "reviewed"
+      : "scraped";
+  }
   if (!t || t.length < 25) return t ? "scraped" : "none";
 
   const nm = (name ?? "").trim().toLowerCase();

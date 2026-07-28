@@ -32,12 +32,45 @@ describe("scheduled data workflow contracts", () => {
     expect(workflow).not.toContain("secrets.DATABASE_URL");
   });
 
+  it("builds the pre-status identity snapshot before either paid place refresh", () => {
+    const workflow = workflowText("data-steward.yml");
+    const identityBuild = workflow.indexOf(
+      "run: npm run build:place-refresh-identities",
+    );
+    const statusRefresh = workflow.indexOf(
+      "run: npm run refresh:business-status",
+    );
+    const hoursPull = workflow.indexOf("run: npm run refresh:hours");
+
+    expect(identityBuild).toBeGreaterThan(-1);
+    expect(statusRefresh).toBeGreaterThan(identityBuild);
+    expect(hoursPull).toBeGreaterThan(identityBuild);
+  });
+
+  it("rebuilds canonical identities for direct local refresh commands", () => {
+    const pkg = JSON.parse(
+      readFileSync(resolve(process.cwd(), "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(pkg.scripts["refresh:business-status"]).toMatch(
+      /^npm run build:place-refresh-identities && /,
+    );
+    expect(pkg.scripts["refresh:hours"]).toMatch(
+      /^npm run build:place-refresh-identities && /,
+    );
+    expect(pkg.scripts["build:client-places"]).toMatch(
+      /^npm run build:place-refresh-identities && /,
+    );
+  });
+
   it.each([
     "ingest-business-info.yml",
     "ingest-civic.yml",
     "ingest-venues.yml",
-  ])("%s passes the Anthropic repository secret to its extraction step", (name) => {
-    expect(workflowText(name)).toContain(
+  ])("%s uses the Production environment's Anthropic secret", (name) => {
+    const workflow = workflowText(name);
+    expect(workflow).toContain("environment: Production");
+    expect(workflow).toContain(
       "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
     );
   });

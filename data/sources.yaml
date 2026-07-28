@@ -869,6 +869,36 @@ sources:
       getKfdkMetar() returns null and the chip is hidden. Fully
       inert when aviationweather.gov is unreachable.
 
+  - id: adsb_lol_rotorcraft
+    name: ADSB.lol — Frederick County Rotorcraft Observations
+    owner: ADSB.lol contributors
+    url: https://api.adsb.lol/v2/point/39.47/-77.38/22
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: Open Database License 1.0; attribution required
+    contact: https://adsb.lol
+    status: active
+    collection: runtime
+    evidence_aliases: [adsb-lol, rotorcraft]
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/aviation/rotorcraft.ts
+    notes: |
+      A bounded public ADS-B point query supports the optional helicopter map
+      layer. The runtime route clips observations to Frederick County, removes
+      registrations and raw ICAO identifiers, omits privacy-flagged aircraft,
+      and uses public operator callsigns only inside the server to classify a
+      Maryland State Police observation. Trooper status is county-level only;
+      no callsign or position reaches the browser. FMH trajectories are reduced
+      to a fixed-heliport signal, never a moving aircraft point or a confirmed
+      landing. Other helicopter points are delayed and rounded to 0.01 degrees.
+      Public ADS-B reception is incomplete, so an empty response is never
+      described as grounded or clear.
+      ADSB.lol requests that production users make contact before depending on
+      the service; no API key is currently required.
+
   - id: cof_parking_occupancy
     name: City of Frederick parking deck occupancy
     owner: City of Frederick
@@ -1641,6 +1671,7 @@ sources:
     contact: Frederick County Public Libraries
     status: active
     collection: workflow
+    evidence_aliases: [frederick.librarycalendar.com]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
@@ -1683,6 +1714,7 @@ sources:
     contact: https://www.fcvfra.com
     status: active
     collection: workflow
+    evidence_aliases: [fcvfra.com]
     last_validated: 2026-07-23
     last_success: null
     schema_file: null

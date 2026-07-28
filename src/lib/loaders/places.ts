@@ -991,6 +991,7 @@ export function deriveTags(category: string, tags?: string[]): string[] {
 
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
+  const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
   // Shared-photo de-twin: a suppressed record shares its Google photo with
   // a stronger canonical record in the same ChIJ cluster, so null its hero
   // (and gallery) — the card falls back to the category placeholder. "No
@@ -1018,16 +1019,20 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // curated manual schedule. OSM hours apply to the map's OSM layer,
   // not the static place records, so they are not stamped here.
   const e = acceptedEnrichmentIdentity(p).enrichment;
-  const hours_source: Place["hours_source"] = e?.has_hours
-    ? "google_places"
-    : enriched.hours && enriched.hours_verified
-      ? "manual_override"
-      : undefined;
+  const hours_source: Place["hours_source"] = hasHoursPatch
+    ? "manual_override"
+    : e?.has_hours
+      ? "google_places"
+      : enriched.hours && enriched.hours_verified
+        ? "manual_override"
+        : undefined;
   const hours_updated_at =
-    hours_source === "google_places"
+    hasHoursPatch
+      ? p.hours_updated_at
+      : hours_source === "google_places"
       ? e?.enriched_at
       : hours_source === "manual_override"
-        ? p.updated_at
+        ? p.hours_updated_at
         : undefined;
   // Rolling refresh override (4.3): a refreshed row carries newer Google
   // hours and status than the static enrichment, so it wins both the
@@ -1038,7 +1043,6 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // fixed. enriched.hours already carries the patched schedule (applyEnrichment
   // takes p.hours first), so we just suppress the refresh override here.
   const refresh = acceptedHoursRefresh(p.slug, enriched.google_place_id);
-  const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
   const refreshedHours = !hasHoursPatch && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
@@ -1075,7 +1079,8 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // structured hours were suppressed. Clear both representations at this
     // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
     // back onto a place page as seven raw "Open 24 hours" rows.
-    google_hours: mayAssertHours ? enriched.google_hours : undefined,
+    google_hours:
+      mayAssertHours && !hasHoursPatch ? enriched.google_hours : undefined,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
@@ -1408,6 +1413,37 @@ export function isSubstantive(p: Place): boolean {
       (e.photo_names && e.photo_names.length > 0) ||
       (e.editorial_summary && e.editorial_summary.trim().length > 0),
   );
+}
+
+export type PlaceRefreshIdentity = {
+  slug: string;
+  google_place_id: string;
+};
+
+/**
+ * Canonical provider identities for status and hours refreshes.
+ *
+ * This is deliberately upstream of live business status and seasonal
+ * visibility. A place hidden because Google most recently reported it closed
+ * must remain refreshable so a later reopening can be discovered, and an
+ * off-season place must keep its identity until its next season. Structural
+ * public-catalog boundaries still apply: dedupe/removal/county placement are
+ * already resolved in BASE_PLACES, while junk, relevance, substance, and the
+ * accepted-enrichment identity guard are enforced here.
+ */
+export function canonicalPlaceRefreshIdentities(): PlaceRefreshIdentity[] {
+  return BASE_PLACES
+    .filter((place) => !SUPPRESSED_JUNK_SLUGS.has(place.slug))
+    .filter(isDiscoverable)
+    .filter(isSubstantive)
+    .filter((place) => isValidCoord(place.geom))
+    .flatMap((place) => {
+      const googlePlaceId = acceptedEnrichmentIdentity(place).googlePlaceId;
+      return isGooglePlaceId(googlePlaceId)
+        ? [{ slug: place.slug, google_place_id: googlePlaceId }]
+        : [];
+    })
+    .sort((left, right) => left.slug.localeCompare(right.slug));
 }
 
 /**

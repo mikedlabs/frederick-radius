@@ -73,20 +73,35 @@ export async function GET(request: Request) {
   const folded = Object.entries(dedup).filter(([s, v]) => v.canonical !== s).length;
   const clusters = new Set(Object.values(dedup).map((v) => v.canonical)).size;
 
-  const copy: Record<CopyQuality, number> = { none: 0, scraped: 0, auto_clean: 0, reviewed: 0 };
-  for (const p of PLACES) copy[classifyDescription(p.name, p.description ?? p.short_blurb)]++;
+  const clientPlaces = PLACES_CLIENT_RAW as Array<{
+    slug: string;
+    name: string;
+    short_blurb?: string;
+    description_reviewed?: boolean;
+    google_place_id?: string;
+  }>;
+  const copy: Record<CopyQuality, number> = {
+    none: 0,
+    scraped: 0,
+    auto_clean: 0,
+    reviewed: 0,
+  };
+  for (const place of clientPlaces) {
+    copy[
+      classifyDescription(
+        place.name,
+        place.short_blurb,
+        Boolean(place.description_reviewed),
+      )
+    ]++;
+  }
 
   // Trust report (Section 8 gates, made measurable): provenance coverage,
   // current fresh-hours eligibility, the confidence distribution, and the
   // count of open/closed assertions whose hours verification is stale.
   const trust = computePlaceTrustReport();
   const googleBackedSlugs = new Set(
-    (
-      PLACES_CLIENT_RAW as Array<{
-        slug: string;
-        google_place_id?: string;
-      }>
-    )
+    clientPlaces
       .filter((place) => isGooglePlaceId(place.google_place_id))
       .map((place) => place.slug),
   );
@@ -320,7 +335,7 @@ export async function GET(request: Request) {
         reporter_heartbeat: REPORT_HEARTBEAT_DEADLINE_MS,
       },
     },
-    places: PLACES.length,
+    places: clientPlaces.length,
     dedup: { clusters, folded },
     hours: {
       fresh_count: trust.fresh_hours.fresh_count,

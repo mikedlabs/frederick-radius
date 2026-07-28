@@ -7,10 +7,9 @@
  * Run: node --import tsx scripts/copy-scores.ts
  */
 import { writeFileSync } from "node:fs";
-import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
+import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import { classifyDescription, type CopyQuality } from "../src/lib/copy-quality";
-import { publicPlaces } from "../src/lib/loaders/places";
-import type { PlaceDescriptionEntry } from "../src/lib/loaders/placeDescriptions";
+import type { PlaceCardData } from "../src/lib/loaders/places";
 
 function main(): void {
   const counts: Record<CopyQuality, number> = {
@@ -20,13 +19,16 @@ function main(): void {
     reviewed: 0,
   };
   const bySlug: Record<string, CopyQuality> = {};
-  const places = publicPlaces();
-  const descriptions = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
+  // Score the exact decorated artifact users receive. Raw publicPlaces still
+  // contains provider/directory text that the loader intentionally suppresses;
+  // counting that hidden text made the admin scorecard report zero missing
+  // descriptions while more than a thousand public cards were empty.
+  const places = PLACES_RAW as unknown as PlaceCardData[];
   for (const p of places) {
     const q = classifyDescription(
       p.name,
-      descriptions[p.slug]?.blurb ?? p.description ?? p.short_blurb,
-      descriptions[p.slug]?.status === "approved",
+      p.short_blurb,
+      Boolean(p.description_reviewed),
     );
     counts[q]++;
     bySlug[p.slug] = q;

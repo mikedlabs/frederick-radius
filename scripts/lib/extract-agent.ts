@@ -250,9 +250,17 @@ export async function fetchSquarespaceEvents(collectionUrl: string): Promise<Fee
 export async function extractJson<T = unknown>(
   instructions: string,
   content: string,
-  opts: { model?: string; maxTokens?: number } = {},
+  opts: {
+    model?: string;
+    maxTokens?: number;
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    /** Test seam. Production callers use the process environment. */
+    apiKey?: string;
+  } = {},
 ): Promise<T | null> {
-  if (!API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+  const apiKey = opts.apiKey ?? API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const preamble =
     "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
     "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
@@ -260,32 +268,50 @@ export async function extractJson<T = unknown>(
     "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
     "If nothing applies, return an empty result.\n\n";
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: opts.model || DEFAULT_MODEL,
-      max_tokens: opts.maxTokens ?? 1500,
-      messages: [{ role: "user", content: `${preamble}${instructions}\n\nPAGE TEXT:\n${content}` }],
-    }),
-  });
-  if (!r.ok) {
-    console.log(`  ✗ Claude → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    return null;
-  }
-  const data = (await r.json()) as { content?: { text?: string }[] };
-  const raw = data.content?.[0]?.text ?? "";
-  const match = raw.match(/[[{][\s\S]*[\]}]/);
-  if (!match) return null;
+  const ctrl = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 30_000;
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return JSON.parse(match[0]) as T;
-  } catch {
-    console.log("  ✗ Claude returned non-JSON");
+    const r = await (opts.fetchImpl ?? fetch)("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: opts.model || DEFAULT_MODEL,
+        max_tokens: opts.maxTokens ?? 1500,
+        messages: [{ role: "user", content: `${preamble}${instructions}\n\nPAGE TEXT:\n${content}` }],
+      }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) {
+      console.log(`  ✗ Claude → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return null;
+    }
+    const data = (await r.json()) as { content?: { text?: string }[] };
+    const raw = data.content?.[0]?.text ?? "";
+    const match = raw.match(/[[{][\s\S]*[\]}]/);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]) as T;
+    } catch {
+      console.log("  ✗ Claude returned non-JSON");
+      return null;
+    }
+  } catch (error) {
+    const timedOut =
+      ctrl.signal.aborted
+      || (error instanceof Error && error.name === "AbortError");
+    console.log(
+      timedOut
+        ? `  ✗ Claude request timed out after ${timeoutMs}ms`
+        : "  ✗ Claude request did not return a complete response",
+    );
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -303,9 +329,17 @@ export async function extractJson<T = unknown>(
 export async function extractJsonFromImage<T = unknown>(
   instructions: string,
   imageUrl: string,
-  opts: { model?: string; maxTokens?: number } = {},
+  opts: {
+    model?: string;
+    maxTokens?: number;
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    /** Test seam. Production callers use the process environment. */
+    apiKey?: string;
+  } = {},
 ): Promise<T | null> {
-  if (!API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+  const apiKey = opts.apiKey ?? API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
   const model =
     opts.model || process.env.EXTRACT_VISION_MODEL || "claude-sonnet-4-6";
   const preamble =
@@ -315,40 +349,58 @@ export async function extractJsonFromImage<T = unknown>(
     "complete sentence without fragments, slogans, or a padded three-part list. If the image has no readable " +
     "events, return an empty result.\n\n";
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: opts.maxTokens ?? 2000,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "url", url: imageUrl } },
-            { type: "text", text: `${preamble}${instructions}` },
-          ],
-        },
-      ],
-    }),
-  });
-  if (!r.ok) {
-    console.log(`  ✗ Claude vision → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    return null;
-  }
-  const data = (await r.json()) as { content?: { text?: string }[] };
-  const raw = data.content?.[0]?.text ?? "";
-  const match = raw.match(/[[{][\s\S]*[\]}]/);
-  if (!match) return null;
+  const ctrl = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 30_000;
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return JSON.parse(match[0]) as T;
-  } catch {
-    console.log("  ✗ Claude vision returned non-JSON");
+    const r = await (opts.fetchImpl ?? fetch)("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: opts.maxTokens ?? 2000,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image", source: { type: "url", url: imageUrl } },
+              { type: "text", text: `${preamble}${instructions}` },
+            ],
+          },
+        ],
+      }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) {
+      console.log(`  ✗ Claude vision → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return null;
+    }
+    const data = (await r.json()) as { content?: { text?: string }[] };
+    const raw = data.content?.[0]?.text ?? "";
+    const match = raw.match(/[[{][\s\S]*[\]}]/);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]) as T;
+    } catch {
+      console.log("  ✗ Claude vision returned non-JSON");
+      return null;
+    }
+  } catch (error) {
+    const timedOut =
+      ctrl.signal.aborted
+      || (error instanceof Error && error.name === "AbortError");
+    console.log(
+      timedOut
+        ? `  ✗ Claude vision request timed out after ${timeoutMs}ms`
+        : "  ✗ Claude vision request did not return a complete response",
+    );
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -368,45 +420,80 @@ export const nowISO = () => new Date().toISOString();
  * stopped moving. A silent skip is the one failure mode a scheduled
  * agent must not have. Local runs still exit soft.
  */
-function failPreflight(msg: string): boolean {
+function failPreflight(
+  msg: string,
+  options: { failInCi: boolean },
+): boolean {
   console.error(msg);
-  if (process.env.CI) process.exit(1);
+  if (options.failInCi && process.env.CI) process.exit(1);
   return false;
 }
 
-export async function preflightKey(): Promise<boolean> {
-  if (!API_KEY) {
+export async function preflightKey(
+  options: {
+    failInCi?: boolean;
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    /** Test seam. Production callers use the process environment. */
+    apiKey?: string;
+  } = {},
+): Promise<boolean> {
+  const resolved = { failInCi: options.failInCi ?? true };
+  const apiKey = options.apiKey ?? API_KEY;
+  if (!apiKey) {
     return failPreflight(
       "\n✗ ANTHROPIC_API_KEY is not set.\n" +
-        "  → Add it as a GitHub repo secret: Settings → Secrets and variables\n" +
-        "    → Actions → New repository secret → name it exactly ANTHROPIC_API_KEY.\n" +
-        "  The agent can't extract anything without it.\n",
+        "  → Add it as a GitHub Actions secret in the environment selected by\n" +
+        "    the workflow (or as a repository secret), named ANTHROPIC_API_KEY.\n" +
+        "  Model-assisted sources cannot be refreshed without it.\n",
+      resolved,
     );
   }
   // Cheap liveness ping so an INVALID or out-of-credit key reports
   // precisely, instead of failing 60 times mid-run.
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      max_tokens: 1,
-      messages: [{ role: "user", content: "ping" }],
-    }),
-  });
-  if (r.status === 401) {
-    return failPreflight("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n");
+  const ctrl = new AbortController();
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await (options.fetchImpl ?? fetch)(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          max_tokens: 1,
+          messages: [{ role: "user", content: "ping" }],
+        }),
+        signal: ctrl.signal,
+      },
+    );
+    if (r.status === 401) {
+      return failPreflight("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n", resolved);
+    }
+    if (r.status === 429) {
+      return failPreflight("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n", resolved);
+    }
+    if (!r.ok && r.status !== 400) {
+      return failPreflight(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`, resolved);
+    }
+    console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
+    return true;
+  } catch (error) {
+    const timedOut =
+      ctrl.signal.aborted
+      || (error instanceof Error && error.name === "AbortError");
+    return failPreflight(
+      timedOut
+        ? `\n✗ Anthropic API preflight timed out after ${timeoutMs}ms. Model-assisted sources were not refreshed.\n`
+        : "\n✗ Anthropic API preflight could not reach the service. Model-assisted sources were not refreshed.\n",
+      resolved,
+    );
+  } finally {
+    clearTimeout(timer);
   }
-  if (r.status === 429) {
-    return failPreflight("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n");
-  }
-  if (!r.ok && r.status !== 400) {
-    return failPreflight(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`);
-  }
-  console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
-  return true;
 }

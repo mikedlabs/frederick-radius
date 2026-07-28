@@ -3982,6 +3982,383 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* ── Outer-edge map tools. The closed rail keeps Reach + Locate discoverable
+   and leaves active layers visible. Inactive chrome softens after a few quiet
+   seconds; map movement, hover, touch, focus, or keyboard use wakes it. The
+   one flat flyout is intentionally not another nested MapDock pane. ── */
+.map-edge-tools {
+  position: absolute;
+  top: 50%;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: var(--z-map-control);
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.map-edge-tools-rail {
+  pointer-events: auto;
+  display: flex;
+  max-height: min(72vh, 520px);
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent);
+  box-shadow: var(--app-shadow-2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  scrollbar-width: none;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+.map-edge-tools-rail::-webkit-scrollbar {
+  display: none;
+}
+.map-edge-tools[data-awake="false"] .map-edge-tools-rail {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.map-edge-tool {
+  --tool-color: var(--app-cool);
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--app-border) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 94%, transparent);
+  box-shadow: var(--app-shadow-1);
+  color: var(--app-ink-2);
+  opacity: 0.42;
+  transition:
+    opacity 220ms ease,
+    transform 90ms ease,
+    color 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+.map-edge-tools[data-awake="true"] .map-edge-tool,
+.map-edge-tool:hover,
+.map-edge-tool:focus-visible,
+.map-edge-tool[data-on] {
+  opacity: 1;
+}
+.map-edge-tool:hover,
+.map-edge-tool:focus-visible {
+  color: var(--app-brand-press);
+}
+.map-edge-tool:active {
+  transform: scale(0.94);
+}
+.map-edge-tool[data-on] {
+  color: var(--tool-color);
+  border-color: color-mix(in srgb, var(--tool-color) 46%, var(--app-border));
+  background: color-mix(in srgb, var(--tool-color) 12%, var(--app-bg-elevated-solid));
+}
+.map-edge-tool-active {
+  --tool-color: var(--app-cool);
+}
+.map-edge-tool-label {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 8px);
+  width: max-content;
+  max-width: 170px;
+  padding: 6px 8px;
+  transform: translate(4px, -50%);
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent);
+  box-shadow: var(--app-shadow-1);
+  color: var(--app-ink-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.map-edge-tools[data-awake="true"] .map-edge-tool-primary .map-edge-tool-label,
+.map-edge-tool:hover .map-edge-tool-label,
+.map-edge-tool:focus-visible .map-edge-tool-label {
+  transform: translate(0, -50%);
+  opacity: 1;
+}
+.map-edge-tool-label-short {
+  display: none;
+}
+.map-edge-tool-badge,
+.map-edge-tool-count {
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--app-brand-press);
+  color: white;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.map-edge-tool-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  padding-inline: 4px;
+}
+.map-edge-tool[data-attention="true"]::after,
+.map-edge-tool-choice[data-attention="true"] .map-edge-tool-choice-icon::after {
+  position: absolute;
+  inset: -3px;
+  border: 2px solid color-mix(in srgb, var(--tool-color, var(--app-brand)) 55%, transparent);
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+  animation: map-edge-attention 1.8s ease-out infinite;
+}
+@keyframes map-edge-attention {
+  from { opacity: 0.7; transform: scale(0.84); }
+  to { opacity: 0; transform: scale(1.18); }
+}
+.map-edge-tools-flyout {
+  position: absolute;
+  top: 50%;
+  right: 58px;
+  width: min(330px, calc(100vw - 92px));
+  max-height: min(72vh, 600px);
+  overflow-y: auto;
+  padding: 10px;
+  transform: translateY(-50%);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent);
+  box-shadow: var(--app-shadow-3);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+.map-edge-tools-flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1px 2px 8px;
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.map-edge-tools-flyout-head button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  color: var(--app-cool);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.map-edge-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.map-edge-tool-choice {
+  --tool-color: var(--app-cool);
+  position: relative;
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-2);
+  text-align: left;
+}
+.map-edge-tool-choice:hover,
+.map-edge-tool-choice:focus-visible,
+.map-edge-tool-choice[data-on] {
+  border-color: color-mix(in srgb, var(--tool-color) 46%, var(--app-border));
+  background: color-mix(in srgb, var(--tool-color) 9%, var(--app-bg-elevated-solid));
+}
+.map-edge-tool-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.map-edge-tool-choice-icon {
+  position: relative;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tool-color) 12%, var(--app-bg-elevated-solid));
+  color: var(--tool-color);
+}
+.map-edge-tool-choice strong,
+.map-edge-tool-choice small {
+  display: block;
+}
+.map-edge-tool-choice strong {
+  font-size: 11.5px;
+  font-weight: 750;
+  line-height: 1.15;
+}
+.map-edge-tool-choice small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--app-ink-3);
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+.map-edge-incident-jump {
+  position: relative;
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  margin-top: 8px;
+  padding: 9px 32px 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
+  border-radius: var(--app-radius-sm);
+  background: color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid));
+  color: var(--app-ink-2);
+  text-align: left;
+}
+.map-edge-incident-jump strong,
+.map-edge-incident-jump small,
+.map-edge-incident-kicker {
+  grid-column: 1;
+}
+.map-edge-incident-kicker {
+  color: var(--app-brand-press);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.map-edge-incident-jump strong {
+  font-size: 11px;
+  line-height: 1.3;
+}
+.map-edge-incident-jump small {
+  color: var(--app-ink-3);
+  font-size: 9.5px;
+}
+.map-edge-incident-jump > svg {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  color: var(--app-brand-press);
+}
+.map-edge-traffic-key {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-3);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+.map-edge-traffic-key strong {
+  color: var(--app-ink-2);
+}
+.dock-host[data-dock-pane="open"] .map-edge-tools,
+.dock-host[data-map-peek="open"] .map-edge-tools {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+@media (max-width: 767.98px) {
+  .map-edge-tools {
+    top: auto;
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: 68px;
+    left: max(10px, env(safe-area-inset-left, 0px));
+    display: block;
+    transform: none;
+  }
+  .map-edge-tools-rail {
+    width: max-content;
+    max-width: 100%;
+    max-height: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .map-edge-tool-primary {
+    width: auto;
+    min-width: 44px;
+    flex: 0 0 auto;
+    grid-auto-flow: column;
+    gap: 5px;
+    padding-inline: 9px;
+  }
+  .map-edge-tool-primary .map-edge-tool-label {
+    position: static;
+    display: block;
+    max-width: 112px;
+    padding: 0;
+    transform: none;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 9.5px;
+    white-space: nowrap;
+    opacity: 1;
+  }
+  .map-edge-tool-label-long {
+    display: none;
+  }
+  .map-edge-tool-label-short {
+    display: inline;
+  }
+  .map-edge-tools-flyout {
+    top: auto;
+    right: auto;
+    bottom: 58px;
+    left: 0;
+    width: min(350px, calc(100vw - 20px));
+    max-height: min(58vh, 470px);
+    transform: none;
+  }
+}
+@media (max-width: 379.98px) {
+  .map-edge-tools-grid {
+    grid-template-columns: 1fr;
+  }
+  .map-edge-tool-primary .map-edge-tool-label {
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-edge-tool[data-attention="true"]::after,
+  .map-edge-tool-choice[data-attention="true"] .map-edge-tool-choice-icon::after {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
 /* ── Persistent "near me" locate FAB — above the zoom cluster ── */
 .map-locate-fab {
   position: absolute;

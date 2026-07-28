@@ -10,6 +10,7 @@ import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { liveSourceAnomalies } from "@/lib/quality/curated-freshness";
 import {
   finishIngestRunStrict,
+  recordSourceProbeFailuresStrict,
   startIngestRunStrict,
   type IngestRunResult,
 } from "@/lib/ingest/run-log";
@@ -24,6 +25,7 @@ const RUN_LOG_DEADLINE_MS = 5_000;
 const HYDRATE_DEADLINE_MS = 8_000;
 const LIVE_FEED_DEADLINE_MS = 15_000;
 const SNAPSHOT_WRITE_DEADLINE_MS = 8_000;
+const FAILURE_EVIDENCE_DEADLINE_MS = 5_000;
 
 type LiveResult = Awaited<ReturnType<typeof getLiveEvents>>;
 
@@ -65,6 +67,25 @@ export async function GET(request: Request) {
   const persistedSnapshots =
     snapshotWrite.status === "fulfilled" ? snapshotWrite.value : 0;
   const expectedSnapshots = live.sources_succeeded.length;
+  // A total worker timeout uses a synthetic phase key because it cannot
+  // truthfully identify which upstream adapter failed. Named source failures
+  // are durable ledger evidence; the synthetic phase failure stays on the
+  // aggregate heartbeat only.
+  const sourceFailures = live.sources_failed;
+  const persistableSourceFailures = sourceFailures.filter(
+    (source) => source !== "live-feed-phase",
+  );
+  const failureEvidenceWrite = await withDeadlineOutcome(
+    recordSourceProbeFailuresStrict(
+      persistableSourceFailures,
+      new Date(startedAt).toISOString(),
+    ),
+    FAILURE_EVIDENCE_DEADLINE_MS,
+  );
+  const persistedSourceFailures =
+    failureEvidenceWrite.status === "fulfilled"
+      ? failureEvidenceWrite.value
+      : 0;
   const reportedSourceCount =
     expectedSnapshots + live.sources_failed.length;
   const phaseFailures = [
@@ -76,8 +97,11 @@ export async function GET(request: Request) {
     || persistedSnapshots !== expectedSnapshots
       ? "snapshot-persist"
       : null,
+    failureEvidenceWrite.status !== "fulfilled"
+    || persistedSourceFailures !== persistableSourceFailures.length
+      ? "source-failure-evidence"
+      : null,
   ].filter((value): value is string => Boolean(value));
-  const sourceFailures = live.sources_failed;
   const status: IngestRunResult["status"] =
     phaseFailures.length > 0
       ? "error"
@@ -124,6 +148,10 @@ export async function GET(request: Request) {
       expected: expectedSnapshots,
       persisted: persistedSnapshots,
     },
+    source_failure_evidence: {
+      expected: persistableSourceFailures.length,
+      persisted: persistedSourceFailures,
+    },
     anomalies: {
       feed: getAnomalies(),
       source_availability: liveSourceAnomalies(sourceFailures),
@@ -134,6 +162,7 @@ export async function GET(request: Request) {
       hydrate_deadline: HYDRATE_DEADLINE_MS,
       live_feed_deadline: LIVE_FEED_DEADLINE_MS,
       snapshot_write_deadline: SNAPSHOT_WRITE_DEADLINE_MS,
+      failure_evidence_deadline: FAILURE_EVIDENCE_DEADLINE_MS,
     },
   }, { status: responseStatus });
 }

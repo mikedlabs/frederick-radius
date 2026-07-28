@@ -52,7 +52,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     source_url: "https://commons.wikimedia.org/wiki/File:Cunningham_Falls.jpg",
     verified: true,
   },
-  "francis-scott-key-memorial-foundation": {
+  "francis-scott-key-grave-and-monument": {
     file: "Francis Scott Key Monument (March 2024).jpg",
     alt: "The Francis Scott Key Monument at Mount Olivet Cemetery in Frederick.",
     author: "Engineerchange",

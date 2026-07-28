@@ -39,6 +39,71 @@ describe("patchRecord", () => {
     });
     expect(p.name).toBe("Old"); // input not mutated
   });
+
+  it("can explicitly clear an unsafe public blurb", () => {
+    const p = {
+      slug: "x",
+      name: "Example",
+      short_blurb: "100 Main Street Frederick, MD 21701 Directory copy.",
+    };
+
+    expect(
+      patchRecord(p, { x: { short_blurb: "" } }),
+    ).toEqual({
+      ...p,
+      short_blurb: "",
+    });
+  });
+
+  it("only verifies a manual hours patch when it carries field-specific evidence", () => {
+    const p = {
+      slug: "x",
+      hours_verified: false,
+      updated_at: "2026-07-28T12:00:00.000Z",
+    };
+    const hours = {
+      mon: [{ open: "09:00", close: "17:00" }],
+    };
+
+    expect(patchRecord(p, { x: { hours } })).toEqual({
+      ...p,
+      hours,
+      hours_verified: false,
+    });
+    expect(
+      patchRecord(p, {
+        x: {
+          hours,
+          hours_updated_at: "2026-07-27T15:00:00.000Z",
+        },
+      }),
+    ).toEqual({
+      ...p,
+      hours,
+      hours_updated_at: "2026-07-27T15:00:00.000Z",
+      hours_verified: true,
+    });
+  });
+
+  it("does not let old verification evidence attach to a changed schedule", () => {
+    const p = {
+      slug: "x",
+      hours: {
+        mon: [{ open: "08:00", close: "16:00" }],
+      },
+      hours_verified: true,
+      hours_updated_at: "2026-07-01T12:00:00.000Z",
+    };
+    const replacement = {
+      mon: [{ open: "09:00", close: "17:00" }],
+    };
+
+    expect(patchRecord(p, { x: { hours: replacement } })).toEqual({
+      slug: "x",
+      hours: replacement,
+      hours_verified: false,
+    });
+  });
 });
 
 describe("levenshtein (bounded)", () => {

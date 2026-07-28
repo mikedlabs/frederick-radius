@@ -5,6 +5,22 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   isRateLimited: vi.fn(),
   isSameOriginRequest: vi.fn(),
+  meterUsage: vi.fn(),
+  routeCache: new Map<string, unknown>(),
+}));
+
+vi.mock("next/cache", () => ({
+  unstable_cache:
+    (fn: (...args: unknown[]) => Promise<unknown>) =>
+    async (...args: unknown[]) => {
+      const cacheKey = JSON.stringify(args);
+      if (mocks.routeCache.has(cacheKey)) {
+        return mocks.routeCache.get(cacheKey);
+      }
+      const value = await fn(...args);
+      mocks.routeCache.set(cacheKey, value);
+      return value;
+    },
 }));
 
 vi.mock("@/lib/mapbox-server", () => ({
@@ -15,6 +31,10 @@ vi.mock("@/lib/mapbox-server", () => ({
 vi.mock("@/lib/origin-check", () => ({
   isRateLimited: mocks.isRateLimited,
   isSameOriginRequest: mocks.isSameOriginRequest,
+}));
+
+vi.mock("@/lib/usage-meter", () => ({
+  meterUsage: mocks.meterUsage,
 }));
 
 import { GET } from "./route";
@@ -38,6 +58,7 @@ function mapboxResponse(route: Record<string, unknown>) {
 describe("/api/walk-time routed geometry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.routeCache.clear();
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
@@ -70,6 +91,8 @@ describe("/api/walk-time routed geometry", () => {
       expect.any(Object),
     );
     expect(String(mocks.fetch.mock.calls[0]?.[0])).not.toContain("geometries=");
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
   });
 
   it("requests simplified GeoJSON and returns compact coordinates on opt-in", async () => {
@@ -104,6 +127,8 @@ describe("/api/walk-time routed geometry", () => {
     const upstream = String(mocks.fetch.mock.calls[0]?.[0]);
     expect(upstream).toContain("overview=simplified");
     expect(upstream).toContain("geometries=geojson");
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
   });
 
   it("keeps timing success fail-soft when optional geometry is unusable", async () => {
@@ -123,5 +148,42 @@ describe("/api/walk-time routed geometry", () => {
       minutes: 4,
       meters: 320,
     });
+  });
+
+  it("does not meter malformed requests that never reach Mapbox", async () => {
+    const response = await GET(
+      new NextRequest(
+        "https://frederickradius.app/api/walk-time?olng=bad&olat=39.41437&dlng=-77.40712&dlat=39.41601",
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.meterUsage).not.toHaveBeenCalled();
+  });
+
+  it("meters an upstream attempt even when Mapbox rejects it", async () => {
+    mocks.fetch.mockResolvedValue(new Response("nope", { status: 429 }));
+
+    expect(await (await GET(request())).json()).toEqual({
+      ok: false,
+      reason: "upstream-429",
+    });
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
+  });
+
+  it("does not remeter a routed leg served from cache", async () => {
+    mocks.fetch.mockResolvedValue(
+      mapboxResponse({ duration: 301, distance: 412.4 }),
+    );
+
+    await GET(request());
+    await GET(request());
+
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
   });
 });

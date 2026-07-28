@@ -35,7 +35,17 @@ export function recommendationTier(p: PlaceCardData): TierResult {
   // ── Tier 4 — Hide / archive. Never surface, anywhere. ──
   if (SUPPRESSED_JUNK_SLUGS.has(p.slug)) return { tier: 4, reason: "suppressed junk" };
   if (p.is_operational === "closed_permanently") return { tier: 4, reason: "closed permanently" };
-  if (isNonDiscoverable(p.primary_type)) return { tier: 4, reason: "non-discoverable type" };
+  // The discovery loader only suppresses a non-discoverable Google type when
+  // it came from a bulk DFP/Google import. A curated or discovered civic place
+  // can legitimately carry Google's vague "service" type (for example, a
+  // county senior center), so the readiness audit must honor the same source
+  // guard instead of contradicting the public catalog.
+  if (
+    (p.source === "dfp" || p.source === "google") &&
+    isNonDiscoverable(p.primary_type)
+  ) {
+    return { tier: 4, reason: "non-discoverable bulk-import type" };
+  }
   const geomOk = p.geom && Number.isFinite(p.geom.lng) && Number.isFinite(p.geom.lat);
   if (!p.name?.trim() || !p.category?.trim() || !geomOk) {
     return { tier: 4, reason: "missing name / category / coordinates" };

@@ -25,10 +25,11 @@ import type { DayOfWeek, Hours, HoursWindow } from "@/data/places";
  * windows resolve correctly. "Open 24 hours" emits close "24:00" so the
  * full day is covered.
  *
- * Defensive by design: a token it cannot read is skipped, never guessed,
- * and the function returns `undefined` when NOT ONE day parsed — so the
- * caller leaves the place "hours unknown" rather than asserting a false
- * "closed".
+ * Defensive by design: every real provider array must contain exactly one
+ * recognized line for each weekday. Any malformed/unknown line, duplicate, or
+ * missing day rejects the whole schedule. Callers interpret a missing
+ * structured day as closed, so keeping a parseable subset would turn a
+ * provider-format change into a confident false closure.
  */
 
 const DAY_KEY: Record<string, DayOfWeek> = {
@@ -51,7 +52,7 @@ function to24(raw: string, inherit?: "AM" | "PM"): string | null {
   const min = m[2] ?? "00";
   const ap = (m[3] || inherit || "").toUpperCase();
   if (ap !== "AM" && ap !== "PM") return null; // can't resolve 12h -> 24h
-  if (h > 12 || parseInt(min, 10) > 59) return null;
+  if (h < 1 || h > 12 || parseInt(min, 10) > 59) return null;
   if (ap === "AM") {
     if (h === 12) h = 0;
   } else if (h !== 12) {
@@ -67,18 +68,23 @@ function meridiemOf(raw: string): "AM" | "PM" | undefined {
   return m ? (m[1].toUpperCase() as "AM" | "PM") : undefined;
 }
 
-function parseWindows(rest: string): HoursWindow[] {
+function parseWindows(rest: string): HoursWindow[] | null {
   if (/^closed$/i.test(rest)) return [];
-  if (/24\s*hours/i.test(rest)) return [{ open: "00:00", close: "24:00" }];
+  if (/^(?:open\s+)?24\s*hours$/i.test(rest)) {
+    return [{ open: "00:00", close: "24:00" }];
+  }
   const windows: HoursWindow[] = [];
   for (const part of rest.split(/,\s*/)) {
-    const [a, b] = part.split(DASH);
-    if (!a || !b) continue;
+    const pieces = part.split(DASH);
+    if (pieces.length !== 2) return null;
+    const [a, b] = pieces;
+    if (!a || !b) return null;
     const close = to24(b);
     const open = to24(a, meridiemOf(b)); // bare open inherits the close's meridiem
-    if (open && close) windows.push({ open, close });
+    if (!open || !close) return null;
+    windows.push({ open, close });
   }
-  return windows;
+  return windows.length > 0 ? windows : null;
 }
 
 export function parseGoogleHours(
@@ -86,16 +92,27 @@ export function parseGoogleHours(
 ): Hours | undefined {
   if (!weekdayDescriptions?.length) return undefined;
   const hours: Hours = {};
+  const seenDays = new Set<DayOfWeek>();
   for (const line of weekdayDescriptions) {
+    if (typeof line !== "string") return undefined;
     const i = line.indexOf(":"); // first colon separates the day from the rest
-    if (i < 0) continue;
+    if (i < 0) return undefined;
     const day = DAY_KEY[line.slice(0, i).trim().toLowerCase()];
-    if (!day) continue;
+    if (!day) return undefined;
+    // Duplicate provider days are ambiguous. Reject the entire schedule
+    // instead of selecting whichever line happened to arrive last.
+    if (seenDays.has(day)) return undefined;
+    seenDays.add(day);
     // `\s` matches Google's narrow / non-breaking spaces too, so this one
     // collapse normalizes "9:00 AM" down to "9:00 AM".
     const rest = line.slice(i + 1).replace(/\s+/g, " ").trim();
     const windows = parseWindows(rest);
+    // A partially parsed week is worse than no schedule: callers interpret a
+    // missing day as closed. If Google changes one line's format, fail the
+    // whole row closed rather than publish a confident false closure.
+    if (windows === null) return undefined;
     if (windows.length) hours[day] = windows;
   }
+  if (seenDays.size !== 7) return undefined;
   return Object.keys(hours).length ? hours : undefined;
 }

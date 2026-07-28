@@ -122,9 +122,10 @@ export function recordSnapshot(source: string, rows: SnapshotRow[]): void {
  *
  * This is deliberately separate from `recordSnapshot()`: request-path feed
  * assembly can run on many cold workers and must never write telemetry on an
- * ordinary page view. The nightly data-health cron calls this after its fresh
- * feed pull, which caps growth to roughly one row per source per day while
- * preserving cross-deploy anomaly history.
+ * ordinary page view. The bounded data-health feed worker calls this every two
+ * hours after a fresh pull. That cadence stays inside the ledger's three-hour
+ * freshness window for hourly sources while capping growth to twelve rows per
+ * source per day and preserving cross-deploy anomaly history.
  */
 async function persistCurrentSnapshotRows(
   sources?: readonly string[],

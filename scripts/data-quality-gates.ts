@@ -26,6 +26,7 @@ import {
 } from "@/data/categories";
 import { isInFrederickCountyArea } from "@/lib/geo";
 import {
+  hasReviewRequiredExtendedWindow,
   isAllWeekAllDay,
   is24hVisitabilityReviewCurrent,
   REVIEWED_ALL_WEEK_24H_VISITABILITY,
@@ -38,6 +39,11 @@ import {
   MANUAL_PLACE_STATUS_OVERRIDES,
 } from "@/lib/place-status-overrides";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { classifyDescription } from "@/lib/copy-quality";
+import {
+  decisionCopyCounts,
+  hasUsefulDecisionCopy,
+} from "@/lib/quality/coverage";
 
 const PLACES = PLACES_RAW as unknown as PlaceCardData[];
 const ENRICH = ENRICH_RAW as Record<
@@ -60,33 +66,31 @@ type Gate = {
   run: () => { pass: boolean; observed: string; expect: string };
 };
 
-/** A blurb that helps someone choose: present, not just the name echoed back,
- *  and not shared verbatim across many rows. */
-const blurbCounts = (() => {
-  const seen = new Map<string, number>();
-  for (const p of PLACES) {
-    const b = (p.short_blurb ?? "").trim();
-    if (b) seen.set(b, (seen.get(b) ?? 0) + 1);
+/** Share the exact decision-copy rule with the admin coverage report. Keeping
+ * this in one module prevents a gate from going green while the product's
+ * coverage surface still counts the same sentence as unusable. */
+const blurbCounts = decisionCopyCounts(PLACES);
+const isDecisionCopy = (place: PlaceCardData) =>
+  hasUsefulDecisionCopy(place, blurbCounts);
+
+const DESCRIPTION_SOURCE_KINDS = new Set([
+  "business_website",
+  "official_source",
+  "field_note",
+  "radius_editorial",
+]);
+
+function isValidIsoDate(value: string | undefined): boolean {
+  return Boolean(value && !Number.isNaN(Date.parse(value)));
+}
+
+function isHttpsUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
   }
-  return seen;
-})();
-function isDecisionCopy(p: PlaceCardData): boolean {
-  const b = (p.short_blurb ?? "").trim();
-  if (b.length < 35 || b.length > 220 || !/[.!?]$/.test(b)) return false;
-  const name = p.name.trim();
-  if (b === name) return false;
-  if (/^(?:bars?|baker(?:y|ies)|coffee|parks?|restaurants?|shopping|worship)\s+in\s+/i.test(b)) return false;
-  if (/\b(?:more info about|click here|learn more|call us|visit us|contact us)\b/i.test(b)) return false;
-  if (/\b\d{1,5}\s+[A-Za-z].*\b(?:St|Ave|Rd|Blvd|Ln|Dr|Way|Ct|Pkwy|Hwy)\b/i.test(b)) return false;
-  // A name prefix is often grammatical, useful copy ("Baker Park is a
-  // 44-acre…"). Reject only the short scraped echo this guard was written for
-  // ("Name Patrick St"), not an otherwise substantive description.
-  if (b.startsWith(`${name} `)) {
-    const remainderWords = b.slice(name.length).trim().split(/\s+/).filter(Boolean);
-    if (remainderWords.length < 5) return false;
-  }
-  if ((blurbCounts.get(b) ?? 0) > 3) return false; // shared boilerplate
-  return true;
 }
 
 const pct = (n: number, d: number) => (d === 0 ? 0 : n / d);
@@ -232,6 +236,34 @@ const GATES: Gate[] = [
     },
   },
   {
+    id: "open_now_extended_windows",
+    severity: "critical",
+    audit: "DQ-002 provider-hours plausibility",
+    run: () => {
+      const extended = PLACES.filter((p) =>
+        hasReviewRequiredExtendedWindow(p.hours),
+      );
+      const unreviewed = extended.filter(
+        (p) =>
+          !Object.hasOwn(REVIEWED_ALL_WEEK_24H_VISITABILITY, p.slug),
+      );
+      const stale = extended.filter((place) => {
+        const entry =
+          REVIEWED_ALL_WEEK_24H_VISITABILITY[
+            place.slug as keyof typeof REVIEWED_ALL_WEEK_24H_VISITABILITY
+          ];
+        return Boolean(
+          entry && !is24hVisitabilityReviewCurrent(entry.review_after),
+        );
+      });
+      return {
+        pass: unreviewed.length === 0 && stale.length === 0,
+        observed: `${unreviewed.length} unreviewed; ${stale.length} stale-reviewed of ${extended.length} published schedules with a 20+ hour window`,
+        expect: "0 unreviewed or stale-reviewed near-all-day windows published",
+      };
+    },
+  },
+  {
     id: "manual_place_status_review",
     severity: "high",
     audit: "operational status",
@@ -256,7 +288,11 @@ const GATES: Gate[] = [
     run: () => {
       const good = PLACES.filter(isDecisionCopy).length;
       const r = pct(good, PLACES.length);
-      return { pass: r >= 0.5, observed: `${fmtPct(r)} have unique, decision-useful blurbs`, expect: ">= 50% (target 90% of editorial)" };
+      return {
+        pass: r >= 0.5,
+        observed: `${fmtPct(r)} (${good} of ${PLACES.length}) have unique, decision-useful blurbs`,
+        expect: ">= 50% (target 90% of editorial)",
+      };
     },
   },
   {
@@ -264,12 +300,27 @@ const GATES: Gate[] = [
     severity: "high",
     audit: "editorial provenance",
     run: () => {
-      const publicSlugs = new Set(PLACES.map((place) => place.slug));
+      const publicBySlug = new Map(
+        PLACES.map((place) => [place.slug, place]),
+      );
       const approved = Object.entries(DESCRIPTIONS).filter(([, entry]) => entry.status === "approved");
       const invalid = approved.filter(([slug, entry]) => {
-        const sourceOk = entry.source.kind === "radius_editorial" || /^https:\/\//.test(entry.source.url ?? "");
-        return !publicSlugs.has(slug) || !sourceOk || !entry.reviewed_at ||
-          !entry.reviewer_note?.trim() || !/[.!?]$/.test(entry.blurb.trim());
+        const place = publicBySlug.get(slug);
+        const sourceKindOk = DESCRIPTION_SOURCE_KINDS.has(entry.source?.kind);
+        const isRadiusEditorial = entry.source?.kind === "radius_editorial";
+        const sourceOk = isRadiusEditorial || (
+          isHttpsUrl(entry.source?.url) &&
+          isValidIsoDate(entry.source?.fetched_at)
+        );
+        const contentOk = Boolean(
+          place &&
+          classifyDescription(place.name, entry.blurb, true) === "reviewed",
+        );
+        return !place || !sourceKindOk || !sourceOk ||
+          !isValidIsoDate(entry.reviewed_at) ||
+          !entry.reviewer_note?.trim() ||
+          !/[.!?]$/.test(entry.blurb.trim()) ||
+          !contentOk;
       });
       return {
         pass: invalid.length === 0,
@@ -283,13 +334,24 @@ const GATES: Gate[] = [
     severity: "medium",
     audit: "DQ-011 provenance split",
     run: () => {
-      const owned = PLACES.filter((place) =>
-        Boolean(place.description_source && isDecisionCopy(place)),
+      const useful = PLACES.filter(isDecisionCopy);
+      const explicitlyApproved = useful.filter(
+        (place) => place.description_reviewed,
+      ).length;
+      const legacyRadiusAuthored = useful.filter(
+        (place) =>
+          place.description_source === "radius_editorial" &&
+          !place.description_reviewed,
+      ).length;
+      const owned = useful.filter((place) =>
+        Boolean(place.description_source),
       ).length;
       const r = pct(owned, PLACES.length);
       return {
         pass: r >= 0.5,
-        observed: `${fmtPct(r)} have decision copy owned or approved by Radius`,
+        observed:
+          `${fmtPct(r)} (${owned} of ${PLACES.length}) have Radius-owned or approved decision copy ` +
+          `(${legacyRadiusAuthored} legacy Radius-authored; ${explicitlyApproved} explicitly approved)`,
         expect: ">= 50% (Google runtime context reported separately)",
       };
     },

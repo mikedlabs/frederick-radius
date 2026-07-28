@@ -53,3 +53,27 @@ describe("venue event attendance normalization", () => {
     );
   });
 });
+
+describe("venue event mixed-calendar categories", () => {
+  it("does not let a venue-level music stamp override a flea market title", () => {
+    const [card] = venueEventsToCards([
+      event({
+        title: "Vintage Flea Market",
+        category: "music",
+      }),
+    ]);
+
+    expect(card.category).toBe("market");
+  });
+
+  it("keeps show-like events in the source category", () => {
+    const [card] = venueEventsToCards([
+      event({
+        title: "Bluegrass Jam",
+        category: "music",
+      }),
+    ]);
+
+    expect(card.category).toBe("music");
+  });
+});

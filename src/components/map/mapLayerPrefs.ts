@@ -26,7 +26,9 @@ export type MapLayerPrefs = {
   cemeteries?: boolean;
   parking?: boolean;
   radar?: boolean;
+  traffic?: boolean;
   incidents?: boolean;
+  aviation?: boolean;
   cameras?: boolean;
   firestations?: boolean;
   civicplaces?: boolean;
@@ -73,7 +75,9 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     if (p.cemeteries) slim.cemeteries = true;
     if (p.parking) slim.parking = true;
     if (p.radar) slim.radar = true;
+    if (p.traffic) slim.traffic = true;
     if (p.incidents) slim.incidents = true;
+    if (p.aviation) slim.aviation = true;
     if (p.cameras) slim.cameras = true;
     if (p.firestations) slim.firestations = true;
     if (p.civicplaces) slim.civicplaces = true;

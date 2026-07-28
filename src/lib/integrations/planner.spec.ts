@@ -53,7 +53,10 @@ describe("buildPlan", () => {
       audience: "date",
       vibe: "easy",
       duration_hours: 3,
-      start_at: "2026-07-23T03:54:00.000Z",
+      // 4:30 AM Eastern: even the genuinely late kitchens in the refreshed
+      // provider snapshot are closed. This keeps the fixture about refusing
+      // an unsupported open claim instead of depending on stale data.
+      start_at: "2026-07-23T08:30:00.000Z",
       start_near: FREDERICK_CENTER,
       municipality: "frederick",
     });
