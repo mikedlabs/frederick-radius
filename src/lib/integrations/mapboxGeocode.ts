@@ -18,8 +18,10 @@
  *   - each unique address geocodes at most once per assembly pass, and a
  *     pass is capped at MAX_GEOCODES_PER_PASS (overflow is counted and
  *     logged, never silently dropped);
- *   - results are unstable_cache'd for 30 days keyed on the normalized
- *     query — addresses don't move;
+ *   - every request explicitly declares `permanent=true`, as required
+ *     by Mapbox when a geocoding result will be stored;
+ *   - those permanent results are unstable_cache'd for 30 days keyed on
+ *     the normalized query — addresses don't move;
  *   - transient failures (HTTP error, timeout) THROW inside the cached fn
  *     so they are never cached, and the caller converts them to null.
  *
@@ -145,7 +147,10 @@ export async function geocodeForwardUncached(q: string): Promise<LngLat | null> 
       // pin and hotspot link silently fail-softed to null on prod. Precision
       // is enforced on the RESPONSE instead: parseGeocodeResponse accepts only
       // address/street/block feature types, and isValidCoord gates the county.
-      "&country=US&limit=1" +
+      // permanent=true is required because successful coordinates are retained
+      // in unstable_cache for 30 days; temporary Mapbox geocoding results must
+      // not be stored.
+      "&country=US&limit=1&permanent=true" +
       `&access_token=${MAPBOX_SERVER_TOKEN}`;
     // MAPBOX_SERVER_HEADERS is load-bearing: the production token is
     // URL-restricted and Mapbox matches the Referer on ALL APIs, so a
@@ -170,7 +175,9 @@ const cachedGeocode = unstable_cache(
   // a geocode maps an address string to a coordinate and is deploy-
   // independent, so re-paying Mapbox for the whole address set on every
   // deploy buys nothing. Addresses don't move; 30 days is plenty fresh.
-  ["mapbox-geocode-v1"],
+  // v2 invalidates coordinates originally fetched without permanent=true, so
+  // every retained value is backed by an explicitly permanent request.
+  ["mapbox-geocode-v2"],
   { revalidate: 30 * 24 * 3600 },
 );
 

@@ -41,13 +41,16 @@ const UPSTREAMS: Array<{
   key: string;
   label: string;
   per1000: number;
+  freeMonthly?: number;
   note: string;
 }> = [
   { key: "google_photo", label: "Google place photos", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
   { key: "anthropic_ask", label: "Ask Radius AI", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
-  { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, note: "After the free tier. Platform caching means real hits run lower than this count." },
-  { key: "mapbox_geocode", label: "Mapbox geocoding", per1000: 0.75, note: "Event-address enrichment only. Disabled unless MAPBOX_GEOCODING_ENABLED=1." },
-  { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, note: "After the 50k/month free tier; cached for 30 days per location." },
+  { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
+  { key: "mapbox_matrix", label: "Mapbox travel matrix", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Radius requests one starting point against at most nine places, so billed elements stay bounded." },
+  { key: "mapbox_search_box", label: "Mapbox Search Box fallback", per1000: 11.5, freeMonthly: 2_500, note: "After the 2,500-session monthly free tier. Counts each fallback session when its first suggestion succeeds, including sessions abandoned without a selection. Radius search always runs first." },
+  { key: "mapbox_geocode", label: "Mapbox permanent geocoding", per1000: 5, note: "Stored event-address enrichment. Mapbox has no free tier for permanent results; disabled unless MAPBOX_GEOCODING_ENABLED=1." },
+  { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, freeMonthly: 50_000, note: "After the 50k/month free tier; cached for 30 days per location." },
 ];
 
 const BILLING_LINKS: Array<{ label: string; href: string }> = [
@@ -60,6 +63,16 @@ const BILLING_LINKS: Array<{ label: string; href: string }> = [
 
 function dayKeyEastern(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
+}
+
+function estimatedMonthlyCost(
+  upstream: (typeof UPSTREAMS)[number],
+  calls: number,
+): number {
+  return (
+    (Math.max(0, calls - (upstream.freeMonthly ?? 0)) / 1000) *
+    upstream.per1000
+  );
 }
 
 /** The threshold-colored 30-day estimate figure (brand-press when it clears $1). */
@@ -130,8 +143,10 @@ export default async function CostsAdmin() {
     const daily = last7Keys.map((k) => byDay.get(k) ?? 0).sort((a, b) => a - b);
     const medianDaily = daily[3];
     const todayCalls = byDay.get(today) ?? 0;
-    const mtdEst = (sum(u.key, monthStart) / 1000) * u.per1000;
-    const projectedEst = mtdEst + (medianDaily / 1000) * u.per1000 * remainingDays;
+    const monthCalls = sum(u.key, monthStart);
+    const projectedCalls = monthCalls + medianDaily * remainingDays;
+    const mtdEst = estimatedMonthlyCost(u, monthCalls);
+    const projectedEst = estimatedMonthlyCost(u, projectedCalls);
     // Same alarm rule as the desk's cost sentinel: real volume, 3x the median.
     const hot = todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily);
     return { key: u.key, mtdEst, projectedEst, hot };
@@ -147,6 +162,8 @@ export default async function CostsAdmin() {
     { label: "Google Places key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Set a hard budget cap + alerts in the Google Cloud console." },
     { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
     { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },
+    { label: "Mapbox Matrix switch", ok: process.env.MAPBOX_MATRIX_ENABLED === "1", why: "Real travel-time ranking stays off unless this dedicated switch is set to 1." },
+    { label: "Mapbox Search Box switch", ok: process.env.MAPBOX_SEARCH_BOX_ENABLED === "1", why: "The metered fallback search stays off unless this dedicated switch is set to 1." },
     { label: "Hybrid search index", ok: searchDocumentCount > 0, why: searchDocumentCount > 0 ? `${searchDocumentCount.toLocaleString()} local records are available to meaning + exact-match retrieval.` : "Apply migration 0025, then run npm run build:radius-search once." },
   ];
 
@@ -196,7 +213,7 @@ export default async function CostsAdmin() {
             const d1 = sum(u.key, today);
             const d7 = sum(u.key, sevenAgo);
             const d30 = sum(u.key, null);
-            const est30 = (d30 / 1000) * u.per1000;
+            const est30 = estimatedMonthlyCost(u, d30);
             const month = monthMath.find((m) => m.key === u.key);
             return (
               <li key={u.key} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
