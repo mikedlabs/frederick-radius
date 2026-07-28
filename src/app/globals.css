@@ -4843,6 +4843,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 11px;
   line-height: 1.35;
 }
+.map-spot-peek .map-peek-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.map-spot-peek .map-peek-source {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .map-peek-source {
   color: var(--app-ink-3);
   font-family: var(--font-mono, ui-monospace, monospace);

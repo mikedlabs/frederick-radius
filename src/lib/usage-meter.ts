@@ -22,6 +22,7 @@ export type PaidUpstream =
   | "mapbox_directions"
   | "mapbox_matrix"
   | "mapbox_isochrone"
+  | "mapbox_search_box"
   | "mapbox_static"
   | "google_routes_matrix";
 

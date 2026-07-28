@@ -64,6 +64,15 @@ export type WantRow = {
   };
   /** Present when this row is being used as a current-availability answer. */
   confidence?: "confirmed" | "likely";
+  /** Real routed travel context, added only when Radius has an explicit
+   *  device location and Mapbox Matrix answers within the request budget.
+   *  `distance` remains the compact display line so older clients degrade
+   *  cleanly; this evidence lets Ask explain why a nearby result moved up. */
+  travel?: {
+    mode: "walking";
+    minutes: number;
+    distanceMeters: number | null;
+  };
 };
 
 export type WantAnswer = {

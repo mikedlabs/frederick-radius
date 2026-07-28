@@ -65,6 +65,15 @@ export type SearchResult = {
   distance_m?: number;
   /** Street-level disambiguation for map search results. */
   address?: string;
+  /** Real route-network minutes when the map has an explicit device fix. */
+  travel_minutes?: number;
+  /** Mapbox Search Box fallback results exist only for the active map-search
+   *  session and must never be persisted into the Radius catalog. */
+  temporary?: boolean;
+  provider?: "Mapbox";
+  mapbox_id?: string;
+  /** Plain-text provider attribution carried only for a temporary result. */
+  attribution?: string;
 };
 
 /**
@@ -355,6 +364,22 @@ const MAP_ACTIONS: readonly MapAction[] = [
       "rain radar",
       "precipitation radar",
     ]),
+  },
+  {
+    id: "action:map-roads",
+    title: "Show roads now",
+    subtitle: "See current road flow, official reports, and public incidents.",
+    href: "/map?show=roads",
+    matches: (query) =>
+      query === "traffic" ||
+      query === "roads" ||
+      containsAnyPhrase(query, [
+        "road conditions",
+        "traffic conditions",
+        "road closure",
+        "road closures",
+        "what are the roads like",
+      ]),
   },
   {
     id: "action:map-cameras",

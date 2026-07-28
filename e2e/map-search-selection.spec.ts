@@ -136,4 +136,121 @@ test.describe("map search selection", () => {
     await expect(page).toHaveURL(/show=parking/);
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
   });
+
+  test("falls back to a temporary county map result without pretending Radius verified it", async ({ page }) => {
+    await page.route("**/api/search?**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results: [] }),
+      });
+    });
+    await page.route("**/api/map/search-fallback", async (route) => {
+      const request = route.request();
+      const body = request.postDataJSON() as {
+        action: "suggest" | "retrieve";
+        sessionToken: string;
+      };
+      expect(body.sessionToken).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      if (body.action === "retrieve") {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          body.action === "suggest"
+            ? {
+                ok: true,
+                action: "suggest",
+                temporary: true,
+                provider: "Mapbox",
+                attribution: "Map data © Mapbox",
+                suggestions: [
+                  {
+                    mapboxId: "test-address",
+                    name: "12 East Church Street",
+                    featureType: "address",
+                    fullAddress: "12 East Church Street, Frederick, Maryland 21701",
+                  },
+                ],
+              }
+            : {
+                ok: true,
+                action: "retrieve",
+                temporary: true,
+                provider: "Mapbox",
+                attribution: "Map data © Mapbox",
+                result: {
+                  mapboxId: "test-address",
+                  name: "12 East Church Street",
+                  featureType: "address",
+                  coordinates: { lng: -77.4101, lat: 39.4159 },
+                },
+              },
+        ),
+      });
+    });
+
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+    const search = page.getByRole("searchbox", { name: "Search this map" });
+    await search.fill("12 East Church Street");
+
+    const fallback = page.locator('[data-map-search-result="mapbox:test-address"]');
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toContainText("Temporary Mapbox result");
+    await fallback.click();
+    await expect(fallback).toHaveAttribute("aria-busy", "true");
+
+    const spot = page.getByRole("dialog", { name: "At this spot" });
+    await expect(spot).toBeVisible();
+    await expect(spot).toContainText("Temporary map result");
+    await expect(spot).toContainText(
+      "Radius has not verified it as a local listing.",
+    );
+    await expect(spot).toContainText("Map data © Mapbox");
+    await expect(spot.getByRole("button", { name: "Close this spot" })).toBeFocused();
+  });
+
+  test("groups live road context behind one honest control", async ({ page }) => {
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Map options" }).click();
+    await page
+      .getByRole("region", { name: "Map options" })
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
+
+    const roads = page
+      .getByRole("region", { name: "Map layers" })
+      .getByRole("button", { name: "Roads now" });
+    await expect(roads).toHaveAttribute("aria-pressed", "false");
+    await roads.click();
+
+    await expect(roads).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(/Mapbox congestion context/)).toBeVisible();
+    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+    await expect(page.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
+  });
+
+  test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
+    await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Map options/ }).click();
+    await page
+      .getByRole("region", { name: "Map options" })
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
+
+    const layers = page.getByRole("region", { name: "Map layers" });
+    const roads = layers.getByRole("button", { name: "Roads now" });
+    await expect(roads).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+
+    await roads.click();
+
+    await expect(roads).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(/Mapbox congestion context/)).toBeVisible();
+    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+  });
 });

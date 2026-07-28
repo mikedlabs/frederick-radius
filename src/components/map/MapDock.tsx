@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Heart, Hotel, Landmark, Layers3, LayoutGrid, LocateFixed, Music, NotebookPen, Palette, Search as SearchIcon, Share2, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wine, X, type LucideIcon } from "lucide-react";
+import { Baby, Beer, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Heart, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, Music, NotebookPen, Palette, Search as SearchIcon, Share2, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wine, X, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -99,6 +99,7 @@ export type MapDockProps = {
   q: string;
   setQ: SetState<string>;
   searchMatches: SearchResult[];
+  searchOpeningId: string | null;
   pickSearch: (r: SearchResult) => void;
   /** Honest origin attached to map-search distances. */
   searchDistanceOriginLabel: "from you" | "from map center";
@@ -148,6 +149,14 @@ export type MapDockProps = {
   showRadar: boolean;
   setShowRadar: SetState<boolean>;
   radarHealth: LiveLayerHealth;
+  /** One task-level roads mode: Mapbox congestion plus Radius's official
+   *  reports and public incident context. `roadsNowActive` keeps an existing
+   *  individual/deep-linked layer visible in the summary, while
+   *  `roadsNowFullyOn` prevents the master control from erasing a mixed state
+   *  on its first tap. */
+  roadsNowActive: boolean;
+  roadsNowFullyOn: boolean;
+  setShowRoadsNow: (show: boolean) => void;
   showTraffic: boolean;
   setShowTraffic: SetState<boolean>;
   /** Newest radar frame's unix seconds — stamps "radar as of 9:42 PM" so
@@ -591,15 +600,13 @@ export default function MapDock(props: MapDockProps) {
   const layerBits: string[] = [];
   if (publicAmenityCount > 0) layerBits.push("Amenities");
   if (communityReportsOn) layerBits.push("Community reports");
-  if (props.showCivic) layerBits.push("Roads & alerts");
+  if (props.roadsNowActive) layerBits.push("Roads now");
   if (props.showTransit) layerBits.push("Transit");
   if (props.showTrails) layerBits.push("Trails");
   if (props.showAerial) layerBits.push("Aerial photos");
   if (props.showCemeteries) layerBits.push("Cemeteries");
   if (props.showParking) layerBits.push("Parking");
-  if (props.showTraffic) layerBits.push("Traffic flow");
   if (props.showRadar) layerBits.push("Radar");
-  if (props.showIncidents) layerBits.push("Scanner reports");
   if (props.showRotorcraft) layerBits.push("Helicopter activity");
   if (props.showCameras) layerBits.push("Cameras");
   if (props.showFireStations) layerBits.push("Fire stations");
@@ -615,15 +622,13 @@ export default function MapDock(props: MapDockProps) {
   const layerCount =
     props.amenityGroups.size +
     props.activeOverlays.length +
-    (props.showCivic ? 1 : 0) +
+    (props.roadsNowActive ? 1 : 0) +
     (props.showTransit ? 1 : 0) +
     (props.showTrails ? 1 : 0) +
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
-    (props.showTraffic ? 1 : 0) +
     (props.showRadar ? 1 : 0) +
-    (props.showIncidents ? 1 : 0) +
     (props.showRotorcraft ? 1 : 0) +
     (props.showCameras ? 1 : 0) +
     (props.showFireStations ? 1 : 0) +
@@ -708,6 +713,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowParking(false);
     props.setShowTraffic(false);
     props.setShowRadar(false);
+    props.setShowRoadsNow(false);
     props.setShowIncidents(false);
     props.setShowRotorcraft(false);
     props.setShowCameras(false);
@@ -745,6 +751,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowParking(false);
     props.setShowTraffic(false);
     props.setShowRadar(false);
+    props.setShowRoadsNow(false);
     props.setShowIncidents(false);
     props.setShowRotorcraft(false);
     props.setShowCameras(false);
@@ -946,20 +953,33 @@ export default function MapDock(props: MapDockProps) {
                       <button
                         type="button"
                         data-map-search-result={r.id}
+                        disabled={props.searchOpeningId === r.id}
+                        aria-busy={props.searchOpeningId === r.id}
                         onClick={(event) => {
                           event.stopPropagation();
-                          setSearchPanelOpen(false);
+                          if (!r.temporary) setSearchPanelOpen(false);
                           props.pickSearch(r);
                         }}
                         className="dock-search-result"
                       >
-                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                        {props.searchOpeningId === r.id ? (
+                          <LoaderCircle
+                            aria-hidden
+                            className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                          />
+                        ) : (
+                          <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                        )}
                         <span className="dock-search-result-text">
                           <span className="dock-search-result-title">{r.title}</span>
                           <span className="dock-search-result-sub">
-                            {r.type === "place"
+                            {props.searchOpeningId === r.id
+                              ? "Opening this map result…"
+                              : r.type === "place"
                               ? [
-                                  r.distance_m != null
+                                  r.travel_minutes != null
+                                    ? `${r.travel_minutes} min walk ${props.searchDistanceOriginLabel}`
+                                    : r.distance_m != null
                                     ? `${formatDistance(r.distance_m)} ${props.searchDistanceOriginLabel}`
                                     : null,
                                   r.address?.trim() || r.subtitle,
@@ -1565,29 +1585,15 @@ export default function MapDock(props: MapDockProps) {
                       Community reports
                     </Chip>
                   )}
-                  {props.civicAvailable && (
-                    <Chip
-                      on={props.showCivic}
-                      color="var(--app-warning-press)"
-                      onClick={() => props.setShowCivic((v) => !v)}
-                      title="Live traffic incidents and county-published issue reports (311)"
-                    >
-                      Roads &amp; alerts
-                    </Chip>
-                  )}
                   <Chip
-                    on={props.showIncidents}
+                    on={props.roadsNowFullyOn}
                     color="var(--app-brand)"
-                    onClick={() => props.setShowIncidents((v) => !v)}
+                    onClick={() => props.setShowRoadsNow(!props.roadsNowFullyOn)}
                     title={
-                      props.incidentHealth.status === "unavailable"
-                        ? props.showIncidents
-                          ? "The latest FrederickScanner request failed. Incidents are retrying automatically"
-                          : "The latest FrederickScanner request failed. Turn Incidents on to retry"
-                        : "Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
+                      "Current road flow from Mapbox with Maryland CHART reports and privacy-filtered public incidents. Medical and personal calls are never shown"
                     }
                   >
-                    Scanner reports
+                    Roads now
                   </Chip>
                   <Chip
                     on={props.showCameras}
@@ -1605,8 +1611,8 @@ export default function MapDock(props: MapDockProps) {
                   </Chip>
                 </div>
 
-                {(props.showParking || props.showTransit || props.showTraffic || props.showRadar || communityReportsOn
-                  || props.showCivic || props.showIncidents || props.showCameras
+                {(props.showParking || props.showTransit || props.showRadar || communityReportsOn
+                  || props.roadsNowActive || props.showRotorcraft || props.showCameras
                   || props.transitHealth.status === "unavailable"
                   || props.radarHealth.status === "unavailable"
                   || props.incidentHealth.status === "unavailable"
@@ -1624,14 +1630,6 @@ export default function MapDock(props: MapDockProps) {
                     ) : props.showTransit && (
                       <p className="dock-layer-status">
                         <strong>Transit</strong> · {props.transitHealth.count} mapped route segments from {props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.
-                      </p>
-                    )}
-                    {props.showTraffic && (
-                      <p className="dock-layer-status">
-                        <strong>Traffic flow</strong> · Mapbox road conditions.
-                        Amber is moderate, orange is heavy, red is severe, and
-                        dashed red marks closures. The source updates about
-                        every eight minutes.
                       </p>
                     )}
                     {props.radarHealth.status === "unavailable" ? (
@@ -1658,14 +1656,22 @@ export default function MapDock(props: MapDockProps) {
                           : "No current reports."}
                       </p>
                     )}
-                    {props.showCivic && (
-                      <p className="dock-layer-status"><strong>Roads &amp; alerts</strong> · County-published issues and live traffic context.</p>
+                    {props.showTraffic && (
+                      <p className="dock-layer-status">
+                        <strong>Road flow</strong> · Mapbox road conditions.
+                        Amber is moderate, orange is heavy, red is severe, and
+                        dashed red marks closures. The source typically updates
+                        about every eight minutes.
+                      </p>
+                    )}
+                    {props.showCivic && props.civicAvailable && (
+                      <p className="dock-layer-status"><strong>Official road reports</strong> · Maryland CHART and county-published issues.</p>
                     )}
                     {props.incidentHealth.status === "unavailable" ? (
                       <p className="dock-layer-status">
                         <strong>Scanner reports</strong> · The latest Frederick Scanner request failed. {props.showIncidents
                           ? "Retrying automatically."
-                          : "Turn Incidents on to retry."}
+                          : "Turn Roads now on to retry."}
                       </p>
                     ) : props.showIncidents && (
                       <p className="dock-layer-status">
@@ -1676,6 +1682,14 @@ export default function MapDock(props: MapDockProps) {
                           : props.incidentHealth.status === "empty"
                           ? "No current public incidents in the latest FrederickScanner response."
                           : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
+                      </p>
+                    )}
+                    {props.showRotorcraft && (
+                      <p className="dock-layer-status">
+                        <strong>Helicopter activity</strong> · Public ADS-B
+                        coverage is incomplete. Trooper activity is reported
+                        only at county level, and possible FMH movement is
+                        shown at the fixed hospital heliport.
                       </p>
                     )}
                     {props.cameraHealth.status === "unavailable" ? (

@@ -7,7 +7,7 @@ import {
   MAPBOX_TRAFFIC_MIN_ZOOM,
   MAPBOX_TRAFFIC_SOURCE,
   MAPBOX_TRAFFIC_SOURCE_LAYER,
-} from "./mapboxTraffic";
+} from "./mapboxTrafficStyle";
 
 describe("Mapbox Traffic overlay contract", () => {
   it("uses the Traffic v1 source and its traffic source-layer", () => {
