@@ -38,6 +38,7 @@ import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, opt
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { PARKING_OFFICE } from "@/data/parking-garages";
 import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
+import { enrichWantAnswerWithWalkingTimes } from "@/lib/want-travel";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
@@ -1249,14 +1250,14 @@ const NON_SEATED_MEAL_TYPES = new Set([
  * answer instead of keyword-search noise — no place is NAMED "breakfast", so
  * search alone could never find one.
  */
-function wantContextBlock(
+async function wantContextBlock(
   intent: WantIntent,
   now: Date,
   context: QualifiedSearchContext,
   query: string,
   dietary: AskIntent["dietary"] = [],
   availabilityLabel?: string,
-): { block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null {
+): Promise<{ block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null> {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]
@@ -1347,6 +1348,16 @@ function wantContextBlock(
     });
   }
   if (!wa) return null;
+  if (
+    origin &&
+    context.origin &&
+    context.canShowDistance === true &&
+    !approximateOrigin
+  ) {
+    wa = await enrichWantAnswerWithWalkingTimes(wa, origin, {
+      timeoutMs: 2_200,
+    });
+  }
 
   const areaText =
     intent.area?.kind === "downtown" ? " in downtown Frederick" : town ? ` in ${town.name}` : "";
@@ -1367,7 +1378,7 @@ function wantContextBlock(
   }
 
   const line = (r: WantRow) =>
-    `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
+    `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
   const open = [wa.hero, ...wa.also].filter((r): r is WantRow => r != null).slice(0, 5);
   const likelyOpen = open[0]?.confidence === "likely";
   const later = wa.later.slice(0, 3);
@@ -1825,7 +1836,7 @@ export async function askFrederick(
       : implicitLateNight?.timeLabel ?? undefined
   );
   const want = wantIntent
-    ? wantContextBlock(
+    ? await wantContextBlock(
         wantIntent,
         requestedVisitAt,
         context,

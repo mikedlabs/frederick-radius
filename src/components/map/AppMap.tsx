@@ -228,6 +228,7 @@ import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LiveIncidents from "./LiveIncidents";
 import TrafficCameras from "./TrafficCameras";
+import MapboxTraffic from "./MapboxTraffic";
 import FireStations from "./FireStations";
 import CivicPlaces from "./CivicPlaces";
 import {
@@ -246,6 +247,7 @@ import MapDock from "./MapDock";
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
 import MapFoodTruckPeek from "./MapFoodTruckPeek";
+import MapSpotPeek from "./MapSpotPeek";
 import MapDiscoveryOverlay from "./MapDiscoveryOverlay";
 import {
   liveLayerHealth,
@@ -255,6 +257,11 @@ import { directionsHref } from "@/lib/map/directionsHref";
 import MapDiscoveryPeek from "./MapDiscoveryPeek";
 import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
+import {
+  applyMapboxStandardPreviewConfig,
+  isMapboxStandardPreviewEnabled,
+  mapStyleWithStandardPreview,
+} from "./mapboxStandardPreview";
 import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, LoaderCircle, LocateFixed, Shrink, Truck } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
@@ -263,6 +270,14 @@ import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { activeFoodTruckPins } from "./foodTruckPins";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
+import { buildMapSpotContext } from "./mapSpotContext";
+import { encodePolyline } from "./polyline";
+
+type MapSpotSelection = LngLat & {
+  label?: string;
+  temporary?: boolean;
+  attribution?: string;
+};
 
 /** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
  *  from "now" by the delta so getOpenStatus (which reads Frederick time)
@@ -459,6 +474,8 @@ export default function AppMap({
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const routeSearchParams = useSearchParams();
+  const routeSearch = routeSearchParams.toString();
+  const standardPreview = isMapboxStandardPreviewEnabled(routeSearch);
   const attachMapRef = useCallback((instance: MapRef | null) => {
     mapRef.current = instance;
     if (instance) installCategoryMarkers(instance.getMap());
@@ -781,7 +798,13 @@ export default function AppMap({
     setQ((current) => (current === routeQuery ? current : routeQuery));
   }, [routeQuery]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
+  const [searchOpeningId, setSearchOpeningId] = useState<string | null>(null);
   const searchRequestRef = useRef(0);
+  const searchSessionRef = useRef<string | null>(null);
+  const searchSessionStartedRef = useRef(false);
+  const searchSessionLastUsedRef = useRef(0);
+  const searchSessionSuggestCountRef = useRef(0);
+  const searchRouteRef = useRef<string | null>(null);
   // A global Find result can hand the map both a camera point and a place slug.
   // The camera is seeded by BrowseMapClient; this slug opens the same compact
   // peek a direct pin tap would once the map style is ready.
@@ -905,7 +928,10 @@ export default function AppMap({
     );
   }, [sharedGeolocationState]);
   const [showCivic, setShowCivic] = useState(
-    () => deepLinkLayers.has("civic") || (layerPrefs.civic ?? false),
+    () =>
+      deepLinkLayers.has("roads") ||
+      deepLinkLayers.has("civic") ||
+      (layerPrefs.civic ?? false),
   );
   const [showTrails, setShowTrails] = useState(
     () =>
@@ -1027,6 +1053,12 @@ export default function AppMap({
   const [showRadar, setShowRadar] = useState(
     () => deepLinkLayers.has("radar") || (layerPrefs.radar ?? false),
   );
+  const [showTraffic, setShowTraffic] = useState(
+    () =>
+      deepLinkLayers.has("roads") ||
+      deepLinkLayers.has("traffic") ||
+      (layerPrefs.traffic ?? false),
+  );
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
   const [radarHealth, setRadarHealth] = useState<LiveLayerHealth>(() =>
@@ -1036,6 +1068,7 @@ export default function AppMap({
   // OFF by default. Empty until the FredScanner feed is configured.
   const [showIncidents, setShowIncidents] = useState(
     () =>
+      deepLinkLayers.has("roads") ||
       deepLinkLayers.has("incidents") ||
       (layerPrefs.incidents ?? false),
   );
@@ -1085,6 +1118,7 @@ export default function AppMap({
   // Tap-a-town: the municipality under the last empty-map tap (name +
   // tap point for the popup anchor). Null when no town sheet is open.
   const [civicTown, setCivicTown] = useState<{ name: string; lng: number; lat: number } | null>(null);
+  const [spotSelection, setSpotSelection] = useState<MapSpotSelection | null>(null);
 
   // 3D relief while browsing the drone archive. The aerial layer is the
   // one mode where the county's terrain IS the content, so toggling it
@@ -1135,12 +1169,13 @@ export default function AppMap({
       cemeteries: showCemeteries,
       parking: showParking,
       radar: showRadar,
+      traffic: showTraffic,
       incidents: showIncidents,
       cameras: showCameras,
       firestations: showFireStations,
       civicplaces: showCivicPlaces,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras, showFireStations, showCivicPlaces]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showCameras, showFireStations, showCivicPlaces]);
 
   // An explicitly selected public-essential layer is the foreground task.
   // Keep its clusters/icons above the always-on place dots; otherwise the
@@ -1591,7 +1626,6 @@ export default function AppMap({
     ],
     [amenities, extraAmenities, osmPlaces, transitStops],
   );
-
   /** Curated places use semantic zoom on the county and compact subject maps:
    * clusters at broad/town zoom, then individual dots and category pucks.
    * Other embeds keep every already-scoped place individually represented. */
@@ -1727,18 +1761,24 @@ export default function AppMap({
     setSelectedTransitStop(null);
     setMarcPeek(null);
     setSelected(null);
+    setSpotSelection(null);
     // A direct map selection takes over from a synthesized finding. The map
     // should never make the user wonder which of two different cards is live.
     if (selectedDiscovery) setSelectedDiscovery(null);
     const feature = e.features?.[0];
     if (!feature) {
-      // Empty space means dismiss. Town information now requires a direct town
-      // label tap; the map no longer guesses civic intent from blank land.
+      // On the full county map an intentional empty tap is useful: keep the
+      // exact point and reveal a compact local read from data already loaded
+      // into Radius. Embedded maps retain their simple dismiss behavior.
       setPeekPlace(null);
       setParkingPeek(null);
       setFoodTruckPeek(null);
       setSelectedSlug(null);
       setSelectedDiscovery(null);
+      if (dock) {
+        setSpotSelection({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+        haptic("light");
+      }
       return;
     }
     const layer = feature.layer?.id;
@@ -2052,14 +2092,11 @@ export default function AppMap({
     point.category_slug.startsWith("report-"),
   ).length;
 
-  // On-map search — match places already on the map by name/address/city.
-  // Unified search (one-search): the map bar asks the same /api/search
-  // the TopBar overlay does, so the two bars can never give different
-  // answers. Anything with coordinates stays on the map: places and
-  // events focus in place, towns move the camera and update the shared
-  // county scope. Categories/actions still open their purpose-built page,
-  // while layer results toggle in place. Debounced 150ms to match
-  // SearchOverlay; stale responses are dropped.
+  // On-map search remains Radius-first. Only when the canonical local index
+  // has no answer does the map ask Search Box for a temporary county-bounded
+  // location. Real walking times refine a stable local result set when the
+  // user has explicitly shared a device fix; every paid enhancement fails
+  // back to the immediate Radius answer.
   const router = useRouter();
   useEffect(() => {
     const term = q.trim();
@@ -2068,37 +2105,194 @@ export default function AppMap({
     // phrase waits for its debounce or network response.
     setSearchMatches([]);
     if (term.length < 2) {
+      searchSessionRef.current = null;
+      searchSessionStartedRef.current = false;
+      searchSessionLastUsedRef.current = 0;
+      searchSessionSuggestCountRef.current = 0;
       return;
     }
     const ctrl = new AbortController();
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
       const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
       params.set("lat", origin.lat.toFixed(4));
       params.set("lng", origin.lng.toFixed(4));
-      fetch(`/api/search?${params.toString()}`, { signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : { results: [] }))
-        // /api/search returns { results: [...] } (same shape SearchOverlay
-        // reads). Unwrap it — reading the response as a bare array left the
-        // map dock's search silently empty on every keystroke.
-        .then((d: { results?: SearchResult[] }) => {
-          if (requestId === searchRequestRef.current) {
-            setSearchMatches(Array.isArray(d?.results) ? d.results : []);
-          }
-        })
-        .catch((error: unknown) => {
-          if ((error as { name?: string })?.name !== "AbortError" && requestId === searchRequestRef.current) {
-            setSearchMatches([]);
-          }
+      try {
+        const response = await fetch(`/api/search?${params.toString()}`, {
+          signal: ctrl.signal,
         });
+        const body = (response.ok
+          ? await response.json()
+          : { results: [] }) as { results?: SearchResult[] };
+        if (requestId !== searchRequestRef.current) return;
+        const local = Array.isArray(body.results) ? body.results : [];
+
+        if (local.length > 0) {
+          setSearchMatches(local);
+          const routedCandidates = userLoc
+            ? local
+                .filter(
+                  (result) =>
+                    result.type === "place" &&
+                    typeof result.lng === "number" &&
+                    typeof result.lat === "number",
+                )
+                .slice(0, 6)
+            : [];
+          if (routedCandidates.length < 2) return;
+
+          // Let the local results paint first and avoid a Matrix request for
+          // every intermediate keystroke during normal typing.
+          await new Promise<void>((resolve) => {
+            const delay = window.setTimeout(resolve, 250);
+            ctrl.signal.addEventListener(
+              "abort",
+              () => {
+                window.clearTimeout(delay);
+                resolve();
+              },
+              { once: true },
+            );
+          });
+          if (ctrl.signal.aborted || requestId !== searchRequestRef.current) return;
+
+          const matrixResponse = await fetch("/api/travel-matrix", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: ctrl.signal,
+            body: JSON.stringify({
+              profile: "walking",
+              origin: userLoc,
+              destinations: routedCandidates.map((result) => ({
+                lng: result.lng,
+                lat: result.lat,
+              })),
+            }),
+          });
+          const matrix = (matrixResponse.ok
+            ? await matrixResponse.json()
+            : null) as {
+              ok?: boolean;
+              legs?: Array<{ destinationIndex: number; minutes: number | null }>;
+            } | null;
+          if (
+            !matrix?.ok ||
+            !Array.isArray(matrix.legs) ||
+            requestId !== searchRequestRef.current
+          ) {
+            return;
+          }
+          const minutesById = new globalThis.Map<string, number>();
+          for (const leg of matrix.legs) {
+            const result = routedCandidates[leg.destinationIndex];
+            if (result && leg.minutes != null) {
+              minutesById.set(result.id, leg.minutes);
+            }
+          }
+          setSearchMatches(
+            local.map((result) => ({
+              ...result,
+              travel_minutes: minutesById.get(result.id),
+            })),
+          );
+          return;
+        }
+
+        if (!dock || term.length < 3) return;
+        const now = Date.now();
+        const sessionExpired =
+          searchSessionLastUsedRef.current > 0 &&
+          now - searchSessionLastUsedRef.current > 150_000;
+        const sessionAtLimit = searchSessionSuggestCountRef.current >= 45;
+        if (sessionExpired || sessionAtLimit) {
+          searchSessionRef.current = null;
+          searchSessionStartedRef.current = false;
+          searchSessionSuggestCountRef.current = 0;
+        }
+        const sessionToken =
+          searchSessionRef.current ?? window.crypto.randomUUID();
+        searchSessionRef.current = sessionToken;
+        searchSessionLastUsedRef.current = now;
+        searchSessionSuggestCountRef.current += 1;
+        const fallbackResponse = await fetch("/api/map/search-fallback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            action: "suggest",
+            q: term,
+            sessionToken,
+            sessionStart: !searchSessionStartedRef.current,
+            proximity: origin,
+            limit: 4,
+            ...(searchRouteRef.current
+              ? {
+                  route: searchRouteRef.current,
+                  routeGeometry: "polyline6",
+                  timeDeviation: 8,
+                }
+              : {}),
+          }),
+        });
+        const fallback = (fallbackResponse.ok
+          ? await fallbackResponse.json()
+          : null) as {
+            ok?: boolean;
+            attribution?: string;
+            suggestions?: Array<{
+              mapboxId: string;
+              name: string;
+              fullAddress?: string;
+              placeFormatted?: string;
+              distanceMeters?: number;
+              addedTimeMinutes?: number;
+            }>;
+          } | null;
+        if (
+          !fallback?.ok ||
+          !Array.isArray(fallback.suggestions) ||
+          requestId !== searchRequestRef.current
+        ) {
+          return;
+        }
+        searchSessionStartedRef.current = true;
+        setSearchMatches(
+          fallback.suggestions.map((suggestion) => ({
+            type: "place",
+            id: `mapbox:${suggestion.mapboxId}`,
+            title: suggestion.name,
+            subtitle: [
+              suggestion.fullAddress ?? suggestion.placeFormatted,
+              suggestion.addedTimeMinutes != null
+                ? `Adds ${suggestion.addedTimeMinutes} min to the route`
+                : "Temporary Mapbox result",
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            href: "#",
+            distance_m: suggestion.distanceMeters,
+            temporary: true,
+            provider: "Mapbox",
+            mapbox_id: suggestion.mapboxId,
+            attribution: fallback.attribution,
+          })),
+        );
+      } catch (error) {
+        if (
+          (error as { name?: string })?.name !== "AbortError" &&
+          requestId === searchRequestRef.current
+        ) {
+          setSearchMatches([]);
+        }
+      }
     }, 150);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q, userLoc, viewCenter]);
+  }, [dock, q, userLoc, viewCenter]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -2107,8 +2301,82 @@ export default function AppMap({
     return m;
   }, [places]);
 
-  const pickSearch = (r: SearchResult) => {
+  const pickSearch = async (r: SearchResult) => {
     haptic("light");
+    setSpotSelection(null);
+    if (r.temporary && r.provider === "Mapbox") {
+      const sessionToken = searchSessionRef.current;
+      const mapboxId = r.mapbox_id ?? r.id.replace(/^mapbox:/, "");
+      const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
+      if (!sessionToken || !mapboxId) {
+        setGeoMsg("That temporary map result expired. Search for it again.");
+        return;
+      }
+      setSearchOpeningId(r.id);
+      try {
+        const response = await fetch("/api/map/search-fallback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "retrieve",
+            mapboxId,
+            sessionToken,
+            proximity: origin,
+          }),
+        });
+        const body = (response.ok ? await response.json() : null) as {
+          ok?: boolean;
+          reason?: string;
+          attribution?: string;
+          result?: {
+            name: string;
+            coordinates: { lng: number; lat: number };
+          };
+        } | null;
+        if (!body?.ok || !body.result) {
+          setGeoMsg(
+            body?.reason === "outside-county"
+              ? "That result falls outside Frederick County."
+              : "That map result could not be opened. Try another search.",
+          );
+          return;
+        }
+        const { lng, lat } = body.result.coordinates;
+        setQ("");
+        setSearchMatches([]);
+        searchSessionRef.current = null;
+        searchSessionStartedRef.current = false;
+        searchSessionLastUsedRef.current = 0;
+        searchSessionSuggestCountRef.current = 0;
+        setSelected(null);
+        setSelectedEvent(null);
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setSelectedSlug(null);
+        setCivicTown(null);
+        setSpotSelection({
+          lng,
+          lat,
+          label: body.result.name || r.title,
+          temporary: true,
+          attribution: body.attribution ?? r.attribution,
+        });
+        cameraIntentRef.current = true;
+        mapRef.current?.getMap().easeTo({
+          center: [lng, lat],
+          zoom: 15,
+          offset: [0, -100],
+          duration: prefersReducedMotion() ? 0 : 700,
+          easing: CAM_EASE,
+          essential: true,
+        });
+      } catch {
+        setGeoMsg("That map result could not be opened. Try another search.");
+      } finally {
+        setSearchOpeningId(null);
+      }
+      return;
+    }
     // Selecting a result dismisses the search tray, but the query remains part
     // of the exact map state carried into a PlaceSheet/full detail. Reassert it
     // synchronously because unrelated URL effects can still be settling while
@@ -2156,6 +2424,11 @@ export default function AppMap({
           else if (layerKey === "cameras") setShowCameras(true);
           else if (layerKey === "trails") setShowTrails(true);
           else if (layerKey === "civic") setShowCivic(true);
+          else if (layerKey === "roads") {
+            setShowTraffic(true);
+            setShowCivic(true);
+            setShowIncidents(true);
+          }
         }
 
         const current = new URL(window.location.href);
@@ -2366,6 +2639,12 @@ export default function AppMap({
         }]
       : [],
   }), [realWalk, routedWalkActive, selectedPlace, userLoc]);
+  useEffect(() => {
+    searchRouteRef.current =
+      routedWalkActive && realWalk?.coordinates
+        ? encodePolyline(realWalk.coordinates, 6)
+        : null;
+  }, [realWalk, routedWalkActive]);
   const routeInfo = useMemo(() => {
     if (!userLoc || !selectedPlace) return null;
     const m = haversineMeters(userLoc, selectedPlace.geom);
@@ -2410,6 +2689,55 @@ export default function AppMap({
       geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
     })),
   }), [scopedCivic]);
+
+  // The spot reader may summarize civic context even when its overlay is off,
+  // but it must use the same visitor/resident privacy scope as the visible
+  // pins. Keep the pin kind so a resident 311 report is never mislabeled as a
+  // road closure.
+  const spotCivic = useMemo(
+    () => scopeClosures(civic, defaultsFor(mode).closureScope),
+    [civic, mode],
+  );
+  const spotContext = useMemo(
+    () =>
+      spotSelection
+        ? buildMapSpotContext(spotSelection, {
+            places: places.map((place) => ({
+              slug: place.slug,
+              name: place.name,
+              category: place.category,
+              lng: place.geom.lng,
+              lat: place.geom.lat,
+            })),
+            parking: parking.map((garage) => ({
+              name: garage.name,
+              available: garage.available,
+              lng: garage.lng,
+              lat: garage.lat,
+            })),
+            transit: transitStops.map((stop) => ({
+              id: stop.id,
+              name: stop.name,
+              lng: stop.lng,
+              lat: stop.lat,
+            })),
+            events: events.map((event) => ({
+              slug: event.slug,
+              title: event.title,
+              startsAt: event.starts_at,
+              lng: event.lng,
+              lat: event.lat,
+            })),
+            roads: spotCivic.map((pin) => ({
+              kind: pin.kind,
+              label: pin.label,
+              lng: pin.lng,
+              lat: pin.lat,
+            })),
+          })
+        : null,
+    [events, parking, places, spotCivic, spotSelection, transitStops],
+  );
 
   // Aerial photo GeoJSON. Built once at module mount since the
   // manifest doesn't change between renders. The `idx` carried in
@@ -2534,6 +2862,7 @@ export default function AppMap({
     setPeekPlace(null);
     setParkingPeek(null);
     setCivicTown(null);
+    setSpotSelection(null);
     const map = mapRef.current?.getMap();
     if (map) {
       cameraIntentRef.current = true;
@@ -2586,7 +2915,7 @@ export default function AppMap({
           : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
       }
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
-      data-map-peek={dock && (peekPlace || parkingPeek || foodTruckPeek || selectedDiscovery) ? "open" : undefined}
+      data-map-peek={dock && (peekPlace || parkingPeek || foodTruckPeek || selectedDiscovery || spotSelection) ? "open" : undefined}
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
@@ -2781,7 +3110,12 @@ export default function AppMap({
                   zoom: initialZoom,
                 })
           }
-          mapStyle={MAP_BAKED_STYLE ? (BAKED_STYLE as unknown as StyleSpecification) : STYLE_URL}
+          mapStyle={mapStyleWithStandardPreview(
+            MAP_BAKED_STYLE
+              ? (BAKED_STYLE as unknown as StyleSpecification)
+              : STYLE_URL,
+            routeSearch,
+          )}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
           // ── Mobile-smoothness flags ──
@@ -2865,8 +3199,15 @@ export default function AppMap({
             // install the two things the JSON can't hold — the hillshade relief
             // (a live raster-dem source) and the county spotlight. Flag off
             // keeps the proven runtime recolor.
-            if (MAP_BAKED_STYLE) installRelief(e.target);
-            else applyFrederickPalette(e.target);
+            if (standardPreview) {
+              applyMapboxStandardPreviewConfig(e.target, {
+                search: routeSearch,
+              });
+            } else if (MAP_BAKED_STYLE) {
+              installRelief(e.target);
+            } else {
+              applyFrederickPalette(e.target);
+            }
             // Frame browse mode in the county too, the same veil + drawn
             // border the radius map already wears, so the two modes feel
             // like one place and not two different maps.
@@ -3026,6 +3367,22 @@ export default function AppMap({
           {/* Required Mapbox/OSM credits, collapsed to the compact ⓘ badge
               (permitted by Mapbox ToS) so the text never sits on the map. */}
           <AttributionControl compact position="bottom-right" />
+          {spotSelection && (
+            <Marker
+              longitude={spotSelection.lng}
+              latitude={spotSelection.lat}
+              anchor="center"
+            >
+              <span
+                aria-hidden
+                className="block h-5 w-5 rounded-full border-[3px] border-white"
+                style={{
+                  background: "var(--app-cool)",
+                  boxShadow: "0 2px 10px rgba(34, 28, 21, 0.28)",
+                }}
+              />
+            </Marker>
+          )}
           {/* (Removed an orphaned mapbox-dem raster-dem Source: there is no
               `terrain` prop on <Map> — see the note above — and
               applyFrederickPalette installs its own `fr-dem` source + hillshade,
@@ -3078,6 +3435,11 @@ export default function AppMap({
             onNewestFrame={setRadarFrameEpoch}
             onHealth={setRadarHealth}
           />
+
+          {/* Current congestion is context, not the closure authority. It
+              sits below the incident/camera pins; the dock keeps Maryland
+              CHART and Radius's public incident feed visibly distinct. */}
+          <MapboxTraffic show={showTraffic} />
 
           {/* Live public scanner incidents — caution pins (crashes, wires
               down, fires) that self-refresh and age out. Empty until the
@@ -4417,7 +4779,7 @@ export default function AppMap({
               unobstructed, so dock-host CSS returns the zoom cluster there.
               GeolocateControl only rides dock-less maps: on /map browse,
               locate's one home is the Where pane. */}
-          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
+          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && !spotSelection && (
             <NavigationControl position="bottom-right" showCompass={false} />
           )}
           {!dock && !compactSubjectMap && (
@@ -4440,6 +4802,7 @@ export default function AppMap({
             q={q}
             setQ={setQ}
             searchMatches={searchMatches}
+            searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
             searchDistanceOriginLabel={userLoc ? "from you" : "from map center"}
             openNowAvailable={dock.openNowAvailable}
@@ -4480,6 +4843,14 @@ export default function AppMap({
             showRadar={showRadar}
             setShowRadar={setShowRadar}
             radarHealth={radarHealth}
+            roadsNowActive={showTraffic || showCivic || showIncidents}
+            roadsNowFullyOn={showTraffic && showCivic && showIncidents}
+            setShowRoadsNow={(show) => {
+              setShowTraffic(show);
+              setShowCivic(show);
+              setShowIncidents(show);
+            }}
+            showTraffic={showTraffic}
             showIncidents={showIncidents}
             setShowIncidents={setShowIncidents}
             incidentHealth={incidentHealth}
@@ -4527,7 +4898,7 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && offOverview && (
+        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && !spotSelection && offOverview && (
           <button
             type="button"
             className="map-reset-fab tap-44"
@@ -4544,7 +4915,7 @@ export default function AppMap({
             a dock pane or the list is open. While locating, the icon swaps to
             a spinner (static under reduced motion) so the ~8s geolocation wait
             reads as working, not stuck. */}
-        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
+        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && !spotSelection && (
           <button
             type="button"
             className="map-locate-fab tap-44"
@@ -4573,6 +4944,36 @@ export default function AppMap({
             onPrevious={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) - 1)}
             onNext={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) + 1)}
             onClose={() => setSelectedDiscovery(null)}
+          />
+        )}
+
+        {dock && spotSelection && spotContext && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
+          <MapSpotPeek
+            spot={spotSelection}
+            context={spotContext}
+            utilities={nearestMapUtilities(spotSelection, utilityPoints, 800, 4)}
+            label={spotSelection.label}
+            temporary={spotSelection.temporary}
+            attribution={spotSelection.attribution}
+            onClose={() => setSpotSelection(null)}
+            onOpenPlace={(slug) => {
+              const place = places.find((candidate) => candidate.slug === slug);
+              if (!place) return;
+              setSpotSelection(null);
+              setSelectedSlug(place.slug);
+              setPeekPlace(place);
+              const map = mapRef.current?.getMap();
+              cameraIntentRef.current = true;
+              if (map) {
+                map.easeTo({
+                  center: [place.geom.lng, place.geom.lat],
+                  zoom: Math.max(map.getZoom(), 14),
+                  offset: [0, -120],
+                  duration: prefersReducedMotion() ? 0 : 500,
+                  essential: true,
+                });
+              }
+            }}
           />
         )}
 

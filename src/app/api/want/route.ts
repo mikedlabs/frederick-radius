@@ -18,6 +18,7 @@ import { buildWantAnswer } from "@/lib/want-answer";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { enrichWantAnswerWithWalkingTimes } from "@/lib/want-travel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
   if (!c) {
     return NextResponse.json({ error: "c-required" }, { status: 400, headers: noStore });
   }
-  const answer = buildWantAnswer(c, facet, context.origin, new Date(), {
+  let answer = buildWantAnswer(c, facet, context.origin, new Date(), {
     approximateOrigin: context.source !== "device",
     municipality: context.filterMunicipality,
     contextLabel: context.label,
@@ -62,6 +63,14 @@ export async function GET(req: NextRequest) {
   });
   if (!answer) {
     return NextResponse.json({ error: "unknown-want" }, { status: 400, headers: noStore });
+  }
+  // First paint still has a strict latency budget. A real device fix may
+  // refine the already-vetted shortlist with road-network walking times, but
+  // a slow/disabled Matrix call falls back to the local answer in 1.4s.
+  if (deviceOrigin && context.source === "device" && context.canShowDistance) {
+    answer = await enrichWantAnswerWithWalkingTimes(answer, deviceOrigin, {
+      timeoutMs: 1_400,
+    });
   }
   if (!context.canShowDistance) {
     // Town/home/IP centroids are honest enough to order a list, never to print
