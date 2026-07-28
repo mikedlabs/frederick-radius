@@ -58,7 +58,7 @@ export default function SideRail() {
                       doc.startViewTransition?.(() => router.push(href));
                     }
                   }}
-                  aria-current={isRealActive ? "page" : undefined}
+                  aria-current={isAtDestination ? "page" : undefined}
                   className="relative flex h-14 w-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition active:scale-[0.97]"
                   style={{
                     color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",

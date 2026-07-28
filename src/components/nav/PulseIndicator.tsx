@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Activity } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 /**
  * PulseIndicator — header dot that lights up when something is
@@ -10,13 +11,11 @@ import { Activity } from "lucide-react";
  * incidents, power outages).
  *
  * Fetches /api/pulse/status on mount + every 5 minutes. The endpoint
- * is cached server-side so polling is cheap. The header stays lean when a
- * complete read is all clear; an active alert or unavailable read earns a
- * labelled control. Activity is not a universal icon-only action, so those
- * meaningful states keep visible words on touch screens.
+ * is cached server-side so polling is cheap. Pulse remains a stable top-level
+ * destination while the indicator communicates active alerts, all-clear, or
+ * unavailable data without making the navigation appear and disappear.
  *
- * Lives in TopBar between the More icon and the LocationChip — same
- * grid spot the old "Pulse" tile occupied in the Field Guide drawer.
+ * Lives in TopBar between the LocationChip and Compass.
  */
 type PulseStatus = {
   active: boolean;
@@ -35,6 +34,7 @@ const TONE_COLOR: Record<PulseStatus["tone"], string> = {
 };
 
 export default function PulseIndicator() {
+  const pathname = usePathname();
   const [status, setStatus] = useState<PulseStatus | null>(null);
   // True once a fetch has failed with no prior good status: we then render an
   // explicit "unavailable", never a false "all clear" (audit FR-002). A later
@@ -72,39 +72,36 @@ export default function PulseIndicator() {
   const active = status?.active ?? false;
   const tone = status?.tone ?? "quiet";
   const count = status?.count ?? 0;
-  // "Unknown" whenever we cannot honestly claim all-clear: never loaded, a
-  // first-load failure, or the server flagged a degraded fetch that found
-  // nothing. Only a fresh, complete, zero-count read reads as all clear.
-  const unknown = !active && (status === null || failed || status?.ok === false);
   const loading = status === null && !failed;
-
-  // A quiet, complete status is useful on /pulse but not worth permanent
-  // global chrome. Loading also stays invisible to avoid a control appearing
-  // briefly and then shifting the header when the all-clear response lands.
-  if (loading || (!active && !unknown)) return null;
+  // "Unknown" whenever we cannot honestly claim all-clear: a first-load
+  // failure or a degraded fetch that found nothing. Initial loading remains a
+  // neutral checking state, not a false unavailable warning.
+  const unknown = !active && !loading && (failed || status?.ok === false);
+  const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
+  const statusLabel = active
+    ? `Pulse: ${count} active ${count === 1 ? "alert" : "alerts"}`
+    : loading
+      ? "Pulse: checking county status"
+      : unknown
+        ? "Pulse: status unavailable"
+        : "Pulse: all clear";
 
   return (
     <Link
       href="/pulse"
       prefetch={false}
-      aria-label={
-        active
-          ? `County alerts: ${count} active ${count === 1 ? "item" : "items"}`
-          : unknown
-            ? "County alerts: status unavailable"
-            : "County alerts: all clear"
-      }
-      title={
-        active
-          ? `County alerts: ${count} active`
-          : unknown
-            ? "County alerts: status unavailable"
-            : "County alerts: all clear"
-      }
+      aria-label={statusLabel}
+      aria-current={current ? "page" : undefined}
+      title={statusLabel}
       className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:px-2.5"
       style={{
-        borderColor: "var(--app-border)",
-        color: active ? TONE_COLOR[tone] : "var(--app-ink-3)",
+        borderColor: current ? "var(--app-brand)" : "var(--app-border)",
+        color: current
+          ? "var(--app-brand-press)"
+          : active
+            ? TONE_COLOR[tone]
+            : "var(--app-ink-2)",
+        background: current ? "var(--app-brand-tint-6)" : undefined,
       }}
     >
       <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
@@ -130,8 +127,8 @@ export default function PulseIndicator() {
           />
         )}
       </span>
-      <span className="hidden text-[13px] font-semibold leading-none sm:inline">
-        {active ? `${count} ${count === 1 ? "alert" : "alerts"}` : "Status unavailable"}
+      <span className="hidden text-[14px] font-semibold leading-none sm:inline">
+        Pulse
       </span>
     </Link>
   );

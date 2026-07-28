@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { shouldShowBottomNav } from "./BottomNav";
 
@@ -16,5 +17,20 @@ describe("BottomNav contextual chrome", () => {
     expect(shouldShowBottomNav("/events/calendar")).toBe(true);
     expect(shouldShowBottomNav("/events/missing-event")).toBe(true);
     expect(shouldShowBottomNav("/my-radius")).toBe(true);
+  });
+
+  it("marks only an exact primary destination as the current page", () => {
+    for (const file of [
+      "src/components/nav/BottomNav.tsx",
+      "src/components/nav/SideRail.tsx",
+    ]) {
+      const source = readFileSync(file, "utf8");
+      expect(source).toContain(
+        'aria-current={isAtDestination ? "page" : undefined}',
+      );
+      expect(source).not.toContain(
+        'aria-current={isRealActive ? "page" : undefined}',
+      );
+    }
   });
 });
