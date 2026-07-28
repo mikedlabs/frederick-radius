@@ -5,8 +5,8 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * /today + /events read assembleUnifiedEvents (unstable_cache, 840s);
- * /map + the /events/[slug] resolver read getCachedLiveEvents (840s).
+ * /today + /events + /map read assembleUnifiedEvents (unstable_cache, 840s);
+ * the /events/[slug] resolver reads getCachedLiveEvents (840s).
  * Those caches are LAZY: an expired cache can block up to ~8s awaiting the
  * slowest upstream feed. Their explicit version keys survive ordinary
  * deploys, so a release itself no longer creates a cold first-visitor window.
@@ -25,34 +25,29 @@
  * new data path, no change to the unified assembly — so it is purely
  * additive and fail-soft: a warm miss just means the next user
  * repopulates as before, never worse than today.
+ *
+ * Map-layer caches are warmed by /api/cron/warm-map on a staggered schedule.
+ * Keeping that independent fanout out of this route leaves enough runtime
+ * headroom for the event cache that Today and event detail actually require.
  */
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
+import {
+  getCachedLiveEvents,
+  withLiveEventFetchSession,
+} from "@/lib/integrations/ical-live";
 import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
-// /map browse feeds — the SAME loaders the browse map render awaits. They were
-// NOT covered here (only the event caches were), so a cold /map visit paid the
-// full live-fetch cost of all of them (measured: ~6-7s cold TTFB, ~500ms warm).
-// Warming their shared Vercel Data Cache on the cron schedule means even a cold
-// lambda reads them from cache and paints fast. Purely additive + fail-soft.
-import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
-import { getFixItIssues } from "@/lib/integrations/seeclickfix";
-import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
-import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
-import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
-import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
-import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
-import { getEvChargingStations } from "@/lib/integrations/evCharging";
-import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
-import { getCommunityReports } from "@/lib/loaders/communityReports";
+import { withDeadlineOutcome } from "@/lib/promise-deadline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // The cron is the patient path: it can wait out the slow feeds (each
 // capped at the 8s per-feed timeout) so users never have to.
 export const maxDuration = 90;
+export const EVENT_WARM_BUDGET_MS = 72_000;
+const ALERT_DEADLINE_MS = 8_000;
 
 function errMsg(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
@@ -64,39 +59,93 @@ export async function GET(request: Request) {
 
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:
-  //  - assembleUnifiedEvents → unified-events-v13   (/today, /events)
-  //  - getCachedLiveEvents(60) → compact source pages (/map + unified set)
+  //  - assembleUnifiedEvents → unified-events-v24   (/today, /events, /map)
   //  - getCachedLiveEvents(90) → compact source pages (/events/[slug])
   // Each source page stays below the persistent-cache byte ceiling; warming
-  // both horizons prevents a visitor from paying either cold source read.
-  const [unified, live60, live90] = await Promise.allSettled([
-    assembleUnifiedEvents(new Date()),
-    getCachedLiveEvents(60),
-    getCachedLiveEvents(90),
-  ]);
+  // the detail horizon prevents a visitor from paying its cold source read.
+  //
+  // The two cache products have to remain distinct, but their cold fills do
+  // not need two upstream waterfalls. This request-scoped session pulls
+  // each live source once at the widest (90-day) horizon, then derives the
+  // unified 60-day view while every existing persistent cache keeps its own
+  // bounded pages and exact key.
+  type UnifiedWarm = Awaited<
+    ReturnType<typeof assembleUnifiedEvents>
+  >;
+  type Live90Warm = Awaited<
+    ReturnType<typeof getCachedLiveEvents>
+  >;
+  let unifiedMilestone:
+    | PromiseSettledResult<UnifiedWarm>
+    | undefined;
+  let live90Milestone:
+    | PromiseSettledResult<Live90Warm>
+    | undefined;
+  const observe = async <T>(
+    name: "unified" | "live90",
+    promise: Promise<T>,
+    onSettled: (result: PromiseSettledResult<T>) => void,
+  ): Promise<T> => {
+    try {
+      const value = await promise;
+      onSettled({ status: "fulfilled", value });
+      console.info(
+        `[warm-events] ${name} settled in ${Date.now() - t0}ms`,
+      );
+      return value;
+    } catch (reason) {
+      onSettled({ status: "rejected", reason });
+      console.warn(
+        `[warm-events] ${name} rejected after ${Date.now() - t0}ms`,
+      );
+      throw reason;
+    }
+  };
 
-  // Warm the /map browse feeds too (their caches, not the event caches above).
-  // Fire-and-report: a rejected map-feed warm is noted but does NOT fail the
-  // whole cron the way an event-cache miss does — the map self-hides each empty
-  // layer, so a stale map feed degrades far more gently than stale events.
-  const MAP_FEEDS: Array<[string, () => Promise<unknown>]> = [
-    ["chart", () => getChartIncidentsFrederick()],
-    ["fixit", () => getFixItIssues(30)],
-    ["mapillary", () => fetchMapillaryTrash()],
-    ["trails", () => getFrederickTrailShapes()],
-    ["transit", () => getFrederickTransitRouteShapes()],
-    ["muni-bounds", () => getMunicipalBoundaries()],
-    ["county-bounds", () => getCountyBoundary()],
-    ["water", () => getFrederickWaterSites()],
-    ["ev", () => getEvChargingStations()],
-    ["cemeteries", () => getHistoricCemeteries()],
-    ["reports", () => getCommunityReports()],
-  ];
-  const mapResults = await Promise.allSettled(MAP_FEEDS.map(([, fn]) => fn()));
-  const mapFeeds: Record<string, boolean> = {};
-  mapResults.forEach((r, i) => {
-    mapFeeds[MAP_FEEDS[i][0]] = r.status === "fulfilled";
-  });
+  console.info("[warm-events] event phase started");
+  const eventPhase = await withDeadlineOutcome(
+    withLiveEventFetchSession(() =>
+      Promise.allSettled([
+        observe(
+          "unified",
+          assembleUnifiedEvents(new Date()),
+          (result) => {
+            unifiedMilestone = result;
+          },
+        ),
+        observe(
+          "live90",
+          getCachedLiveEvents(90),
+          (result) => {
+            live90Milestone = result;
+          },
+        ),
+      ] as const),
+    ),
+    EVENT_WARM_BUDGET_MS,
+  );
+  const phaseFailure = new Error(
+    eventPhase.status === "timed_out"
+      ? "event warm phase exceeded its budget"
+      : "event warm phase failed",
+  );
+  let unified: PromiseSettledResult<UnifiedWarm>;
+  let live90: PromiseSettledResult<Live90Warm>;
+  if (eventPhase.status === "fulfilled") {
+    [unified, live90] = eventPhase.value;
+  } else {
+    unified = unifiedMilestone ?? {
+      status: "rejected",
+      reason: phaseFailure,
+    };
+    live90 = live90Milestone ?? {
+      status: "rejected",
+      reason: phaseFailure,
+    };
+  }
+  console.info(
+    `[warm-events] event phase ${eventPhase.status} in ${Date.now() - t0}ms`,
+  );
 
   // obs-3: this cron is the ONLY thing between users and cold-miss TTFB, so a
   // rejected warm must be loud — not silently 200'd (which Vercel records as
@@ -120,11 +169,6 @@ export async function GET(request: Request) {
       unified,
       unified.status === "fulfilled" ? unified.value.unified.length : 0,
     ),
-    live60: summarize(
-      "live60",
-      live60,
-      live60.status === "fulfilled" ? live60.value.events.length : 0,
-    ),
     live90: summarize(
       "live90",
       live90,
@@ -132,7 +176,11 @@ export async function GET(request: Request) {
     ),
   };
 
-  const body = { ok: failures.length === 0, duration_ms: Date.now() - t0, warmed, mapFeeds };
+  const body = {
+    ok: failures.length === 0,
+    duration_ms: Date.now() - t0,
+    warmed,
+  };
 
   if (failures.length > 0) {
     Sentry.captureMessage(
@@ -142,7 +190,10 @@ export async function GET(request: Request) {
     // Await (not void) so the Slack POST flushes before the serverless function
     // can freeze post-response — the response is already 500, so there's no
     // latency cost to the user. sendWarmFailureAlert always resolves.
-    await sendWarmFailureAlert(failures);
+    await withDeadlineOutcome(
+      sendWarmFailureAlert(failures),
+      ALERT_DEADLINE_MS,
+    );
     return NextResponse.json(body, { status: 500 });
   }
 

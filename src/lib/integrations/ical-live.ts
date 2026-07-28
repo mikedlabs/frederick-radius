@@ -22,6 +22,7 @@ import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
 import { eventAdapterIsDegraded } from "@/lib/integrations/event-adapter-result";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 import { createSingleFlight } from "@/lib/single-flight";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -894,8 +895,8 @@ async function readBoundedText(response: Response, maxBytes: number): Promise<st
   return text + decoder.decode();
 }
 
-// Coalesce the three cold cache fills warm-events performs (unified, 60-day,
-// and 90-day) inside one worker. The raw body is intentionally short-lived:
+// Coalesce concurrent cold event-cache fills inside one worker. The raw body
+// is intentionally short-lived:
 // only the compact parsed event arrays are persisted by the surrounding
 // unstable_cache wrappers.
 const fetchRawIcalOnce = createSingleFlight<string, RawIcalResponse>();
@@ -1589,7 +1590,10 @@ async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<Fee
   }
 }
 
-async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchFeedOnce(
+  feed: FeedSpec,
+  windowDays: number,
+): Promise<FeedFetchResult> {
   if (feed.source === "county") {
     // Vitest calls the raw integration outside Next's request/cache context.
     // Keep that diagnostic path real rather than throwing Next's
@@ -1607,6 +1611,99 @@ async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchR
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
   if (feed.format === "vibemap") return fetchVibemapFeed(feed, windowDays);
   return fetchIcalFeed(feed, windowDays);
+}
+
+type LiveEventFetchSession = {
+  startedAtMs: number;
+  feeds: Map<string, Promise<FeedFetchResult>>;
+  ticketmasterMusic?: ReturnType<
+    typeof fetchTicketmasterMusicResult
+  >;
+};
+
+// warm-events fills two different durable cache products: the unified
+// 60-day board plus the 90-day source-page view. Next deliberately
+// bypasses nested unstable_cache reads, so those products cannot safely share
+// one persistent wrapper. They can, however, share the same upstream pull
+// inside this one request. Fetch the widest requested horizon once per source,
+// then derive narrower views without dropping anything from the 90-day result.
+//
+// AsyncLocalStorage keeps the sharing scoped to the cron invocation. A user
+// request running in the same warm Lambda never inherits this request's
+// in-memory state, and ordinary callers retain their existing fetch behavior.
+// The 90-day base is the explicit contract of warm-events today (unified 60 +
+// detail 90). If that route adds a horizon above 90, raise this base with it so
+// a single session does not legitimately need a second, wider source pull.
+const WARM_EVENT_FETCH_HORIZON_DAYS = 90;
+const liveEventFetchSession =
+  new AsyncLocalStorage<LiveEventFetchSession>();
+
+export function withLiveEventFetchSession<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  return liveEventFetchSession.run(
+    {
+      startedAtMs: Date.now(),
+      feeds: new Map<string, Promise<FeedFetchResult>>(),
+    },
+    work,
+  );
+}
+
+/**
+ * Ticketmaster music participates in both event cache products but does not
+ * flow through FEEDS. Keep it in the same request-scoped session so the cron
+ * cannot trade duplicate iCal pulls for duplicate Ticketmaster requests.
+ */
+export function fetchLiveTicketmasterMusicResult(): ReturnType<
+  typeof fetchTicketmasterMusicResult
+> {
+  const session = liveEventFetchSession.getStore();
+  if (!session) return fetchTicketmasterMusicResult();
+  session.ticketmasterMusic ??= fetchTicketmasterMusicResult();
+  return session.ticketmasterMusic;
+}
+
+function trimFeedResultToWindow(
+  result: FeedFetchResult,
+  startedAtMs: number,
+  windowDays: number,
+): FeedFetchResult {
+  // Match the source adapters' calendar-day horizon exactly. Fixed
+  // 24-hour multiplication drifts by an hour when a window crosses a DST
+  // boundary, which can change membership for an event at the cutoff.
+  const horizon = new Date(startedAtMs);
+  horizon.setDate(horizon.getDate() + windowDays);
+  const horizonMs = horizon.getTime();
+  return {
+    ok: result.ok,
+    events: result.events.filter(
+      (event) => Date.parse(event.starts_at) <= horizonMs,
+    ),
+  };
+}
+
+async function fetchFeed(
+  feed: FeedSpec,
+  windowDays: number,
+): Promise<FeedFetchResult> {
+  const session = liveEventFetchSession.getStore();
+  if (!session) return fetchFeedOnce(feed, windowDays);
+
+  const sharedWindowDays = Math.max(
+    WARM_EVENT_FETCH_HORIZON_DAYS,
+    windowDays,
+  );
+  const key = `${feed.source}:${sharedWindowDays}`;
+  let shared = session.feeds.get(key);
+  if (!shared) {
+    shared = fetchFeedOnce(feed, sharedWindowDays);
+    session.feeds.set(key, shared);
+  }
+
+  const result = await shared;
+  if (windowDays >= sharedWindowDays) return result;
+  return trimFeedResultToWindow(result, session.startedAtMs, windowDays);
 }
 
 /** Fetch a deliberately small subset of the live-feed registry. Feature pages
@@ -1690,7 +1787,7 @@ export async function getLiveEvents(
       ),
     ),
     includeTicketmaster
-      ? fetchTicketmasterMusicResult()
+      ? fetchLiveTicketmasterMusicResult()
       : Promise.resolve({ items: [], state: "disabled" as const }),
   ]);
 
@@ -1785,7 +1882,7 @@ async function fetchEventSourceForCache(
 
   const promise = (async (): Promise<CachedEventSourceResult> => {
     if (source === "ticketmaster") {
-      const result = await fetchTicketmasterMusicResult();
+      const result = await fetchLiveTicketmasterMusicResult();
       const horizonMs = Date.now() + windowDays * 86_400_000;
       return {
         events: result.items.filter(

@@ -24,11 +24,13 @@ import {
 } from "@/lib/loaders/events";
 // Raw (uncached) getLiveEvents on purpose: this call already runs INSIDE
 // cachedAssemble (unstable_cache, 840s) below, so wrapping it again would nest
-// unstable_cache. /map + /events/[slug], which are NOT inside another cache,
-// use getCachedLiveEvents instead.
-import { getLiveEvents } from "@/lib/integrations/ical-live";
+// unstable_cache. The /events/[slug] fallback, which is NOT inside another
+// cache, uses getCachedLiveEvents instead.
 import {
-  fetchTicketmasterMusicResult,
+  fetchLiveTicketmasterMusicResult,
+  getLiveEvents,
+} from "@/lib/integrations/ical-live";
+import {
   fetchTicketmasterSportsResult,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtistsResult } from "@/lib/integrations/bandsintown";
@@ -177,7 +179,7 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
       sources_succeeded: [] as string[],
       sources_failed: [] as string[],
     }, markUnavailable("municipal calendars")),
-    readAdapter(fetchTicketmasterMusicResult(), "Ticketmaster music", unavailable),
+    readAdapter(fetchLiveTicketmasterMusicResult(), "Ticketmaster music", unavailable),
     readAdapter(fetchTicketmasterSportsResult(), "Ticketmaster sports", unavailable),
     readAdapter(fetchBandsintownForArtistsResult(BANDSINTOWN_ARTISTS), "Bandsintown", unavailable),
     // SeatGeek area discovery (Phase 4 item 3): inert without
