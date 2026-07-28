@@ -364,7 +364,10 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
         ? {
             faces: [
               power.out > 0
-                ? { value: power.out.toLocaleString(), label: "customers out" }
+                ? {
+                    value: power.out.toLocaleString(),
+                    label: power.out === 1 ? "customer out" : "customers out",
+                  }
                 : { value: "All on", label: "no outages" },
               { value: String(power.munis.length), label: "towns watched" },
             ],

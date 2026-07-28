@@ -191,6 +191,12 @@ describe("buildDeckKeys", () => {
     expect(`${quiet.trains.faces[0].value} ${quiet.trains.faces[0].label}`).toBe(
       "None on the line",
     );
+    // "1 customers out" reached the board once. Counts of one are their own
+    // grammatical case everywhere a number sits next to a noun.
+    const one = keyed({ power: { available: true, out: 1, munis: [{ area: "Thurmont", out: 1 }] } });
+    expect(`${one.power.faces[0].value} ${one.power.faces[0].label}`).toBe("1 customer out");
+    const many = keyed({ power: { available: true, out: 9, munis: [{ area: "Thurmont", out: 9 }] } });
+    expect(`${many.power.faces[0].value} ${many.power.faces[0].label}`).toBe("9 customers out");
   });
 
   it("states no reading in terms of posted hours", () => {
