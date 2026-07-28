@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
 }));
 
-vi.mock("@/lib/mapbox", () => ({
-  MAPBOX_TOKEN: "test-mapbox-token",
+vi.mock("@/lib/mapbox-server", () => ({
+  MAPBOX_SERVER_TOKEN: "test-mapbox-token",
   MAPBOX_SERVER_HEADERS: { Referer: "https://frederickradius.app/" },
 }));
 

@@ -143,10 +143,13 @@ Activate live features by setting these on Vercel (or `.env.local`):
 The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
 The complete value-free setup template is [`.env.example`](./.env.example).
 
-Mapbox currently uses the validated publishable token in
-`src/lib/mapbox.ts`. The stale `NEXT_PUBLIC_MAPBOX_TOKEN` value that previously
-blanked the map is intentionally ignored; restore environment precedence only
-after a replacement token passes map-tile, Static Images, and Isochrone checks.
+Mapbox uses separate browser and server paths. `NEXT_PUBLIC_MAPBOX_TOKEN`
+controls map rendering and `MAPBOX_SERVER_TOKEN` handles Static Images,
+Directions, and Isochrone without entering the client bundle. The validated
+publishable fallback in `src/lib/mapbox.ts` keeps the map available during the
+environment migration. Event-address geocoding is a fail-closed enrichment:
+it runs only when `MAPBOX_GEOCODING_ENABLED=1`, and every upstream call is
+recorded in the admin cost view.
 
 ## Closed-business handling
 

@@ -33,9 +33,14 @@
  */
 import { unstable_cache } from "next/cache";
 import { isValidCoord, type LngLat } from "@/lib/geo";
-import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
+import {
+  MAPBOX_GEOCODING_ENABLED,
+  MAPBOX_SERVER_HEADERS,
+  MAPBOX_SERVER_TOKEN,
+} from "@/lib/mapbox-server";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { meterUsage } from "@/lib/usage-meter";
 
 // ── Pure helpers (spec-covered) ─────────────────────────────────────────
 
@@ -141,10 +146,11 @@ export async function geocodeForwardUncached(q: string): Promise<LngLat | null> 
       // is enforced on the RESPONSE instead: parseGeocodeResponse accepts only
       // address/street/block feature types, and isValidCoord gates the county.
       "&country=US&limit=1" +
-      `&access_token=${MAPBOX_TOKEN}`;
+      `&access_token=${MAPBOX_SERVER_TOKEN}`;
     // MAPBOX_SERVER_HEADERS is load-bearing: the production token is
     // URL-restricted and Mapbox matches the Referer on ALL APIs, so a
     // server fetch without it 403s in prod while passing local tests.
+    meterUsage("mapbox_geocode");
     const res = await fetch(url, { signal: ctrl.signal, headers: MAPBOX_SERVER_HEADERS });
     if (!res.ok) throw new Error(`mapbox-geocode HTTP ${res.status}`);
     return parseGeocodeResponse(await res.json());
@@ -180,7 +186,7 @@ export async function geocodeAddressInCounty(
 ): Promise<LngLat | null> {
   // Token check OUTSIDE the cache: a missing token must not persist a
   // 30-day null that outlives the token being configured.
-  if (!MAPBOX_TOKEN) return null;
+  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return null;
   const q = buildGeocodeQuery(address, town);
   const key = normalizeAddressKey(q);
   if (!key) return null;
@@ -227,7 +233,7 @@ function addressCandidate(e: EventWithMeta): string | null {
  * never per user request.
  */
 export async function upgradeEventGeoms(events: EventWithMeta[]): Promise<EventWithMeta[]> {
-  if (!MAPBOX_TOKEN) return events;
+  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return events;
 
   // Collect unique geocode candidates (insertion order = event order).
   const wanted = new Map<string, { address: string; town?: string }>();

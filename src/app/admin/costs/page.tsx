@@ -46,6 +46,7 @@ const UPSTREAMS: Array<{
   { key: "google_photo", label: "Google place photos", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
   { key: "anthropic_ask", label: "Ask Radius AI", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, note: "After the free tier. Platform caching means real hits run lower than this count." },
+  { key: "mapbox_geocode", label: "Mapbox geocoding", per1000: 0.75, note: "Event-address enrichment only. Disabled unless MAPBOX_GEOCODING_ENABLED=1." },
   { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, note: "After the 50k/month free tier; cached for 30 days per location." },
 ];
 

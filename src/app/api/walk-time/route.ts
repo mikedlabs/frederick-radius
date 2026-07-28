@@ -26,7 +26,10 @@
  * straight-line estimate. The chip must never break because of this.
  */
 import { NextRequest } from "next/server";
-import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
+import {
+  MAPBOX_SERVER_HEADERS,
+  MAPBOX_SERVER_TOKEN,
+} from "@/lib/mapbox-server";
 import { isValidCoord } from "@/lib/geo";
 import {
   normalizeWalkRouteCoordinates,
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
   ) {
     return Response.json({ ok: false, reason: "out-of-county" }, { status: 400 });
   }
-  if (!MAPBOX_TOKEN) {
+  if (!MAPBOX_SERVER_TOKEN) {
     // No token = degrade silently; the client keeps its estimate.
     return Response.json({ ok: false, reason: "no-token" });
   }
@@ -84,7 +87,7 @@ export async function GET(req: NextRequest) {
     : "overview=false";
   const upstream =
     `https://api.mapbox.com/directions/v5/mapbox/walking/${o};${dlng},${dlat}` +
-    `?${routeShape}&access_token=${MAPBOX_TOKEN}`;
+    `?${routeShape}&access_token=${MAPBOX_SERVER_TOKEN}`;
 
   try {
     // MAPBOX_SERVER_HEADERS is load-bearing: the URL-restricted token
