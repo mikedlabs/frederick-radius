@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Radio } from "lucide-react";
 import type { ScannerIncident } from "@/lib/integrations/scannerIncidents";
+import { haptic } from "@/lib/haptics";
 
 /**
  * ScannerBoard — the interactive half of /scanner. Server-rendered incidents
@@ -45,15 +46,38 @@ function isActive(inc: ScannerIncident, now: number): boolean {
   return inc.updates > 1 && now > 0 && now - Date.parse(inc.at) < ACTIVE_MS;
 }
 
-function IncidentRow({ inc, now }: { inc: ScannerIncident; now: number }) {
+function incidentKey(incident: ScannerIncident): string {
+  // `at` is the latest dispatch post and changes as an existing call receives
+  // updates. Keep identity tied to the call's first report so an update does
+  // not masquerade as a brand-new incident or fire another attention cue.
+  return `${incident.kind}:${incident.location}:${incident.firstAt}`;
+}
+
+function IncidentRow({
+  inc,
+  now,
+  isNew,
+}: {
+  inc: ScannerIncident;
+  now: number;
+  isNew: boolean;
+}) {
   const active = isActive(inc, now);
   const tone = toneOf(inc.kind);
   return (
     <div
-      className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
+      className={`flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3 ${
+        isNew ? "pop-in" : ""
+      }`}
+      data-new-report={isNew ? "true" : undefined}
       style={{
-        borderColor: active ? tone : "var(--app-border)",
-        background: "var(--app-bg-elevated)",
+        borderColor: active || isNew ? tone : "var(--app-border)",
+        background: isNew
+          ? `color-mix(in srgb, ${tone} 7%, var(--app-bg-elevated))`
+          : "var(--app-bg-elevated)",
+        boxShadow: isNew
+          ? `0 0 0 3px color-mix(in srgb, ${tone} 9%, transparent)`
+          : undefined,
       }}
     >
       <span
@@ -64,6 +88,14 @@ function IncidentRow({ inc, now }: { inc: ScannerIncident; now: number }) {
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
           <span className="truncate">{inc.kind}</span>
+          {isNew && (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-wide text-white"
+              style={{ background: tone }}
+            >
+              New
+            </span>
+          )}
           {active && (
             <span
               className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-wide text-white"
@@ -93,9 +125,13 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
   const [incidents, setIncidents] = useState<ScannerIncident[]>(initial);
   const [live, setLive] = useState(false);
   const [kind, setKind] = useState<string | null>(null);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
   // Wall-clock now (ms) for "updated X ago" / active detection, stamped on poll
   // and a slow tick so no Date.now() runs during render (react-hooks purity).
   const [nowMs, setNowMs] = useState(0);
+  const knownIds = useRef(new Set(initial.map(incidentKey)));
+  const firstRefresh = useRef(true);
+  const clearNewTimer = useRef<number | null>(null);
 
   // Poll the live feed. Keeps the last good set on a hiccup.
   useEffect(() => {
@@ -106,6 +142,25 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
         if (!r.ok) return;
         const d = (await r.json()) as { incidents?: ScannerIncident[] };
         if (alive && Array.isArray(d.incidents)) {
+          const nextKeys = new Set(d.incidents.map(incidentKey));
+          if (!firstRefresh.current) {
+            const fresh = [...nextKeys].filter(
+              (key) => !knownIds.current.has(key),
+            );
+            if (fresh.length > 0 && document.visibilityState === "visible") {
+              setNewIds(new Set(fresh));
+              haptic("warning");
+              if (clearNewTimer.current) {
+                window.clearTimeout(clearNewTimer.current);
+              }
+              clearNewTimer.current = window.setTimeout(
+                () => setNewIds(new Set()),
+                5_000,
+              );
+            }
+          }
+          firstRefresh.current = false;
+          knownIds.current = nextKeys;
           setIncidents(d.incidents);
           setLive(true);
           setNowMs(Date.now());
@@ -121,6 +176,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
       alive = false;
       clearInterval(poll);
       clearInterval(tick);
+      if (clearNewTimer.current) window.clearTimeout(clearNewTimer.current);
     };
   }, []);
 
@@ -168,7 +224,10 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={() => setKind(null)}
+            onClick={() => {
+              haptic("light");
+              setKind(null);
+            }}
             aria-pressed={kind === null}
             className={`min-h-11 rounded-full px-3 text-[12px] font-semibold transition ${kind === null ? "text-white" : "border"}`}
             style={kind === null ? { background: "var(--app-ink)" } : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
@@ -181,7 +240,10 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
               <button
                 key={k}
                 type="button"
-                onClick={() => setKind(on ? null : k)}
+                onClick={() => {
+                  haptic("light");
+                  setKind(on ? null : k);
+                }}
                 aria-pressed={on}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition"
                 style={on ? { background: toneOf(k), color: "#fff" } : { border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
@@ -200,7 +262,12 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
       {shown.length > 0 ? (
         <div className="space-y-2">
           {shown.map((inc) => (
-            <IncidentRow key={`${inc.kind}:${inc.location}:${inc.at}`} inc={inc} now={nowMs} />
+            <IncidentRow
+              key={incidentKey(inc)}
+              inc={inc}
+              now={nowMs}
+              isNew={newIds.has(incidentKey(inc))}
+            />
           ))}
         </div>
       ) : (

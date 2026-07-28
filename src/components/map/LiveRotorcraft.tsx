@@ -29,6 +29,7 @@ import { haptic } from "@/lib/haptics";
 const POLL_MS = 60_000;
 const UNAVAILABLE_NOTE =
   "Coverage unavailable. This does not mean no helicopters are flying.";
+type FmhSemanticState = "arrival" | "departure" | "nearby" | "quiet";
 
 export type RotorcraftLayerStatus = {
   available: boolean;
@@ -80,6 +81,13 @@ function activityLabel(activity: FmhActivitySummary): string {
   return "Frederick Health Hospital Heliport";
 }
 
+function fmhSemanticState(activity: FmhActivitySummary): FmhSemanticState {
+  if (activity.possibleArrivalCount > 0) return "arrival";
+  if (activity.possibleDepartureCount > 0) return "departure";
+  if (activity.helicopterNearbyCount > 0) return "nearby";
+  return "quiet";
+}
+
 function ActivityCount({
   count,
   label,
@@ -116,8 +124,13 @@ export default function LiveRotorcraft({
   const [fmhOpen, setFmhOpen] = useState(false);
   const [receivedAt, setReceivedAt] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
+  const [fmhSweep, setFmhSweep] = useState<
+    "arrival" | "departure" | null
+  >(null);
   const onHealthRef = useRef(onHealth);
   const onStatusRef = useRef(onStatus);
+  const previousFmhStateRef = useRef<FmhSemanticState | null>(null);
+  const fmhSweepTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     onHealthRef.current = onHealth;
@@ -135,6 +148,8 @@ export default function LiveRotorcraft({
       setFmhOpen(false);
       setReceivedAt(null);
       setNowMs(Date.now());
+      previousFmhStateRef.current = null;
+      setFmhSweep(null);
     };
 
     const reportUnavailable = () => {
@@ -177,6 +192,26 @@ export default function LiveRotorcraft({
 
         const nextSignals = Array.isArray(data.signals) ? data.signals : [];
         const nextFmhActivity = data.fmhActivity ?? emptyFmhActivity();
+        const nextFmhState = fmhSemanticState(nextFmhActivity);
+        const previousFmhState = previousFmhStateRef.current;
+        if (
+          show &&
+          previousFmhState !== null &&
+          previousFmhState !== nextFmhState &&
+          (nextFmhState === "arrival" || nextFmhState === "departure") &&
+          document.visibilityState === "visible"
+        ) {
+          setFmhSweep(nextFmhState);
+          haptic("warning");
+          if (fmhSweepTimerRef.current) {
+            window.clearTimeout(fmhSweepTimerRef.current);
+          }
+          fmhSweepTimerRef.current = window.setTimeout(
+            () => setFmhSweep(null),
+            2_000,
+          );
+        }
+        previousFmhStateRef.current = nextFmhState;
         setSignals(nextSignals);
         setFmhActivity(nextFmhActivity);
         setReceivedAt(data.receivedAt);
@@ -226,6 +261,9 @@ export default function LiveRotorcraft({
       alive = false;
       window.clearInterval(poll);
       window.clearInterval(clock);
+      if (fmhSweepTimerRef.current) {
+        window.clearTimeout(fmhSweepTimerRef.current);
+      }
       document.removeEventListener("visibilitychange", loadWhileVisible);
     };
   }, [probe, show]);
@@ -242,6 +280,12 @@ export default function LiveRotorcraft({
   return (
     <>
       <MapAttributionSource />
+      <style>
+        {
+          "@keyframes fr-fmh-arrival{0%{opacity:0;transform:scale(2.2)}24%{opacity:.72}100%{opacity:0;transform:scale(.72)}}" +
+            "@keyframes fr-fmh-departure{0%{opacity:.72;transform:scale(.72)}100%{opacity:0;transform:scale(2.2)}}"
+        }
+      </style>
 
       <Marker
         longitude={FMH_HELIPORT.lng}
@@ -266,10 +310,21 @@ export default function LiveRotorcraft({
           {fmhAttention && (
             <span
               aria-hidden
-              className="absolute inset-0 rounded-full motion-safe:animate-ping"
+              className="absolute inset-0 rounded-full"
               style={{
                 border: "3px solid var(--app-brand-press)",
-                opacity: 0.58,
+                opacity: 0.24,
+              }}
+            />
+          )}
+          {fmhSweep && (
+            <span
+              key={fmhSweep}
+              aria-hidden
+              className="absolute inset-0 rounded-full"
+              style={{
+                border: "3px solid var(--app-brand-press)",
+                animation: `fr-fmh-${fmhSweep} 1.8s ease-out both`,
               }}
             />
           )}

@@ -356,10 +356,10 @@ export default function PreferencesPanel() {
               className="block text-[14px] font-semibold"
               style={{ color: "var(--app-ink)" }}
             >
-              Notifications
+              Alerts & feedback
             </span>
             <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Choose which local alerts reach this device.
+              Choose local alerts, quiet hours, and phone feedback.
             </span>
           </span>
         </span>

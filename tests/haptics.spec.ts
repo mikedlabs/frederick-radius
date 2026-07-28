@@ -19,15 +19,22 @@ async function freshHaptic() {
   return (await import("@/lib/haptics")).haptic;
 }
 
-function iosGlobals() {
+function iosGlobals({
+  active = true,
+  version = "17_4",
+}: {
+  active?: boolean;
+  version?: string;
+} = {}) {
   const click = vi.fn();
   const setAttribute = vi.fn();
   const input = { type: "", tabIndex: 0, style: { cssText: "" }, setAttribute, click };
   const createElement = vi.fn(() => input);
   const appendChild = vi.fn();
   vi.stubGlobal("navigator", {
-    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
+    userAgent: `Mozilla/5.0 (iPhone; CPU iPhone OS ${version} like Mac OS X) AppleWebKit/605.1.15`,
     maxTouchPoints: 5,
+    userActivation: { isActive: active },
   });
   vi.stubGlobal("document", { createElement, body: { appendChild } });
   return { input, createElement, appendChild, click, setAttribute };
@@ -72,6 +79,20 @@ describe("haptic", () => {
     expect(createElement).toHaveBeenCalledTimes(1);
     expect(appendChild).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not claim a scheduled iOS cue outside an active user gesture", async () => {
+    const { click } = iosGlobals({ active: false });
+    const haptic = await freshHaptic();
+    expect(haptic("warning")).toBe(false);
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it("does not expose the switch bridge on iOS versions before 17.4", async () => {
+    iosGlobals({ version: "17_3" });
+    vi.resetModules();
+    const { phoneFeedbackSupport } = await import("@/lib/haptics");
+    expect(phoneFeedbackSupport()).toBe("none");
   });
 
   it("no-ops without throwing when neither vibrate nor iOS is present", async () => {

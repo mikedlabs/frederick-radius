@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink, Video } from "lucide-react";
 import { getScannerIncidents, type ScannerIncident } from "@/lib/integrations/scannerIncidents";
 import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
@@ -57,20 +57,30 @@ export default async function ScannerPage() {
 
       <ScannerBoard initial={incidents} />
 
-      <Link
-        href="/map"
-        className="tactile-interactive group flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-      >
-        <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-          See public incidents on the map
-        </span>
-        <ArrowRight
-          className="h-4 w-4 shrink-0 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70"
-          strokeWidth={2.25}
-          aria-hidden
-        />
-      </Link>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link
+          href="/map?show=incidents,cameras"
+          className="tactile-interactive group flex min-h-12 items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            See incidents on the map
+          </span>
+          <ArrowRight
+            className="h-4 w-4 shrink-0 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70"
+            strokeWidth={2.25}
+            aria-hidden
+          />
+        </Link>
+        <Link
+          href="/cameras"
+          className="tactile-interactive flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border px-3.5 py-3"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
+        >
+          <Video className="h-4 w-4 shrink-0" strokeWidth={2.15} aria-hidden />
+          <span className="text-[13px] font-semibold">Open the road camera wall</span>
+        </Link>
+      </div>
 
       {patterns && <ScannerPatterns patterns={patterns} />}
 

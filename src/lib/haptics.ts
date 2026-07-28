@@ -17,9 +17,20 @@
  * Patterns intentionally short — premium apps use sub-20ms taps.
  */
 
-type Pattern = "light" | "medium" | "heavy" | "success" | "warning" | "error";
+export type HapticPattern =
+  | "light"
+  | "medium"
+  | "heavy"
+  | "success"
+  | "warning"
+  | "error";
 
-const PATTERNS: Record<Pattern, number | number[]> = {
+export type PhoneFeedbackSupport = "vibration" | "ios-tap" | "none";
+
+export const PHONE_FEEDBACK_STORAGE_KEY = "fr-phone-feedback";
+export const PHONE_FEEDBACK_CHANGE_EVENT = "fr:phone-feedback-change";
+
+const PATTERNS: Record<HapticPattern, number | number[]> = {
   light: 8,
   medium: 14,
   heavy: 22,
@@ -31,6 +42,9 @@ const PATTERNS: Record<Pattern, number | number[]> = {
 // One reused hidden switch — created lazily on the first iOS tap so it never
 // exists during SSR and never churns the DOM.
 let iosSwitch: HTMLInputElement | null = null;
+// If localStorage is blocked, the current page still has to honor an explicit
+// opt-out. A recognized stored value takes precedence when storage works.
+let volatileFeedbackPreference: boolean | null = null;
 
 function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -45,8 +59,65 @@ function isIOS(): boolean {
   );
 }
 
-function iosSwitchTap(): void {
-  if (typeof document === "undefined") return;
+function supportsIosSwitchTap(): boolean {
+  if (!isIOS()) return false;
+  const ua = navigator.userAgent || "";
+  const version =
+    ua.match(/\bOS (\d+)_(\d+)/) ??
+    ua.match(/\bVersion\/(\d+)\.(\d+)/);
+  if (!version) return false;
+  const major = Number(version[1]);
+  const minor = Number(version[2]);
+  return major > 17 || (major === 17 && minor >= 4);
+}
+
+/**
+ * Device-local preference. Existing users keep the feedback they already had;
+ * writing "off" is the only thing that silences it. Storage failures are
+ * intentionally fail-open so a privacy mode or full storage bucket never
+ * breaks the interaction that called haptic().
+ */
+export function isPhoneFeedbackEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const stored = window.localStorage.getItem(PHONE_FEEDBACK_STORAGE_KEY);
+    if (stored === "off") return false;
+    if (stored === "on") return true;
+  } catch {
+    // Fall through to the in-memory preference for this page.
+  }
+  return volatileFeedbackPreference ?? true;
+}
+
+export function setPhoneFeedbackEnabled(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  volatileFeedbackPreference = enabled;
+  try {
+    window.localStorage.setItem(
+      PHONE_FEEDBACK_STORAGE_KEY,
+      enabled ? "on" : "off",
+    );
+  } catch {
+    // Keep the live setting usable even when storage is unavailable.
+  }
+  window.dispatchEvent(
+    new CustomEvent(PHONE_FEEDBACK_CHANGE_EVENT, {
+      detail: { enabled },
+    }),
+  );
+}
+
+export function phoneFeedbackSupport(): PhoneFeedbackSupport {
+  if (typeof navigator === "undefined") return "none";
+  const nav = navigator as Navigator & {
+    vibrate?: (p: number | number[]) => boolean;
+  };
+  if (typeof nav.vibrate === "function") return "vibration";
+  return supportsIosSwitchTap() ? "ios-tap" : "none";
+}
+
+function iosSwitchTap(): boolean {
+  if (typeof document === "undefined") return false;
   if (!iosSwitch) {
     const el = document.createElement("input");
     el.type = "checkbox";
@@ -63,30 +134,40 @@ function iosSwitchTap(): void {
   }
   // Toggling by click inside the active user gesture is what fires the tap.
   iosSwitch.click();
+  return true;
 }
 
-export function haptic(pattern: Pattern = "light"): void {
-  if (typeof navigator === "undefined") return;
+export function haptic(pattern: HapticPattern = "light"): boolean {
+  if (
+    typeof navigator === "undefined" ||
+    !isPhoneFeedbackEnabled()
+  ) {
+    return false;
+  }
   const nav = navigator as Navigator & {
     vibrate?: (p: number | number[]) => boolean;
+    userActivation?: { isActive?: boolean };
   };
   // Real Vibration API (Android and friends): honor the short pattern.
   if (typeof nav.vibrate === "function") {
     try {
-      nav.vibrate(PATTERNS[pattern]);
+      return nav.vibrate(PATTERNS[pattern]) !== false;
     } catch {
       // ignore — some browsers throw if called too rapidly
+      return false;
     }
-    return;
   }
   // iOS: a single system tap via the switch bridge. The pattern shape can't
-  // survive here (one tap is all the Taptic Engine gives us this way), but a
-  // real confirmation beats none.
-  if (isIOS()) {
+  // survive here, and WebKit only permits it inside the active user gesture.
+  // Scheduled cues therefore remain visual-only instead of pretending a
+  // delayed physical tap was delivered.
+  if (supportsIosSwitchTap() && nav.userActivation?.isActive === true) {
     try {
-      iosSwitchTap();
+      return iosSwitchTap();
     } catch {
       // ignore — defensive; the bridge must never break a tap handler
+      return false;
     }
   }
+  return false;
 }

@@ -125,6 +125,13 @@ export default function TrafficCameras({
               Watch live
               <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             </a>
+            <a
+              href={`/cameras?camera=${encodeURIComponent(selected.id)}`}
+              className="mt-1.5 flex min-h-10 items-center text-[11px] font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Open in the Frederick camera wall
+            </a>
             <p className="mt-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
               Live feed from Maryland CHART.
             </p>

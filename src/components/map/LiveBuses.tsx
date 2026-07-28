@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
+import { BellRing } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import { haptic } from "@/lib/haptics";
+import { shouldLimitLiveEffects } from "@/lib/motion";
 import { exposeMarkerChild } from "./markerA11y";
 
 /**
@@ -48,7 +50,9 @@ type LiveVehicle = {
  *  when there's no predicted time, so the UI shows the stop name alone. */
 function etaLabel(etaEpoch: number | undefined, nowMs: number): string | null {
   if (etaEpoch == null || nowMs === 0) return null;
-  const mins = Math.round((etaEpoch * 1000 - nowMs) / 60000);
+  const deltaMs = etaEpoch * 1000 - nowMs;
+  if (deltaMs < -60_000) return null;
+  const mins = Math.round(deltaMs / 60000);
   if (mins <= 0) return "due";
   if (mins === 1) return "1 min";
   if (mins > 90) return null; // stale/implausible prediction — name only
@@ -190,6 +194,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
   const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "stale" | "error">("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  const [watching, setWatching] = useState<string | null>(null);
   const [ago, setAgo] = useState(0);
   // Wall-clock now (ms), refreshed on the 1s tick — drives the next-stop ETA
   // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
@@ -199,9 +204,10 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
   const [pollSeq, setPollSeq] = useState(0);
   // Computed once on the client; never changes, so no effect/ref needed.
   // (Markers only render after a poll, so there's no hydration mismatch.)
-  const [reduced] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+  const [reduced] = useState(() => shouldLimitLiveEffects());
   const posRef = useRef<Record<string, Pos>>({});
   const rafRef = useRef<number | null>(null);
+  const alertedStopRef = useRef<string | null>(null);
 
   useEffect(() => { posRef.current = pos; }, [pos]);
 
@@ -341,6 +347,25 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     };
     return { stop: v.nextStop, color, line };
   }, [selected, vehicles]);
+
+  // Catch mode is deliberately foreground-only: while this map remains open,
+  // one selected bus can give a single optional phone tap as it reaches the
+  // two-minute window for its reported next stop. It is not a background push
+  // and never invents an ETA when TransIT does not provide one.
+  useEffect(() => {
+    if (!watching || feedStatus === "stale" || nowMs <= 0) return;
+    const vehicle = vehicles.find((candidate) => candidate.vehicleId === watching);
+    const stop = vehicle?.nextStop;
+    if (!stop?.etaEpoch) return;
+    const minutes = (stop.etaEpoch * 1000 - nowMs) / 60_000;
+    if (minutes > 2 || minutes < -1) return;
+    // Prediction timestamps can shift on every feed refresh. Key the cue to
+    // the vehicle and stop so an ETA adjustment cannot vibrate repeatedly.
+    const alertKey = `${watching}:${stop.id}`;
+    if (alertedStopRef.current === alertKey) return;
+    alertedStopRef.current = alertKey;
+    haptic("warning");
+  }, [feedStatus, nowMs, vehicles, watching]);
 
   if (!show) return null;
   if (vehicles.length === 0) {
@@ -542,8 +567,23 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
             : p.moving
               ? "Moving now"
               : "At a stop";
+        const etaDeltaMinutes =
+          feedStatus !== "stale" && v.nextStop?.etaEpoch && nowMs > 0
+            ? (v.nextStop.etaEpoch * 1000 - nowMs) / 60_000
+            : null;
+        const hasUsableEta =
+          etaDeltaMinutes !== null && etaDeltaMinutes >= -1;
         const eta =
           feedStatus === "stale" ? null : etaLabel(v.nextStop?.etaEpoch, nowMs);
+        const etaMinutes =
+          hasUsableEta
+            ? Math.max(0, Math.ceil(etaDeltaMinutes))
+            : null;
+        const approachProgress =
+          etaMinutes === null
+            ? null
+            : Math.max(8, Math.min(100, ((12 - etaMinutes) / 12) * 100));
+        const isWatching = watching === v.vehicleId;
         return (
           <Popup
             longitude={p.lng}
@@ -571,17 +611,112 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
               {/* Next stop — the flight-tracker line: where it's headed + when.
                   Name alone when there's no live ETA (honest, never guessed). */}
               {v.nextStop && (
-                <div style={{ marginTop: 5, display: "flex", alignItems: "baseline", gap: 5, fontSize: 12.5, lineHeight: 1.25 }}>
-                  <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
-                    Next
-                  </span>
-                  <span style={{ fontWeight: 600, color: "var(--app-ink, #221C15)" }}>
-                    {v.nextStop.name}
-                    {eta && (
-                      <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 700 }}> · {eta}</span>
-                    )}
-                  </span>
+                <div style={{ marginTop: 7 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 5, fontSize: 12.5, lineHeight: 1.25 }}>
+                    <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
+                      Next
+                    </span>
+                    <span style={{ fontWeight: 600, color: "var(--app-ink, #221C15)" }}>
+                      {v.nextStop.name}
+                      {eta && (
+                        <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 700 }}> · {eta}</span>
+                      )}
+                    </span>
+                  </div>
+                  {approachProgress !== null && (
+                    <div
+                      role="progressbar"
+                      aria-label={`Approach to ${v.nextStop.name}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(approachProgress)}
+                      style={{
+                        height: 4,
+                        marginTop: 7,
+                        overflow: "hidden",
+                        borderRadius: 999,
+                        background: "var(--app-border, #D9D2C3)",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          display: "block",
+                          width: `${approachProgress}%`,
+                          height: "100%",
+                          borderRadius: 999,
+                          background: color,
+                          transition: reduced ? "none" : "width 500ms ease",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
+              )}
+              {v.nextStop?.etaEpoch &&
+                feedStatus !== "stale" &&
+                (hasUsableEta || isWatching) && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const next = isWatching ? null : v.vehicleId;
+                    setWatching(next);
+                    alertedStopRef.current = null;
+                    haptic(next ? "success" : "light");
+                  }}
+                  aria-pressed={isWatching}
+                  style={{
+                    width: "100%",
+                    minHeight: 40,
+                    marginTop: 9,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    border: `1px solid ${isWatching ? color : "var(--app-border, #D9D2C3)"}`,
+                    borderRadius: 999,
+                    background: isWatching
+                      ? `color-mix(in srgb, ${color} 10%, white)`
+                      : "var(--app-bg-elevated, #FCFBF8)",
+                    color: "var(--app-ink, #221C15)",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <BellRing aria-hidden size={14} strokeWidth={2.2} />
+                  {isWatching ? "Watching next stop" : "Watch next stop"}
+                </button>
+              )}
+              {isWatching && (
+                !hasUsableEta ? (
+                  <p
+                    role="status"
+                    style={{ marginTop: 5, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}
+                  >
+                    The last reported arrival has expired. Turn off watching
+                    or wait for a fresh estimate.
+                  </p>
+                ) : etaMinutes !== null && etaMinutes <= 2 ? (
+                  <p
+                    role="status"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      lineHeight: 1.35,
+                      color: "var(--app-brand-press, #9E3824)",
+                    }}
+                  >
+                    The reported arrival is within about two minutes.
+                  </p>
+                ) : (
+                  <p style={{ marginTop: 5, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}>
+                    Keep this map open. Radius will show the two-minute cue
+                    here, and supported phones may also vibrate.
+                  </p>
+                )
               )}
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
                 {feedStatus === "stale"

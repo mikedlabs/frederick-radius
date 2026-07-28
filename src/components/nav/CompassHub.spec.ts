@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { RADIUS_TOOLS } from "@/data/radius-tools";
+import { APP_PAGES } from "@/data/app-pages";
+import { RADIUS_TOOL_GROUPS, RADIUS_TOOLS } from "@/data/radius-tools";
 import {
+  ALL_COMPASS_TOOLS_ID,
+  buildAllToolsDirectory,
   buildCompassOutcomes,
   buildCompassSections,
   commonCompassTasks,
+  searchCompassSections,
   splitEssentialItems,
 } from "./CompassHub";
 
@@ -50,6 +54,80 @@ describe("Compass browse model", () => {
 
     expect(represented.sort()).toEqual([...expected].sort());
     expect(new Set(represented).size).toBe(expected.length);
+  });
+
+  it("provides an explicit all-tools directory with a visible total and group counts", () => {
+    const directory = buildAllToolsDirectory(buildCompassSections(null));
+    const directoryIds = directory.sections.flatMap((section) =>
+      section.items.map((item) => item.id)
+    );
+
+    expect(directory.id).toBe(ALL_COMPASS_TOOLS_ID);
+    expect(directory.label).toBe("All tools");
+    expect(directory.total).toBe(directoryIds.length);
+    expect(directory.total).toBeGreaterThanOrEqual(RADIUS_TOOLS.length);
+    expect(directory.sections.map((section) => section.id)).toEqual(
+      RADIUS_TOOL_GROUPS.map((group) => group.id),
+    );
+
+    for (const group of RADIUS_TOOL_GROUPS) {
+      const directoryGroup = directory.sections.find((section) => section.id === group.id);
+      expect(directoryGroup, `missing directory group ${group.id}`).toBeDefined();
+      expect(
+        directoryGroup!.items.map((item) => item.id),
+        `incomplete directory group ${group.id}`,
+      ).toEqual(expect.arrayContaining(group.tools.map((tool) => tool.id)));
+    }
+  });
+
+  it("finds every registered tool by its own label", () => {
+    const sections = buildCompassSections(null);
+
+    for (const tool of RADIUS_TOOLS) {
+      const matchedIds = searchCompassSections(sections, tool.label)
+        .flatMap((section) => section.items.map((item) => item.id));
+      expect(matchedIds, `Compass search did not find ${tool.id}`).toContain(tool.id);
+    }
+  });
+
+  it("includes the road camera wall in Compass and the app-page registry", () => {
+    const represented = new Set(representedRegistryIds(null));
+    const cameraPage = APP_PAGES.find((page) => page.href === "/cameras");
+
+    expect(represented).toContain("road-cameras");
+    expect(cameraPage?.title).toBe("Frederick road cameras");
+    expect(
+      searchCompassSections(buildCompassSections(null), "traffic cameras")
+        .flatMap((section) => section.items.map((item) => item.id)),
+    ).toContain("road-cameras");
+  });
+
+  it("represents every searchable app page in the complete Compass model", () => {
+    const sections = buildCompassSections(null);
+    const compassPaths = new Set(
+      [...sections.flatMap((section) => section.items), ...commonCompassTasks(sections)]
+        .map((item) => new URL(item.href, "https://frederickradius.app").pathname),
+    );
+
+    for (const page of APP_PAGES) {
+      const pathname = new URL(page.href, "https://frederickradius.app").pathname;
+      expect(compassPaths, `APP_PAGES destination missing from Compass: ${pathname}`)
+        .toContain(pathname);
+    }
+  });
+
+  it("keeps every registered tool destination in global page search", () => {
+    const appPagePaths = new Set(
+      APP_PAGES.map((page) =>
+        new URL(page.href, "https://frederickradius.app").pathname
+      ),
+    );
+
+    for (const tool of RADIUS_TOOLS) {
+      const pathname = new URL(tool.href, "https://frederickradius.app").pathname;
+      expect(appPagePaths, `registered tool missing from APP_PAGES: ${pathname}`)
+        .toContain(pathname);
+    }
   });
 
   it("keeps non-amenity essentials such as County Scanner in the browse rows", () => {

@@ -10,7 +10,8 @@
  * the real county polygon + straddle buffer) that are actually online.
  *
  * Locations are static, so this is cached long; the live view happens at the
- * publicVideoURL when the user taps a camera. Fail-soft to [] like every feed.
+ * publicVideoURL when the user taps a camera. Failures reject so Next does not
+ * cache a transient empty result; the page owns the user-facing fail-soft UI.
  */
 import { unstable_cache } from "next/cache";
 import { isValidCoord } from "@/lib/geo";
@@ -20,6 +21,7 @@ const ENDPOINT =
 
 export type TrafficCamera = {
   id: string;
+  /** Human-readable roadway location supplied by CHART. */
   name: string;
   lng: number;
   lat: number;
@@ -27,6 +29,8 @@ export type TrafficCamera = {
   videoUrl: string;
   /** Route number for a compact label, when present (70, 270, 15…). */
   route: number | null;
+  /** CHART's cache timestamp, carried through for stale-state UI. */
+  updatedAt: string | null;
 };
 
 type RawCamera = {
@@ -39,6 +43,7 @@ type RawCamera = {
   opStatus?: unknown;
   publicVideoURL?: unknown;
   routeNumber?: unknown;
+  lastCachedDataUpdateTime?: unknown;
 };
 
 const num = (v: unknown): number | null => {
@@ -47,52 +52,65 @@ const num = (v: unknown): number | null => {
 };
 
 async function fetchChartCameras(): Promise<TrafficCamera[]> {
-  try {
-    const res = await fetch(ENDPOINT, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
-      },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    const json = (await res.json().catch(() => null)) as { data?: RawCamera[] } | null;
-    const rows = json?.data;
-    if (!Array.isArray(rows)) return [];
-
-    const out: TrafficCamera[] = [];
-    const seen = new Set<string>();
-    for (const r of rows) {
-      // Online cameras only — a dead camera is a broken "watch live".
-      if (String(r.commMode ?? "").toUpperCase() !== "ONLINE") continue;
-      if (String(r.opStatus ?? "").toUpperCase() !== "OK") continue;
-      const lng = num(r.lon);
-      const lat = num(r.lat);
-      if (lng === null || lat === null) continue;
-      if (!isValidCoord({ lng, lat })) continue; // in Frederick County only
-      const videoUrl = typeof r.publicVideoURL === "string" ? r.publicVideoURL : "";
-      if (!videoUrl) continue;
-      const id = String(r.id ?? `${lat},${lng}`);
-      if (seen.has(id)) continue;
-      seen.add(id);
-      out.push({
-        id,
-        name: String(r.name ?? r.description ?? "Traffic camera").trim(),
-        lng,
-        lat,
-        videoUrl,
-        route: num(r.routeNumber),
-      });
-    }
-    return out;
-  } catch {
-    return [];
+  const res = await fetch(ENDPOINT, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+    },
+    signal: AbortSignal.timeout(8_000),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) {
+    throw new Error(`Maryland CHART cameras returned ${res.status}`);
   }
+  const json = (await res.json()) as { data?: RawCamera[] };
+  const rows = json?.data;
+  if (!Array.isArray(rows)) {
+    throw new Error("Maryland CHART cameras returned an invalid payload");
+  }
+
+  const out: TrafficCamera[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    // Online cameras only — a dead camera is a broken "watch live".
+    if (String(r.commMode ?? "").toUpperCase() !== "ONLINE") continue;
+    if (String(r.opStatus ?? "").toUpperCase() !== "OK") continue;
+    const lng = num(r.lon);
+    const lat = num(r.lat);
+    if (lng === null || lat === null) continue;
+    if (!isValidCoord({ lng, lat })) continue; // in Frederick County only
+    const videoUrl = typeof r.publicVideoURL === "string" ? r.publicVideoURL : "";
+    if (!videoUrl) continue;
+    const id = String(r.id ?? `${lat},${lng}`);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const cachedAt = num(r.lastCachedDataUpdateTime);
+    const cachedDate =
+      cachedAt !== null && cachedAt > 0 ? new Date(cachedAt) : null;
+    out.push({
+      id,
+      // CHART's `name` is often an internal number such as "710002".
+      // `description` is the reader-facing roadway location.
+      name: String(r.description ?? r.name ?? "Traffic camera").trim(),
+      lng,
+      lat,
+      videoUrl,
+      route: num(r.routeNumber),
+      updatedAt:
+        cachedDate && Number.isFinite(cachedDate.getTime())
+          ? cachedDate.toISOString()
+          : null,
+    });
+  }
+  if (out.length === 0) {
+    throw new Error("Maryland CHART returned no online Frederick cameras");
+  }
+  return out;
 }
 
 /** Frederick-County CHART cameras, cached ~1h (locations don't move). */
 export const getChartCameras = unstable_cache(
   fetchChartCameras,
-  ["chart-cameras-v1"],
+  ["chart-cameras-v2"],
   { revalidate: 3600, tags: ["chart-cameras"] },
 );

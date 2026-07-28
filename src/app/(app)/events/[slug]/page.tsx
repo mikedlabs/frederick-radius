@@ -61,6 +61,7 @@ import {
   eventOnlineActionUrl,
   hasPhysicalAttendance,
 } from "@/lib/events/attendance";
+import { eventCardVisual } from "@/components/event/eventVisuals";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -194,6 +195,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
   const attendanceLabel = eventAttendanceLabel(event);
+  const heroVisual = eventCardVisual(event);
 
   const cat = CATEGORY_BY_SLUG[event.category];
   const desc = (event.description ?? "").trim();
@@ -426,15 +428,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
+          viewTransitionName: `event-${event.slug}`,
         }}
       >
-        {event.hero_image ? (
+        {heroVisual ? (
           <div className="relative h-64 w-full overflow-hidden sm:h-72">
             <Image
-              src={event.hero_image}
+              src={heroVisual.src}
               alt=""
               fill
-              unoptimized={event.hero_image.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -447,6 +449,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {/* Top row: action cluster (the date moved to the promoted
                 WHEN line below the title — no longer a tiny hero pill). */}
             <div className="absolute inset-x-0 top-0 flex items-start justify-end gap-3 p-4">
+              <span className="mr-auto max-w-[62%] truncate rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold tracking-[0.02em] text-white backdrop-blur-sm">
+                {heroVisual.caption}
+              </span>
               <div className="flex shrink-0 items-center gap-1">
                 <EventActions event={event} actions={["share"]} />
                 <SaveButton refType="event" refId={event.slug} label={event.title} />
