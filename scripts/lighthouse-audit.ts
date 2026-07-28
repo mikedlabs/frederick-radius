@@ -51,14 +51,14 @@ function parseArgs(): Args {
   // and computational range of the app. Keeping it small means a full
   // pass is under 4 minutes. Add more URLs sparingly.
   //
-  // Routes follow the post-overhaul IA: /now (was /today), /browse
-  // (was /map), /events, /radius, plus a representative place detail.
-  // /discover was retired and 301s to /now.
+  // Canonical routes only. Measuring redirects hides the destination's
+  // real navigation cost and can make a retired alias look like a supported
+  // product surface.
   const urls = [
-    "/now",
-    "/browse",
+    "/today",
+    "/map",
     "/events",
-    "/radius",
+    "/transit",
     "/places/carroll-creek-linear-park-frederick",
   ];
   return { base, urls, label };
