@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import "@fontsource-variable/public-sans/wght.css";
-import "@fontsource-variable/public-sans/wght-italic.css";
-import "@fontsource/libre-caslon-display/400.css";
+import { libreCaslonDisplay, publicSans } from "./fonts";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -15,11 +13,13 @@ import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
 
 /**
- * Brand typography is self-hosted through Fontsource so production builds do
- * not depend on a live Google Fonts request. Libre Caslon Display is the
- * wordmark and rare editorial moments; Public Sans carries product titles,
- * UI, body copy, labels, and tabular data. Keeping the product to these two
- * faces is part of the Frederick Radius brand contract.
+ * Brand typography is self-hosted through next/font (see ./fonts.ts) so
+ * production never depends on a live Google Fonts request AND the fallback
+ * carries the real font's metrics, which is what stops the swap from
+ * reflowing the page. Libre Caslon Display is the wordmark and rare
+ * editorial moments; Public Sans carries product titles, UI, body copy,
+ * labels, and tabular data. Keeping the product to these two faces is part
+ * of the Frederick Radius brand contract.
  */
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
@@ -152,6 +152,9 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      // The two font variables are declared on <html> so globals.css can point
+      // its type tokens at them; every surface reads the tokens, not these.
+      className={`${publicSans.variable} ${libreCaslonDisplay.variable}`}
       data-season={season}
       style={{ "--season-accent": seasonAccent, "--season-depth": seasonAccent } as React.CSSProperties}
     >

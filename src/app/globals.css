@@ -3,11 +3,17 @@
 :root {
   /* Self-hosted Frederick Radius type system. Public Sans carries the
    * product, including tabular numerals. Caslon is an explicit signature,
-   * never an automatic heading treatment. */
-  --font-sans-base: "Public Sans Variable";
-  --font-display: "Libre Caslon Display";
+   * never an automatic heading treatment.
+   *
+   * The families come from next/font (src/app/fonts.ts), which declares each
+   * face together with a metric-matched fallback, so the pre-swap paint
+   * occupies the same space as the webfont. The literal names remain as a
+   * second fallback: global-error.tsx renders outside this layout and
+   * declares its own @font-face under those exact names. */
+  --font-sans-base: var(--font-public-sans), "Public Sans Variable";
+  --font-display: var(--font-libre-caslon), "Libre Caslon Display";
   --font-editorial: var(--font-display), ui-serif, Georgia, serif;
-  --font-mono-base: "Public Sans Variable";
+  --font-mono-base: var(--font-public-sans), "Public Sans Variable";
 
   /* ─────────────────────────────────────────────────────
    * INTERNAL PITCH DECK — isolated from the public product.
