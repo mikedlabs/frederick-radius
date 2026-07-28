@@ -385,7 +385,7 @@ export default function LiveRotorcraft({
                 className="mt-2 text-[11px]"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                No nearby helicopter appeared in the latest public snapshot.
+                The latest public snapshot shows no nearby helicopter.
               </p>
             )}
 
