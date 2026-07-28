@@ -13,7 +13,10 @@
  */
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
-import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
+import {
+  MAPBOX_SERVER_HEADERS,
+  MAPBOX_SERVER_TOKEN,
+} from "@/lib/mapbox-server";
 import { CATEGORIES } from "@/data/categories";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
@@ -61,7 +64,7 @@ export async function GET(req: NextRequest) {
   if (!PIN_COLORS.has(pin) || !SIZES.has(size) || !ZOOMS.has(zoom)) {
     return new Response("bad params", { status: 400 });
   }
-  if (!MAPBOX_TOKEN) return new Response("upstream unavailable", { status: 503 });
+  if (!MAPBOX_SERVER_TOKEN) return new Response("upstream unavailable", { status: 503 });
 
   // Eleven-meter precision is ample for a locator thumbnail and reduces the
   // paid CDN cache-key surface by two orders of magnitude.
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
   const upstream =
     `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/` +
     `pin-s+${pin}(${lngs},${lats})/${lngs},${lats},${zoom},0/${size}@2x` +
-    `?access_token=${MAPBOX_TOKEN}`;
+    `?access_token=${MAPBOX_SERVER_TOKEN}`;
 
   try {
     meterUsage("mapbox_static");

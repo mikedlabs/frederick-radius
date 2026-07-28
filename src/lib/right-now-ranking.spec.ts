@@ -5,6 +5,7 @@ import {
   compareRightNowCandidates,
   rightNowQualityScore,
   rightNowSortLabel,
+  smartNearbyScore,
 } from "./right-now-ranking";
 
 const place = (name: string, values: Partial<PlaceCardData> = {}) => ({
@@ -58,6 +59,39 @@ describe("right-now no-origin ranking", () => {
     expect(ranked[0]?.p.name).toBe("Strong local choice");
   });
 
+  it("balances proximity, trust, and local knowledge in Smart Nearby", () => {
+    const closeThin = place("Close but thin", { slug: "close", feature_score: 2 });
+    const useful = place("Useful local", {
+      slug: "useful",
+      feature_score: 8,
+      local_favorite: true,
+      open_confidence: "verified",
+      is_verified: true,
+      field_notes: true,
+      short_blurb: "A source-backed local note.",
+    });
+    const context = { hasOrigin: true };
+    expect(
+      smartNearbyScore({ p: useful, dist: 1_200, open: true }, context),
+    ).toBeGreaterThan(
+      smartNearbyScore({ p: closeThin, dist: 100, open: true }, context),
+    );
+  });
+
+  it("uses saves as a soft personal nudge without overriding availability", () => {
+    const saved = place("Saved choice", { slug: "saved", feature_score: 6 });
+    const other = place("Other choice", { slug: "other", feature_score: 6 });
+    const ranked = [
+      { p: other, dist: 500, open: true },
+      { p: saved, dist: 500, open: true },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "smart", true, {
+        savedSlugs: new Set(["saved"]),
+      }),
+    );
+    expect(ranked[0]?.p.slug).toBe("saved");
+  });
+
   it("never moves a closed place above an open place", () => {
     const open = place("Open but modest", { feature_score: 3 });
     const closed = place("Closed but famous", {
@@ -87,6 +121,7 @@ describe("right-now no-origin ranking", () => {
   });
 
   it("labels the availability tier instead of promising a false nearest-first list", () => {
+    expect(rightNowSortLabel("smart", true, true)).toBe("open first, then best fit");
     expect(rightNowSortLabel("nearest", true, true)).toBe("open first, then nearest");
     expect(rightNowSortLabel("nearest", true, false)).toBe("nearest first");
     expect(rightNowSortLabel("rated", false, true)).toBe("open first, then top rated");

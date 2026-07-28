@@ -15,6 +15,7 @@ import { getSql } from "@/lib/db/client";
 export type PaidUpstream =
   | "google_photo"
   | "anthropic_ask"
+  | "mapbox_geocode"
   | "mapbox_isochrone"
   | "mapbox_static";
 

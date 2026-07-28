@@ -58,7 +58,10 @@ import {
   canUseOriginForRanking,
   compareRightNowCandidates,
   rightNowSortLabel,
+  type RightNowSort,
 } from "@/lib/right-now-ranking";
+import { useSavedList } from "@/hooks/useSaved";
+import { useBeenList } from "@/hooks/useBeenHere";
 
 /**
  * RightNow — the one-tap craving answer.
@@ -225,7 +228,14 @@ export default function RightNow({
   // Sort within the availability tier: open places lead unless the Open now
   // filter has already removed everything else. The result summary names that
   // ordering instead of promising a literal nearest-first list.
-  const [sort, setSort] = useState<"nearest" | "rated">("nearest");
+  const [sort, setSort] = useState<RightNowSort>("smart");
+  const saved = useSavedList();
+  const been = useBeenList();
+  const savedPlaceSlugs = useMemo(
+    () => new Set(saved.filter((item) => item.type === "place").map((item) => item.id)),
+    [saved],
+  );
+  const visitedSlugs = useMemo(() => new Set(been), [been]);
 
   // A town-scoped distance is distance from the town centroid, not the user.
   // Never print it as if it came from the device.
@@ -321,8 +331,23 @@ export default function RightNow({
         const open = Boolean(craving?.alwaysOpen) || isOpenNow(p.open_status);
         return { p, dist, open };
       })
-      .sort((a, b) => compareRightNowCandidates(a, b, sort, hasRankingOrigin));
-  }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin, hasRankingOrigin]);
+      .sort((a, b) =>
+        compareRightNowCandidates(a, b, sort, hasRankingOrigin, {
+          savedSlugs: savedPlaceSlugs,
+          visitedSlugs,
+        }),
+      );
+  }, [
+    cravingMatchedAll,
+    craving,
+    facetKey,
+    townKey,
+    sort,
+    origin,
+    hasRankingOrigin,
+    savedPlaceSlugs,
+    visitedSlugs,
+  ]);
 
   // A town with no verified in-town match should not become a blank page.
   // Keep the scope honest, then offer the three closest verified alternatives
@@ -680,13 +705,16 @@ export default function RightNow({
         </div>
 
         {/* Sort — open places lead either way; this toggles the secondary
-            ordering (distance vs rating). Its own quiet row so it reads as a
+            ordering (best fit, distance, or rating). Its own quiet row so it reads as a
             sort, not another filter. */}
         <div className="flex items-center gap-1.5 pt-0.5">
           <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
             Sort
           </span>
-          <FacetChip label={hasRankingOrigin ? "Nearest" : "Best"} active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
+          <FacetChip label="Smart" active={sort === "smart"} color="var(--app-ink-2)" onClick={() => setSort("smart")} />
+          {hasRankingOrigin && (
+            <FacetChip label="Nearest" active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
+          )}
           <FacetChip label="Top rated" active={sort === "rated"} color="var(--app-ink-2)" onClick={() => setSort("rated")} />
         </div>
       </div>

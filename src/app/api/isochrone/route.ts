@@ -28,7 +28,10 @@
  */
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
-import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
+import {
+  MAPBOX_SERVER_HEADERS,
+  MAPBOX_SERVER_TOKEN,
+} from "@/lib/mapbox-server";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
 
@@ -84,7 +87,7 @@ export async function GET(req: NextRequest) {
   if (!ALLOWED_MINUTES.has(minutes)) {
     return Response.json({ ok: false, reason: "bad-minutes" }, { status: 400 });
   }
-  if (!MAPBOX_TOKEN) {
+  if (!MAPBOX_SERVER_TOKEN) {
     // No token = degrade silently; client falls back to circle.
     return Response.json({ ok: false, reason: "no-token" });
   }
@@ -110,7 +113,7 @@ export async function GET(req: NextRequest) {
   // (rather than line contours). `denoise=1` reduces tiny islands of
   // unreachable area — cleaner rendering at our zoom levels.
   const upstream = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${approximateLng},${approximateLat}` +
-    `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_TOKEN}`;
+    `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_SERVER_TOKEN}`;
 
   try {
     meterUsage("mapbox_isochrone");
