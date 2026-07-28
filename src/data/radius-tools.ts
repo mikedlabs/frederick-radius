@@ -73,6 +73,11 @@ export type RadiusToolGroup = {
   id: string;
   label: string;
   parentJourney: RadiusJourney | null;
+  /** The set's own face, for surfaces that show a group as one key. Without
+   *  it a group borrows its first tool's icon, which made "Eat & drink" wear
+   *  the Open-now pulse line. A set is not its first member. */
+  icon: RadiusToolIcon;
+  tone: RadiusToolTone;
   tools: readonly RadiusTool[];
 };
 
@@ -99,6 +104,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "eat-drink",
     label: "Eat & drink",
     parentJourney: "today",
+    icon: "utensils",
+    tone: "brand",
     tools: [
       {
         id: "open-now",
@@ -180,6 +187,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "get-around",
     label: "Get around",
     parentJourney: "map",
+    icon: "route",
+    tone: "civic",
     tools: [
       {
         id: "county-map",
@@ -233,6 +242,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "outdoors",
     label: "Outdoors",
     parentJourney: "map",
+    icon: "trees",
+    tone: "positive",
     tools: [
       {
         id: "parks",
@@ -267,6 +278,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "essentials",
     label: "Public essentials",
     parentJourney: "map",
+    icon: "map-pin",
+    tone: "civic",
     tools: [
       {
         id: "public-essentials",
@@ -413,6 +426,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "events-plans",
     label: "Events & planning",
     parentJourney: "events",
+    icon: "calendar",
+    tone: "brand",
     tools: [
       {
         id: "events",
@@ -478,6 +493,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "civic",
     label: "Civic & services",
     parentJourney: "today",
+    icon: "landmark",
+    tone: "civic",
     tools: [
       {
         id: "county-pulse",
@@ -517,6 +534,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "county-data",
     label: "The county, in data",
     parentJourney: "map",
+    icon: "sigma",
+    tone: "cool",
     tools: [
       {
         id: "civic-signals",
@@ -561,6 +580,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "explore",
     label: "Explore & history",
     parentJourney: "map",
+    icon: "history",
+    tone: "accent",
     tools: [
       {
         id: "search",
@@ -641,6 +662,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "yours",
     label: "Yours",
     parentJourney: "saved",
+    icon: "bookmark",
+    tone: "brand",
     tools: [
       {
         id: "saved",
@@ -675,6 +698,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     id: "contribute",
     label: "Help improve the guide",
     parentJourney: null,
+    icon: "sparkles",
+    tone: "accent",
     tools: [
       {
         id: "mark-a-spot",

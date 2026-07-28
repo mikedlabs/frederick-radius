@@ -20,6 +20,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { DeckDetailRow, DeckIcon, DeckKey } from "@/lib/deck/readings";
+import { RADIUS_TOOL_GROUPS } from "@/data/radius-tools";
+import { TOOL_ICONS, TOOL_TONE_COLOR } from "@/components/tools/toolIcons";
 
 /**
  * The deck — the county's instruments as a board of keys.
@@ -109,7 +111,9 @@ function Sparkline({ series, color }: { series: number[]; color: string }) {
   });
   return (
     <svg
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-8 w-full"
+      // Sits in the key's empty middle band, between the icon and the reading.
+      // Anchored to the bottom it ran straight through its own label.
+      className="pointer-events-none absolute inset-x-0 top-[32%] h-9 w-full"
       viewBox="0 0 100 30"
       preserveAspectRatio="none"
       aria-hidden
@@ -184,6 +188,7 @@ export default function DeckBoard({
   const [tick, setTick] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.parse(initialReadAt));
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
   /** Per-key manual face offsets, set by swiping or arrow keys. */
   const [nudge, setNudge] = useState<Record<string, number>>({});
   const touchX = useRef<number | null>(null);
@@ -261,8 +266,20 @@ export default function DeckBoard({
     return () => window.removeEventListener("keydown", onKey);
   }, [openId]);
 
+  useEffect(() => {
+    if (!openFolder) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenFolder(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openFolder]);
+
   const turnFace = (id: string, by: number) =>
     setNudge((current) => ({ ...current, [id]: (current[id] ?? 0) + by }));
+
+  // Only groups that actually carry tools, so a folder can never open empty.
+  const folders = RADIUS_TOOL_GROUPS.filter((group) => group.tools.length > 0);
 
   if (keys.length === 0) return null;
   const reporting = keys.filter((deckKey) => deckKey.status === "ok").length;
@@ -328,12 +345,14 @@ export default function DeckBoard({
               }
             >
               <div
-                className="fr-deck-key relative overflow-hidden"
+                className="fr-deck-key fr-deck-boot relative overflow-hidden"
                 style={{
                   borderRadius: "var(--app-radius-md)",
-                  background: "var(--app-bg-elevated-solid)",
+                  background:
+                    "linear-gradient(177deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-sunken) 55%, var(--app-bg-elevated-solid)) 100%)",
                   border: "1px solid var(--app-border)",
                   opacity: unavailable && !open ? 0.72 : 1,
+                  animationDelay: `${Math.min(index, 11) * 45}ms`,
                 }}
               >
                 {!unavailable && (
@@ -342,7 +361,7 @@ export default function DeckBoard({
                     className="pointer-events-none absolute inset-0"
                     style={{
                       background: `radial-gradient(120% 90% at 0% 0%, ${deckKey.accent} 0%, transparent 72%)`,
-                      opacity: 0.16,
+                      opacity: 0.22,
                     }}
                   />
                 )}
@@ -514,14 +533,35 @@ export default function DeckBoard({
         })}
 
         <style>{`
+          /* Key material: a seated cap, not a flat card. The inset highlight
+             is the light catching the top bevel and the inset shade is the
+             seam where the cap meets the board. */
           .fr-deck-key {
-            transition: box-shadow 140ms ease;
-            box-shadow: 0 1px 2px rgba(34,28,21,0.05), 0 4px 10px -8px rgba(34,28,21,0.28);
+            transition: box-shadow 160ms ease, transform 160ms ease;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.75),
+              inset 0 -1px 0 rgba(34,28,21,0.06),
+              0 1px 2px rgba(34,28,21,0.06),
+              0 5px 12px -9px rgba(34,28,21,0.34);
           }
-          .fr-deck-press { transition: transform 140ms ease; touch-action: pan-y; }
-          .fr-deck-press:active { transform: scale(0.985); }
+          .fr-deck-press { transition: transform 120ms ease; touch-action: pan-y; }
+          .fr-deck-press:active { transform: translateY(1px) scale(0.98); }
           @media (hover: hover) {
-            .fr-deck-key:hover { box-shadow: 0 2px 4px rgba(34,28,21,0.06), 0 12px 20px -12px rgba(34,28,21,0.34); }
+            .fr-deck-key:hover {
+              transform: translateY(-1.5px);
+              box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.85),
+                inset 0 -1px 0 rgba(34,28,21,0.06),
+                0 2px 4px rgba(34,28,21,0.07),
+                0 16px 26px -14px rgba(34,28,21,0.42);
+            }
+          }
+          /* The board coming up: keys seat themselves in a wave rather than
+             all appearing at once. Runs once on mount, never on refresh. */
+          .fr-deck-boot { animation: fr-deck-seat 460ms cubic-bezier(.2,.8,.3,1) both; }
+          @keyframes fr-deck-seat {
+            from { opacity: 0; transform: translateY(8px) scale(0.965); }
+            to { opacity: 1; transform: none; }
           }
           .fr-deck-value, .fr-deck-label { animation: fr-deck-in 420ms ease both; }
           .fr-deck-label { animation-delay: 40ms; }
@@ -542,10 +582,150 @@ export default function DeckBoard({
             50% { opacity: 0.28; }
           }
           @media (prefers-reduced-motion: reduce) {
-            .fr-deck-value, .fr-deck-label, .fr-deck-live, .fr-deck-panel { animation: none !important; }
+            .fr-deck-value, .fr-deck-label, .fr-deck-live, .fr-deck-panel, .fr-deck-boot {
+              animation: none !important;
+            }
             .fr-deck-key, .fr-deck-press { transition: none !important; }
           }
         `}</style>
+      </div>
+
+      {/* The second band: every tool in the guide as a folder key. A folder
+          opens in place exactly like a reading does, so the whole index is one
+          press deep and nothing has to navigate away to be browsed. */}
+      <div className="flex items-baseline justify-between gap-3 pt-2">
+        <h3
+          className="font-serif text-[19px] font-semibold leading-tight tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Tools
+        </h3>
+        <p
+          className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.12em] tabular-nums"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {folders.reduce((sum, group) => sum + group.tools.length, 0)} in{" "}
+          {folders.length} sets
+        </p>
+      </div>
+
+      <div className="grid grid-flow-dense grid-cols-3 gap-2 sm:grid-cols-5">
+        {folders.map((group, index) => {
+          const open = openFolder === group.id;
+          const panelId = `${panelBase}-folder-${group.id}`;
+          // The set's own face, declared on the group. Borrowing the first
+          // tool's icon put the Open-now pulse line on "Eat & drink".
+          const Icon = TOOL_ICONS[group.icon];
+          const accent = TOOL_TONE_COLOR[group.tone];
+          const wide = folders.length % 3 === 1 && index === folders.length - 1;
+
+          return (
+            <div
+              key={group.id}
+              className={
+                open ? "col-span-3 sm:col-span-5" : wide ? "col-span-3 sm:col-span-1" : "col-span-1"
+              }
+            >
+              <div
+                className="fr-deck-key fr-deck-boot relative overflow-hidden"
+                style={{
+                  borderRadius: "var(--app-radius-md)",
+                  background:
+                    "linear-gradient(177deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-sunken) 55%, var(--app-bg-elevated-solid)) 100%)",
+                  border: "1px solid var(--app-border)",
+                  animationDelay: `${Math.min(keys.length + index, 18) * 45}ms`,
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background: `radial-gradient(120% 90% at 0% 0%, ${accent} 0%, transparent 72%)`,
+                    opacity: 0.22,
+                  }}
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+                  style={{ background: accent, opacity: 0.85 }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setOpenFolder(open ? null : group.id)}
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  aria-label={`${group.label}: ${group.tools.length} tools. ${open ? "Hide" : "Show"} them.`}
+                  className={`fr-deck-press relative flex w-full flex-col p-2.5 text-left sm:p-3 ${
+                    open ? "" : wide ? "aspect-[3.4/1] sm:aspect-square" : "aspect-square"
+                  }`}
+                >
+                  <Icon
+                    className="h-[18px] w-[18px] shrink-0"
+                    strokeWidth={2.25}
+                    style={{ color: accent }}
+                    aria-hidden
+                  />
+                  <span className={open ? "mt-2 block min-w-0" : "mt-auto block min-w-0"} aria-hidden>
+                    <span
+                      className="block text-[14px] font-semibold leading-tight [text-wrap:balance]"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {group.label}
+                    </span>
+                    <span
+                      className="mt-1 block truncate text-[10.5px] leading-tight tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {group.tools.length} {group.tools.length === 1 ? "tool" : "tools"}
+                    </span>
+                  </span>
+                </button>
+
+                {open && (
+                  <div
+                    id={panelId}
+                    className="fr-deck-panel relative border-t px-2.5 pb-2.5 pt-2 sm:px-3 sm:pb-3"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {group.tools.map((tool) => {
+                        const ToolIcon = TOOL_ICONS[tool.icon];
+                        const toolAccent = TOOL_TONE_COLOR[tool.tone];
+                        return (
+                          <li key={tool.id}>
+                            <Link
+                              href={tool.href}
+                              className="fr-deck-key fr-deck-press flex aspect-square flex-col p-2 text-left"
+                              style={{
+                                borderRadius: "var(--app-radius-sm, 10px)",
+                                background: "var(--app-bg)",
+                                border: "1px solid var(--app-border)",
+                              }}
+                            >
+                              <ToolIcon
+                                className="h-4 w-4 shrink-0"
+                                strokeWidth={2.25}
+                                style={{ color: toolAccent }}
+                                aria-hidden
+                              />
+                              <span
+                                className="mt-auto block text-[11px] font-medium leading-tight [text-wrap:balance]"
+                                style={{ color: "var(--app-ink)" }}
+                              >
+                                {tool.label}
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
