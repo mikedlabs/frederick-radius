@@ -48,6 +48,7 @@ import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import { haptic } from "@/lib/haptics";
 import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
 import {
@@ -353,6 +354,13 @@ export default function RightNow({
   }, [cravingMatchedAll]);
 
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
+  // A zero count only means "closed" when enough of this set can state an
+  // open or closed hour at all. Below that bar the honest report is about our
+  // coverage, not about the county.
+  const mayReportNoneOpen = useMemo(
+    () => mayAssertNoneOpen(matched.map((m) => m.p.open_status)),
+    [matched],
+  );
   // Open, but closing within the hour (getOpenStatus → "closing-soon"). Drives
   // the urgency chip + filter; closing-soon places are a subset of "open".
   const closingSoonCount = useMemo(
@@ -542,7 +550,9 @@ export default function RightNow({
               {meal
                 ? openCount > 0
                   ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
-                  : `Nothing open ${meal.phrase} right now · ${sortLabel}`
+                  : mayReportNoneOpen
+                    ? `Nothing open ${meal.phrase} right now · ${sortLabel}`
+                    : `No confirmed hours ${meal.phrase} right now · ${sortLabel}`
                 : craving?.alwaysOpen
                   ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
                   : openOnly

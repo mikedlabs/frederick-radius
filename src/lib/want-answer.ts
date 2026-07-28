@@ -9,6 +9,7 @@ import { knownFor } from "@/lib/cuisine";
 import { formatHoursLine, getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { isChainName, ratingSignal } from "@/lib/category-ranking";
 import { isLikelyOpenNow } from "@/data/reliable-open-windows";
@@ -83,6 +84,11 @@ export type WantAnswer = {
    *  real places instead of a bare "nothing's open" line. Empty otherwise. */
   notable: WantRow[];
   total: number;
+  /** Whether an empty open lane may be reported as "nothing is open." False
+   *  when too few of these candidates can state an open or closed hour at
+   *  all, which makes the empty result a fact about our hours coverage
+   *  rather than about the county. */
+  mayAssertNoneOpen: boolean;
   /** The deep-browse door — the same URL the sub-chip used to navigate to. */
   browseHref: string;
   /** Honest ranking/filter context shown in the panel. */
@@ -476,6 +482,9 @@ export function buildWantAnswer(
 
   const { open, later, other, total } = partitionWant(candidates);
   const rankingMode = opts?.rankingMode ?? "open-now";
+  const noneOpenIsSayable = mayAssertNoneOpen(
+    candidates.map((candidate) => candidate.open_status),
+  );
 
   // "Movies" is not an open-now storefront question. Cinema hours do not
   // answer which films are playing, and most theaters do not publish useful
@@ -496,6 +505,7 @@ export function buildWantAnswer(
       laterMore: 0,
       notable: [],
       total,
+      mayAssertNoneOpen: noneOpenIsSayable,
       browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
       contextLabel: opts?.contextLabel ?? "Whole county",
       contextSource: opts?.contextSource ?? "county",
@@ -515,6 +525,7 @@ export function buildWantAnswer(
       laterMore: 0,
       notable: [],
       total,
+      mayAssertNoneOpen: noneOpenIsSayable,
       browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
       contextLabel: opts?.contextLabel ?? "Whole county",
       contextSource: opts?.contextSource ?? "county",
@@ -565,6 +576,7 @@ export function buildWantAnswer(
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,
     total,
+    mayAssertNoneOpen: noneOpenIsSayable,
     browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
     contextLabel: opts?.contextLabel ?? "Whole county",
     contextSource: opts?.contextSource ?? "county",
