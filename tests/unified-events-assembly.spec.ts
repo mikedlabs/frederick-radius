@@ -12,9 +12,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/integrations/ical-live", () => ({
   getLiveEvents: vi.fn(async () => ({ events: [], sources_succeeded: [], sources_failed: [] })),
+  fetchLiveTicketmasterMusicResult: vi.fn(async () => ({
+    items: [],
+    state: "ok",
+  })),
 }));
 vi.mock("@/lib/integrations/ticketmaster", () => ({
-  fetchTicketmasterMusicResult: vi.fn(async () => ({ items: [], state: "ok" })),
   fetchTicketmasterSportsResult: vi.fn(async () => ({ items: [], state: "disabled" })),
 }));
 vi.mock("@/lib/integrations/bandsintown", () => ({
@@ -48,8 +51,10 @@ vi.mock("@/lib/integrations/mapboxGeocode", () => ({
 vi.mock("@/lib/loaders/eventThumb", () => ({ withVenueThumbs: vi.fn((events: unknown) => events) }));
 
 import { assembleRaw } from "@/lib/loaders/unifiedEvents";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
-import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
+import {
+  fetchLiveTicketmasterMusicResult,
+  getLiveEvents,
+} from "@/lib/integrations/ical-live";
 import { fetchVisitFrederickResult } from "@/lib/integrations/visitfrederick";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
@@ -76,9 +81,9 @@ describe("assembleRaw — assembly seam", () => {
     expect(Array.isArray(r.publicEvents)).toBe(true);
     expect(r.sourceHealth.degraded).toBe(false);
     expect(r.sourceHealth.unavailable).toEqual([]);
-    // getLiveEvents owns the Ticketmaster music query. assembleRaw must not
-    // issue the same Discovery API request a second time.
-    expect(fetchTicketmasterMusicResult).toHaveBeenCalledTimes(1);
+    // The shared live-fetch seam owns Ticketmaster music so warm-events can
+    // reuse the same request for the unified and 90-day cache products.
+    expect(fetchLiveTicketmasterMusicResult).toHaveBeenCalledTimes(1);
     expect(getLiveEvents).toHaveBeenCalledWith(60, {
       includeTicketmaster: false,
     });

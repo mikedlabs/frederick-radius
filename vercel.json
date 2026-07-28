@@ -9,6 +9,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/warm-map",
+      "schedule": "7,22,37,52 * * * *"
+    },
+    {
       "path": "/api/cron/saved-reminders",
       "schedule": "*/10 * * * *"
     },
