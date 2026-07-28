@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import CompassHub from "@/components/nav/CompassHub";
+import DeckSection, { DeckSkeleton } from "@/components/deck/DeckSection";
 import PageBloom from "@/components/ui/PageBloom";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
@@ -20,8 +22,13 @@ export const metadata: Metadata = {
  */
 export default function CompassPage() {
   return (
-    <div className="relative">
+    <div className="relative space-y-6">
       <PageBloom variant="warm" />
+      {/* The live board leads: what the county is doing right now, before the
+          index of everything you could go look at. */}
+      <Suspense fallback={<DeckSkeleton />}>
+        <DeckSection />
+      </Suspense>
       <CompassHub />
     </div>
   );
