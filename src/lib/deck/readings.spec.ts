@@ -3,6 +3,7 @@ import {
   buildDeckKeys,
   minutesUntil,
   shortGaugeName,
+  sparkSeries,
   type DeckInputs,
 } from "@/lib/deck/readings";
 
@@ -169,7 +170,7 @@ describe("buildDeckKeys", () => {
         ],
       },
     });
-    expect(keys.buses.detail[0]).toEqual({ lead: "Market & 7th", trail: "4 min" });
+    expect(keys.buses.detail[0]).toMatchObject({ lead: "Market & 7th", trail: "4 min" });
     expect(keys.buses.detail[1].trail).toBeUndefined();
   });
 
@@ -233,12 +234,91 @@ describe("buildDeckKeys", () => {
     expect(keys.water.detail[0].trail).toBe("2.5 ft");
   });
 
+  it("draws the sparkline from the gauge named on the face, not an average", () => {
+    const keys = keyed({
+      water: [
+        { name: "CATOCTIN CREEK NEAR MIDDLETOWN, MD", feet: 1.5, history: [9, 9, 9] },
+        { name: "POTOMAC RIVER AT POINT OF ROCKS, MD", feet: 2.5, history: [1, 2, 3] },
+      ],
+    });
+    expect(keys.water.faces[1].label).toBe("Potomac at Point Of Rocks");
+    expect(keys.water.spark).toEqual([1, 2, 3]);
+  });
+
+  it("carries a trend per gauge only where the feed supports one", () => {
+    const keys = keyed({
+      water: [
+        { name: "MONOCACY RIVER AT BRIDGEPORT, MD", feet: 2.1, trend: "rising" },
+        { name: "BENNETT CREEK AT PARK MILLS, MD", feet: 1.5 },
+      ],
+    });
+    expect(keys.water.detail[0].trend).toBe("rising");
+    expect(keys.water.detail[1].trend).toBeUndefined();
+  });
+
+  it("gives no key but Creeks a sparkline, because no other feed has history", () => {
+    const keys = buildDeckKeys(
+      {
+        ...NOTHING,
+        water: [{ name: "MONOCACY RIVER AT BRIDGEPORT, MD", feet: 2.1, history: [1, 2] }],
+        power: { available: true, out: 5, munis: [{ area: "Thurmont", out: 5 }] },
+        buses: { available: true, stops: [{ name: "Market & 7th" }] },
+      },
+      NOW,
+    );
+    expect(keys.filter((key) => key.spark).map((key) => key.id)).toEqual(["water"]);
+  });
+
+  it("hands the raw arrival epoch through so the client can count it down", () => {
+    const soon = NOW.getTime() / 1000 + 240;
+    const keys = keyed({
+      buses: { available: true, stops: [{ name: "Market & 7th", etaEpoch: soon }] },
+    });
+    expect(keys.buses.detail[0].etaEpoch).toBe(soon);
+  });
+
+  it("withholds the epoch when the prediction is already unusable", () => {
+    // A stale trip left in the feed carries a passed or far-future arrival.
+    // Sending it anyway would let the client tick out a number we rejected.
+    const keys = keyed({
+      buses: {
+        available: true,
+        stops: [
+          { name: "Passed", etaEpoch: NOW.getTime() / 1000 - 600 },
+          { name: "Tomorrow", etaEpoch: NOW.getTime() / 1000 + 9 * 3600 },
+        ],
+      },
+    });
+    expect(keys.buses.detail.every((row) => row.etaEpoch === undefined)).toBe(true);
+    expect(keys.buses.detail.every((row) => row.trail === undefined)).toBe(true);
+  });
+
   it("carries a source and a destination on every key", () => {
     for (const key of buildDeckKeys(NOTHING, NOW)) {
       expect(key.source.length).toBeGreaterThan(0);
       expect(key.hrefLabel.length).toBeGreaterThan(0);
       expect(key.href.startsWith("/")).toBe(true);
     }
+  });
+});
+
+describe("sparkSeries", () => {
+  it("keeps a short series whole", () => {
+    expect(sparkSeries([1, 2, 3], 24)).toEqual([1, 2, 3]);
+  });
+
+  it("thins a full day of gauge readings to a drawable number of points", () => {
+    // The real shape: ~94 readings per gauge per day.
+    const day = Array.from({ length: 94 }, (_, i) => i);
+    const thinned = sparkSeries(day, 24);
+    expect(thinned).toHaveLength(24);
+    // The line has to end where the number on the face says it does.
+    expect(thinned[0]).toBe(0);
+    expect(thinned.at(-1)).toBe(93);
+  });
+
+  it("drops readings that are not numbers rather than plotting a hole", () => {
+    expect(sparkSeries([1, Number.NaN, 3], 24)).toEqual([1, 3]);
   });
 });
 

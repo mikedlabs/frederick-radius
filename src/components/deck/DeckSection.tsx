@@ -27,33 +27,13 @@ export function DeckSkeleton() {
 export default async function DeckSection() {
   const now = new Date();
   const keys = await getDeckKeys(now);
-  const reporting = keys.filter((key) => key.status === "ok").length;
-  const readAt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(now);
 
+  // The heading and the freshness stamp live inside the board because the
+  // board keeps polling after this render, and a server-stamped time would
+  // freeze at page load while the numbers under it kept moving.
   return (
-    <section aria-labelledby="deck-heading" className="space-y-2.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2
-          id="deck-heading"
-          className="font-serif text-[19px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Right now
-        </h2>
-        {/* Freshness and coverage, in the instrument voice. A board of live
-            readings has to say when it was read and how many answered. */}
-        <p
-          className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.12em] tabular-nums"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {readAt} · {reporting}/{keys.length}
-        </p>
-      </div>
-      <DeckBoard keys={keys} />
+    <section aria-labelledby="deck-heading">
+      <DeckBoard initialKeys={keys} initialReadAt={now.toISOString()} />
     </section>
   );
 }
