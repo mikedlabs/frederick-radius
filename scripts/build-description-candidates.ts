@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getPlaceBySlug, publicPlaces } from "@/lib/loaders/places";
 import type { PlaceDescriptionEntry } from "@/lib/loaders/placeDescriptions";
+import { isDescriptionMechanicallySafe } from "@/lib/copy-quality";
 
 type BusinessInfo = {
   known_for?: string;
@@ -40,37 +41,77 @@ export function namesMatch(placeName: string, evidenceName: string): boolean {
   return shared / Math.min(place.size, evidence.size) >= 0.6;
 }
 
-function candidateSentence(value: string | undefined): string | null {
+function candidateSentence(
+  name: string,
+  value: string | undefined,
+): string | null {
   const text = value?.replace(/\s+/g, " ").trim() ?? "";
   if (text.length < 35 || text.length > 220 || !/[.!?]$/.test(text)) return null;
+  if (!isDescriptionMechanicallySafe(name, text)) return null;
   return text;
 }
 
 function main(): void {
+  const dryRun = process.argv.includes("--dry-run");
   const business = JSON.parse(readFileSync(BUSINESS_PATH, "utf8")) as Record<string, BusinessInfo>;
   const existing = JSON.parse(readFileSync(OUT_PATH, "utf8")) as Record<string, PlaceDescriptionEntry>;
   const publicSlugs = new Set(publicPlaces().map((place) => place.slug));
 
   let added = 0;
   let refreshed = 0;
-  let rejectedMatch = 0;
+  const skipped = {
+    unresolved_place: 0,
+    not_public: 0,
+    missing_evidence_name: 0,
+    invalid_or_unsafe_sentence: 0,
+    missing_source_url: 0,
+    non_https_source: 0,
+    unsafe_name_match: 0,
+    protected_status: 0,
+  };
 
   for (const [slug, info] of Object.entries(business)) {
     // Old ingest rows may use a folded/legacy slug. Resolve through the same
     // canonical alias map as public place pages, then write only to the
     // surviving slug so duplicate records cannot create duplicate copy.
     const place = getPlaceBySlug(slug);
-    const blurb = candidateSentence(info.known_for);
+    if (!place) {
+      skipped.unresolved_place += 1;
+      continue;
+    }
+    if (!publicSlugs.has(place.slug)) {
+      skipped.not_public += 1;
+      continue;
+    }
+    if (!info.name) {
+      skipped.missing_evidence_name += 1;
+      continue;
+    }
+    const blurb = candidateSentence(info.name, info.known_for);
+    if (!blurb) {
+      skipped.invalid_or_unsafe_sentence += 1;
+      continue;
+    }
     const sourceUrl = info.source?.url;
-    if (!place || !publicSlugs.has(place.slug) || !info.name || !blurb || !sourceUrl || !/^https:\/\//.test(sourceUrl)) continue;
+    if (!sourceUrl) {
+      skipped.missing_source_url += 1;
+      continue;
+    }
+    if (!/^https:\/\//.test(sourceUrl)) {
+      skipped.non_https_source += 1;
+      continue;
+    }
     if (!namesMatch(place.name, info.name)) {
-      rejectedMatch += 1;
+      skipped.unsafe_name_match += 1;
       continue;
     }
 
     const targetSlug = place.slug;
     const prior = existing[targetSlug];
-    if (prior?.status === "approved" || prior?.status === "rejected") continue;
+    if (prior?.status === "approved" || prior?.status === "rejected") {
+      skipped.protected_status += 1;
+      continue;
+    }
     const next: PlaceDescriptionEntry = {
       blurb,
       status: "candidate",
@@ -89,11 +130,14 @@ function main(): void {
   const sorted = Object.fromEntries(
     Object.entries(existing).sort(([a], [b]) => a.localeCompare(b)),
   );
-  writeFileSync(OUT_PATH, `${JSON.stringify(sorted, null, 2)}\n`);
+  if (!dryRun) {
+    writeFileSync(OUT_PATH, `${JSON.stringify(sorted, null, 2)}\n`);
+  }
   console.log(
-    `descriptions: ${added} candidate(s) added, ${refreshed} refreshed, ` +
-      `${rejectedMatch} unsafe name match(es) skipped, ${Object.keys(sorted).length} total.`,
+    `descriptions${dryRun ? " dry run" : ""}: ${added} candidate(s) added, ` +
+      `${refreshed} refreshed, ${Object.keys(sorted).length} total.`,
   );
+  console.log(`skipped: ${JSON.stringify(skipped)}`);
 }
 
 main();

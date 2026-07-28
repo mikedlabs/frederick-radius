@@ -4,8 +4,9 @@
  *
  * PAID. Each target costs one status-only Place Details call. The default
  * ceiling is 100 requests; over roughly two weeks the nightly data steward
- * covers the current catalog without repeatedly paying to refresh every row
- * every night. `--limit` is a hard request ceiling (max 500).
+ * covers the canonical pre-status identity catalog without repeatedly paying
+ * to refresh every row every night. `--limit` is a hard request ceiling
+ * (max 500).
  *
  * Serverless storage is read-only at request time, so this is a local or
  * CI script (the pattern used by dedup and copy:scores), not a runtime
@@ -16,7 +17,6 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { isValidCoord } from "@/lib/geo";
 import {
   getPlaceDetails,
   googlePlacesConfigured,
@@ -27,10 +27,7 @@ import {
   selectRotatingStatusTargets,
   type BusinessStatusRefreshEntry,
 } from "@/lib/business-status-refresh";
-import {
-  canonicalBusinessStatusRefreshCandidates,
-  decoratePlace,
-} from "@/lib/loaders/places";
+import { placeRefreshIdentities } from "@/lib/loaders/placeRefreshIdentities";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 
 const OUT = resolve("src/data/business-status.json");
@@ -51,13 +48,8 @@ async function main() {
   }
 
   const limit = requestLimit();
-  const allTargets = canonicalBusinessStatusRefreshCandidates()
-    .map((place) => decoratePlace(place))
-    .filter(
-      (place) =>
-        isValidCoord(place.geom) &&
-        isGooglePlaceId(place.google_place_id),
-    )
+  const allTargets = placeRefreshIdentities()
+    .filter((place) => isGooglePlaceId(place.google_place_id))
     .sort((a, b) => a.slug.localeCompare(b.slug));
   const identityCollisions = findGooglePlaceIdCollisions(allTargets);
   if (identityCollisions.length > 0) {
@@ -113,7 +105,7 @@ async function main() {
 
   const out = {
     _doc:
-      "Latest Google business-status checks, bound to the public catalog identity by place_id. The canonical place loader applies matching rows after manual safety overrides and reconciles them with the rolling hours refresh by refreshed_at.",
+      "Latest Google business-status checks, bound by place_id to the canonical pre-business-status identity artifact. The canonical place loader applies matching rows after manual safety overrides and reconciles them with the rolling hours refresh by refreshed_at.",
     generated_at: new Date().toISOString(),
     api_calls: calls,
     last_batch_updated: updated,

@@ -82,6 +82,8 @@ const REVIEWED_EXCEPTIONS = new Set([
   "urbana-library-farmers-market-new-market:library", // market hosted at the library
   "best-kept-secret-hair-salon:spa", // hair salon; spa is a secondary Google type
   "quince-orchard-psychotherapy:agritourism", // mental-health practice whose brand contains Orchard
+  "eagles-aeire-1067:bar", // members-only fraternal club; its social-room bar is not a public bar listing
+  "he-vox-lounge:restaurant", // slug enrichment belongs to co-located 7th Sister, not The Vox Lounge
 ]);
 
 for (const p of places) {

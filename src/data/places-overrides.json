@@ -2,6 +2,7 @@
   "fold": {
     "the-cadillac-counselor": "brooks-behavioral-health-services-llc",
     "frederick-eagles-club": "eagles-aeire-1067",
+    "fraternal-order-of-eagles-4": "eagles-aeire-1067",
     "frederick-performing-arts": "new-spire-arts",
     "wash-dry-and-fold": "4th-street-laundromat",
     "bell-tower-baker-park": "joseph-dill-baker-memorial-carillon-bell-tower",
@@ -62,7 +63,9 @@
     "catoctin-creek-llc-myersville",
     "acacia-house-frederick",
     "tabu-frederick",
-    "el-rancho-frederick"
+    "el-rancho-frederick",
+    "shekinah-glory-deliverance-ministry",
+    "francis-scott-key-memorial-foundation"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -87,6 +90,55 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "eagles-aeire-1067": {
+      "category": "civic"
+    },
+    "first-baptist-church-5": {
+      "name": "First Baptist Church of Frederick",
+      "category": "worship",
+      "address": "7040 Bowers Rd",
+      "postal_code": "21702",
+      "phone": "(301) 473-8283",
+      "geom": {
+        "lng": -77.4787098,
+        "lat": 39.4307442
+      }
+    },
+    "bloom-health-np": {
+      "name": "Bloom Aesthetics & Wellness",
+      "category": "spa",
+      "address": "3 College Ave, Suite 8"
+    },
+    "he-vox-lounge": {
+      "name": "The Vox Lounge",
+      "category": "music",
+      "address": "228 N Market St",
+      "short_blurb": ""
+    },
+    "swinging-bridge": {
+      "category": "civic",
+      "short_blurb": ""
+    },
+    "kindred-nutrition": {
+      "name": "Kindred Nutrition & Kinetics",
+      "category": "wellness",
+      "address": "810 Toll House Ave",
+      "geom": {
+        "lng": -77.4138803,
+        "lat": 39.4259123
+      },
+      "short_blurb": ""
+    },
+    "north-market-farmers-market": {
+      "name": "Frederick City Market",
+      "category": "market",
+      "address": "622 N Market St",
+      "website": "http://frederickcitymarket.com/",
+      "geom": {
+        "lng": -77.4097129,
+        "lat": 39.4222301
+      }
+    },
     "frederick-station": {
       "category": "transit"
     },

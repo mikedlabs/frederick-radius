@@ -9,6 +9,9 @@
  * keep matrices tiny (1 origin × ≤25 destinations) and cache results.
  */
 
+import { unstable_cache } from "next/cache";
+import { meterUsage } from "@/lib/usage-meter";
+
 const URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix";
 
 export type TravelMode = "WALK" | "DRIVE" | "BICYCLE" | "TRANSIT";
@@ -31,6 +34,65 @@ export function routesConfigured(): boolean {
 
 type LatLng = { lat: number; lng: number };
 
+async function computeMatrixUncached(
+  origin: LatLng,
+  destinations: LatLng[],
+  mode: TravelMode,
+): Promise<TravelLeg[]> {
+  const k = key();
+  if (!k) throw new Error("Google Routes is not configured");
+
+  // The meter lives inside the cache-miss function so repeated place-sheet
+  // reads of the same matrix do not increment or reach Google.
+  meterUsage("google_routes_matrix");
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": k,
+      "X-Goog-FieldMask": "originIndex,destinationIndex,duration,distanceMeters,condition",
+    },
+    body: JSON.stringify({
+      origins: [
+        {
+          waypoint: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+        },
+      ],
+      destinations: destinations.map((d) => ({
+        waypoint: { location: { latLng: { latitude: d.lat, longitude: d.lng } } },
+      })),
+      travelMode: mode,
+      ...(mode === "DRIVE" ? { routingPreference: "TRAFFIC_AWARE" } : {}),
+    }),
+    // unstable_cache owns the one-hour result; avoid a second cache layer so
+    // the meter and network request always share the same miss boundary.
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`[routes] HTTP ${res.status}`);
+  }
+  const rows = (await res.json()) as Array<{
+    destinationIndex?: number;
+    duration?: string; // e.g. "732s"
+    distanceMeters?: number;
+    condition?: string;
+  }>;
+  return rows
+    .filter((r) => r.condition === "ROUTE_EXISTS" && r.duration)
+    .map((r) => ({
+      destinationIndex: r.destinationIndex ?? 0,
+      duration: parseInt(String(r.duration).replace("s", ""), 10),
+      meters: r.distanceMeters ?? 0,
+    }))
+    .sort((a, b) => a.destinationIndex - b.destinationIndex);
+}
+
+const computeMatrixCached = unstable_cache(
+  computeMatrixUncached,
+  ["google-routes-matrix-v1"],
+  { revalidate: 3600 },
+);
+
 /**
  * One origin → many destinations, single mode. Returns legs sorted by
  * destinationIndex. Empty array if not configured or on error (callers
@@ -46,46 +108,7 @@ export async function computeMatrix(
   // Routes API caps matrix elements; 1×25 is safe and cheap.
   const dests = destinations.slice(0, 25);
   try {
-    const res = await fetch(URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": k,
-        "X-Goog-FieldMask": "originIndex,destinationIndex,duration,distanceMeters,condition",
-      },
-      body: JSON.stringify({
-        origins: [
-          {
-            waypoint: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-          },
-        ],
-        destinations: dests.map((d) => ({
-          waypoint: { location: { latLng: { latitude: d.lat, longitude: d.lng } } },
-        })),
-        travelMode: mode,
-        ...(mode === "DRIVE" ? { routingPreference: "TRAFFIC_AWARE" } : {}),
-      }),
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) {
-       
-      console.error(`[routes] HTTP ${res.status}`);
-      return [];
-    }
-    const rows = (await res.json()) as Array<{
-      destinationIndex?: number;
-      duration?: string; // e.g. "732s"
-      distanceMeters?: number;
-      condition?: string;
-    }>;
-    return rows
-      .filter((r) => r.condition === "ROUTE_EXISTS" && r.duration)
-      .map((r) => ({
-        destinationIndex: r.destinationIndex ?? 0,
-        duration: parseInt(String(r.duration).replace("s", ""), 10),
-        meters: r.distanceMeters ?? 0,
-      }))
-      .sort((a, b) => a.destinationIndex - b.destinationIndex);
+    return await computeMatrixCached(origin, dests, mode);
   } catch (err) {
      
     console.error("[routes] failed:", err);

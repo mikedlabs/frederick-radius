@@ -13,8 +13,8 @@
  *
  * Then classifies each pair by confidence:
  *
- *   HIGH       — Both records share a "core" of 2+ distinctive tokens,
- *                are < 60 m apart, and have no DISTINCT_TOKENS conflict.
+ *   HIGH       — Strong name/proximity evidence, no category or
+ *                DISTINCT_TOKENS conflict, AND the same real provider ID.
  *                Auto-mergeable into dedup-decisions.json.
  *   MEDIUM     — Strong name overlap but >60 m, or a sub-feature word
  *                ("Bookstore", "Bandshell", "Playground", etc.) in one
@@ -32,6 +32,11 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { publicPlaces } from "../src/lib/loaders/places";
+import { isGooglePlaceId } from "../src/lib/provenance";
+import {
+  classifyDuplicateConfidence,
+  type DuplicateConfidence,
+} from "../src/lib/quality/duplicate-confidence";
 
 const STOPWORDS = new Set([
   "the", "a", "an", "llc", "inc", "co", "ltd", "company",
@@ -135,27 +140,12 @@ type Pair = {
   jaccard: number;
   meters: number;
   coreOverlap: number;
-  conflict: boolean;
-  confidence: "HIGH" | "MEDIUM" | "LOW";
+  distinctTokenConflict: boolean;
+  categoryConflict: boolean;
+  providerMatch: boolean;
+  providerConflict: boolean;
+  confidence: DuplicateConfidence;
 };
-
-function classify(p: Omit<Pair, "confidence">): Pair["confidence"] {
-  if (p.conflict) return "LOW";
-  // HIGH: very confident, safe to auto-merge.
-  //   - ≥ 2 shared core tokens + same building (≤ 60 m) + jaccard ≥ 0.4
-  //   - OR very high name match (jaccard ≥ 0.75) + close (≤ 100 m)
-  // MEDIUM: needs human review — looks like same place but signals
-  //   could be coincidental.
-  //   - Same building + 1 shared core token + jaccard ≥ 0.25
-  //     (catches Maxwell's Kitchen / Maxwell's Burgers & Shakes —
-  //     same brand stem only, but at identical coordinates)
-  //   - Or 0.6+ jaccard within 300 m
-  if (p.coreOverlap >= 2 && p.meters <= 60 && p.jaccard >= 0.4) return "HIGH";
-  if (p.jaccard >= 0.75 && p.meters <= 100) return "HIGH";
-  if (p.meters <= 25 && p.coreOverlap >= 1 && p.jaccard >= 0.25) return "MEDIUM";
-  if (p.jaccard >= 0.6 && p.meters <= 300) return "MEDIUM";
-  return "LOW";
-}
 
 function main() {
   const apply = process.argv.includes("--auto-merge");
@@ -165,6 +155,10 @@ function main() {
     name: p.name,
     geom: p.geom,
     municipality: p.municipality || "",
+    category: p.category,
+    googlePlaceId: isGooglePlaceId(p.google_place_id)
+      ? p.google_place_id
+      : undefined,
     tok: tokens(p.name),
     core: coreTokens(p.name),
   }));
@@ -194,7 +188,14 @@ function main() {
       const coreB = new Set(b.core);
       let coreOverlap = 0;
       for (const t of coreA) if (coreB.has(t)) coreOverlap++;
-      const conflict = distinctConflict(a.tok, b.tok);
+      const distinctTokenConflict = distinctConflict(a.tok, b.tok);
+      const categoryConflict = a.category !== b.category;
+      const providerMatch =
+        Boolean(a.googlePlaceId) && a.googlePlaceId === b.googlePlaceId;
+      const providerConflict =
+        Boolean(a.googlePlaceId) &&
+        Boolean(b.googlePlaceId) &&
+        a.googlePlaceId !== b.googlePlaceId;
       const base: Omit<Pair, "confidence"> = {
         a: { slug: a.slug, name: a.name },
         b: { slug: b.slug, name: b.name },
@@ -202,9 +203,23 @@ function main() {
         jaccard: Number(sim.toFixed(3)),
         meters: Math.round(d),
         coreOverlap,
-        conflict,
+        distinctTokenConflict,
+        categoryConflict,
+        providerMatch,
+        providerConflict,
       };
-      pairs.push({ ...base, confidence: classify(base) });
+      pairs.push({
+        ...base,
+        confidence: classifyDuplicateConfidence({
+          jaccard: base.jaccard,
+          meters: base.meters,
+          coreOverlap: base.coreOverlap,
+          distinctTokenConflict: base.distinctTokenConflict,
+          categoryConflict: base.categoryConflict,
+          providerMatch: base.providerMatch,
+          providerConflict: base.providerConflict,
+        }),
+      });
     }
   }
 

@@ -28,6 +28,24 @@ import { easternParts, easternWallToUtcISO } from "@/lib/tz";
  *  its word over this heuristic. */
 const NON_MUSIC_TITLE =
   /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
+const MARKET_TITLE =
+  /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night)\s+market\b|\bmarket\s+(?:day|festival|fair)\b/i;
+
+export type InferredNonMusicCategory = "market" | "community";
+
+/**
+ * A narrow title-to-category correction for mixed venue calendars. This is
+ * intentionally a veto, not a general event classifier: it only recognizes
+ * unmistakable markets and recurring non-show activities that otherwise
+ * inherit a music venue's category.
+ */
+export function inferredNonMusicCategory(
+  title: string,
+): InferredNonMusicCategory | null {
+  if (MARKET_TITLE.test(title)) return "market";
+  if (NON_MUSIC_TITLE.test(title)) return "community";
+  return null;
+}
 
 /** Shared with the venue-feed INGEST boundaries (squarespace-live,
  *  venueEvents' category fallback), which used to blanket-stamp every
@@ -35,7 +53,7 @@ const NON_MUSIC_TITLE =
  *  version of the same any-event-at-a-music-venue join. One list, every
  *  seam. */
 export function isNonMusicTitle(title: string): boolean {
-  return NON_MUSIC_TITLE.test(title);
+  return inferredNonMusicCategory(title) !== null;
 }
 
 /**
@@ -51,9 +69,13 @@ export function isNonMusicTitle(title: string): boolean {
 export function isLiveMusicEvent(
   e: Pick<EventWithMeta, "category" | "venue_place_slug" | "title">,
 ): boolean {
+  // A market title is a stronger contradiction than a broad venue/source
+  // music stamp. This protects older snapshots as well as the corrected
+  // ingest boundary.
+  if (inferredNonMusicCategory(e.title ?? "") === "market") return false;
   if (e.category === "music" || e.category === "concert") return true;
   if (e.venue_place_slug == null || !LIVE_MUSIC_VENUE_SLUGS.has(e.venue_place_slug)) return false;
-  return !NON_MUSIC_TITLE.test(e.title ?? "");
+  return !isNonMusicTitle(e.title ?? "");
 }
 
 /**

@@ -33,6 +33,7 @@ import {
   nowISO,
   preflightKey,
 } from "./lib/extract-agent";
+import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 
 const OUT = resolve("src/data/venue-events.json");
 const CONFIG = resolve("config/venue-sources.json");
@@ -158,7 +159,7 @@ async function main() {
   // still refreshes them instead of bailing entirely — that global bail is
   // how the whole snapshot silently expired (data audit P0-1: 25/25 events
   // stale) when no key was around to re-run it.
-  const hasKey = await preflightKey();
+  const hasKey = await preflightKey({ failInCi: false });
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as VenueEvent[];
@@ -184,7 +185,7 @@ async function main() {
         ...ev,
         venue_slug: venue.slug,
         venue_name: venue.name,
-        category: venue.category,
+        category: inferredNonMusicCategory(ev.title) ?? venue.category,
         source: { url: sourceUrl, fetchedAt: nowISO() },
       };
       const k = keyOf(full);
@@ -202,6 +203,12 @@ async function main() {
 
   writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
   console.log(`\nDone. +${added} new, ${kept.length} total → src/data/venue-events.json`);
+  if (!hasKey && process.env.CI) {
+    console.error(
+      "Deterministic venue feeds were refreshed, but model-assisted venue sources were skipped.",
+    );
+    process.exitCode = 1;
+  }
 }
 
 main().catch((e) => {

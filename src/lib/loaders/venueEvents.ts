@@ -8,7 +8,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
-import { isNonMusicTitle } from "@/lib/events/live-music";
+import { inferredNonMusicCategory } from "@/lib/events/live-music";
 import {
   eventAttendanceMode,
   isLikelyEventActionUrl,
@@ -123,7 +123,10 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
   // didn't make (Jul-8 audit: "Yoga in the Taproom" under "Live music
   // tonight").
   const category =
-    e.category || place?.category || (isNonMusicTitle(e.title) ? "community" : "music");
+    inferredNonMusicCategory(e.title)
+    ?? e.category
+    ?? place?.category
+    ?? "music";
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   const isFree = e.price ? /free|no cover/i.test(e.price) : false;
   const attendance_mode = eventAttendanceMode({

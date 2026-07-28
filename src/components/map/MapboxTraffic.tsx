@@ -1,7 +1,15 @@
 "use client";
 
 import { Layer, Source } from "react-map-gl/mapbox";
-import type { FilterSpecification } from "mapbox-gl";
+import {
+  MAPBOX_TRAFFIC_CLOSURE_FILTER,
+  MAPBOX_TRAFFIC_CLOSURE_PAINT,
+  MAPBOX_TRAFFIC_FLOW_FILTER,
+  MAPBOX_TRAFFIC_FLOW_PAINT,
+  MAPBOX_TRAFFIC_MIN_ZOOM,
+  MAPBOX_TRAFFIC_SOURCE,
+  MAPBOX_TRAFFIC_SOURCE_LAYER,
+} from "./mapboxTrafficStyle";
 
 /**
  * Mapbox supplies road-flow context; Maryland CHART and Radius's reviewed
@@ -13,25 +21,19 @@ import type { FilterSpecification } from "mapbox-gl";
 export default function MapboxTraffic({ show }: { show: boolean }) {
   if (!show) return null;
 
-  const visibleTraffic = [
-    "any",
-    ["has", "congestion"],
-    ["==", ["get", "closed"], "yes"],
-  ] as FilterSpecification;
-
   return (
     <Source
       id="mapbox-traffic"
       type="vector"
-      url="mapbox://mapbox.mapbox-traffic-v1"
+      url={MAPBOX_TRAFFIC_SOURCE}
     >
       <Layer
-        id="traffic-congestion-casing"
-        source-layer="traffic"
+        id="mapbox-traffic-flow-casing"
+        source-layer={MAPBOX_TRAFFIC_SOURCE_LAYER}
         type="line"
-        minzoom={8}
+        minzoom={MAPBOX_TRAFFIC_MIN_ZOOM}
         beforeId="muni-label"
-        filter={visibleTraffic}
+        filter={MAPBOX_TRAFFIC_FLOW_FILTER}
         layout={{
           "line-cap": "round",
           "line-join": "round",
@@ -62,57 +64,30 @@ export default function MapboxTraffic({ show }: { show: boolean }) {
         }}
       />
       <Layer
-        id="traffic-congestion"
-        source-layer="traffic"
+        id="mapbox-traffic-flow"
+        source-layer={MAPBOX_TRAFFIC_SOURCE_LAYER}
         type="line"
-        minzoom={8}
+        minzoom={MAPBOX_TRAFFIC_MIN_ZOOM}
         beforeId="muni-label"
-        filter={visibleTraffic}
+        filter={MAPBOX_TRAFFIC_FLOW_FILTER}
         layout={{
           "line-cap": "round",
           "line-join": "round",
         }}
-        paint={{
-          "line-color": [
-            "case",
-            ["==", ["get", "closed"], "yes"],
-            "#A62E24",
-            [
-              "match",
-              ["get", "congestion"],
-              "low",
-              "#5D8B68",
-              "moderate",
-              "#C7922F",
-              "heavy",
-              "#C85C32",
-              "severe",
-              "#A62E24",
-              "rgba(92, 90, 80, 0.28)",
-            ],
-          ],
-          "line-width": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            8,
-            1.2,
-            12,
-            2.2,
-            16,
-            5,
-          ],
-          "line-offset": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            8,
-            0.4,
-            16,
-            2.2,
-          ],
-          "line-opacity": 0.86,
+        paint={MAPBOX_TRAFFIC_FLOW_PAINT}
+      />
+      <Layer
+        id="mapbox-traffic-closures"
+        source-layer={MAPBOX_TRAFFIC_SOURCE_LAYER}
+        type="line"
+        minzoom={MAPBOX_TRAFFIC_MIN_ZOOM}
+        beforeId="muni-label"
+        filter={MAPBOX_TRAFFIC_CLOSURE_FILTER}
+        layout={{
+          "line-cap": "round",
+          "line-join": "round",
         }}
+        paint={MAPBOX_TRAFFIC_CLOSURE_PAINT}
       />
     </Source>
   );

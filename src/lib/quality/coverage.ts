@@ -56,7 +56,23 @@ export type CoveragePriority = {
   needed: number;
 };
 
+export type DecisionCopyIssue =
+  | "missing"
+  | "too_short"
+  | "too_long"
+  | "incomplete_sentence"
+  | "name_only"
+  | "category_template"
+  | "contact_cta"
+  | "address_dump"
+  | "short_name_echo"
+  | "shared_boilerplate";
+
 const ACTION_TYPES = new Set(["menu", "order", "reservation"]);
+const STREET_ADDRESS_PREFIX =
+  /^\d{1,6}\s+(?:(?:N|S|E|W|North|South|East|West)\.?\s+)?(?:[A-Za-z0-9.'’-]+\s+){0,6}(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Parkway|Pkwy|Highway|Hwy)\b\.?/i;
+const CITY_STATE_ZIP_PREFIX =
+  /^[A-Za-z .'-]+,?\s+MD,?\s+21\d{3}\b/i;
 
 function hasText(value?: string): boolean {
   return Boolean(value?.trim());
@@ -117,23 +133,29 @@ export function decisionCopyCounts(
  * complete, specific sentence rather than an address dump, contact prompt, or
  * repeated directory template.
  */
-export function hasUsefulDecisionCopy(
+export function decisionCopyIssue(
   place: CoveragePlace,
   counts: ReadonlyMap<string, number>,
-): boolean {
+): DecisionCopyIssue | null {
   const blurb = (place.short_blurb ?? "").trim();
-  if (blurb.length < 35 || blurb.length > 220 || !/[.!?]$/.test(blurb)) return false;
+  if (!blurb) return "missing";
+  if (blurb.length < 35) return "too_short";
+  if (blurb.length > 220) return "too_long";
+  if (!/[.!?]$/.test(blurb)) return "incomplete_sentence";
 
   const name = place.name.trim();
-  if (blurb === name) return false;
+  if (blurb === name) return "name_only";
   if (/^(?:bars?|baker(?:y|ies)|coffee|parks?|restaurants?|shopping|worship)\s+in\s+/i.test(blurb)) {
-    return false;
+    return "category_template";
   }
   if (/\b(?:more info about|click here|learn more|call us|visit us|contact us)\b/i.test(blurb)) {
-    return false;
+    return "contact_cta";
   }
-  if (/\b\d{1,5}\s+[A-Za-z].*\b(?:St|Ave|Rd|Blvd|Ln|Dr|Way|Ct|Pkwy|Hwy)\b/i.test(blurb)) {
-    return false;
+  if (
+    STREET_ADDRESS_PREFIX.test(blurb)
+    || CITY_STATE_ZIP_PREFIX.test(blurb)
+  ) {
+    return "address_dump";
   }
   if (blurb.startsWith(`${name} `)) {
     const remainderWords = blurb
@@ -141,9 +163,17 @@ export function hasUsefulDecisionCopy(
       .trim()
       .split(/\s+/)
       .filter(Boolean);
-    if (remainderWords.length < 5) return false;
+    if (remainderWords.length < 5) return "short_name_echo";
   }
-  return (counts.get(blurb) ?? 0) <= 3;
+  if ((counts.get(blurb) ?? 0) > 3) return "shared_boilerplate";
+  return null;
+}
+
+export function hasUsefulDecisionCopy(
+  place: CoveragePlace,
+  counts: ReadonlyMap<string, number>,
+): boolean {
+  return decisionCopyIssue(place, counts) === null;
 }
 
 function percentage(count: number, total: number): number {

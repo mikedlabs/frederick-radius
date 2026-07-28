@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isLiveMusicEvent, isNonMusicTitle, liveMusicAhead } from "./live-music";
+import {
+  inferredNonMusicCategory,
+  isLiveMusicEvent,
+  isNonMusicTitle,
+  liveMusicAhead,
+} from "./live-music";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 
 // A real verified music venue from the curated set, so the test exercises
@@ -45,6 +50,21 @@ describe("isLiveMusicEvent", () => {
     // category "music" on every item of a music venue's calendar.
     expect(isNonMusicTitle("Yoga in the Taproom")).toBe(true);
     expect(isNonMusicTitle("Bluegrass Jam")).toBe(false);
+  });
+
+  it("classifies unmistakable market listings without calling them music", () => {
+    expect(inferredNonMusicCategory("Vintage Flea Market")).toBe("market");
+    expect(inferredNonMusicCategory("Holiday Market")).toBe("market");
+    expect(isNonMusicTitle("Vintage Flea Market")).toBe(true);
+    expect(inferredNonMusicCategory("Trivia Night")).toBe("community");
+    expect(inferredNonMusicCategory("Market Street Band")).toBeNull();
+    expect(
+      isLiveMusicEvent({
+        category: "music",
+        venue_place_slug: VENUE,
+        title: "Vintage Flea Market",
+      }),
+    ).toBe(false);
   });
 
   it("rejects events at non-music venues without a music category", () => {

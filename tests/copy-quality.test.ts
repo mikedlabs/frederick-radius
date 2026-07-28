@@ -7,9 +7,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { classifyDescription } from "../src/lib/copy-quality";
 import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
+import PLACES_RAW from "../src/data/places-client.json" with { type: "json" };
 import SCORES from "../src/data/copy-scores.json" with { type: "json" };
-import { publicPlaces } from "../src/lib/loaders/places";
-import type { PlaceDescriptionEntry } from "../src/lib/loaders/placeDescriptions";
+import {
+  publicPlaces,
+  type PlaceCardData,
+} from "../src/lib/loaders/places";
+import {
+  approvedPlaceDescription,
+  type PlaceDescriptionEntry,
+} from "../src/lib/loaders/placeDescriptions";
 
 test("STYLE.md scraped patterns are caught", () => {
   assert.equal(classifyDescription("Dancing Bear Toys and Games", "Dancing Bear Toys and Games Patrick St"), "scraped");
@@ -36,15 +43,42 @@ test("clean prose passes, reviewed and empty handled", () => {
     ),
     "auto_clean",
   );
-  assert.equal(classifyDescription("Anything", "Approved by an editor.", true), "reviewed");
+  assert.equal(
+    classifyDescription(
+      "Anything",
+      "This factual description was approved by an editor.",
+      true,
+    ),
+    "reviewed",
+  );
+  assert.equal(
+    classifyDescription(
+      "Baker Park",
+      "Baker Park has walking paths, a lake, tennis courts, and the Joseph D. Baker carillon tower.",
+      true,
+    ),
+    "reviewed",
+  );
+  assert.equal(
+    classifyDescription(
+      "Example Cafe",
+      "Call us at (301) 555-0100 to book now.",
+      true,
+    ),
+    "scraped",
+    "editor approval must not bypass mechanical safety checks",
+  );
+  assert.equal(
+    classifyDescription("Example Cafe", "Example Cafe Patrick St.", true),
+    "scraped",
+  );
   assert.equal(classifyDescription("Anything", ""), "none");
   console.log("clean, reviewed, none handled");
 });
 
 test("committed copy scorecard matches the current dataset", () => {
   const committed = (SCORES as { counts: Record<string, number> }).counts;
-  const descriptions = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
-  const places = publicPlaces();
+  const places = PLACES_RAW as unknown as PlaceCardData[];
   const actual: Record<string, number> = {
     none: 0,
     scraped: 0,
@@ -54,11 +88,29 @@ test("committed copy scorecard matches the current dataset", () => {
   for (const place of places) {
     actual[classifyDescription(
       place.name,
-      descriptions[place.slug]?.blurb ?? place.description ?? place.short_blurb,
-      descriptions[place.slug]?.status === "approved",
+      place.short_blurb,
+      Boolean(place.description_reviewed),
     )]++;
   }
   assert.deepEqual(committed, actual, "run npm run copy:scores after place or copy changes");
   const share = actual.scraped / places.length;
   console.log(`dataset: ${actual.scraped}/${places.length} scraped (${(share * 100).toFixed(1)}%)`);
+});
+
+test("every committed approval passes the public loader trust boundary", () => {
+  const descriptions = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
+  const places = new Map(publicPlaces().map((place) => [place.slug, place]));
+  const failures: string[] = [];
+  for (const [slug, entry] of Object.entries(descriptions)) {
+    if (entry.status !== "approved") continue;
+    const place = places.get(slug);
+    if (!place || !approvedPlaceDescription(slug, place.name)) {
+      failures.push(slug);
+    }
+  }
+  assert.deepEqual(
+    failures,
+    [],
+    "approved entries must be safe, sourced, documented, and loadable",
+  );
 });

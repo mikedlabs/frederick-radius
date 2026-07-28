@@ -3,7 +3,8 @@ name: Ingest venue events
 # Captures lineups from venues that only post on their own site
 # (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
 # extraction agent, refreshes src/data/venue-events.json, commits.
-# Requires repo secret: ANTHROPIC_API_KEY. Configure: config/venue-sources.json
+# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
+# Configure: config/venue-sources.json
 
 on:
   schedule:
@@ -21,6 +22,7 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    environment: Production
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
@@ -32,18 +34,23 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Extract venue events
+        id: extract
+        continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run ingest:venues
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.
       - name: Verify venue copy provenance and voice
+        id: verify
+        if: ${{ always() }}
         run: |
           npm run style:lint
           npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
       # Generated event rows affect every discovery surface. Keep the data diff
       # behind the same human-review and CI boundary as application code.
       - name: Open review PR
+        if: ${{ always() && steps.verify.outcome == 'success' }}
         uses: peter-evans/create-pull-request@v6
         with:
           branch: bot/venue-event-refresh
@@ -60,3 +67,9 @@ jobs:
             data-pipeline
             automated
           delete-branch: true
+      - name: Enforce complete venue extraction
+        if: ${{ always() && steps.extract.outcome != 'success' }}
+        run: |
+          echo "The deterministic venue feeds were allowed to refresh, but at least one model-assisted source could not run."
+          echo "Check ANTHROPIC_API_KEY and the extraction log above."
+          exit 1

@@ -40,7 +40,7 @@ const GOOGLE_BUSINESS_STATUSES = new Set([
 ]);
 
 const DOC =
-  "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.";
+  "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound by place_id to the canonical pre-business-status Google identity snapshot, which retains closed and off-season places so a later reopening can be discovered. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.";
 const LEGACY_DOC =
   "Legacy rolling hours refresh artifact built without a public slug-to-place_id mapping. Rows may be read only by consumers that independently verify provider identity.";
 const PUBLIC_COLUMNS = [
@@ -113,10 +113,14 @@ export function buildHoursRefreshArtifact(
     for (const place of knownPlaces) {
       const slug = typeof place?.slug === "string" ? place.slug.trim() : "";
       if (!slug) {
-        throw new Error("The public catalog contains a place without a slug.");
+        throw new Error(
+          "The canonical refresh identity artifact contains a place without a slug.",
+        );
       }
       if (known.has(slug)) {
-        throw new Error(`The public catalog contains duplicate slug ${slug}.`);
+        throw new Error(
+          `The canonical refresh identity artifact contains duplicate slug ${slug}.`,
+        );
       }
       known.add(slug);
 
@@ -127,13 +131,13 @@ export function buildHoursRefreshArtifact(
       if (!placeId) continue;
       if (UUID_RE.test(placeId)) {
         throw new Error(
-          `The public catalog row ${slug} has invalid Google Place ID ${placeId}.`,
+          `The canonical refresh identity row ${slug} has invalid Google Place ID ${placeId}.`,
         );
       }
       const owner = knownIdOwners.get(placeId);
       if (owner) {
         throw new Error(
-          `The public catalog maps Google Place ID ${placeId} to both ${owner} and ${slug}.`,
+          `The canonical refresh identity artifact maps Google Place ID ${placeId} to both ${owner} and ${slug}.`,
         );
       }
       knownIdOwners.set(placeId, slug);
@@ -170,7 +174,7 @@ export function buildHoursRefreshArtifact(
       const expectedPlaceId = knownPlaceIds.get(slug);
       if (!expectedPlaceId) {
         throw new Error(
-          `Hours snapshot row ${slug} no longer has a Google Place ID in the public catalog.`,
+          `Hours snapshot row ${slug} no longer has a Google Place ID in the canonical refresh identity artifact.`,
         );
       }
       if (!placeId) {
@@ -178,7 +182,7 @@ export function buildHoursRefreshArtifact(
       }
       if (placeId !== expectedPlaceId) {
         throw new Error(
-          `Hours snapshot row ${slug} has place_id ${placeId}, but the public catalog maps it to ${expectedPlaceId}.`,
+          `Hours snapshot row ${slug} has place_id ${placeId}, but the canonical refresh identity artifact maps it to ${expectedPlaceId}.`,
         );
       }
     }
@@ -223,7 +227,7 @@ export function buildHoursRefreshArtifact(
 
   if (normalized.length === 0) {
     throw new Error(
-      "place_hours_refresh has no rows for the current public catalog. Verify migration 0024, the Vercel hours cron, its feature flag, Google key, and database.",
+      "place_hours_refresh has no rows for the canonical refresh identity catalog. Verify migration 0024, the Vercel hours cron, its feature flag, Google key, and database.",
     );
   }
   if (normalized.length < existingKnownRows) {
@@ -431,13 +435,19 @@ export async function main() {
     "data",
     "places-hours-refresh.json",
   );
-  const publicPlacesFile = path.join(
+  const refreshIdentitiesFile = path.join(
     process.cwd(),
     "src",
     "data",
-    "places-client.json",
+    "place-refresh-identities.json",
   );
-  const knownPlaces = readJson(publicPlacesFile);
+  const identityArtifact = readJson(refreshIdentitiesFile);
+  if (!Array.isArray(identityArtifact?.identities)) {
+    throw new Error(
+      "place-refresh-identities.json is malformed. Run npm run build:place-refresh-identities before pulling hours.",
+    );
+  }
+  const knownPlaces = identityArtifact.identities;
   const existingArtifact = readJson(dest);
   const { artifact, summary } = buildHoursRefreshArtifact(rows, {
     knownPlaces,
@@ -455,7 +465,7 @@ export async function main() {
   );
   if (summary.unmatched_rows > 0) {
     console.warn(
-      `Ignored ${summary.unmatched_rows} database rows that no longer match the public catalog.`,
+      `Ignored ${summary.unmatched_rows} database rows that no longer match the canonical refresh identity artifact.`,
     );
   }
 }

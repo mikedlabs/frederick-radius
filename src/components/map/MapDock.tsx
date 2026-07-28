@@ -158,12 +158,15 @@ export type MapDockProps = {
   roadsNowFullyOn: boolean;
   setShowRoadsNow: (show: boolean) => void;
   showTraffic: boolean;
+  setShowTraffic: SetState<boolean>;
   /** Newest radar frame's unix seconds — stamps "radar as of 9:42 PM" so
    *  minutes-old tiles are never mistaken for real time. */
   radarFrameEpoch: number | null;
   showIncidents: boolean;
   setShowIncidents: SetState<boolean>;
   incidentHealth: LiveLayerHealth;
+  showRotorcraft: boolean;
+  setShowRotorcraft: SetState<boolean>;
   showCameras: boolean;
   setShowCameras: SetState<boolean>;
   cameraHealth: LiveLayerHealth;
@@ -604,6 +607,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showCemeteries) layerBits.push("Cemeteries");
   if (props.showParking) layerBits.push("Parking");
   if (props.showRadar) layerBits.push("Radar");
+  if (props.showRotorcraft) layerBits.push("Helicopter activity");
   if (props.showCameras) layerBits.push("Cameras");
   if (props.showFireStations) layerBits.push("Fire stations");
   if (props.showCivicPlaces) layerBits.push("Parks & libraries");
@@ -625,6 +629,7 @@ export default function MapDock(props: MapDockProps) {
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
     (props.showRadar ? 1 : 0) +
+    (props.showRotorcraft ? 1 : 0) +
     (props.showCameras ? 1 : 0) +
     (props.showFireStations ? 1 : 0) +
     (props.showCivicPlaces ? 1 : 0);
@@ -706,9 +711,11 @@ export default function MapDock(props: MapDockProps) {
     props.setShowAerial(false);
     props.setShowCemeteries(false);
     props.setShowParking(false);
+    props.setShowTraffic(false);
     props.setShowRadar(false);
     props.setShowRoadsNow(false);
     props.setShowIncidents(false);
+    props.setShowRotorcraft(false);
     props.setShowCameras(false);
     props.setShowFireStations(false);
     props.setShowCivicPlaces(false);
@@ -742,9 +749,11 @@ export default function MapDock(props: MapDockProps) {
     props.setShowAerial(false);
     props.setShowCemeteries(false);
     props.setShowParking(false);
+    props.setShowTraffic(false);
     props.setShowRadar(false);
     props.setShowRoadsNow(false);
     props.setShowIncidents(false);
+    props.setShowRotorcraft(false);
     props.setShowCameras(false);
     props.setShowFireStations(false);
     props.setShowCivicPlaces(false);
@@ -1603,7 +1612,7 @@ export default function MapDock(props: MapDockProps) {
                 </div>
 
                 {(props.showParking || props.showTransit || props.showRadar || communityReportsOn
-                  || props.roadsNowActive || props.showCameras
+                  || props.roadsNowActive || props.showRotorcraft || props.showCameras
                   || props.transitHealth.status === "unavailable"
                   || props.radarHealth.status === "unavailable"
                   || props.incidentHealth.status === "unavailable"
@@ -1649,7 +1658,10 @@ export default function MapDock(props: MapDockProps) {
                     )}
                     {props.showTraffic && (
                       <p className="dock-layer-status">
-                        <strong>Road flow</strong> · Mapbox congestion context is typically refreshed about every eight minutes.
+                        <strong>Road flow</strong> · Mapbox road conditions.
+                        Amber is moderate, orange is heavy, red is severe, and
+                        dashed red marks closures. The source typically updates
+                        about every eight minutes.
                       </p>
                     )}
                     {props.showCivic && props.civicAvailable && (
@@ -1657,19 +1669,27 @@ export default function MapDock(props: MapDockProps) {
                     )}
                     {props.incidentHealth.status === "unavailable" ? (
                       <p className="dock-layer-status">
-                        <strong>Incidents</strong> · The latest public dispatch request failed. {props.showIncidents
+                        <strong>Scanner reports</strong> · The latest Frederick Scanner request failed. {props.showIncidents
                           ? "Retrying automatically."
                           : "Turn Roads now on to retry."}
                       </p>
                     ) : props.showIncidents && (
                       <p className="dock-layer-status">
-                        <strong>Incidents</strong> · {props.incidentHealth.status === "stale"
+                        <strong>Scanner reports</strong> · {props.incidentHealth.status === "stale"
                           ? `Showing ${props.incidentHealth.count} incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
                           : props.incidentHealth.status === "disabled"
                             ? "Loading the latest public incidents…"
                           : props.incidentHealth.status === "empty"
                           ? "No current public incidents in the latest FrederickScanner response."
                           : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
+                      </p>
+                    )}
+                    {props.showRotorcraft && (
+                      <p className="dock-layer-status">
+                        <strong>Helicopter activity</strong> · Public ADS-B
+                        coverage is incomplete. Trooper activity is reported
+                        only at county level, and possible FMH movement is
+                        shown at the fixed hospital heliport.
                       </p>
                     )}
                     {props.cameraHealth.status === "unavailable" ? (

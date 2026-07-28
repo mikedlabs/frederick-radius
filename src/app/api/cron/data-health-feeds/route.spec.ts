@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   liveSourceAnomalies: vi.fn(),
   startIngestRunStrict: vi.fn(),
   finishIngestRunStrict: vi.fn(),
+  recordSourceProbeFailuresStrict: vi.fn(),
 }));
 
 vi.mock("../../ingest/_auth", () => ({
@@ -33,6 +34,8 @@ vi.mock("@/lib/quality/curated-freshness", () => ({
 vi.mock("@/lib/ingest/run-log", () => ({
   startIngestRunStrict: mocks.startIngestRunStrict,
   finishIngestRunStrict: mocks.finishIngestRunStrict,
+  recordSourceProbeFailuresStrict:
+    mocks.recordSourceProbeFailuresStrict,
 }));
 
 import { GET, maxDuration } from "./route";
@@ -46,6 +49,7 @@ describe("GET /api/cron/data-health-feeds", () => {
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.startIngestRunStrict.mockResolvedValue("feed-run");
     mocks.finishIngestRunStrict.mockResolvedValue(undefined);
+    mocks.recordSourceProbeFailuresStrict.mockResolvedValue(0);
     mocks.hydrateSnapshotsStrict.mockResolvedValue(undefined);
     mocks.getLiveEvents.mockResolvedValue({
       events: [],
@@ -85,6 +89,7 @@ describe("GET /api/cron/data-health-feeds", () => {
       status: "ok",
       heartbeat_recorded: true,
       snapshots: { expected: 2, persisted: 2 },
+      source_failure_evidence: { expected: 0, persisted: 0 },
     });
   });
 
@@ -116,6 +121,7 @@ describe("GET /api/cron/data-health-feeds", () => {
       sources_failed: ["city-frederick"],
     });
     mocks.persistCurrentSnapshotsStrict.mockResolvedValue(1);
+    mocks.recordSourceProbeFailuresStrict.mockResolvedValue(1);
     mocks.liveSourceAnomalies.mockReturnValue([
       {
         source: "city-frederick",
@@ -128,13 +134,39 @@ describe("GET /api/cron/data-health-feeds", () => {
     const body = await response.json();
 
     expect(response.status).toBe(503);
+    expect(mocks.recordSourceProbeFailuresStrict).toHaveBeenCalledWith(
+      ["city-frederick"],
+      expect.any(String),
+    );
     expect(body).toMatchObject({
       status: "partial",
       sources: {
         succeeded: 1,
         failed: ["city-frederick"],
       },
+      source_failure_evidence: { expected: 1, persisted: 1 },
     });
+  });
+
+  it("fails closed when a named source failure cannot reach the ledger", async () => {
+    mocks.getLiveEvents.mockResolvedValue({
+      events: [],
+      sources_succeeded: ["county"],
+      sources_failed: ["city-frederick"],
+    });
+    mocks.persistCurrentSnapshotsStrict.mockResolvedValue(1);
+    mocks.recordSourceProbeFailuresStrict.mockResolvedValue(0);
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(503);
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "feed-run",
+      expect.objectContaining({
+        status: "error",
+        error: expect.stringContaining("source-failure-evidence"),
+      }),
+    );
   });
 
   it("does not report green when the live-feed registry returns no sources", async () => {

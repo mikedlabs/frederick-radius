@@ -18,11 +18,19 @@ beforeEach(() => {
 
 describe("mapLayerPrefs", () => {
   it("round-trips explicit choices", () => {
-    writeMapLayerPrefs({ cats: ["coffee", "arts"], amenities: ["restroom"], transit: true });
+    writeMapLayerPrefs({
+      cats: ["coffee", "arts"],
+      amenities: ["restroom"],
+      transit: true,
+      traffic: true,
+      aviation: true,
+    });
     const p = readMapLayerPrefs();
     expect(p.cats).toEqual(["coffee", "arts"]);
     expect(p.amenities).toEqual(["restroom"]);
     expect(p.transit).toBe(true);
+    expect(p.traffic).toBe(true);
+    expect(p.aviation).toBe(true);
   });
 
   it("returns {} when nothing is stored (clean cold open preserved)", () => {
@@ -30,15 +38,44 @@ describe("mapLayerPrefs", () => {
   });
 
   it("drops false noise now that every layer defaults off", () => {
-    writeMapLayerPrefs({ cats: [], amenities: [], civic: false, transit: false, trails: false, aerial: false, cemeteries: false });
+    writeMapLayerPrefs({
+      cats: [],
+      amenities: [],
+      civic: false,
+      transit: false,
+      trails: false,
+      aerial: false,
+      cemeteries: false,
+      traffic: false,
+      aviation: false,
+    });
     expect(readMapLayerPrefs()).toEqual({});
     expect(window.localStorage.getItem("fr:map-layers:v2")).toBeNull();
   });
 
   it("keeps only the truthy flags", () => {
-    writeMapLayerPrefs({ cats: ["food"], civic: false, aerial: true, cemeteries: true, radar: true, traffic: true, incidents: true, cameras: true });
+    writeMapLayerPrefs({
+      cats: ["food"],
+      civic: false,
+      aerial: true,
+      cemeteries: true,
+      radar: true,
+      traffic: true,
+      incidents: true,
+      aviation: true,
+      cameras: true,
+    });
     const p = readMapLayerPrefs();
-    expect(p).toEqual({ cats: ["food"], aerial: true, cemeteries: true, radar: true, traffic: true, incidents: true, cameras: true });
+    expect(p).toEqual({
+      cats: ["food"],
+      aerial: true,
+      cemeteries: true,
+      radar: true,
+      traffic: true,
+      incidents: true,
+      aviation: true,
+      cameras: true,
+    });
     expect(p.civic).toBeUndefined();
   });
 

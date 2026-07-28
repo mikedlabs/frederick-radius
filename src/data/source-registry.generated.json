@@ -1,5 +1,19 @@
 [
   {
+    "id": "adsb_lol_rotorcraft",
+    "name": "ADSB.lol — Frederick County Rotorcraft Observations",
+    "owner": "ADSB.lol contributors",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "adsb-lol",
+      "rotorcraft"
+    ],
+    "rowsRequired": false
+  },
+  {
     "id": "airnow",
     "name": "AirNow Air Quality",
     "owner": "US EPA AirNow",
@@ -457,7 +471,9 @@
     "collection": "workflow",
     "refreshCadence": "daily",
     "manifestLastSuccess": null,
-    "evidenceAliases": [],
+    "evidenceAliases": [
+      "frederick.librarycalendar.com"
+    ],
     "rowsRequired": false
   },
   {
@@ -490,7 +506,9 @@
     "collection": "workflow",
     "refreshCadence": "daily",
     "manifestLastSuccess": null,
-    "evidenceAliases": [],
+    "evidenceAliases": [
+      "fcvfra.com"
+    ],
     "rowsRequired": false
   },
   {

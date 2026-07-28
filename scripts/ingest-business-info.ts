@@ -40,6 +40,7 @@ import {
   isTrustedBusinessWebsiteRedirect,
   needsRenderedBusinessSnapshot,
 } from "./lib/business-info-source";
+import { getPlaceBySlug, publicPlaces } from "@/lib/loaders/places";
 
 const OUT = resolve("src/data/business-info.json");
 const ENR = resolve("src/data/places-enrichment.json");
@@ -146,12 +147,23 @@ async function main() {
   const enr = JSON.parse(readFileSync(ENR, "utf8")) as Enrichment;
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, Record_>;
   const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : cfg.defaultLimit;
+  const publicSlugs = new Set(publicPlaces().map((place) => place.slug));
 
   const eligible = Object.entries(enr).filter(([slug, r]) => {
-    if (only) return slug === only;
+    if (only && slug !== only) return false;
     if (!r.website || !/^https?:/.test(r.website)) return false;
     const d = domainOf(r.website);
     if (!d || cfg.excludeDomains.some((x) => d.includes(x))) return false;
+    // Scheduled batches spend model calls only on a place that survives the
+    // canonical public loader. Legacy aliases remain eligible when they
+    // resolve to a public place; excluded, out-of-county, or removed rows do
+    // not consume the bounded daily budget. An explicit one-slug run remains
+    // available for investigation.
+    if (!only) {
+      const place = getPlaceBySlug(slug);
+      if (!place || !publicSlugs.has(place.slug)) return false;
+    }
+    if (only) return true;
     return cfg.typeIncludes.some((t) => (r.primary_type ?? "").includes(t));
   });
 

@@ -23,6 +23,7 @@ import {
  */
 
 const POLL_MS = 60_000;
+const PROBE_POLL_MS = 120_000;
 const RECENT_INCIDENT_MS = 60 * 60_000;
 
 const KIND_COLOR: Record<string, string> = {
@@ -49,10 +50,24 @@ function agoLabel(iso: string, now: number): string {
 
 export default function LiveIncidents({
   show,
+  probe,
   onHealth,
+  onSnapshot,
+  focusIncidentId,
+  onFocusIncidentChange,
 }: {
   show: boolean;
+  /** Main /map probes quietly while the layer is off so its edge control can
+   * report source health and a safe current count. A slower background probe
+   * keeps the attention control current; marker rendering still waits for the
+   * person to turn the layer on. */
+  probe?: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
+  onSnapshot?: (items: LiveIncidentSignal[]) => void;
+  /** Edge-tool selection. Derived during render so focusing an already-probed
+   * report opens its popup without a state-setting synchronization effect. */
+  focusIncidentId?: string | null;
+  onFocusIncidentChange?: (id: string | null) => void;
 }) {
   const [incidents, setIncidents] = useState<LiveIncidentSignal[]>([]);
   const [selected, setSelected] = useState<LiveIncidentSignal | null>(null);
@@ -62,13 +77,14 @@ export default function LiveIncidents({
   const [nowMs, setNowMs] = useState(0);
   const onHealthRef = useRef(onHealth);
   useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
+  const onSnapshotRef = useRef(onSnapshot);
+  useEffect(() => { onSnapshotRef.current = onSnapshot; }, [onSnapshot]);
 
   useEffect(() => {
-    // When off, poll nothing and render nothing (see the `if (!show)` guard
-    // below). We deliberately DON'T clear state here — clearing synchronously
-    // in an effect body triggers cascading renders; the null render hides any
-    // stale markers, and the next poll refreshes them on re-enable.
-    if (!show) return;
+    // The main map may make a slower off-state probe for its edge status.
+    // Marker rendering still waits for an explicit layer toggle.
+    // We deliberately DON'T clear state here — the next fetch refreshes it.
+    if (!show && !probe) return;
     let alive = true;
     const reportFailure = () => {
       const cached = incidentsRef.current;
@@ -101,6 +117,7 @@ export default function LiveIncidents({
         if (alive && Array.isArray(d.items)) {
           setIncidents(d.items);
           incidentsRef.current = d.items;
+          onSnapshotRef.current?.(d.items);
           setNowMs(Date.now());
           onHealthRef.current?.(
             liveLayerHealth({
@@ -121,21 +138,26 @@ export default function LiveIncidents({
       }
     };
     void load();
-    const poll = setInterval(load, POLL_MS);
-    const tick = setInterval(() => setNowMs(Date.now()), 30_000);
+    const pollMs = show ? POLL_MS : probe ? PROBE_POLL_MS : null;
+    const poll = pollMs ? setInterval(load, pollMs) : null;
+    const tick = show ? setInterval(() => setNowMs(Date.now()), 30_000) : null;
     const onVisible = () => {
-      if (document.visibilityState === "visible") void load();
+      if ((show || probe) && document.visibilityState === "visible") void load();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
-      clearInterval(poll);
-      clearInterval(tick);
+      if (poll) clearInterval(poll);
+      if (tick) clearInterval(tick);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [show]);
+  }, [probe, show]);
 
   if (!show) return null;
+  const focusedIncident = focusIncidentId
+    ? incidents.find((incident) => incident.id === focusIncidentId) ?? null
+    : null;
+  const visibleSelection = focusedIncident ?? selected;
 
   return (
     <>
@@ -156,6 +178,7 @@ export default function LiveIncidents({
             type="button"
             onClick={(ev) => {
               ev.stopPropagation();
+              onFocusIncidentChange?.(null);
               setSelected(inc);
             }}
             aria-label={`${inc.kind} near ${inc.location}${isPast ? " (past)" : ""}`}
@@ -169,43 +192,46 @@ export default function LiveIncidents({
         );
       })}
 
-      {selected && (
+      {visibleSelection && (
         <Popup
-          longitude={selected.coordinate.lng}
-          latitude={selected.coordinate.lat}
+          longitude={visibleSelection.coordinate.lng}
+          latitude={visibleSelection.coordinate.lat}
           anchor="bottom"
           offset={18}
           closeOnClick={false}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setSelected(null);
+            onFocusIncidentChange?.(null);
+          }}
         >
           <div className="min-w-[176px] p-1">
             <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {selected.kind}
+              {visibleSelection.kind}
             </p>
             <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              {selected.location}
+              {visibleSelection.location}
             </p>
-            {selected.updates > 1 && (
+            {visibleSelection.updates > 1 && (
               (() => {
                 // "Active" only while the call is still recent; an hours-old
                 // call with multiple posts is history, not a live scene.
                 const selectedIsPast =
                   nowMs > 0 &&
-                  nowMs - Date.parse(selected.lastReportedAt) >
+                  nowMs - Date.parse(visibleSelection.lastReportedAt) >
                     RECENT_INCIDENT_MS;
                 return (
                   <p
                     className="mt-1 text-[11px] font-semibold"
                     style={{ color: selectedIsPast ? "var(--app-ink-3)" : "var(--app-brand-press)" }}
                   >
-                    {selectedIsPast ? `${selected.updates} updates` : `Active · ${selected.updates} updates`}
+                    {selectedIsPast ? `${visibleSelection.updates} updates` : `Active · ${visibleSelection.updates} updates`}
                   </p>
                 );
               })()
             )}
             <p className="mt-1 font-mono text-[10px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
-              {nowMs ? `${agoLabel(selected.lastReportedAt, nowMs)} · ` : ""}
-              {selected.status === "corroborated"
+              {nowMs ? `${agoLabel(visibleSelection.lastReportedAt, nowMs)} · ` : ""}
+              {visibleSelection.status === "corroborated"
                 ? "Frederick Scanner + MDOT CHART"
                 : "via Frederick Scanner"}
             </p>

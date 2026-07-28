@@ -2,6 +2,7 @@ import "server-only";
 import SOURCE_REGISTRY_RAW from "@/data/source-registry.generated.json" with { type: "json" };
 import { getSql } from "@/lib/db/client";
 import { feedStatuses } from "@/lib/integrations/feed-registry";
+import { bundledSourceArtifactEvidence } from "./source-artifact-evidence";
 import {
   buildSourceLedger,
   type SourceConfigurationEvidence,
@@ -201,6 +202,7 @@ export async function getSourceHealthLedger(
 ): Promise<SourceLedgerRow[]> {
   const evidence = [
     ...manifestEvidence(),
+    ...bundledSourceArtifactEvidence(),
     ...(options.currentEvidence ?? []),
   ];
   let sql: RawSql | null = null;

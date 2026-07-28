@@ -42,6 +42,11 @@ import {
 } from "@/lib/geo";
 import { roundCoord } from "@/lib/walkTime";
 import { radiusResultLine } from "@/components/map/mapContent";
+import {
+  collectReachPolygons,
+  isPointWithinReach,
+  type ReachBoundaryStatus,
+} from "./reach";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -105,64 +110,6 @@ const MODE_VERB: Record<TravelMode, string> = {
   distance: "reach",
 };
 
-// ── Reachable-radius helpers ─────────────────────────────────────
-// Tiny self-contained point-in-polygon so we don't pull in @turf for
-// a 12-line ray-casting algorithm. Inputs are [lng,lat] tuples to
-// match GeoJSON's coordinate ordering.
-
-/**
- * Flatten a Mapbox Isochrone FeatureCollection into a list of raw
- * polygon rings (one per polygon — outer ring only; isochrone
- * polygons don't have holes in practice). Handles both Polygon and
- * MultiPolygon geometries so a fractured reachable area still works.
- */
-function collectPolygons(fc: GeoJSON.FeatureCollection): number[][][] {
-  const out: number[][][] = [];
-  for (const f of fc.features) {
-    const g = f.geometry;
-    if (!g) continue;
-    if (g.type === "Polygon") {
-      if (g.coordinates[0]) out.push(g.coordinates[0] as number[][]);
-    } else if (g.type === "MultiPolygon") {
-      for (const poly of g.coordinates) {
-        if (poly[0]) out.push(poly[0] as number[][]);
-      }
-    }
-  }
-  return out;
-}
-
-/**
- * Ray-casting point-in-polygon. Returns true if [lng,lat] lies inside
- * the polygon ring. Standard horizontal-ray odd-crossing test.
- */
-function pointInPolygon(pt: [number, number], ring: number[][]): boolean {
-  const x = pt[0];
-  const y = pt[1];
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    // Edge crosses the horizontal ray at y if endpoints are on
-    // opposite sides AND the intersection x is to the right of the
-    // test point. Toggling `inside` on each crossing gives the
-    // odd-rule winding count.
-    const intersect =
-      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-function pointInAnyPolygon(pt: [number, number], polys: number[][][]): boolean {
-  for (const ring of polys) {
-    if (pointInPolygon(pt, ring)) return true;
-  }
-  return false;
-}
-
 /**
  * Oxford-comma list. "a, b, and c" — used by the sentence-form summary
  * so the headline reads as plain English instead of a UI label.
@@ -192,6 +139,7 @@ const FOOD_GROUP = "food";
 const GEO_CACHE_KEY = "fr_geo_v1";
 const GEO_CACHE_TTL_MS = 1000 * 60 * 30; // 30 min — same as the hook
 const GEO_PROMPT_DISMISS_KEY = "fr:geo-prompt-dismissed:v1";
+const MAX_FINE_TUNE_MINUTES = 30;
 
 type GeoStatus =
   | "idle"
@@ -517,13 +465,16 @@ export default function RadiusBuilder({
   // streets — not the straight-line circle, which lies whenever there's
   // a creek, a hill, a one-way, or a railroad in the way. Fetched as a
   // GeoJSON FeatureCollection from /api/isochrone, which proxies + caches
-  // the Mapbox Isochrone API. While loading or on error, isochrone is
-  // null and we fall back to the haversine circle filter below.
+  // the Mapbox Isochrone API. The status stays explicit because null means
+  // a straight-line circle, not a routed boundary.
   const [isochrone, setIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [reachBoundaryStatus, setReachBoundaryStatus] =
+    useState<ReachBoundaryStatus>("loading");
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous isochrone the moment center/mode/minutes change so the map doesn't show last query's polygon while the new one is fetching
     setIsochrone(null);
+    setReachBoundaryStatus("loading");
     const params = new URLSearchParams({
       // Exact device coordinates stay in browser memory. The isochrone
       // request uses the same ~100m privacy grid as routed walk times.
@@ -536,9 +487,20 @@ export default function RadiusBuilder({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (d?.ok && d.geojson) setIsochrone(d.geojson);
+        if (
+          d?.ok &&
+          d.geojson &&
+          collectReachPolygons(d.geojson).length > 0
+        ) {
+          setIsochrone(d.geojson);
+          setReachBoundaryStatus("street");
+        } else {
+          setReachBoundaryStatus("distance");
+        }
       })
-      .catch(() => { /* keep null — falls back to circle */ });
+      .catch(() => {
+        if (!cancelled) setReachBoundaryStatus("distance");
+      });
     return () => { cancelled = true; };
   }, [center.lng, center.lat, mode, minutes]);
 
@@ -546,7 +508,7 @@ export default function RadiusBuilder({
   // by the place filter AND the events filter so both judge "within
   // reach" by the exact same boundary. Null until the isochrone loads.
   const reachPolys = useMemo(
-    () => (isochrone ? collectPolygons(isochrone) : null),
+    () => (isochrone ? collectReachPolygons(isochrone) : null),
     [isochrone],
   );
 
@@ -559,9 +521,14 @@ export default function RadiusBuilder({
       ...p,
       distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom),
     }));
-    const filtered = reachPolys && reachPolys.length > 0
-      ? withDistance.filter((p) => pointInAnyPolygon([p.geom.lng, p.geom.lat], reachPolys))
-      : withDistance.filter((p) => (p.distance_m ?? Infinity) <= meters);
+    const filtered = withDistance.filter((p) =>
+      isPointWithinReach({
+        point: [p.geom.lng, p.geom.lat],
+        distanceMeters: p.distance_m ?? Infinity,
+        maxDistanceMeters: meters,
+        polygons: reachPolys,
+      }),
+    );
     return filtered.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
   }, [places, center.lng, center.lat, meters, reachPolys]);
 
@@ -600,10 +567,14 @@ export default function RadiusBuilder({
         { lng: e.lng, lat: e.lat },
       ),
     }));
-    const within =
-      reachPolys && reachPolys.length > 0
-        ? withDistance.filter((e) => pointInAnyPolygon([e.lng, e.lat], reachPolys))
-        : withDistance.filter((e) => e.distance_m <= meters);
+    const within = withDistance.filter((event) =>
+      isPointWithinReach({
+        point: [event.lng, event.lat],
+        distanceMeters: event.distance_m,
+        maxDistanceMeters: meters,
+        polygons: reachPolys,
+      }),
+    );
     return within.sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt));
   }, [events, center.lng, center.lat, meters, reachPolys]);
 
@@ -687,9 +658,8 @@ export default function RadiusBuilder({
   // floating ribbon, removed pre-launch per review §12. Trivia, not
   // a decision tool. The variable is gone too.)
 
-  // Amenities inside the same radius — "what's within X" now genuinely
-  // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
-  // not just businesses. Same haversine + center + meters as places.
+  // Amenities use the same street polygon (or clearly labeled distance
+  // fallback) as places and events, so "within reach" has one meaning.
   const insideAmenities = useMemo(() => {
     return amenities
       .map((a) => ({
@@ -699,9 +669,16 @@ export default function RadiusBuilder({
           { lng: a.lng, lat: a.lat },
         ),
       }))
-      .filter((a) => a.distance_m <= meters)
+      .filter((amenity) =>
+        isPointWithinReach({
+          point: [amenity.lng, amenity.lat],
+          distanceMeters: amenity.distance_m,
+          maxDistanceMeters: meters,
+          polygons: reachPolys,
+        }),
+      )
       .sort((a, b) => a.distance_m - b.distance_m);
-  }, [amenities, center.lng, center.lat, meters]);
+  }, [amenities, center.lng, center.lat, meters, reachPolys]);
 
   // Distance-ascending inside list for the "Within reach" strip. WithinReach
   // picks the FIRST match per kind as "nearest", so it needs true distance
@@ -870,7 +847,12 @@ export default function RadiusBuilder({
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    setMinutes((current) =>
+                      Math.min(current, MAX_FINE_TUNE_MINUTES),
+                    );
+                  }}
                   aria-pressed={active}
                   className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
                   style={{
@@ -892,7 +874,7 @@ export default function RadiusBuilder({
               aria-label={`${minutes} minutes`}
               type="range"
               min={3}
-              max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
+              max={MAX_FINE_TUNE_MINUTES}
               step={1}
               value={minutes}
               onChange={(e) => setMinutes(Number(e.target.value))}
@@ -901,7 +883,7 @@ export default function RadiusBuilder({
             />
             <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
               <span>3 min</span>
-              <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
+              <span>{MAX_FINE_TUNE_MINUTES} min</span>
             </div>
           </div>
         </div>
@@ -1026,6 +1008,22 @@ export default function RadiusBuilder({
             if (p) openSheet(p);
           }}
         />
+        <div
+          aria-live="polite"
+          className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-shadow-1)]"
+          style={{
+            zIndex: "var(--z-map-control)",
+            color: "var(--app-ink-2)",
+            background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)",
+            border: "1px solid var(--app-border)",
+          }}
+        >
+          {reachBoundaryStatus === "street"
+            ? "Street-aware reach"
+            : reachBoundaryStatus === "loading"
+              ? "Checking streets · distance estimate"
+              : "Distance estimate · streets unavailable"}
+        </div>
         {/* Floating stats ribbon removed in the radar redesign — it
             overlaid the map's bottom edge and competed with the camera
             controls. The reach summary (places · open now · walk time)
@@ -1236,7 +1234,14 @@ export default function RadiusBuilder({
             Self-hides kinds with no match (and the whole strip when
             nothing's reachable), and recomputes on every slider/center
             change. Minutes render in mono (the data voice). */}
-        <WithinReach places={reachInput} amenities={insideAmenities} mode={mode} />
+        <WithinReach
+          places={reachInput}
+          amenities={insideAmenities}
+          mode={mode}
+          originLng={center.lng}
+          originLat={center.lat}
+          boundaryStatus={reachBoundaryStatus}
+        />
       </section>
 
 

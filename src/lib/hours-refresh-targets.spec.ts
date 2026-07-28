@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import REFRESH_IDENTITIES_RAW from "@/data/place-refresh-identities.json" with { type: "json" };
 import {
   assessHoursRefreshRun,
+  HOURS_REFRESH_CYCLE_DAYS,
   hoursRefreshCycleDay,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
+import { isGooglePlaceId } from "@/lib/provenance";
 
 describe("hours refresh target selection", () => {
   it("includes Google-backed discovered records instead of filtering by source", () => {
@@ -28,6 +31,31 @@ describe("hours refresh target selection", () => {
 
     expect(first).toHaveLength(3);
     expect(second).toEqual(first);
+  });
+
+  it("keeps every canonical refresh bucket inside the production paid-call cap", () => {
+    const cap = 400;
+    const places = (
+      REFRESH_IDENTITIES_RAW as {
+        identities: Array<{
+          slug: string;
+          google_place_id?: string;
+        }>;
+      }
+    ).identities.filter((place) => isGooglePlaceId(place.google_place_id));
+    const buckets = Array.from(
+      { length: HOURS_REFRESH_CYCLE_DAYS },
+      (_, day) => selectHoursRefreshTargets(places, day, cap),
+    );
+
+    expect(buckets.every((bucket) => bucket.length > 0)).toBe(true);
+    expect(Math.max(...buckets.map((bucket) => bucket.length))).toBeLessThanOrEqual(
+      cap,
+    );
+    expect(buckets.flat()).toHaveLength(places.length);
+    expect(new Set(buckets.flat().map((place) => place.slug)).size).toBe(
+      places.length,
+    );
   });
 
   it("fails before spending when two slugs share a Google identity", () => {

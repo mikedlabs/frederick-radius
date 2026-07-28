@@ -1,18 +1,5 @@
 [
   {
-    "title": "Girls Night",
-    "starts_at": "2026-07-16T22:00:00.557Z",
-    "ends_at": "2026-07-17T01:00:00.557Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/girls-night-1",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "music",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-07-04T11:04:11.386Z"
-    }
-  },
-  {
     "title": "Emo Night",
     "starts_at": "2026-08-30T01:00:00.032Z",
     "ends_at": "2026-08-30T03:59:00.032Z",
@@ -22,21 +9,7 @@
     "category": "music",
     "source": {
       "url": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-07-17T11:01:18.537Z"
-    }
-  },
-  {
-    "title": "Magic: the Gathering at The Frederick Center",
-    "starts_at": "2026-07-19T15:00:00-04:00",
-    "ends_at": "2026-07-19T18:00:00-04:00",
-    "description": "Join a Commander meetup at The Frederick Center to play Magic and work on your deck.",
-    "description_origin": "radius-summary",
-    "venue_slug": "the-frederick-center",
-    "venue_name": "The Frederick Center",
-    "category": "community",
-    "source": {
-      "url": "https://www.thefrederickcenter.org/events",
-      "fetchedAt": "2026-07-10T01:17:32.000Z"
+      "fetchedAt": "2026-07-28T08:55:24.040Z"
     }
   },
   {
@@ -72,20 +45,6 @@
     "starts_at": "2026-08-30T15:00:00-04:00",
     "ends_at": "2026-08-30T18:00:00-04:00",
     "description": "Join a Commander meetup at The Frederick Center to play Magic and work on your deck.",
-    "description_origin": "radius-summary",
-    "venue_slug": "the-frederick-center",
-    "venue_name": "The Frederick Center",
-    "category": "community",
-    "source": {
-      "url": "https://www.thefrederickcenter.org/events",
-      "fetchedAt": "2026-07-10T01:17:32.000Z"
-    }
-  },
-  {
-    "title": "Queer Craft Night",
-    "starts_at": "2026-07-17T18:00:00-04:00",
-    "ends_at": "2026-07-17T21:00:00-04:00",
-    "description": "Bring your own craft and spend the evening with other people in an affirming space.",
     "description_origin": "radius-summary",
     "venue_slug": "the-frederick-center",
     "venue_name": "The Frederick Center",
@@ -181,32 +140,29 @@
     }
   },
   {
-    "title": "Movie Night: Muppet Treasure Island",
-    "starts_at": "2026-07-26T17:00:00-04:00",
-    "description": "The Frederick Center hosts a free movie night for all ages, with snacks and popcorn.",
-    "description_origin": "radius-summary",
-    "price": "Free",
-    "venue_slug": "the-frederick-center",
-    "venue_name": "The Frederick Center",
-    "category": "community",
+    "title": "Girls Night",
+    "starts_at": "2026-08-13T22:00:00.552Z",
+    "ends_at": "2026-08-14T01:00:00.552Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/girls-night-2",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "music",
     "source": {
-      "url": "https://www.thefrederickcenter.org/events",
-      "fetchedAt": "2026-07-10T01:17:32.000Z"
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-07-28T08:55:24.040Z"
     }
   },
   {
-    "title": "Beach, Please! Drag Bingo",
-    "starts_at": "2026-07-19T13:30:00-04:00",
-    "ends_at": "2026-07-19T17:00:00-04:00",
-    "description": "This drag bingo fundraiser benefits The Frederick Center. Chasity Vain, Maranda Rights, and Jalah Nicole are scheduled to perform, and the event also includes a costume contest and cash prizes.",
-    "description_origin": "radius-summary",
-    "ticket_url": "https://www.eventbrite.com/e/beach-please-drag-bingo-tickets-1986532749931",
-    "venue_slug": "steinhardt-brewing-company-frederick",
-    "venue_name": "Steinhardt Brewing Company",
-    "category": "community",
+    "title": "Vintage Flea Market",
+    "starts_at": "2026-08-22T15:00:00.222Z",
+    "ends_at": "2026-08-22T19:00:00.222Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/vintage-flea-market",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
+    "category": "market",
     "source": {
-      "url": "https://www.eventbrite.com/e/beach-please-drag-bingo-tickets-1986532749931",
-      "fetchedAt": "2026-07-10T01:17:32.000Z"
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-07-28T08:55:24.040Z"
     }
   }
 ]
