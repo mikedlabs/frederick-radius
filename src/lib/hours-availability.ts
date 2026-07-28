@@ -1,4 +1,5 @@
 import type { Hours } from "@/data/places";
+import type { OpenStatus } from "@/lib/hours";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 
@@ -28,6 +29,34 @@ export type HoursAvailability = {
   checkedAt: string;
   source: "current-verified-hours";
 };
+
+/**
+ * Whether an empty open-now result may be stated as "nothing is open."
+ *
+ * Zero results has two causes a reader cannot tell apart: every one of these
+ * places really is closed, or none of them cleared the verified-hours bar.
+ * Radius only ever knows the second. Reporting the first turns a gap in our
+ * own coverage into a claim about the county, and while verified-hours
+ * coverage sits near zero that claim is usually wrong.
+ *
+ * Decided from open_status because that is where the freshness and
+ * visitability policy has already been applied: open, closing-soon, and
+ * closed are answers; unverified and unknown are silence. The bar is the same
+ * one the Open now control uses to decide whether it may exist at all.
+ */
+export function mayAssertNoneOpen(
+  statuses: readonly OpenStatus[],
+  minimumCoverage: number = OPEN_NOW_MINIMUM_COVERAGE,
+): boolean {
+  if (statuses.length === 0) return false;
+  const decided = statuses.filter(
+    (status) =>
+      status.state === "open" ||
+      status.state === "closing-soon" ||
+      status.state === "closed",
+  ).length;
+  return decided / statuses.length >= minimumCoverage;
+}
 
 export function hasReliableHours(
   place: HoursAvailabilityPlace,

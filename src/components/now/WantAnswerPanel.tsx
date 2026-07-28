@@ -59,6 +59,9 @@ type WantAnswer = {
   laterMore: number;
   notable: WantRow[];
   total: number;
+  /** Mirrors WantAnswer. Optional here because a payload cached before this
+   *  field existed must fall to the cautious copy, never to a closure claim. */
+  mayAssertNoneOpen?: boolean;
   browseHref: string;
   contextLabel: string;
   contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
@@ -370,7 +373,9 @@ export default function WantAnswerPanel({
             </div>
           ) : (
             <p className="px-4 pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Nothing&rsquo;s open for this right now.
+              {answer.mayAssertNoneOpen
+                ? "Nothing’s open for this right now."
+                : "None of these have hours we can confirm right now."}
               {answer.later[0] ? ` Earliest: ${answer.later[0].name}, ${answer.later[0].fact.replace(/^Opens /, "").toLowerCase()}.` : ""}
             </p>
           )}
