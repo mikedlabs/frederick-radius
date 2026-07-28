@@ -19,6 +19,7 @@ import {
   cleanVenueName,
   clampDescription,
 } from "@/lib/events/normalize";
+import { hasImplausibleStartTime } from "@/lib/events/visible";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -89,7 +90,10 @@ function seriesKeyOf(r: Row): string {
 async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   const sql = getSql();
   if (!sql) return [];
-  // Future + slightly-past (started today) events only.
+  // Future + slightly-past events, plus any event whose stated end is still in
+  // the window. The end branch is load-bearing for all-day rows: they start at
+  // local midnight, so a start-only cutoff dropped them after 6 AM and erased
+  // day two of every multi-day span.
   const since = new Date(Date.now() - 6 * 3600_000).toISOString();
   let rows: Row[];
   try {
@@ -98,12 +102,24 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
              all_day, venue_name, address, lat, lng, municipality, category
       from ingested_events
       where starts_at_utc >= ${since}
+         or ends_at_utc >= ${since}
       order by starts_at_utc asc
       limit ${limit}
     `) as unknown as Row[];
   } catch {
     return [];
   }
+
+  rows = rows.filter(
+    (row) =>
+      !hasImplausibleStartTime({
+        title: row.title,
+        starts_at: row.starts_at_utc,
+        ends_at: row.ends_at_utc,
+        category: row.category,
+        is_all_day: row.all_day,
+      }),
+  );
 
   // Sanitize the venue at the SOURCE row so BOTH the series key and the
   // displayed venue use clean values — a feed that dumped its description

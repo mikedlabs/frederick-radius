@@ -82,8 +82,10 @@ export default function AppMapClient({
   initialCenter,
   initialZoom,
   initialBounds,
+  initialBoundsPadding,
   cameraMinZoom,
   cameraMaxBounds,
+  compactSubjectMap = false,
   initialAmenityGroups,
   dock,
   activeSlugs = null,
@@ -151,9 +153,17 @@ export default function AppMapClient({
   /** Optional first-paint extent. The main map uses this for a responsive
    *  whole-county opening instead of guessing one zoom for every screen. */
   initialBounds?: [[number, number], [number, number]];
+  /** Padding around a supplied first-paint extent. Subject maps do not have
+   *  the browse dock, so they can use the map area more efficiently. */
+  initialBoundsPadding?:
+    | number
+    | { top: number; right: number; bottom: number; left: number };
   /** Browse-only camera constraints; embeds keep AppMap's tighter defaults. */
   cameraMinZoom?: number;
   cameraMaxBounds?: [[number, number], [number, number]];
+  /** A small, single-subject overview (for example, every brewery). Pins are
+   *  clustered at county zoom, remain tappable, and skip irrelevant controls. */
+  compactSubjectMap?: boolean;
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
@@ -201,8 +211,10 @@ export default function AppMapClient({
           initialCenter={initialCenter}
           initialZoom={initialZoom}
           initialBounds={initialBounds}
+          initialBoundsPadding={initialBoundsPadding}
           cameraMinZoom={cameraMinZoom}
           cameraMaxBounds={cameraMaxBounds}
+          compactSubjectMap={compactSubjectMap}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
           activeSlugs={activeSlugs}
@@ -214,7 +226,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
     </div>
   );
 }

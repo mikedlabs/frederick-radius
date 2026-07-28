@@ -37,19 +37,44 @@ export async function GET(request: Request) {
     const result = await refreshRadiusSearchIndex({
       maxDocuments: batch,
     });
+    if (result.embeddingWarning) {
+      console.warn(
+        `[cron/radius-search] ${result.embeddingWarning.code}: ${result.embeddingWarning.message}`,
+      );
+    }
+    const note = !result.current
+      ? `${result.remaining} full-text place documents will continue on the next run.`
+      : result.embeddingWarning
+        ? result.embeddingWarning.code === "invalid_configuration" ||
+          result.embeddingWarning.code === "invalid_dimensions"
+          ? "The full-text place index is current. Optional semantic search needs a configuration review before the next scheduled run."
+          : "The full-text place index is current. Optional semantic recall will retry automatically."
+        : !result.embeddingCurrent
+          ? `The full-text place index is current. ${result.embeddingRemaining} optional semantic vectors remain.`
+          : "The place search index is current.";
     return NextResponse.json({
       enabled: true,
       healthy: true,
+      degraded: Boolean(result.embeddingWarning),
       batch_limit: batch,
       ...result,
-      note: result.current
-        ? "The place search index is current."
-        : `${result.remaining} place search documents will continue on the next run.`,
+      note,
     });
   } catch (error) {
     console.error("[cron/radius-search] refresh failed:", error);
     const known =
       error instanceof RadiusSearchRefreshError ? error : null;
+    if (known?.code === "refresh_in_progress") {
+      return NextResponse.json(
+        {
+          enabled: true,
+          healthy: true,
+          skipped: true,
+          note: known.message,
+        },
+        { status: 202 },
+      );
+    }
     return NextResponse.json(
       {
         enabled: true,

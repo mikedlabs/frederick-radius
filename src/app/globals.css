@@ -2984,15 +2984,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   bottom: 14px !important;
 }
 
-/* Mobile: the browse map is full-bleed and the BottomNav is a floating pill
-   fixed at bottom-0. Lift the zoom pair to a small clearance above that nav,
-   matching the FeedbackWidget's lift. Desktop (>=lg) has a SideRail, not a
-   bottom pill, so it keeps the tighter 14px above.
-   The top instrument remains independent from the fixed layer tray. */
+/* The browse canvas already subtracts the BottomNav reserve and safe area from
+   its height. Keep camera controls at the canvas edge on mobile too; adding a
+   second nav clearance pushed them into the middle of short phones. */
 @media (max-width: 1023.98px) {
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: 14px !important;
   }
 }
 
@@ -3067,7 +3065,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
   border-radius: var(--app-radius-md);
   border: 1px solid var(--app-border);
-  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  background: var(--app-bg-elevated-solid);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--app-shadow-3);
@@ -3170,7 +3168,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: calc(var(--z-sticky) + 2);
   max-height: var(--map-pane-cap, 116px);
   overflow: hidden;
-  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  background: var(--app-bg-elevated-solid);
   backdrop-filter: blur(16px) saturate(1.08);
   -webkit-backdrop-filter: blur(16px) saturate(1.08);
   border: 1px solid var(--app-border);
@@ -3294,7 +3292,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   justify-content: space-between;
   margin-inline: -2px;
   padding: 0 4px;
-  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  background: var(--app-bg-elevated-solid);
   backdrop-filter: blur(16px) saturate(1.08);
   -webkit-backdrop-filter: blur(16px) saturate(1.08);
 }
@@ -3980,11 +3978,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-locate-fab {
   position: absolute;
   right: 10px;
-  /* Top-anchored dock: the zoom pair returns to the map's bottom-right (96px
-     on mobile, 14px on desktop), so the locate FAB stacks just ABOVE it (its
-     44px + a ~10px gap → 150px mobile; a desktop override drops it to 68px).
-     The safe-area inset keeps it clear of the home indicator. */
-  bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  /* The canvas already ends above mobile navigation. Stack Locate one step
+     above the conventional bottom-right zoom pair. */
+  bottom: 68px;
   z-index: var(--z-map-control);
   display: grid;
   place-items: center;
@@ -4009,7 +4005,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-live-status {
   position: absolute;
   left: max(12px, env(safe-area-inset-left, 0px));
-  bottom: calc(98px + env(safe-area-inset-bottom, 0px));
+  bottom: 14px;
   z-index: var(--z-map-control);
   display: inline-flex;
   align-items: center;
@@ -4066,8 +4062,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-reset-fab {
   position: absolute;
   right: 10px;
-  /* One 44px FAB + a ~10px gap above the locate FAB (150 → 204 mobile). */
-  bottom: calc(204px + env(safe-area-inset-bottom, 0px));
+  /* One 44px FAB + a 10px gap above Locate. */
+  bottom: 122px;
   z-index: var(--z-map-control);
   display: grid;
   place-items: center;
@@ -4103,7 +4099,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-geo-toast {
   position: absolute;
   right: 10px;
-  bottom: calc(258px + env(safe-area-inset-bottom, 0px));
+  bottom: 176px;
   max-width: min(19rem, 72vw);
   z-index: var(--z-map-control);
 }
@@ -4306,7 +4302,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overscroll-behavior: contain;
   border-radius: var(--app-radius-lg);
   border: 1px solid var(--app-border);
-  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  background: var(--app-bg-elevated-solid);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--app-shadow-3);
@@ -4625,7 +4621,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: var(--app-radius-lg);
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--app-brand) 10%, transparent), transparent 38%),
-    color-mix(in srgb, var(--app-bg-elevated) 97%, transparent);
+    var(--app-bg-elevated-solid);
   backdrop-filter: blur(14px) saturate(1.06);
   -webkit-backdrop-filter: blur(14px) saturate(1.06);
   box-shadow: var(--app-shadow-3);
@@ -5876,6 +5872,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 .food-truck-mode-switch {
+  position: relative;
+  z-index: 5;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
@@ -5884,6 +5882,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   background: var(--app-bg-sunken);
   box-shadow: var(--app-edge), var(--app-hi);
+  isolation: isolate;
 }
 
 .food-truck-mode-switch button {

@@ -22,7 +22,8 @@ food-truck jobs.
 | Cadence | Job | What it does | Mechanism |
 | --- | --- | --- | --- |
 | Every 30 min | `notify-civic-alerts` | Pushes new civic alerts to subscribers. | Vercel cron (`/api/cron/notify-civic-alerts`) |
-| Nightly 09:00 UTC | `ingest/all` | Full civic/venue/business ingest into the live store. | Vercel cron (`/api/ingest/all`) |
+| Every 4 hours at :15 | `food-truck-schedules` | Refreshes the compact published-stop artifact from allowlisted vendor, venue, and organizer calendars. | Vercel cron (`/api/cron/food-truck-schedules`) |
+| Nightly 09:00 UTC | `ingest/civicengage` | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain. | Vercel cron (`/api/ingest/civicengage`) |
 | Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
 | Nightly 08:30 UTC | `radius-search` | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`. | Vercel cron (`/api/cron/radius-search`) |

@@ -13,7 +13,11 @@ import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
-import { geocodePending } from "@/lib/ingest/geocode";
+import {
+  geocodeLimitForRemaining,
+  geocodePending,
+  type GeocodeStats,
+} from "@/lib/ingest/geocode";
 import { fcvfraMapListing, FCVFRA_SOURCE_DOMAIN } from "@/lib/ingest/fcvfra";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { verifyCronAuth } from "../_auth";
@@ -24,6 +28,26 @@ export const dynamic = "force-dynamic";
 
 const LISTING_URL = "https://www.fcvfra.com/apps/public/events/";
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; fire-company event index)";
+const GEOCODE_CAP = 400;
+const ROUTE_DEADLINE_MS = 105_000;
+
+type GeocodeRouteResult = GeocodeStats & { error?: string };
+
+function deferredGeocode(reason: "route-budget" | "upstream", error?: string): GeocodeRouteResult {
+  return {
+    fromCache: 0,
+    fromApi: 0,
+    failed: reason === "upstream" ? 1 : 0,
+    seeded: 0,
+    revalidated: 0,
+    repaired: 0,
+    cleared: 0,
+    status: "degraded",
+    degradedReason: reason,
+    budgetStopped: reason === "route-budget" ? 1 : 0,
+    error,
+  };
+}
 
 async function fetchListing(): Promise<string | null> {
   const ctrl = new AbortController();
@@ -50,6 +74,7 @@ export async function GET(req: NextRequest) {
   if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
 
   const t0 = Date.now();
+  const routeDeadlineAt = t0 + ROUTE_DEADLINE_MS;
   // obs-2: record this run so a silent partial failure (feed half-fetched,
   // geocoder down) is visible in ingest_runs instead of only showing up when
   // counts visibly drop. Fail-soft (no-op without a DB / on dry run).
@@ -86,20 +111,45 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  let geocode = null;
+  let geocode: GeocodeRouteResult | null = null;
   if (!dry && sql) {
-    try {
-      geocode = await geocodePending(sql, 400);
-    } catch (err) {
-      geocode = { error: err instanceof Error ? err.message : "geocode failed" };
+    const geocodeLimit = geocodeLimitForRemaining(
+      routeDeadlineAt - Date.now(),
+      GEOCODE_CAP,
+    );
+    if (geocodeLimit === 0) {
+      geocode = deferredGeocode(
+        "route-budget",
+        "geocode deferred because the route budget was exhausted",
+      );
+    } else {
+      try {
+        geocode = await geocodePending(sql, geocodeLimit, {
+          deadlineAt: routeDeadlineAt,
+        });
+      } catch (err) {
+        geocode = deferredGeocode(
+          "upstream",
+          err instanceof Error ? err.message : "geocode failed",
+        );
+      }
     }
   }
 
+  const geocodeDegraded = geocode?.status === "degraded";
+  const geocodeDegradedReason =
+    geocode?.status === "degraded" ? geocode.degradedReason : undefined;
+  const geocodeError = geocode?.error;
   await finishIngestRun(runId, {
-    status: "ok",
+    status: geocodeDegraded ? "partial" : "ok",
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
     records_failed: failed,
+    error: geocodeDegraded
+      ? `geocode degraded: ${geocodeDegradedReason}${
+          geocodeError ? ` (${geocodeError})` : ""
+        }`
+      : undefined,
   });
 
   // isr-1: real ingest wrote fresh rows — bust the event caches so /today,

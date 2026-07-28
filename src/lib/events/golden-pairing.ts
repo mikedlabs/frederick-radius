@@ -2,9 +2,9 @@
  * Golden-hour pairing — the signature field-guide beat: when evening golden
  * hour is ACTIVE and there's a genuinely OUTDOOR draw on in that light, pair the
  * two ("Golden hour now · best light until 8:39 · on now: Firemen's Carnival").
- * Both halves are found facts — real NOAA sun math (lib/sun) + a real event
- * that's actually on during the window — never a generated suggestion (honors
- * the "finding, not telling" rule).
+ * Both halves are grounded facts — real NOAA sun math (lib/sun) + a real event
+ * that is actually on during the window. Together they support a useful,
+ * explainable recommendation without inventing certainty.
  *
  * Honesty rules learned from adversarial review:
  *  - The paired event must plausibly be ON DURING the golden window, not merely

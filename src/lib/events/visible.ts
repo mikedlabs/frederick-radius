@@ -68,23 +68,44 @@ export function getVisibleEvents<E extends TimedEvent>(
  * (the audit's boundary).
  */
 const PRE9_IMPLAUSIBLE_CATEGORIES = new Set(["theater", "arts", "music", "nightlife", "film"]);
+const ROUTINE_DAYTIME_PROGRAM =
+  /\b(?:story\s*time|storytime|baby\s+time|toddler\s+time|lap\s*sit|lapsit)\b/i;
+const EASTERN_HOUR = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  hour12: false,
+});
 
 export function hasImplausibleStartTime(e: {
   starts_at: string;
+  ends_at?: string | null;
+  title?: string | null;
   category?: string | null;
   is_all_day?: boolean;
 }): boolean {
   if (e.is_all_day) return false;
-  if (!PRE9_IMPLAUSIBLE_CATEGORIES.has(e.category ?? "")) return false;
   const t = Date.parse(e.starts_at);
   if (!Number.isFinite(t)) return false;
   const h =
-    Number(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        hour: "numeric",
-        hour12: false,
-      }).format(new Date(t)),
-    ) % 24;
-  return h < 9;
+    Number(EASTERN_HOUR.format(new Date(t))) % 24;
+
+  if (PRE9_IMPLAUSIBLE_CATEGORIES.has(e.category ?? "") && h < 9) return true;
+
+  // Library and family feeds occasionally swap AM/PM or attach the next
+  // occurrence's end time to a routine daytime program. That produced a
+  // "Musical Storytime" listing at 11:15 PM with a 12.5-hour duration even
+  // though its own description said 11:15 AM. Withhold only unmistakably
+  // daytime program types at extreme hours or implausible durations. Evening
+  // pajama storytimes and other legitimate family programs remain eligible.
+  if (!ROUTINE_DAYTIME_PROGRAM.test(e.title ?? "")) return false;
+  if (h >= 21 || h < 6) return true;
+
+  if (e.ends_at) {
+    const end = Date.parse(e.ends_at);
+    if (Number.isFinite(end) && end > t && end - t > 8 * 60 * 60 * 1000) {
+      return true;
+    }
+  }
+
+  return false;
 }

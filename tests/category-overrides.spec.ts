@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { publicPlaces } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import OVERRIDES from "@/data/places-overrides.json";
+import { placeActions } from "@/lib/place-actions";
 
 /**
  * Category mis-tag cleanup via places-overrides.json `patch`. Two jobs:
@@ -36,6 +37,19 @@ describe("category overrides — services leave destination lanes", () => {
     const midar = bySlug.get("midar-fashion-llc");
     if (midar) expect(midar.category).toBe("shopping");
     expect((OVERRIDES.patch as Record<string, unknown>)["midar-fashion-llc"]).toBeUndefined();
+  });
+
+  it("keeps 7th Sister in restaurant discovery with its direct reservation", () => {
+    const seventh = publicPlaces().find((place) => place.slug === "7th-sister");
+    expect(seventh?.category).toBe("restaurant");
+    expect(
+      seventh
+        ? placeActions(seventh).find((action) => action.key === "reserve")
+        : undefined,
+    ).toMatchObject({
+      href: "https://7thsister.com/reservations",
+      label: "Reserve",
+    });
   });
 
   it("no high-precision service name remains in a destination category", () => {

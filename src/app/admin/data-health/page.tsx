@@ -678,7 +678,10 @@ async function Board() {
             </THead>
             <TBody>
               {ingestRuns.map((r) => {
-                const bad = r.status === "error" || r.recordsFailed > 0 || r.stale;
+                const bad =
+                  r.status !== "ok" ||
+                  r.recordsFailed > 0 ||
+                  r.stale;
                 return (
                   <Tr key={r.source}>
                     <Td semibold>{r.source}</Td>
@@ -701,8 +704,9 @@ async function Board() {
           <>
             Locations the ingest pipeline could not parse or geocode, logged to{" "}
             <code>unparseable_locations</code> per source. The event still ships
-            (never dropped), but it lands on a feed-default centroid until the
-            address is fixed upstream or a parser rule is added.
+            in discovery. Surfaces may place it at the municipality level, but
+            Radius must not claim a precise venue or distance until the address
+            is fixed upstream or a parser rule is added.
           </>
         }
       >

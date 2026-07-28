@@ -158,6 +158,20 @@ export function todayUtilityBandLabel(input: {
   return null;
 }
 
+/** Keep every count attached to the thing it counts. A mixed utility band may
+ * contain happy hours, specials, markets, and parking; "13 later today" loses
+ * the decision value the individual counts already carry. */
+export function itemizedTodayUtilitySummary(input: {
+  current: readonly string[];
+  later: readonly string[];
+  today: readonly string[];
+}): string {
+  if (input.current.length > 0) {
+    return [...input.current, ...input.later].join(" · ");
+  }
+  return (input.later.length > 0 ? input.later : input.today).join(" · ");
+}
+
 /** Eastern-minutes → "7 PM" / "7:30 PM"; 1440 reads as "close". */
 function fmtEasternMinutes(m: number): string {
   if (m >= 1440) return "close";

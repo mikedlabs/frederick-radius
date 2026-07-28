@@ -8,12 +8,15 @@
 import { createHash } from "node:crypto";
 import { embedMany } from "ai";
 import { openai } from "@ai-sdk/openai";
+import type { TransactionSql } from "postgres";
 import { getSql } from "@/lib/db/client";
 import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 
 const DEFAULT_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
 const EMBEDDING_BATCH = 64;
+const SEARCH_REFRESH_LOCK_ID = 28_417_391;
+export const EMBEDDING_BATCH_TIMEOUT_MS = 15_000;
 
 export const DEFAULT_RADIUS_SEARCH_CRON_BATCH = 256;
 export const MAX_RADIUS_SEARCH_CRON_BATCH = 512;
@@ -29,11 +32,26 @@ export type RadiusSearchDocument = {
 
 export type RadiusSearchRefreshResult = {
   total: number;
+  /** Full-text documents whose canonical content was out of date. */
   changed: number;
+  /** Full-text documents persisted during this run. */
   processed: number;
+  /** Full-text documents left for a later bounded run. */
   remaining: number;
   embedded: number;
   tokenUsage: number;
+  embeddingEnabled: boolean;
+  embeddingRemaining: number;
+  embeddingCurrent: boolean;
+  embeddingWarning?: {
+    code:
+      | "provider_unavailable"
+      | "invalid_configuration"
+      | "invalid_dimensions"
+      | "embedding_write_failed";
+    message: string;
+  };
+  /** Whether the required full-text index is current. */
   current: boolean;
 };
 
@@ -41,6 +59,7 @@ export type RadiusSearchRefreshErrorCode =
   | "not_configured"
   | "catalog_empty"
   | "storage_unavailable"
+  | "refresh_in_progress"
   | "embedding_failed"
   | "invalid_embedding"
   | "storage_write_failed";
@@ -116,8 +135,8 @@ export async function refreshRadiusSearchIndex({
 }: {
   maxDocuments?: number;
 } = {}): Promise<RadiusSearchRefreshResult> {
-  const sql = getSql();
-  if (!sql) {
+  const rootSql = getSql();
+  if (!rootSql) {
     throw new RadiusSearchRefreshError(
       "not_configured",
       "DATABASE_URL is required for the Radius search index.",
@@ -131,6 +150,11 @@ export async function refreshRadiusSearchIndex({
       "The public place catalog is empty; the existing Radius search index was left untouched.",
     );
   }
+  const refreshStartedAt = new Date();
+
+  const run = async (
+    sql: TransactionSql,
+  ): Promise<RadiusSearchRefreshResult> => {
   let existing: Array<{
     source_id: string;
     content_hash: string;
@@ -167,14 +191,20 @@ export async function refreshRadiusSearchIndex({
     ]),
   );
   const embeddingEnabled = Boolean(process.env.OPENAI_API_KEY);
+  const requestedEmbeddingModel = embeddingModelName();
+  const embeddingConfigurationWarning:
+    | RadiusSearchRefreshResult["embeddingWarning"]
+    | undefined =
+    embeddingEnabled && requestedEmbeddingModel !== DEFAULT_MODEL
+      ? {
+          code: "invalid_configuration",
+          message:
+            `Optional semantic vectors were not requested because ${requestedEmbeddingModel} is not compatible with the existing ${DEFAULT_MODEL} index. Remove RADIUS_EMBEDDING_MODEL or rebuild with explicit model provenance.`,
+        }
+      : undefined;
   const changed = documents.filter(
-    (document) => {
-      const current = known.get(document.id);
-      return (
-        current?.contentHash !== document.contentHash ||
-        (embeddingEnabled && !current?.hasEmbedding)
-      );
-    },
+    (document) =>
+      known.get(document.id)?.contentHash !== document.contentHash,
   );
   const limit = Number.isFinite(maxDocuments)
     ? Math.max(1, Math.floor(maxDocuments))
@@ -184,6 +214,9 @@ export async function refreshRadiusSearchIndex({
   let embedded = 0;
   let tokenUsage = 0;
 
+  // Finish the required full-text work before making any optional provider
+  // call. A provider outage can therefore never strand the same first slice
+  // of documents or leave an otherwise usable local index empty.
   for (let offset = 0; offset < selected.length; offset += EMBEDDING_BATCH) {
     const batch = selected.slice(offset, offset + EMBEDDING_BATCH);
     const ids = batch.map((document) => document.id);
@@ -224,63 +257,6 @@ export async function refreshRadiusSearchIndex({
         "The Radius search index could not persist a full-text batch.",
       );
     }
-
-    if (embeddingEnabled) {
-      let embeddings: number[][];
-      let tokens = 0;
-      try {
-        const result = await embedMany({
-          model: openai.embedding(embeddingModelName()),
-          values: batch.map((document) => document.content),
-          maxParallelCalls: 2,
-          maxRetries: 2,
-        });
-        embeddings = result.embeddings;
-        tokens = result.usage.tokens;
-      } catch {
-        throw new RadiusSearchRefreshError(
-          "embedding_failed",
-          "Full-text search was updated, but the OpenAI embedding request failed.",
-        );
-      }
-
-      if (
-        embeddings.length !== batch.length ||
-        embeddings.some(
-          (embedding) => embedding.length !== EMBEDDING_DIMENSIONS,
-        )
-      ) {
-        throw new RadiusSearchRefreshError(
-          "invalid_embedding",
-          `Full-text search was updated, but embedding dimensions were not ${EMBEDDING_DIMENSIONS}; check RADIUS_EMBEDDING_MODEL.`,
-        );
-      }
-
-      const vectors = embeddings.map(
-        (embedding) => `[${embedding.join(",")}]`,
-      );
-      try {
-        await sql`
-          update public.radius_search_documents as document
-          set embedding = rows.embedding::extensions.vector,
-              updated_at = now()
-          from unnest(
-            ${ids}::text[],
-            ${vectors}::text[]
-          ) as rows(source_id, embedding)
-          where document.kind = 'place'
-            and document.source_id = rows.source_id
-        `;
-      } catch {
-        throw new RadiusSearchRefreshError(
-          "storage_write_failed",
-          "Full-text search was updated, but the Radius search index could not persist its embedding batch.",
-        );
-      }
-      embedded += batch.length;
-      tokenUsage += tokens;
-    }
-
     processed += batch.length;
   }
 
@@ -290,7 +266,9 @@ export async function refreshRadiusSearchIndex({
   try {
     await sql`
       delete from public.radius_search_documents
-      where kind = 'place' and not (source_id = any(${liveIds}::text[]))
+      where kind = 'place'
+        and not (source_id = any(${liveIds}::text[]))
+        and updated_at < ${refreshStartedAt}
     `;
   } catch {
     throw new RadiusSearchRefreshError(
@@ -299,7 +277,138 @@ export async function refreshRadiusSearchIndex({
     );
   }
 
+  const selectedIds = new Set(selected.map((document) => document.id));
+  const embeddingNeeded = embeddingEnabled
+    ? documents.filter((document) => {
+        const current = known.get(document.id);
+        return (
+          current?.contentHash !== document.contentHash ||
+          !current?.hasEmbedding
+        );
+      })
+    : [];
+  // Newly written text is eligible immediately. Existing rows with current
+  // text but no vector fill any room left in the same bounded budget.
+  let embeddingWarning = embeddingConfigurationWarning;
+  const embeddingCandidates = embeddingEnabled && !embeddingWarning
+    ? [
+        ...selected,
+        ...documents.filter((document) => {
+          if (selectedIds.has(document.id)) return false;
+          const current = known.get(document.id);
+          return (
+            current?.contentHash === document.contentHash &&
+            !current.hasEmbedding
+          );
+        }),
+      ].slice(0, limit)
+    : [];
+
+  for (
+    let offset = 0;
+    offset < embeddingCandidates.length;
+    offset += EMBEDDING_BATCH
+  ) {
+    const batch = embeddingCandidates.slice(
+      offset,
+      offset + EMBEDDING_BATCH,
+    );
+    const ids = batch.map((document) => document.id);
+    const hashes = batch.map((document) => document.contentHash);
+    let embeddings: number[][];
+    let tokens = 0;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      // Bound each optional provider batch independently. The explicit race is
+      // intentional: the cron still returns degraded if a provider client
+      // ignores AbortSignal, while aborting stops compliant clients promptly.
+      const deadline = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error("embedding batch timed out"));
+        }, EMBEDDING_BATCH_TIMEOUT_MS);
+      });
+      const result = await Promise.race([
+        embedMany({
+          model: openai.embedding(requestedEmbeddingModel),
+          values: batch.map((document) => document.content),
+          maxParallelCalls: 2,
+          maxRetries: 2,
+          abortSignal: controller.signal,
+        }),
+        deadline,
+      ]);
+      embeddings = result.embeddings;
+      tokens = result.usage.tokens;
+      tokenUsage += tokens;
+    } catch {
+      embeddingWarning = {
+        code: "provider_unavailable",
+        message:
+          "Full-text search was updated. Optional semantic vectors will retry after the embedding provider recovers.",
+      };
+      break;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    if (
+      embeddings.length !== batch.length ||
+      embeddings.some(
+        (embedding) => embedding.length !== EMBEDDING_DIMENSIONS,
+      )
+    ) {
+      embeddingWarning = {
+        code: "invalid_dimensions",
+        message: `Full-text search was updated. Optional vectors were skipped because the embedding dimensions were not ${EMBEDDING_DIMENSIONS}.`,
+      };
+      break;
+    }
+
+    const vectors = embeddings.map(
+      (embedding) => `[${embedding.join(",")}]`,
+    );
+    try {
+      const updateResult = await sql`
+        update public.radius_search_documents as document
+        set embedding = rows.embedding::extensions.vector,
+            updated_at = now()
+        from unnest(
+          ${ids}::text[],
+          ${hashes}::text[],
+          ${vectors}::text[]
+        ) as rows(source_id, content_hash, embedding)
+        where document.kind = 'place'
+          and document.source_id = rows.source_id
+          and document.content_hash = rows.content_hash
+      `;
+      if (
+        typeof updateResult.count === "number" &&
+        updateResult.count !== batch.length
+      ) {
+        embeddingWarning = {
+          code: "embedding_write_failed",
+          message:
+            "Full-text search stayed current, but a document changed before its vector could be stored. The vector will be rebuilt from the newer text.",
+        };
+        break;
+      }
+    } catch {
+      embeddingWarning = {
+        code: "embedding_write_failed",
+        message:
+          "Full-text search was updated. Optional semantic vectors could not be stored and will retry on the next run.",
+      };
+      break;
+    }
+    embedded += batch.length;
+  }
+
   const remaining = changed.length - processed;
+  const embeddingRemaining = embeddingEnabled
+    ? Math.max(0, embeddingNeeded.length - embedded)
+    : 0;
   return {
     total: documents.length,
     changed: changed.length,
@@ -307,6 +416,44 @@ export async function refreshRadiusSearchIndex({
     remaining,
     embedded,
     tokenUsage,
+    embeddingEnabled,
+    embeddingRemaining,
+    embeddingCurrent:
+      !embeddingEnabled || embeddingRemaining === 0,
+    ...(embeddingWarning ? { embeddingWarning } : {}),
     current: remaining === 0,
   };
+  };
+
+  // Serialize refreshes in the database, not in one serverless process. This
+  // prevents overlapping cron, CLI, or rolling-deployment runs from buying
+  // duplicate vectors or attaching an older vector to newer text. The local
+  // statement timeout also bounds the post-provider vector write.
+  if (typeof rootSql.begin === "function") {
+    try {
+      return await rootSql.begin(async (sql) => {
+        await sql`set local statement_timeout = '15s'`;
+        const lock = await sql<Array<{ acquired: boolean }>>`
+          select pg_try_advisory_xact_lock(${SEARCH_REFRESH_LOCK_ID}) as acquired
+        `;
+        if (!lock[0]?.acquired) {
+          throw new RadiusSearchRefreshError(
+            "refresh_in_progress",
+            "Another Radius search refresh is already running.",
+          );
+        }
+        return run(sql);
+      });
+    } catch (error) {
+      if (error instanceof RadiusSearchRefreshError) throw error;
+      throw new RadiusSearchRefreshError(
+        "storage_unavailable",
+        "Radius search storage could not start a protected refresh transaction.",
+      );
+    }
+  }
+
+  // Lightweight test doubles do not expose postgres-js transactions. Real
+  // application connections always take the protected path above.
+  return run(rootSql as unknown as TransactionSql);
 }

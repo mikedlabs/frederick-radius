@@ -28,7 +28,7 @@ export default function FoodTruckToday() {
         const body = (await response.json()) as { pins?: unknown[] };
         if (active) setLiveCount(Array.isArray(body.pins) ? body.pins.length : 0);
       } catch {
-        // The weekly board remains useful when the optional live read fails.
+        // The roster remains useful when the optional live read fails.
       }
     };
     void refresh();
@@ -59,7 +59,7 @@ export default function FoodTruckToday() {
         <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {liveCount > 0
             ? "See the operator-confirmed location and when the pin expires."
-            : `${count} local vendors are on the weekly board. Live truck pins are coming next.`}
+            : `${count} local vendors are listed. Open the schedule for confirmed upcoming stops.`}
         </span>
       </span>
       <ChevronRight

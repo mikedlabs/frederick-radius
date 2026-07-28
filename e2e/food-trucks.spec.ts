@@ -19,12 +19,9 @@ test("food-truck board leads with plans and opens useful vendor details", async 
   await expect(page.getByRole("link", { name: "This week", exact: true })).toHaveCount(0);
   await expect(page.getByText(/feeds checked/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Report a missing truck or wrong stop" })).toBeVisible();
-  const sectionOrder = await page
-    .locator("#this-week, #vendors, .food-truck-owner-door")
-    .evaluateAll((nodes) => nodes.map((node) =>
-      node.id || (node.classList.contains("food-truck-owner-door") ? "owners" : ""),
-    ));
-  expect(sectionOrder).toEqual(["this-week", "vendors", "owners"]);
+  await expect(page.locator("#food-truck-panel-week #this-week")).toBeVisible();
+  await expect(page.locator("#food-truck-panel-trucks #vendors")).toHaveCount(0);
+  await expect(page.locator(".food-truck-journeys + .food-truck-owner-door")).toBeVisible();
   await expect(page.getByAltText("Downtown Frederick after dark")).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Trucks" }).click();
@@ -52,6 +49,7 @@ test("food-truck board leads with plans and opens useful vendor details", async 
 test("public visitors can open feedback and the food-truck add form", async ({ page }) => {
   await page.goto("/food-trucks");
 
+  await expect(page.getByRole("button", { name: "Send feedback" })).toBeVisible();
   await page.getByRole("button", { name: "Report a missing truck or wrong stop" }).click();
   const feedbackDialog = page.getByRole("dialog", { name: "Send feedback" });
   await expect(feedbackDialog).toBeVisible();
@@ -84,5 +82,8 @@ test("Today gives food trucks an honest live-or-preview entry", async ({ page })
   await page.goto("/today");
   const card = page.getByRole("link", { name: /Food trucks|food truck.*live/i });
   await expect(card).toBeVisible();
-  await expect(card).toHaveAttribute("href", "/food-trucks");
+  await expect(card).toHaveAttribute(
+    "href",
+    /^\/food-trucks(?:#(?:near-me|this-week))?$/,
+  );
 });

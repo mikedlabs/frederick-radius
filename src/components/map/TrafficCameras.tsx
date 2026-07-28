@@ -9,6 +9,8 @@ import {
   type LiveLayerHealth,
 } from "@/lib/live-layer-health";
 
+const RETRY_MS = 60_000;
+
 /**
  * TrafficCameras — the map's SHA/CHART traffic-camera layer. FrederickScanner
  * lists these same public cameras in a flat grid; here each one is pinned where
@@ -31,7 +33,7 @@ export default function TrafficCameras({
   useEffect(() => {
     if (!show || cameras.length > 0) return;
     let alive = true;
-    (async () => {
+    const load = async () => {
       try {
         const r = await fetch("/api/traffic-cameras");
         if (!r.ok) {
@@ -62,9 +64,17 @@ export default function TrafficCameras({
           }),
         );
       }
-    })();
+    };
+    void load();
+    const retry = window.setInterval(load, RETRY_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
+      window.clearInterval(retry);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [show, cameras.length]);
 

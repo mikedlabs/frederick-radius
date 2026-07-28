@@ -91,9 +91,27 @@ describe("categoryScore", () => {
   });
 
   it("loose-category records are demoted vs an equal true-coffee record", () => {
-    const coffee = categoryScore(place({ ...base, name: "Gravel and Grind" }));
-    const tea = categoryScore(place({ ...base, name: "Shab Row Tea Emporium" }));
+    const coffee = categoryScore(
+      place({ ...base, name: "Gravel and Grind" }),
+      { category: "coffee" },
+    );
+    const tea = categoryScore(
+      place({ ...base, name: "Shab Row Tea Emporium" }),
+      { category: "coffee" },
+    );
     expect(coffee).toBeGreaterThan(tea);
+  });
+
+  it("does not leak coffee-specific matching into restaurant ranking", () => {
+    const restaurant = categoryScore(
+      place({ ...base, name: "Shab Row Tea Emporium" }),
+      { category: "restaurant" },
+    );
+    const neutral = categoryScore(
+      place({ ...base, name: "Local Cafe" }),
+      { category: "restaurant" },
+    );
+    expect(restaurant).toBeCloseTo(neutral, 8);
   });
 
   it("a thin local record does NOT outrank a clearly stronger in-town coffee", () => {

@@ -279,6 +279,19 @@ function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
 }
 
+function formatLayerUpdate(timestamp: string | null): string | null {
+  if (!timestamp) return null;
+  const parsed = new Date(timestamp);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 export default function MapDock(props: MapDockProps) {
   const { browse, onPaneOpenChange } = props;
   const publicAmenityGroups = PUBLIC_AMENITY_GROUPS.filter(
@@ -290,6 +303,7 @@ export default function MapDock(props: MapDockProps) {
 
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   // The Layers tab's Key grid is collapsed by default; one small control
   // reveals it without creating another horizontal rail.
@@ -302,6 +316,7 @@ export default function MapDock(props: MapDockProps) {
   const dockRef = useRef<HTMLDivElement>(null);
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // Size the one explicit options panel against the map canvas. The earlier
@@ -380,9 +395,23 @@ export default function MapDock(props: MapDockProps) {
     const dismissForMapGesture = () => {
       setPane(null);
       setPlaceReveal(null);
+      setSearchPanelOpen(false);
     };
     window.addEventListener("fr:map-gesture", dismissForMapGesture);
     return () => window.removeEventListener("fr:map-gesture", dismissForMapGesture);
+  }, []);
+  useEffect(() => {
+    const dismissSearchOutside = (event: PointerEvent | WheelEvent) => {
+      const target = event.target;
+      if (target instanceof Node && searchWrapRef.current?.contains(target)) return;
+      setSearchPanelOpen(false);
+    };
+    document.addEventListener("pointerdown", dismissSearchOutside, true);
+    document.addEventListener("wheel", dismissSearchOutside, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismissSearchOutside, true);
+      document.removeEventListener("wheel", dismissSearchOutside, true);
+    };
   }, []);
   useEffect(() => {
     if (pane === null) return;
@@ -394,6 +423,7 @@ export default function MapDock(props: MapDockProps) {
     const restoreTarget = restoreRef.current;
     setPane(null);
     setPlaceReveal(null);
+    setSearchPanelOpen(false);
     // The trigger stays inert until React commits the closed state. Restore
     // focus on the following frame so browsers do not discard the focus call.
     window.requestAnimationFrame(() => restoreTarget?.focus?.());
@@ -404,6 +434,7 @@ export default function MapDock(props: MapDockProps) {
       consumeFindRequest("map");
       setPane(null);
       setPlaceReveal(null);
+      setSearchPanelOpen(true);
       if (window.location.hash === "#map-search-input") {
         const url = new URL(window.location.href);
         url.hash = "";
@@ -722,6 +753,7 @@ export default function MapDock(props: MapDockProps) {
 
   const togglePane = (next: Pane) => {
     haptic("light");
+    setSearchPanelOpen(false);
     if (pane === next) {
       closePane();
       return;
@@ -758,6 +790,9 @@ export default function MapDock(props: MapDockProps) {
           minute: "2-digit",
         }).format(new Date(props.radarFrameEpoch * 1000))
       : null;
+  const radarUpdate = formatLayerUpdate(props.radarHealth.timestamp);
+  const incidentUpdate = formatLayerUpdate(props.incidentHealth.timestamp);
+  const cameraUpdate = formatLayerUpdate(props.cameraHealth.timestamp);
 
   const paneTitle =
     pane === "contents" ? "Map options"
@@ -824,7 +859,25 @@ export default function MapDock(props: MapDockProps) {
         {/* The only persistent map choices: search and Map options. */}
         <div className="dock-head">
           {/* Search, folded in as the top row — the map's ONE search. */}
-          <div className="dock-search-wrap" inert={pane !== null}>
+          <div
+            ref={searchWrapRef}
+            className="dock-search-wrap"
+            inert={pane !== null}
+            onFocusCapture={() => setSearchPanelOpen(true)}
+            onBlurCapture={(event) => {
+              const next = event.relatedTarget;
+              if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+                // Some mobile browsers do not focus buttons on tap, so
+                // relatedTarget can be null even when the tap is on a result.
+                // Defer the close until that result's click has been handled.
+                window.requestAnimationFrame(() => {
+                  if (!searchWrapRef.current?.contains(document.activeElement)) {
+                    setSearchPanelOpen(false);
+                  }
+                });
+              }
+            }}
+          >
             <div className="dock-search" role="search">
               <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
               <input
@@ -832,7 +885,17 @@ export default function MapDock(props: MapDockProps) {
                 ref={searchInputRef}
                 type="search"
                 value={props.q}
-                onChange={(e) => updateMapSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearchPanelOpen(true);
+                  updateMapSearch(e.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape") return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSearchPanelOpen(false);
+                  event.currentTarget.blur();
+                }}
                 // The placeholder is the manual: concrete examples teach the
                 // box's range (categories, outdoors, towns) at the exact
                 // moment the eye is on it. No questions promised here — the
@@ -853,7 +916,10 @@ export default function MapDock(props: MapDockProps) {
                 </button>
               )}
             </div>
-            {pane === null && props.searchMatches.length > 0 && (
+            {pane === null
+              && searchPanelOpen
+              && props.q.trim().length > 0
+              && props.searchMatches.length > 0 && (
               <ul
                 className="dock-search-results"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -872,6 +938,7 @@ export default function MapDock(props: MapDockProps) {
                         data-map-search-result={r.id}
                         onClick={(event) => {
                           event.stopPropagation();
+                          setSearchPanelOpen(false);
                           props.pickSearch(r);
                         }}
                         className="dock-search-result"
@@ -903,6 +970,7 @@ export default function MapDock(props: MapDockProps) {
                       className="dock-search-more"
                       onClick={(event) => {
                         event.stopPropagation();
+                        setSearchPanelOpen(false);
                         const current = new URL(window.location.href);
                         current.searchParams.set("q", props.q.trim());
                         const returnTo =
@@ -1466,14 +1534,15 @@ export default function MapDock(props: MapDockProps) {
                     on={props.showRadar}
                     color="var(--app-cool)"
                     onClick={() => props.setShowRadar((v) => !v)}
-                    disabled={props.radarHealth.status === "unavailable"}
                     title={
                       props.radarHealth.status === "unavailable"
-                        ? "The RainViewer frame feed is unavailable"
+                        ? props.showRadar
+                          ? "The latest RainViewer request failed. Radar is retrying automatically"
+                          : "The latest RainViewer request failed. Turn Radar on to retry"
                         : "Animated precipitation radar from RainViewer. Frames run a few minutes behind real time"
                     }
                   >
-                    {props.radarHealth.status === "unavailable" ? "Radar unavailable" : "Radar"}
+                    Radar
                   </Chip>
                   {(props.communityReportCount > 0 || communityReportsOn) && (
                     <Chip
@@ -1500,27 +1569,29 @@ export default function MapDock(props: MapDockProps) {
                     on={props.showIncidents}
                     color="var(--app-brand)"
                     onClick={() => props.setShowIncidents((v) => !v)}
-                    disabled={props.incidentHealth.status === "unavailable"}
                     title={
                       props.incidentHealth.status === "unavailable"
-                        ? "The public FrederickScanner incident feed is unavailable"
+                        ? props.showIncidents
+                          ? "The latest FrederickScanner request failed. Incidents are retrying automatically"
+                          : "The latest FrederickScanner request failed. Turn Incidents on to retry"
                         : "Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
                     }
                   >
-                    {props.incidentHealth.status === "unavailable" ? "Incidents unavailable" : "Incidents"}
+                    Incidents
                   </Chip>
                   <Chip
                     on={props.showCameras}
                     color="var(--app-cool)"
                     onClick={() => props.setShowCameras((v) => !v)}
-                    disabled={props.cameraHealth.status === "unavailable"}
                     title={
                       props.cameraHealth.status === "unavailable"
-                        ? "The Maryland CHART camera feed is unavailable"
+                        ? props.showCameras
+                          ? "The latest Maryland CHART request failed. Cameras are retrying automatically"
+                          : "The latest Maryland CHART request failed. Turn Cameras on to retry"
                         : "Maryland CHART traffic cameras on I-70, US-15, US-340 and other main routes. Tap a camera to watch its live feed"
                     }
                   >
-                    {props.cameraHealth.status === "unavailable" ? "Cameras unavailable" : "Cameras"}
+                    Cameras
                   </Chip>
                 </div>
 
@@ -1547,14 +1618,18 @@ export default function MapDock(props: MapDockProps) {
                     )}
                     {props.radarHealth.status === "unavailable" ? (
                       <p className="dock-layer-status">
-                        <strong>Radar</strong> · The RainViewer feed is unavailable, so this layer is off.
+                        <strong>Radar</strong> · The latest RainViewer request failed. {props.showRadar
+                          ? "Retrying automatically."
+                          : "Turn Radar on to retry."}
                       </p>
                     ) : props.showRadar && (
                       <p className="dock-layer-status">
-                        <strong>Radar</strong> · {props.radarHealth.status === "empty"
+                        <strong>Radar</strong> · {props.radarHealth.status === "stale"
+                          ? `Showing the last good frames${radarUpdate ? ` from ${radarUpdate}` : ""} while RainViewer retries.`
+                          : props.radarHealth.status === "empty"
                           ? "No frames are available from RainViewer."
                           : radarClock
-                          ? <>Frame from <span className="font-mono">{radarClock}</span> Eastern. Radar runs a few minutes behind.</>
+                          ? <>Latest frame <span className="font-mono">{radarClock}</span> Eastern. Radar runs a few minutes behind.</>
                           : "Loading the newest available frame…"}
                       </p>
                     )}
@@ -1570,22 +1645,34 @@ export default function MapDock(props: MapDockProps) {
                     )}
                     {props.incidentHealth.status === "unavailable" ? (
                       <p className="dock-layer-status">
-                        <strong>Incidents</strong> · The public dispatch feed is unavailable, so this layer is off.
+                        <strong>Incidents</strong> · The latest public dispatch request failed. {props.showIncidents
+                          ? "Retrying automatically."
+                          : "Turn Incidents on to retry."}
                       </p>
                     ) : props.showIncidents && (
                       <p className="dock-layer-status">
-                        <strong>Incidents</strong> · {props.incidentHealth.status === "empty"
+                        <strong>Incidents</strong> · {props.incidentHealth.status === "stale"
+                          ? `Showing ${props.incidentHealth.count} incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
+                          : props.incidentHealth.status === "disabled"
+                            ? "Loading the latest public incidents…"
+                          : props.incidentHealth.status === "empty"
                           ? "No current public incidents in the latest FrederickScanner response."
                           : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
                       </p>
                     )}
                     {props.cameraHealth.status === "unavailable" ? (
                       <p className="dock-layer-status">
-                        <strong>Cameras</strong> · The Maryland CHART feed is unavailable, so this layer is off.
+                        <strong>Cameras</strong> · The latest Maryland CHART request failed. {props.showCameras
+                          ? "Retrying automatically."
+                          : "Turn Cameras on to retry."}
                       </p>
                     ) : props.showCameras && (
                       <p className="dock-layer-status">
-                        <strong>Cameras</strong> · {props.cameraHealth.status === "empty"
+                        <strong>Cameras</strong> · {props.cameraHealth.status === "stale"
+                          ? `Showing ${props.cameraHealth.count} camera${props.cameraHealth.count === 1 ? "" : "s"} from the last good update${cameraUpdate ? ` at ${cameraUpdate}` : ""}. The feed is retrying.`
+                          : props.cameraHealth.status === "disabled"
+                            ? "Loading Maryland CHART cameras…"
+                          : props.cameraHealth.status === "empty"
                           ? "The latest Maryland CHART response contains no Frederick County cameras."
                           : `${props.cameraHealth.count} cameras from ${props.cameraHealth.source}. Tap a marker for the live road feed.`}
                       </p>

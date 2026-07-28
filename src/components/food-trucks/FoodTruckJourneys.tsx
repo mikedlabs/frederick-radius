@@ -129,9 +129,10 @@ export default function FoodTruckJourneys({
           role="tabpanel"
           aria-labelledby={`food-truck-tab-${item.id}`}
           hidden={mode !== item.id}
+          tabIndex={mode === item.id ? 0 : -1}
           className="food-truck-journey-panel"
         >
-          {panels[item.id]}
+          {mode === item.id ? panels[item.id] : null}
         </div>
       ))}
     </div>

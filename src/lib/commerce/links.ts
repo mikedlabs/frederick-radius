@@ -72,6 +72,31 @@ export function isBrandedProvider(provider: CommerceProvider): boolean {
   return provider !== "website" && provider !== "other";
 }
 
+/**
+ * Whether a commerce URL opens a provider-wide search instead of this
+ * business's profile. Search handoffs are useful fallbacks, but they must not
+ * read like confirmed booking or ordering capabilities.
+ */
+export function isCommerceSearchLink(
+  link: Pick<CommerceLink, "provider" | "url">,
+): boolean {
+  let url: URL;
+  try {
+    url = new URL(link.url);
+  } catch {
+    return false;
+  }
+
+  const path = url.pathname.toLowerCase().replace(/\/+$/, "");
+  if (link.provider === "opentable") {
+    return path === "/s" || path.startsWith("/s/");
+  }
+  if (link.provider === "doordash") {
+    return path === "/search" || path.startsWith("/search/");
+  }
+  return false;
+}
+
 const SOURCE_LABELS: Record<NonNullable<CommerceLink["source"]>, string> = {
   owner: "Owner-provided",
   curated: "Curated link",
@@ -86,6 +111,9 @@ const SOURCE_LABELS: Record<NonNullable<CommerceLink["source"]>, string> = {
  *  explicit `label` on the link always wins. */
 export function commerceActionLabel(link: CommerceLink): string {
   if (link.label) return link.label;
+  if (isCommerceSearchLink(link)) {
+    return `Search ${providerLabel(link.provider)}`;
+  }
   switch (link.type) {
     case "order":
       return link.provider === "toast" ? "Order on Toast" : "Order online";
@@ -110,6 +138,9 @@ export function commerceActionLabel(link: CommerceLink): string {
 /** Short, provider-agnostic label for a card pill — cards stay calm, so the
  *  named-provider treatment (Toast etc.) is reserved for the detail page. */
 export function commerceCardLabel(link: CommerceLink): string {
+  if (isCommerceSearchLink(link)) {
+    return `Search ${providerLabel(link.provider)}`;
+  }
   switch (link.type) {
     case "order":
       return "Order";
@@ -213,6 +244,7 @@ export function resolveCommerceLinks(
     | "ubereats_url"
     | "grubhub_url"
   >,
+  supplemental: CommerceLink[] = [],
 ): CommerceLink[] {
   const seen = new Set<string>();
   const out: CommerceLink[] = [];
@@ -225,8 +257,12 @@ export function resolveCommerceLinks(
     out.push(l);
   };
 
-  // Curated first (authoritative), then legacy fill-ins.
+  // Curated first (authoritative), then source-backed enrichment and legacy
+  // fill-ins. Supplemental links let official-site extraction participate in
+  // this one model without teaching the client-safe place catalog about the
+  // server-only business-info file.
   for (const l of place.commerce_links ?? []) add(normalizeLink(l, place.slug));
+  for (const l of supplemental) add(normalizeLink(l, place.slug));
   for (const l of legacyCommerceLinks(place as Place)) add(l);
 
   return out;

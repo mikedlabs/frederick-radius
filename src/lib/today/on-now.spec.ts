@@ -7,6 +7,7 @@ import {
   marketEndMinutes,
   marketTimingAt,
   marketWindowMinutes,
+  itemizedTodayUtilitySummary,
   todayUtilityBandLabel,
   NEXT_DRAW_WINDOW_MIN,
   type OnNowEvent,
@@ -251,5 +252,27 @@ describe("todayUtilityBandLabel", () => {
 
   it("uses the live label only when a current item exists", () => {
     expect(todayUtilityBandLabel({ currentCount: 1, laterCount: 2, todayCount: 0 })).toBe("Available now");
+  });
+});
+
+describe("itemizedTodayUtilitySummary", () => {
+  it("keeps later counts attached to their nouns when something is live", () => {
+    expect(
+      itemizedTodayUtilitySummary({
+        current: ["16 happy hours"],
+        later: ["8 happy hours later", "5 specials later"],
+        today: [],
+      }),
+    ).toBe("16 happy hours · 8 happy hours later · 5 specials later");
+  });
+
+  it("uses the itemized later list when nothing is live", () => {
+    expect(
+      itemizedTodayUtilitySummary({
+        current: [],
+        later: ["2 markets later", "Parking plan for tonight"],
+        today: ["3 specials today"],
+      }),
+    ).toBe("2 markets later · Parking plan for tonight");
   });
 });

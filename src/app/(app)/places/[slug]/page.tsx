@@ -3,12 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AlertCircle, Apple, ArrowRight, Car, ChevronDown, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
-import { resolveCommerceLinks } from "@/lib/commerce/links";
+import { isCommerceSearchLink, resolveCommerceLinks } from "@/lib/commerce/links";
 import LiveOpenStatus from "@/components/place/LiveOpenStatus";
 import HoursBlock from "@/components/place/HoursBlock";
 import GoogleHours from "@/components/place/GoogleHours";
@@ -26,8 +26,10 @@ import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
 import PlaceMarginTools from "@/components/place/PlaceMarginTools";
 import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
-import { businessInfoFor } from "@/lib/loaders/businessInfo";
-import { FOOD_CATS } from "@/lib/place-actions";
+import {
+  businessInfoFor,
+  commerceLinksFromBusinessInfo,
+} from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
@@ -175,7 +177,29 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   // Commerce (menu / order / reserve / delivery / catering) is now one unified
   // section driven by the normalized model, which folds in the legacy *_url
   // fields — so it supersedes the old separate Reserve/Order rows.
-  const commerceLinks = resolveCommerceLinks(place);
+  const businessInfo = businessInfoFor(place.slug);
+  const commerceLinks = resolveCommerceLinks(
+    place,
+    commerceLinksFromBusinessInfo(place.slug, businessInfo),
+  );
+  const mobileCommerceLink =
+    commerceLinks.find(
+      (link) => link.type === "order" && !isCommerceSearchLink(link),
+    ) ??
+    commerceLinks.find(
+      (link) => link.type === "menu" && !isCommerceSearchLink(link),
+    ) ??
+    commerceLinks.find(
+      (link) => link.type === "reservation" && !isCommerceSearchLink(link),
+    );
+  const mobileCommerceAction =
+    mobileCommerceLink?.type === "order"
+      ? { icon: ShoppingBag, label: "Order" }
+      : mobileCommerceLink?.type === "menu"
+        ? { icon: UtensilsCrossed, label: "Menu" }
+        : mobileCommerceLink?.type === "reservation"
+          ? { icon: CalendarCheck, label: "Reserve" }
+          : null;
   // Drop anything that has already ended before mapping. place.upcoming_events
   // is baked at data-build time, so without this a venue can show a past
   // event as "upcoming" once the build is a day or two old (the audit caught
@@ -362,18 +386,22 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <div className="hidden grid-cols-2 gap-2 lg:grid">
         <ActionButton href={googleUrl} icon={Navigation} label="Directions" external primary />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
-        {/* On a food place the website IS the menu answer (we hold no menu
-            data), so the label says where the answer lives. */}
         {place.website && (
           <ActionButton
             href={place.website}
             icon={Globe}
-            label={FOOD_CATS.has(place.category) ? "Website · menu" : "Website"}
+            label="Website"
             external
           />
         )}
         <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
       </div>
+
+      <CommerceActions
+        links={commerceLinks}
+        placeSlug={place.slug}
+        placeName={place.name}
+      />
 
       {/* Personal "been here" marker — demoted below the directional/contact
           grid; it's a quiet device-local note, not a primary action. */}
@@ -395,7 +423,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         {hasFieldNotes(place.slug) ? (
           <FieldNotesCard slug={place.slug} />
         ) : (
-          <BusinessExtrasCard info={businessInfoFor(place.slug)} />
+          <BusinessExtrasCard info={businessInfo} />
         )}
         <LiveGooglePlaceContext slug={place.slug} showSummary={!desc} />
         <PlaceMarginTools slug={place.slug} />
@@ -428,12 +456,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           />
         ) : null;
       })()}
-
-      <CommerceActions
-        links={commerceLinks}
-        placeSlug={place.slug}
-        placeName={place.name}
-      />
 
       {parkActions.length > 0 && (
         <IntegrationRow
@@ -630,17 +652,23 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             ariaLabel={`Call ${place.name}`}
           />
         )}
-        {/* Same rule as the inline grid: on a food place the website IS
-            the menu answer, so the thumb bar says "Menu". */}
-        {place.website && (
+        {mobileCommerceLink && mobileCommerceAction ? (
+          <MobileBarLink
+            href={mobileCommerceLink.url}
+            icon={mobileCommerceAction.icon}
+            label={mobileCommerceAction.label}
+            ariaLabel={`${mobileCommerceAction.label} at ${place.name}`}
+            external
+          />
+        ) : place.website ? (
           <MobileBarLink
             href={place.website}
             icon={Globe}
-            label={FOOD_CATS.has(place.category) ? "Menu" : "Website"}
+            label="Website"
             ariaLabel={`${place.name} website`}
             external
           />
-        )}
+        ) : null}
       </MobileActionBar>
     </div>
   );

@@ -370,7 +370,7 @@ export default function WantAnswerPanel({
             </div>
           ) : (
             <p className="px-4 pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Nothing&rsquo;s open for this right now.
+              No match is confirmed open for this right now.
               {answer.later[0] ? ` Earliest: ${answer.later[0].name}, ${answer.later[0].fact.replace(/^Opens /, "").toLowerCase()}.` : ""}
             </p>
           )}

@@ -28,6 +28,18 @@ export const FOOD_TRUCK_SOURCES = {
     url: "https://calendar.google.com/calendar/ical/tlcdc0nla1hjvrf2n8lilf8m8c%40group.calendar.google.com/public/basic.ics",
     pageUrl: "https://www.springfieldmanor.com/event-calendar.html",
   },
+  steinhardt: {
+    id: "steinhardt-brewing",
+    label: "Steinhardt Brewing Company",
+    url: "https://www.steinhardtbrewing.com/food-trucks-1?format=json",
+    pageUrl: "https://www.steinhardtbrewing.com/food-trucks-1",
+  },
+  monocacy: {
+    id: "monocacy-brewing",
+    label: "Monocacy Brewing Company",
+    url: "https://monocacybrewing.com/events/?ical=1",
+    pageUrl: "https://monocacybrewing.com/events/",
+  },
 } as const;
 
 const MAX_SOURCE_BYTES = 1_500_000;
@@ -104,6 +116,17 @@ function safeHttpUrl(value: string | undefined): string | undefined {
   }
 }
 
+function safeOfficialPageUrl(value: string | undefined, officialPage: string): string | undefined {
+  if (!value) return undefined;
+  try {
+    const official = new URL(officialPage);
+    const parsed = new URL(decodeHtml(value), official);
+    return parsed.origin === official.origin ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function datePartsFromEnglishDate(value: string): { year: number; month: number; day: number } | null {
   const match = value.match(
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})\b/i,
@@ -168,8 +191,11 @@ export function parseCelebrateFrederickSchedule(html: string): FoodTruckSchedule
       startsAt,
       endsAt: easternWallToUtcISO(date.year, date.month, date.day, 20, 30),
       venueName: "Baker Park Bandshell",
+      venuePlaceSlug: "baker-park-bandshell",
       address: "121 N Bentz St, Frederick, MD 21701",
       municipality: "Frederick",
+      lat: 39.4162082,
+      lng: -77.4152966,
       vendors,
       sourceName: FOOD_TRUCK_SOURCES.celebrate.label,
       sourceUrl: FOOD_TRUCK_SOURCES.celebrate.url,
@@ -223,8 +249,11 @@ export function parseSpringfieldManorSchedule(ics: string): FoodTruckScheduleSto
       startsAt,
       endsAt,
       venueName: "Springfield Manor Winery Distillery Brewery",
+      venuePlaceSlug: "springfield-manor-thurmont",
       address: "11836 Auburn Rd, Thurmont, MD 21788",
       municipality: "Thurmont",
+      lat: 39.5589667,
+      lng: -77.4346912,
       vendors: [vendor(name)],
       sourceName: FOOD_TRUCK_SOURCES.springfield.label,
       sourceUrl: FOOD_TRUCK_SOURCES.springfield.pageUrl,
@@ -247,6 +276,107 @@ export function parseGrilledCheesePleaseSchedule(ics: string): FoodTruckSchedule
     sourceUrl: FOOD_TRUCK_SOURCES.grilledCheese.pageUrl,
     confidence: "vendor" as const,
   }));
+}
+
+type SquarespaceFoodTruckItem = {
+  id?: unknown;
+  title?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+  fullUrl?: unknown;
+  excerpt?: unknown;
+};
+
+/**
+ * Parse Steinhardt's food-truck-only Squarespace collection. The collection
+ * sometimes carries Squarespace's placeholder New York coordinates, so every
+ * stop is deliberately anchored to Steinhardt's verified Frederick address.
+ */
+export function parseSteinhardtSchedule(json: string): FoodTruckScheduleStop[] {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  if (!payload || typeof payload !== "object") return [];
+  const upcoming = (payload as { upcoming?: unknown }).upcoming;
+  if (!Array.isArray(upcoming)) return [];
+
+  return upcoming.flatMap((raw): FoodTruckScheduleStop[] => {
+    if (!raw || typeof raw !== "object") return [];
+    const item = raw as SquarespaceFoodTruckItem;
+    const name = typeof item.title === "string"
+      ? textFromHtml(item.title).slice(0, 120)
+      : "";
+    const startMs = typeof item.startDate === "number" ? item.startDate : NaN;
+    const start = new Date(startMs);
+    if (!name || !Number.isFinite(startMs) || !Number.isFinite(start.getTime())) return [];
+
+    const endMs = typeof item.endDate === "number" ? item.endDate : NaN;
+    const end = Number.isFinite(endMs) && endMs > startMs ? new Date(endMs) : undefined;
+    const excerpt = typeof item.excerpt === "string" ? item.excerpt : "";
+    const publishedLink = excerpt.match(/<a\b[^>]*href=["']([^"']+)["']/i)?.[1];
+    const eventPage = safeOfficialPageUrl(
+      typeof item.fullUrl === "string" ? item.fullUrl : undefined,
+      FOOD_TRUCK_SOURCES.steinhardt.pageUrl,
+    );
+    const publishedId = typeof item.id === "string" ? item.id : name;
+
+    return [{
+      id: stopId("steinhardt", publishedId, start.toISOString()),
+      title: `${name} at Steinhardt Brewing`,
+      startsAt: start.toISOString(),
+      endsAt: end?.toISOString(),
+      venueName: "Steinhardt Brewing Company",
+      venuePlaceSlug: "steinhardt-brewing-company-frederick",
+      address: "340 E Patrick St Suite 100-102, Frederick, MD 21701",
+      municipality: "Frederick",
+      lat: 39.4130741,
+      lng: -77.403639,
+      vendors: [vendor(name, publishedLink)],
+      sourceName: FOOD_TRUCK_SOURCES.steinhardt.label,
+      sourceUrl: eventPage ?? FOOD_TRUCK_SOURCES.steinhardt.pageUrl,
+      confidence: "venue",
+    }];
+  });
+}
+
+function vendorNameFromFoodTruckSummary(summary: string): string {
+  const marker = summary.match(/\bfood\s+truck\s*:\s*/i);
+  if (marker?.index != null) {
+    return cleanTruckName(summary.slice(marker.index + marker[0].length));
+  }
+  return cleanTruckName(summary);
+}
+
+/**
+ * Parse Monocacy's official mixed events calendar. Only explicitly named
+ * food-truck events are admitted; unrelated beer, music and trivia events
+ * remain in the broader event pipeline.
+ */
+export function parseMonocacyBrewingSchedule(ics: string): FoodTruckScheduleStop[] {
+  return parseICal(ics).flatMap((event): FoodTruckScheduleStop[] => {
+    if (!/\bfood\s+truck\b/i.test(event.summary)) return [];
+    const name = vendorNameFromFoodTruckSummary(event.summary);
+    if (!name) return [];
+    return [{
+      id: stopId("monocacy", event.uid, event.startsAtUtc),
+      title: `${name} at Monocacy Brewing`,
+      startsAt: event.startsAtUtc,
+      endsAt: event.endsAtUtc,
+      venueName: "Monocacy Brewing Company",
+      venuePlaceSlug: "monocacy-brewing-frederick",
+      address: "1781 N Market St, Frederick, MD 21701",
+      municipality: "Frederick",
+      lat: 39.4402298,
+      lng: -77.398855,
+      vendors: [vendor(name)],
+      sourceName: FOOD_TRUCK_SOURCES.monocacy.label,
+      sourceUrl: FOOD_TRUCK_SOURCES.monocacy.pageUrl,
+      confidence: "venue",
+    }];
+  });
 }
 
 function scheduleWindow(now: Date): { start: string; end: string } {
@@ -276,7 +406,7 @@ async function fetchSource(url: string): Promise<string> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        Accept: "text/html, text/calendar;q=0.9, */*;q=0.5",
+        Accept: "application/json, text/calendar;q=0.9, text/html;q=0.8, */*;q=0.5",
         "User-Agent": "FrederickRadius/1.0 schedule reader",
       },
       next: { revalidate: 900, tags: ["food-truck-source"] },
@@ -296,27 +426,58 @@ type SourceDefinition = {
   id: string;
   label: string;
   fetchUrl: string;
+  validate: (text: string) => boolean;
   parse: (text: string) => FoodTruckScheduleStop[];
 };
+
+function isCalendarPayload(text: string): boolean {
+  return /(?:^|\r?\n)BEGIN:VCALENDAR(?:\r?\n|$)/.test(text);
+}
+
+function isSteinhardtPayload(text: string): boolean {
+  try {
+    const payload = JSON.parse(text) as { upcoming?: unknown };
+    return Boolean(payload && Array.isArray(payload.upcoming));
+  } catch {
+    return false;
+  }
+}
 
 const SOURCE_DEFINITIONS: SourceDefinition[] = [
   {
     id: FOOD_TRUCK_SOURCES.celebrate.id,
     label: FOOD_TRUCK_SOURCES.celebrate.label,
     fetchUrl: FOOD_TRUCK_SOURCES.celebrate.url,
+    validate: (text) => /<table\b/i.test(text),
     parse: parseCelebrateFrederickSchedule,
   },
   {
     id: FOOD_TRUCK_SOURCES.springfield.id,
     label: FOOD_TRUCK_SOURCES.springfield.label,
     fetchUrl: FOOD_TRUCK_SOURCES.springfield.url,
+    validate: isCalendarPayload,
     parse: parseSpringfieldManorSchedule,
   },
   {
     id: FOOD_TRUCK_SOURCES.grilledCheese.id,
     label: FOOD_TRUCK_SOURCES.grilledCheese.label,
     fetchUrl: FOOD_TRUCK_SOURCES.grilledCheese.url,
+    validate: isCalendarPayload,
     parse: parseGrilledCheesePleaseSchedule,
+  },
+  {
+    id: FOOD_TRUCK_SOURCES.steinhardt.id,
+    label: FOOD_TRUCK_SOURCES.steinhardt.label,
+    fetchUrl: FOOD_TRUCK_SOURCES.steinhardt.url,
+    validate: isSteinhardtPayload,
+    parse: parseSteinhardtSchedule,
+  },
+  {
+    id: FOOD_TRUCK_SOURCES.monocacy.id,
+    label: FOOD_TRUCK_SOURCES.monocacy.label,
+    fetchUrl: FOOD_TRUCK_SOURCES.monocacy.url,
+    validate: isCalendarPayload,
+    parse: parseMonocacyBrewingSchedule,
   },
 ];
 
@@ -331,6 +492,9 @@ export async function buildFoodTruckSchedule(now = new Date()): Promise<FoodTruc
     }> => {
       try {
         const text = await fetchSource(source.fetchUrl);
+        if (!source.validate(text)) {
+          throw new Error("The source returned an unrecognized payload");
+        }
         const stops = source.parse(text).filter((stop) => inWindow(stop, window.start, window.end));
         return {
           stops,

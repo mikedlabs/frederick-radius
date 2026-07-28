@@ -40,6 +40,8 @@ import { evaluateDbHealth } from "@/lib/quality/db-health";
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import { readStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-store";
+import { evaluateFoodTruckScheduleHealth } from "@/lib/quality/food-truck-schedule-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +136,7 @@ export async function GET(request: Request) {
     prunedReports,
     dbHealth,
     tripwires,
+    storedFoodTruckSchedule,
   ] = await Promise.all([
     persistCurrentSnapshots(live.sources_succeeded).catch((err) => {
       console.error("[cron/data-health] snapshot persist failed:", err);
@@ -184,13 +187,25 @@ export async function GET(request: Request) {
         checks: [{ name: "tripwire-execution", green: false }],
       };
     }),
+    readStoredFoodTruckSchedule().catch((err) => {
+      console.error("[cron/data-health] food-truck schedule read failed:", err);
+      return null;
+    }),
   ]);
   const healthWorkMs = Date.now() - healthWorkStartedAt;
   const dbAnomalies = dbHealth.anomalies;
+  const foodTruckScheduleHealth =
+    evaluateFoodTruckScheduleHealth(storedFoodTruckSchedule);
 
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies, ...tripwires.anomalies];
+  const allAnomalies = [
+    ...anomalies,
+    ...dbAnomalies,
+    ...freshnessAnomalies,
+    ...foodTruckScheduleHealth.anomalies,
+    ...tripwires.anomalies,
+  ];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
   }
@@ -208,6 +223,7 @@ export async function GET(request: Request) {
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
     { name: "curated-freshness", green: freshnessAnomalies.length === 0 },
+    { name: "food-truck-schedules", green: foodTruckScheduleHealth.green },
     {
       name: "db-health",
       green: dbHealth.status === "available" && dbAnomalies.length === 0,
@@ -293,6 +309,15 @@ export async function GET(request: Request) {
       anomalies: freshnessAnomalies,
       live_sources_failed: live.sources_failed,
       live_sources_succeeded: live.sources_succeeded.length,
+    },
+    food_truck_schedules: {
+      green: foodTruckScheduleHealth.green,
+      generated_at: foodTruckScheduleHealth.generatedAt,
+      age_hours: foodTruckScheduleHealth.ageHours,
+      stop_count: foodTruckScheduleHealth.stopCount,
+      source_count: foodTruckScheduleHealth.sourceCount,
+      failed_sources: foodTruckScheduleHealth.failedSources,
+      anomalies: foodTruckScheduleHealth.anomalies,
     },
     db_health: {
       status: dbHealth.status,

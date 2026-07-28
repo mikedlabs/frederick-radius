@@ -46,6 +46,8 @@ import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import { getGeocodedScannerIncidents } from "@/lib/integrations/scannerIncidents";
+import { buildLiveIncidentSnapshot } from "@/lib/live/incidentSnapshot";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
   type PulseTile,
@@ -281,7 +283,7 @@ export default async function PulsePage() {
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidentsResult, outageResult, fcpsResult, fixit, safetyResult, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+  const [incidentsResult, outageResult, fcpsResult, fixit, safetyResult, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr, scannerIncidents] = await Promise.all([
     withTimeoutTracked(getChartIncidentsFrederickResult(), FEED_MS, { data: [], available: false }, () => {
       trafficAvailable = false;
       markDegraded();
@@ -340,9 +342,31 @@ export default async function PulsePage() {
     // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
     // expanded — the quiet explanation for Thurmont's helicopter days.
     withTimeout(getCampDavidTfr(), FEED_MS, null),
+    // Public-safe, block-level road incidents. Geocoding is county-gated and
+    // cached; the fusion step below adds MDOT context without exposing a more
+    // precise Scanner location.
+    withTimeout(getGeocodedScannerIncidents(), FEED_MS, []),
   ]);
 
   const incidents = incidentsResult.data;
+  const liveIncidentSnapshot = buildLiveIncidentSnapshot(
+    scannerIncidents,
+    incidentsResult,
+    marcNow,
+  );
+  const liveRoadIncidents = liveIncidentSnapshot.items;
+  const corroboratedRoadIncidents = liveRoadIncidents.filter(
+    (incident) => incident.status === "corroborated",
+  );
+  const activeRoadIncidents = corroboratedRoadIncidents.filter(
+    (incident) =>
+      incident.sources.some(
+        (source) =>
+          source.source === "frederick-scanner" &&
+          source.freshness.state === "fresh",
+      ),
+  );
+  const leadRoadIncident = liveRoadIncidents[0] ?? null;
   const outages = outageResult.data;
   const fcps = fcpsResult.data;
   const safety = safetyResult.data;
@@ -1517,16 +1541,26 @@ export default async function PulsePage() {
       : []),
     {
       key: "scanner",
-      label: "Scanner",
+      label: "Road incidents",
       iconName: "Radio",
-      countLabel: "On X",
+      countLabel:
+        liveIncidentSnapshot.totalCount > 0
+          ? `${liveIncidentSnapshot.totalCount} ${
+              liveIncidentSnapshot.totalCount === 1 ? "public report" : "public reports"
+            }`
+          : "No road reports to map",
       accent: "var(--app-cool)",
-      active: false,
+      active: activeRoadIncidents.length > 0,
       attention: false,
+      degraded: !liveIncidentSnapshot.chartAvailable,
       kind: "status",
-      sourceLabel: "Frederick Scanner · X",
-      peek: "Police, fire & EMS calls",
-      body: <ScannerTimeline />,
+      sourceLabel: "Frederick Scanner + MDOT CHART",
+      peek: leadRoadIncident
+        ? `${leadRoadIncident.kind} · ${leadRoadIncident.location}`
+        : liveIncidentSnapshot.chartAvailable
+          ? "The latest public response has no road report with a safe map location"
+          : "MDOT road context is unavailable",
+      body: <ScannerTimeline initial={liveIncidentSnapshot} />,
     },
   ];
 

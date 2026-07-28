@@ -13,8 +13,10 @@ import Link from "next/link";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { specimenLedger, type LedgerCell } from "@/lib/ui/specimenLedger";
 import { ticketStubDate, stubEyebrow } from "@/lib/ui/ticketStub";
+import { directionsHref } from "@/lib/map/directionsHref";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
 import { formatMapTimestamp } from "./mapContent";
+import { mapPopupSource } from "./mapPopupSource";
 
 /** Semantic color for a ledger cell's tone — open reads positive-green,
  *  the closing "hurry" cell reads warning, everything else stays muted
@@ -167,6 +169,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
 
 export function OsmPopup({ p }: { p: SelectedOsm }) {
   const cat = CATEGORY_BY_SLUG[p.category_slug];
+  const source = mapPopupSource(p.osm_id);
 
   // Community reports (the /report crowdsourced layer) — osm_id "report:…".
   // Caution styling + the photo/note + honest "Community report" provenance,
@@ -251,7 +254,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
   // with OSM, but they are not OpenStreetMap records. Keep the source visible
   // and linked as Mapillary's map-feature guidance requires, and do not build
   // a bogus openstreetmap.org/mly-* URL.
-  if (p.osm_id?.startsWith("mly-")) {
+  if (source.kind === "mapillary") {
     return (
       <div style={{ minWidth: 200, padding: 4 }}>
         <p style={{
@@ -271,7 +274,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
           Computer-detected · location may need field confirmation
         </p>
         <a
-          href="https://www.mapillary.com/"
+          href={source.href}
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: "inline-block", marginTop: 7, fontSize: 10, color: "var(--app-ink-3, #7A7975)" }}
@@ -281,6 +284,82 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       </div>
     );
   }
+
+  if (source.kind === "usgs" || source.kind === "maryland-imap") {
+    const isGauge = source.kind === "usgs";
+    return (
+      <div style={{ minWidth: 216, padding: 4 }}>
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool)", marginBottom: 4,
+        }}>
+          {isGauge ? "River gauge" : "EV charging"}
+        </p>
+        <strong style={{ display: "block", fontSize: 15, fontWeight: 600, color: "var(--app-ink)", fontFamily: SANS, ...clamp(2) }}>
+          {p.name}
+        </strong>
+        {p.address && (
+          <p style={{ fontSize: 12, margin: "6px 0 4px", color: "var(--app-ink-2)", lineHeight: 1.4 }}>
+            {p.address}
+          </p>
+        )}
+        {p.city && (
+          <p style={{ fontSize: 11, color: "var(--app-ink-3)", marginTop: 2 }}>
+            {p.city}
+          </p>
+        )}
+        <p style={{
+          marginTop: 7, fontSize: 10, fontWeight: 600,
+          textTransform: "uppercase", letterSpacing: "0.06em",
+          color: "var(--app-positive)",
+        }}>
+          Official public data
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+          {isGauge ? (
+            <Link
+              href="/rivers"
+              style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 700 }}
+            >
+              Live reading
+            </Link>
+          ) : (
+            <a
+              href={directionsHref(p.lat, p.lng)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 700 }}
+            >
+              Directions
+            </a>
+          )}
+          <a
+            href={source.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 10, color: "var(--app-ink-3)", marginLeft: "auto" }}
+          >
+            {source.label}
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const stableAmenity = new Set([
+    "bench",
+    "bike-parking",
+    "bike-repair",
+    "dog-waste",
+    "ev-charging",
+    "picnic",
+    "playground",
+    "recycling",
+    "restroom",
+    "trash",
+    "water",
+    "wifi",
+  ]).has(p.category_slug);
 
   return (
     <div style={{ minWidth: 200, padding: 4 }}>
@@ -298,7 +377,9 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         textTransform: "uppercase", letterSpacing: "0.06em",
         color: "var(--app-warning-press)",
       }}>
-        ⚠ Unverified · from OpenStreetMap · may be closed or stale
+        {stableAmenity
+          ? "Mapped public amenity · details may change"
+          : "Unverified listing · may be closed or stale"}
       </p>
       {p.cuisine && (
         <p style={{ fontSize: 11, marginTop: 4, color: "var(--app-ink-3, #7A7975)", textTransform: "capitalize", ...clamp(1) }}>
@@ -332,12 +413,12 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
           </a>
         )}
         <a
-          href={`https://www.openstreetmap.org/${p.osm_id}`}
+          href={source.href}
           target="_blank"
           rel="noopener noreferrer"
           style={{ fontSize: 10, color: "var(--app-ink-3, #7A7975)", marginLeft: "auto" }}
         >
-          OSM
+          Source
         </a>
       </div>
     </div>

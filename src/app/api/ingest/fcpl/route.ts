@@ -15,7 +15,11 @@ import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
-import { geocodePending } from "@/lib/ingest/geocode";
+import {
+  geocodeLimitForRemaining,
+  geocodePending,
+  type GeocodeStats,
+} from "@/lib/ingest/geocode";
 import { fcplMapFeed, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { verifyCronAuth } from "../_auth";
@@ -26,6 +30,26 @@ export const dynamic = "force-dynamic";
 
 const FEED_URL = "https://frederick.librarycalendar.com/events/feed/json";
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; library event index)";
+const GEOCODE_CAP = 800;
+const ROUTE_DEADLINE_MS = 285_000;
+
+type GeocodeRouteResult = GeocodeStats & { error?: string };
+
+function deferredGeocode(reason: "route-budget" | "upstream", error?: string): GeocodeRouteResult {
+  return {
+    fromCache: 0,
+    fromApi: 0,
+    failed: reason === "upstream" ? 1 : 0,
+    seeded: 0,
+    revalidated: 0,
+    repaired: 0,
+    cleared: 0,
+    status: "degraded",
+    degradedReason: reason,
+    budgetStopped: reason === "route-budget" ? 1 : 0,
+    error,
+  };
+}
 
 async function fetchFeed(): Promise<unknown[] | null> {
   const ctrl = new AbortController();
@@ -54,6 +78,7 @@ export async function GET(req: NextRequest) {
   if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
 
   const t0 = Date.now();
+  const routeDeadlineAt = t0 + ROUTE_DEADLINE_MS;
   // obs-2: record this run so a silent partial failure is visible in
   // ingest_runs. Fail-soft (no-op without a DB / on dry run).
   const runId = !dry && sql ? await startIngestRun(FCPL_SOURCE_DOMAIN) : null;
@@ -111,21 +136,50 @@ export async function GET(req: NextRequest) {
   }
 
   // Geocode pass after ingest (skipped on dry run).
-  let geocode = null;
+  let geocode: GeocodeRouteResult | null = null;
   if (!dry && sql) {
-    try {
-      geocode = await geocodePending(sql, 800);
-    } catch (err) {
-      geocode = { error: err instanceof Error ? err.message : "geocode failed" };
+    const geocodeLimit = geocodeLimitForRemaining(
+      routeDeadlineAt - Date.now(),
+      GEOCODE_CAP,
+    );
+    if (geocodeLimit === 0) {
+      geocode = deferredGeocode(
+        "route-budget",
+        "geocode deferred because the route budget was exhausted",
+      );
+    } else {
+      try {
+        geocode = await geocodePending(sql, geocodeLimit, {
+          deadlineAt: routeDeadlineAt,
+        });
+      } catch (err) {
+        geocode = deferredGeocode(
+          "upstream",
+          err instanceof Error ? err.message : "geocode failed",
+        );
+      }
     }
   }
+
+  const geocodeDegraded = geocode?.status === "degraded";
+  const geocodeDegradedReason =
+    geocode?.status === "degraded" ? geocode.degradedReason : undefined;
+  const geocodeError = geocode?.error;
+  const runError =
+    budgetStopped > 0
+      ? `time budget: stopped with ${budgetStopped} of ${mapped.length} rows remaining`
+      : geocodeDegraded
+        ? `geocode degraded: ${geocodeDegradedReason}${
+            geocodeError ? ` (${geocodeError})` : ""
+          }`
+        : undefined;
 
   await finishIngestRun(runId, {
     // A budget stop is loud, not "ok": the admin ingest_runs board must show
     // that rows were left on the table (the silent version of this cost two
     // months of library coverage).
-    status: budgetStopped > 0 ? "error" : "ok",
-    error: budgetStopped > 0 ? `time budget: stopped with ${budgetStopped} of ${mapped.length} rows remaining` : undefined,
+    status: budgetStopped > 0 ? "error" : geocodeDegraded ? "partial" : "ok",
+    error: runError,
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
     records_failed: failed,

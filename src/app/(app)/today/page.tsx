@@ -65,6 +65,8 @@ import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import ToolboxTeaser from "@/components/nav/ToolboxTeaser";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import PageChapter from "@/components/ui/PageChapter";
+import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
+import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 
 /**
  * Now — the daily briefing.
@@ -80,9 +82,10 @@ import PageChapter from "@/components/ui/PageChapter";
  *   5. Discovery      → one focused open-now shelf, ideas, and saved places
  *   6. Essentials     → standing utilities collapsed behind one clear row
  *
- * (The generated "best move now" card was removed 2026-06-18: /today is a place
- *  to FIND what you need, not a suggestion engine that tells you an idea you
- *  may already have. Finding, not telling.)
+ * (The old generated "best move now" card was removed 2026-06-18 because it
+ *  promoted ideas without enough evidence. Today may recommend carefully when
+ *  time, distance, availability, conditions, and source confidence support the
+ *  choice. It must explain the reason and stay quiet on low-confidence days.)
  *
  * What got cut in this pass:
  *   • Answers lead (AnswerCards) — the section only ever rendered the
@@ -434,7 +437,9 @@ export default async function HomePage() {
       >
         {/* Specialty guides are useful secondary doors, presented as one compact
             shelf with real local marks instead of competing promo cards. */}
-        <TodayLocalGuides />
+        <Suspense fallback={<TodayLocalGuides />}>
+          <TodayLocalGuidesWithSchedule now={now} />
+        </Suspense>
 
         {/* FROM YOUR SAVED + the save-derived shortcut stay together. Each
             self-hides independently, so an honest empty state never shows an
@@ -518,6 +523,25 @@ export default async function HomePage() {
 // components (TodayCard / TodayContext / RightNowBand) are unchanged.
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+
+/** Keep the external food-truck feeds off Today's critical rendering path.
+ * The generic guide row paints immediately; a stored or freshly assembled
+ * schedule upgrades it to the next published stop when available. */
+async function TodayLocalGuidesWithSchedule({ now }: { now: Date }) {
+  let nextStop: ReturnType<typeof nextPublishedFoodTruckStop> = null;
+  try {
+    const schedule = await getFoodTruckSchedule(now);
+    nextStop = nextPublishedFoodTruckStop(schedule.stops, now);
+  } catch {
+    // The live pin and local roster paths remain useful if a feed is unavailable.
+  }
+  return (
+    <TodayLocalGuides
+      nextFoodTruckStop={nextStop}
+      asOf={now.toISOString()}
+    />
+  );
+}
 
 /** Town label for an event. The City of Frederick reads "Downtown Frederick"
  *  (owner call, 2026-07-21: the dividing line is the city/county boundary, not

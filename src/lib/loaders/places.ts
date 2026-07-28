@@ -64,7 +64,10 @@ import {
   placementRejectionReason,
   type PlacementRejectionReason,
 } from "@/lib/placement-trust";
-import { getHoursAvailability } from "@/lib/hours-availability";
+import {
+  getHoursAvailability,
+  hasReliableHours,
+} from "@/lib/hours-availability";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 
@@ -1193,8 +1196,8 @@ export type RankingContext = {
   tags?: string[];
   limit?: number;
   /**
-   * Ranking profile. Default (undefined) keeps the legacy
-   * curation-led sort that every existing surface depends on. "visitor"
+   * Ranking profile. Default (undefined) uses the balanced curation,
+   * proximity, and open-status blend. "visitor"
    * switches to the blended four-signal recipe (ratings + local-favorite
    * + closest/open + moment-fit) tuned for a stranger asking "where
    * should I go right now?" — see visitorScore and getCuratedPicks.
@@ -1676,19 +1679,21 @@ export function nearbyOpenCounts(
   points: ReadonlyArray<{ lat: number; lng: number }>,
   radiusM: number,
   now: Date = new Date(),
-): { total: number; open: number }[] {
+): { total: number; reliable: number; open: number }[] {
   const decorated = publicPlaces()
     .filter(isRecommendable)
     .map((p) => decoratePlace(p, undefined, now));
   return points.map((pt) => {
     let total = 0;
+    let reliable = 0;
     let open = 0;
     for (const p of decorated) {
       if (haversineMeters({ lng: pt.lng, lat: pt.lat }, p.geom) > radiusM) continue;
       total++;
+      if (hasReliableHours(p, now)) reliable++;
       if (isOpenNow(p.open_status)) open++;
     }
-    return { total, open };
+    return { total, reliable, open };
   });
 }
 
@@ -1734,8 +1739,17 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     results.sort((a, b) => visitorScore(b, now) - visitorScore(a, now));
   } else {
     results.sort((a, b) => {
-      const sa = a.feature_score * 0.4 + proximityScore(a.distance_m) * 0.3 + openScore(a.open_status) * 0.3;
-      const sb = b.feature_score * 0.4 + proximityScore(b.distance_m) * 0.3 + openScore(b.open_status) * 0.3;
+      // Every axis must live on the same 0–1 scale. The old expression used
+      // feature_score (0–10) beside 0–1 proximity/open signals, so curation
+      // overwhelmed location and hours even when the user shared a precise
+      // origin. curationScore normalizes it and preserves the small,
+      // source-backed local-favorite lift.
+      const sa = curationScore(a.feature_score, a.local_favorite) * 0.4 +
+        proximityScore(a.distance_m) * 0.3 +
+        openScore(a.open_status) * 0.3;
+      const sb = curationScore(b.feature_score, b.local_favorite) * 0.4 +
+        proximityScore(b.distance_m) * 0.3 +
+        openScore(b.open_status) * 0.3;
       return sb - sa;
     });
   }

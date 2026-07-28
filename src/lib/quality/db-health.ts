@@ -14,6 +14,7 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import type { Anomaly } from "@/lib/integrations/feed-snapshot";
+import civicSources from "@/../config/civicengage_sources.json" with { type: "json" };
 
 type RawSql = NonNullable<ReturnType<typeof getSql>>;
 
@@ -91,28 +92,126 @@ export async function findRlsAnomalies(): Promise<Anomaly[]> {
 /** A source that exists in ingested_events but hasn't refreshed within this
  *  many hours is treated as stale (a daily cron that has silently died). */
 const INGEST_STALE_HOURS = 36;
+const INGEST_RUNNING_GRACE_MS = 10 * 60_000;
+const ACTIVE_CIVIC_SOURCE_DOMAINS = civicSources
+  .filter((source) => source.enabled)
+  .map((source) => source.domain);
+const ACTIVE_EVENT_HEALTH_SOURCES = [
+  ...ACTIVE_CIVIC_SOURCE_DOMAINS.map((domain) => ({
+    sourceDomain: domain,
+    runSlug: `civicengage:${domain}`,
+  })),
+  {
+    sourceDomain: "frederick.librarycalendar.com",
+    runSlug: "frederick.librarycalendar.com",
+  },
+  { sourceDomain: "fcvfra.com", runSlug: "fcvfra.com" },
+  {
+    sourceDomain: "CivicEngage aggregate",
+    runSlug: "civicengage:aggregate",
+  },
+];
 
 async function queryStaleIngestSources(
   sql: RawSql,
   maxAgeHours: number,
 ): Promise<Anomaly[]> {
+  const sourceDomains = ACTIVE_EVENT_HEALTH_SOURCES.map(
+    (source) => source.sourceDomain,
+  );
+  const runSlugs = ACTIVE_EVENT_HEALTH_SOURCES.map(
+    (source) => source.runSlug,
+  );
   const rows = (await sql`
-    SELECT source_domain, max(updated_at) AS last
-    FROM ingested_events
-    GROUP BY source_domain
-  `) as unknown as Array<{ source_domain: string; last: string | Date | null }>;
+    WITH active_sources AS (
+      SELECT *
+      FROM unnest(
+        ${sourceDomains}::text[],
+        ${runSlugs}::text[]
+      ) AS source(source_domain, run_slug)
+    ),
+    event_sources AS (
+      SELECT source_domain, max(updated_at) AS last_event_update
+      FROM ingested_events
+      GROUP BY source_domain
+    )
+    SELECT active_sources.source_domain,
+           event_sources.last_event_update,
+           latest_run.started_at AS last_run,
+           latest_run.ended_at AS last_run_ended,
+           latest_run.status AS last_run_status,
+           latest_run.records_failed AS last_run_records_failed,
+           latest_run.error AS last_run_error
+    FROM active_sources
+    LEFT JOIN event_sources
+      ON event_sources.source_domain = active_sources.source_domain
+    LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, status, records_failed, error
+      FROM ingest_runs
+      WHERE source_slug = active_sources.run_slug
+      ORDER BY started_at DESC
+      LIMIT 1
+    ) latest_run ON true
+  `) as unknown as Array<{
+    source_domain: string;
+    last_event_update: string | Date | null;
+    last_run: string | Date | null;
+    last_run_ended: string | Date | null;
+    last_run_status: string | null;
+    last_run_records_failed: number | null;
+    last_run_error: string | null;
+  }>;
   const cutoff = Date.now() - maxAgeHours * 3_600_000;
   const out: Anomaly[] = [];
   for (const r of rows) {
-    const lastMs = r.last ? new Date(r.last).getTime() : 0;
+    const lastRunMs = r.last_run ? new Date(r.last_run).getTime() : 0;
+    const lastEventMs = r.last_event_update
+      ? new Date(r.last_event_update).getTime()
+      : 0;
+    const lastMs = lastRunMs || lastEventMs;
+    const failedRecords = Number(r.last_run_records_failed ?? 0);
+    const runningTooLong =
+      r.last_run_status === "running" &&
+      Date.now() - lastRunMs > INGEST_RUNNING_GRACE_MS;
+    const incompleteOk =
+      r.last_run_status === "ok" && r.last_run_ended === null;
+
+    // A successful unchanged ingest is still a healthy refresh. Conversely,
+    // a fresh failed, partial, or orphaned heartbeat must not be hidden by an
+    // older event row. records_failed is authoritative even when an older
+    // route accidentally stamped the status "ok".
+    if (
+      lastRunMs >= cutoff &&
+      (r.last_run_status === "error" ||
+        r.last_run_status === "partial" ||
+        failedRecords > 0 ||
+        runningTooLong ||
+        incompleteOk)
+    ) {
+      const reason =
+        runningTooLong
+          ? "still marked running after the route deadline"
+          : incompleteOk
+            ? "marked ok without a completion timestamp"
+            : failedRecords > 0
+              ? `${failedRecords} records failed`
+              : r.last_run_error || r.last_run_status || "failed";
+      out.push({
+        source: r.source_domain,
+        kind: "live_source_failed",
+        detail: `Latest ingest heartbeat is not healthy: ${reason}.`,
+      });
+      continue;
+    }
+
     if (lastMs < cutoff) {
       const ageH = lastMs ? Math.round((Date.now() - lastMs) / 3_600_000) : null;
       out.push({
         source: r.source_domain,
         kind: "ingest_stale",
         detail: ageH
-          ? `No ingest in ~${ageH}h (last ${new Date(lastMs).toISOString()}); the cron for this source may be dead.`
-          : `Source present in ingested_events but has no updated_at — ingest may be broken.`,
+          ? `No ingest heartbeat in ~${ageH}h (last signal ${new Date(lastMs).toISOString()}); the cron for this source may be dead.`
+          : `Active source has neither an ingest heartbeat nor event data — ingest may never have completed.`,
       });
     }
   }
@@ -205,6 +304,10 @@ export type IngestRunSummary = {
 };
 
 const INGEST_STALE_MS = 36 * 3_600_000;
+const ACTIVE_INGEST_RUN_SOURCES = new Set([
+  "tripwires",
+  ...ACTIVE_EVENT_HEALTH_SOURCES.map((source) => source.runSlug),
+]);
 
 /**
  * obs-2 read side — the most recent `ingest_runs` row per source, so the admin
@@ -233,7 +336,7 @@ export async function getRecentIngestRuns(): Promise<IngestRunSummary[]> {
       error: string | null;
     }>;
     const nowMs = Date.now();
-    return rows.map((r) => {
+    return rows.filter((r) => ACTIVE_INGEST_RUN_SOURCES.has(r.source_slug)).map((r) => {
       const startedMs = r.started_at ? new Date(r.started_at).getTime() : 0;
       return {
         source: r.source_slug,

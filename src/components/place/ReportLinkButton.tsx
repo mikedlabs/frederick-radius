@@ -62,7 +62,7 @@ export default function ReportLinkButton({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col gap-2">
       <label htmlFor="report-link-note" className="text-[12px]" style={{ color: "var(--app-ink-2)" }}>
         Which link is broken? (optional)
       </label>

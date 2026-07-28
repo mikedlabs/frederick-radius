@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db/client";
 import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { cutAtWordBoundary } from "@/lib/slug";
+import { parseICalResult } from "@/lib/ingest/parser";
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic"] },
@@ -55,31 +56,44 @@ function inferMunicipality(address: string | undefined, fallback: string): strin
   return fallback;
 }
 
-type ICalEvent = {
-  type: "VEVENT";
-  summary: string;
-  description?: string;
-  start: Date;
-  end?: Date;
-  location?: string;
-  uid?: string;
-  url?: string;
-};
+export const ICAL_FETCH_TIMEOUT_MS = 15_000;
 
-function pickEvents(parsed: Record<string, unknown>): ICalEvent[] {
-  const out: ICalEvent[] = [];
-  for (const v of Object.values(parsed)) {
-    const item = v as { type?: string };
-    if (item?.type === "VEVENT") out.push(v as unknown as ICalEvent);
+async function fetchICal(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ICAL_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        Accept: "text/calendar, text/plain;q=0.9, */*;q=0.8",
+        "User-Agent": "FrederickRadius/1.0 (+https://frederickradius.app; event index)",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`iCal fetch failed with HTTP ${response.status}`);
+    }
+    return await response.text();
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error(`iCal fetch timed out after ${ICAL_FETCH_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return out;
 }
+
+export type IngestStatus = "ok" | "partial" | "error";
 
 export type IngestResult = {
   source_slug: string;
   records_in: number;
   records_upserted: number;
   records_failed: number;
+  /** Present on results produced here; optional for legacy fan-out fallbacks. */
+  status?: IngestStatus;
   error?: string;
 };
 
@@ -96,7 +110,14 @@ export async function ingestICal({
 }): Promise<IngestResult> {
   const db = getDb();
   if (!db) {
-    return { source_slug, records_in: 0, records_upserted: 0, records_failed: 0, error: "DATABASE_URL not configured" };
+    return {
+      source_slug,
+      records_in: 0,
+      records_upserted: 0,
+      records_failed: 0,
+      status: "error",
+      error: "DATABASE_URL not configured",
+    };
   }
 
   // Best-effort run telemetry. If this insert rejects (a DB hiccup), proceed
@@ -120,12 +141,20 @@ export async function ingestICal({
   let in_count = 0;
   let upserted = 0;
   let failed = 0;
+  let status: IngestStatus = "ok";
   let error: string | undefined;
+  let firstWriteError: string | undefined;
 
   try {
-    const ical = await import("node-ical");
-    const parsed = await ical.async.fromURL(url);
-    const events = pickEvents(parsed as unknown as Record<string, unknown>);
+    // Use the same ical.js-backed parser as the CivicEngage ingest. node-ical's
+    // dynamic import/fromURL path is not reliable in the bundled serverless
+    // runtime; platform fetch + the result-bearing parser keeps fetching and
+    // parsing explicit while preserving invalid-payload vs valid-empty.
+    const parsed = parseICalResult(await fetchICal(url));
+    if (!parsed.valid) {
+      throw new Error(`iCal parse failed: ${parsed.error}`);
+    }
+    const events = parsed.events;
     in_count = events.length;
     const now = new Date();
     const futureWindow = new Date(now);
@@ -133,15 +162,19 @@ export async function ingestICal({
 
     for (const e of events) {
       try {
-        const starts = new Date(e.start);
-        const ends = e.end ? new Date(e.end) : new Date(starts.getTime() + 2 * 60 * 60 * 1000);
+        const starts = new Date(e.startsAtUtc);
+        const ends = e.endsAtUtc ? new Date(e.endsAtUtc) : new Date(starts.getTime() + 2 * 60 * 60 * 1000);
         if (starts < futureWindow) continue;
 
-        const venue_name = (e.location ?? "").split(",")[0].trim() || "Frederick, MD";
-        const address = e.location ?? "";
+        const venue_name = (e.rawLocation ?? "").split(",")[0].trim() || "Frederick, MD";
+        const address = e.rawLocation ?? "";
         const description = (e.description ?? "").trim();
         const title = (e.summary ?? "").trim();
-        if (!title) { failed++; continue; }
+        if (!title) {
+          failed++;
+          firstWriteError ??= "event title was empty";
+          continue;
+        }
 
         const slug = slugify(title, dedupeKey(title, venue_name, starts).split("-").slice(-3).join(""));
         const category_slug = inferCategory(title, description);
@@ -155,6 +188,7 @@ export async function ingestICal({
           starts_at: starts,
           ends_at: ends,
           timezone: "America/New_York",
+          is_all_day: e.allDay,
           venue_name,
           address: address || "",
           municipality_slug,
@@ -167,9 +201,9 @@ category_slug: cat?.slug ?? "community",
           lat: defaultVenueLatLng.lat,
           audience: [],
           is_free: !/\$|\bticket\b|\bpaid\b/i.test(description),
-          ticket_url: e.url ?? null,
+          ticket_url: e.sourceUrl ?? null,
           source: source_slug,
-          source_record_id: e.uid ?? slug,
+          source_record_id: e.uid || slug,
           source_fetched_at: new Date(),
           confidence: 0.7,
           is_verified: false,
@@ -179,6 +213,7 @@ category_slug: cat?.slug ?? "community",
           set: {
             title, description: description || title,
             starts_at: starts, ends_at: ends,
+            is_all_day: e.allDay,
             venue_name, address: address || "",
             municipality_slug, // Fallback was "arts", which silently mislabeled every keyword-
 // less event (pancake breakfast, fundraiser, holiday tradition)
@@ -186,32 +221,45 @@ category_slug: cat?.slug ?? "community",
 // declared in src/data/categories.ts.
 category_slug: cat?.slug ?? "community",
             source_fetched_at: new Date(),
-            ticket_url: e.url ?? null,
+            ticket_url: e.sourceUrl ?? null,
             updated_at: new Date(),
           },
         });
 
         upserted++;
-      } catch {
+      } catch (err) {
         failed++;
+        firstWriteError ??= err instanceof Error ? err.message : String(err);
       }
+    }
+
+    if (failed > 0) {
+      status = upserted > 0 ? "partial" : "error";
+      const scope = upserted > 0 ? `${failed} of ${in_count}` : `all ${failed}`;
+      error = `${scope} event write${failed === 1 ? "" : "s"} failed`;
+      if (firstWriteError) error += `: ${firstWriteError}`;
     }
 
     if (runId) {
       await db.update(schema.ingestRuns)
         .set({
           ended_at: new Date(),
-          status: "ok",
+          status,
           records_in: in_count,
           records_upserted: upserted,
           records_failed: failed,
+          error: error ?? null,
         })
         .where(eq(schema.ingestRuns.id, runId));
     }
     await db.update(schema.dataSources)
-      .set({ last_run_at: new Date(), last_status: "ok" })
+      .set({
+        last_run_at: new Date(),
+        last_status: status === "ok" ? "ok" : `${status}: ${error!.slice(0, 200)}`,
+      })
       .where(eq(schema.dataSources.slug, source_slug));
   } catch (err) {
+    status = "error";
     error = err instanceof Error ? err.message : String(err);
     // These error-telemetry writes hit the same DB that likely just failed, so
     // they can reject too. Swallow that: the function must still RETURN its
@@ -220,7 +268,14 @@ category_slug: cat?.slug ?? "community",
     try {
       if (runId) {
         await db.update(schema.ingestRuns)
-          .set({ ended_at: new Date(), status: "error", error: error })
+          .set({
+            ended_at: new Date(),
+            status,
+            records_in: in_count,
+            records_upserted: upserted,
+            records_failed: failed,
+            error,
+          })
           .where(eq(schema.ingestRuns.id, runId));
       }
       await db.update(schema.dataSources)
@@ -231,7 +286,14 @@ category_slug: cat?.slug ?? "community",
     }
   }
 
-  return { source_slug, records_in: in_count, records_upserted: upserted, records_failed: failed, error };
+  return {
+    source_slug,
+    records_in: in_count,
+    records_upserted: upserted,
+    records_failed: failed,
+    status,
+    error,
+  };
 }
 
 // Silence unused-import warning for sql template tag (kept for future raw queries).

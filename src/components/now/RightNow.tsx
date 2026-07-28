@@ -182,11 +182,11 @@ export default function RightNow({
       : null,
   );
   // Sub-filters on the results page ("find more specific things"): a facet
-  // narrows within the craving (Food → Pizza), and Open now hides closed —
-  // ON by default so the page leads with what you can actually walk into.
+  // narrows within the craving (Food → Pizza), and Open now keeps only
+  // confirmed-open matches.
   const [facetKey, setFacetKey] = useState<string | null>(initialFacet ?? null);
-  // Show EVERYTHING by default (open first, closed clearly marked below) so you
-  // can see what's out there in general; the Open-now toggle narrows to open.
+  // Show EVERYTHING by default (confirmed open first; unknown and closed states
+  // retain their honest labels) so you can see what is available in the data.
   const [openOnly, setOpenOnly] = useState(false);
   // "Catch it before it closes" — narrow to places open but closing within the
   // hour. Off by default; the chip only appears when there ARE any (below).
@@ -542,7 +542,7 @@ export default function RightNow({
               {meal
                 ? openCount > 0
                   ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
-                  : `Nothing open ${meal.phrase} right now · ${sortLabel}`
+                  : `No matches are confirmed open ${meal.phrase} right now · ${sortLabel}`
                 : craving?.alwaysOpen
                   ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
                   : openOnly
@@ -771,17 +771,20 @@ export default function RightNow({
             {townName
               ? matched.length === 0
                 ? `Radius has no verified listing for ${activeNoun} in ${townName} yet.`
-                : `Radius found no ${openOnly && !closingSoonOnly ? "open " : ""}options for ${activeNoun} in ${townName} right now.`
+                : openOnly && !closingSoonOnly
+                  ? `No matches for ${activeNoun} in ${townName} are confirmed open right now.`
+                  : `Radius found no options for ${activeNoun} in ${townName} right now.`
               : closingSoonOnly
                 ? `Radius found no options for ${activeNoun} that are closing soon${hasFix ? " near you" : ""}.`
                 : openOnly && matched.length > 0
-                  ? `Radius found no open options for ${activeNoun} right now.`
+                  ? `No matches for ${activeNoun} are confirmed open right now.`
                   : meal
-                    ? `Radius found no open options for ${activeNoun} ${meal.phrase} near you right now.`
+                    ? `No matches for ${activeNoun} ${meal.phrase} are confirmed open near you right now.`
                     : `Radius found no options for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
           </p>
-          {/* Clear the town scope, the closing-soon filter, or (when Open-now hid
-              everything but closed matches exist) offer those — never dead-end. */}
+          {/* Clear the town scope, the closing-soon filter, or (when Open-now
+              hides matches that are closed or have unknown hours) offer the
+              complete result set — never dead-end. */}
           {townName ? (
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <button
@@ -819,7 +822,7 @@ export default function RightNow({
                 className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
                 style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
               >
-                Show all {matched.length}, including closed
+                Show all {matched.length} matches
               </button>
             )
           )}

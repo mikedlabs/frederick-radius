@@ -20,9 +20,15 @@ async function main() {
       `(${result.tokenUsage} tokens)`,
   );
   console.log(
-    process.env.OPENAI_API_KEY
-      ? "Full-text and semantic search are current."
-      : "Full-text search is current. Add OPENAI_API_KEY to backfill optional semantic vectors.",
+    !result.current
+      ? `${result.remaining} full-text documents remain for a later run.`
+      : result.embeddingWarning
+        ? result.embeddingWarning.message
+        : !result.embeddingEnabled
+          ? "Full-text search is current. Optional semantic vectors are not configured."
+          : result.embeddingCurrent
+          ? "The configured search index is current."
+          : `${result.embeddingRemaining} optional semantic vectors remain.`,
   );
 }
 

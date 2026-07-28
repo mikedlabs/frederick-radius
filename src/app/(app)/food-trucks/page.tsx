@@ -265,6 +265,7 @@ export default async function FoodTrucksPage({
     beacons: getFreshestBeaconByTruck(),
     schedule: getFoodTruckSchedule(),
   });
+  const nearbyAsOf = new Date().toISOString();
   const scheduledSlugs = new Set(
     schedule.stops.flatMap((stop) => stop.vendors.map((vendor) => vendor.slug).filter(Boolean) as string[]),
   );
@@ -327,7 +328,12 @@ export default async function FoodTrucksPage({
             Published stops come first. Live locations appear when a truck checks in.
           </p>
         </div>
-        <div className="food-truck-hero-lineup" aria-label="Local food-truck vendor identities">
+        <div
+          className="food-truck-hero-lineup"
+          role="region"
+          aria-label="Featured local food trucks"
+          tabIndex={0}
+        >
           {HERO_TRUCKS.map((truck, index) => (
             <div key={truck.slug} className="food-truck-hero-tile">
               <FoodTruckIdentity truck={truck} size="hero" priority={index < 2} />
@@ -340,7 +346,14 @@ export default async function FoodTrucksPage({
 
       <FoodTruckJourneys
         defaultMode={nearbyTrucks.length > 0 ? "near" : "week"}
-        nearby={<FoodTruckNearMe trucks={nearbyTrucks} accent={FOOD_ACCENT} />}
+        nearby={(
+          <FoodTruckNearMe
+            trucks={nearbyTrucks}
+            stops={schedule.stops}
+            asOf={nearbyAsOf}
+            accent={FOOD_ACCENT}
+          />
+        )}
         week={
           <section id="this-week" className="scroll-mt-24 space-y-4">
         <div className="flex items-end justify-between gap-4 border-b pb-3" style={{ borderColor: "var(--app-border)" }}>

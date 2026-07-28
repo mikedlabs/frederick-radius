@@ -68,4 +68,28 @@ test.describe("beer workspace deep links", () => {
     expect(pageErrors).toEqual([]);
     expect(hydrationErrors).toEqual([]);
   });
+
+  test("the random picker returns an actionable beer and brewery", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/beer#find-your-pour", { waitUntil: "domcontentloaded" });
+
+    const picker = page.locator("#find-your-pour");
+    await expect(picker).toBeVisible();
+
+    await picker.getByRole("button", { name: "Spin for a beer" }).click();
+    await expect(picker.getByRole("heading", { level: 3 })).toBeVisible();
+    await expect(picker.getByRole("link", { name: "Open brewery guide" })).toHaveAttribute(
+      "href",
+      /^\/places\/.+/,
+    );
+    await expect(picker.getByText(/catalog pick/i)).toBeVisible();
+
+    await picker.getByRole("button", { name: "A brewery" }).click();
+    await picker.getByRole("button", { name: "Spin for a brewery" }).click();
+    await expect(picker.getByRole("heading", { level: 3 })).toBeVisible();
+    await expect(picker.getByRole("link", { name: "Open brewery guide" })).toHaveAttribute(
+      "href",
+      /^\/places\/.+/,
+    );
+  });
 });

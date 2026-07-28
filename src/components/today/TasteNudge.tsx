@@ -12,9 +12,10 @@ import type { PlaceCardData } from "@/lib/loaders/places";
  * TasteNudge — a single quiet shortcut derived from the user's OWN saved places.
  * It tallies the dominant craving across what you've kept ("you keep a lot of
  * coffee") and links to that answer on /nearby (scoped to your home town when
- * set). This is FINDING from your own signal, not telling: it recommends no
- * specific place, names no pick, and only speaks once your saves show a clear
- * pattern. Fully self-hiding; client-only; never on the I-want grid's paint path.
+ * set). This is a restrained, explainable recommendation from the user's own
+ * signal: it names no unsupported pick and only speaks once the saves show a
+ * clear pattern. Fully self-hiding; client-only; never on the I-want grid's
+ * paint path.
  */
 const MIN_SAVED = 3; // don't speak until there's a real pattern
 const MIN_TOP = 3; // the winning craving needs at least this many matches

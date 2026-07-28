@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { FlightSlide } from "@/lib/beta-flight";
+import {
+  flightStatusLine,
+  type FlightSlide,
+} from "@/lib/beta-flight-shared";
 
 /**
  * CoverFlight — the beta cover's photographic plate as a slow flight over
@@ -21,16 +24,6 @@ import type { FlightSlide } from "@/lib/beta-flight";
 
 const DWELL_MS = 7_000;
 const FADE_MS = 900;
-
-function openLine(s: FlightSlide): string {
-  if (s.total === 0) return "No listed places sit within a half mile of this spot.";
-  const places = s.total === 1 ? "1 place" : `${s.total} places`;
-  const open =
-    s.open === 0 ? "None are open right now."
-    : s.open === 1 ? "1 is open right now."
-    : `${s.open} are open right now.`;
-  return `Radius knows the ${places} within a half mile of this spot. ${open}`;
-}
 
 export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
   const [active, setActive] = useState(0);
@@ -111,7 +104,7 @@ export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
         className="mt-2 text-center font-serif text-[13.5px] italic [text-wrap:balance]"
         style={{ color: "var(--app-ink-2)" }}
       >
-        {openLine(current)}
+        {flightStatusLine(current)}
       </figcaption>
       <span className="sr-only">
         Aerial photographs of Frederick taken by the guide&apos;s own drone, with live

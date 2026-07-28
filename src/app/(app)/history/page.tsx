@@ -280,7 +280,11 @@ export default async function HistoryPage({
             Frederick people
           </h2>
         </header>
-        <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <ul
+          className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+          aria-label="Frederick people"
+          tabIndex={0}
+        >
           {people.map((p) => (
             <HistoryArticle
               key={p.slug}

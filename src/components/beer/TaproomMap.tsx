@@ -1,79 +1,130 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
-import { useState } from "react";
-import { ArrowRight, Map as MapIcon } from "lucide-react";
+import { Map as MapIcon } from "lucide-react";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  breweryMapBounds,
+  breweryTownCounts,
+} from "@/lib/beer/brewery-map";
 import type { PlaceCardData } from "@/lib/loaders/places";
-
-/** The county brewery map stays tap-to-activate so Mapbox loads on demand. */
 
 const AppMapClient = dynamic(() => import("@/components/map/AppMapClient"), {
   ssr: false,
   loading: () => (
     <div
-      className="flex h-[62vh] min-h-[380px] w-full items-center justify-center border"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      className="grid h-full min-h-[430px] w-full place-items-center"
+      style={{
+        color: "var(--app-ink-3)",
+        background:
+          "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-amber) 10%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 72%)",
+      }}
+      aria-busy="true"
+      aria-label="Loading the brewery map"
     >
-      <span className="text-[13px]">Loading map…</span>
+      <span className="inline-flex items-center gap-2 text-[12px] font-medium">
+        <MapIcon className="h-4 w-4" aria-hidden />
+        Loading the county brewery map
+      </span>
     </div>
   ),
 });
 
 export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
-  const [open, setOpen] = useState(false);
   if (places.length === 0) return null;
 
+  const bounds = breweryMapBounds(places);
+  const townCounts = breweryTownCounts(places);
+  // This map has one subject. Brewer's Alley is stored as a restaurant and
+  // Springfield Manor as a winery in the general catalog, but both are part of
+  // this verified brewery guide. One marker language keeps the map legible.
+  const mapPlaces = places.map((place) => ({
+    ...place,
+    category: "brewery",
+  }));
+  const activeSlugs = mapPlaces.map((place) => place.slug);
+
   return (
-    <section id="taproom-map" aria-labelledby="taproom-map-heading" className="scroll-mt-24">
-      <header className="mb-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+    <section
+      id="taproom-map"
+      aria-labelledby="taproom-map-heading"
+      className="scroll-mt-24"
+      data-brewery-map-count={places.length}
+    >
+      <header className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
+          <p
+            className="mb-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-amber-text)" }}
+          >
+            <MapIcon className="h-3.5 w-3.5" aria-hidden />
+            County view
+          </p>
           <h2
             id="taproom-map-heading"
             className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px]"
             style={{ color: "var(--app-ink)" }}
           >
-            See every brewery on the map
+            The brewery map
           </h2>
         </div>
-        <p className="max-w-[22rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Open the county view to compare the downtown cluster with rural brewery stops.
+        <p
+          className="max-w-[28rem] text-[12px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          All {places.length} brewery guides start in view. Counted markers
+          keep close taprooms readable; tap one to open that part of the map.
         </p>
       </header>
 
-      {open ? (
-        <div
-          className="relative h-[62vh] min-h-[380px] w-full overflow-hidden border"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <AppMapClient places={places} fullBleed showSearchControls={false} />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="group grid min-h-[152px] w-full grid-cols-[110px_minmax(0,1fr)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] text-left text-[var(--app-ink)] transition sm:grid-cols-[190px_minmax(0,1fr)]"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span className="relative min-h-[152px] overflow-hidden" aria-hidden>
-            <Image
-              src="/images/seasons/summer/083.jpg"
-              alt=""
-              fill
-              sizes="(max-width: 640px) 110px, 190px"
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
-            />
-          </span>
-          <span className="flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6">
-            <span className="min-w-0">
-              <span className="flex items-center gap-2 text-[10px] font-semibold text-[var(--app-cool)]"><MapIcon className="h-3.5 w-3.5" aria-hidden />Interactive map</span>
-              <span className="mt-2 block text-[16px] font-semibold">Open the brewery map</span>
-              <span className="mt-1 block text-[10px] text-[var(--app-ink-3)]">{places.length} breweries pinned</span>
+      <div
+        className="mb-3 flex items-center gap-2 overflow-x-auto border-y py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ borderColor: "var(--app-border)" }}
+        role="region"
+        aria-label="Breweries by town"
+        tabIndex={0}
+      >
+        {townCounts.map(({ municipality, count }) => {
+          const town =
+            MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality;
+          return (
+            <span
+              key={municipality}
+              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[11px] font-semibold"
+              style={{
+                borderColor: "var(--app-border)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              {town}
+              <span
+                className="tabular-nums"
+                style={{ color: "var(--app-amber-text)" }}
+              >
+                {count}
+              </span>
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-[var(--app-brand-press)] transition group-hover:translate-x-1" aria-hidden />
-          </span>
-        </button>
-      )}
+          );
+        })}
+      </div>
+
+      <div
+        className="relative h-[clamp(430px,62vh,640px)] w-full overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{ borderColor: "var(--app-border-strong)" }}
+        role="region"
+        aria-label={`Interactive map of ${places.length} Frederick County breweries`}
+      >
+        <AppMapClient
+          places={mapPlaces}
+          fullBleed
+          showSearchControls={false}
+          compactSubjectMap
+          activeSlugs={activeSlugs}
+          initialBounds={bounds ?? undefined}
+          initialBoundsPadding={{ top: 24, right: 24, bottom: 96, left: 24 }}
+          cameraMinZoom={8.25}
+        />
+      </div>
     </section>
   );
 }
