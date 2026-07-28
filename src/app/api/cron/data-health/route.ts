@@ -6,46 +6,63 @@
  *      copy-scores.json) are regenerated at build time by `npm run
  *      dedup` / `npm run copy:scores`; this is the report only.
  *
- *   2. Feed-side: hydrate the rolling snapshot buffer from Postgres,
- *      pull every live feed, record fresh snapshots, compute anomaly
- *      flags, and fire a Slack alert when anything trips. Then prune
- *      snapshots older than 90 days so the table never grows
- *      unbounded.
+ *   2. Reporter-side: read the bounded feed-worker heartbeat and rolling
+ *      snapshots, run database/tripwire checks, deliver the one coherent
+ *      external report, and record the final board heartbeat.
  *
- * This route is the health signal for /admin/data-health and external
- * uptime checks. Hosted-only (Vercel cron); locally hit by hand.
+ * Fresh feed snapshotting and retention are independently scheduled routes.
+ * This keeps one database backlog or upstream fetch from consuming the final
+ * report's entire function window.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { PLACES } from "@/data/places";
 import PLACES_DFP_RAW from "@/data/places-dfp.json" with { type: "json" };
+import PLACES_CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import { buildDedup } from "@/lib/dedup";
 import { classifyDescription, type CopyQuality } from "@/lib/copy-quality";
 import { auditCoordDivergence, type CoordAuditPlace } from "@/lib/coord-audit";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
   getAnomalies,
-  hydrateSnapshots,
-  persistCurrentSnapshots,
-  pruneOldSnapshots,
+  hydrateSnapshotsStrict,
 } from "@/lib/integrations/feed-snapshot";
-import { prunePushLog } from "@/lib/push-fanout";
-import { pruneNfcEvents } from "@/lib/nfc-retention";
-import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
-import { curatedFreshnessAnomalies, liveSourceAnomalies } from "@/lib/quality/curated-freshness";
-import { pruneExpiredReports } from "@/lib/loaders/communityReports";
-import { evaluateDbHealth } from "@/lib/quality/db-health";
+import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
+import {
+  evaluateDbHealth,
+  getRecentIngestRuns,
+  type DbHealthEvaluation,
+} from "@/lib/quality/db-health";
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
-import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import {
+  startIngestRunStrict,
+  finishIngestRunStrict,
+} from "@/lib/ingest/run-log";
 import { readStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-store";
 import { evaluateFoodTruckScheduleHealth } from "@/lib/quality/food-truck-schedule-health";
+import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
+import { isGooglePlaceId } from "@/lib/provenance";
+import { withDeadlineOutcome } from "@/lib/promise-deadline";
+import {
+  DATA_HEALTH_FEEDS_RUN,
+  DATA_HEALTH_RETENTION_RUN,
+  evaluateDataHealthPhase,
+} from "@/lib/quality/data-health-phases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // tripwires add live fetches + one canary model call
+export const maxDuration = 90;
+
+const HYDRATE_DEADLINE_MS = 8_000;
+const DB_HEALTH_DEADLINE_MS = 18_000;
+const PHASE_HEARTBEAT_DEADLINE_MS = 8_000;
+const FOOD_TRUCK_DEADLINE_MS = 8_000;
+const TRIPWIRE_OUTER_DEADLINE_MS = 25_000;
+const DELIVERY_DEADLINE_MS = 32_000;
+const REPORT_HEARTBEAT_DEADLINE_MS = 8_000;
 
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
@@ -63,6 +80,20 @@ export async function GET(request: Request) {
   // current fresh-hours eligibility, the confidence distribution, and the
   // count of open/closed assertions whose hours verification is stale.
   const trust = computePlaceTrustReport();
+  const googleBackedSlugs = new Set(
+    (
+      PLACES_CLIENT_RAW as Array<{
+        slug: string;
+        google_place_id?: string;
+      }>
+    )
+      .filter((place) => isGooglePlaceId(place.google_place_id))
+      .map((place) => place.slug),
+  );
+  const hoursArtifact = summarizeHoursRefreshArtifact(
+    HOURS_REFRESH_RAW as Record<string, unknown>,
+    googleBackedSlugs,
+  );
 
   // Coordinate-divergence regression gate: a curated place whose
   // coordinates disagree with the geocoded DFP record for the same
@@ -88,110 +119,96 @@ export async function GET(request: Request) {
     200,
   );
 
-  // ─────────────────────────────────────────────────────
-  // Feed-side: hydrate, fetch, snapshot, detect, alert, prune.
-  // Each step is isolated so one slow/failing feed can't break
-  // the full health report. Missing DB infrastructure is the exception:
-  // without it, the DB checks were never evaluated, so the route returns 503.
-  // ─────────────────────────────────────────────────────
+  // Read the fresh worker's persisted snapshots, but never let a telemetry read
+  // hold the final reporter. The independently scheduled feed phase is the
+  // authoritative freshness heartbeat when this read misses its deadline.
   const hydrateStartedAt = Date.now();
-  await hydrateSnapshots().catch((err) => {
-    console.error("[cron/data-health] hydrate failed:", err);
-  });
+  const hydrateOutcome = await withDeadlineOutcome(
+    hydrateSnapshotsStrict(),
+    HYDRATE_DEADLINE_MS,
+  );
   const hydrateMs = Date.now() - hydrateStartedAt;
-  const liveFetchStartedAt = Date.now();
-  const live = await getLiveEvents(60).catch((err) => {
-    console.error("[cron/data-health] live fetch failed:", err);
-    return { events: [], sources_succeeded: [], sources_failed: ["getLiveEvents:threw"] };
-  });
-  const liveFetchMs = Date.now() - liveFetchStartedAt;
   const anomalies = getAnomalies();
-  const validation = consumeFeedMetrics();
-  // Curated-freshness assertions (data audit meta-fix): expired committed
-  // snapshots, aging hand-verifications, and named live-feed failures become
-  // red lines on the same alert channel instead of silent blanks.
-  const freshnessAnomalies = [
-    ...curatedFreshnessAnomalies(),
-    ...liveSourceAnomalies(live.sources_failed),
-  ];
+  const freshnessAnomalies = curatedFreshnessAnomalies();
 
-  // These operations are independent after the fresh feed pull. Running them
-  // serially made the cron pay the sum of every network and database wait:
-  // retention alone could consume four statement-timeout windows before the
-  // tripwires even started. Each cleanup is batch-bounded in its helper, and
-  // Promise.all makes the route pay only the slowest independent operation.
+  // Read the worker heartbeats before starting the DB-heavy checks. Production
+  // commonly uses a max:1 Supabase pool; putting this required eight-second
+  // read behind several nominally concurrent queries could make a healthy
+  // worker look missing while its query simply waited in the connection queue.
   const healthWorkStartedAt = Date.now();
-  // Retention deletes are intentionally gated separately from health checks.
-  // Production has a large legacy snapshot backlog, and backup inventory is
-  // not exposed through the management connector. Keep the cron fast and
-  // non-destructive until a recent Supabase backup is confirmed, then enable
-  // bounded oldest-first cleanup with DATA_RETENTION_PRUNE=1.
   const retentionPruneEnabled =
     process.env.DATA_RETENTION_PRUNE === "1";
-  const [
-    persistedSnapshots,
-    prunedRows,
-    prunedPushRows,
-    prunedNfcEvents,
-    prunedReports,
-    dbHealth,
-    tripwires,
-    storedFoodTruckSchedule,
-  ] = await Promise.all([
-    persistCurrentSnapshots(live.sources_succeeded).catch((err) => {
-      console.error("[cron/data-health] snapshot persist failed:", err);
-      return 0;
-    }),
-    retentionPruneEnabled
-      ? pruneOldSnapshots(90).catch((err) => {
-          console.error("[cron/data-health] prune failed:", err);
-          return 0;
-        })
-      : Promise.resolve(0),
-    // push_log is append-only — every civic-alert fanout writes a row for
-    // dedupe. The same 90d retention window covers any re-publish window.
-    retentionPruneEnabled
-      ? prunePushLog(90).catch((err) => {
-          console.error("[cron/data-health] push_log prune failed:", err);
-          return 0;
-        })
-      : Promise.resolve(0),
-    // nfc_events is append-only (one row per member page view / action).
-    retentionPruneEnabled
-      ? pruneNfcEvents(90).catch((err) => {
-          console.error("[cron/data-health] nfc_events prune failed:", err);
-          return 0;
-        })
-      : Promise.resolve(0),
-    // Pending community reports are never touched; this helper removes only
-    // an intentionally small batch of expired/rejected rows.
-    retentionPruneEnabled
-      ? pruneExpiredReports().catch((err) => {
-          console.error("[cron/data-health] community report prune failed:", err);
-          return 0;
-        })
-      : Promise.resolve(0),
-    // DB-health guards (mig-6 + ING-5): both queries must complete before this
-    // gate can be green.
-    evaluateDbHealth(),
-    // End-to-end tripwires: the politely-degrading failure classes (photo
-    // rot, transit zero-routes, dead event assembly, degraded ask).
-    runTripwires().catch((err) => {
-      console.error("[cron/data-health] tripwires failed:", err);
-      return {
-        anomalies: [{
-          source: "tripwires",
+  const phaseRunsOutcome = await withDeadlineOutcome(
+    getRecentIngestRuns(),
+    PHASE_HEARTBEAT_DEADLINE_MS,
+  );
+  const [dbOutcome, tripwireOutcome, foodTruckOutcome] =
+    await Promise.all([
+      withDeadlineOutcome(
+        evaluateDbHealth(),
+        DB_HEALTH_DEADLINE_MS,
+      ),
+      withDeadlineOutcome(
+        runTripwires(),
+        TRIPWIRE_OUTER_DEADLINE_MS,
+      ),
+      withDeadlineOutcome(
+        readStoredFoodTruckSchedule(),
+        FOOD_TRUCK_DEADLINE_MS,
+      ),
+    ]);
+  const dbHealth: DbHealthEvaluation =
+    dbOutcome.status === "fulfilled"
+      ? dbOutcome.value
+      : {
+          status: "unavailable",
+          reason: "query_failed",
+          anomalies: [{
+            source: "database",
+            kind: "infrastructure_unavailable",
+            detail: "Database health did not finish inside the reporter deadline.",
+          }],
+        };
+  const tripwires =
+    tripwireOutcome.status === "fulfilled"
+      ? tripwireOutcome.value
+      : {
+          anomalies: [{
+            source: "tripwires",
+            kind: "tripwire_failed" as const,
+            detail: "The tripwire group did not finish inside the reporter deadline.",
+          }],
+          checks: [{ name: "tripwire-execution", green: false }],
+        };
+  const storedFoodTruckSchedule =
+    foodTruckOutcome.status === "fulfilled"
+      ? foodTruckOutcome.value
+      : null;
+  const phaseRuns =
+    phaseRunsOutcome.status === "fulfilled"
+      ? phaseRunsOutcome.value
+      : [];
+  const feedPhase = evaluateDataHealthPhase(
+    DATA_HEALTH_FEEDS_RUN,
+    phaseRuns,
+  );
+  const retentionPhase = retentionPruneEnabled
+    ? evaluateDataHealthPhase(
+        DATA_HEALTH_RETENTION_RUN,
+        phaseRuns,
+      )
+    : null;
+  const phaseAnomalies = [
+    feedPhase.anomaly,
+    retentionPhase?.anomaly ?? null,
+    ...(hydrateOutcome.status === "fulfilled"
+      ? []
+      : [{
+          source: "feed-snapshot-hydration",
           kind: "tripwire_failed" as const,
-          detail: `The data-health tripwire runner failed: ${err instanceof Error ? err.message : String(err)}`,
-        }],
-        checks: [{ name: "tripwire-execution", green: false }],
-      };
-    }),
-    readStoredFoodTruckSchedule().catch((err) => {
-      console.error("[cron/data-health] food-truck schedule read failed:", err);
-      return null;
-    }),
-  ]);
+          detail: "Snapshot hydration did not finish inside the reporter deadline.",
+        }]),
+  ].filter((anomaly): anomaly is NonNullable<typeof anomaly> => Boolean(anomaly));
   const healthWorkMs = Date.now() - healthWorkStartedAt;
   const dbAnomalies = dbHealth.anomalies;
   const foodTruckScheduleHealth =
@@ -205,6 +222,7 @@ export async function GET(request: Request) {
     ...freshnessAnomalies,
     ...foodTruckScheduleHealth.anomalies,
     ...tripwires.anomalies,
+    ...phaseAnomalies,
   ];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
@@ -222,12 +240,23 @@ export async function GET(request: Request) {
     { name: "provenance", green: !trust.provenance.below_gate },
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
+    { name: "feed-worker", green: feedPhase.green },
+    {
+      name: "snapshot-history",
+      green: hydrateOutcome.status === "fulfilled",
+    },
     { name: "curated-freshness", green: freshnessAnomalies.length === 0 },
     { name: "food-truck-schedules", green: foodTruckScheduleHealth.green },
     {
       name: "db-health",
       green: dbHealth.status === "available" && dbAnomalies.length === 0,
     },
+    ...(retentionPruneEnabled
+      ? [{
+          name: "data-retention",
+          green: retentionPhase?.green === true,
+        }]
+      : []),
     ...tripwires.checks,
   ];
   const red = gates.filter((g) => !g.green);
@@ -239,30 +268,57 @@ export async function GET(request: Request) {
   // delivery is this feature's entire point, and serverless drops floating
   // promises. Fail-soft inside; "skipped" without GITHUB_ALERTS_TOKEN.
   const deliveryStartedAt = Date.now();
-  const [githubDelivery] = await Promise.all([
-    deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
-    (async () => {
-      const runId = await startIngestRun("tripwires");
-      await finishIngestRun(runId, {
+  const [deliveryOutcome, reporterHeartbeatOutcome] = await Promise.all([
+    withDeadlineOutcome(
+      deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
+      DELIVERY_DEADLINE_MS,
+    ),
+    withDeadlineOutcome((async () => {
+      const runId = await startIngestRunStrict("tripwires");
+      if (!runId) throw new Error("Reporter heartbeat could not start.");
+      await finishIngestRunStrict(runId, {
         status: red.length === 0 ? "ok" : "error",
         records_in: gates.length,
         records_upserted: gates.length - red.length,
         records_failed: red.length,
         error: red.length > 0 ? headline : null,
       });
-    })(),
+    })(), REPORT_HEARTBEAT_DEADLINE_MS),
   ]);
+  const githubDelivery =
+    deliveryOutcome.status === "fulfilled"
+      ? deliveryOutcome.value
+      : "skipped";
+  const reporterHeartbeatRecorded =
+    reporterHeartbeatOutcome.status === "fulfilled";
   const deliveryMs = Date.now() - deliveryStartedAt;
+  const requiredPhaseUnavailable =
+    !feedPhase.green
+    || hydrateOutcome.status !== "fulfilled"
+    || (retentionPruneEnabled && retentionPhase?.green !== true);
 
   return NextResponse.json({
-    summary: { headline, gates, github_delivery: githubDelivery },
+    summary: {
+      headline,
+      gates,
+      github_delivery: githubDelivery,
+      reporter_heartbeat_recorded: reporterHeartbeatRecorded,
+    },
     computed_at: new Date().toISOString(),
     timing_ms: {
       total: Date.now() - startedAt,
       hydrate_snapshots: hydrateMs,
-      live_feed_fetch: liveFetchMs,
       concurrent_health_work: healthWorkMs,
       github_delivery: deliveryMs,
+      deadlines: {
+        hydrate_snapshots: HYDRATE_DEADLINE_MS,
+        db_health: DB_HEALTH_DEADLINE_MS,
+        phase_heartbeats: PHASE_HEARTBEAT_DEADLINE_MS,
+        food_truck_schedule: FOOD_TRUCK_DEADLINE_MS,
+        tripwires: TRIPWIRE_OUTER_DEADLINE_MS,
+        github_delivery: DELIVERY_DEADLINE_MS,
+        reporter_heartbeat: REPORT_HEARTBEAT_DEADLINE_MS,
+      },
     },
     places: PLACES.length,
     dedup: { clusters, folded },
@@ -276,6 +332,16 @@ export async function GET(request: Request) {
       below_gate: trust.fresh_hours.below_gate,
       checked_at: trust.fresh_hours.checked_at,
       source: trust.fresh_hours.source,
+      refresh_cycle: hoursArtifact.cycle,
+      refresh_rows: {
+        expected: hoursArtifact.expectedGoogleBackedPlaces,
+        fresh: hoursArtifact.freshRefreshRows,
+        with_fresh_schedule: hoursArtifact.freshRows,
+        invalid_timestamps: hoursArtifact.invalidTimestamps,
+        unmatched: hoursArtifact.unmatchedRows,
+        oldest_refresh: hoursArtifact.oldestRefresh ?? null,
+        newest_refresh: hoursArtifact.newestRefresh ?? null,
+      },
       note: "Only current verified schedules count. Stored or historical schedules do not.",
     },
     trust: {
@@ -295,20 +361,36 @@ export async function GET(request: Request) {
       flagged: coordFlags.slice(0, 25),
     },
     feeds: {
-      validation,
       anomalies,
       anomaly_count: anomalies.length,
-      persisted_snapshots: persistedSnapshots,
-      retention_prune_enabled: retentionPruneEnabled,
-      pruned_old_snapshots: prunedRows,
-      pruned_push_log: prunedPushRows,
-      pruned_nfc_events: prunedNfcEvents,
-      alert_sent: allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
+      snapshot_hydration: hydrateOutcome.status,
+      // The Slack helper is deliberately fail-soft and is not awaited. This is
+      // a request signal, not proof of delivery.
+      slack_alert_requested:
+        allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
     },
     curated_freshness: {
       anomalies: freshnessAnomalies,
-      live_sources_failed: live.sources_failed,
-      live_sources_succeeded: live.sources_succeeded.length,
+    },
+    phases: {
+      feeds: {
+        green: feedPhase.green,
+        status: feedPhase.run?.status ?? null,
+        started_at: feedPhase.run?.startedAt ?? null,
+        ended_at: feedPhase.run?.endedAt ?? null,
+        sources_checked: feedPhase.run?.recordsIn ?? 0,
+        snapshots_persisted: feedPhase.run?.recordsUpserted ?? 0,
+        failed: feedPhase.run?.recordsFailed ?? null,
+      },
+      retention: {
+        enabled: retentionPruneEnabled,
+        green: retentionPhase?.green ?? null,
+        status: retentionPhase?.run?.status ?? null,
+        started_at: retentionPhase?.run?.startedAt ?? null,
+        ended_at: retentionPhase?.run?.endedAt ?? null,
+        rows_deleted: retentionPhase?.run?.recordsUpserted ?? null,
+        failed: retentionPhase?.run?.recordsFailed ?? null,
+      },
     },
     food_truck_schedules: {
       green: foodTruckScheduleHealth.green,
@@ -323,7 +405,6 @@ export async function GET(request: Request) {
       status: dbHealth.status,
       unavailable_reason: dbHealth.reason,
       anomalies: dbAnomalies,
-      pruned_expired_reports: prunedReports,
       rls_unprotected: dbAnomalies.filter((a) => a.kind === "rls_unprotected").map((a) => a.source),
       ingest_stale: dbAnomalies.filter((a) => a.kind === "ingest_stale").map((a) => a.source),
     },
@@ -331,8 +412,13 @@ export async function GET(request: Request) {
       checks: tripwires.checks,
       anomalies: tripwires.anomalies,
     },
-    note: "This endpoint only recomputes health; commit-time scripts persist artifacts.",
+    note: "This final reporter is read-mostly. Feed snapshot writes and optional retention run in separately scheduled, bounded workers.",
   }, {
-    status: dbHealth.status === "unavailable" ? 503 : 200,
+    status:
+      dbHealth.status === "unavailable"
+      || requiredPhaseUnavailable
+      || !reporterHeartbeatRecorded
+        ? 503
+        : 200,
   });
 }

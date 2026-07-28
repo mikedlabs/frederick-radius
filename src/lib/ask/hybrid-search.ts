@@ -18,6 +18,7 @@ type DbRow = {
 };
 
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
+export const SEMANTIC_SQL_TIMEOUT_MS = 1_500;
 
 export function hybridSearchConfigured(): boolean {
   // The database-backed FTS path needs no AI credentials. OPENAI_API_KEY adds
@@ -73,6 +74,40 @@ function fuseRows(
   });
 }
 
+type CancellablePromiseLike<T> = PromiseLike<T> & {
+  cancel?: () => void;
+};
+
+async function optionalQueryBeforeDeadline<T>(
+  pending: CancellablePromiseLike<T>,
+  timeoutMs: number,
+): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const guarded = Promise.resolve(pending).then(
+    (value) => ({ status: "ok" as const, value }),
+    () => ({ status: "failed" as const }),
+  );
+  const timed = new Promise<{ status: "timeout" }>((resolve) => {
+    timer = setTimeout(() => resolve({ status: "timeout" }), timeoutMs);
+  });
+
+  try {
+    const outcome = await Promise.race([guarded, timed]);
+    if (outcome.status === "timeout") {
+      try {
+        pending.cancel?.();
+      } catch {
+        // Cancellation is best-effort. The rejection handler installed above
+        // still consumes a late database rejection after this function returns.
+      }
+      return null;
+    }
+    return outcome.status === "ok" ? outcome.value : null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Server-only Postgres FTS with optional pgvector recall. Full-text search is
  * always attempted first; missing credentials or an embedding outage returns
  * those exact local matches instead of erasing the entire retrieval result. */
@@ -111,7 +146,7 @@ export async function hybridPlaceSearch(query: string, limit = 12): Promise<Hybr
     });
     if (embedding.length !== 1536) return keywordRows.slice(0, bounded);
     const vector = `[${embedding.join(",")}]`;
-    const rows = await sql<DbRow[]>`
+    const pending = sql<DbRow[]>`
       select source_id, content, metadata,
         1 - (embedding <=> ${vector}::extensions.vector) as score
       from public.radius_search_documents
@@ -120,6 +155,11 @@ export async function hybridPlaceSearch(query: string, limit = 12): Promise<Hybr
       order by embedding <=> ${vector}::extensions.vector, source_id
       limit ${bounded}
     `;
+    const rows = await optionalQueryBeforeDeadline(
+      pending,
+      SEMANTIC_SQL_TIMEOUT_MS,
+    );
+    if (!rows) return keywordRows.slice(0, bounded);
     return fuseRows(keywordRows, mapRows(rows), bounded);
   } catch {
     return keywordRows.slice(0, bounded);

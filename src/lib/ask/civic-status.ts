@@ -193,7 +193,13 @@ function sortedIncidents(
     if (aDistance != null && bDistance != null && aDistance !== bDistance) {
       return aDistance - bDistance;
     }
-    return Date.parse(b.started_at) - Date.parse(a.started_at);
+    const aStarted = a.started_at
+      ? Date.parse(a.started_at)
+      : Number.NEGATIVE_INFINITY;
+    const bStarted = b.started_at
+      ? Date.parse(b.started_at)
+      : Number.NEGATIVE_INFINITY;
+    return bStarted - aStarted;
   });
 }
 

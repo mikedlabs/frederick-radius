@@ -217,7 +217,7 @@ export default async function BetaPage({
                   boxShadow: "var(--app-hi)",
                 }}
               >
-                Enter Radius
+                Back to access code
               </a>
             </div>
 

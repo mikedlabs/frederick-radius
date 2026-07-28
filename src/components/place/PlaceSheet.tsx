@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronDown, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import {
   groupPlaceActions,
@@ -52,11 +52,22 @@ type Props = {
   place: PlaceCardData | null;
   mapReturnTo?: string | null;
   onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-export default function PlaceSheet({ place, mapReturnTo, onClose }: Props) {
+export default function PlaceSheet({
+  place,
+  mapReturnTo,
+  onClose,
+  returnFocusRef,
+}: Props) {
   return (
-    <BottomSheet present={Boolean(place)} onClose={onClose} ariaLabel={place?.name ?? "Place details"}>
+    <BottomSheet
+      present={Boolean(place)}
+      onClose={onClose}
+      ariaLabel={place?.name ?? "Place details"}
+      returnFocusRef={returnFocusRef}
+    >
       {(dismiss) => place && (
         <PlaceSheetContent
           key={place.slug}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Baby, Beer, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Heart, Hotel, Landmark, Layers3, LayoutGrid, LocateFixed, Music, NotebookPen, Palette, Search as SearchIcon, Share2, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wine, X, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -27,6 +27,7 @@ import type { MapDiscovery } from "./mapDiscoveries";
 import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import { replaceMapUrl } from "@/lib/map-url-state";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -298,7 +299,6 @@ export default function MapDock(props: MapDockProps) {
     (group) => (props.amenityGroupCounts[group.key] ?? 0) > 0,
   );
   const router = useRouter();
-  const pathname = usePathname() ?? "/map";
   const sp = useSearchParams();
 
   const [pane, setPane] = useState<Pane | null>(null);
@@ -459,13 +459,11 @@ export default function MapDock(props: MapDockProps) {
     };
   }, []);
 
-  // ── URL writes: the EXISTING params, via replace so chip taps don't
-  //    stack history entries. ──
+  // URL state written by the map is more current than this component's last
+  // render. Mutate the live address bar so a time/category tap cannot drop a
+  // camera, layer, selection, or typed query that landed a moment earlier.
   const setParams = (mutate: (q: URLSearchParams) => void) => {
-    const q = new URLSearchParams(sp?.toString() ?? "");
-    mutate(q);
-    const s = q.toString();
-    router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+    replaceMapUrl(mutate);
   };
 
   /** Keep the map's typed query in its shareable URL. This is intentionally a

@@ -131,10 +131,10 @@ export default function LocationChip() {
           strokeWidth={2}
           aria-hidden
         />
-        <span className="hidden min-w-0 truncate min-[360px]:block sm:max-w-[160px]">
+        <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
           {label}
         </span>
-        <ChevronDown className="h-3 w-3 opacity-60" strokeWidth={2} aria-hidden />
+        <ChevronDown className="hidden h-3 w-3 opacity-60 min-[390px]:block" strokeWidth={2} aria-hidden />
       </button>
 
       {open && (

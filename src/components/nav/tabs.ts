@@ -33,16 +33,24 @@ export type Tab = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /**
+   * These four destinations are the permanent app shell. Next can prefetch
+   * their loading boundaries as soon as the nav enters the viewport, which
+   * makes a touch navigation register without waiting for the destination's
+   * live data. Keep speculative prefetching scoped to this short list rather
+   * than enabling it across event and place result grids.
+   */
+  prefetch: "auto";
   /** Switch from outline to filled when this tab is active. Only the
    *  icons that have a clean filled variant in Lucide set this true. */
   fillOnActive: boolean;
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
-  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
-  { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
-  { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
+  { href: "/today",     label: "Today",  icon: Sun,      prefetch: "auto", fillOnActive: false },
+  { href: "/map",       label: "Map",    icon: MapIcon,  prefetch: "auto", fillOnActive: false },
+  { href: "/events",    label: "Events", icon: Calendar, prefetch: "auto", fillOnActive: false },
+  { href: "/my-radius", label: "Saved",  icon: Bookmark, prefetch: "auto", fillOnActive: true  },
 ] as const;
 
 /**

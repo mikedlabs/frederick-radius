@@ -247,7 +247,10 @@ const md = [
   `| Snapshot rows | ${hoursArtifact.rows} |`,
   `| Rows matched to the public set | ${hoursArtifact.matchedRows} |`,
   `| Rows carrying a schedule | ${hoursArtifact.withSchedule} |`,
+  `| Rows refreshed within policy, including status-only results | ${hoursArtifact.freshRefreshRows} (${hoursArtifact.cycle.refreshCoveragePct}%) |`,
   `| Rows fresh within policy | ${hoursArtifact.freshRows} (${hoursArtifact.coveragePct}%) |`,
+  `| Seven-day cycle state | ${hoursArtifact.cycle.state} |`,
+  `| Cycle buckets meeting the minimum write ratio | ${hoursArtifact.cycle.completedDays} / ${hoursArtifact.cycle.days} |`,
   `| Stale rows | ${hoursArtifact.staleRows} |`,
   `| Invalid verification timestamps | ${hoursArtifact.invalidTimestamps} |`,
   `| Unmatched rows | ${hoursArtifact.unmatchedRows} |`,
@@ -255,6 +258,21 @@ const md = [
   hoursArtifact.rows === 0
     ? "**Blocked:** the committed artifact contains metadata only. Do not weaken the freshness gate or invent schedules."
     : `Oldest refresh: ${hoursArtifact.oldestRefresh ?? "none"}. Newest refresh: ${hoursArtifact.newestRefresh ?? "none"}.`,
+  "",
+  "| Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |",
+  "| ---: | ---: | ---: | ---: | --- |",
+  ...hoursArtifact.cycle.buckets.map(
+    (bucket) =>
+      `| ${bucket.cycleDay} | ${bucket.expected} | ${bucket.refreshed} | ${bucket.withSchedule} | ${bucket.complete ? "yes" : "no"} |`,
+  ),
+  "",
+  hoursArtifact.cycle.state === "warming"
+    ? "The first complete seven-day pass is still warming up. Missing buckets are visible, but they are not called failed until the cycle window has elapsed."
+    : hoursArtifact.cycle.state === "stalled"
+      ? `**Stalled:** missing cycle days ${hoursArtifact.cycle.missingDays.join(", ") || "none"}; underfilled cycle days ${hoursArtifact.cycle.underfilledDays.join(", ") || "none"}. Check the Vercel writer before the next pull.`
+      : hoursArtifact.cycle.state === "healthy"
+        ? "Every cycle bucket meets the writer's minimum persistence ratio."
+        : "No current refresh bucket has reached the committed artifact.",
   "",
   "Live recovery path:",
   "",

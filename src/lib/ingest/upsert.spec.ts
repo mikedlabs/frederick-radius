@@ -7,8 +7,8 @@ function queryText(strings: TemplateStringsArray): string {
 }
 
 type State = {
-  raw?: { id: string; dtstamp: string };
-  normalized?: { category: string | null };
+  raw?: { id: string; dtstamp: string; sourceUrl?: string | null };
+  normalized?: { category: string | null; sourceUrl?: string | null };
 };
 
 function transactionalSql({
@@ -39,10 +39,13 @@ function transactionalSql({
               {
                 id: target.raw.id,
                 dtstamp: target.raw.dtstamp,
+                raw_source_url: target.raw.sourceUrl ?? null,
                 normalized_id: target.normalized
                   ? "normalized-event-1"
                   : null,
                 category: target.normalized?.category ?? null,
+                normalized_source_url:
+                  target.normalized?.sourceUrl ?? null,
               },
             ]
           : [],
@@ -53,12 +56,37 @@ function transactionalSql({
       target.raw = {
         id: "raw-event-1",
         dtstamp: String(parameters[4]),
+        sourceUrl: (parameters[2] as string | null) ?? null,
       };
       return Promise.resolve([{ id: target.raw.id }]);
     }
     if (text.includes("update raw_events")) {
-      if (target.raw) target.raw.dtstamp = String(parameters[2]);
+      if (target.raw) {
+        target.raw.sourceUrl = (parameters[0] as string | null) ?? null;
+        if (text.includes("raw_vevent")) {
+          target.raw.dtstamp = String(parameters[2]);
+        }
+      }
       return Promise.resolve([]);
+    }
+    if (
+      text.includes("update ingested_events") &&
+      text.includes("set source_url = case")
+    ) {
+      if (!target.normalized) return Promise.resolve([]);
+      const healSourceUrl = parameters[0] === true;
+      const sourceUrl = (parameters[1] as string | null) ?? null;
+      const healCategory = parameters[2] === true;
+      const category = (parameters[3] as string | null) ?? null;
+      target.normalized = {
+        sourceUrl: healSourceUrl
+          ? sourceUrl
+          : target.normalized.sourceUrl,
+        category: healCategory
+          ? category
+          : target.normalized.category,
+      };
+      return Promise.resolve([{ id: "normalized-event-1" }]);
     }
     if (
       text.includes("update ingested_events") &&
@@ -80,6 +108,7 @@ function transactionalSql({
         (parameters[13] as string | null) ?? null;
       const coverageComplete = parameters[14] !== false;
       target.normalized = {
+        sourceUrl: (parameters[3] as string | null) ?? null,
         category:
           target.normalized && !coverageComplete
             ? target.normalized.category
@@ -272,8 +301,12 @@ describe("upsertEvent transaction and reconciliation", () => {
         raw: {
           id: "raw-event-1",
           dtstamp: "2026-07-02T12:00:00.000Z",
+          sourceUrl: "https://calendar.example/event-1",
         },
-        normalized: { category: "community" },
+        normalized: {
+          category: "community",
+          sourceUrl: "https://calendar.example/event-1",
+        },
       },
     });
     const stats = emptyStats();
@@ -285,7 +318,7 @@ describe("upsertEvent transaction and reconciliation", () => {
         municipality: "frederick",
         category: "community",
       },
-      event(),
+      event({ sourceUrl: "https://calendar.example/event-1" }),
       stats,
     );
 
@@ -293,6 +326,46 @@ describe("upsertEvent transaction and reconciliation", () => {
     expect(db.begin).not.toHaveBeenCalled();
     expect(stats.rawUnchanged).toBe(1);
     expect(stats.normUpserted).toBe(0);
+  });
+
+  it("heals a corrected official URL without requiring a DTSTAMP change", async () => {
+    const db = transactionalSql({
+      initial: {
+        raw: {
+          id: "raw-event-1",
+          dtstamp: "2026-07-02T12:00:00.000Z",
+          sourceUrl: "/common/modules/iCalendar/iCalendar.aspx",
+        },
+        normalized: {
+          category: "community",
+          sourceUrl: "/common/modules/iCalendar/iCalendar.aspx",
+        },
+      },
+    });
+    const stats = emptyStats();
+    const officialUrl =
+      "https://www.cityoffrederickmd.gov/calendar.aspx?EID=22352";
+
+    await upsertEvent(
+      db.sql,
+      {
+        sourceDomain: "www.cityoffrederickmd.gov",
+        municipality: "frederick",
+        category: "community",
+      },
+      event({ sourceUrl: officialUrl }),
+      stats,
+    );
+
+    expect(db.state()).toMatchObject({
+      raw: { sourceUrl: officialUrl },
+      normalized: { sourceUrl: officialUrl },
+    });
+    expect(stats).toMatchObject({
+      rawUpdated: 1,
+      rawUnchanged: 0,
+      normUpserted: 1,
+    });
   });
 
   it("resets coordinates and geocoded_at only when the normalized address changes", async () => {

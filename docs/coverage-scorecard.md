@@ -7,7 +7,7 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-07-27 — 1613 places._
+_Generated 2026-07-28 — 1613 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -38,12 +38,27 @@ artifact current.
 | Snapshot rows | 216 |
 | Rows matched to the public set | 212 |
 | Rows carrying a schedule | 167 |
+| Rows refreshed within policy, including status-only results | 212 (13.9%) |
 | Rows fresh within policy | 167 (11%) |
+| Seven-day cycle state | warming |
+| Cycle buckets meeting the minimum write ratio | 1 / 7 |
 | Stale rows | 0 |
 | Invalid verification timestamps | 0 |
 | Unmatched rows | 4 |
 
 Oldest refresh: 2026-07-27T12:49:47.617Z. Newest refresh: 2026-07-27T12:49:47.617Z.
+
+| Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
+| ---: | ---: | ---: | ---: | --- |
+| 0 | 225 | 0 | 0 | no |
+| 1 | 200 | 0 | 0 | no |
+| 2 | 221 | 0 | 0 | no |
+| 3 | 240 | 0 | 0 | no |
+| 4 | 212 | 212 | 167 | yes |
+| 5 | 234 | 0 | 0 | no |
+| 6 | 192 | 0 | 0 | no |
+
+The first complete seven-day pass is still warming up. Missing buckets are visible, but they are not called failed until the cycle window has elapsed.
 
 Live recovery path:
 

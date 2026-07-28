@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { OpenStatus } from "@/lib/hours";
-import { mayAssertNoneOpen, OPEN_NOW_MINIMUM_COVERAGE } from "@/lib/hours-availability";
+import {
+  mayAssertNoneOpen,
+  mayOfferOpenNow,
+  OPEN_NOW_MINIMUM_COVERAGE,
+  openNowCountLabel,
+} from "@/lib/hours-availability";
 
 /**
  * The trust contract behind every "nothing is open" line.
@@ -46,5 +51,29 @@ describe("mayAssertNoneOpen", () => {
 
   it("describes today's catalog: a single verified row cannot speak for the rest", () => {
     expect(mayAssertNoneOpen([closed, ...times(unverified, 99)])).toBe(false);
+  });
+});
+
+describe("openNowCountLabel", () => {
+  it("labels a positive count as confirmed rather than implying full coverage", () => {
+    expect(openNowCountLabel(3, false)).toBe("3 confirmed open");
+  });
+
+  it("only says none are open when the coverage policy allows that claim", () => {
+    expect(openNowCountLabel(0, true)).toBe("None open now");
+    expect(openNowCountLabel(0, false)).toBe("Open hours unconfirmed");
+  });
+});
+
+describe("mayOfferOpenNow", () => {
+  it("offers a known open result even when the rest of the set is unverified", () => {
+    expect(mayOfferOpenNow([open, ...times(unverified, 99)])).toBe(true);
+  });
+
+  it("withholds a zero-result filter when the result set cannot state hours", () => {
+    expect(mayOfferOpenNow(times(unverified, 12))).toBe(false);
+    expect(mayOfferOpenNow([...times(closed, 6), ...times(unverified, 4)])).toBe(
+      true,
+    );
   });
 });

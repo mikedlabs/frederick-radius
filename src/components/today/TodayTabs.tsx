@@ -108,7 +108,7 @@ export default function TodayTabs({
     (tonight.length > 0 ? (
       <div className="space-y-2">
         <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          No verified spots are open this late. Here is what is on tonight.
+          Current hours do not confirm an open spot this late. Here is what is on tonight.
         </p>
         <ul className="space-y-2">
           {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -117,7 +117,7 @@ export default function TodayTabs({
     ) : weekendEvents.length > 0 ? (
       <div className="space-y-2">
         <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          No verified spots are open right now. Here is what is on this weekend.
+          Current hours do not confirm an open spot right now. Here is what is on this weekend.
         </p>
         <ul className="space-y-2">
           {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}

@@ -194,13 +194,14 @@ function resolveOptions(options: IncidentFusionOptions): ResolvedOptions {
   };
 }
 
-function parseTime(value: string): number | null {
+function parseTime(value: string | null | undefined): number | null {
+  if (!value) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function freshness(
-  reportedAt: string,
+  reportedAt: string | null | undefined,
   nowMs: number,
   freshForMs: number,
 ): IncidentFreshness {
@@ -435,7 +436,20 @@ function roadTokens(value: string): Set<string> {
     .filter(
       (token) =>
         token.length > 1 &&
-        !new Set(["near", "at", "and", "the", "county", "frederick"]).has(token),
+        !new Set([
+          "near",
+          "at",
+          "and",
+          "the",
+          "county",
+          "frederick",
+          "st",
+          "rd",
+          "ave",
+          "blvd",
+          "hwy",
+          "pike",
+        ]).has(token),
     );
   const out = new Set<string>();
   for (let index = 0; index < tokens.length; index += 1) {
@@ -470,21 +484,36 @@ function candidates(
   for (const scanner of scanners) {
     const scannerTime = scanner.firstAtMs ?? scanner.atMs;
     if (scannerTime === null) continue;
+    if (
+      scanner.atMs === null ||
+      scanner.atMs > options.nowMs ||
+      options.nowMs - scanner.atMs > options.scannerFreshForMs
+    ) {
+      continue;
+    }
     for (const chart of charts) {
       if (chart.startedAtMs === null) continue;
+      if (
+        chart.startedAtMs > options.nowMs ||
+        options.nowMs - chart.startedAtMs > options.chartFreshForMs
+      ) {
+        continue;
+      }
       const semanticMatch = compatibility(scanner.incident, chart.incident);
       if (!semanticMatch) continue;
       const timeDeltaMs = Math.abs(scannerTime - chart.startedAtMs);
       if (timeDeltaMs > options.maxTimeDeltaMs) continue;
       const separation = distanceMeters(scanner.incident, chart.incident);
       if (separation > options.maxDistanceMeters) continue;
+      const roadOverlap = roadsOverlap(scanner, chart);
+      if (semanticMatch === "generic-road-incident" && !roadOverlap) continue;
       out.push({
         scanner,
         chart,
         distanceMeters: separation,
         timeDeltaMs,
         compatibility: semanticMatch,
-        roadOverlap: roadsOverlap(scanner, chart),
+        roadOverlap,
       });
     }
   }
@@ -561,14 +590,15 @@ function chartEvidence(
   row: ChartRow,
   options: ResolvedOptions,
 ): IncidentSourceEvidence {
+  const reportedAt = row.incident.started_at ?? "";
   return {
     source: "mdot-chart",
     label: "MDOT CHART",
     recordId: row.incident.id,
-    firstReportedAt: row.incident.started_at,
-    lastReportedAt: row.incident.started_at,
+    firstReportedAt: reportedAt,
+    lastReportedAt: reportedAt,
     freshness: freshness(
-      row.incident.started_at,
+      reportedAt,
       options.nowMs,
       options.chartFreshForMs,
     ),

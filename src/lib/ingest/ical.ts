@@ -146,10 +146,10 @@ export async function ingestICal({
   let firstWriteError: string | undefined;
 
   try {
-    // Use the same ical.js-backed parser as the CivicEngage ingest. node-ical's
-    // dynamic import/fromURL path is not reliable in the bundled serverless
-    // runtime; platform fetch + the result-bearing parser keeps fetching and
-    // parsing explicit while preserving invalid-payload vs valid-empty.
+    // Use the same runtime-safe parser as the CivicEngage ingest. Third-party
+    // iCal parser bundles have failed inside the serverless runtime; platform
+    // fetch plus the result-bearing parser keeps fetching and parsing explicit
+    // while preserving invalid-payload versus valid-empty.
     const parsed = parseICalResult(await fetchICal(url));
     if (!parsed.valid) {
       throw new Error(`iCal parse failed: ${parsed.error}`);

@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
@@ -38,14 +39,21 @@ type Props = {
   /** Open on a skeleton while the on-demand fetch is in flight. */
   pending?: boolean;
   onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-export default function EventSheet({ event, pending = false, onClose }: Props) {
+export default function EventSheet({
+  event,
+  pending = false,
+  onClose,
+  returnFocusRef,
+}: Props) {
   return (
     <BottomSheet
       present={Boolean(event) || pending}
       onClose={onClose}
       ariaLabel={event?.title ?? "Event details"}
+      returnFocusRef={returnFocusRef}
     >
       {(dismiss) =>
         event ? (

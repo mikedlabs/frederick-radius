@@ -276,6 +276,47 @@ describe("fuseScannerWithChartIncidents", () => {
     expect(result.unmatchedChartIncidentIds).toEqual(["chart-crash"]);
   });
 
+  it("does not corroborate source rows after either source freshness window", () => {
+    const result = fuseScannerWithChartIncidents(
+      [
+        scanner({
+          firstAt: "2026-07-27T15:00:00.000Z",
+          at: "2026-07-27T15:05:00.000Z",
+        }),
+      ],
+      [
+        chart({
+          started_at: "2026-07-27T15:02:00.000Z",
+        }),
+      ],
+      {
+        ...OPTIONS,
+        maxTimeDeltaMs: 4 * 60 * 60_000,
+        chartFreshForMs: 4 * 60 * 60_000,
+      },
+    );
+
+    expect(result.incidents[0].status).toBe("preliminary");
+    expect(result.matchedChartIncidentIds).toEqual([]);
+  });
+
+  it("requires a shared road token for a generic nearby CHART incident", () => {
+    const result = fuseScannerWithChartIncidents(
+      [scanner({ location: "100 block N Market St" })],
+      [
+        chart({
+          description: "Active incident",
+          road: "Bentz St",
+          location: "Bentz St",
+        }),
+      ],
+      OPTIONS,
+    );
+
+    expect(result.incidents[0].status).toBe("preliminary");
+    expect(result.matchedChartIncidentIds).toEqual([]);
+  });
+
   it("removes a repeated dispatch intersection without changing its safe location", () => {
     const result = fuseScannerWithChartIncidents(
       [

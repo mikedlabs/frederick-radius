@@ -33,6 +33,7 @@ type WantAnswer = {
   browseHref: string;
   contextLabel: string;
   contextSource?: "town" | "device" | "home" | "ip" | "county" | "none";
+  mayAssertNoneOpen?: boolean;
 };
 
 export type LiveShelf = {
@@ -40,6 +41,7 @@ export type LiveShelf = {
   href: string;
   contextLabel: string;
   contextSource: NonNullable<WantAnswer["contextSource"]>;
+  mayAssertNoneOpen: boolean;
 };
 
 /**
@@ -118,12 +120,14 @@ export function liveShelfFromWantAnswer(
       row.href,
     contextLabel: answer.contextLabel || "Across Frederick County",
     contextSource: answer.contextSource ?? "county",
+    mayAssertNoneOpen: answer.mayAssertNoneOpen === true,
   };
 }
 
 export function daypartEmptyCopy(
   contextLabel: string,
   countywide: boolean,
+  mayReportNoneOpen: boolean,
 ): string {
   const scope =
     countywide
@@ -133,7 +137,9 @@ export function daypartEmptyCopy(
         : contextLabel.startsWith("Near ")
           ? `${contextLabel.charAt(0).toLocaleLowerCase()}${contextLabel.slice(1)}`
           : `in ${contextLabel}`;
-  return `Nothing is confirmed open ${scope} right now.`;
+  return mayReportNoneOpen
+    ? `No place is open ${scope} right now.`
+    : `No place ${scope} has current hours showing it open.`;
 }
 
 /**
@@ -154,11 +160,13 @@ export function DaypartEmptyState({
   label = "Places open now",
   contextLabel = "Across Frederick County",
   countywide = true,
+  mayReportNoneOpen = false,
 }: {
   href?: string;
   label?: string;
   contextLabel?: string;
   countywide?: boolean;
+  mayReportNoneOpen?: boolean;
 } = {}) {
   return (
     <section aria-label="Open places right now" className="mt-6">
@@ -179,7 +187,11 @@ export function DaypartEmptyState({
         }}
       >
         <p className="text-[12px] leading-snug">
-          {daypartEmptyCopy(contextLabel, countywide)}
+          {daypartEmptyCopy(
+            contextLabel,
+            countywide,
+            mayReportNoneOpen,
+          )}
         </p>
       </div>
     </section>
@@ -288,6 +300,7 @@ export default function DaypartNeeds({
         label="Places open now"
         contextLabel={contextLabel}
         countywide={countywide}
+        mayReportNoneOpen={liveActive?.mayAssertNoneOpen === true}
       />
     );
   }

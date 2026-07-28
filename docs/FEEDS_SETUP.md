@@ -34,9 +34,8 @@ Status re-checked this date from a networked environment, app-style fetch:
   (1,700+ VEVENTs, times out the 8s live budget), but the JSON feed
   `https://frederick.librarycalendar.com/events/feed/json` answers **200,
   ~2.2 MB of `lc_event` items**. It's the #1 county-wide content target. Right
-  home is the **daily cron-ingest** (`/api/ingest/all`), not live fetch — parse
-  the JSON into the ingested store under the kept `fcpl` source key. This is the
-  recommended next build.
+  home is the **daily cron-ingest** (`/api/ingest/fcpl`), not live fetch. It
+  parses the JSON into the ingested store under the kept `fcpl` source key.
 - **DFP (Downtown Frederick Partnership) — still broken.**
   `downtownfrederick.org/events/?ical=1` returns **HTML, not iCal** (no Tribe
   export). Stays gated off; DFP events still flow via the daily ingest path.

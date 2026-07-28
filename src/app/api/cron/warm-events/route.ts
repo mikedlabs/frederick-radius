@@ -65,8 +65,10 @@ export async function GET(request: Request) {
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:
   //  - assembleUnifiedEvents → unified-events-v13   (/today, /events)
-  //  - getCachedLiveEvents(60) → live-events-v2/60   (/map + unified live set)
-  //  - getCachedLiveEvents(90) → live-events-v2/90   (/events/[slug] resolver)
+  //  - getCachedLiveEvents(60) → compact source pages (/map + unified set)
+  //  - getCachedLiveEvents(90) → compact source pages (/events/[slug])
+  // Each source page stays below the persistent-cache byte ceiling; warming
+  // both horizons prevents a visitor from paying either cold source read.
   const [unified, live60, live90] = await Promise.allSettled([
     assembleUnifiedEvents(new Date()),
     getCachedLiveEvents(60),

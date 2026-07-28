@@ -41,6 +41,14 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/cron/data-health-feeds",
+      "schedule": "5 9 * * *"
+    },
+    {
+      "path": "/api/cron/data-health-retention",
+      "schedule": "10 9 * * *"
+    },
+    {
       "path": "/api/cron/data-health",
       "schedule": "30 9 * * *"
     },

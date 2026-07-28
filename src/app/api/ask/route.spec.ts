@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   getNwsAlertsResult: vi.fn(),
   getAirQuality: vi.fn(),
   getFrederickOutagesResult: vi.fn(),
-  getChartIncidentsFrederickResult: vi.fn(),
+  getCurrentSituationSnapshot: vi.fn(),
+  selectChartIncidentsResult: vi.fn(),
   getFcpsAlertsResult: vi.fn(),
   getCivicPressReleasesResult: vi.fn(),
 }));
@@ -29,11 +30,15 @@ vi.mock("@/lib/integrations/firstenergy", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/integrations/firstenergy")>();
   return { ...actual, getFrederickOutagesResult: mocks.getFrederickOutagesResult };
 });
-vi.mock("@/lib/integrations/mdot-chart", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/integrations/mdot-chart")>();
+vi.mock("@/lib/live/currentSituation", () => ({
+  getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
+}));
+vi.mock("@/lib/live/currentSituationModel", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/live/currentSituationModel")>();
   return {
     ...actual,
-    getChartIncidentsFrederickResult: mocks.getChartIncidentsFrederickResult,
+    selectChartIncidentsResult: mocks.selectChartIncidentsResult,
   };
 });
 vi.mock("@/lib/integrations/fcps", async (importOriginal) => {
@@ -97,7 +102,8 @@ describe("/api/ask location policy", () => {
         munis: [],
       },
     });
-    mocks.getChartIncidentsFrederickResult.mockResolvedValue({
+    mocks.getCurrentSituationSnapshot.mockResolvedValue({});
+    mocks.selectChartIncidentsResult.mockReturnValue({
       available: true,
       data: [],
     });
@@ -246,7 +252,7 @@ describe("/api/ask location policy", () => {
         lng: -77.41062,
       },
     });
-    mocks.getChartIncidentsFrederickResult.mockResolvedValue({
+    mocks.selectChartIncidentsResult.mockReturnValue({
       available: true,
       data: [{
         id: "chart-1",
@@ -267,9 +273,8 @@ describe("/api/ask location policy", () => {
     const response = await POST(request());
     const body = await response.json();
 
-    expect(mocks.getChartIncidentsFrederickResult).toHaveBeenCalledWith({
-      deadlineMs: 2_000,
-    });
+    expect(mocks.getCurrentSituationSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.selectChartIncidentsResult).toHaveBeenCalledOnce();
     expect(mocks.askFrederick).not.toHaveBeenCalled();
     expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
     expect(mocks.getAirQuality).not.toHaveBeenCalled();

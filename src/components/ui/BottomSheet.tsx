@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
   type ReactNode,
 } from "react";
 import {
@@ -44,6 +45,12 @@ type Props = {
   onClose: () => void;
   /** Accessible name for the dialog. */
   ariaLabel: string;
+  /**
+   * The trigger captured before a lazy fallback takes focus. Without this,
+   * a lazily mounted sheet remembers the fallback's Close button, which is
+   * removed as soon as the real chunk arrives and cannot receive focus later.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   children: (dismiss: () => void) => ReactNode;
 };
 
@@ -51,7 +58,13 @@ const SheetDragContext = createContext<
   ((event: ReactPointerEvent<HTMLElement>) => void) | null
 >(null);
 
-export default function BottomSheet({ present, onClose, ariaLabel, children }: Props) {
+export default function BottomSheet({
+  present,
+  onClose,
+  ariaLabel,
+  returnFocusRef,
+  children,
+}: Props) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
@@ -63,7 +76,11 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
   const lastFocused = useRef<HTMLElement | null>(null);
   const openPath = useRef(pathname);
   const onCloseRef = useRef(onClose);
-  const [open, setOpen] = useState(false);
+  // A sheet that was already in the shell mounts closed and follows `present`
+  // below. A code-split sheet first mounts with `present=true`; initializing
+  // from that value prevents Suspense from replacing its fallback with one
+  // blank frame before the opening effect runs.
+  const [open, setOpen] = useState(present);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -75,7 +92,10 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
   useEffect(() => {
     if (present) {
       openPath.current = window.location.pathname;
-      lastFocused.current = (document.activeElement as HTMLElement | null) ?? null;
+      lastFocused.current =
+        returnFocusRef?.current ??
+        (document.activeElement as HTMLElement | null) ??
+        null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming presence prop to drive the open animation
       setOpen(true);
       haptic("light");
@@ -84,7 +104,7 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
       // focus restoration and the body-scroll lock cannot remain active.
       setOpen(false);
     }
-  }, [present]);
+  }, [present, returnFocusRef]);
 
   // App layouts persist across client navigations. A sheet that launched a
   // detail page must not remain mounted over the destination if a navigation

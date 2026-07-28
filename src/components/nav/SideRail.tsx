@@ -33,7 +33,7 @@ export default function SideRail() {
         }}
       >
         <ul className="flex flex-col items-stretch gap-1 px-1 py-1">
-          {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
+          {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
             const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
             const isRealActive = realIdx === idx;
             const active = isRealActive || pendingIdx === idx;
@@ -42,9 +42,7 @@ export default function SideRail() {
               <li key={href} className="flex">
                 <Link
                   href={href}
-                  prefetch={false}
-                  onMouseEnter={() => router.prefetch(href)}
-                  onFocus={() => router.prefetch(href)}
+                  prefetch={prefetch}
                   onPointerDown={() => {
                     if (!isAtDestination) setPendingIdx(idx);
                   }}

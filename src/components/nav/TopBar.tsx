@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, LayoutGrid, ChevronLeft } from "lucide-react";
-import SearchOverlay from "@/components/search/SearchOverlay";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { Search, LayoutGrid, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
@@ -16,6 +23,9 @@ import {
   type FindTarget,
 } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+
+const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
   return pathname === "/map"
@@ -38,9 +48,11 @@ export function topBarFindTarget(pathname: string): FindTarget {
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
+  const searchPathRef = useRef<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // Has the user navigated WITHIN the app since arriving? The TopBar lives in
   // the (app) layout, which persists across navigations, so counting pathname
@@ -84,6 +96,7 @@ export default function TopBar() {
       requestFind("map");
       return;
     }
+    searchPathRef.current = pathname;
     setSearchOpen(true);
   }, [pathname]);
 
@@ -121,12 +134,22 @@ export default function TopBar() {
       consumeFindRequest("global");
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      searchPathRef.current = pathname;
       setSearchOpen(true);
     };
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, []);
+  }, [pathname]);
+
+  // Search belongs to the route that opened it. The persistent app layout must
+  // not let a still-loading overlay appear over a different destination after
+  // browser Back or another navigation wins the race.
+  useEffect(() => {
+    if (!searchOpen || searchPathRef.current === pathname) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; discard the pending overlay before its lazy bundle resolves
+    setSearchOpen(false);
+  }, [pathname, searchOpen]);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -190,11 +213,11 @@ export default function TopBar() {
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-1.5 inline-flex h-11 items-center gap-1 rounded-full pl-1 pr-2.5 font-semibold tracking-tight transition active:scale-[0.96]"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-              <span className="text-[15px]">Back</span>
+              <span className="hidden text-[15px] min-[390px]:inline">Back</span>
             </button>
           ) : (
             <Link
@@ -346,11 +369,117 @@ export default function TopBar() {
         </div>
       </header>
 
-      <SearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        openerRef={searchOpenerRef}
-      />
+      {searchOpen ? (
+        <Suspense
+          fallback={(
+            <SearchOverlayFallback
+              onClose={closeSearch}
+              openerRef={searchOpenerRef}
+            />
+          )}
+        >
+          <SearchOverlay
+            open
+            onClose={closeSearch}
+            openerRef={searchOpenerRef}
+          />
+        </Suspense>
+      ) : null}
     </>
+  );
+}
+
+function SearchOverlayFallback({
+  onClose,
+  openerRef,
+}: {
+  onClose: () => void;
+  openerRef: RefObject<HTMLElement | null>;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useFocusTrap(dialogRef, true);
+
+  const dismiss = useCallback(() => {
+    onClose();
+    window.requestAnimationFrame(() => openerRef.current?.focus?.());
+  }, [onClose, openerRef]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      dismiss();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [dismiss]);
+
+  return (
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      id="radius-find-dialog"
+      className="fixed inset-0 z-[var(--z-overlay)] bg-[var(--app-bg)]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Loading search"
+    >
+      <div
+        className="mx-auto flex min-h-14 max-w-screen-sm items-center gap-3 px-4"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <Search
+          className="h-5 w-5 shrink-0"
+          strokeWidth={2}
+          style={{ color: "var(--app-brand-press)" }}
+          aria-hidden
+        />
+        <span
+          className="min-w-0 flex-1 font-serif text-[20px] font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Ask or find
+        </span>
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={dismiss}
+          className="grid h-11 w-11 place-items-center rounded-full border"
+          style={{
+            borderColor: "var(--app-border)",
+            color: "var(--app-ink-2)",
+          }}
+          aria-label="Close search"
+        >
+          <X className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </button>
+      </div>
+      <div className="mx-auto max-w-screen-sm px-4 pt-3" role="status" aria-live="polite">
+        <span className="sr-only">Loading search.</span>
+        <div
+          aria-hidden
+          className="h-12 w-full animate-pulse rounded-full"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+        <div
+          aria-hidden
+          className="mt-5 h-3 w-28 animate-pulse rounded-full"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+        <div
+          aria-hidden
+          className="mt-3 h-16 w-full animate-pulse rounded-[var(--app-radius-md)]"
+          style={{ background: "var(--app-bg-sunken)" }}
+        />
+      </div>
+    </div>
   );
 }

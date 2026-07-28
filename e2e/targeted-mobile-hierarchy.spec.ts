@@ -20,6 +20,9 @@ test("Events keeps discovery controls visible and nests display choices", async 
   await expect(filters.getByText("What", { exact: true })).toBeVisible();
   await expect(filters.getByText("When", { exact: true })).toBeVisible();
   await expect(filters.getByText("Where", { exact: true })).toBeVisible();
+  const dockBox = await page.locator(".eb-dock").boundingBox();
+  expect(dockBox, "expected the compact event controls to have a layout box").not.toBeNull();
+  expect(dockBox!.height).toBeLessThan(210);
 
   await expect(page.getByRole("button", { name: "List view" })).toBeHidden();
   await page.locator("summary").filter({ hasText: "Display" }).click();
@@ -53,8 +56,52 @@ test("Place field notes lead with visit decisions and disclose the rest", async 
   await expect(notes.getByText(/at the source/)).toBeVisible();
 });
 
+test("Saved keeps organizer controls behind one disclosure", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "fr:saved:v1",
+      JSON.stringify([
+        {
+          type: "place",
+          id: "cafe-nola",
+          saved_at: "2026-07-28T12:00:00.000Z",
+        },
+      ]),
+    );
+  });
+  await page.goto("/my-radius", { waitUntil: "domcontentloaded" });
+
+  await expect(page.getByRole("heading", { name: "Saved places" })).toBeVisible();
+  const organizer = page.locator("#saved-organizer");
+  await expect(organizer.locator("summary")).toContainText("Organize and revisit");
+  await expect(page.getByRole("tab", { name: "List" })).toBeHidden();
+  await organizer.locator("summary").click();
+  await expect(page.getByRole("tab", { name: "List" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Map" })).toBeVisible();
+});
+
 test.describe("compact page entrances", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
+
+  test("the narrow header keeps search, scope, and active alerts usable", async ({ page }) => {
+    await page.route("**/api/pulse/status", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ active: true, count: 2, tone: "alert", ok: true }),
+      });
+    });
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+
+    const search = page.getByRole("button", { name: "Ask or find across Frederick County" });
+    const scope = page.getByRole("button", { name: /Change town or location scope/ });
+    const alerts = page.getByRole("link", { name: /County alerts: 2 active items/ });
+    await expect(search).toBeVisible();
+    await expect(scope).toBeVisible();
+    await expect(alerts).toBeVisible();
+    expect((await scope.boundingBox())?.width ?? 0).toBeLessThanOrEqual(50);
+    expect((await alerts.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(40);
+  });
 
   test("Dear Frederick puts the submission path before the lower quarter", async ({ page }) => {
     await page.goto("/dear-frederick", { waitUntil: "domcontentloaded" });

@@ -25,7 +25,11 @@ vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
 }));
 
-import { fuseRankedIds, hybridPlaceSearch } from "./hybrid-search";
+import {
+  fuseRankedIds,
+  hybridPlaceSearch,
+  SEMANTIC_SQL_TIMEOUT_MS,
+} from "./hybrid-search";
 
 function queryText(strings: TemplateStringsArray): string {
   return Array.from(strings).join(" ");
@@ -102,6 +106,71 @@ describe("hybrid Radius retrieval", () => {
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);
     mocks.embed.mockRejectedValue(new Error("provider unavailable"));
+
+    await expect(hybridPlaceSearch("coffee")).resolves.toMatchObject([
+      { sourceId: "exact" },
+    ]);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps FTS results when the semantic database query fails", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = vi.fn((strings: TemplateStringsArray) => {
+      if (queryText(strings).includes("ts_rank_cd")) {
+        return Promise.resolve([exact]);
+      }
+      return Promise.reject(new Error("vector query unavailable"));
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(hybridPlaceSearch("coffee")).resolves.toMatchObject([
+      { sourceId: "exact" },
+    ]);
+    expect(sql).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns FTS on a hung semantic query and consumes a late rejection", async () => {
+    vi.useFakeTimers();
+    try {
+      process.env.OPENAI_API_KEY = "test-openai-key";
+      let rejectSemantic!: (error: Error) => void;
+      const cancel = vi.fn();
+      const semanticQuery = Object.assign(
+        new Promise<Array<typeof exact>>((_, reject) => {
+          rejectSemantic = reject;
+        }),
+        { cancel },
+      );
+      const sql = vi.fn((strings: TemplateStringsArray) =>
+        queryText(strings).includes("ts_rank_cd")
+          ? Promise.resolve([exact])
+          : semanticQuery,
+      );
+      mocks.getSql.mockReturnValue(sql);
+
+      const pending = hybridPlaceSearch("coffee and bikes");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(sql).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(SEMANTIC_SQL_TIMEOUT_MS);
+      await expect(pending).resolves.toMatchObject([
+        { sourceId: "exact" },
+      ]);
+      expect(cancel).toHaveBeenCalledOnce();
+
+      // postgres-js rejects a cancelled query after the deadline has already
+      // returned the FTS rows. This must remain handled.
+      rejectSemantic(new Error("cancelled after deadline"));
+      await vi.advanceTimersByTimeAsync(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps FTS results when the provider returns an incompatible vector", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.embed.mockResolvedValue({ embedding: [0.1, 0.2] });
 
     await expect(hybridPlaceSearch("coffee")).resolves.toMatchObject([
       { sourceId: "exact" },

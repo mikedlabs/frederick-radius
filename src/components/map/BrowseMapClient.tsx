@@ -21,7 +21,7 @@ import {
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
-import { OPEN_NOW_MINIMUM_COVERAGE } from "@/lib/hours-availability";
+import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -235,17 +235,20 @@ export default function BrowseMapClient({
   // open right this minute (open or closing-soon). open_status is
   // server-baked per ISR render, so "now" here is bounded-stale
   // (≤ revalidate + the 5-minute decoration bucket) — same as before.
-  const reliableHoursCount = allPlaces.filter(
+  const openNowCount = subFiltered.filter((p) =>
+    isOpenNow(p.open_status),
+  ).length;
+  const decidedHoursCount = subFiltered.filter(
     (place) =>
       place.open_status.state !== "unknown" &&
       place.open_status.state !== "unverified",
   ).length;
-  const reliableHoursCoverage =
-    allPlaces.length > 0 ? reliableHoursCount / allPlaces.length : 0;
+  // A positive confirmed count is always useful. A zero count may only enable
+  // the filter when enough of this exact result set can state open or closed;
+  // countywide coverage cannot speak for a sparse coffee/town subset.
   const openNowAvailable =
-    reliableHoursCoverage >= OPEN_NOW_MINIMUM_COVERAGE;
+    mayOfferOpenNow(subFiltered.map((place) => place.open_status));
   const openNow = openParam === "now" && openNowAvailable;
-  const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
   const afterOpen = openNow
     ? subFiltered.filter((p) => isOpenNow(p.open_status))
     : subFiltered;
@@ -380,8 +383,8 @@ export default function BrowseMapClient({
         openNowCount,
         openNowAvailable,
         openNowUnavailableLabel:
-          allPlaces.length > 0
-            ? `Verified hours are available for ${reliableHoursCount.toLocaleString("en-US")} of ${allPlaces.length.toLocaleString("en-US")} places.`
+          subFiltered.length > 0
+            ? `Current hours are available for ${decidedHoursCount.toLocaleString("en-US")} of ${subFiltered.length.toLocaleString("en-US")} matches.`
             : "Open-now filtering is unavailable until place hours are verified.",
         dealsOn,
         dealsTodayCount,

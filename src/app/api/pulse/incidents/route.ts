@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getLiveIncidentSnapshot } from "@/lib/live/incidentSnapshot";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import { selectLiveIncidentSnapshot } from "@/lib/live/currentSituationModel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,9 @@ export const dynamic = "force-dynamic";
  * deliberately neutral: it does not claim that Frederick County is all clear.
  */
 export async function GET() {
-  const snapshot = await getLiveIncidentSnapshot();
+  const snapshot = selectLiveIncidentSnapshot(
+    await getCurrentSituationSnapshot(),
+  );
 
   return NextResponse.json(snapshot, {
     headers: {

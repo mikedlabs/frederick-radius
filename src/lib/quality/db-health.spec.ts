@@ -225,6 +225,16 @@ describe("getRecentIngestRuns", () => {
         error: null,
       },
       {
+        source_slug: "data-health:feeds",
+        status: "ok",
+        started_at: now,
+        ended_at: now,
+        records_in: 12,
+        records_upserted: 12,
+        records_failed: 0,
+        error: null,
+      },
+      {
         source_slug: "frederick_county_calendar",
         status: "ok",
         started_at: "2026-01-01T00:00:00.000Z",
@@ -239,10 +249,16 @@ describe("getRecentIngestRuns", () => {
 
     const runs = await getRecentIngestRuns();
 
-    expect(runs).toHaveLength(1);
-    expect(runs[0]).toMatchObject({
-      source: "frederick.librarycalendar.com",
-      stale: false,
-    });
+    expect(runs).toHaveLength(2);
+    expect(runs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: "frederick.librarycalendar.com",
+        stale: false,
+      }),
+      expect.objectContaining({
+        source: "data-health:feeds",
+        stale: false,
+      }),
+    ]));
   });
 });

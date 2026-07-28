@@ -216,7 +216,7 @@ export default function PlanBuilder({
         setDrawerOpen(false);
         setStatusMsg(result.stops.length > 0
           ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
-          : "No open route fit those choices.");
+          : "Radius could not confirm an open route for those choices.");
         replacePlanUrl(result.share);
         window.setTimeout(() => resultRef.current?.focus(), 50);
       } catch {
@@ -601,7 +601,7 @@ export default function PlanBuilder({
             </ul>
           ) : alts.length === 0 ? (
             <p className="py-6 text-center text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              No other open places fit this slot right now.
+              No other place with confirmed-open hours fits this slot.
             </p>
           ) : (
             <ul className="space-y-2">

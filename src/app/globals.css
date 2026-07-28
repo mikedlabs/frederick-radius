@@ -3254,7 +3254,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     gap: 7px;
   }
   .dock-pane[data-pane="contents"] .dock-content-row {
-    min-height: 70px;
+    /* Seven choices still fit as a complete 3-row board while leaving more
+       than half of a regular phone map visible behind the panel. */
+    min-height: 66px;
   }
   .dock-pane[data-pane="contents"] .dock-content-copy strong {
     font-size: 11px;
@@ -5141,8 +5143,44 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 @media (max-width: 480px) {
+  /* The first event, not the control dock, should dominate a phone's first
+     screen. Keep the same information and 44px actions, but put the title and
+     date on one line and tighten the vertical rhythm around the three primary
+     questions. The full almanac treatment returns above this breakpoint. */
+  .eb-masthead {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    max-height: 48px;
+    padding: 7px 12px 4px;
+  }
+  .eb-dateline {
+    order: 2;
+    margin: 0 0 0 auto;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  .eb-title {
+    font-size: 21px;
+  }
+  .eb-whenribbon {
+    gap: 6px;
+    max-height: 48px;
+    padding: 0 10px 5px;
+  }
+  .eb-capbar {
+    padding-inline: 0;
+  }
+  .eb-seg {
+    min-height: 46px;
+    padding: 5px 7px 4px;
+  }
+  .eb-clear {
+    min-height: 46px;
+  }
   .eb-subbar {
-    min-height: 52px;
+    min-height: 44px;
+    padding: 2px 10px 3px;
   }
   .eb-display-options > summary {
     display: inline-flex;

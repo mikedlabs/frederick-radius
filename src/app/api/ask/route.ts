@@ -25,9 +25,14 @@ import {
   wantsWaterAdvisory,
   waterAdvisoryAskResult,
 } from "@/lib/ask/civic-status";
-import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
 import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
 import { getCivicPressReleasesResult } from "@/lib/integrations/civic-press";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import {
+  selectChartIncidentsResult,
+  type CurrentSituationSnapshot,
+} from "@/lib/live/currentSituationModel";
+import { withPrimaryRankedResult } from "@/lib/ask/presentation";
 
 const ASK_SAFETY_DEADLINE_MS = 1_500;
 const ASK_CIVIC_DEADLINE_MS = 2_000;
@@ -138,9 +143,14 @@ export async function POST(req: NextRequest) {
   // civic lookups, not discovery prompts. Keep them out of catalog retrieval
   // so a failed official feed never turns into unrelated place cards.
   if (wantsRoadStatus(query)) {
-    const traffic = await getChartIncidentsFrederickResult({
-      deadlineMs: ASK_CIVIC_DEADLINE_MS,
-    });
+    const situation = await failSoftWithin<CurrentSituationSnapshot | null>(
+      getCurrentSituationSnapshot(),
+      null,
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    const traffic = situation
+      ? selectChartIncidentsResult(situation)
+      : { data: [], available: false };
     return NextResponse.json(roadStatusAskResult(traffic, {
       label: context.label,
       origin: context.origin,
@@ -199,16 +209,18 @@ export async function POST(req: NextRequest) {
       deadlineMs: ASK_SAFETY_DEADLINE_MS,
     }),
   ]);
-  const result = applyAskOutdoorSafety(
-    rawResult,
-    query,
-    hold,
-    (source) => {
-      const place = source.href.startsWith("/places/")
-        ? clientPlaceBySlug(source.href.slice("/places/".length))
-        : null;
-      return isOutdoorRecommendation(place ?? source);
-    },
+  const result = withPrimaryRankedResult(
+    applyAskOutdoorSafety(
+      rawResult,
+      query,
+      hold,
+      (source) => {
+        const place = source.href.startsWith("/places/")
+          ? clientPlaceBySlug(source.href.slice("/places/".length))
+          : null;
+        return isOutdoorRecommendation(place ?? source);
+      },
+    ),
   );
   if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.

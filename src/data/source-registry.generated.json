@@ -1,0 +1,1060 @@
+[
+  {
+    "id": "airnow",
+    "name": "AirNow Air Quality",
+    "owner": "US EPA AirNow",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "bandsintown",
+    "name": "Bandsintown — Live Music",
+    "owner": "Bandsintown",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "business_info_extraction",
+    "name": "Business Website Information Workflow",
+    "owner": "Frederick Radius",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "catoctin_land_trust_events",
+    "name": "Catoctin Land Trust Events",
+    "owner": "Catoctin Land Trust",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "catoctin"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "celebrate_frederick",
+    "name": "Celebrate Frederick",
+    "owner": "Celebrate Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "celebrate",
+      "celebrate_frederick"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_geocoder",
+    "name": "City of Frederick Address Locator",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "on_demand",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_addresses",
+    "name": "City of Frederick Address Points",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_aerial_imagery",
+    "name": "City of Frederick Aerial Imagery",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_bike_paths",
+    "name": "City of Frederick Bike Paths",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "city_frederick_calendar",
+    "name": "City of Frederick Calendar",
+    "owner": "City of Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "city-frederick"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_capital_improvement",
+    "name": "City of Frederick Capital Improvement Projects",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_council_districts",
+    "name": "City of Frederick Council Districts",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_cultural_assets",
+    "name": "City of Frederick Cultural Assets",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_development_review",
+    "name": "City of Frederick Development Review",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_floodplain",
+    "name": "City of Frederick Floodplain",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_historic_district",
+    "name": "City of Frederick Historic District",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_hpc_properties",
+    "name": "City of Frederick Historic Properties",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_lead_service_lines",
+    "name": "City of Frederick Lead Service Lines",
+    "owner": "City of Frederick GIS",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_parking_occupancy",
+    "name": "City of Frederick parking deck occupancy",
+    "owner": "City of Frederick",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_path_plan",
+    "name": "City of Frederick Path Plan",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "quarterly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_places",
+    "name": "City of Frederick Places",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_trash_receptacles",
+    "name": "City of Frederick Public Trash Receptacles",
+    "owner": "City of Frederick Department of Public Works",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_snow_removal",
+    "name": "City of Frederick Snow Removal",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_parcels",
+    "name": "City of Frederick Tax Parcels",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "cof_zoning",
+    "name": "City of Frederick Zoning",
+    "owner": "City of Frederick GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "delaplaine_calendar",
+    "name": "Delaplaine Arts Center Events",
+    "owner": "Delaplaine Arts Center",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "delaplaine"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "dfp_events",
+    "name": "Downtown Frederick Partnership",
+    "owner": "Downtown Frederick Partnership",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly (request-time, 1h fetch cache)",
+    "manifestLastSuccess": "2026-07-19",
+    "evidenceAliases": [
+      "dfp",
+      "dfp_ical"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "evangelical_lutheran_calendar",
+    "name": "Evangelical Lutheran Church Calendar",
+    "owner": "Evangelical Lutheran Church, Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "elc"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "eventbrite_frederick",
+    "name": "Eventbrite — Frederick County Events",
+    "owner": "Eventbrite",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "firstenergy_outages",
+    "name": "FirstEnergy Outages, Potomac Edison",
+    "owner": "FirstEnergy",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fcc_athletics",
+    "name": "Frederick Community College Athletics",
+    "owner": "Frederick Community College",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fcc_calendar",
+    "name": "Frederick Community College Calendar",
+    "owner": "Frederick Community College",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "fcc"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_meeting_agendas",
+    "name": "Frederick County — Public Meeting Agendas",
+    "owner": "Frederick County Government",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "frederick_county_arcgis",
+    "name": "Frederick County ArcGIS Services",
+    "owner": "Frederick County GIS",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "frederick_county_calendar",
+    "name": "Frederick County Calendar",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "county",
+      "frederick_county_calendar"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_restaurant_inspections",
+    "name": "Frederick County Health — Restaurant Inspections",
+    "owner": "Frederick County Health Department",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_open_data_hub",
+    "name": "Frederick County Open Data Hub",
+    "owner": "Frederick County GIS",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_parks_rec",
+    "name": "Frederick County Parks & Recreation — Programs",
+    "owner": "Frederick County Parks & Recreation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "parks"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_parks_trails",
+    "name": "Frederick County Parks Trails (Cartegraph)",
+    "owner": "Frederick County GIS",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fcpl_libraries",
+    "name": "Frederick County Public Libraries — Branches & Programs",
+    "owner": "Frederick County Public Libraries",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fcps_news",
+    "name": "Frederick County Public Schools News",
+    "owner": "Frederick County Public Schools",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "transit_gtfs",
+    "name": "Frederick County TransIT GTFS",
+    "owner": "Frederick County TransIT",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": "2026-07-22",
+    "evidenceAliases": [],
+    "rowsRequired": true
+  },
+  {
+    "id": "fcvfra_events",
+    "name": "Frederick County Volunteer Fire & Rescue Events",
+    "owner": "Frederick County Volunteer Fire & Rescue Association",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "frederick_keys",
+    "name": "Frederick Keys (MLB Draft League)",
+    "owner": "Frederick Keys / MiLB",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "kfdk_metars",
+    "name": "Frederick Municipal Airport METARs (KFDK)",
+    "owner": "NOAA Aviation Weather Center",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "frederick_news_post",
+    "name": "Frederick News-Post — Local News RSS",
+    "owner": "Frederick News-Post / Ogden Newspapers",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "business_specials",
+    "name": "Frederick Radius — Business Specials & Events (owner submitted)",
+    "owner": "Frederick Radius (first party)",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fredscanner",
+    "name": "Frederick Scanner Public Incidents",
+    "owner": "Frederick Scanner",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "frederick-scanner",
+      "fredscanner"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "google_civic",
+    "name": "Google Civic Information",
+    "owner": "Google",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "google_geocode",
+    "name": "Google Geocoding",
+    "owner": "Google",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "on_demand",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "google_news_rss",
+    "name": "Google News, Frederick",
+    "owner": "Google News",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "google_places",
+    "name": "Google Places",
+    "owner": "Google",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "google_routes",
+    "name": "Google Routes",
+    "owner": "Google",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "on_demand",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "great_frederick_fair_calendar",
+    "name": "Great Frederick Fair Calendar",
+    "owner": "The Great Frederick Fair",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "fair"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "heritage_frederick_calendar",
+    "name": "Heritage Frederick Events",
+    "owner": "Heritage Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "heritage-frederick"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "hood_athletics",
+    "name": "Hood College Blazers Athletics",
+    "owner": "Hood College Athletics",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "hood_college",
+    "name": "Hood College Calendar",
+    "owner": "Hood College",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "hood"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "islamic_society_frederick_calendar",
+    "name": "Islamic Society of Frederick Calendar",
+    "owner": "Islamic Society of Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "isf"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "mapillary_objects",
+    "name": "Mapillary — Street-Level Object Detections",
+    "owner": "Mapillary",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_211",
+    "name": "Maryland 211 — Community Services Directory",
+    "owner": "211 Maryland",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart",
+    "name": "Maryland CHART Traffic Incidents",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "pipeline",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": "2026-07-23T04:55:35.450Z",
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_farmers_markets",
+    "name": "Maryland Dept of Agriculture — Farmers Market Directory",
+    "owner": "Maryland Department of Agriculture",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_dnr_trails",
+    "name": "Maryland DNR Trail Atlas",
+    "owner": "Maryland Department of Natural Resources",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "maryland_ensemble_events",
+    "name": "Maryland Ensemble Theatre Events",
+    "owner": "Maryland Ensemble Theatre",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "maryland-ensemble"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_imap_arcgis",
+    "name": "Maryland iMAP Services",
+    "owner": "Maryland Department of Information Technology",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_socrata_open_data",
+    "name": "Maryland Open Data, Socrata",
+    "owner": "State of Maryland",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "maryland_school_deaf_calendar",
+    "name": "Maryland School for the Deaf Calendar",
+    "owner": "Maryland School for the Deaf",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "msd"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "monocacy_brewing_calendar",
+    "name": "Monocacy Brewing Events",
+    "owner": "Monocacy Brewing Company",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "monocacy"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "mount_st_marys_calendar",
+    "name": "Mount St. Mary's University Events",
+    "owner": "Mount St. Mary's University",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "mount-st-marys"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "mta_marc_rt",
+    "name": "MTA MARC GTFS realtime",
+    "owner": "Maryland Transit Administration",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "municipal_civic_extraction",
+    "name": "Municipal Civic Information Workflow",
+    "owner": "Frederick Radius",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "civil_war_medicine_events",
+    "name": "National Museum of Civil War Medicine Events",
+    "owner": "National Museum of Civil War Medicine",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "civil-war-med"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "nps",
+    "name": "National Park Service",
+    "owner": "US National Park Service",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "nws_alerts",
+    "name": "National Weather Service Active Alerts, Frederick County",
+    "owner": "NOAA National Weather Service",
+    "status": "active",
+    "collection": "pipeline",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": "2026-07-23T04:55:37.723Z",
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "nws_forecast",
+    "name": "National Weather Service Forecast, Frederick",
+    "owner": "NOAA National Weather Service",
+    "status": "active",
+    "collection": "pipeline",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": "2026-07-23T04:55:37.536Z",
+    "evidenceAliases": [],
+    "rowsRequired": true
+  },
+  {
+    "id": "open_brewery_db",
+    "name": "Open Brewery DB, Maryland",
+    "owner": "Open Brewery DB",
+    "status": "active",
+    "collection": "pipeline",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": "2026-07-23T04:55:34.946Z",
+    "evidenceAliases": [],
+    "rowsRequired": true
+  },
+  {
+    "id": "osm_overpass",
+    "name": "OpenStreetMap via Overpass",
+    "owner": "OpenStreetMap contributors",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "pulsepoint",
+    "name": "PulsePoint Incidents",
+    "owner": "PulsePoint Foundation",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "on_demand",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "reddit_frederick",
+    "name": "Reddit r/Frederick",
+    "owner": "Reddit",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "seatgeek",
+    "name": "SeatGeek Events",
+    "owner": "SeatGeek",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "seeclickfix",
+    "name": "SeeClickFix Frederick County 311",
+    "owner": "SeeClickFix, Frederick County FCG FixIT",
+    "status": "active",
+    "collection": "pipeline",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": "2026-07-23T04:55:35.788Z",
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "songkick",
+    "name": "Songkick — Concerts & Venues",
+    "owner": "Songkick",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "ticketmaster",
+    "name": "Ticketmaster Discovery API",
+    "owner": "Ticketmaster / Live Nation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mount_airy_calendar",
+    "name": "Town of Mount Airy Calendar",
+    "owner": "Town of Mount Airy",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "mount-airy"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "thurmont_calendar",
+    "name": "Town of Thurmont Calendar",
+    "owner": "Town of Thurmont",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "thurmont"
+    ],
+    "rowsRequired": false
+  },
+  {
+    "id": "census_acs",
+    "name": "US Census American Community Survey",
+    "owner": "US Census Bureau",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "usda_farmers_markets",
+    "name": "USDA Local Food Portal — Farmers Markets",
+    "owner": "USDA Agricultural Marketing Service",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "usgs_water",
+    "name": "USGS — Monocacy River Water Data",
+    "owner": "US Geological Survey",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "venue_event_extraction",
+    "name": "Venue Event Extraction Workflow",
+    "owner": "Frederick Radius",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "squarespace_venue_events",
+    "name": "Venue Squarespace Event Feeds",
+    "owner": "Participating Frederick venues",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "visit_frederick",
+    "name": "Visit Frederick Events",
+    "owner": "Tourism Council of Frederick County",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "wikimedia_commons",
+    "name": "Wikimedia Commons",
+    "owner": "Wikimedia Foundation",
+    "status": "scaffold",
+    "collection": null,
+    "refreshCadence": "monthly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  }
+]

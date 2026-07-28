@@ -33,7 +33,7 @@
 | `GOOGLE_PLACES_API_KEY` | Vercel | Place photos + enrichment |
 | `HOURS_REFRESH_CRON=1` | Vercel | Runs the paid, seven-day rolling hours refresh into Postgres. Without it, stale schedules remain safely withheld. |
 | `RADIUS_SEARCH_CRON=1` | Vercel | Runs the bounded, idempotent full-text place-index refresh used by Ask Radius. |
-| `DATA_RETENTION_PRUNE=1` | Vercel | Enables bounded 90-day cleanup from the health cron. Leave unset until a recent Supabase backup is confirmed. |
+| `DATA_RETENTION_PRUNE=1` | Vercel | Enables the separately scheduled, bounded 90-day retention worker. Leave unset until a recent Supabase backup is confirmed; the scheduled route is inert without it. |
 | `BUSINESS_STATUS_CRON=1` | Vercel | Runs the paid rotating closure-status check. The Vercel route reports mismatches; the GitHub data-steward job creates the reviewable snapshot. |
 | `TICKETMASTER_API_KEY` | Vercel | Concert + Keys-game events |
 | `BANDSINTOWN_APP_ID` | Vercel | Venue lineups (Bentztown etc.) |
@@ -88,6 +88,23 @@ through Supabase's anon Data API.
 The manual photo-attribution workflow is request-capped and opens a PR. It
 does not run on a schedule or publish legacy photo references without exact
 attribution.
+
+## Operational health monitoring
+
+`/api/health` is the public liveness and component-status endpoint. It always
+returns HTTP 200 when the Next.js route answers, even if the database or data
+ledger is degraded. An uptime monitor must parse the JSON body rather than
+treating any 200 as fully healthy:
+
+- Alert when `database.status` is not `reachable`.
+- Alert when `data.status` is `unavailable`.
+- Track `data.status: "degraded"` with the `stale`, `attention`, and `unknown`
+  counts so a single optional source does not look like a site outage.
+
+The response carries `Cache-Control: no-store`, but the server coalesces
+concurrent probes and reuses the compact snapshot for no more than 30 seconds.
+This keeps a predictable public probe from becoming a database-amplification
+path without letting browsers or a CDN serve an old status response.
 
 ---
 

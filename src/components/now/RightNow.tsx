@@ -48,7 +48,10 @@ import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
-import { mayAssertNoneOpen } from "@/lib/hours-availability";
+import {
+  mayAssertNoneOpen,
+  openNowCountLabel,
+} from "@/lib/hours-availability";
 import { haptic } from "@/lib/haptics";
 import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
 import {
@@ -547,21 +550,21 @@ export default function RightNow({
             {/* Meals frame the count on the CLOCK fact ("open for dinner now")
                 — never a service claim. Nouns keep the plain "open now". */}
             <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {meal
+              {matched.length === 0
+                ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
+                : meal
                 ? openCount > 0
                   ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
                   : mayReportNoneOpen
                     ? `No matches are open ${meal.phrase} right now · ${sortLabel}`
                     : `No matches are confirmed open ${meal.phrase} right now · ${sortLabel}`
-                : craving?.alwaysOpen
+                  : craving?.alwaysOpen
                   ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
                   : openOnly
-                    ? openCount > 0
-                      ? `${openCount} open now · ${sortLabel}`
-                      : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
+                    ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${sortLabel}`
                     : townName
-                      ? `${openCount} open · ${matched.length} in ${townName} · ${sortLabel}`
-                      : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
+                      ? `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} in ${townName} · ${sortLabel}`
+                      : `${openNowCountLabel(openCount, mayReportNoneOpen)} · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
             </p>
           </div>
         </div>

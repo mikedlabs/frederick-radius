@@ -37,12 +37,35 @@ describe("discoveryTrustLine", () => {
 
 describe("radiusResultLine", () => {
   it("leads with reachable and confirmed-open counts", () => {
-    expect(radiusResultLine(61, 18)).toBe("61 places · 18 open now");
-    expect(radiusResultLine(1, 1)).toBe("1 place · 1 open now");
+    expect(radiusResultLine(61, 18)).toBe("61 places · 18 confirmed open");
+    expect(radiusResultLine(1, 1)).toBe("1 place · 1 confirmed open");
   });
 
   it("describes the filtered result rather than the hidden total", () => {
     expect(radiusResultLine(61, 18, true)).toBe("18 confirmed open within reach");
+  });
+
+  it("keeps an empty radius distinct from an hours-coverage gap", () => {
+    expect(radiusResultLine(0, 0)).toBe("No places within reach");
+    expect(radiusResultLine(0, 0, true)).toBe("No places within reach");
+  });
+
+  it("does not turn an unknown-hours zero into a closure claim", () => {
+    expect(radiusResultLine(61, 0)).toBe(
+      "61 places · Open hours unconfirmed",
+    );
+    expect(radiusResultLine(61, 0, true)).toBe(
+      "Open hours unconfirmed within reach",
+    );
+  });
+
+  it("only reports none open after the caller clears the coverage gate", () => {
+    expect(radiusResultLine(61, 0, false, true)).toBe(
+      "61 places · None open now",
+    );
+    expect(radiusResultLine(61, 0, true, true)).toBe(
+      "None open within reach",
+    );
   });
 });
 

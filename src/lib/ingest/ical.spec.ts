@@ -53,7 +53,8 @@ function fakeDb({
 } = {}) {
   const returning = vi.fn().mockResolvedValue([{ id: "run-1" }]);
   let eventWrite = 0;
-  const onConflictDoUpdate = vi.fn((_options?: unknown) => {
+  const onConflictDoUpdate = vi.fn((options?: unknown) => {
+    void options;
     const outcome = eventWriteOutcomes[eventWrite++];
     return outcome === "reject"
       ? Promise.reject(new Error(`event write ${eventWrite} failed`))
@@ -65,7 +66,10 @@ function fakeDb({
   });
   const insert = vi.fn(() => ({ values }));
   const where = vi.fn().mockResolvedValue(undefined);
-  const set = vi.fn((_row?: Record<string, unknown>) => ({ where }));
+  const set = vi.fn((row?: Record<string, unknown>) => {
+    void row;
+    return { where };
+  });
   const update = vi.fn(() => ({ set }));
   return { db: { insert, update }, values, onConflictDoUpdate, set };
 }

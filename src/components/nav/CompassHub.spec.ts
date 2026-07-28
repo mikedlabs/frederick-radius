@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RADIUS_TOOLS } from "@/data/radius-tools";
 import {
+  buildCompassOutcomes,
   buildCompassSections,
   commonCompassTasks,
   splitEssentialItems,
@@ -20,20 +21,26 @@ function representedRegistryIds(homeSlug: string | null): string[] {
 }
 
 describe("Compass browse model", () => {
-  /**
-   * The browse view resolves its open topic as
-   * `sections.find(matching activeSectionId) ?? sections[0]`, and
-   * `activeSectionId` is empty on first paint. Without a first-section
-   * fallback the directory rendered category chips over nothing, so every
-   * registered tool sat one required tap out of sight and the page looked like
-   * the app shipped no tools at all. This locks the two things that fallback
-   * depends on: there is always a section, and the first one is never empty.
-   */
-  it("always has a first topic with tools in it, so the directory never opens blank", () => {
+  it("organizes the raw directory into five recognizable outcomes", () => {
     for (const homeSlug of [null, "frederick"]) {
       const sections = buildCompassSections(homeSlug);
-      expect(sections.length).toBeGreaterThan(0);
-      expect(sections[0].items.length).toBeGreaterThan(0);
+      const outcomes = buildCompassOutcomes(sections);
+      const representedSections = outcomes.flatMap((outcome) =>
+        outcome.sections.map((section) => section.id),
+      );
+
+      expect(outcomes).toHaveLength(5);
+      expect(outcomes.map((outcome) => outcome.label)).toEqual([
+        "Eat, drink, or go out",
+        "Explore Frederick",
+        "Get around",
+        "Find local help",
+        "Make Radius yours",
+      ]);
+      expect(representedSections.sort()).toEqual(
+        sections.map((section) => section.id).sort(),
+      );
+      expect(new Set(representedSections).size).toBe(sections.length);
     }
   });
 

@@ -327,6 +327,20 @@ export function askResultHeading(
   return result.intent?.label ?? "Radius answer";
 }
 
+export function askEvidenceLabels(
+  source: Pick<AskSource, "isPrimaryRankedResult">,
+): {
+  sourceLabel: "Best match" | "Source";
+  explanationLabel: "Why it fits" | "What Radius found";
+} {
+  // AskResult.sources is normally a citation list. Retrieval order alone is
+  // not a recommendation contract, so recommendation language requires the
+  // server to explicitly identify the ranked primary result.
+  return source.isPrimaryRankedResult
+    ? { sourceLabel: "Best match", explanationLabel: "Why it fits" }
+    : { sourceLabel: "Source", explanationLabel: "What Radius found" };
+}
+
 export function sourceHasDistinctDetail(
   source: Pick<AskSource, "detail" | "reason">,
 ): boolean {
@@ -1349,12 +1363,21 @@ export default function AskFrederick({
     }
   }
 
-  const visibleSources = res?.sources.slice(0, showAllSources ? undefined : 2) ?? [];
+  const leadSource = res?.sources[0] ?? null;
+  const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
+  const supportingSources = res?.sources.slice(1) ?? [];
+  const collapsedSourceCount = 2;
+  const collapsedSupportingCount = Math.max(
+    0,
+    collapsedSourceCount - (leadSource ? 1 : 0),
+  );
+  const visibleSources = supportingSources.slice(
+    0,
+    showAllSources ? undefined : collapsedSupportingCount,
+  );
   const resultActions = (res?.actions ?? []).filter(
     (action) => !res?.plan || action.href !== res.plan.href,
   );
-  const collapsedSourceCount = 2;
-
   // Offer to localize a county-wide place answer: the answer named real places
   // but Radius has no location and no town is set, so the closest option can't
   // lead. A one-tap prompt re-ranks by proximity (the bike-rental miss fix).
@@ -1761,13 +1784,41 @@ export default function AskFrederick({
                   <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
                 </button>
               ) : null}
+              {leadSource ? (
+                <div className="mt-3">
+                  <p
+                    className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    {evidenceLabels?.sourceLabel}
+                  </p>
+                  <AskSourceCard
+                    source={leadSource}
+                    index={0}
+                    onInternalOpen={rememberAskReturn}
+                  />
+                </div>
+              ) : null}
               {res.answer ? (
-                <p
-                  className="whitespace-pre-wrap text-[15px] leading-[1.68] sm:text-[16px]"
-                  style={{ color: "var(--app-ink)" }}
+                <div
+                  className={leadSource ? "mt-3 border-t px-1 pt-3" : undefined}
+                  style={leadSource ? { borderColor: "var(--app-border)" } : undefined}
                 >
-                  {res.answer}
-                </p>
+                  {leadSource ? (
+                    <p
+                      className="mb-1 text-[10px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {evidenceLabels?.explanationLabel}
+                    </p>
+                  ) : null}
+                  <p
+                    className="whitespace-pre-wrap text-[15px] leading-[1.62] sm:text-[16px]"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {res.answer}
+                  </p>
+                </div>
               ) : null}
               {requestFailure ? (
                 <button
@@ -1860,12 +1911,12 @@ export default function AskFrederick({
               </nav>
             ) : null}
 
-            {res.sources.length > 0 ? (
+            {supportingSources.length > 0 ? (
               <section aria-labelledby="ask-sources-heading" className="mt-5">
                 <div className="mb-2.5 flex items-end justify-between gap-3 px-1">
                   <div>
                     <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                      What Radius checked
+                      More sources
                     </p>
                     <h2
                       id="ask-sources-heading"
@@ -1879,7 +1930,8 @@ export default function AskFrederick({
                     className="font-mono text-[10px]"
                     style={{ color: "var(--app-ink-3)" }}
                   >
-                    {res.sources.length} {res.sources.length === 1 ? "match" : "matches"}
+                    {supportingSources.length}{" "}
+                    {supportingSources.length === 1 ? "match" : "matches"}
                   </span>
                 </div>
                 <div className="grid gap-2.5">
@@ -1887,19 +1939,21 @@ export default function AskFrederick({
                     <AskSourceCard
                       key={`${source.category}-${source.slug}-${source.href}`}
                       source={source}
-                      index={index}
+                      index={index + 1}
                       onInternalOpen={rememberAskReturn}
                     />
                   ))}
                 </div>
-                {res.sources.length > collapsedSourceCount ? (
+                {(res?.sources.length ?? 0) > collapsedSourceCount ? (
                   <button
                     type="button"
                     onClick={() => setShowAllSources((value) => !value)}
                     className="tap-44 mt-2 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
                     style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
                   >
-                    {showAllSources ? "Show fewer matches" : `Show all ${res.sources.length} matches`}
+                    {showAllSources
+                      ? "Show fewer matches"
+                      : `Show all ${res?.sources.length ?? 0} matches`}
                   </button>
                 ) : null}
               </section>

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
 
 const mocks = vi.hoisted(() => ({
-  getLiveIncidentSnapshot: vi.fn(),
+  getCurrentSituationSnapshot: vi.fn(),
 }));
 
-vi.mock("@/lib/live/incidentSnapshot", () => ({
-  getLiveIncidentSnapshot: mocks.getLiveIncidentSnapshot,
+vi.mock("@/lib/live/currentSituation", () => ({
+  getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
 }));
 
 import { GET } from "./route";
@@ -15,14 +16,19 @@ describe("GET /api/pulse/incidents", () => {
     vi.resetAllMocks();
   });
 
-  it("returns the safe snapshot with a short shared cache", async () => {
-    mocks.getLiveIncidentSnapshot.mockResolvedValue({
-      items: [],
-      totalCount: 0,
-      corroboratedCount: 0,
-      chartAvailable: false,
-      updatedAt: "2026-07-27T18:00:00.000Z",
-    });
+  it("returns the safe legacy snapshot with additive source health", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue({
+      roads: {
+        live: {
+          items: [],
+          totalCount: 0,
+          corroboratedCount: 0,
+          chartAvailable: false,
+          scannerAvailable: false,
+          updatedAt: "2026-07-28T16:00:00.000Z",
+        },
+      },
+    } as unknown as CurrentSituationSnapshot);
 
     const response = await GET();
 
@@ -35,7 +41,8 @@ describe("GET /api/pulse/incidents", () => {
       totalCount: 0,
       corroboratedCount: 0,
       chartAvailable: false,
-      updatedAt: "2026-07-27T18:00:00.000Z",
+      scannerAvailable: false,
+      updatedAt: "2026-07-28T16:00:00.000Z",
     });
   });
 });

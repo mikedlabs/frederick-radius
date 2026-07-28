@@ -14,6 +14,10 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import type { Anomaly } from "@/lib/integrations/feed-snapshot";
+import {
+  DATA_HEALTH_FEEDS_RUN,
+  DATA_HEALTH_RETENTION_RUN,
+} from "@/lib/quality/data-health-phases";
 import civicSources from "@/../config/civicengage_sources.json" with { type: "json" };
 
 type RawSql = NonNullable<ReturnType<typeof getSql>>;
@@ -306,6 +310,8 @@ export type IngestRunSummary = {
 const INGEST_STALE_MS = 36 * 3_600_000;
 const ACTIVE_INGEST_RUN_SOURCES = new Set([
   "tripwires",
+  DATA_HEALTH_FEEDS_RUN,
+  DATA_HEALTH_RETENTION_RUN,
   ...ACTIVE_EVENT_HEALTH_SOURCES.map((source) => source.runSlug),
 ]);
 

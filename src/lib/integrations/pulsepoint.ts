@@ -42,6 +42,8 @@ export type PulsePointIncidentsResult = {
   available: boolean;
   /** Distinguishes a missing deployment setting from an upstream failure. */
   configured: boolean;
+  asOf?: string;
+  asOfBasis?: "provider" | "retrieval";
 };
 
 // Non-medical public-safety call types only. Unknown/medical codes are
@@ -168,6 +170,13 @@ function num(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function responseDate(res: Response): string | undefined {
+  const raw = res.headers.get("date");
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+}
+
 export async function getPulsePointIncidentsResult(): Promise<PulsePointIncidentsResult> {
   // The manifest keeps PulsePoint pending_review. An agency id by itself must
   // never silently activate a source whose privacy/licensing review has not
@@ -222,24 +231,33 @@ export async function getPulsePointIncidentsResult(): Promise<PulsePointIncident
       if (!profile) continue; // unknown or medical → excluded
       const id = String(raw.ID ?? `${code}-${raw.CallReceivedDateTime}`);
       if (seen.has(id)) continue;
+      const received = raw.CallReceivedDateTime
+        ? new Date(raw.CallReceivedDateTime)
+        : null;
+      if (!received || !Number.isFinite(received.getTime())) continue;
       seen.add(id);
       items.push({
         id,
         type: profile.label,
         severity: profile.severity,
         address: String(raw.FullDisplayAddress ?? "").trim() || "Frederick County",
-        received_at: raw.CallReceivedDateTime
-          ? new Date(raw.CallReceivedDateTime).toISOString()
-          : new Date().toISOString(),
+        received_at: received.toISOString(),
         lat: num(raw.Latitude),
         lng: num(raw.Longitude),
       });
     }
     items.sort((a, b) => +new Date(b.received_at) - +new Date(a.received_at));
+    const retrievedAt = responseDate(res);
+    const providerAsOf = items[0]?.received_at;
     return {
       data: items.slice(0, 20),
       available: true,
       configured: true,
+      ...(retrievedAt
+        ? { asOf: retrievedAt, asOfBasis: "retrieval" as const }
+        : providerAsOf
+          ? { asOf: providerAsOf, asOfBasis: "provider" as const }
+          : {}),
     };
   } catch {
     return { data: [], available: false, configured: true };

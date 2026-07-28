@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Map, {
   Popup,
   Marker,
@@ -228,6 +235,7 @@ import {
   serializeLayers,
   type OverlayKey,
 } from "@/lib/overlays";
+import { replaceMapUrl } from "@/lib/map-url-state";
 import {
   EventPopup,
   OsmPopup,
@@ -450,6 +458,7 @@ export default function AppMap({
   showSearchControls = true,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  const routeSearchParams = useSearchParams();
   const attachMapRef = useCallback((instance: MapRef | null) => {
     mapRef.current = instance;
     if (instance) installCategoryMarkers(instance.getMap());
@@ -496,23 +505,31 @@ export default function AppMap({
     () => typeof window !== "undefined" && window.innerWidth < 1024,
   );
   // Shareable / reload-safe camera: a `?c=lng,lat,zoom` param (written on
-  // moveend below) reopens the map exactly where it was left. Read once at
-  // mount; malformed values fall through to the mode/cached default. Mapbox
-  // clamps any out-of-region value to maxBounds, so a crafted URL is harmless.
+  // moveend below) reopens the map exactly where it was left. Keep it reactive
+  // because Next may preserve this map while a detail route is open and reveal
+  // it again for "Back to map." Malformed values fall through to the
+  // mode/cached default. Mapbox clamps any out-of-region value to maxBounds,
+  // so a crafted URL is harmless.
+  const routeCameraParam = routeSearchParams.get("c");
   const urlCamera = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const raw = new URLSearchParams(window.location.search).get("c");
+    const raw = routeCameraParam;
     if (!raw) return null;
     const [lng, lat, z] = raw.split(",").map(Number);
     if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
     return { longitude: lng, latitude: lat, zoom: z };
-  }, []);
+  }, [routeCameraParam]);
+  // A pooled Mapbox instance can emit the camera it retained from an older
+  // route before the requested `?c=` camera is restored. Do not let that
+  // transient move overwrite the address bar and turn the wrong frame into
+  // the new source of truth.
+  const cameraUrlWriteReadyRef = useRef(!urlCamera);
   // `reuseMaps` keeps the GL instance warm across route changes. That is a
   // major speed win, but Mapbox can then retain the camera from the previous
   // mount and ignore the new component's `initialViewState`. Re-apply an
   // explicit share/return camera after the ref attaches so opening a saved
   // map URL, or returning from full search, restores the view it promises.
-  useEffect(() => {
+  useLayoutEffect(() => {
+    cameraUrlWriteReadyRef.current = !urlCamera;
     if (!urlCamera) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -521,7 +538,10 @@ export default function AppMap({
       Math.abs(center.lng - urlCamera.longitude) < 0.00005 &&
       Math.abs(center.lat - urlCamera.latitude) < 0.00005 &&
       Math.abs(map.getZoom() - urlCamera.zoom) < 0.005;
-    if (alreadyRestored) return;
+    if (alreadyRestored) {
+      cameraUrlWriteReadyRef.current = true;
+      return;
+    }
     cameraIntentRef.current = true;
     map.jumpTo({
       center: [urlCamera.longitude, urlCamera.latitude],
@@ -747,7 +767,6 @@ export default function AppMap({
   // layers instead of returning them to a visually identical but blank map.
   // AppMap is mounted with `ssr: false`, so the first client render can safely
   // seed this from the exact URL carried through `returnTo`.
-  const routeSearchParams = useSearchParams();
   const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
   const [q, setQ] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -1155,22 +1174,25 @@ export default function AppMap({
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
   // shareable; MapOverlays lazy-loads and renders each active layer.
-  const [activeOverlays, setActiveOverlays] = useState<OverlayKey[]>(() => {
-    if (typeof window === "undefined") return [];
-    return parseLayersParam(
-      new URLSearchParams(window.location.search).get("layers"),
-    );
-  });
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const v = serializeLayers(activeOverlays);
-    if (v) url.searchParams.set("layers", v);
-    else url.searchParams.delete("layers");
-    window.history.replaceState(null, "", url.toString());
-  }, [activeOverlays]);
+  const routeLayersParam = routeSearchParams.get("layers");
+  const activeOverlays = useMemo(
+    () => parseLayersParam(routeLayersParam),
+    [routeLayersParam],
+  );
+  const writeActiveOverlays = (next: OverlayKey[]) => {
+    replaceMapUrl((params) => {
+      const serialized = serializeLayers(next);
+      if (serialized) params.set("layers", serialized);
+      else params.delete("layers");
+    });
+  };
   const toggleOverlay = (k: OverlayKey) => {
     track("map_layer", { layer: k, on: !activeOverlays.includes(k) });
-    setActiveOverlays((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
+    writeActiveOverlays(
+      activeOverlays.includes(k)
+        ? activeOverlays.filter((key) => key !== k)
+        : [...activeOverlays, k],
+    );
   };
 
   // Saved-only lens (continuity P2): filter the pins to the user's own
@@ -2099,7 +2121,9 @@ export default function AppMap({
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
     if (layer) {
-      setActiveOverlays((cur) => (cur.includes(layer) ? cur : [...cur, layer]));
+      if (!activeOverlays.includes(layer)) {
+        writeActiveOverlays([...activeOverlays, layer]);
+      }
       setQ("");
       return;
     }
@@ -2236,9 +2260,7 @@ export default function AppMap({
         cameraIntentRef.current = true;
 
         try {
-          const url = new URL(window.location.href);
-          url.searchParams.set(SCOPE_PARAM, town.slug);
-          window.history.replaceState(null, "", url.toString());
+          replaceMapUrl((params) => params.set(SCOPE_PARAM, town.slug));
         } catch {
           // URL persistence is an enhancement; scope + camera still update.
         }
@@ -2810,6 +2832,26 @@ export default function AppMap({
           ]}
           onClick={onClick}
           onLoad={(e) => {
+            // `reuseMaps` can retain the camera from a prior visit even when
+            // this route has an explicit return/share camera. Restore it
+            // before any settled move is allowed to rewrite `?c=`.
+            if (urlCamera) {
+              cameraUrlWriteReadyRef.current = false;
+              const center = e.target.getCenter();
+              const alreadyRestored =
+                Math.abs(center.lng - urlCamera.longitude) < 0.00005 &&
+                Math.abs(center.lat - urlCamera.latitude) < 0.00005 &&
+                Math.abs(e.target.getZoom() - urlCamera.zoom) < 0.005;
+              if (!alreadyRestored) {
+                cameraIntentRef.current = true;
+                e.target.jumpTo({
+                  center: [urlCamera.longitude, urlCamera.latitude],
+                  zoom: urlCamera.zoom,
+                });
+              } else {
+                cameraUrlWriteReadyRef.current = true;
+              }
+            }
             installCategoryMarkers(e.target);
             // Brand repaint. The palette rewrites stock light-v11 into the
             // Frederick Radius design — paper-cream land, civic-blue water,
@@ -2954,9 +2996,20 @@ export default function AppMap({
             // sibling `layers` param.
             try {
               const c = e.target.getCenter();
-              const url = new URL(window.location.href);
-              url.searchParams.set("c", `${c.lng.toFixed(4)},${c.lat.toFixed(4)},${e.target.getZoom().toFixed(2)}`);
-              window.history.replaceState(null, "", url.toString());
+              if (urlCamera && !cameraUrlWriteReadyRef.current) {
+                const restored =
+                  Math.abs(c.lng - urlCamera.longitude) < 0.00005 &&
+                  Math.abs(c.lat - urlCamera.latitude) < 0.00005 &&
+                  Math.abs(e.target.getZoom() - urlCamera.zoom) < 0.005;
+                if (!restored) return;
+                cameraUrlWriteReadyRef.current = true;
+              }
+              replaceMapUrl((params) => {
+                params.set(
+                  "c",
+                  `${c.lng.toFixed(4)},${c.lat.toFixed(4)},${e.target.getZoom().toFixed(2)}`,
+                );
+              });
             } catch {
               /* URL write is best-effort */
             }

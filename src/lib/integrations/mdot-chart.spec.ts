@@ -102,6 +102,46 @@ describe("MDOT CHART feed availability", () => {
     expect((await getChartIncidentsFrederickResult()).available).toBe(false);
   });
 
+  it("keeps a missing provider start time null instead of inventing now", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        Response.json({
+          data: [{
+            id: "missing-time",
+            county: "Frederick",
+            name: "Incident @ US 15",
+            incidentType: "Incident",
+            lat: 39.4,
+            lon: -77.4,
+          }],
+        }),
+      ),
+    );
+
+    const result = await getChartIncidentsFrederickResult();
+    expect(result.available).toBe(true);
+    expect(result.data[0].started_at).toBeNull();
+  });
+
+  it("exposes a valid HTTP response time as retrieval metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { Date: "Tue, 28 Jul 2026 16:00:00 GMT" },
+        }),
+      ),
+    );
+
+    await expect(getChartIncidentsFrederickResult()).resolves.toEqual({
+      data: [],
+      available: true,
+      asOf: "2026-07-28T16:00:00.000Z",
+    });
+  });
+
   it("lets a slower page cache boundary override only this read", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(JSON.stringify({ data: [], success: true, totalCount: 0 }), { status: 200 }),
@@ -200,6 +240,7 @@ describe("CHART humanization", () => {
         now,
       ),
     ).toMatch(/^Clears ~/);
+    expect(chartFreshnessTail({ started_at: null }, now)).toBe("Active now");
   });
 });
 
@@ -227,6 +268,10 @@ describe("qualifiesForToday", () => {
   it("rejects stale (>12h) incidents", () => {
     const stale = incident({ started_at: new Date(now.getTime() - 13 * 3600 * 1000).toISOString() }, now);
     expect(qualifiesForToday(stale, now)).toBe(false);
+  });
+
+  it("rejects an incident without a provider start time", () => {
+    expect(qualifiesForToday(incident({ started_at: null }, now), now)).toBe(false);
   });
 
   it("rejects an already-cleared incident", () => {

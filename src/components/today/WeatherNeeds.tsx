@@ -4,9 +4,9 @@ import {
   ExternalLink, Snowflake, Wind, CloudRain, Tornado, ChevronRight,
   type LucideIcon,
 } from "lucide-react";
-import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { nwsDisplaySeverity } from "@/components/today/CivicAlerts";
 import { prioritizeAlerts } from "@/lib/alert-priority";
+import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 
 /**
  * WeatherNeeds — the "what you need" layer that appears ONLY during an active
@@ -116,15 +116,24 @@ const HAZARDS: Record<Hazard, { label: string; advice: string; icon: LucideIcon;
 };
 
 export default async function WeatherNeeds() {
-  let alerts: NwsAlert[] = [];
+  let snapshot: Awaited<ReturnType<typeof getCurrentSituationSnapshot>>;
   try {
-    alerts = await getNwsAlerts();
+    snapshot = await getCurrentSituationSnapshot();
   } catch {
     return null; // analytics/feed failure must never break Today
   }
+  const weather = snapshot.sources.weather;
+  if (
+    weather.availability !== "available" ||
+    weather.freshness !== "fresh"
+  ) {
+    return null;
+  }
   // Qualifying = a real, non-routine weather warning/advisory (same bar as the
   // Heads-up banner). Info-level and empty feeds render nothing.
-  const active = prioritizeAlerts(alerts.filter((a) => nwsDisplaySeverity(a) !== "info"));
+  const active = prioritizeAlerts(
+    weather.data.filter((alert) => nwsDisplaySeverity(alert) !== "info"),
+  );
   if (active.length === 0) return null;
 
   const hazard = classify(active.map((a) => a.event));

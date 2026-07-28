@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { AlertTriangle } from "lucide-react";
-import { RECENT_INCIDENT_MS, type GeocodedIncident } from "@/lib/integrations/scannerIncidents";
+import type {
+  LiveIncidentSignal,
+  LiveIncidentSnapshot,
+} from "@/lib/live/incidentSnapshot";
 import {
   liveLayerHealth,
   type LiveLayerHealth,
@@ -11,15 +14,16 @@ import {
 
 /**
  * LiveIncidents — the map's live public-safety layer, fed by the FredScanner
- * #incidents CAD stream through /api/scanner/incidents. Only public,
- * non-medical, in-county-geocoded incidents ever arrive (the allowlist +
- * geocoder run server-side), so this component just polls, pins, and ages
- * them out visually. Self-contained: it owns its markers AND its popup, so
- * AppMap mounts it with one line. Empty (renders nothing) until the feed is
- * live. Polls only while its layer toggle is on.
+ * #incidents CAD stream through the shared /api/pulse/incidents snapshot.
+ * Only public, non-medical, in-county-geocoded incidents ever arrive (the
+ * allowlist + geocoder run server-side), so this component just polls, pins,
+ * and ages them out visually. Self-contained: it owns its markers AND its
+ * popup, so AppMap mounts it with one line. Empty (renders nothing) until the
+ * feed is live. Polls only while its layer toggle is on.
  */
 
 const POLL_MS = 60_000;
+const RECENT_INCIDENT_MS = 60 * 60_000;
 
 const KIND_COLOR: Record<string, string> = {
   Crash: "var(--app-brand)",
@@ -50,9 +54,9 @@ export default function LiveIncidents({
   show: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
 }) {
-  const [incidents, setIncidents] = useState<GeocodedIncident[]>([]);
-  const [selected, setSelected] = useState<GeocodedIncident | null>(null);
-  const incidentsRef = useRef<GeocodedIncident[]>([]);
+  const [incidents, setIncidents] = useState<LiveIncidentSignal[]>([]);
+  const [selected, setSelected] = useState<LiveIncidentSignal | null>(null);
+  const incidentsRef = useRef<LiveIncidentSignal[]>([]);
   // Wall-clock now (ms) for the "X min ago" label, stamped on poll/tick so no
   // Date.now() runs during render (react-hooks purity).
   const [nowMs, setNowMs] = useState(0);
@@ -69,7 +73,7 @@ export default function LiveIncidents({
     const reportFailure = () => {
       const cached = incidentsRef.current;
       const newest = cached
-        .map((incident) => incident.at)
+        .map((incident) => incident.lastReportedAt)
         .sort()
         .at(-1);
       onHealthRef.current?.(
@@ -88,25 +92,26 @@ export default function LiveIncidents({
     };
     const load = async () => {
       try {
-        const r = await fetch("/api/scanner/incidents", { cache: "no-store" });
+        const r = await fetch("/api/pulse/incidents", { cache: "no-store" });
         if (!r.ok) {
           reportFailure();
           return;
         }
-        const d = (await r.json()) as { incidents?: GeocodedIncident[] };
-        if (alive && Array.isArray(d.incidents)) {
-          setIncidents(d.incidents);
-          incidentsRef.current = d.incidents;
+        const d = (await r.json()) as Partial<LiveIncidentSnapshot>;
+        if (alive && Array.isArray(d.items)) {
+          setIncidents(d.items);
+          incidentsRef.current = d.items;
           setNowMs(Date.now());
           onHealthRef.current?.(
             liveLayerHealth({
               source: "FrederickScanner",
-              count: d.incidents.length,
+              count: d.items.length,
+              unavailable: d.scannerAvailable === false,
               timestamp:
-                d.incidents
-                  .map((incident) => incident.at)
+                d.items
+                  .map((incident) => incident.lastReportedAt)
                   .sort()
-                  .at(-1) ?? new Date(),
+                  .at(-1) ?? d.updatedAt ?? new Date(),
               maxAgeMs: RECENT_INCIDENT_MS * 2,
             }),
           );
@@ -137,12 +142,14 @@ export default function LiveIncidents({
       {incidents.map((inc) => {
         // Past calls (older than an hour) show dimmed and still, not pulsing —
         // so an active scene stands out from the day's earlier calls.
-        const isPast = nowMs > 0 && nowMs - Date.parse(inc.at) > RECENT_INCIDENT_MS;
+        const isPast =
+          nowMs > 0 &&
+          nowMs - Date.parse(inc.lastReportedAt) > RECENT_INCIDENT_MS;
         return (
         <Marker
-          key={`inc:${inc.kind}:${inc.location}:${inc.at}`}
-          longitude={inc.lng}
-          latitude={inc.lat}
+          key={inc.id}
+          longitude={inc.coordinate.lng}
+          latitude={inc.coordinate.lat}
           anchor="center"
         >
           <button
@@ -164,8 +171,8 @@ export default function LiveIncidents({
 
       {selected && (
         <Popup
-          longitude={selected.lng}
-          latitude={selected.lat}
+          longitude={selected.coordinate.lng}
+          latitude={selected.coordinate.lat}
           anchor="bottom"
           offset={18}
           closeOnClick={false}
@@ -182,7 +189,10 @@ export default function LiveIncidents({
               (() => {
                 // "Active" only while the call is still recent; an hours-old
                 // call with multiple posts is history, not a live scene.
-                const selectedIsPast = nowMs > 0 && nowMs - Date.parse(selected.at) > RECENT_INCIDENT_MS;
+                const selectedIsPast =
+                  nowMs > 0 &&
+                  nowMs - Date.parse(selected.lastReportedAt) >
+                    RECENT_INCIDENT_MS;
                 return (
                   <p
                     className="mt-1 text-[11px] font-semibold"
@@ -194,7 +204,10 @@ export default function LiveIncidents({
               })()
             )}
             <p className="mt-1 font-mono text-[10px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
-              {nowMs ? `${agoLabel(selected.at, nowMs)} · ` : ""}via FrederickScanner
+              {nowMs ? `${agoLabel(selected.lastReportedAt, nowMs)} · ` : ""}
+              {selected.status === "corroborated"
+                ? "Frederick Scanner + MDOT CHART"
+                : "via Frederick Scanner"}
             </p>
           </div>
         </Popup>

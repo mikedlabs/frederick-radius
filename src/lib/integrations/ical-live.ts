@@ -31,6 +31,12 @@ const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 import { unstable_cache } from "next/cache";
+import {
+  buildLiveEventCachePage,
+  inflateCachedLiveEvent,
+  liveEventCacheSourceState,
+  type LiveEventCacheSourceState,
+} from "@/lib/integrations/live-event-cache";
 
 // Hard ceiling on a single feed fetch. These feeds normally answer in
 // ~1s, but the /events render awaits all of them in parallel, so one
@@ -579,9 +585,9 @@ export function liveEventSlug(
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Minimal hand-rolled iCal VEVENT parser. node-ical errors under
-// Next/Turbopack runtime ("e.BigInt is not a function"). node-ical stays
-// in place for the cron-based ingest at src/lib/ingest/ical.ts.
+// Minimal hand-rolled iCal VEVENT parser. The old node-ical dependency failed
+// under the bundled serverless runtime ("e.BigInt is not a function"), so both
+// request-time and scheduled calendar reads now use runtime-safe parsers.
 // ────────────────────────────────────────────────────────────────────────
 
 function unfoldIcalLines(text: string): string[] {
@@ -1655,16 +1661,7 @@ export function getCachedLiveEventsForSources(
   windowDays = 60,
 ): ReturnType<typeof getLiveEventsForSources> {
   const stableSources = [...new Set(sources)].sort();
-  return unstable_cache(
-    () => getLiveEventsForSources(stableSources, windowDays),
-    [
-      "live-events-by-source-v1",
-      stableSources.join(","),
-      String(windowDays),
-      process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
-    ],
-    { revalidate: 300, tags: ["events"] },
-  )();
+  return readCachedEventSources(stableSources, windowDays);
 }
 
 export async function getLiveEvents(
@@ -1752,39 +1749,226 @@ export async function getLiveEvents(
   };
 }
 
-/**
- * Cached wrapper around getLiveEvents — ONE shared 840s data-cache entry that
- * every request-path surface reads from (/map, /events, /today, /towns,
- * /events/[slug]), so the live iCal/RSS feeds are fetched at most once per
- * roughly 15 minutes instead of on every render.
- *
- * This is the fix for the request-time feed timeouts (Vercel runtime errors:
- * ~1,500 feed aborts affecting 150+ users over 7 days). /map and the slug
- * resolver called getLiveEvents UNCACHED, so a slow upstream (city-frederick,
- * parks, county, thurmont, mount-airy) stalled the page up to 8s PER REQUEST —
- * and because an aborted fetch is never cached, the very next request retried
- * the same timeout, a thundering herd. Wrapping the ASSEMBLED + deduped result
- * in unstable_cache means a warm hit skips the network (and the parse/dedupe)
- * entirely; a cold miss is paid once per 15 min and even a partial result (some
- * feeds fail-soft to []) is cached and self-heals on the next revalidate.
- *
- * ~15-minute staleness is acceptable for event listings. The fourteen-minute
- * TTL is deliberately shorter than the production fifteen-minute warm cron,
- * ensuring every scheduled run crosses the stale boundary even though cache
- * timestamps are written after recomputation completes. The
- * The explicit vNN key is the shape/version boundary and stays stable across
- * ordinary deploys, so a release does not create a first-visitor cold miss.
- * Shape changes must bump that version. The shared "events" tag still lets
- * ingest paths invalidate fresh data immediately. Crons (data-health,
- * daily-briefing) keep calling raw getLiveEvents so they measure genuinely
- * fresh feed state.
- */
-export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
+type CachedEventSourceResult = {
+  events: LiveEvent[];
+  state: LiveEventCacheSourceState;
+};
+
+type CachedEventSourceMemo = {
+  expiresAt: number;
+  promise: Promise<CachedEventSourceResult>;
+};
+
+// A large source can span several persistent cache pages. Keep its parsed
+// result in process briefly so those sequential page fills share one upstream
+// request and one parse. This is only an assembly memo, never a second durable
+// cache; expired entries are pruned on the next read.
+const EVENT_SOURCE_ASSEMBLY_MEMO_MS = 30_000;
+const eventSourceAssemblyMemo = new Map<string, CachedEventSourceMemo>();
+
+function eventSourceLabel(source: LiveEvent["source"]): string {
+  if (source === "ticketmaster") return "Ticketmaster";
+  return FEEDS.find((feed) => feed.source === source)?.source_label ?? source;
+}
+
+async function fetchEventSourceForCache(
+  source: LiveEvent["source"],
+  windowDays: number,
+): Promise<CachedEventSourceResult> {
+  const key = `${source}:${windowDays}`;
+  const now = Date.now();
+  for (const [candidate, memo] of eventSourceAssemblyMemo) {
+    if (memo.expiresAt <= now) eventSourceAssemblyMemo.delete(candidate);
+  }
+  const existing = eventSourceAssemblyMemo.get(key);
+  if (existing && existing.expiresAt > now) return existing.promise;
+
+  const promise = (async (): Promise<CachedEventSourceResult> => {
+    if (source === "ticketmaster") {
+      const result = await fetchTicketmasterMusicResult();
+      const horizonMs = Date.now() + windowDays * 86_400_000;
+      return {
+        events: result.items.filter(
+          (event) => Date.parse(event.starts_at) <= horizonMs,
+        ),
+        state:
+          result.state === "disabled"
+            ? "disabled"
+            : eventAdapterIsDegraded(result)
+              ? "failed"
+              : "ok",
+      };
+    }
+
+    const feed = FEEDS.find(
+      (candidate) => candidate.source === source && Boolean(candidate.url),
+    );
+    if (!feed) return { events: [], state: "disabled" };
+    const result = await fetchFeed(feed, windowDays);
+    return {
+      events: result.events,
+      state: result.ok ? "ok" : "failed",
+    };
+  })();
+
+  eventSourceAssemblyMemo.set(key, {
+    expiresAt: now + EVENT_SOURCE_ASSEMBLY_MEMO_MS,
+    promise,
+  });
+  void promise.catch(() => {
+    const current = eventSourceAssemblyMemo.get(key);
+    if (current?.promise === promise) eventSourceAssemblyMemo.delete(key);
+  });
+  return promise;
+}
+
+function getCachedEventSourcePage(
+  source: LiveEvent["source"],
+  windowDays: number,
+  afterCursor: string | null,
+) {
   return unstable_cache(
-    () => getLiveEvents(windowDays),
-    ["live-events-v6", String(windowDays)],
-    { revalidate: 840, tags: ["events"] },
+    async () => {
+      const result = await fetchEventSourceForCache(source, windowDays);
+      return buildLiveEventCachePage(
+        result.events,
+        result.state,
+        afterCursor,
+      );
+    },
+    [
+      "live-event-source-page-v1",
+      source,
+      String(windowDays),
+      afterCursor ?? "first",
+    ],
+    {
+      revalidate: 840,
+      tags: ["events", `events-source-${source}`],
+    },
   )();
+}
+
+async function readCachedEventSource(
+  source: LiveEvent["source"],
+  windowDays: number,
+): Promise<CachedEventSourceResult> {
+  const events: LiveEvent[] = [];
+  const seenCursors = new Set<string>();
+  let afterCursor: string | null = null;
+  let state: LiveEventCacheSourceState = "disabled";
+
+  while (true) {
+    const page = await getCachedEventSourcePage(
+      source,
+      windowDays,
+      afterCursor,
+    );
+    const pageState = liveEventCacheSourceState(page);
+    // A partial/failed refresh may still contain useful rows. Preserve them,
+    // while retaining the failed state for the UI/source-health ledger.
+    if (pageState === "failed") state = "failed";
+    else if (pageState === "ok" && state !== "failed") state = "ok";
+
+    const label = eventSourceLabel(source);
+    events.push(
+      ...page.e.map((record) =>
+        inflateCachedLiveEvent(record, source, label),
+      ),
+    );
+
+    if (page.n === null) break;
+    if (seenCursors.has(page.n)) {
+      throw new Error(`live event cache cursor repeated for ${source}`);
+    }
+    seenCursors.add(page.n);
+    afterCursor = page.n;
+  }
+
+  return { events, state };
+}
+
+async function readCachedEventSources(
+  sources: readonly LiveEvent["source"][],
+  windowDays: number,
+): ReturnType<typeof getLiveEvents> {
+  const results = await Promise.all(
+    sources.map(async (source) => {
+      try {
+        return {
+          source,
+          ...(await readCachedEventSource(source, windowDays)),
+        };
+      } catch (error) {
+        console.warn(
+          `[ical-live] ${source}: bounded cache page failed (fail-soft, skipped):`,
+          error instanceof Error ? error.message : error,
+        );
+        return {
+          source,
+          events: [] as LiveEvent[],
+          state: "failed" as const,
+        };
+      }
+    }),
+  );
+
+  const seen = new Map<string, LiveEvent>();
+  for (const result of results) {
+    for (const event of result.events) {
+      const key = liveEventDedupeKey(
+        event.title,
+        new Date(event.starts_at),
+        event.venue_name,
+      );
+      if (!seen.has(key)) seen.set(key, event);
+    }
+  }
+
+  return {
+    events: [...seen.values()]
+      .filter(
+        (event) =>
+          !EVENT_NOISE_FILTER
+          || (!isVenueStatusNonEvent(event.title)
+            && !isNonPublicListing(event.title)),
+      )
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at)),
+    sources_succeeded: results
+      .filter((result) => result.state === "ok")
+      .map((result) => result.source),
+    sources_failed: results
+      .filter((result) => result.state === "failed")
+      .map((result) => result.source),
+  };
+}
+
+/**
+ * Cached wrapper around getLiveEvents. Event data is stored as compact,
+ * byte-measured pages per source rather than one countywide value.
+ *
+ * The old assembled 60/90-day entry crossed Next's roughly 2 MB Data Cache
+ * limit, so the write failed and the next visitor paid for every feed again.
+ * Each new page has a conservative 1.5 MB ceiling and carries a continuation
+ * cursor; an unusually large source gets another page instead of losing
+ * events. Per-source isolation also means one failed feed cannot evict healthy
+ * sources from cache.
+ *
+ * The fourteen-minute TTL remains shorter than the fifteen-minute warm cron.
+ * Cache keys are shape-versioned and stable across ordinary deploys. Raw
+ * getLiveEvents stays separate for data-health workers that must measure live
+ * upstream state.
+ */
+export function getCachedLiveEvents(
+  windowDays = 60,
+): ReturnType<typeof getLiveEvents> {
+  const sources: LiveEvent["source"][] = [
+    ...new Set(
+      FEEDS.filter((feed) => Boolean(feed.url)).map((feed) => feed.source),
+    ),
+    "ticketmaster",
+  ];
+  return readCachedEventSources(sources, windowDays);
 }
 
 export const LIVE_FEEDS = FEEDS.map((f) => ({

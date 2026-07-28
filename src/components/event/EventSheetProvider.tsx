@@ -1,9 +1,21 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import EventSheet from "./EventSheet";
+import {
+  createContext,
+  lazy,
+  Suspense,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import LazySheetFallback from "@/components/ui/LazySheetFallback";
+
+const EventSheet = lazy(() => import("./EventSheet"));
 
 /**
  * EventSheetProvider — the event half of the shared sheet system
@@ -31,21 +43,34 @@ type Ctx = {
 const EventSheetContext = createContext<Ctx | null>(null);
 
 export function EventSheetProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [event, setEvent] = useState<EventWithMeta | null>(null);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const openPathRef = useRef(pathname);
   const router = useRouter();
   // Monotonic request id: a stale fetch resolving after a newer open
   // (or after close) must never repopulate the sheet.
   const reqRef = useRef(0);
 
   const openEventSheet = useCallback((e: EventWithMeta) => {
+    openerRef.current =
+      typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     reqRef.current++;
+    openPathRef.current = pathname;
     setPendingSlug(null);
     setEvent(e);
-  }, []);
+  }, [pathname]);
 
   const openEventSheetBySlug = useCallback(
     (slug: string) => {
+      openerRef.current =
+        typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      openPathRef.current = pathname;
       const req = ++reqRef.current;
       setEvent(null);
       setPendingSlug(slug);
@@ -69,7 +94,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
           router.push(`/events/${slug}`);
         });
     },
-    [router],
+    [pathname, router],
   );
 
   const closeEventSheet = useCallback(() => {
@@ -78,10 +103,36 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
     setPendingSlug(null);
   }, []);
 
+  // The app layout persists across routes. Cancel both the sheet and any
+  // in-flight summary request when navigation leaves the surface that opened
+  // it, including while the lazy sheet bundle is still pending.
+  useEffect(() => {
+    if ((!event && !pendingSlug) || pathname === openPathRef.current) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; cancel pending client work before it can repopulate the overlay
+    closeEventSheet();
+  }, [closeEventSheet, event, pathname, pendingSlug]);
+
   return (
     <EventSheetContext.Provider value={{ openEventSheet, openEventSheetBySlug, closeEventSheet }}>
       {children}
-      <EventSheet event={event} pending={pendingSlug !== null} onClose={closeEventSheet} />
+      {event || pendingSlug ? (
+        <Suspense
+          fallback={(
+            <LazySheetFallback
+              label="Loading event details"
+              onClose={closeEventSheet}
+              returnFocusRef={openerRef}
+            />
+          )}
+        >
+          <EventSheet
+            event={event}
+            pending={pendingSlug !== null}
+            onClose={closeEventSheet}
+            returnFocusRef={openerRef}
+          />
+        </Suspense>
+      ) : null}
     </EventSheetContext.Provider>
   );
 }

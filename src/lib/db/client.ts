@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
 type DB = ReturnType<typeof drizzle<typeof schema>>;
+export type Database = DB;
 
 let _db: DB | null = null;
 let _sql: ReturnType<typeof postgres> | null = null;

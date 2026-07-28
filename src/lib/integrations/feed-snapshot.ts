@@ -35,9 +35,10 @@
  * surface on `/admin/data-health` for human eyes, not paging.
  */
 
-import { getDb } from "@/lib/db/client";
+import { getDb, getSql } from "@/lib/db/client";
 import { feed_snapshots } from "@/lib/db/schema";
 import { asc, desc, inArray, lt } from "drizzle-orm";
+import { withStatementTimeout } from "@/lib/db/statement-timeout";
 
 type Snapshot = {
   taken_at: string;
@@ -125,8 +126,9 @@ export function recordSnapshot(source: string, rows: SnapshotRow[]): void {
  * feed pull, which caps growth to roughly one row per source per day while
  * preserving cross-deploy anomaly history.
  */
-let warnedPersistFailure = false;
-export async function persistCurrentSnapshots(sources?: readonly string[]): Promise<number> {
+async function persistCurrentSnapshotRows(
+  sources?: readonly string[],
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const allowed = sources ? new Set(sources) : null;
@@ -150,9 +152,14 @@ export async function persistCurrentSnapshots(sources?: readonly string[]): Prom
     .filter((value): value is NonNullable<typeof value> => value !== null);
   if (values.length === 0) return 0;
 
+  await db.insert(feed_snapshots).values(values);
+  return values.length;
+}
+
+let warnedPersistFailure = false;
+export async function persistCurrentSnapshots(sources?: readonly string[]): Promise<number> {
   try {
-    await db.insert(feed_snapshots).values(values);
-    return values.length;
+    return await persistCurrentSnapshotRows(sources);
   } catch (err) {
     // Telemetry-only write. A failure must not break the rest of the health
     // report, and one warning per worker is enough to make it observable.
@@ -165,6 +172,16 @@ export async function persistCurrentSnapshots(sources?: readonly string[]): Prom
     }
     return 0;
   }
+}
+
+/**
+ * Cron worker variant: a failed telemetry write is phase-significant and must
+ * reject so the independently scheduled feed phase records a red heartbeat.
+ */
+export function persistCurrentSnapshotsStrict(
+  sources?: readonly string[],
+): Promise<number> {
+  return persistCurrentSnapshotRows(sources);
 }
 
 /**
@@ -185,60 +202,72 @@ export async function persistCurrentSnapshots(sources?: readonly string[]): Prom
 let hydratedAt: number = 0;
 const HYDRATE_TTL_MS = 60_000;
 
-export async function hydrateSnapshots(): Promise<void> {
+async function hydrateSnapshotRows(): Promise<void> {
   const db = getDb();
   if (!db) return;
   // Throttle: at most once per minute per worker. The dashboard is
   // operator-facing, so a minute of staleness is fine and we avoid
   // hammering the DB on every render.
   if (Date.now() - hydratedAt < HYDRATE_TTL_MS) return;
+  // Pull the most recent N snapshots across all sources in one query,
+  // then partition client-side. Cheap because the index covers it
+  // and N is small (WINDOW * sources ≈ 50 rows max).
+  const rows = await db
+    .select()
+    .from(feed_snapshots)
+    .orderBy(desc(feed_snapshots.taken_at))
+    .limit(WINDOW * 20);
+  const bySource = new Map<string, Snapshot[]>();
+  for (const r of rows) {
+    const buf = bySource.get(r.source) ?? [];
+    if (buf.length >= WINDOW) continue;
+    buf.push({
+      taken_at: r.taken_at.toISOString(),
+      count: r.count,
+      free_ratio: r.free_ratio,
+      empty_desc_ratio: r.empty_desc_ratio,
+      top_venue: r.top_venue ?? null,
+      top_category: r.top_category ?? null,
+      earliest: r.earliest ? r.earliest.toISOString() : null,
+      latest: r.latest ? r.latest.toISOString() : null,
+    });
+    bySource.set(r.source, buf);
+  }
+  // The query returned newest-first; reverse so the buffer is
+  // oldest → newest, matching the in-memory append order.
+  for (const [source, buf] of bySource) {
+    buf.reverse();
+    // Only seed the in-memory buffer if the current process hasn't
+    // already written a more-recent snapshot. Compare by timestamp:
+    // if our newest in-memory entry is at least as fresh as the DB
+    // tail, keep what we have.
+    const existing = SNAPSHOTS.get(source);
+    const existingNewest = existing?.[existing.length - 1]?.taken_at;
+    const dbNewest = buf[buf.length - 1]?.taken_at;
+    if (!existingNewest || (dbNewest && dbNewest > existingNewest)) {
+      SNAPSHOTS.set(source, buf);
+    }
+  }
+  hydratedAt = Date.now();
+}
+
+export async function hydrateSnapshots(): Promise<void> {
   try {
-    // Pull the most recent N snapshots across all sources in one query,
-    // then partition client-side. Cheap because the index covers it
-    // and N is small (WINDOW * sources ≈ 50 rows max).
-    const rows = await db
-      .select()
-      .from(feed_snapshots)
-      .orderBy(desc(feed_snapshots.taken_at))
-      .limit(WINDOW * 20);
-    const bySource = new Map<string, Snapshot[]>();
-    for (const r of rows) {
-      const buf = bySource.get(r.source) ?? [];
-      if (buf.length >= WINDOW) continue;
-      buf.push({
-        taken_at: r.taken_at.toISOString(),
-        count: r.count,
-        free_ratio: r.free_ratio,
-        empty_desc_ratio: r.empty_desc_ratio,
-        top_venue: r.top_venue ?? null,
-        top_category: r.top_category ?? null,
-        earliest: r.earliest ? r.earliest.toISOString() : null,
-        latest: r.latest ? r.latest.toISOString() : null,
-      });
-      bySource.set(r.source, buf);
-    }
-    // The query returned newest-first; reverse so the buffer is
-    // oldest → newest, matching the in-memory append order.
-    for (const [source, buf] of bySource) {
-      buf.reverse();
-      // Only seed the in-memory buffer if the current process hasn't
-      // already written a more-recent snapshot. Compare by timestamp:
-      // if our newest in-memory entry is at least as fresh as the DB
-      // tail, keep what we have.
-      const existing = SNAPSHOTS.get(source);
-      const existingNewest = existing?.[existing.length - 1]?.taken_at;
-      const dbNewest = buf[buf.length - 1]?.taken_at;
-      if (!existingNewest || (dbNewest && dbNewest > existingNewest)) {
-        SNAPSHOTS.set(source, buf);
-      }
-    }
-    hydratedAt = Date.now();
+    await hydrateSnapshotRows();
   } catch (err) {
     // Telemetry-only read. Hydration failure means the dashboard
     // shows in-memory window only — non-fatal. Warn (not error) so
     // dev console stays clean.
     console.warn("[feed-snapshot] hydrate failed (telemetry only):", err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * Cron-worker variant: query failures reject so a bounded phase cannot report
+ * a green heartbeat after silently falling back to process-local history.
+ */
+export function hydrateSnapshotsStrict(): Promise<void> {
+  return hydrateSnapshotRows();
 }
 
 /** Test-only: clear the throttle so a fresh hydrate fires next call. */
@@ -255,10 +284,194 @@ export function _resetHydrateThrottle(): void {
  * DB unset) so the cron can report it.
  */
 export const SNAPSHOT_PRUNE_BATCH_SIZE = 5_000;
+export const SNAPSHOT_COMPACTION_BATCH_SIZE = 2_000;
+export const SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT = 5_001;
+
+export type FeedSnapshotStorageTelemetry = {
+  approximateRows: number;
+  totalBytes: number;
+  oldestAt: string | null;
+  newestAt: string | null;
+  rowsLast24Hours: number;
+  duplicateCandidates: number;
+  duplicateCountCapped: boolean;
+};
+
+/**
+ * Read storage pressure without an exact whole-table count.
+ *
+ * `feed_snapshots` once received request-path writes and grew beyond 700k
+ * rows. pg_stat_user_tables gives a cheap approximate total, while the
+ * duplicate probe stops after a small cap. This keeps the health board useful
+ * without turning telemetry itself into another slow query.
+ */
+export async function getFeedSnapshotStorageTelemetry(): Promise<FeedSnapshotStorageTelemetry | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const [summary, duplicateRows] = await Promise.all([
+      sql`
+        SELECT coalesce(stats.n_live_tup, 0)::bigint AS approximate_rows,
+               pg_total_relation_size('feed_snapshots'::regclass)::bigint AS total_bytes,
+               (SELECT min(taken_at) FROM feed_snapshots) AS oldest_at,
+               (SELECT max(taken_at) FROM feed_snapshots) AS newest_at,
+               (
+                 SELECT count(*)::bigint
+                 FROM feed_snapshots
+                 WHERE taken_at >= now() - interval '24 hours'
+               ) AS rows_last_24_hours
+        FROM pg_stat_user_tables stats
+        WHERE stats.schemaname = 'public'
+          AND stats.relname = 'feed_snapshots'
+      `,
+      sql`
+        WITH candidates AS (
+          SELECT candidate.id
+          FROM feed_snapshots candidate
+          WHERE candidate.taken_at <
+                (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+            AND EXISTS (
+              SELECT 1
+              FROM feed_snapshots keeper
+              WHERE keeper.source = candidate.source
+                AND keeper.taken_at >=
+                    (date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+                AND keeper.taken_at <
+                    ((date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') + interval '1 day') AT TIME ZONE 'UTC')
+                AND (
+                  keeper.taken_at > candidate.taken_at
+                  OR (
+                    keeper.taken_at = candidate.taken_at
+                    AND keeper.id > candidate.id
+                  )
+                )
+              LIMIT 1
+            )
+          ORDER BY candidate.taken_at ASC, candidate.id ASC
+          LIMIT ${SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT}
+        )
+        SELECT count(*)::bigint AS duplicate_candidates
+        FROM candidates
+      `,
+    ]) as unknown as [
+      Array<{
+        approximate_rows: string | number;
+        total_bytes: string | number;
+        oldest_at: string | Date | null;
+        newest_at: string | Date | null;
+        rows_last_24_hours: string | number;
+      }>,
+      Array<{ duplicate_candidates: string | number }>,
+    ];
+    const row = summary[0];
+    if (!row) return null;
+    const approximateRows = Number(row.approximate_rows);
+    const totalBytes = Number(row.total_bytes);
+    const rowsLast24Hours = Number(row.rows_last_24_hours);
+    const duplicateCandidates = Number(
+      duplicateRows[0]?.duplicate_candidates ?? 0,
+    );
+    if (
+      ![approximateRows, totalBytes, rowsLast24Hours, duplicateCandidates]
+        .every((value) => Number.isFinite(value) && value >= 0)
+    ) {
+      throw new Error("Snapshot telemetry returned an invalid numeric value.");
+    }
+    return {
+      approximateRows,
+      totalBytes,
+      oldestAt: row.oldest_at ? new Date(row.oldest_at).toISOString() : null,
+      newestAt: row.newest_at ? new Date(row.newest_at).toISOString() : null,
+      rowsLast24Hours,
+      duplicateCandidates: Math.min(
+        duplicateCandidates,
+        SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT - 1,
+      ),
+      duplicateCountCapped:
+        duplicateCandidates >= SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT,
+    };
+  } catch (err) {
+    console.warn(
+      "[feed-snapshot] storage telemetry failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Delete only redundant snapshots from completed UTC days.
+ *
+ * A row is eligible only when a newer row exists for the same source and UTC
+ * day. That invariant preserves at least one snapshot per source per day even
+ * when a batch is interrupted or two workers overlap. Unlike age-based
+ * retention, duplicate compaction does not require a backup assumption
+ * because it never removes the day's sole historical observation.
+ *
+ * This helper is not called automatically. The operator can inspect telemetry
+ * first, then run bounded batches through the explicit maintenance script.
+ */
+export async function compactDuplicateSnapshots(
+  batchSize = SNAPSHOT_COMPACTION_BATCH_SIZE,
+): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  const limit = Math.max(
+    1,
+    Math.min(
+      Math.floor(batchSize),
+      SNAPSHOT_COMPACTION_BATCH_SIZE,
+    ),
+  );
+  try {
+    const deleted = (await sql`
+      WITH doomed AS MATERIALIZED (
+        SELECT candidate.id
+        FROM feed_snapshots candidate
+        WHERE candidate.taken_at <
+              (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+          AND EXISTS (
+            SELECT 1
+            FROM feed_snapshots keeper
+            WHERE keeper.source = candidate.source
+              AND keeper.taken_at >=
+                  (date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+              AND keeper.taken_at <
+                  ((date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') + interval '1 day') AT TIME ZONE 'UTC')
+              AND (
+                keeper.taken_at > candidate.taken_at
+                OR (
+                  keeper.taken_at = candidate.taken_at
+                  AND keeper.id > candidate.id
+                )
+              )
+            LIMIT 1
+          )
+        ORDER BY candidate.taken_at ASC, candidate.id ASC
+        LIMIT ${limit}
+      )
+      DELETE FROM feed_snapshots target
+      USING doomed
+      WHERE target.id = doomed.id
+      RETURNING target.id
+    `) as unknown as Array<{ id: string }>;
+    return deleted.length;
+  } catch (err) {
+    console.warn(
+      "[feed-snapshot] duplicate compaction failed:",
+      err instanceof Error ? err.message : err,
+    );
+    // This helper is used only by the explicit operator maintenance command.
+    // Returning zero would make a failed DELETE indistinguishable from a
+    // successful no-op and let the command exit green after doing nothing.
+    throw err;
+  }
+}
 
 export async function pruneOldSnapshots(
   days: number,
   batchSize = SNAPSHOT_PRUNE_BATCH_SIZE,
+  statementTimeoutMs?: number,
 ): Promise<number> {
   const db = getDb();
   if (!db) return 0;
@@ -271,23 +484,27 @@ export async function pruneOldSnapshots(
     // statement, repeatedly hitting Supabase's statement timeout. `taken_at`
     // is the retention clock and has the operational index added in migration
     // 0031. Oldest-first batching makes every run useful without a long lock.
-    const doomed = db
-      .select({ id: feed_snapshots.id })
-      .from(feed_snapshots)
-      .where(lt(feed_snapshots.taken_at, cutoff))
-      .orderBy(asc(feed_snapshots.taken_at))
-      .limit(limit);
-    const deleted = await db
-      .delete(feed_snapshots)
-      .where(inArray(feed_snapshots.id, doomed))
-      .returning({ id: feed_snapshots.id });
-    return deleted.length;
+    return await withStatementTimeout(db, statementTimeoutMs, async (executor) => {
+      const doomed = executor
+        .select({ id: feed_snapshots.id })
+        .from(feed_snapshots)
+        .where(lt(feed_snapshots.taken_at, cutoff))
+        .orderBy(asc(feed_snapshots.taken_at))
+        .limit(limit);
+      const deleted = await executor
+        .delete(feed_snapshots)
+        .where(inArray(feed_snapshots.id, doomed))
+        .returning({ id: feed_snapshots.id });
+      return deleted.length;
+    });
   } catch (err) {
-    // Prune is best-effort. Failure just means stale rows accumulate
-    // until the next successful run. Warn-level so the dev console
-    // stays clean.
-    console.warn("[feed-snapshot] prune failed (telemetry only):", err instanceof Error ? err.message : err);
-    return 0;
+    console.warn(
+      "[feed-snapshot] retention prune failed:",
+      err instanceof Error ? err.message : err,
+    );
+    // The cron decides whether a retention failure is release-significant.
+    // Propagate it so the health gate cannot report a successful no-op.
+    throw err;
   }
 }
 

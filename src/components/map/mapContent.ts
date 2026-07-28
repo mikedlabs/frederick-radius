@@ -1,5 +1,6 @@
 import type { MapDiscoveryEvidence } from "./mapDiscoveries";
 import type { EventPin } from "./types";
+import { openNowCountLabel } from "@/lib/hours-availability";
 
 const EASTERN = "America/New_York";
 
@@ -48,9 +49,22 @@ export function discoveryTrustLine(evidence: MapDiscoveryEvidence[]): string {
 }
 
 /** The two facts that earn space in Radius mode's always-visible mobile peek. */
-export function radiusResultLine(places: number, openNow: number, openOnly = false): string {
-  if (openOnly) return `${openNow.toLocaleString("en-US")} confirmed open within reach`;
-  return `${places.toLocaleString("en-US")} ${places === 1 ? "place" : "places"} · ${openNow.toLocaleString("en-US")} open now`;
+export function radiusResultLine(
+  places: number,
+  openNow: number,
+  openOnly = false,
+  mayReportNoneOpen = false,
+): string {
+  if (places === 0) return "No places within reach";
+  if (openOnly) {
+    if (openNow > 0) {
+      return `${openNow.toLocaleString("en-US")} confirmed open within reach`;
+    }
+    return mayReportNoneOpen
+      ? "None open within reach"
+      : "Open hours unconfirmed within reach";
+  }
+  return `${places.toLocaleString("en-US")} ${places === 1 ? "place" : "places"} · ${openNowCountLabel(openNow, mayReportNoneOpen)}`;
 }
 
 /**

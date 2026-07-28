@@ -10,6 +10,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { community_reports } from "@/lib/db/schema";
 import { deleteCommunityReportPhoto } from "@/lib/community-report-photo";
+import { withStatementTimeout } from "@/lib/db/statement-timeout";
 
 export type CommunityReport = {
   id: string;
@@ -82,14 +83,16 @@ export async function getCommunityReports(now: Date = new Date()): Promise<Commu
  *   - REJECTED reports older than the grace window.
  * It NEVER touches `pending` rows (the live admin queue) or live/permanent
  * approved rows (expires_at NULL is preserved — a NULL never satisfies `<`).
- * Mirrors prunePushLog / pruneOldSnapshots: fail-soft, returns the count
- * deleted, no-op without a DB.
+ * Mirrors prunePushLog / pruneOldSnapshots: returns the count deleted and
+ * no-ops without a DB. Query failures propagate so the retention worker cannot
+ * report a failed delete as a successful zero-row batch.
  */
 export const COMMUNITY_REPORT_PRUNE_BATCH_SIZE = 100;
 
 export async function pruneExpiredReports(
   graceDays = 1,
   batchSize = COMMUNITY_REPORT_PRUNE_BATCH_SIZE,
+  statementTimeoutMs?: number,
 ): Promise<number> {
   const db = getDb();
   if (!db) return 0;
@@ -110,39 +113,46 @@ export async function pruneExpiredReports(
     ),
   );
   try {
-    const rows = await db
-      .select({
-        id: community_reports.id,
-        photo_url: community_reports.photo_url,
-      })
-      .from(community_reports)
-      .where(expired)
-      .orderBy(asc(community_reports.created_at))
-      .limit(limit);
+    const deleted = await withStatementTimeout(
+      db,
+      statementTimeoutMs,
+      async (executor) => {
+        const rows = await executor
+          .select({
+            id: community_reports.id,
+            photo_url: community_reports.photo_url,
+          })
+          .from(community_reports)
+          .where(expired)
+          .orderBy(asc(community_reports.created_at))
+          .limit(limit);
 
-    if (rows.length === 0) return 0;
+        if (rows.length === 0) return [];
 
-    // Reapply the eligibility predicate at the destructive boundary. An admin
-    // may restore a report while cleanup is running; deleting by the stale ID
-    // list alone could otherwise remove a newly live report. Delete the row
-    // first, then clean up only the Blob URLs returned by that atomic delete.
+        // Reapply the eligibility predicate at the destructive boundary. An
+        // admin may restore a report while cleanup is running; deleting by the
+        // stale ID list alone could otherwise remove a newly live report.
+        return executor
+          .delete(community_reports)
+          .where(
+            and(
+              inArray(
+                community_reports.id,
+                rows.map((row) => row.id),
+              ),
+              expired,
+            ),
+          )
+          .returning({
+            id: community_reports.id,
+            photo_url: community_reports.photo_url,
+          });
+      },
+    );
+
+    // Clean up Blob URLs only after the database transaction has committed.
     // A rare Blob failure leaves an orphaned file, which is safer than leaving
     // a visible report whose image was removed during an admin race.
-    const deleted = await db
-      .delete(community_reports)
-      .where(
-        and(
-          inArray(
-            community_reports.id,
-            rows.map((row) => row.id),
-          ),
-          expired,
-        ),
-      )
-      .returning({
-        id: community_reports.id,
-        photo_url: community_reports.photo_url,
-      });
     const cleanup = await Promise.all(
       deleted.map((row) => deleteCommunityReportPhoto(row.photo_url)),
     );
@@ -157,6 +167,6 @@ export async function pruneExpiredReports(
       "[community-reports] prune failed:",
       err instanceof Error ? err.message : err,
     );
-    return 0;
+    throw err;
   }
 }

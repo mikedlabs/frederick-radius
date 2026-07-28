@@ -1,0 +1,42 @@
+name: UX browser audit
+
+on:
+  schedule:
+    # 4:17 AM Eastern during daylight-saving time. The uneven minute avoids
+    # GitHub Actions' crowded top-of-hour scheduler window.
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ux-browser-audit
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run mobile UX and safe-interaction audit
+        run: npm run test:ux
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Keep failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-browser-failure-traces
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

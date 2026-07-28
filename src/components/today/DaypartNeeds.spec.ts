@@ -81,7 +81,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('role="status"');
     expect(html).toContain("Places open now");
     expect(html).toContain("Across Frederick County");
-    expect(html).toContain("Nothing is confirmed open across Frederick County right now.");
+    expect(html).toContain(
+      "No place across Frederick County has current hours showing it open.",
+    );
     expect(html).toContain("Browse places");
     expect(html).toContain('href="/open-now"');
     expect(html).toContain("rounded-[var(--app-radius-md)]");
@@ -98,9 +100,24 @@ describe("DaypartNeeds", () => {
       }),
     );
 
-    expect(html).toContain("Nothing is confirmed open in Urbana right now.");
+    expect(html).toContain(
+      "No place in Urbana has current hours showing it open.",
+    );
     expect(html).toContain("Expand to county");
     expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
+  });
+
+  it("only reports a closed shelf when the live answer clears the coverage gate", () => {
+    const html = renderToStaticMarkup(
+      DaypartEmptyState({
+        contextLabel: "Urbana",
+        countywide: false,
+        mayReportNoneOpen: true,
+      }),
+    );
+
+    expect(html).toContain("No place is open in Urbana right now.");
+    expect(html).not.toContain("hours showing it open");
   });
 
   it("treats ranking origins as countywide and only a town as a hard scope", () => {
@@ -120,6 +137,7 @@ describe("DaypartNeeds", () => {
         browseHref: "/category/coffee",
         contextLabel: "Urbana",
         contextSource: "town",
+        mayAssertNoneOpen: false,
       },
       {
         category: "coffee",
@@ -138,6 +156,7 @@ describe("DaypartNeeds", () => {
     expect(shelf.picks).toEqual([]);
     expect(shelf.contextLabel).toBe("Urbana");
     expect(shelf.contextSource).toBe("town");
+    expect(shelf.mayAssertNoneOpen).toBe(false);
     expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 

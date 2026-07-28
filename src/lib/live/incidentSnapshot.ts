@@ -1,13 +1,9 @@
-import type {
-  ChartIncident,
-  ChartIncidentsResult,
-} from "@/lib/integrations/mdot-chart";
-import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
+import type { ChartIncidentsResult } from "@/lib/integrations/mdot-chart";
 import type { GeocodedIncident } from "@/lib/integrations/scannerIncidents";
-import { getGeocodedScannerIncidents } from "@/lib/integrations/scannerIncidents";
 import {
   fuseScannerWithChartIncidents,
   type FusedRoadIncident,
+  type IncidentFusionResult,
   type IncidentReasonField,
   type IncidentSourceEvidence,
 } from "@/lib/live/incidentFusion";
@@ -40,6 +36,8 @@ export type LiveIncidentSnapshot = {
   totalCount: number;
   corroboratedCount: number;
   chartAvailable: boolean;
+  /** Additive source-health field for clients that can distinguish quiet/fail. */
+  scannerAvailable?: boolean;
   updatedAt: string;
 };
 
@@ -96,6 +94,21 @@ export function buildLiveIncidentSnapshot(
     },
   );
 
+  return buildLiveIncidentSnapshotFromFusion(
+    fusion,
+    chartResult.available,
+    snapshotTime,
+  );
+}
+
+/** Project an already-computed fusion result into the stable public contract. */
+export function buildLiveIncidentSnapshotFromFusion(
+  fusion: IncidentFusionResult,
+  chartAvailable: boolean,
+  now: string | number | Date,
+  scannerAvailable?: boolean,
+): LiveIncidentSnapshot {
+  const snapshotTime = resolvedNow(now);
   return {
     items: fusion.incidents
       .slice(0, DEFAULT_LIVE_INCIDENT_LIMIT)
@@ -104,7 +117,8 @@ export function buildLiveIncidentSnapshot(
     corroboratedCount: fusion.incidents.filter(
       (incident) => incident.status === "corroborated",
     ).length,
-    chartAvailable: chartResult.available,
+    chartAvailable,
+    ...(scannerAvailable === undefined ? {} : { scannerAvailable }),
     updatedAt: snapshotTime.toISOString(),
   };
 }
@@ -120,17 +134,12 @@ export type GetLiveIncidentSnapshotOptions = {
 export async function getLiveIncidentSnapshot({
   now,
 }: GetLiveIncidentSnapshotOptions = {}): Promise<LiveIncidentSnapshot> {
-  const [scannerIncidents, chartResult] = await Promise.all([
-    getGeocodedScannerIncidents().catch(() => [] as GeocodedIncident[]),
-    getChartIncidentsFrederickResult().catch(() => ({
-      data: [] as ChartIncident[],
-      available: false,
-    })),
-  ]);
-
-  return buildLiveIncidentSnapshot(
-    scannerIncidents,
-    chartResult,
-    now ?? new Date(),
+  const [{ getCurrentSituationSnapshot }, { selectLiveIncidentSnapshot }] =
+    await Promise.all([
+      import("@/lib/live/currentSituation"),
+      import("@/lib/live/currentSituationModel"),
+    ]);
+  return selectLiveIncidentSnapshot(
+    await getCurrentSituationSnapshot({ now }),
   );
 }

@@ -28,24 +28,28 @@ describe("multi-day all-day ingested visibility", () => {
 
   it("loads an occurrence whose start is before the six-hour cutoff and keeps it on day two", async () => {
     const sql = vi.fn(
-      async (_strings: TemplateStringsArray, ..._values: unknown[]) => [
-        {
-          source_uid: "festival-1",
-          source_domain: "fcvfra.com",
-          source_url: "https://events.example/festival",
-          title: "Summer Festival",
-          description: "A two-day community festival.",
-          starts_at_utc: "2026-07-10T04:00:00.000Z",
-          ends_at_utc: "2026-07-12T04:00:00.000Z",
-          all_day: true,
-          venue_name: "Baker Park",
-          address: "121 N Bentz St, Frederick, MD 21701",
-          lat: "39.4143",
-          lng: "-77.4200",
-          municipality: "frederick",
-          category: "community",
-        },
-      ],
+      async (strings: TemplateStringsArray, ...values: unknown[]) => {
+        void strings;
+        void values;
+        return [
+          {
+            source_uid: "festival-1",
+            source_domain: "fcvfra.com",
+            source_url: "https://events.example/festival",
+            title: "Summer Festival",
+            description: "A two-day community festival.",
+            starts_at_utc: "2026-07-10T04:00:00.000Z",
+            ends_at_utc: "2026-07-12T04:00:00.000Z",
+            all_day: true,
+            venue_name: "Baker Park",
+            address: "121 N Bentz St, Frederick, MD 21701",
+            lat: "39.4143",
+            lng: "-77.4200",
+            municipality: "frederick",
+            category: "community",
+          },
+        ];
+      },
     );
     mocks.getSql.mockReturnValue(sql);
 

@@ -46,7 +46,15 @@ jobs:
       - name: Extract business deep-info
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm run ingest:business -- --limit=${{ github.event.inputs.limit || '60' }}
+          INGEST_LIMIT: ${{ github.event.inputs.limit || '60' }}
+        run: |
+          case "$INGEST_LIMIT" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid ingest limit::The limit must be a whole number."
+              exit 1
+              ;;
+          esac
+          npm run ingest:business -- --limit="$INGEST_LIMIT"
       - name: Build description review queue
         run: npm run descriptions:candidates
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.

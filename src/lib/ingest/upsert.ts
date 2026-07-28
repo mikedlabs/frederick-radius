@@ -26,6 +26,8 @@ type ExistingEventRow = {
   dtstamp: string | Date;
   normalized_id: string | null;
   category: string | null;
+  raw_source_url: string | null;
+  normalized_source_url: string | null;
 };
 
 /**
@@ -58,7 +60,9 @@ export async function upsertEvent(
   // transaction below before it mutates state.
   const initial = await sql<ExistingEventRow[]>`
     select raw_events.id, raw_events.dtstamp,
-           ingested_events.id as normalized_id, ingested_events.category
+           raw_events.source_url as raw_source_url,
+           ingested_events.id as normalized_id, ingested_events.category,
+           ingested_events.source_url as normalized_source_url
     from raw_events
     left join ingested_events
       on ingested_events.source_domain = raw_events.source_domain
@@ -72,25 +76,30 @@ export async function upsertEvent(
     initialRow &&
     incomingStamp <= new Date(initialRow.dtstamp).getTime();
   if (initiallyUnchanged && initialRow.normalized_id) {
+    const sourceUrlUnchanged =
+      initialRow.raw_source_url === (e.sourceUrl ?? null) &&
+      initialRow.normalized_source_url === (e.sourceUrl ?? null);
     if (
-      !categoryCoverageComplete ||
-      initialRow.category === opts.category
+      sourceUrlUnchanged &&
+      (!categoryCoverageComplete || initialRow.category === opts.category)
     ) {
       stats.rawUnchanged += 1;
       return;
     }
-    const healed = await sql<{ id: string }[]>`
-      update ingested_events
-      set category = ${opts.category}, updated_at = now()
-      where source_domain = ${opts.sourceDomain}
-        and source_uid = ${e.uid}
-        and category is distinct from ${opts.category}
-      returning id
-    `;
-    if (healed.length > 0) {
-      stats.rawUnchanged += 1;
-      stats.normUpserted += 1;
-      return;
+    if (sourceUrlUnchanged) {
+      const healed = await sql<{ id: string }[]>`
+        update ingested_events
+        set category = ${opts.category}, updated_at = now()
+        where source_domain = ${opts.sourceDomain}
+          and source_uid = ${e.uid}
+          and category is distinct from ${opts.category}
+        returning id
+      `;
+      if (healed.length > 0) {
+        stats.rawUnchanged += 1;
+        stats.normUpserted += 1;
+        return;
+      }
     }
     // A concurrent writer changed/deleted the normalized row after our read.
     // Re-check under the raw-row lock below.
@@ -103,7 +112,9 @@ export async function upsertEvent(
     const result = emptyStats();
     let existing = await tx<ExistingEventRow[]>`
       select raw_events.id, raw_events.dtstamp,
-             ingested_events.id as normalized_id, ingested_events.category
+             raw_events.source_url as raw_source_url,
+             ingested_events.id as normalized_id, ingested_events.category,
+             ingested_events.source_url as normalized_source_url
       from raw_events
       left join ingested_events
         on ingested_events.source_domain = raw_events.source_domain
@@ -134,7 +145,9 @@ export async function upsertEvent(
         // Lock and compare it rather than assuming our incoming row is stale.
         existing = await tx<ExistingEventRow[]>`
           select raw_events.id, raw_events.dtstamp,
-                 ingested_events.id as normalized_id, ingested_events.category
+                 raw_events.source_url as raw_source_url,
+                 ingested_events.id as normalized_id, ingested_events.category,
+                 ingested_events.source_url as normalized_source_url
           from raw_events
           left join ingested_events
             on ingested_events.source_domain = raw_events.source_domain
@@ -167,7 +180,19 @@ export async function upsertEvent(
         rawChanged = true;
         result.rawUpdated += 1;
       } else {
-        result.rawUnchanged += 1;
+        if (current.raw_source_url !== (e.sourceUrl ?? null)) {
+          // Parser corrections may improve a canonical link without the
+          // publisher advancing DTSTAMP. Heal that metadata once instead of
+          // leaving existing public event links broken forever.
+          await tx`
+            update raw_events
+            set source_url = ${e.sourceUrl ?? null}, fetched_at = now()
+            where id = ${rawId}
+          `;
+          result.rawUpdated += 1;
+        } else {
+          result.rawUnchanged += 1;
+        }
       }
     }
 
@@ -176,18 +201,32 @@ export async function upsertEvent(
       if (!normalizedId) {
         // Repairs rows left inconsistent by a pre-transaction failure.
         writeFullNormalizedRow = true;
-      } else if (
-        categoryCoverageComplete &&
-        currentCategory !== opts.category
-      ) {
-        // Category membership can change because a previously missing category
-        // feed recovered even when the VEVENT itself retained its DTSTAMP.
-        await tx`
-          update ingested_events
-          set category = ${opts.category}, updated_at = now()
-          where source_domain = ${opts.sourceDomain} and source_uid = ${e.uid}
-        `;
-        result.normUpserted += 1;
+      } else {
+        const healSourceUrl =
+          existing[0]?.normalized_source_url !== (e.sourceUrl ?? null);
+        const healCategory =
+          categoryCoverageComplete &&
+          currentCategory !== opts.category;
+        if (healSourceUrl || healCategory) {
+          // Category membership can change because a previously missing feed
+          // recovered. Source URLs can also improve after a parser correction
+          // even when the VEVENT itself retained its DTSTAMP.
+          await tx`
+            update ingested_events
+            set source_url = case
+                  when ${healSourceUrl} then ${e.sourceUrl ?? null}
+                  else source_url
+                end,
+                category = case
+                  when ${healCategory} then ${opts.category}
+                  else category
+                end,
+                updated_at = now()
+            where source_domain = ${opts.sourceDomain}
+              and source_uid = ${e.uid}
+          `;
+          result.normUpserted += 1;
+        }
       }
     }
 

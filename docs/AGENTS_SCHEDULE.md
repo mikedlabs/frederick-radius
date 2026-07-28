@@ -27,7 +27,9 @@ food-truck jobs.
 | Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
 | Nightly 08:30 UTC | `radius-search` | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`. | Vercel cron (`/api/cron/radius-search`) |
-| Nightly 09:30 UTC | `data-health` | Server-side data freshness/health snapshot. | Vercel cron (`/api/cron/data-health`) |
+| Nightly 09:05 UTC | `data-health-feeds` | Pulls the bounded live-feed set and persists one current snapshot for each successful source. | Vercel cron (`/api/cron/data-health-feeds`) |
+| Nightly 09:10 UTC | `data-health-retention` | Remains inert unless `DATA_RETENTION_PRUNE=1`; when explicitly enabled after a backup check, removes bounded oldest-first batches. | Vercel cron (`/api/cron/data-health-retention`) |
+| Nightly 09:30 UTC | `data-health` | Reads the phase heartbeats, runs the final health gates, and sends one coherent report. Missing, stale, or incomplete required phases are red. | Vercel cron (`/api/cron/data-health`) |
 | Daily 12:00/13:00 UTC | `daily-briefing` | Builds the daily briefing payload. | Vercel cron (`/api/cron/daily-briefing`) |
 | Daily 08:00 UTC | **ingest-business-info** | Reads eligible food and drink websites in a bounded batch, rebuilds the description review queue, and opens a review PR. | GitHub Actions (`.github/workflows/ingest-business-info.yml`) |
 | Daily 08:00 UTC | **ingest-civic** | Refreshes municipal civic information from configured government sources and opens a review PR. | GitHub Actions (`.github/workflows/ingest-civic.yml`) |
@@ -48,8 +50,12 @@ is UTC−4 during daylight saving time and UTC−5 during standard time.
 data work — the refreshes that read a known source and write straight to
 the live store with no judgment required. These are idempotent and safe
 to run unattended: `business-status` re-derives open/closed from Google
-Places, `data-health` snapshots freshness, `ingest/all` pulls the civic
-and venue feeds, and `notify-civic-alerts` fans out push notifications.
+Places, `data-health` snapshots freshness, `ingest/civicengage`,
+`ingest/fcpl`, and `ingest/fcvfra` pull the scheduled event feeds, and
+`notify-civic-alerts` fans out push notifications. Data health is split into a
+bounded feed worker, a separately gated retention worker, and a read-mostly
+final reporter so one slow database queue cannot consume a single long-running
+cron.
 They live next to the app, run in the deployment's own runtime, and never
 touch the repo.
 
@@ -106,7 +112,9 @@ Vercel cron routes read the same values from the Vercel project's
 **Environment Variables** (Project → Settings → Environment Variables),
 not from GitHub — set them in both places if a value is needed by both
 engines. `GITHUB_TOKEN` is provided automatically to Actions and is what
-the PR-opening step uses; no manual setup needed.
+the PR-opening step uses. Under Repository Settings → Actions → General, also
+enable **Allow GitHub Actions to create and approve pull requests**;
+workflow-level write permissions do not override that repository switch.
 
 The hosted hours writer needs `HOURS_REFRESH_CRON=1`,
 `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET` in Vercel
