@@ -5,6 +5,7 @@ describe("isActionableDeal", () => {
   it.each([
     "Tuesday: $5 burgers and $2.50 drafts",
     "Wednesday: 50% off all pasta entrees",
+    "We Heart Wednesdays: $3 select beers, $5 margaritas, and $3 beef tacos",
     "Pizza Night: $10 red or white pizzas",
     "Taco specials every Tuesday",
     "Happy hour includes half-price appetizers",

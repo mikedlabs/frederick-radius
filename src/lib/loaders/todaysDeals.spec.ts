@@ -1,5 +1,76 @@
 import { describe, it, expect } from "vitest";
-import { distillOffer, stripProvenance } from "./todaysDeals";
+import {
+  allDeals,
+  daysInText,
+  dealHoursForDay,
+  dealOfferForDay,
+  distillOffer,
+  extractHoursForDay,
+  stripProvenance,
+} from "./todaysDeals";
+
+describe("weekday normalization", () => {
+  it("recognizes plural weekday names", () => {
+    expect([...daysInText("Wednesdays and Saturdays")]).toEqual([3, 6]);
+  });
+
+  it("expands weekday ranges inclusively", () => {
+    expect([...daysInText("Tue-Fri")]).toEqual([2, 3, 4, 5]);
+    expect([...daysInText("Friday through Monday")]).toEqual([5, 6, 0, 1]);
+  });
+});
+
+describe("selected-day deal details", () => {
+  it("isolates the relevant clause from a compound multi-day offer", () => {
+    const monkey = allDeals().find((row) => row.name === "Monkey Lala");
+    expect(monkey).toBeDefined();
+
+    expect(dealOfferForDay(monkey!, 2)).toContain("$4 craft draft pints");
+    expect(dealOfferForDay(monkey!, 2)).not.toContain("Shares Avery's");
+    expect(dealOfferForDay(monkey!, 2)).not.toContain("$1 oysters");
+    expect(dealOfferForDay(monkey!, 3)).toContain("Crabby Wednesday");
+    expect(dealOfferForDay(monkey!, 3)).not.toContain("$4 craft draft pints");
+    expect(dealOfferForDay(monkey!, 3)).not.toContain("$1 oysters");
+    expect(dealOfferForDay(monkey!, 4)).toContain("$1 oysters");
+    expect(dealOfferForDay(monkey!, 4)).not.toContain("Crabby Wednesday");
+  });
+
+  it("keeps different timing for weekday and weekend clauses", () => {
+    const source =
+      "All-You-Can-Eat crabs served Tue-Fri starting at 3 PM, and Sat & Sun starting at open.";
+    expect(extractHoursForDay(source, 2)).toBe("3 PM");
+    expect(extractHoursForDay(source, 3)).toBe("3 PM");
+    expect(extractHoursForDay(source, 5)).toBe("3 PM");
+    expect(extractHoursForDay(source, 6)).toBe("At open");
+    expect(extractHoursForDay(source, 0)).toBe("At open");
+  });
+
+  it("ships correct per-day timing without replacing the complete source offer", () => {
+    const rube = allDeals().find((row) =>
+      row.source_url?.includes("all-you-can-eat-specials"),
+    );
+    expect(rube).toBeDefined();
+    expect(rube!.days).toEqual([0, 2, 3, 4, 5, 6]);
+    expect(dealHoursForDay(rube!, 2)).toBe("3 PM");
+    expect(dealHoursForDay(rube!, 5)).toBe("3 PM");
+    expect(dealHoursForDay(rube!, 6)).toBe("At open");
+    expect(dealHoursForDay(rube!, 0)).toBe("At open");
+    expect(rube!.hours).toBeUndefined();
+    expect(rube!.fullOffer).toContain("Tue-Fri starting at 3 PM");
+    expect(rube!.fullOffer).toContain("Sat & Sun starting at open");
+    expect(rube!.source_url).toBe(
+      "https://rubescrabshack.com/all-you-can-eat-specials",
+    );
+  });
+
+  it("moves plural weekday deals out of the standing shelf", () => {
+    const teachers = allDeals().find((row) =>
+      row.fullOffer.includes("Teachers get happy hour pricing"),
+    );
+    expect(teachers?.days).toEqual([3]);
+    expect(dealHoursForDay(teachers!, 3)).toBe("All day");
+  });
+});
 
 describe("stripProvenance", () => {
   it("removes a trailing balanced source note", () => {

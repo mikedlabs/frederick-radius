@@ -11,6 +11,7 @@ import { defineConfig, devices } from "@playwright/test";
  * with `npx playwright install chromium` (CI installs them in the runner).
  */
 const PORT = Number(process.env.PW_PORT) || 3010;
+const PRODUCTION_SERVER = process.env.PW_PRODUCTION === "1";
 
 export default defineConfig({
   testDir: "e2e",
@@ -57,9 +58,11 @@ export default defineConfig({
       : []),
   ],
   webServer: {
-    command: `npm run dev -- -p ${PORT}`,
+    command: PRODUCTION_SERVER
+      ? `npm run start -- -p ${PORT}`
+      : `npm run dev -- -p ${PORT}`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER,
     timeout: 120_000,
   },
 });
