@@ -52,6 +52,18 @@ describe("TopBar search ownership", () => {
     expect(pulse).not.toContain("return null");
   });
 
+  it("presents beta as product status inside the home lockup, not another tool", () => {
+    const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+
+    expect(topBar).toContain('aria-label="Frederick Radius beta, home"');
+    expect(topBar).toContain('data-product-status="beta"');
+    expect(topBar).toMatch(/data-product-status="beta"[\s\S]*>\s*Beta\s*<\/span>/);
+    expect(topBar).toContain(
+      'className="hidden whitespace-nowrap leading-none sm:block"',
+    );
+    expect(topBar).not.toContain('href="/beta"');
+  });
+
   it("keeps the full search workspace out of the persistent shell until it opens", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
 

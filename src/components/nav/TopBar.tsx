@@ -225,7 +225,7 @@ export default function TopBar() {
               prefetch={false}
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
-              aria-label="Frederick Radius, home"
+              aria-label="Frederick Radius beta, home"
               className="tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]"
               style={{ color: "var(--app-brand)" }}
             >
@@ -237,10 +237,25 @@ export default function TopBar() {
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
               <span
-                className={`${pathname === "/map" ? "hidden sm:block" : "hidden min-[430px]:block"} whitespace-nowrap leading-none`}
+                className="hidden whitespace-nowrap leading-none sm:block"
                 style={{ color: "var(--app-ink)" }}
               >
                 Frederick Radius
+              </span>
+              {/* Product status belongs to the brand lockup, not the navigation:
+                  it sets expectations without becoming another tool or tap
+                  target. Keep it visible when the wordmark yields on phones. */}
+              <span
+                data-product-status="beta"
+                aria-hidden="true"
+                className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
+                style={{
+                  borderColor: "var(--app-brand-tint-22)",
+                  background: "var(--app-brand-tint-6)",
+                  color: "var(--app-brand-press)",
+                }}
+              >
+                Beta
               </span>
             </Link>
           )}
