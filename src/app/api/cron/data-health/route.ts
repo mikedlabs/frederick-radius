@@ -21,7 +21,6 @@ import { PLACES } from "@/data/places";
 import PLACES_DFP_RAW from "@/data/places-dfp.json" with { type: "json" };
 import { buildDedup } from "@/lib/dedup";
 import { classifyDescription, type CopyQuality } from "@/lib/copy-quality";
-import { rankPlaces, hoursCoverage } from "@/lib/loaders/places";
 import { auditCoordDivergence, type CoordAuditPlace } from "@/lib/coord-audit";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
@@ -41,6 +40,8 @@ import { evaluateDbHealth } from "@/lib/quality/db-health";
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import { readStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-store";
+import { evaluateFoodTruckScheduleHealth } from "@/lib/quality/food-truck-schedule-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,12 +59,9 @@ export async function GET(request: Request) {
   const copy: Record<CopyQuality, number> = { none: 0, scraped: 0, auto_clean: 0, reviewed: 0 };
   for (const p of PLACES) copy[classifyDescription(p.name, p.description ?? p.short_blurb)]++;
 
-  const ranked = rankPlaces({});
-  const coverage = Number((hoursCoverage(ranked) * 100).toFixed(1));
-
   // Trust report (Section 8 gates, made measurable): provenance coverage,
-  // the confidence distribution, and the count of open/closed assertions
-  // whose hours verification is stale (the freshness flip's blast radius).
+  // current fresh-hours eligibility, the confidence distribution, and the
+  // count of open/closed assertions whose hours verification is stale.
   const trust = computePlaceTrustReport();
 
   // Coordinate-divergence regression gate: a curated place whose
@@ -138,6 +136,7 @@ export async function GET(request: Request) {
     prunedReports,
     dbHealth,
     tripwires,
+    storedFoodTruckSchedule,
   ] = await Promise.all([
     persistCurrentSnapshots(live.sources_succeeded).catch((err) => {
       console.error("[cron/data-health] snapshot persist failed:", err);
@@ -188,13 +187,25 @@ export async function GET(request: Request) {
         checks: [{ name: "tripwire-execution", green: false }],
       };
     }),
+    readStoredFoodTruckSchedule().catch((err) => {
+      console.error("[cron/data-health] food-truck schedule read failed:", err);
+      return null;
+    }),
   ]);
   const healthWorkMs = Date.now() - healthWorkStartedAt;
   const dbAnomalies = dbHealth.anomalies;
+  const foodTruckScheduleHealth =
+    evaluateFoodTruckScheduleHealth(storedFoodTruckSchedule);
 
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies, ...tripwires.anomalies];
+  const allAnomalies = [
+    ...anomalies,
+    ...dbAnomalies,
+    ...freshnessAnomalies,
+    ...foodTruckScheduleHealth.anomalies,
+    ...tripwires.anomalies,
+  ];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
   }
@@ -204,11 +215,15 @@ export async function GET(request: Request) {
   // ingest_runs row so the admin board (and any later surface) can read the
   // latest headline without recomputing.
   const gates: Array<{ name: string; green: boolean }> = [
-    { name: "hours-coverage", green: coverage >= 60 },
+    {
+      name: "open-now-eligibility",
+      green: trust.fresh_hours.open_now_eligible,
+    },
     { name: "provenance", green: !trust.provenance.below_gate },
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
     { name: "curated-freshness", green: freshnessAnomalies.length === 0 },
+    { name: "food-truck-schedules", green: foodTruckScheduleHealth.green },
     {
       name: "db-health",
       green: dbHealth.status === "available" && dbAnomalies.length === 0,
@@ -251,7 +266,18 @@ export async function GET(request: Request) {
     },
     places: PLACES.length,
     dedup: { clusters, folded },
-    hours: { coverage_pct: coverage, target_pct: 60, below_gate: coverage < 60 },
+    hours: {
+      fresh_count: trust.fresh_hours.fresh_count,
+      total_count: trust.fresh_hours.total_count,
+      coverage_pct: trust.fresh_hours.coverage_pct,
+      target_count: trust.fresh_hours.target_count,
+      target_pct: trust.fresh_hours.target_pct,
+      open_now_eligible: trust.fresh_hours.open_now_eligible,
+      below_gate: trust.fresh_hours.below_gate,
+      checked_at: trust.fresh_hours.checked_at,
+      source: trust.fresh_hours.source,
+      note: "Only current verified schedules count. Stored or historical schedules do not.",
+    },
     trust: {
       provenance_coverage_pct: trust.provenance.coverage_pct,
       provenance_below_gate: trust.provenance.below_gate,
@@ -283,6 +309,15 @@ export async function GET(request: Request) {
       anomalies: freshnessAnomalies,
       live_sources_failed: live.sources_failed,
       live_sources_succeeded: live.sources_succeeded.length,
+    },
+    food_truck_schedules: {
+      green: foodTruckScheduleHealth.green,
+      generated_at: foodTruckScheduleHealth.generatedAt,
+      age_hours: foodTruckScheduleHealth.ageHours,
+      stop_count: foodTruckScheduleHealth.stopCount,
+      source_count: foodTruckScheduleHealth.sourceCount,
+      failed_sources: foodTruckScheduleHealth.failedSources,
+      anomalies: foodTruckScheduleHealth.anomalies,
     },
     db_health: {
       status: dbHealth.status,

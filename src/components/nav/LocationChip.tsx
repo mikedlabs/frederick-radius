@@ -123,7 +123,7 @@ export default function LocationChip() {
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="tap-44 inline-flex h-10 min-w-10 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:h-auto sm:max-w-none sm:justify-start sm:py-1"
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon

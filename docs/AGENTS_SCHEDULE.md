@@ -8,28 +8,37 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-07-23
+**Last updated:** 2026-07-27
 
 ---
 
-## The schedule
+## Core data schedule
+
+This table covers the jobs that maintain the shared discovery, event, hours,
+and Ask Radius data. `vercel.json` remains the source of truth for the complete
+cron list, including product notifications, reminders, parking, scanner, and
+food-truck jobs.
 
 | Cadence | Job | What it does | Mechanism |
 | --- | --- | --- | --- |
 | Every 30 min | `notify-civic-alerts` | Pushes new civic alerts to subscribers. | Vercel cron (`/api/cron/notify-civic-alerts`) |
-| Nightly 09:00 UTC | `ingest/all` | Full civic/venue/business ingest into the live store. | Vercel cron (`/api/ingest/all`) |
+| Every 4 hours at :15 | `food-truck-schedules` | Refreshes the compact published-stop artifact from allowlisted vendor, venue, and organizer calendars. | Vercel cron (`/api/cron/food-truck-schedules`) |
+| Nightly 09:00 UTC | `ingest/civicengage` | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain. | Vercel cron (`/api/ingest/civicengage`) |
 | Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
 | Nightly 08:30 UTC | `radius-search` | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`. | Vercel cron (`/api/cron/radius-search`) |
 | Nightly 09:30 UTC | `data-health` | Server-side data freshness/health snapshot. | Vercel cron (`/api/cron/data-health`) |
 | Daily 12:00/13:00 UTC | `daily-briefing` | Builds the daily briefing payload. | Vercel cron (`/api/cron/daily-briefing`) |
+| Daily 08:00 UTC | **ingest-business-info** | Reads eligible food and drink websites in a bounded batch, rebuilds the description review queue, and opens a review PR. | GitHub Actions (`.github/workflows/ingest-business-info.yml`) |
+| Daily 08:00 UTC | **ingest-civic** | Refreshes municipal civic information from configured government sources and opens a review PR. | GitHub Actions (`.github/workflows/ingest-civic.yml`) |
+| Daily 09:30 UTC | **ingest-venues** | Refreshes events from configured venue websites, runs copy and provenance checks, and opens a review PR. | GitHub Actions (`.github/workflows/ingest-venues.yml`) |
 | Nightly 09:00 UTC | **data-steward** | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements. | GitHub Actions (`.github/workflows/data-steward.yml`) |
 | Daily 12:00 UTC | **feed-health** | Probes the critical external feeds and exits non-zero if any critical endpoint is down — the job goes red so you can alert. | GitHub Actions (`.github/workflows/feed-health.yml`) |
 | Weekly Mon 07:00 UTC | **discovery** | `npm run discover` dry run ($0, no API call). Publishes the candidate count + cost projection to the job summary and an artifact. | GitHub Actions (`.github/workflows/discovery.yml`) |
 
-All GitHub Actions jobs also expose `workflow_dispatch` for manual runs.
-All cron times are UTC; Frederick County is US Eastern (UTC−5/−4), so a
-06:00 UTC job lands around 1–2 AM local.
+Each scheduled GitHub Actions workflow listed above also exposes
+`workflow_dispatch` for a manual run. All cron times are UTC; Frederick County
+is UTC−4 during daylight saving time and UTC−5 during standard time.
 
 ---
 
@@ -58,6 +67,10 @@ refresh from being reviewed.
 - **feed-health** is the tripwire: it has no `|| true`, so a dead
   critical feed fails the job and turns the workflow red. Wire a
   Slack/email alert on this workflow's failure if you want a page.
+- **ingest-business-info**, **ingest-civic**, and **ingest-venues** use
+  Claude to extract structured facts from configured first-party websites.
+  Each workflow runs its own checks and opens a review PR; none publishes
+  generated changes directly to the product.
 - **discovery** is judgment-gated by design. The dry run costs $0 and
   only prints the plan; a future Claude review step (see the TODO in the
   workflow) reads that plan and recommends which categories/towns are
@@ -68,18 +81,26 @@ GitHub Actions.**
 
 ---
 
-## Secrets
+## Secrets and variables
 
-GitHub Actions secrets are set in the repo: **Settings → Secrets and
-variables → Actions → New repository secret**. Reference them in a
-workflow with `${{ secrets.NAME }}` and pass them into a step via `env:`.
+GitHub Actions configuration lives in the repo under **Settings → Secrets and
+variables → Actions**. Put protected values under **Secrets** and reference
+them with `${{ secrets.NAME }}`. Put browser-safe project configuration under
+**Variables** and reference it with `${{ vars.NAME }}`. Pass either kind into a
+step via `env:`.
 
-| Secret | Used by | Purpose |
-| --- | --- | --- |
-| `GOOGLE_PLACES_API_KEY` | data-steward (`refresh:business-status`), a live `discover` run | Google Places lookups for business status and place discovery. |
-| `DATABASE_URL` | data-steward (`refresh:hours`) | Read the server cron's `place_hours_refresh` table into the PR-reviewed committed snapshot. |
-| `ANTHROPIC_API_KEY` | discovery (future Claude review step) | Lets Claude Code review the discovery plan and open a PR. |
-| `BLOB_READ_WRITE_TOKEN` | any job that reads/writes Vercel Blob artifacts | Auth for `@vercel/blob` storage (photos, generated artifacts). |
+| Name | Kind | Used by | Purpose |
+| --- | --- | --- | --- |
+| `GOOGLE_PLACES_API_KEY` | Secret | data-steward (`refresh:business-status`), a live `discover` run | Google Places lookups for business status and place discovery. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Variable | data-steward (`refresh:hours`) | Supabase project URL for the read-only Data API hours pull. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Variable | data-steward (`refresh:hours`) | Supabase publishable key for the read-only Data API hours pull. |
+| `ANTHROPIC_API_KEY` | Secret | business-info, civic, and venue extraction; discovery review when implemented | Runs the three current extraction workflows. The discovery dry run does not use it today. |
+| `BLOB_READ_WRITE_TOKEN` | Secret | any job that reads/writes Vercel Blob artifacts | Auth for `@vercel/blob` storage (photos, generated artifacts). |
+
+The hours pull depends on migration
+`0034_expose_place_hours_refresh_read_only.sql`, which grants anonymous
+column-level read access only to the non-sensitive hours snapshot fields. It
+does not need `DATABASE_URL` in GitHub Actions.
 
 Vercel cron routes read the same values from the Vercel project's
 **Environment Variables** (Project → Settings → Environment Variables),
@@ -89,11 +110,13 @@ the PR-opening step uses; no manual setup needed.
 
 The hosted hours writer needs `HOURS_REFRESH_CRON=1`,
 `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET` in Vercel
-Production. The semantic-index writer needs `RADIUS_SEARCH_CRON=1`,
-`DATABASE_URL`, `CRON_SECRET`, and either Vercel's injected
-`VERCEL_OIDC_TOKEN` or `AI_GATEWAY_API_KEY`. Its optional
-`RADIUS_SEARCH_CRON_BATCH` is clamped to 1–512 documents per run and
-defaults to 256.
+Production. The local-search writer needs `RADIUS_SEARCH_CRON=1`,
+`DATABASE_URL`, and `CRON_SECRET`. Full-text search is the required baseline;
+`OPENAI_API_KEY` is optional and adds semantic vectors when present. Vercel
+OIDC and AI Gateway can authenticate Ask Radius text generation, but do not
+provide embedding support for this writer. Its optional
+`RADIUS_SEARCH_CRON_BATCH` is clamped to 1–512 documents per run and defaults
+to 256.
 
 > Treat every key as production: scope it to the minimum needed, never
 > echo it in logs, and rotate it if a workflow run ever exposes it.

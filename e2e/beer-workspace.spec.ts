@@ -5,6 +5,18 @@ test.describe("beer workspace deep links", () => {
 
   test("anchors select their panel and browser history restores the prior mode", async ({ page }) => {
     test.setTimeout(180_000);
+    const pageErrors: string[] = [];
+    const hydrationErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("console", (message) => {
+      const text = message.text();
+      if (
+        message.type() === "error" &&
+        /hydration|did not match|nested <a>|cannot contain a nested/i.test(text)
+      ) {
+        hydrationErrors.push(text);
+      }
+    });
     await page.goto("/beer#on-tap-now", {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
@@ -53,5 +65,31 @@ test.describe("beer workspace deep links", () => {
     });
     await expect(week).toHaveAttribute("aria-selected", "true");
     await expect(page).toHaveURL(/#beer-week$/);
+    expect(pageErrors).toEqual([]);
+    expect(hydrationErrors).toEqual([]);
+  });
+
+  test("the random picker returns an actionable beer and brewery", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/beer#find-your-pour", { waitUntil: "domcontentloaded" });
+
+    const picker = page.locator("#find-your-pour");
+    await expect(picker).toBeVisible();
+
+    await picker.getByRole("button", { name: "Spin for a beer" }).click();
+    await expect(picker.getByRole("heading", { level: 3 })).toBeVisible();
+    await expect(picker.getByRole("link", { name: "Open brewery guide" })).toHaveAttribute(
+      "href",
+      /^\/places\/.+/,
+    );
+    await expect(picker.getByText(/catalog pick/i)).toBeVisible();
+
+    await picker.getByRole("button", { name: "A brewery" }).click();
+    await picker.getByRole("button", { name: "Spin for a brewery" }).click();
+    await expect(picker.getByRole("heading", { level: 3 })).toBeVisible();
+    await expect(picker.getByRole("link", { name: "Open brewery guide" })).toHaveAttribute(
+      "href",
+      /^\/places\/.+/,
+    );
   });
 });

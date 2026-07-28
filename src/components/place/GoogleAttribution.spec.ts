@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   GoogleContentReportLink,
+  GooglePhotoAttributionLine,
   GoogleReviewAttribution,
   googlePhotoAttributionForUrl,
   googlePhotoNameFromUrl,
@@ -29,6 +30,14 @@ describe("Google photo attribution lookup", () => {
 
   it("does not guess an attribution when the photo cannot be matched", () => {
     expect(googlePhotoAttributionForUrl("/images/local-photo.jpg", [first])).toBeUndefined();
+  });
+
+  it("marks the photo credit as inline attribution rather than a standalone action", () => {
+    const html = renderToStaticMarkup(createElement(GooglePhotoAttributionLine, {
+      attribution: first,
+    }));
+    expect(html).toContain('data-inline-prose="true"');
+    expect(html).toContain("First photographer");
   });
 });
 

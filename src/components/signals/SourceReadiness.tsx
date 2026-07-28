@@ -42,7 +42,7 @@ export default function SourceReadiness() {
   );
 
   return (
-    <section aria-labelledby="signal-source-desk" className="space-y-3">
+    <section id="source-desk" aria-labelledby="signal-source-desk" className="scroll-mt-24 space-y-3">
       <header>
         <p
           className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]"
@@ -85,7 +85,7 @@ export default function SourceReadiness() {
                   : undefined
               }
             >
-              <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 px-3.5 py-2.5 marker:hidden">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-3.5 py-2.5 marker:hidden">
                 <span
                   aria-hidden
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -170,7 +170,8 @@ export default function SourceReadiness() {
                       href={source.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="tap-44-y mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold underline decoration-1 underline-offset-2"
+                      aria-label={`Open the official source for ${source.name}`}
+                      className="mt-1.5 inline-flex min-h-11 items-center gap-1 text-[11px] font-semibold underline decoration-1 underline-offset-2"
                       style={{ color: "var(--app-ink-2)" }}
                     >
                       Open the official source

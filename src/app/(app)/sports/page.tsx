@@ -122,21 +122,37 @@ export default function SportsPage() {
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">Frederick County sports</p>
           <h1>Frederick plays here.</h1>
           <p>Follow local teams from the Keys to Friday-night high school games, or find a place to play.</p>
-          <div className="sports-hero-tags" aria-label="Sports covered on this page">
-            <span>Keys baseball</span>
-            <span>Flying Cows basketball</span>
-            <span>College and school sports</span>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="#sports-schedule"
+              className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[12px] font-semibold"
+              style={{ borderColor: "var(--app-on-brand)", color: "var(--app-ink)", background: "var(--app-on-brand)" }}
+            >
+              See upcoming games
+            </Link>
+            <Link
+              href="#sports-play"
+              className="tap-44 inline-flex min-h-11 items-center rounded-full border px-3 text-[12px] font-semibold"
+              style={{
+                borderColor: "color-mix(in srgb, var(--app-on-brand) 32%, transparent)",
+                color: "var(--app-on-brand)",
+                background: "color-mix(in srgb, var(--app-ink) 62%, transparent)",
+              }}
+            >
+              Find a place to play
+            </Link>
           </div>
         </div>
         <span className="sports-photo-credit">Original Frederick Radius photography</span>
       </header>
 
-      <PageChapter
-        label="On the schedule"
-        index="01"
-        tone="civic"
-        bodyClassName="space-y-10 sm:space-y-12"
-      >
+      <div id="sports-schedule" className="scroll-mt-24">
+        <PageChapter
+          label="On the schedule"
+          index="01"
+          tone="civic"
+          bodyClassName="space-y-10 sm:space-y-12"
+        >
         <section>
           <SectionHeading
             title="Upcoming team games"
@@ -167,7 +183,8 @@ export default function SportsPage() {
             </Suspense>
           </EventSheetBoundary>
         </section>
-      </PageChapter>
+        </PageChapter>
+      </div>
 
       {/* ── The Frederick Keys ─────────────────────────────────────────── */}
       <PageChapter
@@ -347,6 +364,7 @@ export default function SportsPage() {
       </PageChapter>
 
       {/* ── Places to play ─────────────────────────────────────────────── */}
+      <div id="sports-play" className="scroll-mt-24">
       <PageChapter label="Get on the field" index="03" tone="forest">
         <section className="space-y-6">
           <SectionHeading title="Places to play" />
@@ -444,6 +462,7 @@ export default function SportsPage() {
         )}
         </section>
       </PageChapter>
+      </div>
     </div>
   );
 }

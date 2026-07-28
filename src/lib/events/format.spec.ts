@@ -24,15 +24,26 @@ describe("formatEventWhen", () => {
     expect(when).toBe("Tue, Jul 7 · 8:00 PM–10:00 PM");
   });
 
-  it("prints 'All day' for an all-day event, never a bogus clock range", () => {
+  it("prints 'All day' for a one-day event with an exclusive next-midnight end", () => {
     const when = formatEventWhen(
       base({
         starts_at: "2026-07-07T04:00:00.000Z",
-        ends_at: "2026-07-08T03:59:00.000Z",
+        ends_at: "2026-07-08T04:00:00.000Z",
         is_all_day: true,
       }),
     );
     expect(when).toBe("Tue, Jul 7 · All day");
+  });
+
+  it("prints the last included day for a multi-day event with an exclusive end", () => {
+    const when = formatEventWhen(
+      base({
+        starts_at: "2026-07-07T04:00:00.000Z",
+        ends_at: "2026-07-10T04:00:00.000Z",
+        is_all_day: true,
+      }),
+    );
+    expect(when).toBe("Tue, Jul 7 – Thu, Jul 9");
   });
 
   it("prints the known start time when a feed has no duration", () => {

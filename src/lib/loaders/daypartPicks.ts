@@ -4,7 +4,6 @@ import { isOpenNow } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
-import { suppressedDaypartCategories } from "@/lib/today/craving-lead";
 import { isRecommendable } from "@/lib/relevance";
 
 /**
@@ -39,15 +38,10 @@ function easternHour(now: Date): number {
 }
 
 export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRow[] {
-  // De-dupe against the CravingStrip "I want…" lead above: if CravingStrip is
-  // already visibly leading with this daypart's meal (Eat → the "Dinner"/"Lunch"
-  // restaurant rail) or drinks (the brewery/bar rails), drop that one rail so the
-  // page never says "dinner" twice back-to-back. Never let the de-dupe empty the
-  // section: if it would remove every rail, keep the full set.
-  const suppressed = suppressedDaypartCategories(now);
-  const allNeeds = daypartNeeds(easternHour(now), lean);
-  const kept = allNeeds.filter((need) => !suppressed.has(need.category));
-  const needs = kept.length > 0 ? kept : allNeeds;
+  // The category browser above is collapsed by default. Keep the current meal
+  // visible here instead of treating content behind that disclosure as a
+  // duplicate. A lunch or dinner answer should never require a discovery tap.
+  const needs = daypartNeeds(easternHour(now), lean);
   // The initial HTML is an honest COUNTY-WIDE quality ranking. It must not use
   // downtown Frederick as a silent stand-in for the visitor's location: that
   // made a five-mile-away place look "around here." DaypartNeeds immediately

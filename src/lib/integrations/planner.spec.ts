@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { buildPlan, decodeSpec } from "@/lib/integrations/planner";
 
@@ -108,16 +108,25 @@ describe("buildPlan", () => {
   });
 
   it("does not use stale hours for a dated plan", () => {
-    const plan = buildPlan({
-      audience: "date",
-      vibe: "food",
-      duration_hours: 4,
-      start_at: "2026-07-17T22:00:00.000Z",
-      municipality: "frederick",
-      require_verified_hours: true,
-    });
+    // Keep this independent of the rolling production artifact. Advancing the
+    // clock well beyond every shipped verification timestamp creates the stale
+    // condition the test is meant to exercise even after a fresh data pull.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2035-07-17T22:00:00.000Z"));
+    try {
+      const plan = buildPlan({
+        audience: "date",
+        vibe: "food",
+        duration_hours: 4,
+        start_at: "2035-07-17T22:00:00.000Z",
+        municipality: "frederick",
+        require_verified_hours: true,
+      });
 
-    expect(plan.stops).toEqual([]);
+      expect(plan.stops).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("freezes the start time but removes exact coordinates from share links", () => {

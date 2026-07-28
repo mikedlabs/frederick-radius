@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -18,19 +19,25 @@ import { ArrowLeft } from "lucide-react";
  */
 export default function ExitChip({ dark = false }: { dark?: boolean }) {
   const router = useRouter();
-  const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
+  const goBack = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    let sameOriginReferrer = false;
+    try {
+      sameOriginReferrer = Boolean(document.referrer) &&
+        new URL(document.referrer).origin === window.location.origin;
+    } catch {
+      sameOriginReferrer = false;
+    }
+    if (sameOriginReferrer && window.history.length > 1) {
+      event.preventDefault();
       router.back();
-    } else {
-      router.push("/today");
     }
   };
   return (
-    <button
-      type="button"
+    <Link
+      href="/today"
       onClick={goBack}
       aria-label="Back to Frederick Radius"
-      className={`tap-44 absolute left-[max(env(safe-area-inset-left),16px)] top-[max(env(safe-area-inset-top),16px)] z-30 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium tracking-wide backdrop-blur-md transition ${
+      className={`absolute left-[max(env(safe-area-inset-left),16px)] top-[max(env(safe-area-inset-top),16px)] z-30 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium tracking-wide backdrop-blur-md transition ${
         dark
           ? "bg-black/40 text-white/85 hover:bg-black/55"
           : "border"
@@ -48,6 +55,6 @@ export default function ExitChip({ dark = false }: { dark?: boolean }) {
     >
       <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
       Back
-    </button>
+    </Link>
   );
 }

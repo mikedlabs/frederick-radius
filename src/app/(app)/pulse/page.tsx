@@ -19,9 +19,16 @@ import {
   humanizeChartText,
 } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
-import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import {
+  currentFcpsOperationsNotices,
+  getFcpsAlertsResult,
+} from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
-import { getPulsePointIncidentsResult } from "@/lib/integrations/pulsepoint";
+import {
+  getPulsePointIncidentsResult,
+  isPulsePointAlert,
+  isPulsePointNotable,
+} from "@/lib/integrations/pulsepoint";
 import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -39,6 +46,8 @@ import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import { getGeocodedScannerIncidents } from "@/lib/integrations/scannerIncidents";
+import { buildLiveIncidentSnapshot } from "@/lib/live/incidentSnapshot";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
   type PulseTile,
@@ -274,7 +283,7 @@ export default async function PulsePage() {
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidentsResult, outageResult, fcpsResult, fixit, safetyResult, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+  const [incidentsResult, outageResult, fcpsResult, fixit, safetyResult, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr, scannerIncidents] = await Promise.all([
     withTimeoutTracked(getChartIncidentsFrederickResult(), FEED_MS, { data: [], available: false }, () => {
       trafficAvailable = false;
       markDegraded();
@@ -333,16 +342,52 @@ export default async function PulsePage() {
     // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
     // expanded — the quiet explanation for Thurmont's helicopter days.
     withTimeout(getCampDavidTfr(), FEED_MS, null),
+    // Public-safe, block-level road incidents. Geocoding is county-gated and
+    // cached; the fusion step below adds MDOT context without exposing a more
+    // precise Scanner location.
+    withTimeout(getGeocodedScannerIncidents(), FEED_MS, []),
   ]);
 
   const incidents = incidentsResult.data;
+  const liveIncidentSnapshot = buildLiveIncidentSnapshot(
+    scannerIncidents,
+    incidentsResult,
+    marcNow,
+  );
+  const liveRoadIncidents = liveIncidentSnapshot.items;
+  const corroboratedRoadIncidents = liveRoadIncidents.filter(
+    (incident) => incident.status === "corroborated",
+  );
+  const activeRoadIncidents = corroboratedRoadIncidents.filter(
+    (incident) =>
+      incident.sources.some(
+        (source) =>
+          source.source === "frederick-scanner" &&
+          source.freshness.state === "fresh",
+      ),
+  );
+  const leadRoadIncident = liveRoadIncidents[0] ?? null;
   const outages = outageResult.data;
   const fcps = fcpsResult.data;
   const safety = safetyResult.data;
+  // PulsePoint is a dispatch feed, not a public warning system. Keep every
+  // privacy-safe call in the detail tile, but separate routine service calls
+  // from notable activity and reserve Pulse alert treatment for clear severe
+  // fire, rescue, or hazard types.
+  const severeSafety = safety.filter(isPulsePointAlert);
+  const notableSafety = safety.filter(
+    (incident) => isPulsePointNotable(incident) && !isPulsePointAlert(incident),
+  );
+  const routineSafety = safety.filter((incident) => !isPulsePointNotable(incident));
+  const safetyByPriority = [...severeSafety, ...notableSafety, ...routineSafety];
   trafficAvailable = trafficAvailable && incidentsResult.available;
   powerAvailable = powerAvailable && outageResult.available;
   schoolsAvailable = schoolsAvailable && fcpsResult.available;
-  safetyAvailable = safetyAvailable && safetyResult.available;
+  // PulsePoint is explicitly policy-gated. An intentionally unconfigured
+  // optional feed is not a failed county condition; after configuration, a
+  // fetch/decrypt failure does degrade the all-clear.
+  safetyAvailable = !safetyResult.configured ||
+    (safetyAvailable && safetyResult.available);
   if (!trafficAvailable || !powerAvailable || !schoolsAvailable || !safetyAvailable) {
     urgentDegraded = true;
   }
@@ -357,7 +402,7 @@ export default async function PulsePage() {
     (a, b) => sevRank[a.severity] - sevRank[b.severity]
   );
   const highTraffic = traffic.filter((incident) => incident.severity === "High");
-  const schoolAlerts = fcps.filter(
+  const schoolAlerts = currentFcpsOperationsNotices(fcps).filter(
     (alert) => alert.status === "closed" || alert.status === "delayed" || alert.status === "early_dismissal",
   );
 
@@ -411,7 +456,7 @@ export default async function PulsePage() {
   // fake situation total.
   const { heroDegraded, allClear } = pulseStatusState({
     weather: activeAlerts.length > 0,
-    fireRescue: safety.length > 0,
+    fireRescue: severeSafety.length > 0,
     traffic: highTraffic.length > 0,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
@@ -425,7 +470,7 @@ export default async function PulsePage() {
   const activeAirSummary = activeAirAlert ? summarizeAirQualityAlert(activeAirAlert) : null;
   const leadTraffic = highTraffic[0];
   const leadSchool = schoolAlerts[0];
-  const leadSafety = safety[0];
+  const leadSafety = severeSafety[0];
   const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
 
   let heroLine = "No major disruptions appear in the checked feeds.";
@@ -441,8 +486,8 @@ export default async function PulsePage() {
       : "warning";
 
   if (heroDegraded) {
-    heroLine = "We can’t confirm an all-clear yet.";
-    heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Radius will retry automatically.";
+    heroLine = "The available feeds show no major disruptions.";
+    heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
   } else if (aqiLeads && aqiWorst) {
     heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
@@ -584,12 +629,13 @@ export default async function PulsePage() {
     ];
   } else if (leadSafety) {
     heroLeadKey = "safety";
-    heroLine = `${safety.length} active fire & rescue ${safety.length === 1 ? "call" : "calls"}.`;
+    heroTone = "danger";
+    heroLine = `PulsePoint reports ${severeSafety.length} high-priority fire or rescue ${severeSafety.length === 1 ? "call" : "calls"}.`;
     heroSub = `Most recent: ${leadSafety.type}${leadSafety.address ? ` near ${leadSafety.address}` : ""}.`;
     heroLeadMeta = timeAgo(leadSafety.received_at);
     heroActionLabel = "See active calls";
     heroFacts = [
-      { label: "Active calls", value: safety.length.toLocaleString() },
+      { label: "High-priority calls", value: severeSafety.length.toLocaleString() },
       { label: "Latest call", value: leadSafety.type },
       { label: "Location", value: leadSafety.address || "Frederick County" },
       { label: "Received", value: timeAgo(leadSafety.received_at) || "Recently" },
@@ -846,7 +892,7 @@ export default async function PulsePage() {
   const situationActive: Record<string, boolean> = {
     alerts: activeAlerts.length > 0,
     air: aqiActive,
-    safety: safety.length > 0,
+    safety: severeSafety.length > 0,
     traffic: highTraffic.length > 0,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
@@ -897,7 +943,7 @@ export default async function PulsePage() {
           key: "air",
           label: "Air quality",
           iconName: "Wind",
-          countLabel: "Feed unavailable",
+          countLabel: "No fresh reading",
           accent: "var(--app-warning)",
           active: false,
           attention: false,
@@ -1004,20 +1050,29 @@ export default async function PulsePage() {
         : safetyAvailable
           ? "No active calls reported"
           : "Feed unavailable",
-      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
-      active: safety.length > 0,
+      accent: severeSafety.length > 0
+        ? "var(--app-danger)"
+        : notableSafety.length > 0
+          ? "var(--app-warning)"
+          : "var(--app-cool)",
+      active: severeSafety.length > 0,
       attention: situationActive.safety,
       degraded: !safetyAvailable,
       kind: "status",
       sourceLabel: "PulsePoint",
       peek: safety.length > 0
-        ? safety[0].type
+        ? safetyByPriority[0].type
         : safetyAvailable
           ? "no active calls reported"
           : "PulsePoint could not be reached",
       body: safety.length > 0
-        ? safety.slice(0, 12).map((s) => (
-            <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
+        ? safetyByPriority.slice(0, 12).map((s) => (
+            <Row
+              key={s.id}
+              tone={s.severity === "severe" ? "danger" : s.severity === "notable" ? "warning" : "muted"}
+              title={s.type}
+              meta={[s.address, timeAgo(s.received_at)]}
+            />
           ))
         : emptyNote(
             safetyAvailable
@@ -1486,16 +1541,26 @@ export default async function PulsePage() {
       : []),
     {
       key: "scanner",
-      label: "Scanner",
+      label: "Road incidents",
       iconName: "Radio",
-      countLabel: "On X",
+      countLabel:
+        liveIncidentSnapshot.totalCount > 0
+          ? `${liveIncidentSnapshot.totalCount} ${
+              liveIncidentSnapshot.totalCount === 1 ? "public report" : "public reports"
+            }`
+          : "No road reports to map",
       accent: "var(--app-cool)",
-      active: false,
+      active: activeRoadIncidents.length > 0,
       attention: false,
+      degraded: !liveIncidentSnapshot.chartAvailable,
       kind: "status",
-      sourceLabel: "Frederick Scanner · X",
-      peek: "Police, fire & EMS calls",
-      body: <ScannerTimeline />,
+      sourceLabel: "Frederick Scanner + MDOT CHART",
+      peek: leadRoadIncident
+        ? `${leadRoadIncident.kind} · ${leadRoadIncident.location}`
+        : liveIncidentSnapshot.chartAvailable
+          ? "The latest public response has no road report with a safe map location"
+          : "MDOT road context is unavailable",
+      body: <ScannerTimeline initial={liveIncidentSnapshot} />,
     },
   ];
 
@@ -1590,19 +1655,17 @@ export default async function PulsePage() {
           before anything had polled, so it was removed (owner: the bus section
           "feels messy and hard to see everything"). */}
       <BusesReveal />
-      {/* Footer — disclaimer + sources at a glance */}
+      {/* AppFooter carries the sitewide emergency/use disclaimer once. Pulse
+          keeps only its source trail here so mobile users do not read the same
+          legal guidance twice in succession. */}
       <footer
-        className="min-w-0 border-t px-1 pt-4 text-[11px]"
+        className="min-w-0 border-t px-1 text-[11px]"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-3)",
         }}
       >
-        <p className="leading-relaxed">
-          This information is for general use only. Call 911 in an emergency
-          and follow official emergency broadcasts.
-        </p>
-        <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+        <details className="group pt-1">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
             <ChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             Sources &amp; data trail

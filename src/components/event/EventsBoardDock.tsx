@@ -243,6 +243,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
+  const whenRibbonRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // ── Collapse the nameplate on scroll (window scroll). Under
@@ -380,6 +381,25 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   // exists, so the ribbon chip just targets tomorrow's Eastern day key.
   const tomorrowKey = easternDayKey(new Date(Date.parse(nowISO) + 86_400_000));
 
+  // A deep link such as /weekend can select a chip beyond the narrow phone
+  // viewport. Keep the active choice in view without moving the page itself.
+  useEffect(() => {
+    const ribbon = whenRibbonRef.current;
+    const active = ribbon?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!ribbon || !active) return;
+
+    const visibleStart = ribbon.scrollLeft;
+    const visibleEnd = visibleStart + ribbon.clientWidth;
+    const activeStart = active.offsetLeft;
+    const activeEnd = activeStart + active.offsetWidth;
+    if (activeStart >= visibleStart && activeEnd <= visibleEnd) return;
+
+    ribbon.scrollLeft = Math.max(
+      0,
+      activeStart - (ribbon.clientWidth - active.offsetWidth) / 2,
+    );
+  }, [activePreset, day, tomorrowKey]);
+
   // ── Pane control handlers ──
   const pickIntent = (id: IntentId) => {
     haptic("light");
@@ -449,6 +469,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           aria-label="When"
           aria-hidden={collapsed}
           inert={collapsed}
+          ref={whenRibbonRef}
         >
           {WHEN_PRESETS.map((p, i) => (
             <Fragment key={p.key}>

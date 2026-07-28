@@ -86,6 +86,358 @@ type QuickAction = {
   keywords: readonly string[];
 };
 
+type MapAction = Omit<QuickAction, "keywords"> & {
+  matches: (query: string) => boolean;
+};
+
+function normalizeIntentText(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function containsPhrase(query: string, phrase: string): boolean {
+  const normalizedPhrase = normalizeIntentText(phrase);
+  return (
+    query === normalizedPhrase ||
+    query.startsWith(`${normalizedPhrase} `) ||
+    query.endsWith(` ${normalizedPhrase}`) ||
+    query.includes(` ${normalizedPhrase} `)
+  );
+}
+
+function containsAnyPhrase(query: string, phrases: readonly string[]): boolean {
+  return phrases.some((phrase) => containsPhrase(query, phrase));
+}
+
+function isTrashMapQuery(query: string): boolean {
+  if (containsAnyPhrase(query, [
+    "trash pickup",
+    "trash collection",
+    "garbage pickup",
+    "garbage collection",
+    "recycling schedule",
+  ])) return false;
+  return containsAnyPhrase(query, [
+    "trash",
+    "trash can",
+    "trash cans",
+    "garbage",
+    "garbage can",
+    "garbage cans",
+    "rubbish bin",
+    "rubbish bins",
+    "waste basket",
+    "waste baskets",
+  ]);
+}
+
+function isWaterMapQuery(query: string): boolean {
+  if (containsAnyPhrase(query, [
+    "water bill",
+    "water bills",
+    "water outage",
+    "water outages",
+    "water level",
+    "water levels",
+    "river",
+    "rivers",
+    "creek",
+    "creeks",
+    "flood",
+    "flooding",
+  ])) return false;
+  return containsAnyPhrase(query, [
+    "water",
+    "drinking water",
+    "water fountain",
+    "water fountains",
+    "bottle refill",
+    "bottle refill station",
+    "bottle refill stations",
+    "hydration station",
+    "hydration stations",
+  ]);
+}
+
+function isPowerMapQuery(query: string): boolean {
+  if (containsAnyPhrase(query, [
+    "power outage",
+    "power outages",
+    "lost power",
+    "electric bill",
+    "electric bills",
+    "utility bill",
+    "utility bills",
+  ])) return false;
+  return containsAnyPhrase(query, [
+    "power",
+    "power outlet",
+    "power outlets",
+    "public outlet",
+    "public outlets",
+    "electrical outlet",
+    "electrical outlets",
+    "plug in",
+    "charge my phone",
+    "charge a phone",
+    "charge my laptop",
+    "charge a laptop",
+  ]);
+}
+
+function isParkingMapQuery(query: string): boolean {
+  if (containsAnyPhrase(query, ["parking", "parkmobile"])) return true;
+  if (query === "garage" || query === "garages") return true;
+  if (
+    containsAnyPhrase(query, ["parking garage", "parking garages"]) ||
+    (containsAnyPhrase(query, ["garage", "garages"]) &&
+      containsAnyPhrase(query, ["car", "cars", "downtown", "park", "parking"]))
+  ) return true;
+  return (
+    containsPhrase(query, "park") &&
+    containsAnyPhrase(query, [
+      "car",
+      "cars",
+      "downtown",
+      "street",
+      "vehicle",
+      "vehicles",
+      "where can i park",
+      "where do i park",
+    ])
+  );
+}
+
+function isTransitMapQuery(query: string): boolean {
+  if (containsAnyPhrase(query, ["transit", "bus", "buses", "bus stop", "bus stops", "marc"])) {
+    return true;
+  }
+  return containsAnyPhrase(query, ["train", "trains"]) &&
+    containsAnyPhrase(query, ["commute", "public", "route", "routes", "schedule", "schedules", "station", "stations"]);
+}
+
+function isTonightMapQuery(query: string): boolean {
+  if (query === "tonight") return true;
+  if (!containsPhrase(query, "tonight")) return false;
+  if (containsAnyPhrase(query, ["plan tonight", "dinner tonight", "drinks tonight", "date tonight"])) {
+    return false;
+  }
+  return containsAnyPhrase(query, [
+    "event",
+    "events",
+    "happening",
+    "happenings",
+    "whats on",
+    "what is on",
+    "things to do",
+    "map",
+    "near me",
+  ]);
+}
+
+function isWeekendMapQuery(query: string): boolean {
+  if (query === "weekend" || query === "this weekend") return true;
+  if (!containsPhrase(query, "weekend")) return false;
+  return containsAnyPhrase(query, [
+    "event",
+    "events",
+    "happening",
+    "happenings",
+    "whats on",
+    "what is on",
+    "things to do",
+    "map",
+    "near me",
+  ]);
+}
+
+/**
+ * Direct map answers for resident-shaped utility queries. These lead generic
+ * navigation and data matches because the URL opens the requested layer
+ * already active; no second trip through Map options is required.
+ */
+const MAP_ACTIONS: readonly MapAction[] = [
+  {
+    id: "action:map-trash",
+    title: "Show trash cans on the map",
+    subtitle: "Find field-mapped public trash cans.",
+    href: "/map?amenity=trash",
+    matches: isTrashMapQuery,
+  },
+  {
+    id: "action:map-restrooms",
+    title: "Show restrooms on the map",
+    subtitle: "Find known public restrooms.",
+    href: "/map?amenity=restroom",
+    matches: (query) => containsAnyPhrase(query, [
+      "restroom",
+      "restrooms",
+      "bathroom",
+      "bathrooms",
+      "public toilet",
+      "public toilets",
+      "washroom",
+      "washrooms",
+      "loo",
+    ]),
+  },
+  {
+    id: "action:map-water",
+    title: "Show drinking water on the map",
+    subtitle: "Find known public water points.",
+    href: "/map?amenity=water",
+    matches: isWaterMapQuery,
+  },
+  {
+    id: "action:map-dog-stations",
+    title: "Show dog stations on the map",
+    subtitle: "Find mapped dog-waste stations and water points.",
+    href: "/map?amenity=dog",
+    matches: (query) => containsAnyPhrase(query, [
+      "dog bag",
+      "dog bags",
+      "dog station",
+      "dog stations",
+      "dog waste",
+      "pet waste",
+      "poop bag",
+      "poop bags",
+    ]),
+  },
+  {
+    id: "action:map-wifi",
+    title: "Show public Wi-Fi on the map",
+    subtitle: "Find known public Wi-Fi.",
+    href: "/map?amenity=wifi",
+    matches: (query) => containsAnyPhrase(query, [
+      "wifi",
+      "wi fi",
+      "public wifi",
+      "public wi fi",
+      "wireless internet",
+    ]),
+  },
+  {
+    id: "action:map-outlets",
+    title: "Show power outlets on the map",
+    subtitle: "Find known public outlets for personal devices.",
+    href: "/map?amenity=outlet",
+    matches: isPowerMapQuery,
+  },
+  {
+    id: "action:map-parking",
+    title: "Show parking on the map",
+    subtitle: "See downtown garages and other mapped parking.",
+    href: "/map?show=parking",
+    matches: isParkingMapQuery,
+  },
+  {
+    id: "action:map-transit",
+    title: "Show transit on the map",
+    subtitle: "See bus stops, routes, and MARC stations.",
+    href: "/map?show=transit",
+    matches: isTransitMapQuery,
+  },
+  {
+    id: "action:map-radar",
+    title: "Show weather radar on the map",
+    subtitle: "Open the latest available RainViewer radar layer.",
+    href: "/map?show=radar",
+    matches: (query) => containsAnyPhrase(query, [
+      "radar",
+      "weather radar",
+      "rain radar",
+      "precipitation radar",
+    ]),
+  },
+  {
+    id: "action:map-cameras",
+    title: "Show traffic cameras on the map",
+    subtitle: "See available Maryland CHART road cameras.",
+    href: "/map?show=cameras",
+    matches: (query) =>
+      query === "camera" ||
+      query === "cameras" ||
+      containsAnyPhrase(query, [
+        "traffic camera",
+        "traffic cameras",
+        "traffic cam",
+        "traffic cams",
+        "road camera",
+        "road cameras",
+        "highway camera",
+        "highway cameras",
+      ]),
+  },
+  {
+    id: "action:map-incidents",
+    title: "Show traffic incidents on the map",
+    subtitle: "See available crash, fire, and road incident reports.",
+    href: "/map?show=incidents",
+    matches: (query) =>
+      query === "incident" ||
+      query === "incidents" ||
+      containsAnyPhrase(query, [
+        "traffic incident",
+        "traffic incidents",
+        "road incident",
+        "road incidents",
+        "crash",
+        "crashes",
+        "accident",
+        "accidents",
+        "scanner incident",
+        "scanner incidents",
+      ]),
+  },
+  {
+    id: "action:map-trails",
+    title: "Show trails on the map",
+    subtitle: "See mapped trail lines across Frederick County.",
+    href: "/map?show=trails",
+    matches: (query) => containsAnyPhrase(query, [
+      "trail",
+      "trails",
+      "hike",
+      "hiking",
+      "appalachian trail",
+      "towpath",
+    ]),
+  },
+  {
+    id: "action:map-tonight",
+    title: "Show tonight on the map",
+    subtitle: "See mappable events happening tonight.",
+    href: "/map?t=tonight",
+    matches: isTonightMapQuery,
+  },
+  {
+    id: "action:map-weekend",
+    title: "Show this weekend on the map",
+    subtitle: "See mappable events happening this weekend.",
+    href: "/map?t=weekend",
+    matches: isWeekendMapQuery,
+  },
+];
+
+function matchMapActions(query: string): SearchResult[] {
+  const q = normalizeIntentText(query);
+  if (!q) return [];
+  return MAP_ACTIONS.filter((action) => action.matches(q)).map((action) => ({
+    type: "action" as const,
+    id: action.id,
+    title: action.title,
+    subtitle: action.subtitle,
+    href: action.href,
+  }));
+}
+
 const QUICK_ACTIONS: readonly QuickAction[] = [
   {
     id: "action:tonight",
@@ -167,12 +519,19 @@ const LAYER_KEYWORDS: Record<string, string[]> = {
 };
 
 function matchLayers(query: string): SearchResult[] {
-  const q = query.toLowerCase().trim();
+  const q = normalizeIntentText(query);
   if (q.length < 3) return [];
   return OVERLAYS.filter(
     (o) =>
       o.ready &&
-      (LAYER_KEYWORDS[o.key] ?? []).some((k) => k.startsWith(q) || q.includes(k)),
+      // "Where can I park downtown?" is a parking request, not a request
+      // for green space. A word-boundary match fixes the old parking→parks
+      // substring collision; the intent guard also covers the verb "park."
+      !(o.key === "parks" && isParkingMapQuery(q)) &&
+      (LAYER_KEYWORDS[o.key] ?? []).some((keyword) => {
+        const k = normalizeIntentText(keyword);
+        return k.startsWith(q) || containsPhrase(q, k);
+      }),
   ).map((o) => ({
     type: "action" as const,
     id: `layer:${o.key}`,
@@ -180,6 +539,16 @@ function matchLayers(query: string): SearchResult[] {
     subtitle: o.sources,
     href: `/map?mode=browse&layers=${o.key}`,
   }));
+}
+
+function canonicalSearchQuery(query: string): string {
+  const q = normalizeIntentText(query);
+  if (!isParkingMapQuery(q) || !containsPhrase(q, "park")) return query;
+  // The canonical ranker correctly understands the noun "parking," while
+  // the verb "park" otherwise overweights park names. Preserve every other
+  // word (including near-me/downtown qualifiers) and disambiguate only that
+  // one token.
+  return query.replace(/\bpark\b/gi, "parking");
 }
 
 function hitToResult(h: SearchHit): SearchResult {
@@ -258,10 +627,10 @@ export function searchIndex(
   limit = 12,
   eventPool?: readonly Event[],
 ): SearchResult[] {
-  // Quick actions lead the list — when a user types "tonight" they
-  // probably want the /tonight surface itself, not a place named
-  // Tonight Foo. They're cheap to compute (a few keyword checks) and
-  // capped at the head; the rest of the limit goes to real ranked hits.
+  const mapActions = matchMapActions(query).slice(0, 2);
+  // Direct map answers lead generic doors and ranked records. Quick actions
+  // follow them and stay capped at the head; the rest of the limit goes to
+  // real ranked hits.
   const actions = matchQuickActions(query).slice(0, 2);
   // Map layers ride after quick actions: "farmers market" should offer
   // the overlay alongside the market places themselves.
@@ -270,11 +639,11 @@ export function searchIndex(
   // "fire station" / company-name search should surface them, not lose to a
   // fuzzy place match. Capped tight.
   const civic = matchCivicPlaces(query).slice(0, 2);
-  const head = [...actions, ...layers, ...civic];
+  const head = [...mapActions, ...actions, ...layers, ...civic];
   const headHrefs = new Set(head.map((a) => a.href));
   // Registry pages and quick actions overlap on purpose (both are doors);
   // never render the same door twice.
-  const hits = search(query, Math.max(1, limit - head.length), eventPool)
+  const hits = search(canonicalSearchQuery(query), Math.max(1, limit - head.length), eventPool)
     .map(hitToResult)
     .filter((r) => !headHrefs.has(r.href));
   return [...head, ...hits];
@@ -282,6 +651,7 @@ export function searchIndex(
 
 function searchHead(query: string): SearchResult[] {
   return [
+    ...matchMapActions(query).slice(0, 2),
     ...matchQuickActions(query).slice(0, 2),
     ...matchLayers(query).slice(0, 1),
     ...matchCivicPlaces(query).slice(0, 2),
@@ -314,14 +684,22 @@ export function qualifiedSearchIndex(
   context: QualifiedSearchContext = {},
 ): QualifiedSearchIndexResult {
   const head = searchHead(query);
-  const qualified = qualifiedSearch(query, limit + head.length, eventPool, context);
+  const qualified = qualifiedSearch(
+    canonicalSearchQuery(query),
+    limit + head.length,
+    eventPool,
+    context,
+  );
   const ranked = qualified.hits.map(hitToResult);
+  const hasDeterministicMapAction = head.some((result) =>
+    result.id.startsWith("action:map-"),
+  );
   // Natural-language constraints own the first decision: “coffee near me”
   // must lead with the nearest qualified coffee, not a generic map door. For
-  // ordinary named searches, purpose-built actions can still lead as before.
-  // In both cases, layer and civic heads remain discoverable and URL-level
-  // duplicates are removed after the two sources are merged.
-  const merged = qualified.meta.qualifiers.constrained
+  // an explicit layer/amenity request, the deterministic map answer still
+  // leads because it executes the full request instead of guessing one
+  // record. In all cases, URL-level duplicates are removed after merging.
+  const merged = qualified.meta.qualifiers.constrained && !hasDeterministicMapAction
     ? ranked.length > 0
       ? [ranked[0], ...head, ...ranked.slice(1)]
       : head

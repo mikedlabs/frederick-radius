@@ -1,4 +1,4 @@
-import { Clock3, Tag, Car, Lightbulb, type LucideIcon } from "lucide-react";
+import { ChevronDown, Clock3, Tag, Car, Lightbulb, type LucideIcon } from "lucide-react";
 import FieldStamp from "@/components/ui/FieldStamp";
 import { fieldNotesFor, verifiedLabel, type FNSourced } from "@/lib/loaders/fieldNotes";
 
@@ -51,6 +51,42 @@ function Row({
   );
 }
 
+type NoteRow =
+  | { kind: "happy-hour"; text: string; details?: string }
+  | { kind: "deal"; text: string; index: number }
+  | { kind: "parking"; text: string }
+  | { kind: "insider"; text: string; index: number };
+
+function renderRow(row: NoteRow) {
+  switch (row.kind) {
+    case "happy-hour":
+      return (
+        <Row key="happy-hour" icon={Clock3} tint="var(--app-accent)" lead="Happy hour">
+          <span className="font-medium" style={{ color: "var(--app-ink)" }}>{row.text}</span>
+          {row.details ? <span> · {row.details}</span> : null}
+        </Row>
+      );
+    case "parking":
+      return (
+        <Row key="parking" icon={Car} tint="var(--app-cool)" lead="Park">
+          {row.text}
+        </Row>
+      );
+    case "deal":
+      return (
+        <Row key={`deal-${row.index}`} icon={Tag} tint="var(--app-brand)">
+          <span className="font-medium" style={{ color: "var(--app-ink)" }}>{row.text}</span>
+        </Row>
+      );
+    case "insider":
+      return (
+        <Row key={`ins-${row.index}`} icon={Lightbulb} tint="var(--app-brand-2)">
+          {row.text}
+        </Row>
+      );
+  }
+}
+
 export default function FieldNotesCard({ slug }: { slug: string }) {
   const fn = fieldNotesFor(slug);
   if (!fn) return null;
@@ -64,6 +100,18 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
   const latest = all.map((x) => x.last_verified).filter((d): d is string => Boolean(d)).sort().pop();
   const verified = verifiedLabel(latest);
   const hosts = Array.from(new Set(all.map((x) => hostOf(x.source_url)).filter((h): h is string => Boolean(h)))).slice(0, 2);
+  // Lead with visit decisions. Event-like deals and extra local color remain
+  // one tap away, so a rich record does not turn the place page into a wall.
+  const rows: NoteRow[] = [
+    ...(fn.happy_hour
+      ? [{ kind: "happy-hour" as const, text: fn.happy_hour.schedule, details: fn.happy_hour.details }]
+      : []),
+    ...(fn.parking ? [{ kind: "parking" as const, text: fn.parking.text }] : []),
+    ...(fn.deals ?? []).map((deal, index) => ({ kind: "deal" as const, text: deal.text, index })),
+    ...(fn.insider ?? []).map((note, index) => ({ kind: "insider" as const, text: note.text, index })),
+  ];
+  const visibleRows = rows.slice(0, 2);
+  const moreRows = rows.slice(2);
 
   return (
     <section
@@ -79,28 +127,26 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
       </div>
 
       <ul className="mt-3 space-y-3">
-        {fn.happy_hour && (
-          <Row icon={Clock3} tint="var(--app-accent)" lead="Happy hour">
-            <span className="font-medium" style={{ color: "var(--app-ink)" }}>{fn.happy_hour.schedule}</span>
-            {fn.happy_hour.details ? <span> · {fn.happy_hour.details}</span> : null}
-          </Row>
-        )}
-        {(fn.deals ?? []).slice(0, 3).map((d, i) => (
-          <Row key={`deal-${i}`} icon={Tag} tint="var(--app-brand)">
-            <span className="font-medium" style={{ color: "var(--app-ink)" }}>{d.text}</span>
-          </Row>
-        ))}
-        {fn.parking && (
-          <Row icon={Car} tint="var(--app-cool)" lead="Park">
-            {fn.parking.text}
-          </Row>
-        )}
-        {(fn.insider ?? []).slice(0, 2).map((n, i) => (
-          <Row key={`ins-${i}`} icon={Lightbulb} tint="var(--app-brand-2)">
-            {n.text}
-          </Row>
-        ))}
+        {visibleRows.map(renderRow)}
       </ul>
+
+      {moreRows.length > 0 && (
+        <details className="group mt-2">
+          <summary
+            className="tap-44 flex cursor-pointer list-none items-center justify-between rounded-xl px-1 text-[12px] font-semibold [&::-webkit-details-marker]:hidden"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            <span>{moreRows.length} more {moreRows.length === 1 ? "note" : "notes"}</span>
+            <ChevronDown
+              aria-hidden
+              className="h-4 w-4 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <ul className="space-y-3 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+            {moreRows.map(renderRow)}
+          </ul>
+        </details>
+      )}
 
       {/* One footer line carries the trust — the seal + a single source line,
           instead of a link after every row. */}

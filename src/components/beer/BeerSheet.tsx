@@ -78,8 +78,7 @@ function BeerSheetBody({
       )}
 
       {/* Brewery — a photo link to its canonical page */}
-      <Link
-        href={`/places/${beer.brewerySlug}`}
+      <div
         className="mt-4 flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-2.5 transition active:scale-[0.99]"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -89,14 +88,18 @@ function BeerSheetBody({
           photo={photo}
           decorative
           sizes="56px"
+          href={`/places/${beer.brewerySlug}`}
+          linkLabel={`Open ${beer.breweryName}`}
           className="h-14 w-14 shrink-0 rounded-[10px]"
         />
-        <span className="min-w-0 flex-1">
+        <Link href={`/places/${beer.brewerySlug}`} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]">
+          <span className="min-w-0 flex-1">
           <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[var(--app-amber-text)]">Brewery</span>
           <span className="block truncate font-sans text-[16px] font-semibold text-[var(--app-ink)]">{beer.breweryName}</span>
-        </span>
-        <ArrowRight className="h-4 w-4 shrink-0 text-black/35" strokeWidth={2.25} aria-hidden />
-      </Link>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-black/35" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </div>
 
       {/* Actions */}
       <div className="mt-4">

@@ -306,7 +306,8 @@ export default function DeckBoard({
       {/* Announced politely so a screen reader hears that the board updated
           without the whole grid being re-read on every poll. */}
       <p className="sr-only" aria-live="polite">
-        Readings updated {clockOf(readAt)}. {reporting} of {keys.length} sources reporting.
+        The readings were updated at {clockOf(readAt)}, and {reporting} of {keys.length} sources
+        are reporting.
       </p>
 
       {/* Dense flow so the full-width open key does not strand empty cells in

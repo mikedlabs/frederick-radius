@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
+  isDaypartCountywideContext,
+  liveShelfFromWantAnswer,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -79,12 +81,64 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('role="status"');
     expect(html).toContain("Places open now");
     expect(html).toContain("Across Frederick County");
-    expect(html).toContain("Live hours aren’t available right now.");
-    expect(html).toContain("Check nearby");
+    expect(html).toContain("Nothing is confirmed open across Frederick County right now.");
+    expect(html).toContain("Browse places");
     expect(html).toContain('href="/open-now"');
     expect(html).toContain("rounded-[var(--app-radius-md)]");
     expect(html).not.toContain("border-dashed");
     expect(html).not.toContain(">0 confirmed open<");
+  });
+
+  it("names an empty town scope and offers a countywide fallback", () => {
+    const html = renderToStaticMarkup(
+      DaypartEmptyState({
+        contextLabel: "Urbana",
+        countywide: false,
+        href: "/nearby?c=coffee&in=county",
+      }),
+    );
+
+    expect(html).toContain("Nothing is confirmed open in Urbana right now.");
+    expect(html).toContain("Expand to county");
+    expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
+  });
+
+  it("treats ranking origins as countywide and only a town as a hard scope", () => {
+    expect(isDaypartCountywideContext("town")).toBe(false);
+    expect(isDaypartCountywideContext("device")).toBe(true);
+    expect(isDaypartCountywideContext("home")).toBe(true);
+    expect(isDaypartCountywideContext("ip")).toBe(true);
+    expect(isDaypartCountywideContext("county")).toBe(true);
+    expect(isDaypartCountywideContext("none")).toBe(true);
+  });
+
+  it("keeps a successful scoped zero instead of restoring countywide picks", () => {
+    const shelf = liveShelfFromWantAnswer(
+      {
+        hero: null,
+        also: [],
+        browseHref: "/category/coffee",
+        contextLabel: "Urbana",
+        contextSource: "town",
+      },
+      {
+        category: "coffee",
+        label: "Coffee",
+        href: "/category/coffee",
+        picks: [{
+          slug: "countywide-cup",
+          name: "Countywide Cup",
+          rating: 4.5,
+          confidence: "confirmed",
+        }],
+      },
+      "town:urbana",
+    );
+
+    expect(shelf.picks).toEqual([]);
+    expect(shelf.contextLabel).toBe("Urbana");
+    expect(shelf.contextSource).toBe("town");
+    expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 
   it("labels curated fallback cards as likely instead of confirmed open", () => {

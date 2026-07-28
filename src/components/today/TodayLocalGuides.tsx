@@ -3,9 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Beer, ChevronRight, Radio, Truck } from "lucide-react";
+import { Beer, CalendarDays, ChevronRight, Radio, Truck } from "lucide-react";
 import { BREWERIES } from "@/data/beers";
 import { FOOD_TRUCKS } from "@/data/food-trucks";
+import {
+  todayFoodTruckStopDetail,
+  type TodayFoodTruckStopSummary,
+} from "@/lib/food-trucks/today-summary";
 import BREWERY_MARKS from "@/data/brewery-marks.json";
 import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
 
@@ -54,6 +58,32 @@ function MarkStack({ marks, label }: { marks: Mark[]; label: string }) {
   );
 }
 
+export function foodTruckGuideCopy(
+  liveTruckCount: number,
+  nextStop: TodayFoodTruckStopSummary | null,
+  asOf?: string,
+): { href: string; detail: string; state: "live" | "scheduled" | "roster" } {
+  if (liveTruckCount > 0) {
+    return {
+      href: "/food-trucks#near-me",
+      detail: `${liveTruckCount} ${liveTruckCount === 1 ? "truck is" : "trucks are"} sharing a live location.`,
+      state: "live",
+    };
+  }
+  if (nextStop && asOf && Number.isFinite(Date.parse(asOf))) {
+    return {
+      href: "/food-trucks#this-week",
+      detail: todayFoodTruckStopDetail(nextStop, new Date(asOf)),
+      state: "scheduled",
+    };
+  }
+  return {
+    href: "/food-trucks",
+    detail: `See published stops and browse ${FOOD_TRUCKS.length} local vendors.`,
+    state: "roster",
+  };
+}
+
 /**
  * One compact secondary shelf for Frederick's specialty guides.
  *
@@ -61,7 +91,13 @@ function MarkStack({ marks, label }: { marks: Mark[]; label: string }) {
  * headline of the day. Verified business marks provide recognition without
  * turning the Today page into two more promotional cards.
  */
-export default function TodayLocalGuides() {
+export default function TodayLocalGuides({
+  nextFoodTruckStop = null,
+  asOf,
+}: {
+  nextFoodTruckStop?: TodayFoodTruckStopSummary | null;
+  asOf?: string;
+} = {}) {
   const [liveTruckCount, setLiveTruckCount] = useState(0);
 
   useEffect(() => {
@@ -74,7 +110,7 @@ export default function TodayLocalGuides() {
         const body = (await response.json()) as { pins?: unknown[] };
         if (active) setLiveTruckCount(Array.isArray(body.pins) ? body.pins.length : 0);
       } catch {
-        // The confirmed weekly board remains available when live beacons fail.
+        // The published schedule and local roster remain available.
       }
     };
 
@@ -86,16 +122,23 @@ export default function TodayLocalGuides() {
     };
   }, []);
 
+  const foodTruck = foodTruckGuideCopy(
+    liveTruckCount,
+    nextFoodTruckStop,
+    asOf,
+  );
   const rows = [
     {
-      href: "/food-trucks",
+      href: foodTruck.href,
       title: "Food trucks",
-      detail:
-        liveTruckCount > 0
-          ? `${liveTruckCount} ${liveTruckCount === 1 ? "truck is" : "trucks are"} sharing a live location.`
-          : `See weekly stops from ${FOOD_TRUCKS.length} Frederick County vendors.`,
+      detail: foodTruck.detail,
       marks: FOOD_TRUCK_PREVIEW,
-      Icon: liveTruckCount > 0 ? Radio : Truck,
+      Icon:
+        foodTruck.state === "live"
+          ? Radio
+          : foodTruck.state === "scheduled"
+            ? CalendarDays
+            : Truck,
     },
     {
       href: "/beer",

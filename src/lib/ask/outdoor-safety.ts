@@ -3,6 +3,7 @@ import {
   isOutdoorRecommendation,
   type OutdoorSafetyHold,
 } from "@/lib/weather-safety";
+import { wantsParking } from "@/lib/ask/context";
 
 type OutdoorSourceCheck = (source: AskSource) => boolean;
 
@@ -60,7 +61,13 @@ function safetySource(hold: OutdoorSafetyHold): AskSource {
 }
 
 function queryNeedsOutdoorSafety(query: string): boolean {
-  return /\b(?:outside|outdoors?|hike|hiking|trail|park|playground|skate ?park|pool|swim|swimming|rain|storm|lightning)\b/i.test(query);
+  if (/\b(?:outside|outdoors?|hike|hiking|trail|playground|skate ?park|pool|swim|swimming|rain|storm|lightning)\b/i.test(query)) {
+    return true;
+  }
+  // "Where can I park near Carroll Creek?" is a parking request, not a
+  // request to visit a park. Treat a bare park/parks noun as outdoor intent,
+  // but never let the parking verb trigger the weather/AQI answer rewrite.
+  return !wantsParking(query) && /\bparks?\b/i.test(query);
 }
 
 function isEventSource(source: Pick<AskSource, "category" | "href">): boolean {
@@ -99,8 +106,15 @@ export function applyAskOutdoorSafety(
     category: stop.category,
     href: stop.href,
   }) || (explicitOutdoorRequest && isEventSource(stop))));
+  const parkingRequest = wantsParking(query);
   const unsafeAction = Boolean(result.actions?.some((action) => {
     if (action.kind === "refine") return queryNeedsOutdoorSafety(action.query);
+    // A parking answer may link back to the outdoor destination the user
+    // named. That link is context, not an outdoor recommendation, and must
+    // not replace verified garage directions with an AQI failure message.
+    // Explicit outdoor language elsewhere in the query still triggers the
+    // hold through explicitOutdoorRequest.
+    if (parkingRequest && !explicitOutdoorRequest) return false;
     if (explicitOutdoorRequest && action.href.startsWith("/events/")) return true;
     if (!action.href.startsWith("/places/")) return false;
     return sourceIsOutdoor({

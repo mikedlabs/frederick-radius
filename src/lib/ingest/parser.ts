@@ -6,6 +6,7 @@
  * non-negotiable: convert at ingest, store UTC, render local in the app.
  */
 import ICAL from "ical.js";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 export type ParsedEvent = {
   uid: string;
@@ -22,6 +23,10 @@ export type ParsedEvent = {
   rawVevent: string;
 };
 
+export type ICalParseResult =
+  | { valid: true; events: ParsedEvent[] }
+  | { valid: false; events: []; error: string };
+
 const URL_RE = /(https?:\/\/[^\s<>"')]+)/i;
 
 function toUtcIso(t: ICAL.Time | null | undefined): string | undefined {
@@ -35,34 +40,57 @@ function toUtcIso(t: ICAL.Time | null | undefined): string | undefined {
   }
 }
 
-/** All-day events: DTSTART;VALUE=DATE → midnight America/New_York that day. */
-function allDayStartUtc(t: ICAL.Time): string {
-  // t is a date-only value; build NY-midnight then convert to UTC.
-  const y = t.year;
-  const m = String(t.month).padStart(2, "0");
-  const d = String(t.day).padStart(2, "0");
-  // America/New_York is UTC-5 (EST) or UTC-4 (EDT). Use Intl to resolve the
-  // correct offset for that calendar date instead of hardcoding.
-  const naive = new Date(`${y}-${m}-${d}T00:00:00`);
-  const tzName = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    timeZoneName: "shortOffset",
-  })
-    .formatToParts(naive)
-    .find((p) => p.type === "timeZoneName")?.value;
-  // tzName like "GMT-4" / "GMT-5"
-  const off = tzName?.match(/GMT([+-]\d+)/)?.[1] ?? "-5";
-  const sign = off.startsWith("-") ? "-" : "+";
-  const hh = String(Math.abs(parseInt(off, 10))).padStart(2, "0");
-  return new Date(`${y}-${m}-${d}T00:00:00${sign}${hh}:00`).toISOString();
+/** A calendar date at midnight America/New_York, converted to UTC. */
+function allDayMidnightUtc(year: number, month: number, day: number): string {
+  // Never construct a timezone-less Date here: Node interprets it in the
+  // process timezone, which made DST-boundary dates vary between local
+  // development and the UTC serverless runtime. The shared wall-clock helper
+  // starts from Date.UTC and resolves the New York offset explicitly.
+  return easternWallToUtcISO(year, month, day, 0, 0);
 }
 
-export function parseICal(icsText: string): ParsedEvent[] {
+/** All-day events: DTSTART;VALUE=DATE → midnight America/New_York that day. */
+function allDayStartUtc(t: ICAL.Time): string {
+  return allDayMidnightUtc(t.year, t.month, t.day);
+}
+
+/** RFC 5545 all-day DTEND is exclusive. Without one, default to next midnight. */
+function allDayEndUtc(start: ICAL.Time, end?: ICAL.Time): string {
+  if (end) {
+    return end.isDate
+      ? allDayMidnightUtc(end.year, end.month, end.day)
+      : (toUtcIso(end) ?? nextAllDayMidnightUtc(start));
+  }
+  return nextAllDayMidnightUtc(start);
+}
+
+function nextAllDayMidnightUtc(start: ICAL.Time): string {
+  const next = new Date(Date.UTC(start.year, start.month - 1, start.day + 1));
+  return allDayMidnightUtc(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    next.getUTCDate(),
+  );
+}
+
+/**
+ * Parse a complete iCalendar document while preserving the distinction between
+ * a valid calendar with zero usable events and an invalid upstream payload.
+ *
+ * `parseICal` below intentionally keeps its historical array-only API for
+ * fail-soft request-time consumers. Cron ingestion uses this result API so an
+ * HTML error page returned with HTTP 200 cannot become a healthy empty
+ * heartbeat.
+ */
+export function parseICalResult(icsText: string): ICalParseResult {
   let comp: ICAL.Component;
   try {
     comp = new ICAL.Component(ICAL.parse(icsText));
   } catch {
-    return [];
+    return { valid: false, events: [], error: "invalid iCalendar payload" };
+  }
+  if (comp.name.toLowerCase() !== "vcalendar") {
+    return { valid: false, events: [], error: "payload is not a VCALENDAR" };
   }
   const vevents = comp.getAllSubcomponents("vevent");
   const out: ParsedEvent[] = [];
@@ -86,10 +114,17 @@ export function parseICal(icsText: string): ParsedEvent[] {
 
       const description = String(ve.getFirstPropertyValue("description") ?? "").trim();
       const rawLocation = String(ve.getFirstPropertyValue("location") ?? "").trim() || undefined;
-      const sourceUrl = description.match(URL_RE)?.[1];
+      // Prefer the VEVENT's canonical URL property, matching the legacy
+      // node-ical adapter. CivicEngage omits URL and embeds it in DESCRIPTION,
+      // so retain that fallback for the shared parser.
+      const eventUrl = String(ve.getFirstPropertyValue("url") ?? "").trim();
+      const sourceUrl = eventUrl || description.match(URL_RE)?.[1];
 
       const startsAtUtc = allDay ? allDayStartUtc(dtstart) : toUtcIso(dtstart);
       if (!startsAtUtc) continue;
+      const endsAtUtc = allDay
+        ? allDayEndUtc(dtstart, dtend)
+        : toUtcIso(dtend);
 
       out.push({
         uid: String(uid),
@@ -98,7 +133,7 @@ export function parseICal(icsText: string): ParsedEvent[] {
         sourceUrl,
         rawLocation,
         startsAtUtc,
-        endsAtUtc: allDay ? undefined : toUtcIso(dtend),
+        endsAtUtc,
         tzid,
         allDay,
         dtstamp: toUtcIso(dtstampVal) ?? new Date().toISOString(),
@@ -109,5 +144,9 @@ export function parseICal(icsText: string): ParsedEvent[] {
       continue;
     }
   }
-  return out;
+  return { valid: true, events: out };
+}
+
+export function parseICal(icsText: string): ParsedEvent[] {
+  return parseICalResult(icsText).events;
 }

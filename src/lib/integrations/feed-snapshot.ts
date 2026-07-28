@@ -337,12 +337,11 @@ export type Anomaly = {
     | "events_sources_degraded"
     | "tripwire_failed"
     | "ask_degraded"
-    // The semantic half of Ask, which fails soft to [] by contract and so
-    // cannot distinguish an EMPTY index from a healthy one at the call site.
-    // Found shipped-but-dead in July 2026: radius_search_documents held zero
-    // rows in production for months while Ask quietly ran keyword-only.
+    // Ask's private Postgres search index. Full-text coverage is required;
+    // optional direct-OpenAI vectors are monitored only when configured.
     | "index_empty"
-    | "index_stale";
+    | "index_stale"
+    | "embedding_stale";
   detail: string;
 };
 

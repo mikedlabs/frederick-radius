@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { MapPin, Loader2, Radio, PackageOpen } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ArrowUpRight, MapPin, Loader2, Radio, PackageOpen } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 /**
@@ -345,20 +346,32 @@ export default function OutClient() {
       </div>
 
       {status ? (
-        <p
-          className="mt-4 text-[13px] font-medium"
-          role="status"
-          style={{
-            color:
-              status.tone === "ok"
-                ? "var(--app-positive)"
-                : status.tone === "error"
-                  ? "var(--app-danger)"
-                  : "var(--app-ink-2)",
-          }}
-        >
-          {status.text}
-        </p>
+        <div className="mt-4">
+          <p
+            className="text-[13px] font-medium"
+            role="status"
+            style={{
+              color:
+                status.tone === "ok"
+                  ? "var(--app-positive)"
+                  : status.tone === "error"
+                    ? "var(--app-danger)"
+                    : "var(--app-ink-2)",
+            }}
+          >
+            {status.text}
+          </p>
+          {status.tone === "ok" && live ? (
+            <Link
+              href="/food-trucks#near-me"
+              className="tap-44 mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold underline underline-offset-4"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              View on the board
+              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+            </Link>
+          ) : null}
+        </div>
       ) : null}
 
       <button
@@ -377,7 +390,17 @@ export default function OutClient() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-[100dvh] px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <div className="mx-auto w-full max-w-md">{children}</div>
+      <div className="mx-auto w-full max-w-md">
+        <Link
+          href="/food-trucks"
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+          Back to food trucks
+        </Link>
+        <div className="mt-5">{children}</div>
+      </div>
     </main>
   );
 }

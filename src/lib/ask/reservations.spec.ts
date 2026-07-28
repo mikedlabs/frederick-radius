@@ -19,6 +19,14 @@ describe("reservation requests", () => {
       .toBe("a steak dinner");
   });
 
+  it("removes a natural book-it-on-OpenTable instruction and punctuation", () => {
+    expect(
+      cleanReservationSearchQuery(
+        "I want a steak dinner tonight at 7:30. Can you book it on OpenTable?",
+      ),
+    ).toBe("a steak dinner");
+  });
+
   it("builds a location-aware handoff without claiming live availability", () => {
     const url = new URL(openTableSearchUrl("a steak dinner", { lng: -77.4109, lat: 39.4137 }));
     expect(url.hostname).toBe("www.opentable.com");

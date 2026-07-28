@@ -89,4 +89,17 @@ describe("place blurb boundary", () => {
     expect(rendered.description_source_url).toBe("https://dublinroasterscoffee.com/");
     expect(rendered.description_reviewed).toBe(true);
   });
+
+  it("replaces Cafe Nola's low-information directory scrape", () => {
+    const cafeNola = publicPlaceBySlug("cafe-nola");
+    expect(cafeNola).toBeDefined();
+
+    const rendered = decoratePlace(cafeNola!);
+    expect(rendered.short_blurb).toBe(
+      "Cafe Nola is a cafe and bar on East Patrick Street with pickup ordering.",
+    );
+    expect(rendered.short_blurb).not.toContain("sometimes open");
+    expect(rendered.description_source).toBe("business_website");
+    expect(rendered.description_reviewed).toBe(true);
+  });
 });

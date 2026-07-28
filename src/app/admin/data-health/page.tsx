@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Copy, PenLine } from "lucide-react";
 import { PLACES } from "@/data/places";
-import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
+import { getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
@@ -93,8 +93,6 @@ function sweepAgeDays(lastSweepAt: string | null | undefined): number | null {
 }
 
 async function Board() {
-  const all = rankPlaces({});
-  const coverage = hoursCoverage(all);
   const folded = Object.entries(DEDUP).filter(([s, v]) => v.canonical !== s).length;
   const clusters = new Set(Object.values(DEDUP).map((v) => v.canonical)).size;
   // Hydrate the in-memory rolling buffer from Postgres BEFORE the
@@ -169,7 +167,11 @@ async function Board() {
     ["Open assertions", String(trust.open_assertions.asserting), `${trust.open_assertions.stale_or_missing} stale, the freshness flip's blast radius`],
     ["Places (raw)", String(PLACES.length), ""],
     ["Duplicate clusters", String(clusters), `${folded} records fold`],
-    ["Hours coverage", `${(coverage * 100).toFixed(1)}%`, "target 60%, gate hides Open-now below it"],
+    [
+      "Current fresh hours",
+      `${trust.fresh_hours.fresh_count} / ${trust.fresh_hours.total_count} (${trust.fresh_hours.coverage_pct}%)`,
+      `target ${trust.fresh_hours.target_count} (${trust.fresh_hours.target_pct}%); Open Now ${trust.fresh_hours.open_now_eligible ? "eligible" : "unavailable"}`,
+    ],
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
     ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE === "1" ? "on" : "off", "default off = today's production"],
@@ -216,9 +218,15 @@ async function Board() {
       fix: "Compare the flagged sources against the Distribution snapshot before trusting the batch.",
     });
   }
-  if (hoursSnapshotAnomaly) {
+  if (trust.fresh_hours.below_gate) {
     actions.push({
-      label: "The committed open-now hours snapshot is empty or stale",
+      label: `Only ${trust.fresh_hours.fresh_count} of ${trust.fresh_hours.total_count} public places have current verified hours`,
+      fix: hoursSnapshotAnomaly?.detail ??
+        `Open Now stays unavailable until ${trust.fresh_hours.target_count} places (${trust.fresh_hours.target_pct}%) have fresh schedules.`,
+    });
+  } else if (hoursSnapshotAnomaly) {
+    actions.push({
+      label: "The committed hours snapshot is empty or stale",
       fix: hoursSnapshotAnomaly.detail,
     });
   }
@@ -670,7 +678,10 @@ async function Board() {
             </THead>
             <TBody>
               {ingestRuns.map((r) => {
-                const bad = r.status === "error" || r.recordsFailed > 0 || r.stale;
+                const bad =
+                  r.status !== "ok" ||
+                  r.recordsFailed > 0 ||
+                  r.stale;
                 return (
                   <Tr key={r.source}>
                     <Td semibold>{r.source}</Td>
@@ -693,8 +704,9 @@ async function Board() {
           <>
             Locations the ingest pipeline could not parse or geocode, logged to{" "}
             <code>unparseable_locations</code> per source. The event still ships
-            (never dropped), but it lands on a feed-default centroid until the
-            address is fixed upstream or a parser rule is added.
+            in discovery. Surfaces may place it at the municipality level, but
+            Radius must not claim a precise venue or distance until the address
+            is fixed upstream or a parser rule is added.
           </>
         }
       >

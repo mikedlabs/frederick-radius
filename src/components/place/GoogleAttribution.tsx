@@ -98,7 +98,10 @@ export function GooglePhotoAttributionLine({
   const sourceHref = safeGoogleUrl(attribution?.google_maps_uri ?? placeGoogleMapsUri);
 
   return (
-    <span className={compact ? "text-xs leading-none" : "text-xs leading-tight"}>
+    <span
+      data-inline-prose
+      className={compact ? "text-xs leading-none" : "text-xs leading-tight"}
+    >
       {authors.length > 0 && (
         <>
           Photo by {authors.map((author, index) => (

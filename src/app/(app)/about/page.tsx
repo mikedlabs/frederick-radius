@@ -114,7 +114,7 @@ export default async function AboutPage() {
     // Widened from max-w-md (28rem) to a real reading column — was
     // rendering as a postcard in the middle of a desktop viewport.
     // Centered, capped at the same 768 the rest of the app uses.
-    <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
+    <div className="relative mx-auto w-full max-w-screen-md space-y-5 py-3 sm:space-y-7 sm:py-6">
       <PageBloom variant="warm-cool" />
 
       {/* Seasonal hero photograph — a real photo of Frederick from the
@@ -122,8 +122,7 @@ export default async function AboutPage() {
           daily rotation. Frames "the pocket compass for Frederick
           County" line with a real sense of place before the pitch. */}
       <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)]"
-        style={{ aspectRatio: "16/9" }}
+        className="relative aspect-[2/1] overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[16/9]"
       >
         <SeasonalPhoto
           season="auto"

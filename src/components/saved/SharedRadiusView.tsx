@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, ChevronRight, MapPin } from "lucide-react";
+import { Bookmark, ChevronRight, MapPin, RefreshCw } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -17,6 +17,8 @@ import Skeleton from "@/components/ui/Skeleton";
  */
 export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
   const [places, setPlaces] = useState<PlaceCardData[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (slugs.length === 0) {
@@ -30,13 +32,14 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
       .then((data: { places: PlaceCardData[] }) => {
         // Preserve the sharer's order (the API doesn't guarantee it).
         const bySlug = new Map(data.places.map((p) => [p.slug, p]));
+        setLoadError(false);
         setPlaces(slugs.map((s) => bySlug.get(s)).filter((p): p is PlaceCardData => Boolean(p)));
       })
       .catch((err) => {
-        if (err && err.name !== "AbortError") setPlaces([]);
+        if (err && err.name !== "AbortError") setLoadError(true);
       });
     return () => ctrl.abort();
-  }, [slugs]);
+  }, [slugs, retryKey]);
 
   const townCount = places ? new Set(places.map((p) => p.municipality)).size : 0;
 
@@ -68,7 +71,42 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
         )}
       </header>
 
-      {places === null ? (
+      {loadError ? (
+        <section
+          role="alert"
+          className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 text-center"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            This shared list did not load.
+          </p>
+          <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            Check your connection and try once more.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setLoadError(false);
+                setPlaces(null);
+                setRetryKey((key) => key + 1);
+              }}
+              className="tap-44 inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 py-2 text-[13px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+              Retry
+            </button>
+            <Link
+              href="/today"
+              className="tap-44 inline-flex items-center justify-center rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold"
+              style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
+            >
+              Go to Today
+            </Link>
+          </div>
+        </section>
+      ) : places === null ? (
         <div aria-busy="true" className="space-y-2">
           <Skeleton.Row />
           <Skeleton.Row />
@@ -97,28 +135,30 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
       )}
 
       {/* Doorway to start your own — the growth loop. */}
-      <Link
-        href="/today"
-        className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-lg)] border p-3.5"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
-      >
-        <span
-          aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+      {!loadError ? (
+        <Link
+          href="/today"
+          className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-lg)] border p-3.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
         >
-          <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Build your own Frederick radius
+          <span
+            aria-hidden
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+          >
+            <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
           </span>
-          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Find food, events, and the places worth your time
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              Build your own Frederick radius
+            </span>
+            <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              Find food, events, and the places worth your time
+            </span>
           </span>
-        </span>
-        <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-      </Link>
+          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+        </Link>
+      ) : null}
     </div>
   );
 }

@@ -17,7 +17,7 @@ export default function NotificationsSettingsPage() {
       <header className="space-y-2">
         <Link
           href="/settings"
-          className="inline-flex items-center gap-1 text-[12px] font-semibold"
+          className="inline-flex min-h-11 items-center gap-1 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

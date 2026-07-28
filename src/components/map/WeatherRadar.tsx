@@ -57,6 +57,7 @@ export default function WeatherRadar({
   const [host, setHost] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
   const [active, setActive] = useState(0);
+  const framesRef = useRef<Frame[]>([]);
   const [reduced] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
   // Keep the callback out of the fetch effect's deps — the parent hands us
   // a setState, but a ref makes this robust to inline arrow props too.
@@ -70,16 +71,27 @@ export default function WeatherRadar({
   useEffect(() => {
     if (!show) return;
     let alive = true;
+    const reportFailure = () => {
+      const cached = framesRef.current;
+      onHealthRef.current?.(
+        cached.length > 0
+          ? liveLayerHealth({
+              source: "RainViewer",
+              count: cached.length,
+              timestamp: new Date(cached[cached.length - 1].time * 1000),
+              maxAgeMs: 0,
+            })
+          : liveLayerHealth({
+              source: "RainViewer",
+              unavailable: true,
+            }),
+      );
+    };
     const load = async () => {
       try {
         const r = await fetch(FRAMES_URL, { cache: "no-store" });
         if (!r.ok) {
-          onHealthRef.current?.(
-            liveLayerHealth({
-              source: "RainViewer",
-              unavailable: true,
-            }),
-          );
+          reportFailure();
           return;
         }
         const d = (await r.json()) as {
@@ -103,6 +115,7 @@ export default function WeatherRadar({
         }
         setHost(d.host);
         setFrames(take);
+        framesRef.current = take;
         setActive(take.length - 1); // open on the newest frame
         onNewestRef.current?.(take[take.length - 1].time);
         onHealthRef.current?.(
@@ -114,17 +127,20 @@ export default function WeatherRadar({
           }),
         );
       } catch {
-        onHealthRef.current?.(
-          liveLayerHealth({
-            source: "RainViewer",
-            unavailable: true,
-          }),
-        );
+        reportFailure();
       }
     };
-    load();
+    void load();
     const t = setInterval(load, REFRESH_MS);
-    return () => { alive = false; clearInterval(t); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [show]);
 
   // The loop: ~500ms per frame, oldest → newest, then around again.

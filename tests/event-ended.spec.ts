@@ -67,6 +67,26 @@ describe("isEventEnded", () => {
     ).toBe(true);
   });
 
+  it("honors an exclusive end for a single-day all-day event", () => {
+    const event = {
+      starts_at: "2026-07-01T04:00:00Z",
+      ends_at: "2026-07-02T04:00:00Z",
+      is_all_day: true,
+    };
+    expect(isEventEnded(event, new Date("2026-07-02T03:59:59Z"))).toBe(false);
+    expect(isEventEnded(event, new Date("2026-07-02T04:00:00Z"))).toBe(true);
+  });
+
+  it("keeps a multi-day all-day event current throughout day two", () => {
+    const event = {
+      starts_at: "2026-07-01T04:00:00Z",
+      ends_at: "2026-07-03T04:00:00Z",
+      is_all_day: true,
+    };
+    expect(isEventEnded(event, new Date("2026-07-02T16:00:00Z"))).toBe(false);
+    expect(isEventEnded(event, new Date("2026-07-03T04:00:00Z"))).toBe(true);
+  });
+
   it("a bad ends_at (unparseable) falls back to the assumed runtime", () => {
     expect(
       isEventEnded({ starts_at: "2026-07-01T23:00:00Z", ends_at: "not a date" }, eightPmEt),

@@ -485,7 +485,11 @@ function PlaceSheetContent({
 
         {/* Blurb — gated by the copy-quality detector so scraped junk
             (phone numbers, contact CTAs, addresses) never shows. */}
-        {place.short_blurb && classifyDescription(place.name, place.short_blurb) !== "scraped" && (
+        {place.short_blurb && classifyDescription(
+          place.name,
+          place.short_blurb,
+          place.description_reviewed ?? false,
+        ) !== "scraped" && (
           <div className="mt-3">
             <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {place.short_blurb}
@@ -502,7 +506,11 @@ function PlaceSheetContent({
           <LiveGooglePlaceContext
             key={place.slug}
             slug={place.slug}
-            showSummary={!place.short_blurb || classifyDescription(place.name, place.short_blurb) === "scraped"}
+            showSummary={!place.short_blurb || classifyDescription(
+              place.name,
+              place.short_blurb,
+              place.description_reviewed ?? false,
+            ) === "scraped"}
           />
         </div>
 

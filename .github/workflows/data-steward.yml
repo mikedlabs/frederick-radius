@@ -44,30 +44,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Name missing prerequisites before the refresh scripts fail. Secret
-      # values are never printed. `continue-on-error` preserves the independent
-      # step diagnostics below; the final enforcement step still turns the job
-      # red.
-      - name: Check core refresh configuration
-        id: core-config
+      # Name missing prerequisites before the refresh scripts fail. Secret and
+      # variable values are never printed. `continue-on-error` preserves the
+      # independent step diagnostics below; the final enforcement step still
+      # turns the job red.
+      - name: Check business-status configuration
+        id: business-config
         continue-on-error: true
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
+            echo "::error title=Business-status refresh is not configured::Add the GOOGLE_PLACES_API_KEY GitHub Actions repository secret."
+            exit 1
+          fi
+          echo "The Google Places key required by the business-status refresh is present."
+
+      - name: Check hours snapshot configuration
+        id: hours-config
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           missing=()
-          if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
-            missing+=("GOOGLE_PLACES_API_KEY")
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            missing+=("NEXT_PUBLIC_SUPABASE_URL")
           fi
-          if [ -z "$DATABASE_URL" ]; then
-            missing+=("DATABASE_URL")
+          if [ -z "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
+            missing+=("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
           fi
           if [ "${#missing[@]}" -gt 0 ]; then
             joined=$(IFS=", "; echo "${missing[*]}")
-            echo "::error title=Hours refresh is not configured::Add these GitHub Actions repository secrets: $joined"
+            echo "::error title=Hours snapshot is not configured::Add these browser-safe GitHub repository variables: $joined"
             exit 1
           fi
-          echo "GitHub Actions secrets required by the place refresh are present."
+          echo "The hours snapshot will use Supabase's read-only anon Data API path."
 
       # Informational only — the dedicated feed-health.yml job is what
       # turns a feed outage red. Here we just log it alongside the refresh.
@@ -87,13 +99,14 @@ jobs:
 
       # Materialize the server cron's place_hours_refresh table into the
       # committed snapshot. It runs even when business status fails so a
-      # missing Google Actions secret does not mask a missing database secret,
-      # empty server table, or otherwise healthy hours refresh.
+      # missing Google Actions secret does not mask missing read-only Data API
+      # configuration, an empty server table, or an otherwise healthy refresh.
       - name: Pull rolling hours snapshot
         id: hours-snapshot
         continue-on-error: true
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run refresh:hours
 
       # Park data remains fail-soft so a temporary government endpoint outage
@@ -145,24 +158,28 @@ jobs:
             echo ""
             echo "| Check | Outcome |"
             echo "| --- | --- |"
-            echo "| GitHub secret preflight | ${{ steps.core-config.outcome }} |"
+            echo "| Business-status configuration | ${{ steps.business-config.outcome }} |"
+            echo "| Hours snapshot configuration | ${{ steps.hours-config.outcome }} |"
             echo "| Business status refresh | ${{ steps.business-status.outcome }} |"
             echo "| Hours snapshot pull | ${{ steps.hours-snapshot.outcome }} |"
             echo ""
-            echo "A healthy hours path also requires Vercel Production to have \`HOURS_REFRESH_CRON=1\`, \`GOOGLE_PLACES_API_KEY\`, \`DATABASE_URL\`, and \`CRON_SECRET\`."
-            echo "Apply \`drizzle/0024_place_hours_refresh.sql\` by hand in Supabase before enabling the paid Vercel cron."
+            echo "The GitHub hours pull should use browser-safe \`NEXT_PUBLIC_SUPABASE_URL\` and \`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\` repository variables, not a privileged database secret."
+            echo "A healthy writer still requires Vercel Production to have \`HOURS_REFRESH_CRON=1\`, \`GOOGLE_PLACES_API_KEY\`, \`DATABASE_URL\`, and \`CRON_SECRET\`."
+            echo "Apply \`drizzle/0024_place_hours_refresh.sql\` and \`drizzle/0034_expose_place_hours_refresh_read_only.sql\` in Supabase before enabling the paid Vercel cron and public pull."
+            echo "Repository Settings → Actions → General must allow GitHub Actions to create pull requests."
           } >> "$GITHUB_STEP_SUMMARY"
 
       # `continue-on-error` above is diagnostic sequencing, not a relaxed
       # release policy. Fail after the independent work and PR handoff so the
       # Actions summary names every missing prerequisite in one run.
       - name: Enforce core place refresh results
-        if: ${{ always() && (steps.core-config.outcome != 'success' || steps.business-status.outcome != 'success' || steps.hours-snapshot.outcome != 'success') }}
+        if: ${{ always() && (steps.business-config.outcome != 'success' || steps.hours-config.outcome != 'success' || steps.business-status.outcome != 'success' || steps.hours-snapshot.outcome != 'success') }}
         run: |
-          echo "Core configuration: ${{ steps.core-config.outcome }}"
+          echo "Business-status configuration: ${{ steps.business-config.outcome }}"
+          echo "Hours snapshot configuration: ${{ steps.hours-config.outcome }}"
           echo "Business status refresh: ${{ steps.business-status.outcome }}"
           echo "Hours snapshot pull: ${{ steps.hours-snapshot.outcome }}"
-          echo "Both core place refreshes must succeed. Check the named step logs and GitHub Actions secrets."
+          echo "Both core place refreshes must succeed. Check the named step logs and repository configuration."
           exit 1
 
   # Transit uses public feeds and must refresh independently of paid Google

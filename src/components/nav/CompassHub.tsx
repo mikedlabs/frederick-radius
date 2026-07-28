@@ -214,7 +214,7 @@ export default function CompassHub() {
   // Open on the most broadly useful subject instead of a blank directory.
   // A hash still overrides this, and the topic rail remains the explicit way
   // to change subjects.
-  const [activeSectionId, setActiveSectionId] = useState("");
+  const [activeSectionId, setActiveSectionId] = useState("essentials");
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -315,7 +315,7 @@ export default function CompassHub() {
   return (
     <div className="space-y-5" data-compass-ready={hydrated ? "true" : "false"}>
       <header
-        className="-mx-4 -mt-6 border-y px-4 pb-4 pt-3 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-5 lg:mx-0 lg:mt-0 lg:rounded-[var(--app-radius-md)] lg:border"
+        className="-mx-4 -mt-4 border-y px-4 pb-4 pt-3 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:-mt-6 sm:px-5 lg:mx-0 lg:mt-0 lg:rounded-[var(--app-radius-md)] lg:border"
         style={{
           borderColor: "var(--app-border)",
           background: "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated-solid))",

@@ -14,9 +14,11 @@ test("All tools starts with decisions and reveals the directory only on request"
   await expect(page.getByRole("link", { name: "Near me" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Live conditions" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Nearby essentials" })).toBeVisible();
-  await expect(page.locator("#compass-active-section")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Public essentials" }).click();
+  await expect(page.locator("#compass-active-section")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Public essentials" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.getByRole("link", { name: /Find nearest/ })).toBeVisible();
   const layers = page.locator("summary").filter({
     hasText: "Choose a specific map layer",

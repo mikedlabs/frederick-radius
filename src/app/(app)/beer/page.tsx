@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ArrowRight } from "lucide-react";
 import BeerMasthead from "@/components/beer/BeerMasthead";
 import BeerIndex from "@/components/beer/BeerIndex";
+import BeerSpinner from "@/components/beer/BeerSpinner";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BreweryStrip from "@/components/beer/BreweryStrip";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
@@ -53,6 +54,7 @@ export default function BeerPage() {
       <BeerWorkspace
         find={
           <div className="space-y-12">
+            <BeerSpinner />
             <BeerTasteFlight />
             <MyTaps />
           </div>

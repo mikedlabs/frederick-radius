@@ -11,7 +11,7 @@ import { Search, X } from "lucide-react";
  * every row in one scroll with no way to look up a name. This adds:
  *   - a SEARCH box over the loaded list (name or town), so a big cause is a
  *     name lookup, not a scroll;
- *   - a long-tail COLLAPSE: the first 30 rows show, the rest fold behind one
+ *   - a long-tail COLLAPSE: the first 15 rows show, the rest fold behind one
  *     "show all N" tap (searching reveals every match).
  *
  * Rows arrive display-ready from the server (label + revenue already
@@ -27,7 +27,7 @@ export type OrgRowData = {
   rev: string;
 };
 
-const INITIAL_CAP = 30;
+const INITIAL_CAP = 15;
 
 export default function NonprofitList({ orgs }: { orgs: readonly OrgRowData[] }) {
   const [query, setQuery] = useState("");

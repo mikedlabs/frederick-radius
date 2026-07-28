@@ -52,6 +52,7 @@ export default function LiveIncidents({
 }) {
   const [incidents, setIncidents] = useState<GeocodedIncident[]>([]);
   const [selected, setSelected] = useState<GeocodedIncident | null>(null);
+  const incidentsRef = useRef<GeocodedIncident[]>([]);
   // Wall-clock now (ms) for the "X min ago" label, stamped on poll/tick so no
   // Date.now() runs during render (react-hooks purity).
   const [nowMs, setNowMs] = useState(0);
@@ -65,21 +66,37 @@ export default function LiveIncidents({
     // stale markers, and the next poll refreshes them on re-enable.
     if (!show) return;
     let alive = true;
+    const reportFailure = () => {
+      const cached = incidentsRef.current;
+      const newest = cached
+        .map((incident) => incident.at)
+        .sort()
+        .at(-1);
+      onHealthRef.current?.(
+        cached.length > 0 && newest
+          ? liveLayerHealth({
+              source: "FrederickScanner",
+              count: cached.length,
+              timestamp: newest,
+              maxAgeMs: 0,
+            })
+          : liveLayerHealth({
+              source: "FrederickScanner",
+              unavailable: true,
+            }),
+      );
+    };
     const load = async () => {
       try {
         const r = await fetch("/api/scanner/incidents", { cache: "no-store" });
         if (!r.ok) {
-          onHealthRef.current?.(
-            liveLayerHealth({
-              source: "FrederickScanner",
-              unavailable: true,
-            }),
-          );
+          reportFailure();
           return;
         }
         const d = (await r.json()) as { incidents?: GeocodedIncident[] };
         if (alive && Array.isArray(d.incidents)) {
           setIncidents(d.incidents);
+          incidentsRef.current = d.incidents;
           setNowMs(Date.now());
           onHealthRef.current?.(
             liveLayerHealth({
@@ -95,21 +112,21 @@ export default function LiveIncidents({
           );
         }
       } catch {
-        onHealthRef.current?.(
-          liveLayerHealth({
-            source: "FrederickScanner",
-            unavailable: true,
-          }),
-        );
+        reportFailure();
       }
     };
-    load();
+    void load();
     const poll = setInterval(load, POLL_MS);
     const tick = setInterval(() => setNowMs(Date.now()), 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
       clearInterval(poll);
       clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [show]);
 

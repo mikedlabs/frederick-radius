@@ -17,12 +17,17 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { clusterOrder, daypart } from "@/lib/daypart";
 import { todayDealAvailability } from "@/lib/today/dealAvailability";
 import { isEventToday } from "@/lib/eventWhenLabel";
-import { marketTimingAt, todayUtilityBandLabel } from "@/lib/today/on-now";
+import {
+  itemizedTodayUtilitySummary,
+  marketTimingAt,
+  todayUtilityBandLabel,
+} from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+const present = (value: string | null): value is string => Boolean(value);
 
 /** Count verified happy hours that are live now or still ahead today. */
 function happyHourAvailability(now: Date): { currentCount: number; laterCount: number } {
@@ -133,22 +138,22 @@ export default async function OnNowBand({
     happy.currentCount > 0 ? `${happy.currentCount} happy hour${happy.currentCount === 1 ? "" : "s"}` : null,
     dealCurrentCount > 0 ? `${dealCurrentCount} special${dealCurrentCount === 1 ? "" : "s"}` : null,
     marketCurrentCount > 0 ? `${marketCurrentCount} market${marketCurrentCount === 1 ? "" : "s"}` : null,
-  ].filter(Boolean);
-  // When nothing is live yet, the tally used to read a bare "27 scheduled" —
-  // 27 of WHAT? (external audit, 2026-07). Itemize the later/today counts the
-  // same way the live tally does, so the number always names its own nouns.
+  ].filter(present);
   const laterSummary = [
-    happy.laterCount > 0 ? `${happy.laterCount} happy hour${happy.laterCount === 1 ? "" : "s"}` : null,
-    dealLaterCount > 0 ? `${dealLaterCount} special${dealLaterCount === 1 ? "" : "s"}` : null,
-    marketLaterCount > 0 ? `${marketLaterCount} market${marketLaterCount === 1 ? "" : "s"}` : null,
-  ].filter(Boolean);
+    happy.laterCount > 0 ? `${happy.laterCount} happy hour${happy.laterCount === 1 ? "" : "s"} later` : null,
+    dealLaterCount > 0 ? `${dealLaterCount} special${dealLaterCount === 1 ? "" : "s"} later` : null,
+    marketLaterCount > 0 ? `${marketLaterCount} market${marketLaterCount === 1 ? "" : "s"} later` : null,
+    parking ? "Parking plan for tonight" : null,
+  ].filter(present);
   const todaySummary = [
-    dealTodayCount > 0 ? `${dealTodayCount} special${dealTodayCount === 1 ? "" : "s"}` : null,
-    marketTodayCount > 0 ? `${marketTodayCount} market${marketTodayCount === 1 ? "" : "s"}` : null,
-  ].filter(Boolean);
-  const summary = currentCount > 0
-    ? [...currentSummary, laterCount > 0 ? `${laterCount} later today` : null].filter(Boolean).join(" · ")
-    : (laterSummary.length > 0 ? laterSummary : todaySummary).join(" · ");
+    dealTodayCount > 0 ? `${dealTodayCount} special${dealTodayCount === 1 ? "" : "s"} today` : null,
+    marketTodayCount > 0 ? `${marketTodayCount} market${marketTodayCount === 1 ? "" : "s"} today` : null,
+  ].filter(present);
+  const summary = itemizedTodayUtilitySummary({
+    current: currentSummary,
+    later: laterSummary,
+    today: todaySummary,
+  });
 
   return (
     <section className="mt-5" aria-label={label}>

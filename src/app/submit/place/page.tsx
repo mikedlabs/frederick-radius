@@ -28,7 +28,11 @@ export default async function SubmitPlacePage({
         paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      <Link href={isFoodTruck ? "/food-trucks" : "/"} className="text-xs" style={{ color: "var(--app-cool)" }}>
+      <Link
+        href={isFoodTruck ? "/food-trucks" : "/"}
+        className="inline-flex min-h-11 items-center text-xs"
+        style={{ color: "var(--app-cool)" }}
+      >
         ← {isFoodTruck ? "Back to food trucks" : "Back to Frederick Radius"}
       </Link>
       <header className="mt-4 space-y-2">

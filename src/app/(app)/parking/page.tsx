@@ -232,6 +232,23 @@ export default async function ParkingPage() {
           Five city garages, all open 24/7. Start with where you&rsquo;re
           headed; Radius will point you to the closest useful deck.
         </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Link
+            href="/map?mode=browse&intent=parking"
+            className="tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-semibold"
+            style={{ background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }}
+          >
+            Open the parking map
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+          </Link>
+          <a
+            href="#parking-garages"
+            className="tap-44 inline-flex min-h-11 items-center rounded-full border px-4 text-[13px] font-semibold"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            Compare garages
+          </a>
+        </div>
       </header>
 
       {/* Garage rate schedule — verified against the City's published
@@ -414,7 +431,7 @@ export default async function ParkingPage() {
       </PageChapter>
 
       <PageChapter label="Choose a garage" index="02" tone="civic">
-        <section className="space-y-3">
+        <section id="parking-garages" className="scroll-mt-24 space-y-3">
           <h2
             className="font-serif text-[22px] font-semibold tracking-tight"
             style={{ color: "var(--app-ink)" }}

@@ -43,31 +43,32 @@ export default function CommerceActions({
 
   const ordered = orderCommerceForDetail(links);
 
-  let primaryIdx = -1;
+  let primary: CommerceLink | undefined;
   for (const t of PRIMARY_PRIORITY) {
-    const i = ordered.findIndex((l) => l.type === t);
-    if (i >= 0) {
-      primaryIdx = i;
+    const match = ordered.find((l) => l.type === t);
+    if (match) {
+      primary = match;
       break;
     }
   }
+  const displayLinks = primary
+    ? [primary, ...ordered.filter((link) => link !== primary)]
+    : ordered;
 
   const toast = isToastConnected(links);
   const hasMenuOrOrder = ordered.some((l) => l.type === "menu" || l.type === "order");
   const hasReservation = ordered.some((l) => l.type === "reservation");
-  const hasTransactional = ordered.some(
-    (l) => l.type === "order" || l.type === "delivery" || l.type === "reservation",
-  );
   const title = hasMenuOrOrder ? "Menu & ordering" : hasReservation ? "Reservations" : "Order";
 
   // Trust line only when it says something real (verified / owner / dated) —
   // a bare "Curated link" under every restaurant would just be noise.
-  const primary = primaryIdx >= 0 ? ordered[primaryIdx] : undefined;
-  const showTrust =
-    primary && (primary.is_verified || Boolean(primary.last_verified_at) || primary.source === "owner");
-  const trustLine = showTrust
-    ? commerceTrustLine(primary, formatChecked(primary.last_verified_at))
-    : "";
+  const trustLine =
+    primary &&
+    (primary.is_verified ||
+      Boolean(primary.last_verified_at) ||
+      primary.source === "owner")
+      ? commerceTrustLine(primary, formatChecked(primary.last_verified_at))
+      : "";
 
   return (
     <section className="space-y-2">
@@ -88,9 +89,9 @@ export default function CommerceActions({
       </h2>
 
       <div className="flex flex-wrap gap-1.5">
-        {ordered.map((l, i) => {
+        {displayLinks.map((l) => {
           const Icon = TYPE_ICON[l.type];
-          const isPrimary = i === primaryIdx;
+          const isPrimary = l === primary;
           return (
             <Button
               key={`${l.type}-${l.url}`}
@@ -113,18 +114,19 @@ export default function CommerceActions({
         })}
       </div>
 
-      {trustLine && (
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          {trustLine}
-        </p>
-      )}
-      {hasTransactional && (
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Opens with the restaurant&apos;s provider.
-        </p>
-      )}
-
-      <ReportLinkButton placeSlug={placeSlug} placeName={placeName} />
+      <div className="flex flex-wrap items-center gap-x-2">
+        {trustLine && (
+          <>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              {trustLine}
+            </p>
+            <span aria-hidden className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              ·
+            </span>
+          </>
+        )}
+        <ReportLinkButton placeSlug={placeSlug} placeName={placeName} />
+      </div>
     </section>
   );
 }

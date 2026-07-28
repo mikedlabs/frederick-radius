@@ -10,8 +10,8 @@
  * both move the result, proven to put a town's own coffee at the top for
  * that town's users WITHOUT becoming a nearest-wins sort.
  *
- * Pure + unit-tested (tests/category-ranking.spec.ts). Reusable across all
- * categories; only /category/coffee ships on it for now.
+ * Pure + unit-tested (tests/category-ranking.spec.ts). The reusable
+ * context-aware layout currently applies it to Coffee.
  */
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow, type OpenStatus } from "@/lib/hours";
@@ -66,6 +66,10 @@ export type CategoryRankContext = {
   /** The user's known municipality slug, or null when unknown. Drives the
    *  same-town nudge; null = no nudge (the honest downtown default). */
   town?: string | null;
+  /** Category being ranked. Category-specific soft penalties must never leak
+   * into unrelated guides (for example, a tea room is only a loose match on
+   * the Coffee page, not on Restaurants or Bakeries). */
+  category?: string | null;
 };
 
 /**
@@ -95,7 +99,7 @@ export function categoryScore(p: PlaceCardData, ctx: CategoryRankContext = {}): 
     0.04 * trust;
 
   if (isChainName(p.name)) s -= 0.1;
-  if (isLooseCategory(p.name)) s -= 0.06;
+  if (ctx.category === "coffee" && isLooseCategory(p.name)) s -= 0.06;
   return s;
 }
 

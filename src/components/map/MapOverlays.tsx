@@ -179,13 +179,13 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
           </Source>
         );
       })}
-      {popup && (
+      {popup && active.includes(popup.key) && (
         <Popup
           longitude={popup.lng}
           latitude={popup.lat}
           anchor="bottom"
           offset={12}
-          closeOnClick={false}
+          closeOnClick
           onClose={() => setPopup(null)}
           maxWidth="240px"
         >

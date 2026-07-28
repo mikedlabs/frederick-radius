@@ -11,6 +11,7 @@ const STORMCENTER_ID = "6c715f0e-bbec-465f-98cc-0b81623744be";
 const VIEW_ID = "5ed3ddf1-3a6f-4cfd-8957-eba54b5baaad";
 const API_ROOT = `${KUBRA}/stormcenter/api/v1/stormcenters/${STORMCENTER_ID}/views/${VIEW_ID}`;
 const CURRENT_STATE_URL = `${API_ROOT}/currentState?preview=false`;
+export const FIRSTENERGY_OUTAGE_MAP_URL = "https://outages-mdwv.firstenergycorp.com/";
 
 export type OutageRow = {
   area: string;

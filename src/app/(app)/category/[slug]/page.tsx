@@ -94,11 +94,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     store.get("fr_home_muni")?.value ?? null,
   );
 
-  // Coffee is the context-aware category PATTERN (Pass 3). It proves a
-  // category page can rank from the user's town for real, be honest when
-  // it has no context, and surface small towns — instead of silently
-  // ranking everything from downtown. Other categories stay on the legacy
-  // layout below until the pattern is proven and rolled out.
+  // Coffee uses the context-aware answer spine. Other category hubs retain
+  // their subcategory navigation, facets, and collection metadata while
+  // sharing the corrected normalized ranking below.
   if (slug === "coffee") {
     return (
       <CategoryView

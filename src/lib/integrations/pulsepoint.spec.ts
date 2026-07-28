@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getPulsePointIncidents,
   getPulsePointIncidentsResult,
+  pulsePointCallProfile,
 } from "@/lib/integrations/pulsepoint";
 
 const originalAgency = process.env.PULSEPOINT_AGENCY_ID;
@@ -64,5 +65,42 @@ describe("PulsePoint availability", () => {
     );
 
     await expect(getPulsePointIncidents()).resolves.toEqual([]);
+  });
+});
+
+describe("PulsePoint call severity", () => {
+  it("keeps routine service calls informational", () => {
+    expect(pulsePointCallProfile("PA")).toEqual({
+      label: "Public Assist",
+      severity: "routine",
+    });
+    expect(pulsePointCallProfile("LO")).toEqual({
+      label: "Lockout",
+      severity: "routine",
+    });
+    expect(pulsePointCallProfile("FA")).toEqual({
+      label: "Fire Alarm",
+      severity: "routine",
+    });
+  });
+
+  it("distinguishes visible activity from severe public hazards", () => {
+    expect(pulsePointCallProfile("WIRE")).toEqual({
+      label: "Wires Down",
+      severity: "notable",
+    });
+    expect(pulsePointCallProfile("ST")).toEqual({
+      label: "Structure Fire",
+      severity: "severe",
+    });
+    expect(pulsePointCallProfile("HMR")).toEqual({
+      label: "Hazmat",
+      severity: "severe",
+    });
+  });
+
+  it("continues to reject unknown or medical call codes", () => {
+    expect(pulsePointCallProfile("MED")).toBeNull();
+    expect(pulsePointCallProfile("")).toBeNull();
   });
 });

@@ -101,7 +101,7 @@ export default async function LoginPage({
         style={{ color: "var(--app-ink-3)" }}
       >
         Frederick Radius works without an account too,{" "}
-        <Link href="/my-radius" className="font-semibold underline-offset-2 hover:underline">
+        <Link href={safeNext} className="font-semibold underline-offset-2 hover:underline">
           keep browsing
         </Link>{" "}
         and your list will live on this device.

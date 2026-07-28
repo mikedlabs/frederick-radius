@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, LayoutGrid, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import RippleMark from "@/components/brand/RippleMark";
@@ -10,7 +10,11 @@ import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
-import { consumeFindRequest } from "@/lib/findBridge";
+import {
+  consumeFindRequest,
+  requestFind,
+  type FindTarget,
+} from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
@@ -21,11 +25,14 @@ export function pageOwnsPrimarySearch(pathname: string): boolean {
 }
 
 export function shouldShowGlobalMobileSearch(pathname: string): boolean {
-  // Search is permanent app chrome on mobile. Some workspaces also carry a
-  // local, context-specific query field, but that should not make the global
-  // county search disappear or force users to remember which screen owns it.
+  // A search action is permanent app chrome on mobile. On /map that action
+  // focuses the map's own field; everywhere else it opens global Find.
   void pathname;
   return true;
+}
+
+export function topBarFindTarget(pathname: string): FindTarget {
+  return pathname === "/map" ? "map" : "global";
 }
 
 export default function TopBar() {
@@ -69,6 +76,16 @@ export default function TopBar() {
   // action so the app's primary utility never moves between screens.
   const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
   const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
+  const findTarget = topBarFindTarget(pathname);
+  const openPrimaryFind = useCallback((opener: HTMLElement | null) => {
+    searchOpenerRef.current = opener;
+    if (topBarFindTarget(pathname) === "map") {
+      setSearchOpen(false);
+      requestFind("map");
+      return;
+    }
+    setSearchOpen(true);
+  }, [pathname]);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -116,9 +133,9 @@ export default function TopBar() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        searchOpenerRef.current =
-          document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        setSearchOpen(true);
+        openPrimaryFind(
+          document.activeElement instanceof HTMLElement ? document.activeElement : null,
+        );
       }
       // Forward slash as a quick-open (don't trigger when typing into another input)
       if (e.key === "/" && !searchOpen) {
@@ -134,15 +151,15 @@ export default function TopBar() {
           || role === "combobox";
         if (!editable) {
           e.preventDefault();
-          searchOpenerRef.current =
-            document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          setSearchOpen(true);
+          openPrimaryFind(
+            document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          );
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [searchOpen]);
+  }, [openPrimaryFind, searchOpen]);
 
   return (
     <>
@@ -226,7 +243,7 @@ export default function TopBar() {
                     </span>
                   </>
                 ) : (
-                  <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight lg:block" style={{ color: "var(--app-ink)" }}>
                     All tools
                   </span>
                 )}
@@ -245,8 +262,7 @@ export default function TopBar() {
               <button
                 type="button"
                 onClick={(event) => {
-                  searchOpenerRef.current = event.currentTarget;
-                  setSearchOpen(true);
+                  openPrimaryFind(event.currentTarget);
                 }}
                 aria-label="Ask or find across Frederick County"
                 className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
@@ -267,17 +283,16 @@ export default function TopBar() {
           {showMobileSearch && (
             <button
               type="button"
-              aria-label="Ask or find across Frederick County"
-              aria-haspopup="dialog"
-              aria-controls={searchOpen ? "radius-find-dialog" : undefined}
-              aria-expanded={searchOpen}
-              title="Ask or find across Frederick County"
+              aria-label={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
+              aria-haspopup={findTarget === "map" ? undefined : "dialog"}
+              aria-controls={findTarget === "map" ? "map-search-input" : searchOpen ? "radius-find-dialog" : undefined}
+              aria-expanded={findTarget === "map" ? undefined : searchOpen}
+              title={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
               onClick={(event) => {
                 haptic("light");
-                searchOpenerRef.current = event.currentTarget;
-                setSearchOpen(true);
+                openPrimaryFind(event.currentTarget);
               }}
-              className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
@@ -319,7 +334,7 @@ export default function TopBar() {
             aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
             title="Open all tools"
-            className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
+            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",

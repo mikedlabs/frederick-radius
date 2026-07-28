@@ -7,24 +7,24 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-07-26 — 1616 places._
+_Generated 2026-07-27 — 1613 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 679 (80%) | 0 (0%) | 761 (89%) | 0 (0%) | 50 | 315 |
-| Thurmont | 117 | 81 (69%) | 0 (0%) | 106 (91%) | 0 (0%) | 4 | 34 |
-| Brunswick | 97 | 65 (67%) | 0 (0%) | 87 (90%) | 0 (0%) | 2 | 25 |
-| Walkersville | 87 | 66 (76%) | 0 (0%) | 81 (93%) | 0 (0%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 0 (0%) | 72 (85%) | 0 (0%) | 4 | 27 |
-| New Market | 79 | 53 (67%) | 0 (0%) | 66 (84%) | 0 (0%) | 4 | 13 |
-| Mount Airy | 67 | 52 (78%) | 0 (0%) | 62 (93%) | 0 (0%) | 5 | 28 |
-| Emmitsburg | 60 | 41 (68%) | 0 (0%) | 55 (92%) | 0 (0%) | 2 | 19 |
-| Myersville | 56 | 41 (73%) | 0 (0%) | 49 (88%) | 0 (0%) | 3 | 17 |
-| Woodsboro | 42 | 23 (55%) | 0 (0%) | 33 (79%) | 0 (0%) | 2 | 12 |
-| Burkittsville | 37 | 18 (49%) | 0 (0%) | 35 (95%) | 0 (0%) | 2 | 10 |
-| Urbana | 31 | 20 (65%) | 0 (0%) | 23 (74%) | 0 (0%) | 2 | 9 |
-| Rosemont | 4 | 1 (25%) | 0 (0%) | 3 (75%) | 0 (0%) | 0 | 2 |
-| **Total** | **1616** | 1192 (74%) | 0 (0%) | 1433 (89%) | 0 (0%) | **82** | **540** |
+| Frederick | 854 | 680 (80%) | 84 (10%) | 713 (83%) | 716 (84%) | 50 | 299 |
+| Thurmont | 116 | 80 (69%) | 12 (10%) | 105 (91%) | 104 (90%) | 4 | 33 |
+| Brunswick | 97 | 65 (67%) | 6 (6%) | 85 (88%) | 78 (80%) | 2 | 24 |
+| Walkersville | 87 | 66 (76%) | 14 (16%) | 81 (93%) | 78 (90%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 8 (9%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| New Market | 78 | 52 (67%) | 3 (4%) | 65 (83%) | 62 (79%) | 4 | 13 |
+| Mount Airy | 67 | 52 (78%) | 8 (12%) | 62 (93%) | 62 (93%) | 5 | 28 |
+| Emmitsburg | 59 | 41 (69%) | 9 (15%) | 54 (92%) | 53 (90%) | 2 | 19 |
+| Myersville | 56 | 41 (73%) | 5 (9%) | 49 (88%) | 49 (88%) | 3 | 17 |
+| Woodsboro | 42 | 23 (55%) | 3 (7%) | 33 (79%) | 30 (71%) | 2 | 12 |
+| Burkittsville | 37 | 18 (49%) | 1 (3%) | 35 (95%) | 37 (100%) | 2 | 10 |
+| Urbana | 31 | 20 (65%) | 6 (19%) | 23 (74%) | 25 (81%) | 2 | 9 |
+| Rosemont | 4 | 1 (25%) | 0 (0%) | 3 (75%) | 3 (75%) | 0 | 2 |
+| **Total** | **1613** | 1191 (74%) | 159 (10%) | 1380 (86%) | 1371 (85%) | **82** | **522** |
 
 ## Hours refresh artifact
 
@@ -34,23 +34,23 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the seven-day cycle | 1468 |
-| Snapshot rows | 0 |
-| Rows matched to the public set | 0 |
-| Rows carrying a schedule | 0 |
-| Rows fresh within policy | 0 (0%) |
+| Public Google-backed places expected in the seven-day cycle | 1524 |
+| Snapshot rows | 216 |
+| Rows matched to the public set | 212 |
+| Rows carrying a schedule | 167 |
+| Rows fresh within policy | 167 (11%) |
 | Stale rows | 0 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 0 |
+| Unmatched rows | 4 |
 
-**Blocked:** the committed artifact contains metadata only. Do not weaken the freshness gate or invent schedules.
+Oldest refresh: 2026-07-27T12:49:47.617Z. Newest refresh: 2026-07-27T12:49:47.617Z.
 
 Live recovery path:
 
-1. Apply `drizzle/0024_place_hours_refresh.sql` in Supabase.
+1. Apply `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql` in Supabase.
 2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.
 3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.
-4. In GitHub Actions, set `DATABASE_URL`; the 09:00 UTC data-steward job runs after the 08:00 UTC Vercel writer.
+4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:00 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.
 5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.
 
 ## Committed event quality
@@ -109,8 +109,8 @@ publishing policy and are never rendered directly.
 
 | Check | Count |
 | --- | ---: |
-| Exact-attribution photos publishable now | 0 |
-| Legacy candidates waiting for attribution | 16 |
+| Exact-attribution photos publishable now | 16 |
+| Legacy candidates waiting for attribution | 0 |
 | Breweries without a legacy candidate | 1 |
 
 Preferred operator path: in GitHub Actions, run **Google photo attribution

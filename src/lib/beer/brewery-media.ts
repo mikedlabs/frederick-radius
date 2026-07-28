@@ -44,6 +44,10 @@ function photoProxy(
     name: photoName,
     w: String(width),
     slug,
+    // BreweryPhoto detects the 1×1 response and swaps to its richer local
+    // fallback. This keeps a failed Google request from looking like a real
+    // attributed photograph.
+    fallback: "signal",
   });
   return `/api/place-photo?${params.toString()}`;
 }

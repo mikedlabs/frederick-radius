@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CalendarCheck } from "lucide-react";
 import { rankPlaces } from "@/lib/loaders/places";
-import { resolveCommerceLinks, providerLabel, isBrandedProvider } from "@/lib/commerce/links";
+import {
+  isBrandedProvider,
+  isCommerceSearchLink,
+  providerLabel,
+  resolveCommerceLinks,
+} from "@/lib/commerce/links";
 import { openTableSearchUrl } from "@/lib/ask/reservations";
+import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
+import PlaceStatus from "@/components/place/PlaceStatus";
 
 /**
  * /reserve — book a table, one tap from the Eat pane.
@@ -14,16 +21,16 @@ import { PlaceMedallion } from "@/components/place/PlaceMedallion";
  * The click-depth audit's worst path: reserving required already knowing
  * the restaurant, searching it, opening its page, and hoping it carried a
  * reservation link (3+ taps, data-gated). This page is the front door:
- * every place with a VERIFIED reservation link, as a ledger with one
+ * every place with a direct reservation link, as a ledger with one
  * Reserve action each, then the honest handoff for everywhere else
  * (OpenTable's own Frederick search). Nothing here is fabricated — a
- * restaurant appears only when a human-checked link exists.
+ * place appears only when Radius holds a direct, source-backed link.
  */
 export const metadata: Metadata = {
   alternates: { canonical: "/reserve" },
   title: "Book a table",
   description:
-    "Frederick County restaurants you can reserve right now, each one a verified booking link. OpenTable search covers the rest.",
+    "Direct reservation links published by Frederick County restaurants or checked by Radius. OpenTable search covers the rest.",
 };
 
 export const revalidate = 3600;
@@ -32,11 +39,16 @@ export default async function ReservePage() {
   const ranked = rankPlaces({ limit: 2500 });
   const rows = ranked
     .map((p) => {
-      const reserve = resolveCommerceLinks(p).find((l) => l.type === "reservation");
+      const reserve = resolveCommerceLinks(
+        p,
+        businessInfoCommerceLinks(p.slug),
+      ).find(
+        (link) =>
+          link.type === "reservation" && !isCommerceSearchLink(link),
+      );
       return reserve ? { p, reserve } : null;
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-    .sort((a, b) => a.p.name.localeCompare(b.p.name));
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
@@ -64,7 +76,7 @@ export default async function ReservePage() {
             Frederick County
           </span>
           <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-            {rows.length} bookable
+            {rows.length} booking links
           </span>
         </div>
         <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -74,9 +86,9 @@ export default async function ReservePage() {
           </span>
         </h1>
         <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Every restaurant below takes online reservations through a link we
-          checked ourselves. Most other spots seat walk-ins or take a phone
-          call; their numbers are on their pages.
+          Each place below has a direct reservation page published on its
+          website or checked by Radius. Live availability stays with the
+          booking provider.
         </p>
       </header>
 
@@ -96,9 +108,11 @@ export default async function ReservePage() {
                 >
                   {p.name}
                 </span>
-                <span className="mt-0.5 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                  {town ?? "Frederick County"}
-                  {p.short_blurb ? ` · ${p.short_blurb}` : ""}
+                <span className="mt-0.5 flex min-w-0 items-center gap-2">
+                  <span className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    {town ?? "Frederick County"}
+                  </span>
+                  <PlaceStatus status={p.open_status} className="!text-[11.5px]" />
                 </span>
               </Link>
               <a

@@ -7,6 +7,7 @@ import SHIPPING_RAW from "@/data/shipping.json" with { type: "json" };
 import { BREWERIES } from "@/data/beers";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { storedPostedHoursPlaces } from "@/lib/loaders/posted-place-hours";
 
 /**
  * The county in numbers — every figure computed from the SHIPPED datasets,
@@ -75,13 +76,12 @@ const FAMILY_LABEL: Record<string, string> = {
 export function computeCountyNumbers(): CountyNumbers {
   const perTownMap = new Map<string, number>();
   const perCatMap = new Map<string, number>();
-  let verifiedHours = 0;
+  const verifiedHours = storedPostedHoursPlaces().length;
   let rated = 0;
   let fourEightPlus = 0;
   for (const p of PLACES) {
     perTownMap.set(p.municipality, (perTownMap.get(p.municipality) ?? 0) + 1);
     perCatMap.set(p.category, (perCatMap.get(p.category) ?? 0) + 1);
-    if (p.hours && p.hours_verified !== false) verifiedHours++;
     if (p.google_rating) {
       rated++;
       if (p.google_rating >= 4.8) fourEightPlus++;

@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { FlightSlide } from "@/lib/beta-flight";
+import {
+  flightStatusLine,
+  type FlightSlide,
+} from "@/lib/beta-flight-shared";
 
 /**
  * CoverFlight — the beta cover's photographic plate as a slow flight over
@@ -21,21 +24,6 @@ import type { FlightSlide } from "@/lib/beta-flight";
 
 const DWELL_MS = 7_000;
 const FADE_MS = 900;
-
-function openLine(s: FlightSlide): string {
-  if (s.total === 0) return "No listed places sit within a half mile of this spot.";
-  const places = s.total === 1 ? "1 place" : `${s.total} places`;
-  // "None are open" is a claim about the county. What we actually know is that
-  // none of them cleared the verified-hours bar, which is a claim about our
-  // coverage. Saying the first when we only know the second is the one place
-  // the cover breaks the promise the rest of the product keeps. A positive
-  // count stays plain, because a confirmed-open place IS confirmed open.
-  const open =
-    s.open === 0 ? "None have hours we can confirm right now."
-    : s.open === 1 ? "1 is confirmed open right now."
-    : `${s.open} are confirmed open right now.`;
-  return `Radius knows the ${places} within a half mile of this spot. ${open}`;
-}
 
 export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
   const [active, setActive] = useState(0);
@@ -116,7 +104,7 @@ export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
         className="mt-2 text-center font-serif text-[13.5px] italic [text-wrap:balance]"
         style={{ color: "var(--app-ink-2)" }}
       >
-        {openLine(current)}
+        {flightStatusLine(current)}
       </figcaption>
       <span className="sr-only">
         Aerial photographs of Frederick taken by the guide&apos;s own drone, with live

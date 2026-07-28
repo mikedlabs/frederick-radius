@@ -109,6 +109,25 @@ export type PulseHero = {
   actionLabel?: string;
 };
 
+export function pulseStatusWord({
+  allClear,
+  degraded,
+  hasLead,
+  tone,
+}: {
+  allClear: boolean;
+  degraded: boolean;
+  hasLead: boolean;
+  tone: PulseHeroChip["tone"];
+}): string {
+  if (allClear) return "Checked";
+  if (degraded) return "Partial data";
+  if (!hasLead) return "Local issue";
+  if (tone === "danger") return "Urgent";
+  if (tone === "warning") return "Advisory";
+  return "Watch";
+}
+
 export type PulseTile = {
   key: string;
   label: string;
@@ -650,13 +669,12 @@ export default function PulseBoard({
   const heroColor = CHIP_TONE[heroTone];
   const heroFacts = hero.facts?.filter((fact) => fact.value.trim().length > 0).slice(0, 4) ?? [];
   const showAlertData = !hero.allClear && Boolean(lead) && heroFacts.length > 0;
-  const statusWord =
-    hero.allClear ? "Checked"
-      : degraded ? "Feed issue"
-        : !lead ? "Local issue"
-        : heroTone === "danger" ? "Urgent"
-          : heroTone === "warning" ? "Advisory"
-            : "Watch";
+  const statusWord = pulseStatusWord({
+    allClear: hero.allClear,
+    degraded,
+    hasLead: Boolean(lead),
+    tone: heroTone,
+  });
 
   return (
     <>

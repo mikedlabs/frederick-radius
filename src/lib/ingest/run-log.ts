@@ -30,7 +30,7 @@ export async function startIngestRun(sourceSlug: string): Promise<string | null>
 }
 
 export type IngestRunResult = {
-  status: "ok" | "error";
+  status: "ok" | "partial" | "error";
   records_in?: number;
   records_upserted?: number;
   records_failed?: number;

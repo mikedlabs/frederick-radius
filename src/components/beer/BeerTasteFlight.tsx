@@ -47,7 +47,7 @@ export default function BeerTasteFlight() {
   }
 
   return (
-    <section id="find-your-pour" aria-labelledby="flight-heading" className="scroll-mt-24">
+    <section aria-labelledby="flight-heading">
       <header className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
           <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>Beer finder</p>
