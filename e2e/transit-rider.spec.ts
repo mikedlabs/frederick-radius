@@ -146,6 +146,36 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
       }),
     ]);
 
+  const saveBus = commandCenter.getByRole("button", {
+    name: `Save bus ${VEHICLE_ID}`,
+  });
+  await saveBus.click();
+  await expect(
+    commandCenter.getByRole("button", {
+      name: `Remove bus ${VEHICLE_ID} from Saved`,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const raw = window.localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+      }, "fr.transit.saved-buses.v1"),
+    )
+    .toEqual([
+      expect.objectContaining({
+        watchId: `${VEHICLE_ID}:test-trip-10`,
+        vehicleId: VEHICLE_ID,
+        tripId: "test-trip-10",
+        routeId: ROUTE_ID,
+        headsign: "Downtown Frederick",
+        targetStop: expect.objectContaining({
+          id: STOP.id,
+          name: STOP.name,
+        }),
+      }),
+    ]);
+
   await page.evaluate(() => {
     const target = window as unknown as {
       __transitVehicleFocusEvents?: unknown[];
@@ -207,6 +237,44 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
       .locator('[aria-label="Saved bus stops"]')
       .getByRole("button", { name: STOP.name, exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
+  await page.goto("/my-radius", { waitUntil: "domcontentloaded" });
+  const savedTransit = page.getByRole("region", { name: "Saved transit" });
+  await expect(savedTransit).toBeVisible();
+  await expect(savedTransit.getByText(STOP.name).first()).toBeVisible();
+  await expect(savedTransit.getByText(`bus ${VEHICLE_ID}`)).toBeVisible();
+  await expect(savedTransit.getByText("Live now")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Save a place, event, bus, or stop to keep it here for later.",
+    ),
+  ).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
+  await savedTransit.getByRole("link", { name: "See arrivals" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/transit\\?stop=${STOP.id}#my-stop-heading$`),
+  );
+  await expect(
+    page
+      .getByRole("region", { name: "My stop" })
+      .getByRole("heading", { level: 3, name: STOP.name }),
+  ).toBeVisible();
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/my-radius", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("region", { name: "Saved transit" }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

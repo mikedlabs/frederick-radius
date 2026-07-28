@@ -80,6 +80,7 @@ export function useStopArrivals(stopId: string): {
 
   useEffect(() => {
     let alive = true;
+    let poll: number | null = null;
 
     const markUnavailable = () => {
       if (!alive) return;
@@ -144,11 +145,30 @@ export function useStopArrivals(stopId: string): {
         .catch(markUnavailable);
     };
 
-    load();
-    const poll = window.setInterval(load, POLL_MS);
+    const stopPolling = () => {
+      if (poll == null) return;
+      window.clearInterval(poll);
+      poll = null;
+    };
+    const startPolling = () => {
+      if (poll != null || document.visibilityState === "hidden") return;
+      load();
+      poll = window.setInterval(load, POLL_MS);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       alive = false;
-      window.clearInterval(poll);
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [stopId]);
 

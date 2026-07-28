@@ -162,17 +162,50 @@ async function load() {
   }
 }
 
+function stopPolling() {
+  if (!timer) return;
+  clearInterval(timer);
+  timer = null;
+}
+
+function startPolling() {
+  if (
+    timer ||
+    (typeof document !== "undefined" &&
+      document.visibilityState === "hidden")
+  ) {
+    return;
+  }
+  void load();
+  timer = setInterval(() => void load(), POLL_MS);
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === "hidden") {
+    stopPolling();
+    return;
+  }
+  if (listeners.size > 0) {
+    refreshStaleness();
+    startPolling();
+  }
+}
+
 function subscribe(l: () => void): () => void {
   listeners.add(l);
   if (listeners.size === 1) {
-    void load();
-    timer = setInterval(() => void load(), POLL_MS);
+    if (typeof window !== "undefined") {
+      window.addEventListener("visibilitychange", onVisibilityChange);
+    }
+    startPolling();
   }
   return () => {
     listeners.delete(l);
-    if (listeners.size === 0 && timer) {
-      clearInterval(timer);
-      timer = null;
+    if (listeners.size === 0) {
+      stopPolling();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("visibilitychange", onVisibilityChange);
+      }
     }
   };
 }

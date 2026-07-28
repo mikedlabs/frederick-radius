@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { ensurePersistentStorage } from "@/lib/persistence";
+import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import {
   SAVED_TRANSIT_STOPS_KEY,
   parseSavedTransitStops,
@@ -19,6 +20,14 @@ let cachedRaw: string | null | undefined;
 let cachedStops: SavedTransitStop[] = EMPTY;
 let storageBlocked = false;
 let listeningForStorage = false;
+const CURRENT_STOP_REFS: TransitStopRef[] = CURRENT_TRANSIT_STOPS.map(
+  (stop) => ({
+    id: String(stop.id),
+    name: stop.name,
+    lat: stop.lat,
+    lng: stop.lng,
+  }),
+);
 
 function readSavedStops(): SavedTransitStop[] {
   if (typeof window === "undefined") return EMPTY;
@@ -33,7 +42,7 @@ function readSavedStops(): SavedTransitStop[] {
   }
   if (raw === cachedRaw) return cachedStops;
   cachedRaw = raw;
-  cachedStops = parseSavedTransitStops(raw);
+  cachedStops = parseSavedTransitStops(raw, CURRENT_STOP_REFS);
   return cachedStops;
 }
 
@@ -71,12 +80,14 @@ function subscribe(listener: Listener): () => void {
   };
 }
 
-function writeSavedStops(stops: SavedTransitStop[]): void {
-  if (typeof window === "undefined") return;
+function writeSavedStops(stops: SavedTransitStop[]): boolean {
+  if (typeof window === "undefined") return false;
   const raw = JSON.stringify(stops);
+  let persistent = false;
   try {
     window.localStorage.setItem(SAVED_TRANSIT_STOPS_KEY, raw);
     storageBlocked = false;
+    persistent = true;
     ensurePersistentStorage();
   } catch {
     // Keep saving useful for this page even when storage is unavailable.
@@ -85,11 +96,17 @@ function writeSavedStops(stops: SavedTransitStop[]): void {
   cachedRaw = raw;
   cachedStops = stops;
   emit();
+  return persistent;
 }
 
 export function useSavedTransitStops(): {
   stops: SavedTransitStop[];
-  toggle: (stop: TransitStopRef) => SavedStopToggleResult;
+  toggle: (
+    stop: TransitStopRef,
+  ) => SavedStopToggleResult & { persistent: boolean };
+  remove: (
+    stop: Pick<TransitStopRef, "id">,
+  ) => { removed: boolean; persistent: boolean };
 } {
   const stops = useSyncExternalStore(subscribe, readSavedStops, () => EMPTY);
   const toggle = useCallback((stop: TransitStopRef) => {
@@ -98,9 +115,19 @@ export function useSavedTransitStops(): {
       stop,
       new Date().toISOString(),
     );
-    if (!result.limitReached) writeSavedStops(result.stops);
-    return result;
+    const persistent = result.limitReached
+      ? !storageBlocked
+      : writeSavedStops(result.stops);
+    return { ...result, persistent };
+  }, []);
+  const remove = useCallback((stop: Pick<TransitStopRef, "id">) => {
+    const current = readSavedStops();
+    const next = current.filter((item) => item.id !== stop.id);
+    if (next.length === current.length) {
+      return { removed: false, persistent: !storageBlocked };
+    }
+    return { removed: true, persistent: writeSavedStops(next) };
   }, []);
 
-  return { stops, toggle };
+  return { stops, toggle, remove };
 }

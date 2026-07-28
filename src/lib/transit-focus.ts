@@ -25,6 +25,7 @@ export type TransitVehicleFocusDetail = {
 export type TransitVehiclePosition = TransitFocusPoint & {
   vehicleId: string;
   routeId?: string;
+  tripId?: string;
   timestamp?: number;
 };
 
@@ -74,12 +75,14 @@ export function findCurrentTransitVehicle<
   vehicles,
   vehicleId,
   expectedRouteId,
+  expectedTripId,
   feedCurrent,
   nowMs,
 }: {
   vehicles: readonly T[];
   vehicleId: string | undefined;
   expectedRouteId?: string;
+  expectedTripId?: string;
   feedCurrent: boolean;
   nowMs: number;
 }): T | null {
@@ -94,6 +97,12 @@ export function findCurrentTransitVehicle<
     expectedRouteId &&
     vehicle.routeId &&
     vehicle.routeId !== expectedRouteId
+  ) {
+    return null;
+  }
+  if (
+    expectedTripId &&
+    vehicle.tripId !== expectedTripId
   ) {
     return null;
   }
