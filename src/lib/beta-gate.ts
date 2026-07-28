@@ -1,16 +1,14 @@
 import "server-only";
 
 /**
- * Shared beta-access gate. When BETA_PASSWORD is set, the middleware walls the
- * whole site behind a single shared password (a soft beta wall, not real auth):
- * visitors land on /beta, enter the password once, and a cookie lets them in.
- * The owner master key lasts 30 days; personal-code sessions last 12 hours.
- * When BETA_PASSWORD is UNSET the gate is disabled and the site is fully
- * public, so it can never accidentally lock production.
+ * Legacy beta identity and signing helpers. The public request proxy no longer
+ * checks these credentials: Frederick Radius stays public even when
+ * BETA_PASSWORD is configured. The password remains supported as the owner code
+ * and as a fallback signing secret for personal-code and NFC member cookies.
  *
- * Edge-safe (Web Crypto only, no Node APIs) so it runs in middleware. Marked
+ * Web Crypto keeps the helpers portable across server runtimes. This module is
  * `server-only` because it reads BETA_PASSWORD / BETA_CODE_SECRET: a client
- * import must fail the build, not ship the gate's internals to browsers.
+ * import must fail the build, not ship signing internals to browsers.
  * Cookie NAMES live in beta-constants.ts (re-exported here) so client
  * components can use them without touching this module.
  */
@@ -38,9 +36,9 @@ export async function betaToken(password: string): Promise<string> {
 /**
  * Per-user access codes.
  *
- * The unlock credential for a code is a short-lived signed token containing an
- * issued-at time and code. Middleware can verify it without a database request
- * on every page load. The database is checked at redemption/renewal time, so a
+ * A redeemed code gets a short-lived signed token containing an issued-at time
+ * and code. First-party beta telemetry can verify it without a database request
+ * on every ping. The database is checked at redemption/renewal time, so a
  * revoked code cannot mint another session; an existing session can remain
  * valid for at most 12 hours.
  *
@@ -148,11 +146,10 @@ export function isRedeemableBetaCode(row: { revoked: boolean } | null | undefine
  * A tapped device is assigned a random url-safe member id (generated in
  * src/lib/nfc.ts) and carries it in a SIGNED httpOnly `fr_member` cookie. The
  * cookie is HMAC'd (domain-separated by the `fr-member:v1:` label, so a member
- * signature is never a valid code signature or vice versa) and grants NO access
- * on its own — the fr_beta cookie is the access credential; this id only
- * attributes first-party analytics to a member. Forging one therefore buys
- * nothing but the ability to write analytics against an id you named, and only
- * with knowledge of the server signing secret.
+ * signature is never a valid code signature or vice versa) and grants no
+ * privileged access. It only attributes first-party analytics to a member.
+ * Forging one therefore buys nothing but the ability to write analytics against
+ * an id you named, and only with knowledge of the server signing secret.
  *
  * Signing key: a DEDICATED `MEMBER_COOKIE_SECRET` when set, else the beta code
  * secret (so it needs zero new config to run, but can be split off from the

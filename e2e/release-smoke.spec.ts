@@ -113,6 +113,15 @@ for (const viewport of VIEWPORTS) {
           timeout: 90_000,
         });
         expect(response?.status(), `${route} should serve HTTP 200`).toBe(200);
+        const requestedUrl = new URL(route, appOrigin);
+        const finalUrl = new URL(page.url());
+        expect(
+          finalUrl.pathname,
+          `${route} should not be replaced by the legacy beta wall`,
+        ).toBe(route === "/" ? "/today" : requestedUrl.pathname);
+        expect(finalUrl.search, `${route} should preserve its requested query`).toBe(
+          requestedUrl.search,
+        );
 
         await page.waitForTimeout(1_000);
         const main = page.locator("main").first();
