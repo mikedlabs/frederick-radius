@@ -33,7 +33,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { todaysDeals } from "@/lib/loaders/todaysDeals";
-import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
+import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import {
   activeServiceIds,
@@ -658,9 +658,12 @@ async function BrowseMapArea() {
   // that same key, so a later stop tap can request an honest live arrival.
   // MARC departures are computed here from the committed GTFS schedule and
   // shown as clock times, so ISR staleness cannot lie.
-  const transitStops: TransitStopPin[] = (
-    TRANSIT_RAW as { stops: Array<{ id: string | number; name: string; lat: number; lng: number }> }
-  ).stops.map((st) => ({ id: String(st.id), name: st.name, lng: st.lng, lat: st.lat }));
+  const transitStops: TransitStopPin[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
+    id: stop.id,
+    name: stop.name,
+    lng: stop.lng,
+    lat: stop.lat,
+  }));
   const marc = etNowParts(now);
   const marcActive = activeServiceIds(marc.ymd, marc.weekday);
   const marcStations: MarcStationPin[] = MARC_STATIONS.map((st) => ({

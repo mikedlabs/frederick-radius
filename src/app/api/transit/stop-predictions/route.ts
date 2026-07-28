@@ -16,16 +16,37 @@
  */
 import { NextResponse } from "next/server";
 import { getStopPredictionsResult } from "@/lib/integrations/transitRealtime";
+import TRANSIT_TRIPS from "@/data/transit-trips.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type StaticTrip = {
+  routeId: string;
+  directionId?: number;
+  headsign?: string;
+};
+
+const TRIPS = TRANSIT_TRIPS as Record<string, StaticTrip>;
+
 export async function GET(request: Request) {
   const stopId = new URL(request.url).searchParams.get("stop");
   const result = await getStopPredictionsResult();
-  const predictions = stopId
+  const selected = stopId
     ? result.data.filter((p) => p.stopId === stopId)
     : result.data;
+  const predictions = selected.map((prediction) => {
+    const trip = prediction.tripId ? TRIPS[prediction.tripId] : undefined;
+    return {
+      ...prediction,
+      // The headsign comes from the same official static GTFS snapshot as the
+      // route map. It describes direction; it does not turn the realtime
+      // estimate into a scheduled guarantee.
+      routeId: prediction.routeId ?? trip?.routeId,
+      headsign: trip?.headsign,
+      directionId: prediction.directionId ?? trip?.directionId,
+    };
+  });
   return NextResponse.json(
     {
       predictions,

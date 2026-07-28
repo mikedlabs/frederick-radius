@@ -9,6 +9,8 @@ type GtfsTranslatedString = {
 type GtfsTripDescriptor = {
   routeId?: string | null;
   tripId?: string | null;
+  directionId?: number | null;
+  scheduleRelationship?: number | string | null;
 };
 
 type GtfsVehicleDescriptor = {
@@ -17,6 +19,11 @@ type GtfsVehicleDescriptor = {
 
 type GtfsStopTimeEvent = {
   time?: GtfsLong | null;
+};
+
+type GtfsTimeRange = {
+  start?: GtfsLong | null;
+  end?: GtfsLong | null;
 };
 
 export type GtfsFeedEntity = {
@@ -37,18 +44,23 @@ export type GtfsFeedEntity = {
   tripUpdate?: {
     trip?: GtfsTripDescriptor | null;
     vehicle?: GtfsVehicleDescriptor | null;
+    timestamp?: GtfsLong | null;
     stopTimeUpdate?: Array<{
       stopId?: string | null;
       stopSequence?: number | null;
       arrival?: GtfsStopTimeEvent | null;
       departure?: GtfsStopTimeEvent | null;
+      scheduleRelationship?: number | string | null;
     }> | null;
   } | null;
   alert?: {
+    activePeriod?: GtfsTimeRange[] | null;
     informedEntity?: Array<{
       routeId?: string | null;
       stopId?: string | null;
     }> | null;
+    cause?: number | string | null;
+    effect?: number | string | null;
     headerText?: GtfsTranslatedString | null;
     descriptionText?: GtfsTranslatedString | null;
   } | null;
@@ -91,6 +103,8 @@ type RawFeedEntity = {
     trip?: {
       route_id?: string | null;
       trip_id?: string | null;
+      direction_id?: number | null;
+      schedule_relationship?: number | string | null;
     } | null;
     vehicle?: GtfsVehicleDescriptor | null;
     position?: {
@@ -107,20 +121,27 @@ type RawFeedEntity = {
     trip?: {
       route_id?: string | null;
       trip_id?: string | null;
+      direction_id?: number | null;
+      schedule_relationship?: number | string | null;
     } | null;
     vehicle?: GtfsVehicleDescriptor | null;
+    timestamp?: GtfsLong | null;
     stop_time_update?: Array<{
       stop_id?: string | null;
       stop_sequence?: number | null;
       arrival?: GtfsStopTimeEvent | null;
       departure?: GtfsStopTimeEvent | null;
+      schedule_relationship?: number | string | null;
     }> | null;
   } | null;
   alert?: {
+    active_period?: GtfsTimeRange[] | null;
     informed_entity?: Array<{
       route_id?: string | null;
       stop_id?: string | null;
     }> | null;
+    cause?: number | string | null;
+    effect?: number | string | null;
     header_text?: RawTranslatedString | null;
     description_text?: RawTranslatedString | null;
   } | null;
@@ -148,9 +169,11 @@ function normalizeEntity(entity: RawFeedEntity): GtfsFeedEntity {
       ? {
           trip: entity.vehicle.trip
             ? {
-                routeId: entity.vehicle.trip.route_id,
-                tripId: entity.vehicle.trip.trip_id,
-              }
+              routeId: entity.vehicle.trip.route_id,
+              tripId: entity.vehicle.trip.trip_id,
+              directionId: entity.vehicle.trip.direction_id,
+              scheduleRelationship: entity.vehicle.trip.schedule_relationship,
+            }
             : entity.vehicle.trip,
           vehicle: entity.vehicle.vehicle,
           position: entity.vehicle.position,
@@ -166,23 +189,30 @@ function normalizeEntity(entity: RawFeedEntity): GtfsFeedEntity {
             ? {
                 routeId: entity.trip_update.trip.route_id,
                 tripId: entity.trip_update.trip.trip_id,
+                directionId: entity.trip_update.trip.direction_id,
+                scheduleRelationship: entity.trip_update.trip.schedule_relationship,
               }
             : entity.trip_update.trip,
           vehicle: entity.trip_update.vehicle,
+          timestamp: entity.trip_update.timestamp,
           stopTimeUpdate: entity.trip_update.stop_time_update?.map((stop) => ({
             stopId: stop.stop_id,
             stopSequence: stop.stop_sequence,
             arrival: stop.arrival,
             departure: stop.departure,
+            scheduleRelationship: stop.schedule_relationship,
           })),
         }
       : entity.trip_update,
     alert: entity.alert
       ? {
+          activePeriod: entity.alert.active_period,
           informedEntity: entity.alert.informed_entity?.map((selector) => ({
             routeId: selector.route_id,
             stopId: selector.stop_id,
           })),
+          cause: entity.alert.cause,
+          effect: entity.alert.effect,
           headerText: entity.alert.header_text,
           descriptionText: entity.alert.description_text,
         }
@@ -199,6 +229,8 @@ function encodeEntity(entity: GtfsFeedEntity): RawFeedEntity {
             ? {
                 route_id: entity.vehicle.trip.routeId,
                 trip_id: entity.vehicle.trip.tripId,
+                direction_id: entity.vehicle.trip.directionId,
+                schedule_relationship: entity.vehicle.trip.scheduleRelationship,
               }
             : entity.vehicle.trip,
           vehicle: entity.vehicle.vehicle,
@@ -215,23 +247,30 @@ function encodeEntity(entity: GtfsFeedEntity): RawFeedEntity {
             ? {
                 route_id: entity.tripUpdate.trip.routeId,
                 trip_id: entity.tripUpdate.trip.tripId,
+                direction_id: entity.tripUpdate.trip.directionId,
+                schedule_relationship: entity.tripUpdate.trip.scheduleRelationship,
               }
             : entity.tripUpdate.trip,
           vehicle: entity.tripUpdate.vehicle,
+          timestamp: entity.tripUpdate.timestamp,
           stop_time_update: entity.tripUpdate.stopTimeUpdate?.map((stop) => ({
             stop_id: stop.stopId,
             stop_sequence: stop.stopSequence,
             arrival: stop.arrival,
             departure: stop.departure,
+            schedule_relationship: stop.scheduleRelationship,
           })),
         }
       : entity.tripUpdate,
     alert: entity.alert
       ? {
+          active_period: entity.alert.activePeriod,
           informed_entity: entity.alert.informedEntity?.map((selector) => ({
             route_id: selector.routeId,
             stop_id: selector.stopId,
           })),
+          cause: entity.alert.cause,
+          effect: entity.alert.effect,
           header_text: entity.alert.headerText,
           description_text: entity.alert.descriptionText,
         }
