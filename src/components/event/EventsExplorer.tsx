@@ -15,7 +15,16 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import type { EventBrowseSummary } from "@/lib/events/browsePayload";
-import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import {
+  eventIntentOf,
+  countByIntent,
+  eventDaypart,
+  intentForCategory,
+  isForKids,
+  isRecurringEvent,
+  INTENT_BY_ID,
+  type IntentId,
+} from "@/lib/events/intents";
 import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
@@ -371,6 +380,15 @@ export default function EventsExplorer({
     () => !dataComplete && !anyFilter ? summary.intentCounts : countByIntent(baseFiltered),
     [anyFilter, baseFiltered, dataComplete, summary.intentCounts],
   );
+  // Exact-category deep links predate the intent rail. Reflect that narrower
+  // selection in the rail, then clear it when the user chooses a different
+  // interest so the two taxonomies never intersect into a false empty state.
+  const railIntent = intent ?? (cat ? intentForCategory(cat) : null);
+  const railSub =
+    sub ??
+    (cat && INTENT_BY_ID[intentForCategory(cat)].subs?.some((item) => item.slug === cat)
+      ? cat
+      : null);
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
@@ -608,10 +626,11 @@ export default function EventsExplorer({
           >
             Browse by interest
           </h2>
-          {intent && (
+          {(intent || cat) && (
             <button
               type="button"
               onClick={() => {
+                setCat(null);
                 setIntent(null);
                 setSub(null);
               }}
@@ -623,11 +642,17 @@ export default function EventsExplorer({
           )}
         </div>
         <EventsIntentRail
-          activeIntent={intent}
-          activeSub={sub}
+          activeIntent={railIntent}
+          activeSub={railSub}
           counts={intentCounts}
-          onIntent={setIntent}
-          onSub={setSub}
+          onIntent={(nextIntent) => {
+            setCat(null);
+            setIntent(nextIntent);
+          }}
+          onSub={(nextSub) => {
+            setCat(null);
+            setSub(nextSub);
+          }}
         />
       </section>
 
@@ -951,6 +976,7 @@ function EventPosterShelf({
           <EventPosterCard
             event={event}
             live={live.has(event.slug)}
+            layout="shelf"
             priorityImage={false}
           />
         </li>

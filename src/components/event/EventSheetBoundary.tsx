@@ -57,7 +57,10 @@ export default function EventSheetBoundary({
       .split(/[?#]/)[0];
     if (!slug) return;
     const event = bySlug.get(slug);
-    if (!event && !fetchMissing && !fetchFull) return;
+    // `fetchFull` upgrades known slim browse records; it must not turn every
+    // `/events/*` route (notably `/events/calendar`) into a guessed event slug.
+    // Only `fetchMissing` is allowed to intercept a slug outside this set.
+    if (!event && !fetchMissing) return;
     e.preventDefault();
     e.stopPropagation();
     if (fetchFull || !event) openEventSheetBySlug(slug);

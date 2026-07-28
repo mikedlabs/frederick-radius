@@ -73,4 +73,16 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain('data-event-poster="category"');
     expect(html).toContain('data-radius-plate="summer-concert"');
   });
+
+  it("keeps desktop shelf cards tall enough for their content", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventPosterCard, {
+        event: event(),
+        layout: "shelf",
+      }),
+    );
+
+    expect(html).toContain("lg:aspect-[4/3]");
+    expect(html).not.toContain("lg:aspect-[21/9]");
+  });
 });

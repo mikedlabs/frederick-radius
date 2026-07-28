@@ -26,6 +26,11 @@ export type EventPosterCardProps = {
   whyItMatters?: string;
   /** Compact shelves do not add an outer live badge, so the poster owns it. */
   live?: boolean;
+  /**
+   * Shelf cards keep a taller desktop face so two-line titles, metadata, and
+   * reason chips never collide with the category row.
+   */
+  layout?: "hero" | "shelf";
 };
 
 /**
@@ -57,6 +62,7 @@ export default function EventPosterCard({
   priorityImage = true,
   whyItMatters,
   live = false,
+  layout = "hero",
 }: EventPosterCardProps) {
   const safeVisual = posterVisualForEvent(event, visual);
   const onPhoto = safeVisual !== null;
@@ -83,7 +89,9 @@ export default function EventPosterCard({
 
   return (
     <article
-      className="tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)] lg:aspect-[21/9]"
+      className={`tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
+        layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"
+      }`}
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
