@@ -20,6 +20,19 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain("Live arrivals are unavailable.");
     expect(source).toContain("Check the official schedule");
     expect(source).toContain('d.available !== false && d.status !== "unavailable"');
+    expect(source).not.toContain("routesForStop");
+    expect(source).not.toContain('from "./routeGeometry"');
+    expect(source).toContain("new Set(");
+    expect(source).toContain("(preds ?? [])");
+    expect(source).toContain(
+      "feedAvailable === true && feedFresh === true",
+    );
+    expect(source).toContain(
+      'prediction.scheduleRelationship === "NO_DATA"',
+    );
+    expect(source).toContain(
+      'prediction.tripScheduleRelationship === "CANCELED"',
+    );
   });
 
   it("gives the dedicated transit map tappable stop hit targets and an accessible route picker", () => {
@@ -61,5 +74,13 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain("haversineMeters");
     expect(source).toContain("<StopArrivalsPopup");
     expect(source).toContain("Walking directions to this stop");
+    expect(source).toContain("prediction.headsign");
+    expect(source).toContain("Wheelchair boarding is listed for this stop.");
+    expect(source).toContain(
+      'prediction.scheduleRelationship !== "NO_DATA"',
+    );
+    expect(page).toContain("TRANSIT_NETWORK");
+    expect(page).toContain("shapeVariants");
+    expect(page).toContain("<TransitServiceAlerts");
   });
 });

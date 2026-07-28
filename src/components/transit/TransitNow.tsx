@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { TrainFront, Bus, Navigation, MapPin } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import { MARC_STATIONS } from "@/data/marc-stations";
@@ -10,17 +16,17 @@ import {
   type MarcStationBoard,
 } from "@/lib/integrations/marcTrains";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { readableTextOn } from "@/lib/color/readableText";
 import { useLiveVehicles } from "./useLiveVehicles";
 
 /**
  * TransitNow — the "what can I catch right now" hero for /transit.
  *
- * Two cards. The MARC card leads with a live countdown to the next train at
- * the station nearest the rider (resolved from a cached geolocation fix, or
- * Frederick by default), with a 4-station switcher and an honest fallback once
- * the last train has gone. The buses card leads with the soonest live bus
- * arrival, backed by how many are reporting and, when location is granted,
- * how many are near the rider.
+ * A compact Bus | MARC switcher follows the stop-specific command center. Bus
+ * opens first and describes the wider reporting network without presenting a
+ * fleet-wide arrival as the rider's own bus. MARC keeps its live countdown at
+ * the nearest station (resolved from a cached geolocation fix, or Frederick by
+ * default), its 4-station selector, and its honest end-of-service fallback.
  *
  * All timing is read from state (a 1s tick) so there is never a Date.now() in
  * render; the MARC board is passed from the server page (schedule + realtime
@@ -43,14 +49,7 @@ const FARE_FREE = (TRANSIT as { fareFree?: boolean }).fareFree === true;
 const COUNTDOWN_WINDOW_MIN = 180;
 // A bus within about this far reads as "near you".
 const NEAR_MILES = 1;
-
-function readableOn(hex: string): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "#FFFFFF";
-  const n = parseInt(m[1], 16);
-  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.62 ? "#221C15" : "#FFFFFF";
-}
+type TransitMode = "bus" | "marc";
 
 function arrivalMins(epoch: number | undefined, nowMs: number): number | null {
   if (epoch == null || nowMs === 0) return null;
@@ -98,7 +97,7 @@ function RouteChip({ route }: { route?: TransitRoute }) {
         padding: "0 6px",
         borderRadius: 999,
         background: color,
-        color: route ? readableOn(route.color) : "#FFFFFF",
+        color: route ? readableTextOn(route.color) : "#FFFFFF",
         fontSize: 11,
         fontWeight: 700,
         fontVariantNumeric: "tabular-nums",
@@ -151,6 +150,9 @@ export default function TransitNow({
   // live countdown ticking a stuck fix down to "due."
   const staleAgo = stale && fetchedAt && nowMs ? agoLabel(nowMs - fetchedAt) : null;
   const [override, setOverride] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<TransitMode>("bus");
+  const busTabRef = useRef<HTMLButtonElement>(null);
+  const marcTabRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
@@ -200,6 +202,44 @@ export default function TransitNow({
   }, [busesToRank, nowMs]);
 
   const nearCount = userPos ? nearbyVehicles.length : null;
+  const busTabStatus = !loaded
+    ? "Checking"
+    : !available
+      ? "Unavailable"
+      : stale
+        ? "Delayed"
+        : vehicles.length > 0
+          ? `${vehicles.length} reporting`
+          : "No reports";
+  const marcTabStatus = !board.serviceToday
+    ? "No service today"
+    : !next
+      ? "Done today"
+      : countdown != null && countdown <= COUNTDOWN_WINDOW_MIN
+        ? countdown === 0
+          ? "Due"
+          : `${countdown} min`
+        : nextClock ?? "Scheduled";
+
+  const moveTabFocus = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentMode: TransitMode,
+  ) => {
+    let nextMode: TransitMode | null = null;
+    if (event.key === "ArrowRight") {
+      nextMode = currentMode === "bus" ? "marc" : "bus";
+    } else if (event.key === "ArrowLeft") {
+      nextMode = currentMode === "bus" ? "marc" : "bus";
+    } else if (event.key === "Home") {
+      nextMode = "bus";
+    } else if (event.key === "End") {
+      nextMode = "marc";
+    }
+    if (!nextMode) return;
+    event.preventDefault();
+    setActiveMode(nextMode);
+    (nextMode === "bus" ? busTabRef : marcTabRef).current?.focus();
+  };
 
   const cardStyle = {
     borderColor: "var(--app-border)",
@@ -209,163 +249,263 @@ export default function TransitNow({
 
   return (
     <section aria-labelledby="transit-now-heading" className="space-y-2.5">
-      <h2 id="transit-now-heading" className="sr-only">
-        What you can catch right now
-      </h2>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {/* MARC — countdown-first for the nearest station. */}
-        <article className="rounded-[var(--app-radius-md)] border p-4" style={cardStyle}>
-          <div className="flex items-center justify-between">
-            <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Next MARC train
-            </span>
-            <TrainFront className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-accent)" }} aria-hidden />
-          </div>
-
-          <label className="mt-2.5 flex items-center gap-2">
-            <span className="shrink-0 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-              Station
-            </span>
-            <select
-              value={selectedKey}
-              onChange={(event) => setOverride(event.target.value)}
-              aria-label="MARC station"
-              className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
-              style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-            >
-              {MARC_STATIONS.map((item) => (
-                <option key={item.key} value={item.key}>
-                  {item.name}
-                  {item.key === nearestKey && userPos != null ? " · nearest" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {board.serviceToday && next ? (
-            <div className="mt-3">
-              {countdown != null && countdown <= COUNTDOWN_WINDOW_MIN ? (
-                <p className="font-mono leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-                  <span className="text-[42px] font-bold">{countdown === 0 ? "due" : countdown}</span>
-                  {countdown !== 0 && <span className="ml-1 text-[15px] font-semibold" style={{ color: "var(--app-ink-2)" }}>min</span>}
-                </p>
-              ) : (
-                <p className="font-mono text-[30px] font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-                  {nextClock}
-                </p>
-              )}
-              <p className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-                <span>
-                  to {next.headsign} <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>· {nextClock}</span>
-                </span>
-                <DelayNote dep={next} />
-              </p>
-            </div>
-          ) : (
-            <div className="mt-3">
-              <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                {board.serviceToday ? "No more trains stop here today." : "No county MARC trains run today."}
-              </p>
-              <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                The Brunswick Line runs weekday commuter service.{" "}
-                <a href={MARC_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" className="tap-44-y font-semibold" style={{ color: "var(--app-cool)" }}>
-                  See the schedule
-                </a>
-                .
-              </p>
-            </div>
-          )}
-        </article>
-
-        {/* Buses — soonest reported arrival, plus what is reporting nearby. */}
-        <article className="rounded-[var(--app-radius-md)] border p-4" style={cardStyle}>
-          <div className="flex items-center justify-between">
-            <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              {userPos && nearbyVehicles.length > 0 ? "Buses near you" : "Buses reporting now"}
-            </span>
-            <Bus className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-          </div>
-
-          {!loaded ? (
-            <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              Checking the live bus feed…
-            </p>
-          ) : !available ? (
-            <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Live bus positions are unavailable.
-            </p>
-          ) : vehicles.length === 0 ? (
-            <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              No buses are reporting right now.
-            </p>
-          ) : (
-            <div className="mt-3">
-              {stale ? (
-                <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                  {vehicles.length} {vehicles.length === 1 ? "bus" : "buses"} last reported
-                </p>
-              ) : soonestBus ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <RouteChip route={soonestBus.route} />
-                    <span className="font-mono text-[26px] font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-                      {soonestBus.mins === 0 ? "due" : soonestBus.mins}
-                      {soonestBus.mins !== 0 && <span className="ml-1 text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>min</span>}
-                    </span>
-                  </div>
-                  <p className="mt-1 truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
-                    to {soonestBus.stopName}
-                  </p>
-                </>
-              ) : (
-                <p className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
-                  {vehicles.length} reporting now
-                </p>
-              )}
-            </div>
-          )}
-
-          <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {loaded && available && vehicles.length > 0 && (
-              staleAgo ? (
-                <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
-              ) : status === "degraded" ? (
-                <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>
-                  Positions are live. Arrival estimates are unavailable.
-                </span>
-              ) : (
-                <span className="font-mono tabular-nums">{vehicles.length} reporting now</span>
-              )
-            )}
-            {FARE_FREE && <span style={{ color: "var(--app-cool)", fontWeight: 600 }}>free to ride</span>}
-            {available && nearCount != null && vehicles.length > 0 && (
-              <span className="font-mono tabular-nums">{nearCount} within about a mile</span>
-            )}
-            {!userPos && geoState.status !== "loading" && (
-              <button
-                type="button"
-                onClick={requestGeo}
-                className="tap-44-y inline-flex items-center gap-1 font-semibold"
-                style={{ color: "var(--app-cool)" }}
-              >
-                <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                Use my location
-              </button>
-            )}
-          </p>
-
-          <a
-            href={PLAN_TRIP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap-44-y mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: "var(--app-cool)" }}
-          >
-            <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Plan a trip with the bus
-          </a>
-        </article>
+      <div className="px-1">
+        <h2
+          id="transit-now-heading"
+          className="font-sans text-[17px] font-semibold leading-tight tracking-[-0.02em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Network status
+        </h2>
+        <p className="mt-0.5 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Check the wider bus and rail network.
+        </p>
       </div>
+
+      <div
+        role="tablist"
+        aria-label="Choose bus or MARC status"
+        aria-orientation="horizontal"
+        className="grid grid-cols-2 gap-1 rounded-[var(--app-radius-md)] border p-1"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-sunken)",
+        }}
+      >
+        <button
+          ref={busTabRef}
+          id="transit-bus-tab"
+          type="button"
+          role="tab"
+          aria-selected={activeMode === "bus"}
+          aria-controls="transit-bus-panel"
+          tabIndex={activeMode === "bus" ? 0 : -1}
+          onClick={() => setActiveMode("bus")}
+          onKeyDown={(event) => moveTabFocus(event, "bus")}
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-[calc(var(--app-radius-md)-4px)] px-3 text-left transition-colors motion-reduce:transition-none"
+          style={{
+            color: activeMode === "bus" ? "var(--app-ink)" : "var(--app-ink-3)",
+            background: activeMode === "bus" ? "var(--app-bg-elevated-solid)" : "transparent",
+            boxShadow: activeMode === "bus" ? "var(--app-edge), var(--app-hi)" : "none",
+          }}
+        >
+          <Bus
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+            style={{ color: activeMode === "bus" ? "var(--app-cool)" : "currentColor" }}
+            aria-hidden
+          />
+          <span className="min-w-0">
+            <span className="block text-[12.5px] font-semibold leading-none">Bus</span>
+            <span className="mt-1 block truncate text-[9.5px] leading-none">{busTabStatus}</span>
+          </span>
+        </button>
+        <button
+          ref={marcTabRef}
+          id="transit-marc-tab"
+          type="button"
+          role="tab"
+          aria-selected={activeMode === "marc"}
+          aria-controls="transit-marc-panel"
+          tabIndex={activeMode === "marc" ? 0 : -1}
+          onClick={() => setActiveMode("marc")}
+          onKeyDown={(event) => moveTabFocus(event, "marc")}
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-[calc(var(--app-radius-md)-4px)] px-3 text-left transition-colors motion-reduce:transition-none"
+          style={{
+            color: activeMode === "marc" ? "var(--app-ink)" : "var(--app-ink-3)",
+            background: activeMode === "marc" ? "var(--app-bg-elevated-solid)" : "transparent",
+            boxShadow: activeMode === "marc" ? "var(--app-edge), var(--app-hi)" : "none",
+          }}
+        >
+          <TrainFront
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+            style={{ color: activeMode === "marc" ? "var(--app-accent)" : "currentColor" }}
+            aria-hidden
+          />
+          <span className="min-w-0">
+            <span className="block text-[12.5px] font-semibold leading-none">MARC</span>
+            <span className="mt-1 block truncate text-[9.5px] leading-none">{marcTabStatus}</span>
+          </span>
+        </button>
+      </div>
+
+      {/* Bus opens first. Its arrival is explicitly network context, not the
+          rider's stop-specific result from My stop above. */}
+      <article
+        id="transit-bus-panel"
+        role="tabpanel"
+        aria-labelledby="transit-bus-tab"
+        hidden={activeMode !== "bus"}
+        tabIndex={0}
+        className="rounded-[var(--app-radius-md)] border p-4"
+        style={cardStyle}
+      >
+        <div className="flex items-center justify-between">
+          <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            {userPos && nearbyVehicles.length > 0 ? "Nearby bus network" : "Bus network"}
+          </span>
+          <Bus className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+        </div>
+
+        <p className="mt-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Use My stop above for a stop-specific arrival.
+        </p>
+
+        {!loaded ? (
+          <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            Checking the live bus feed…
+          </p>
+        ) : !available ? (
+          <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Live bus positions are unavailable.
+          </p>
+        ) : vehicles.length === 0 ? (
+          <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            No buses are reporting right now.
+          </p>
+        ) : (
+          <div className="mt-3">
+            {stale ? (
+              <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                {vehicles.length} {vehicles.length === 1 ? "bus" : "buses"} last reported
+              </p>
+            ) : soonestBus ? (
+              <>
+                <p className="mb-2 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                  This is the soonest reported arrival {nearbyVehicles.length > 0 ? "within about a mile" : "across the network"}.
+                </p>
+                <div className="flex items-center gap-2">
+                  <RouteChip route={soonestBus.route} />
+                  <span className="font-mono text-[26px] font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+                    {soonestBus.mins === 0 ? "due" : soonestBus.mins}
+                    {soonestBus.mins !== 0 && <span className="ml-1 text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>min</span>}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+                  to {soonestBus.stopName}
+                </p>
+              </>
+            ) : (
+              <p className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
+                {vehicles.length} reporting now
+              </p>
+            )}
+          </div>
+        )}
+
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+          {loaded && available && vehicles.length > 0 && (
+            staleAgo ? (
+              <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
+            ) : status === "degraded" ? (
+              <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>
+                Positions are live. Arrival estimates are unavailable.
+              </span>
+            ) : (
+              <span className="font-mono tabular-nums">{vehicles.length} reporting now</span>
+            )
+          )}
+          {FARE_FREE && <span style={{ color: "var(--app-cool)", fontWeight: 600 }}>free to ride</span>}
+          {available && nearCount != null && vehicles.length > 0 && (
+            <span className="font-mono tabular-nums">{nearCount} within about a mile</span>
+          )}
+          {!userPos && geoState.status !== "loading" && (
+            <button
+              type="button"
+              onClick={requestGeo}
+              className="tap-44-y inline-flex items-center gap-1 font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              Use my location
+            </button>
+          )}
+        </p>
+
+        <a
+          href={PLAN_TRIP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44-y mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          Plan a trip with the bus
+        </a>
+      </article>
+
+      {/* MARC preserves the nearest-station countdown and manual selector. */}
+      <article
+        id="transit-marc-panel"
+        role="tabpanel"
+        aria-labelledby="transit-marc-tab"
+        hidden={activeMode !== "marc"}
+        tabIndex={0}
+        className="rounded-[var(--app-radius-md)] border p-4"
+        style={cardStyle}
+      >
+        <div className="flex items-center justify-between">
+          <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            Next MARC train
+          </span>
+          <TrainFront className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-accent)" }} aria-hidden />
+        </div>
+
+        <label className="mt-2.5 flex items-center gap-2">
+          <span className="shrink-0 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            Station
+          </span>
+          <select
+            value={selectedKey}
+            onChange={(event) => setOverride(event.target.value)}
+            aria-label="MARC station"
+            className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
+            style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
+          >
+            {MARC_STATIONS.map((item) => (
+              <option key={item.key} value={item.key}>
+                {item.name}
+                {item.key === nearestKey && userPos != null ? " · nearest" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {board.serviceToday && next ? (
+          <div className="mt-3">
+            {countdown != null && countdown <= COUNTDOWN_WINDOW_MIN ? (
+              <p className="font-mono leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+                <span className="text-[42px] font-bold">{countdown === 0 ? "due" : countdown}</span>
+                {countdown !== 0 && <span className="ml-1 text-[15px] font-semibold" style={{ color: "var(--app-ink-2)" }}>min</span>}
+              </p>
+            ) : (
+              <p className="font-mono text-[30px] font-bold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+                {nextClock}
+              </p>
+            )}
+            <p className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+              <span>
+                to {next.headsign} <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>· {nextClock}</span>
+              </span>
+              <DelayNote dep={next} />
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              {board.serviceToday ? "No more trains stop here today." : "No county MARC trains run today."}
+            </p>
+            <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              The Brunswick Line runs weekday commuter service.{" "}
+              <a href={MARC_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" className="tap-44-y font-semibold" style={{ color: "var(--app-cool)" }}>
+                See the schedule
+              </a>
+              .
+            </p>
+          </div>
+        )}
+      </article>
     </section>
   );
 }

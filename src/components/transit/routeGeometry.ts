@@ -1,4 +1,5 @@
 import TRANSIT from "@/data/transit.json";
+import TRANSIT_NETWORK from "@/data/transit-network.json";
 
 /**
  * routeGeometry — pure 1-D arithmetic for the string-of-pearls board.
@@ -7,12 +8,11 @@ import TRANSIT from "@/data/transit.json";
  * into a single horizontal line: every position along the route becomes a
  * FRACTION of its total arc length. Two questions get answered here:
  *
- *   1. Where do the stops sit on that line? (`pearlsFor`) — each stop from
- *      the static stop table is projected onto the route's shape
- *      (nearest-segment); stops that land within ~44 m of the polyline are
- *      kept and ordered by arc length. transit.json has no per-route
- *      stop_times, so proximity to the published shape IS the membership
- *      test — good enough for a diagram whose beads are context, not truth.
+ *   1. Where do the stops sit on that line? (`pearlsFor`) — official
+ *      stop_times determine route membership, then each confirmed stop is
+ *      projected onto the representative route shape and ordered by arc
+ *      length. Geometry is used only for the diagram position, never to
+ *      invent which routes serve a stop.
  *   2. Where is the bus on that line? (`fractionAlong`) — the live fix,
  *      projected the same way.
  *
@@ -75,6 +75,9 @@ export type Pearl = { id: string; name: string; frac: number };
 
 type TransitStopRow = { id: string; name: string; lat: number; lng: number };
 const STOPS = TRANSIT.stops as TransitStopRow[];
+const STOP_ROUTES = (
+  TRANSIT_NETWORK as { stopRoutes?: Record<string, string[]> }
+).stopRoutes ?? {};
 
 // A stop counts as "on this route" within ~44 m of the polyline — tight
 // enough that a parallel street's stops don't leak in, loose enough for
@@ -108,6 +111,7 @@ export function stopSequenceFor(routeId: string): Pearl[] {
   if (shape && shape.total > 0) {
     const seq: Pearl[] = [];
     for (const s of STOPS) {
+      if (!STOP_ROUTES[String(s.id)]?.includes(routeId)) continue;
       const pr = projectToShape(shape, { lat: s.lat, lng: s.lng });
       if (pr.d <= STOP_ON_ROUTE) seq.push({ id: s.id, name: s.name, frac: pr.s / shape.total });
     }
@@ -153,27 +157,9 @@ export function fractionAlong(routeId: string, p: Pt): number | null {
 }
 
 /**
- * Routes that serve a stop: every route whose published shape passes within
- * the on-route threshold (~44 m, the same membership test the pearls use) of
- * the stop. Built lazily on first tap and cached, so the stop-detail popup
- * resolves instantly with no feed. Route ids are transit.json route ids; the
- * caller maps them to a chip. The stop-id space is transit.json's, which is
- * the GTFS stop_id the realtime feed also keys on.
+ * Routes that serve a stop, taken from official static GTFS stop_times.
+ * Geometry is deliberately absent from this membership answer.
  */
-let routesByStop: Map<string, string[]> | null = null;
 export function routesForStop(stopId: string): string[] {
-  if (!routesByStop) {
-    const built = new Map<string, string[]>();
-    const shapes = Object.entries(SHAPE_BY_ROUTE);
-    for (const s of STOPS) {
-      const hits: string[] = [];
-      for (const [rid, shape] of shapes) {
-        if (shape.total <= 0) continue;
-        if (projectToShape(shape, { lat: s.lat, lng: s.lng }).d <= STOP_ON_ROUTE) hits.push(rid);
-      }
-      built.set(String(s.id), hits);
-    }
-    routesByStop = built;
-  }
-  return routesByStop.get(String(stopId)) ?? [];
+  return STOP_ROUTES[String(stopId)] ?? [];
 }

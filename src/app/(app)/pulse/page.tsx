@@ -270,7 +270,7 @@ export default async function PulsePage() {
     fixitResult,
     news,
     press,
-    rivers,
+    riversResult,
     airports,
     forecast,
     marcBoard,
@@ -291,7 +291,11 @@ export default async function PulsePage() {
     // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
     // Six hours is ~24 readings per gauge: ample for the eight-reading trend
     // calculation without serializing the full /rivers 24-hour payload here.
-    withTimeout(getFrederickWaterSitesWithHistory("PT6H"), FEED_MS, [] as WaterSite[]),
+    withTimeoutStatus(
+      getFrederickWaterSitesWithHistory("PT6H"),
+      FEED_MS,
+      [] as WaterSite[],
+    ),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // Current conditions for the leading Weather tile (the full panel is its
@@ -314,6 +318,8 @@ export default async function PulsePage() {
 
   const fixit = fixitResult.data;
   const fixitAvailable = fixitResult.available;
+  const rivers = riversResult.data;
+  const riversAvailable = riversResult.available;
   const marcNow = new Date(situation.generatedAt);
   const sourceIsCurrent = (
     source: { availability: string; freshness: string },
@@ -1046,6 +1052,12 @@ export default async function PulsePage() {
       active: severeSafety.length > 0,
       attention: situationActive.safety,
       degraded: safetyState === "unavailable",
+      availability:
+        safetyState === "current"
+          ? "current"
+          : safetyState === "disabled"
+            ? "not-connected"
+            : "unavailable",
       kind: "status",
       sourceLabel: "PulsePoint",
       peek: safety.length > 0
@@ -1177,6 +1189,7 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: false,
       attention: false,
+      availability: fixitAvailable ? "current" : "unavailable",
       kind: "gauge",
       gauge: { value: fixit.length, pct: fixitPct, unit: "open reports" },
       sourceLabel: "FCG FixIT · SeeClickFix",
@@ -1274,6 +1287,7 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: false,
       attention: false,
+      availability: riversAvailable ? "current" : "unavailable",
       kind: riverPeekHeight != null ? "gauge" : "status",
       ...(riverPeekHeight != null
         ? {
@@ -1544,7 +1558,12 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: activeRoadIncidents.length > 0,
       attention: false,
-      degraded: !liveIncidentSnapshot.chartAvailable,
+      availability:
+        liveIncidentSnapshot.scannerAvailable === false
+          ? "unavailable"
+          : liveIncidentSnapshot.chartAvailable
+            ? "current"
+            : "partial",
       kind: "status",
       sourceLabel: "Frederick Scanner + MDOT CHART",
       peek: leadRoadIncident

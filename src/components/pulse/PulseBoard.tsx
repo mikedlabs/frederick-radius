@@ -54,12 +54,30 @@ const ICONS: Record<string, LucideIcon> = {
   Zap,
 };
 
-const CONDITIONS = new Set(["weather", "air", "rivers"]);
-const GETTING_AROUND = new Set(["traffic", "roadwork", "train", "airports"]);
-const PRIMARY_CONDITIONS = new Set(["weather", "air", "traffic", "roadwork"]);
-const STEADY_SYSTEMS = new Set(["power", "safety", "schools", "alerts"]);
-const LOCAL_UPDATES = new Set(["fixit", "trout", "airspace", "news", "police", "scanner"]);
 const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
+
+const PULSE_BANK_DEFINITIONS = [
+  {
+    key: "conditions",
+    label: "Conditions",
+    tileKeys: ["weather", "air", "alerts", "rivers"],
+  },
+  {
+    key: "getting-around",
+    label: "Getting around",
+    tileKeys: ["traffic", "scanner", "roadwork", "train", "airports"],
+  },
+  {
+    key: "county-systems",
+    label: "County systems",
+    tileKeys: ["power", "safety", "schools"],
+  },
+  {
+    key: "local-pulse",
+    label: "Local pulse",
+    tileKeys: ["fixit", "police", "news", "trout", "airspace"],
+  },
+] as const;
 
 export type PulseHeroChip = {
   tone: "danger" | "warning" | "cool" | "positive";
@@ -120,8 +138,8 @@ export function pulseStatusWord({
   hasLead: boolean;
   tone: PulseHeroChip["tone"];
 }): string {
-  if (allClear) return "Checked";
   if (degraded) return "Partial data";
+  if (allClear) return "Checked";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
@@ -139,12 +157,64 @@ export type PulseTile = {
   attention: boolean;
   /** The source did not answer, so a zero value is unknown rather than clear. */
   degraded?: boolean;
+  /** More precise source state for tiles that remain useful with partial data
+   * or whose integration is intentionally not connected. */
+  availability?: "current" | "partial" | "unavailable" | "not-connected";
   kind: "feature" | "gauge" | "status";
   peek?: string;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
   feature?: { temp: number; condition: string; hl?: string };
   body: ReactNode;
 };
+
+export type PulseTileState =
+  | "Attention"
+  | "Active"
+  | "Current"
+  | "Partial data"
+  | "Not connected"
+  | "Feed unavailable";
+
+export type PulseTileBank = {
+  key: string;
+  label: string;
+  tiles: PulseTile[];
+};
+
+/** Written state always accompanies color on a key. Missing data outranks
+ * activity because a feed that did not answer cannot make a live claim. */
+export function pulseTileState(tile: PulseTile): PulseTileState {
+  const availability =
+    tile.availability ?? (tile.degraded ? "unavailable" : "current");
+  if (availability === "unavailable") return "Feed unavailable";
+  if (availability === "not-connected") return "Not connected";
+  if (availability === "partial") return "Partial data";
+  if (tile.attention) return "Attention";
+  if (tile.active) return "Active";
+  return "Current";
+}
+
+/** Stable banks keep the board predictable while allowing conditional feeds
+ * to disappear honestly. Every supplied tile is claimed once; a new key that
+ * has not been classified yet remains visible in the fallback bank. */
+export function pulseTileBanks(tiles: PulseTile[]): PulseTileBank[] {
+  const byKey = new Map(tiles.map((tile) => [tile.key, tile]));
+  const claimed = new Set<string>();
+  const banks: PulseTileBank[] = PULSE_BANK_DEFINITIONS.map((bank) => {
+    const bankTiles = bank.tileKeys.flatMap((key) => {
+      const tile = byKey.get(key);
+      if (!tile) return [];
+      claimed.add(key);
+      return [tile];
+    });
+    return { key: bank.key, label: bank.label, tiles: bankTiles };
+  });
+  const fallback = tiles.filter((tile) => !claimed.has(tile.key));
+  if (fallback.length > 0) {
+    banks.push({ key: "more-signals", label: "More signals", tiles: fallback });
+  }
+  return banks;
+}
 
 type Snapshot = {
   at: number;
@@ -402,42 +472,282 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   );
 }
 
-function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+function formatGaugeValue(tile: PulseTile): string {
+  const gauge = tile.gauge;
+  if (!gauge || !Number.isFinite(gauge.value)) return "N/A";
+  const decimals = gauge.decimals ?? 0;
+  if (gauge.comma) {
+    return gauge.value.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
+  return gauge.value.toFixed(decimals);
+}
+
+function pulseTileReading(tile: PulseTile): string {
+  if (tile.feature) {
+    return [
+      `${tile.feature.temp} degrees`,
+      tile.feature.condition,
+      tile.feature.hl,
+    ].filter(Boolean).join(", ");
+  }
+  if (tile.gauge) {
+    return `${formatGaugeValue(tile)} ${tile.gauge.unit}. ${tile.countLabel}`;
+  }
+  return [tile.countLabel, tile.peek].filter(Boolean).join(". ");
+}
+
+/** A seated instrument key: the information changes shape by data kind, but
+ * the entire surface remains one predictable button into the existing drawer. */
+function PulseSmartBlock({
+  tile,
+  onOpen,
+  index,
+  bankKey,
+}: {
+  tile: PulseTile;
+  onOpen: () => void;
+  index: number;
+  bankKey: string;
+}) {
+  const state = pulseTileState(tile);
+  const unavailable = state === "Feed unavailable";
+  const keyColor = unavailable ? "var(--app-warning)" : tile.accent;
+  const stateColor =
+    state === "Current" ? "var(--app-ink-3)" : keyColor;
+  const accessibleReading = unavailable
+    ? "Latest reading unavailable"
+    : pulseTileReading(tile);
+  const gaugeValue = formatGaugeValue(tile);
+  const gaugePct = Math.max(0, Math.min(100, tile.gauge?.pct ?? 0));
+
   return (
-    <li className="min-w-0">
-      <button type="button" onClick={onOpen} className="group flex min-h-[58px] min-w-0 w-full max-w-full items-center gap-3 overflow-hidden border-b py-2.5 text-left last:border-b-0" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
-        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 10%, transparent)` }}>
-          {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
+    <li
+      data-pulse-bank-item={bankKey}
+      className={`min-w-0${tile.kind === "feature" ? " col-span-2 sm:col-span-1" : ""}`}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        data-pulse-key={tile.key}
+        aria-haspopup="dialog"
+        aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
+        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[140px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2"
+        style={{
+          borderColor: unavailable
+            ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
+            : "var(--app-border)",
+          background: `linear-gradient(160deg, color-mix(in srgb, ${keyColor} 7%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-bg-sunken) 52%, var(--app-bg-elevated-solid)) 100%)`,
+          animationDelay: `${Math.min(index, 8) * 38}ms`,
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(105% 82% at 0% 0%, ${keyColor} 0%, transparent 72%)`,
+            opacity: state === "Current" ? 0.1 : 0.18,
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+          style={{ background: keyColor, opacity: unavailable ? 1 : 0.82 }}
+        />
+
+        <span className="relative flex w-full min-w-0 items-center justify-between gap-2">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border"
+            style={{
+              borderColor: `color-mix(in srgb, ${keyColor} 20%, var(--app-border))`,
+              color: keyColor,
+              background: `color-mix(in srgb, ${keyColor} 10%, var(--app-bg-elevated-solid))`,
+            }}
+          >
+            {createElement(iconFor(tile), {
+              className: "h-4 w-4",
+              strokeWidth: 2.15,
+            })}
+          </span>
+          <span
+            className="min-w-0 truncate text-[8.5px] font-bold uppercase tracking-[0.105em]"
+            style={{ color: stateColor }}
+          >
+            {state}
+          </span>
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block break-words text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
-          <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ?? tile.countLabel}</span>
+
+        {unavailable ? (
+          <span className="relative mt-3 block min-w-0 flex-1">
+            <span
+              className="block text-[15px] font-semibold leading-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Latest reading unavailable
+            </span>
+            <span
+              className="mt-1.5 block text-[10px] leading-snug"
+              style={{ color: "var(--app-warning)" }}
+            >
+              Open the source details for context.
+            </span>
+          </span>
+        ) : tile.feature ? (
+          <span className="relative mt-3 flex min-w-0 flex-1 items-end gap-3">
+            <span
+              className="shrink-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.04em] tabular-nums"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.feature.temp}°
+            </span>
+            <span className="min-w-0 pb-0.5">
+              <span
+                className="block line-clamp-2 text-[12px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {tile.feature.condition}
+              </span>
+              {tile.feature.hl ? (
+                <span
+                  className="mt-1 block truncate font-mono text-[9.5px] tabular-nums"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {tile.feature.hl}
+                </span>
+              ) : null}
+            </span>
+          </span>
+        ) : tile.gauge ? (
+          <span className="relative mt-3 flex min-w-0 flex-1 items-center gap-2.5">
+            <span
+              aria-hidden
+              className="relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full"
+              style={{
+                background: `conic-gradient(${keyColor} ${gaugePct}%, color-mix(in srgb, var(--app-border) 72%, transparent) 0)`,
+              }}
+            >
+              <span
+                className="absolute inset-[4px] rounded-full"
+                style={{ background: "var(--app-bg-elevated-solid)" }}
+              />
+              <span
+                className={`relative z-10 font-mono font-semibold leading-none tabular-nums${tile.gauge.comma ? " text-[17px]" : " text-[21px]"}`}
+                style={{ color: "var(--app-ink)" }}
+              >
+                {gaugeValue}
+              </span>
+            </span>
+            <span className="min-w-0">
+              <span
+                className="block line-clamp-2 text-[10px] font-medium leading-tight"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                {tile.gauge.unit}
+              </span>
+              <span
+                className="mt-1 block line-clamp-2 text-[10px] leading-tight"
+                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
+              >
+                {tile.countLabel}
+              </span>
+            </span>
+          </span>
+        ) : (
+          <span className="relative mt-3 block min-w-0 flex-1">
+            <span
+              className="block line-clamp-2 text-[15px] font-semibold leading-[1.18] tracking-[-0.01em]"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.countLabel}
+            </span>
+            {tile.peek && tile.peek !== tile.countLabel ? (
+              <span
+                className="mt-1.5 block line-clamp-2 text-[10px] leading-snug"
+                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
+              >
+                {tile.peek}
+              </span>
+            ) : null}
+          </span>
+        )}
+
+        <span
+          className="relative mt-2.5 block w-full min-w-0 border-t pt-2"
+          style={{ borderColor: "color-mix(in srgb, var(--app-border) 74%, transparent)" }}
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              className="min-w-0 flex-1 truncate text-[11px] font-semibold"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.label}
+            </span>
+            <ArrowRight
+              aria-hidden
+              className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
+            />
+          </span>
+          <span
+            className="mt-0.5 block truncate text-[8.5px]"
+            style={{ color: "var(--app-ink-3)" }}
+            title={tile.sourceLabel}
+          >
+            Source · {tile.sourceLabel}
+          </span>
         </span>
-        <span className="min-w-0 max-w-[7rem] shrink text-right text-[10.5px] leading-tight [overflow-wrap:anywhere]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ? tile.countLabel : ""}</span>
-        <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" />
       </button>
     </li>
   );
 }
 
+function PulseSmartGrid({
+  banks,
+  onOpen,
+}: {
+  banks: PulseTileBank[];
+  onOpen: (key: string) => void;
+}) {
+  const entries = banks.flatMap((bank) =>
+    bank.tiles.map((tile) => ({ bankKey: bank.key, tile })),
+  );
+  if (entries.length === 0) return null;
+  return (
+    <ul
+      data-pulse-board
+      className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+    >
+      {entries.map(({ bankKey, tile }, index) => (
+        <PulseSmartBlock
+          key={tile.key}
+          tile={tile}
+          bankKey={bankKey}
+          index={index}
+          onOpen={() => onOpen(tile.key)}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function SecondarySignals({
-  checks,
   updates,
   visibleUpdates,
   showAllUpdates,
   onToggleUpdates,
   onOpen,
 }: {
-  checks: PulseTile[];
   updates: PulseTile[];
   visibleUpdates: PulseTile[];
   showAllUpdates: boolean;
   onToggleUpdates: () => void;
   onOpen: (key: string) => void;
 }) {
-  if (checks.length === 0 && updates.length === 0) return null;
-  const degradedCount = checks.filter((tile) => tile.degraded).length;
-  const total = checks.length + updates.length;
+  if (updates.length === 0) return null;
+  const degradedCount = updates.filter((tile) => tile.degraded).length;
+  const total = updates.length;
 
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
@@ -480,151 +790,47 @@ function SecondarySignals({
           />
         </summary>
 
-        <div className="border-t px-3 pb-3" style={{ borderColor: "var(--app-border)" }}>
-          {checks.length > 0 && (
-            <div className="pt-3">
-              <h3
-                className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Additional checks
-              </h3>
-              <ul className="mt-1 grid min-w-0 grid-cols-2 gap-x-4 sm:grid-cols-3">
-                {checks.map((tile) => {
-                  const degraded = tile.degraded === true;
-                  return (
-                    <li key={tile.key} className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => onOpen(tile.key)}
-                        className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
-                        aria-label={`${tile.label}: ${tile.countLabel}`}
-                      >
-                        {degraded ? (
-                          <AlertTriangle
-                            aria-hidden
-                            className="h-3.5 w-3.5 shrink-0"
-                            strokeWidth={2.25}
-                            style={{ color: "var(--app-warning)" }}
-                          />
-                        ) : (
-                          <Check
-                            aria-hidden
-                            className="h-3.5 w-3.5 shrink-0"
-                            strokeWidth={2.5}
-                            style={{ color: "var(--app-positive)" }}
-                          />
-                        )}
-                        <span className="min-w-0">
-                          <span className="block truncate text-[11px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-                            {tile.label}
-                          </span>
-                          <span className="block truncate text-[9.5px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-                            {tile.countLabel}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          {updates.length > 0 && (
-            <div className={checks.length > 0 ? "border-t pt-3" : "pt-3"} style={{ borderColor: "var(--app-border)" }}>
-              <div className="flex items-center gap-2">
-                <Newspaper aria-hidden className="h-3.5 w-3.5" style={{ color: "var(--app-ink-3)" }} />
-                <h3
-                  className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Local updates
-                </h3>
-              </div>
-              <ul id="pulse-local-updates" className="mt-1 min-w-0">
-                {visibleUpdates.map((tile) => (
-                  <UpdateRow key={tile.key} tile={tile} onOpen={() => onOpen(tile.key)} />
-                ))}
-              </ul>
-              {updates.length > 4 && (
-                <button
-                  type="button"
-                  onClick={onToggleUpdates}
-                  aria-expanded={showAllUpdates}
-                  aria-controls="pulse-local-updates"
-                  className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                >
-                  {showAllUpdates ? "Show fewer updates" : `${updates.length - 4} more updates`}
-                  <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
-                </button>
-              )}
-            </div>
+        <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+          <div className="mb-2 flex items-center gap-2">
+            <Newspaper aria-hidden className="h-3.5 w-3.5" style={{ color: "var(--app-ink-3)" }} />
+            <h3
+              className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Local pulse
+            </h3>
+          </div>
+          <ul
+            id="pulse-local-updates"
+            data-pulse-bank="local-pulse"
+            className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            {visibleUpdates.map((tile, index) => (
+              <PulseSmartBlock
+                key={tile.key}
+                tile={tile}
+                bankKey="local-pulse"
+                index={index}
+                onOpen={() => onOpen(tile.key)}
+              />
+            ))}
+          </ul>
+          {updates.length > 4 && (
+            <button
+              type="button"
+              onClick={onToggleUpdates}
+              aria-expanded={showAllUpdates}
+              aria-controls="pulse-local-updates"
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              {showAllUpdates ? "Show fewer updates" : `${updates.length - 4} more updates`}
+              <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
+            </button>
           )}
         </div>
       </details>
     </section>
-  );
-}
-
-/** One compact reading. Pulse shows the four facts most likely to change a trip
- * first; the remaining feeds stay one tap away in More local signals. */
-function ConditionReading({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
-  const f = tile.feature;
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex min-h-[82px] min-w-0 items-start gap-2.5 p-3 text-left transition active:bg-black/[0.025]"
-      style={{
-        borderColor: "var(--app-border)",
-        background: tile.degraded
-          ? "color-mix(in srgb, var(--app-warning) 4%, transparent)"
-          : "transparent",
-      }}
-      aria-label={`${tile.label}: ${f?.condition ?? tile.countLabel}`}
-    >
-      <span
-        aria-hidden
-        className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full"
-        style={{
-          color: tile.degraded ? "var(--app-warning)" : tile.accent,
-          background: `color-mix(in srgb, ${tile.degraded ? "var(--app-warning)" : tile.accent} 9%, transparent)`,
-        }}
-      >
-        {createElement(iconFor(tile), { className: "h-3.5 w-3.5", strokeWidth: 2 })}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-            {tile.label}
-          </span>
-          <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-25 transition-transform group-hover:translate-x-0.5" />
-        </span>
-        {f ? (
-          <>
-            <span className="mt-1 flex min-w-0 items-baseline gap-1.5">
-              <span className="shrink-0 text-[19px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-                {f.temp}°
-              </span>
-              {f.hl && (
-                <span className="min-w-0 truncate text-[9.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                  {f.hl}
-                </span>
-              )}
-            </span>
-            <span className="mt-1 block line-clamp-2 text-[10.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              {f.condition}
-            </span>
-          </>
-        ) : (
-          <span className="mt-1.5 block min-w-0 line-clamp-2 text-[12px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            {tile.countLabel}
-          </span>
-        )}
-      </span>
-    </button>
   );
 }
 
@@ -675,21 +881,10 @@ export default function PulseBoard({
   const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
   const summarizedKeys = new Set(chips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
   const attention = tiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const conditions = tiles.filter((tile) => CONDITIONS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const gettingAround = tiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const steady = tiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const localUpdates = tiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const banks = useMemo(() => pulseTileBanks(tiles), [tiles]);
+  const localUpdates = banks.find((bank) => bank.key === "local-pulse")?.tiles ?? [];
+  const overviewBanks = banks.filter((bank) => bank.key !== "local-pulse" && bank.tiles.length > 0);
   const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
-  const beforeYouGo = [...conditions, ...gettingAround];
-  const atGlance = [
-    ...beforeYouGo.filter((tile) => PRIMARY_CONDITIONS.has(tile.key)),
-    ...beforeYouGo.filter((tile) => !PRIMARY_CONDITIONS.has(tile.key)),
-  ].slice(0, 4);
-  const atGlanceKeys = new Set(atGlance.map((tile) => tile.key));
-  const moreChecks = [
-    ...beforeYouGo.filter((tile) => !atGlanceKeys.has(tile.key)),
-    ...steady,
-  ];
 
   const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
@@ -846,26 +1041,18 @@ export default function PulseBoard({
           </section>
         )}
 
-        {atGlance.length > 0 && (
+        {overviewBanks.length > 0 && (
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
             <GroupHeading
               id="pulse-live-board-heading"
               title="Right now"
-              note={`${atGlance.length} quick ${atGlance.length === 1 ? "check" : "checks"}`}
+              note={`${tiles.length} ${tiles.length === 1 ? "source" : "sources"} checked`}
             />
-            <div
-              className="grid min-w-0 grid-cols-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] [&>button:nth-child(-n+2)]:border-b [&>button:nth-child(odd)]:border-r"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {atGlance.map((tile) => (
-                <ConditionReading key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
-              ))}
-            </div>
+            <PulseSmartGrid banks={overviewBanks} onOpen={openTile} />
           </section>
         )}
 
         <SecondarySignals
-          checks={moreChecks}
           updates={localUpdates}
           visibleUpdates={visibleUpdates}
           showAllUpdates={showAllUpdates}
@@ -873,6 +1060,52 @@ export default function PulseBoard({
           onOpen={openTile}
         />
       </div>
+
+      <style>{`
+        .fr-pulse-key {
+          isolation: isolate;
+          transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.78),
+            inset 0 -1px 0 rgba(34,28,21,0.055),
+            0 1px 2px rgba(34,28,21,0.055),
+            0 8px 18px -15px rgba(34,28,21,0.42);
+        }
+        .fr-pulse-key:active {
+          transform: translateY(1px) scale(0.985);
+          box-shadow:
+            inset 0 1px 2px rgba(34,28,21,0.08),
+            0 1px 2px rgba(34,28,21,0.05);
+        }
+        @media (hover: hover) {
+          .fr-pulse-key:hover {
+            transform: translateY(-1.5px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.88),
+              inset 0 -1px 0 rgba(34,28,21,0.05),
+              0 2px 4px rgba(34,28,21,0.07),
+              0 16px 28px -18px rgba(34,28,21,0.48);
+          }
+        }
+        .fr-pulse-seat {
+          animation: fr-pulse-seat 420ms cubic-bezier(.2,.8,.3,1) both;
+        }
+        @keyframes fr-pulse-seat {
+          from { opacity: 0; transform: translateY(7px) scale(0.975); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fr-pulse-key,
+          .fr-pulse-key * {
+            animation: none !important;
+            transition: none !important;
+          }
+          .fr-pulse-key:active,
+          .fr-pulse-key:hover {
+            transform: none;
+          }
+        }
+      `}</style>
 
       <BottomDrawer
         open={open !== null}
