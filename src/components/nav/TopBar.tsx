@@ -10,7 +10,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { Search, LayoutGrid, ChevronLeft, X } from "lucide-react";
+import { Search, Compass, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
@@ -267,7 +267,7 @@ export default function TopBar() {
                   </>
                 ) : (
                   <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight lg:block" style={{ color: "var(--app-ink)" }}>
-                    All tools
+                    Compass
                   </span>
                 )}
               </div>
@@ -331,41 +331,39 @@ export default function TopBar() {
               icons on screen for one destination. My Radius stays one tap
               away via the bottom nav (<lg) and the SideRail (≥lg).) */}
 
-          {/* Right cluster reads left→right: where you are (LocationChip,
-              nearest search), what's happening (PulseIndicator), then the
-              catch-all field-guide drawer LAST — the conventional spot for an
-              overflow control. Search and town scope stay visible on every
-              mobile route; their controls collapse to icon-first treatments
-              only when the phone is too narrow for the current town label. */}
+          {/* Right cluster reads left→right: where you are, what's happening,
+              then the county-wide Compass. Pulse and Compass are stable
+              destinations rather than a conditional alert and a vague
+              overflow button. Labels appear when the header has room; both
+              destinations retain full touch targets and accessible names on
+              narrow phones. */}
           <LocationChip />
 
-          {/* Live county pulse — lights up on an active NWS/school alert,
-              traffic incident, or significant outage; quiet otherwise. */}
+          {/* Live county Pulse stays discoverable even when conditions are
+              quiet; its indicator still reports active alerts or feed state. */}
           <PulseIndicator />
 
-          {/* All tools is the field-guide index. It is a full destination rather
-              than a tall modal, so it can be linked, shared, scrolled, and
-              returned from with normal browser history. The visible label is
-              deliberate on phones: a grid of tools is not a universal
-              icon-only action like Search or Close. */}
-          {pathname !== "/compass" && <Link
+          {/* Compass is the field-guide index. Keep the destination visible on
+              its own page so the top navigation does not change shape. */}
+          <Link
             href="/compass"
             prefetch={false}
             onMouseEnter={() => router.prefetch("/compass")}
             onFocus={() => router.prefetch("/compass")}
             onPointerDown={() => router.prefetch("/compass")}
-            aria-label="Open all Frederick Radius tools"
+            aria-label="Open Compass"
             aria-current={pathname === "/compass" ? "page" : undefined}
-            title="Open all tools"
-            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
+            title="Compass"
+            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
+              background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
             }}
           >
-            <LayoutGrid className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[13px] font-semibold leading-none min-[430px]:inline sm:text-[14px]">Tools</span>
-          </Link>}
+            <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+            <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
+          </Link>
         </div>
       </header>
 

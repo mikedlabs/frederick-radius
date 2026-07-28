@@ -101,7 +101,7 @@ export default function BottomNav() {
                       if (!isAtDestination) setPendingIdx(idx);
                     }}
                     onClick={handleActivate}
-                    aria-current={isRealActive ? "page" : undefined}
+                    aria-current={isAtDestination ? "page" : undefined}
                     className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
                     style={{
                       color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",

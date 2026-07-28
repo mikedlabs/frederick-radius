@@ -39,6 +39,19 @@ describe("TopBar search ownership", () => {
     expect(topBar).toContain("{showMobileSearch && (");
   });
 
+  it("keeps Pulse and Compass as stable named destinations instead of a Tools button", () => {
+    const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+    const pulse = readFileSync("src/components/nav/PulseIndicator.tsx", "utf8");
+
+    expect(topBar).toContain('aria-label="Open Compass"');
+    expect(topBar).toContain(">Compass</span>");
+    expect(topBar).not.toContain(">Tools</span>");
+    expect(topBar).not.toContain('pathname !== "/compass"');
+    expect(pulse).toContain("Pulse: checking county status");
+    expect(pulse).toMatch(/>\s*Pulse\s*</);
+    expect(pulse).not.toContain("return null");
+  });
+
   it("keeps the full search workspace out of the persistent shell until it opens", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
 
