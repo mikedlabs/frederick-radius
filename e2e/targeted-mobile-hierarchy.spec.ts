@@ -40,6 +40,35 @@ test("Events keeps display choices inline on wider screens", async ({ page }) =>
   await expect(page.locator("summary").filter({ hasText: "Display" })).toBeHidden();
 });
 
+test("Events interest choices replace legacy exact-category filters", async ({ page }) => {
+  await page.goto("/events?cats=music");
+
+  await expect(page.getByRole("tab", { name: /Music/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByRole("tab", { name: /Arts & culture/ }).click();
+
+  await expect(page).toHaveURL(/intent=arts/);
+  await expect(page).not.toHaveURL(/cats=music/);
+  await expect(page.getByRole("tab", { name: /Arts & culture/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
+test("Events calendar overflow link navigates instead of opening a detail sheet", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await page.goto("/events");
+
+  await page.getByRole("button", { name: /Show \d+ more/ }).first().click();
+  const calendarLink = page.getByRole("link", { name: /more on the calendar/ }).first();
+  await expect(calendarLink).toBeVisible({ timeout: 20_000 });
+  await calendarLink.click();
+
+  await expect(page).toHaveURL(/\/events\/calendar/);
+});
+
 test("Place field notes lead with visit decisions and disclose the rest", async ({ page }) => {
   await page.goto("/places/cafe-nola", { waitUntil: "domcontentloaded" });
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { isRoutineProgram, eventLeadTier, compareForLead, pickLeadEvent } from "./lead-rank";
+import {
+  isRoutineProgram,
+  eventLeadTier,
+  eventProminence,
+  compareForLead,
+  pickLeadEvent,
+} from "./lead-rank";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 // Minimal stand-ins — the ranker only reads title, hero_image, category, starts_at.
@@ -41,6 +47,23 @@ describe("eventLeadTier", () => {
     const storytime = ev({ title: "Family Storytime", hero_image: "thumb.jpg", starts_at: "2026-06-20T14:00:00Z" });
     const carnival = ev({ title: "Firemen's Carnival", starts_at: "2026-06-20T23:00:00Z" });
     expect([storytime, carnival].sort(compareForLead)[0]).toBe(carnival);
+  });
+});
+
+describe("eventProminence", () => {
+  it("does not treat unknown admission as paid prominence", () => {
+    expect(eventProminence(ev({
+      category: "community",
+      is_free: false,
+      price_text: undefined,
+      ticket_url: undefined,
+    }))).toBe(0);
+    expect(eventProminence(ev({
+      category: "community",
+      is_free: false,
+      price_text: "$10",
+      ticket_url: undefined,
+    }))).toBe(1);
   });
 });
 

@@ -5320,6 +5320,39 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* The visual preview beneath each event horizon. Phones get a deliberate
+   horizontal shelf with one next card peeking in; wider screens use all three
+   columns and avoid a second scrolling axis. */
+.event-poster-shelf {
+  display: flex;
+  gap: 10px;
+  margin-inline: -2px;
+  padding: 2px 2px 7px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+.event-poster-shelf::-webkit-scrollbar {
+  display: none;
+}
+.event-poster-shelf > li {
+  flex: 0 0 min(78vw, 268px);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+@media (min-width: 720px) {
+  .event-poster-shelf {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    padding-bottom: 2px;
+  }
+  .event-poster-shelf > li {
+    width: auto;
+  }
+}
+
 /* ============================================================================
    /events masthead-dock (EventsBoardDock.tsx). The collapsing almanac
    nameplate FUSED with the pinned "What · When · Where" caption bar: at rest
@@ -5552,10 +5585,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     padding: 7px 12px 4px;
   }
   .eb-dateline {
-    order: 2;
-    margin: 0 0 0 auto;
-    font-size: 9px;
-    white-space: nowrap;
+    display: none;
   }
   .eb-title {
     font-size: 21px;
@@ -5564,6 +5594,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     gap: 6px;
     max-height: 48px;
     padding: 0 10px 5px;
+  }
+  /* Keep the three decisions people make most often on the first screen.
+     Tomorrow and Later this week remain in the When sheet and date picker. */
+  .eb-whenribbon .eb-chip:nth-child(3),
+  .eb-whenribbon .eb-chip:nth-child(5) {
+    display: none;
   }
   .eb-capbar {
     padding-inline: 0;

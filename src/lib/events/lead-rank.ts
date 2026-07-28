@@ -56,15 +56,16 @@ const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|thea
  * Prominence within a tier — a rough "how big a draw is this" so the /today
  * headliner leads with the night's actual event, not whichever library
  * program happened to start earliest. Higher leads. A ticketed show, a music
- * or festival category, or a paid event all read as bigger; a program in a
- * library room reads as smaller. Signals only, never a value judgment beyond
- * "this is the kind of thing a county turns out for."
+ * or festival category, or an explicit price all read as bigger; a program in
+ * a library room reads as smaller. Signals only, never a value judgment beyond
+ * "this is the kind of thing a county turns out for." `is_free: false` alone
+ * is not a paid signal because feeds also use it when admission is unknown.
  */
 export function eventProminence(e: LeadRankable): number {
   let score = 0;
   if (e.ticket_url) score += 3;
   if (MARQUEE_CATEGORY.test(e.category ?? "")) score += 2;
-  if (e.is_free === false || (e.price_text && e.price_text.trim().length > 0)) score += 1;
+  if (e.price_text?.trim()) score += 1;
   if (/\b(library|branch)\b/i.test(e.venue_name ?? "")) score -= 3;
   return score;
 }

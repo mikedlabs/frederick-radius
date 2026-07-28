@@ -8,12 +8,23 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
+import EventsIntentRail from "@/components/event/EventsIntentRail";
+import EventPosterCard from "@/components/event/EventPosterCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import type { EventBrowseSummary } from "@/lib/events/browsePayload";
-import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import {
+  eventIntentOf,
+  countByIntent,
+  eventDaypart,
+  intentForCategory,
+  isForKids,
+  isRecurringEvent,
+  INTENT_BY_ID,
+  type IntentId,
+} from "@/lib/events/intents";
 import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
@@ -33,10 +44,8 @@ import {
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
-import {
-  planHorizonVisual,
-  type EventCardVisual,
-} from "@/components/event/eventVisuals";
+import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
+import { compareForLead } from "@/lib/events/lead-rank";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -177,11 +186,10 @@ export default function EventsExplorer({
   const [lgbtqOnly, setLgbtqOnly] = useState(false);
   // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
   const [recurringOnly, setRecurringOnly] = useState(false);
-  // Sort order (?sort=time|az|venue). "time" keeps the horizon
-  // grouping ("Tonight / This weekend / This week / Later"); the
-  // alphabetical and by-venue sorts drop the grouping and render
-  // a flat list so the order the user picked is the order the user sees.
-  const [sort, setSort] = useState<EventSortKey>("time");
+  // Recommended is the discovery-first default: distinctive draws lead each
+  // human time window, while Soonest remains one tap away for strict agenda
+  // order. A→Z and Venue switch to a flat directory view.
+  const [sort, setSort] = useState<EventSortKey>("recommended");
 
   const applyBrowserState = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
@@ -230,7 +238,11 @@ export default function EventsExplorer({
     setKidsOnly(bool("kids"));
     setLgbtqOnly(bool("lgbtq"));
     setRecurringOnly(bool("recurring"));
-    setSort(sortParam === "az" || sortParam === "venue" ? sortParam : "time");
+    setSort(
+      sortParam === "time" || sortParam === "az" || sortParam === "venue"
+        ? sortParam
+        : "recommended",
+    );
   }, []);
 
   useEffect(() => {
@@ -368,13 +380,23 @@ export default function EventsExplorer({
     () => !dataComplete && !anyFilter ? summary.intentCounts : countByIntent(baseFiltered),
     [anyFilter, baseFiltered, dataComplete, summary.intentCounts],
   );
+  // Exact-category deep links predate the intent rail. Reflect that narrower
+  // selection in the rail, then clear it when the user chooses a different
+  // interest so the two taxonomies never intersect into a false empty state.
+  const railIntent = intent ?? (cat ? intentForCategory(cat) : null);
+  const railSub =
+    sub ??
+    (cat && INTENT_BY_ID[intentForCategory(cat)].subs?.some((item) => item.slug === cat)
+      ? cat
+      : null);
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
-  // "time" preserves the server-provided chronological order (and feeds
-  // the horizon grouping below); the other keys produce a flat re-sort.
+  // Recommended and Soonest both retain the human time horizons. A→Z and
+  // Venue are deliberate directory modes and render as flat lists below.
   const filtered = useMemo(() => {
     const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
+      if (sort === "recommended") return compareForLead(a, b);
       if (sort === "az")
         return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
       if (sort === "venue") {
@@ -426,7 +448,13 @@ export default function EventsExplorer({
 
   const mapPins = useMemo(
     () =>
-      filtered.filter(hasPhysicalAttendance).map((e) => ({
+      filtered
+        .filter(
+          (e) =>
+            hasPhysicalAttendance(e) &&
+            (e.geo_confidence === "venue_match" || e.geo_confidence === "exact_address"),
+        )
+        .map((e) => ({
         slug: e.slug,
         title: e.title,
         geom: e.geom,
@@ -468,7 +496,7 @@ export default function EventsExplorer({
     if (kidsOnly) sp.set("kids", "true");
     if (lgbtqOnly) sp.set("lgbtq", "true");
     if (recurringOnly) sp.set("recurring", "true");
-    if (sort !== "time") sp.set("sort", sort);
+    if (sort !== "recommended") sp.set("sort", sort);
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
@@ -479,7 +507,7 @@ export default function EventsExplorer({
   // once. Fetch is deduplicated by requestRef.
   useEffect(() => {
     if (!urlReady || dataComplete) return;
-    if (anyFilter || view !== "list" || sort !== "time" || openGroups.size > 0) {
+    if (anyFilter || view !== "list" || sort !== "recommended" || openGroups.size > 0) {
       queueMicrotask(() => void ensureAllEvents());
     }
   }, [anyFilter, dataComplete, ensureAllEvents, openGroups, sort, urlReady, view]);
@@ -527,7 +555,7 @@ export default function EventsExplorer({
   // full page stays one tap away and every anchor stays real).
   // Modified clicks and unknown slugs fall through to navigation.
   return (
-    <EventSheetBoundary events={eventPool} className="space-y-3">
+    <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
       {/* The masthead-dock — the almanac nameplate (collapses on scroll) +
           the pinned What · When · Where caption bar (each word a tab into a
           top-sheet pane) + the mono count line and the "how you look"
@@ -577,6 +605,56 @@ export default function EventsExplorer({
         sort={sort}
         setSort={setSort}
       />
+
+      {/* The intent taxonomy used to live one tap deep in the What pane,
+          which made a smart filter system look like another text form. This
+          compact visual rail exposes the useful first choice — what sounds
+          good — while granular categories stay tucked in Filters. */}
+      <section
+        aria-labelledby="events-intent-heading"
+        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] p-3"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <h2
+            id="events-intent-heading"
+            className="font-serif text-[18px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Browse by interest
+          </h2>
+          {(intent || cat) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCat(null);
+                setIntent(null);
+                setSub(null);
+              }}
+              className="tap-44-y text-[11px] font-semibold underline"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Show everything
+            </button>
+          )}
+        </div>
+        <EventsIntentRail
+          activeIntent={railIntent}
+          activeSub={railSub}
+          counts={intentCounts}
+          onIntent={(nextIntent) => {
+            setCat(null);
+            setIntent(nextIntent);
+          }}
+          onSub={(nextSub) => {
+            setCat(null);
+            setSub(nextSub);
+          }}
+        />
+      </section>
 
       {currentSourceHealth.degraded && (
         <p
@@ -720,7 +798,7 @@ export default function EventsExplorer({
             </div>
           )}
         </div>
-      ) : sort !== "time" ? (
+      ) : sort === "az" || sort === "venue" ? (
         // User-driven sort (A→Z or by venue): drop the horizon
         // grouping so the order the user chose is the order they see.
         // Capped at 100 to keep the page snappy; the rest are reachable
@@ -752,88 +830,39 @@ export default function EventsExplorer({
         <div className="space-y-4">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            // ONE visual anchor at most per horizon. The chronological lead
-            // stays first; when it has no safe image, the earliest visible
-            // event with a verified visual gets the image-led treatment in
-            // its existing position. The remaining events become one compact
-            // scan instead of a wall of equal-weight text cards.
             const EXPANDED_CAP = 40;
-            // Paint a scannable PEEK of each window by default, not just the
-            // lead. The page assembles hundreds of events but the old
-            // lead-only first paint surfaced ~one card per window, so the body
-            // read as nearly empty against the header count (the "653 events,
-            // but I only see a handful" gap). A peek of five behind the lead
-            // makes every window legible at a glance; "Show N more" still
-            // reveals the long tail on demand.
-            const PEEK = 5;
-            // "Soonest" is a literal contract: the first card and every row
-            // beneath it must stay chronological. Editorial promotion belongs
-            // in a separately named Recommended view, never inside this sort.
+            // One large poster plus three smaller posters gives every window
+            // a visual rhythm without recreating the old pile of overlapping
+            // rails. Expanded rows switch back to the compact agenda density.
+            const PEEK = 3;
             const lead = g.events[0];
             const rest = g.events.slice(1);
             const groupCount = !dataComplete && !anyFilter
               ? summary.horizonCounts[g.key]
               : g.events.length;
             const totalRest = Math.max(0, groupCount - 1);
-            const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
-            const visualPlan = planHorizonVisual(lead, shown);
-            const promotedEvent = visualPlan.promotedIndex >= 0
-              ? shown[visualPlan.promotedIndex]
-              : null;
-            const beforePromoted = visualPlan.promotedIndex >= 0
-              ? shown.slice(0, visualPlan.promotedIndex)
-              : shown;
-            const afterPromoted = visualPlan.promotedIndex >= 0
-              ? shown.slice(visualPlan.promotedIndex + 1)
-              : [];
+            const preview = rest.slice(0, PEEK);
+            const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen && dataComplete ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
-            const moreCount = Math.max(0, totalRest - shown.length);
+            const moreCount = Math.max(0, totalRest - preview.length);
             const canExpand = totalRest > PEEK;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
-                {/* The chronological lead stays first, whether it has a
-                    visual or uses the calm text-first card. */}
-                {visualPlan.leadVisual ? (
-                  <PromotedEvent
-                    event={lead}
-                    visual={visualPlan.leadVisual}
-                    live={live.has(lead.slug)}
-                    priorityImage={groupIdx === 0}
-                  />
-                ) : (
-                  <div className="relative">
-                    {live.has(lead.slug) && (
-                      <span
-                        className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                        style={{ background: "var(--app-positive)" }}
-                      >
-                        <span className="live-dot" /> Live
-                      </span>
-                    )}
-                    <EventCard
-                      event={lead}
-                      variant="glance"
-                      live={live.has(lead.slug)}
-                    />
-                  </div>
-                )}
-                {/* Drop-down — the rest of this window, one tap away. The
-                    revealed cards animate in (reveal-up); the chevron flips. */}
+                <PromotedEvent
+                  event={lead}
+                  visual={eventCardVisual(lead)}
+                  live={live.has(lead.slug)}
+                  priorityImage={groupIdx === 0}
+                />
                 {totalRest > 0 && (
                   <>
-                    {shown.length > 0 && (
-                      <div className="reveal-up space-y-2.5">
-                        <CompactEventList events={beforePromoted} live={live} />
-                        {promotedEvent && visualPlan.promotedVisual && (
-                          <PromotedEvent
-                            event={promotedEvent}
-                            visual={visualPlan.promotedVisual}
-                            live={live.has(promotedEvent.slug)}
-                            priorityImage={groupIdx === 0}
-                          />
-                        )}
-                        <CompactEventList events={afterPromoted} live={live} />
+                    {preview.length > 0 && (
+                      <EventPosterShelf events={preview} live={live} />
+                    )}
+                    {expanded.length > 0 && (
+                      <div className="reveal-up">
+                        <CompactEventList events={expanded} live={live} />
                       </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
@@ -932,6 +961,30 @@ export default function EventsExplorer({
   );
 }
 
+function EventPosterShelf({
+  events,
+  live,
+}: {
+  events: EventWithMeta[];
+  live: ReadonlySet<string>;
+}) {
+  if (events.length === 0) return null;
+  return (
+    <ol className="event-poster-shelf">
+      {events.map((event) => (
+        <li key={`${event.slug}-${event.starts_at}`}>
+          <EventPosterCard
+            event={event}
+            live={live.has(event.slug)}
+            layout="shelf"
+            priorityImage={false}
+          />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function CompactEventList({
   events,
   live,
@@ -968,7 +1021,7 @@ function PromotedEvent({
   live,
 }: {
   event: EventWithMeta;
-  visual: EventCardVisual;
+  visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
 }) {
@@ -987,7 +1040,7 @@ function PromotedEvent({
         variant="feature"
         live={live}
         priorityImage={priorityImage}
-        visual={visual}
+        visual={visual ?? undefined}
       />
     </div>
   );

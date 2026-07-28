@@ -47,12 +47,15 @@ function event(
 }
 
 describe("events browse payload", () => {
-  it("removes detail-only fields and clamps searchable descriptions", () => {
+  it("keeps browse provenance while removing detail-only fields and clamping descriptions", () => {
     const slim = slimEventForBrowse(event("slim", "2026-07-14T14:00:00.000Z"));
 
     expect(slim.description).toHaveLength(160);
     expect("ticket_url" in slim).toBe(false);
     expect(slim.source_url).toBe("https://example.com/source");
+    expect(slim.source).toBe("seed");
+    expect(slim.geo_confidence).toBe("venue_match");
+    expect(slim.municipality_name).toBe("Frederick");
   });
 
   it("collapses repeated long-tail series but keeps nearby dates distinct", () => {
@@ -92,5 +95,25 @@ describe("events browse payload", () => {
     expect(summary.totalCount).toBe(19);
     expect(summary.horizonCounts.today).toBe(9);
     expect(summary.horizonCounts.later).toBe(10);
+  });
+
+  it("includes a distinctive recommended lead in the bounded first paint", () => {
+    const routines = Array.from({ length: 8 }, (_, index) =>
+      event(`routine-${index}`, `2026-07-14T${String(13 + index).padStart(2, "0")}:00:00.000Z`, {
+        title: `Beginner Yoga ${index}`,
+        category: "wellness",
+      }),
+    );
+    const concert = event("concert", "2026-07-14T23:00:00.000Z", {
+      title: "Summer Concert",
+      category: "music",
+      ticket_url: "https://example.com/concert",
+    });
+
+    const prepared = prepareEventsForBrowse([...routines, concert], BOUNDS);
+    const initial = initialEventsForBrowse(prepared, BOUNDS);
+
+    expect(initial.map((item) => item.slug)).toContain("concert");
+    expect(initial).toHaveLength(6);
   });
 });
