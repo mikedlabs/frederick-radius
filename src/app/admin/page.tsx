@@ -121,7 +121,14 @@ export default function AdminDesk() {
           <KeyChip label="Ticketmaster" on={Boolean(process.env.TICKETMASTER_API_KEY)} />
           <KeyChip label="Blob storage" on={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} />
           <KeyChip label="Resend email" on={Boolean(process.env.RESEND_API_KEY)} />
-          <KeyChip label="Beta wall" on={Boolean(process.env.BETA_PASSWORD)} />
+          <KeyChip
+            label="Beta identity tools"
+            on={Boolean(
+              process.env.BETA_PASSWORD ||
+                process.env.BETA_CODE_SECRET ||
+                process.env.MEMBER_COOKIE_SECRET,
+            )}
+          />
           {/* Two lights on purpose: the tracker (public, collects) and the
               Stats API (server, reads back) turn on independently. */}
           <KeyChip label="Plausible tracker" on={process.env.VERCEL_ENV === "production"} />

@@ -72,19 +72,21 @@ export default function TermsPage() {
 
         <div className="space-y-2">
           <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
-            Accounts and beta access
+            Accounts and legacy access codes
           </h2>
           <p>
-            You are responsible for activity under your access code or account.
-            Do not share, sell, automate, probe, or misuse access credentials. We
-            may limit, suspend, or revoke access to protect the app, its users, or
-            its data sources.
+            You are responsible for activity under your account or any optional
+            access code tied to you. Do not sell, automate, probe, or misuse
+            access credentials. We may limit, suspend, or revoke access to protect
+            the app, its users, or its data sources.
           </p>
           <p>
-            The beta gate manages early access; it is not a confidentiality or
-            security boundary. Do not submit or rely on confidential material.
-            When you share a link, common messaging and social preview services
-            may fetch that page to generate its title, description, and image.
+            The public app no longer requires a beta code. Older beta codes and
+            member cards may still support invitations, feedback, or device-linked
+            features; they are not a confidentiality or security boundary. Do not
+            submit or rely on confidential material. When you share a link, common
+            messaging and social preview services may fetch that page to generate
+            its title, description, and image.
           </p>
         </div>
 
