@@ -80,6 +80,8 @@ describe("composable sub-facets", () => {
     expect(isForGroups({ ...base, audience: ["adults"] })).toBe(false);
     expect(isForKids(base)).toBe(true);
     expect(isForKids({ ...base, audience: ["adults"] })).toBe(false);
+    expect(isForKids({ category: "family", audience: [] })).toBe(true);
+    expect(isForKids({ category: "music", audience: [] })).toBe(false);
     expect(audienceMatches(base, "kids-6-12")).toBe(true);
     expect(audienceMatches(base, "kids-0-5")).toBe(false);
   });

@@ -177,7 +177,11 @@ export function audienceMatches(e: FacetEvent, key: AudienceKey): boolean {
 }
 
 export function isForKids(e: FacetEvent): boolean {
-  return audienceMatches(e, "kids-0-5") || audienceMatches(e, "kids-6-12");
+  return (
+    e.category === "family" ||
+    audienceMatches(e, "kids-0-5") ||
+    audienceMatches(e, "kids-6-12")
+  );
 }
 
 /** Time-of-day bucket of an event's start, Eastern-correct. Null when the

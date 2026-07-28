@@ -8,6 +8,7 @@ import {
 import { countByIntent, type IntentId } from "@/lib/events/intents";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternDayKey } from "@/lib/tz";
+import { compareForLead } from "@/lib/events/lead-rank";
 
 /** Number of immediately useful cards sent for each human time horizon. */
 export const INITIAL_EVENTS_PER_HORIZON = 6;
@@ -53,10 +54,13 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     attendance_mode: e.attendance_mode,
     online_url: e.online_url,
     source_url: e.source_url,
+    source: e.source,
     hero_image: e.hero_image,
     status: e.status,
+    geo_confidence: e.geo_confidence,
     distance_m: e.distance_m,
     category_name: e.category_name,
+    municipality_name: e.municipality_name,
   } as EventWithMeta;
 }
 
@@ -118,9 +122,10 @@ export function prepareEventsForBrowse(
 }
 
 /**
- * Select the useful first paint: one lead plus five glance cards from each
- * non-empty time horizon, and a small utility preview. The result stays in the
- * source collection's chronological order so existing sort assumptions hold.
+ * Select the useful first paint for the discovery-first Recommended order:
+ * six strong candidates from each non-empty time horizon, plus a small utility
+ * preview. The returned collection stays in source order; the client applies
+ * the selected ordering inside each horizon.
  */
 export function initialEventsForBrowse(
   events: EventWithMeta[],
@@ -132,7 +137,7 @@ export function initialEventsForBrowse(
   const selected = new Set<string>();
 
   for (const group of groupByHorizon(crowd, bounds)) {
-    for (const event of group.events.slice(0, perHorizon)) {
+    for (const event of [...group.events].sort(compareForLead).slice(0, perHorizon)) {
       selected.add(eventIdentity(event));
     }
   }

@@ -22,6 +22,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 export default function EventSheetBoundary({
   events = [],
   fetchMissing = false,
+  fetchFull = false,
   children,
   className,
 }: {
@@ -33,6 +34,11 @@ export default function EventSheetBoundary({
    * surface shipping its whole corpus to the client just in case.
    */
   fetchMissing?: boolean;
+  /**
+   * Browse-payload mode (/events): always fetch the canonical full event
+   * before opening the sheet, even when a slim event is already in `events`.
+   */
+  fetchFull?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -51,11 +57,11 @@ export default function EventSheetBoundary({
       .split(/[?#]/)[0];
     if (!slug) return;
     const event = bySlug.get(slug);
-    if (!event && !fetchMissing) return;
+    if (!event && !fetchMissing && !fetchFull) return;
     e.preventDefault();
     e.stopPropagation();
-    if (event) openEventSheet(event);
-    else openEventSheetBySlug(slug);
+    if (fetchFull || !event) openEventSheetBySlug(slug);
+    else openEventSheet(event);
   };
 
   return (

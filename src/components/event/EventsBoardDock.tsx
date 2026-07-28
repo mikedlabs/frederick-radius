@@ -33,7 +33,7 @@ import {
 } from "./boardCaption";
 
 export type ViewKey = "list" | "compact" | "calendar" | "map";
-export type EventSortKey = "time" | "az" | "venue";
+export type EventSortKey = "recommended" | "time" | "az" | "venue";
 
 const VIEW_ITEMS: ReadonlyArray<{ key: ViewKey; label: string; Icon: typeof ListIcon }> = [
   { key: "list", label: "List", Icon: ListIcon },
@@ -43,6 +43,7 @@ const VIEW_ITEMS: ReadonlyArray<{ key: ViewKey; label: string; Icon: typeof List
 ];
 
 const SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
+  { key: "recommended", label: "Recommended", hint: "Distinctive events before routine programs" },
   { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
   { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
   { key: "venue", label: "Venue", hint: "Cluster by venue name" },

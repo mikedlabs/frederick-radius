@@ -20,6 +20,7 @@ import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventAttendanceLabel } from "@/lib/events/attendance";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
+import EventPosterCard from "@/components/event/EventPosterCard";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
 // the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
@@ -84,13 +85,19 @@ export default function EventCard({
    */
   visual?: EventCardVisual;
 }) {
-  const featureImage = visual?.src ?? event.hero_image;
-  // A photoless "feature" demotes to the glance row. The 3:2 glyph plate
-  // read as a tall, mostly empty media block on a phone (beta trust audit
-  // 2026-07-08), and the photo policy already says photoless leads keep the
-  // calm glance row — enforced HERE at the card seam so every caller
-  // (EventsExplorer leads, the /today hero) gets it without local gating.
-  if (variant === "feature" && !featureImage) variant = "glance";
+  // A feature always remains a visual poster. The poster component resolves
+  // photographs through the source-aware eventCardVisual gate and otherwise
+  // paints honest category artwork; it never promotes event.hero_image raw.
+  if (variant === "feature") {
+    return (
+      <EventPosterCard
+        event={event}
+        visual={visual}
+        priorityImage={priorityImage}
+        whyItMatters={whyItMatters}
+      />
+    );
+  }
 
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -274,110 +281,6 @@ export default function EventCard({
             {formatDistance(event.distance_m)}
           </span>
         )}
-      </article>
-    );
-  }
-
-  // Feature variant — the editorial lead card for a horizon group, a
-  // PHOTO-LED hero: a verified event or venue photograph fills a 3:2 face
-  // with the title/when overlaid in white over a
-  // legibility scrim. A photoless event never reaches this branch (the guard
-  // above demotes it to glance), so the plate fallback below is defensive
-  // only. This is the one above-fold image, so it carries priority;
-  // everything else lazy-loads.
-  if (variant === "feature") {
-    const reasons = eventReasons(event);
-    const onPhoto = Boolean(featureImage);
-    const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
-    const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
-    const eyebrowColor = onPhoto ? "color-mix(in srgb, " + accent + " 45%, #fff)" : accentText;
-    const capColor = onPhoto ? "rgba(255,255,255,0.82)" : "var(--app-ink-2)";
-    return (
-      <article
-        // 3:2 on mobile; a shorter 21:9 at lg so the feature card doesn't eat
-        // ~590px of the desktop reading column and hide the results below it
-        // (2026-07 shell-hardening P6). The overlaid title/eyebrow still clear
-        // the shorter face, and the photo object-covers.
-        className="tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)] lg:aspect-[21/9]"
-        style={{ backgroundColor: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
-      >
-        {/* The face — the venue photo, or a designed engraved-glyph plate. */}
-        {onPhoto ? (
-          <>
-            <Image
-              src={featureImage!}
-              alt=""
-              fill
-              unoptimized={featureImage!.startsWith("/api/place-photo")}
-              priority={priorityImage}
-              sizes="(max-width: 640px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="ken-burns object-cover"
-            />
-            <span aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.80) 2%, rgba(0,0,0,0.30) 40%, transparent 68%)" }} />
-          </>
-        ) : (
-          <span
-            aria-hidden
-            className="absolute inset-0 grid place-items-center"
-            style={{ background: `radial-gradient(120% 100% at 30% 18%, color-mix(in srgb, ${accent} 22%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`, color: accent }}
-          >
-            <CategoryIcon slug={event.category} className="h-24 w-24 opacity-50" />
-          </span>
-        )}
-        <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: onPhoto ? 0.9 : 1 }} />
-
-        {/* Top row — category eyebrow + live status + distance. */}
-        <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-4 pt-3.5">
-          <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: eyebrowColor, textShadow: onPhoto ? "0 1px 3px rgba(0,0,0,0.5)" : "none" }}>{categoryLabel}</span>
-          {statusText && (
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
-          )}
-          {visual?.caption ? (
-            <span
-              className="ml-auto max-w-[62%] truncate rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold tracking-[0.02em] text-white backdrop-blur-sm"
-            >
-              {visual.caption}
-            </span>
-          ) : event.distance_m !== undefined && (
-            <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums" style={{ color: onPhoto ? "rgba(255,255,255,0.85)" : "var(--app-ink-3)", textShadow: onPhoto ? "0 1px 3px rgba(0,0,0,0.5)" : "none" }}>{formatDistance(event.distance_m)}</span>
-          )}
-        </div>
-
-        {/* Bottom plate — title, when, "in their words", reasons. */}
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <Link
-            href={`/events/${event.slug}`}
-            prefetch={false}
-            className={`flex min-h-11 items-end font-serif text-[21px] leading-[1.08] tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
-            style={{ color: titleColor }}
-          >
-            <span className="absolute inset-0" aria-hidden />
-            <span className="line-clamp-2">{event.title}</span>
-          </Link>
-          <p className="mt-1 truncate text-[13px]" style={{ color: subColor }}>
-            {date.weekday && <span className="font-mono tabular-nums">{date.weekday} {date.month} {date.day}</span>}
-            {date.time && <span className="font-mono tabular-nums">{" · "}{date.time}</span>}
-            {venueLabel ? ` · ${venueLabel}` : ""}
-            {visual?.caption && event.distance_m !== undefined
-              ? ` · ${formatDistance(event.distance_m)}`
-              : ""}
-          </p>
-          {whyItMatters && (
-            <p className="mt-1 line-clamp-1 text-[12.5px] leading-snug" style={{ color: capColor }}>
-              {whyItMatters}
-            </p>
-          )}
-          {(reasons.length > 0 || event.is_free) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {event.is_free && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ background: onPhoto ? "rgba(255,255,255,0.92)" : "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}>Free</span>
-              )}
-              {!onPhoto && reasons.length > 0 && <ReasonChipRow reasons={reasons} />}
-            </div>
-          )}
-        </div>
       </article>
     );
   }

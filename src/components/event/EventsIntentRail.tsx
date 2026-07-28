@@ -9,6 +9,7 @@ import {
   Trees,
   Sparkles,
   Landmark,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -18,6 +19,7 @@ import {
   type EventIntent,
   type IntentId,
 } from "@/lib/events/intents";
+import { EVENT_INTENT_COLOR } from "@/components/event/boardCaption";
 
 /**
  * EventsIntentRail — the new /events front door.
@@ -60,10 +62,10 @@ export default function EventsIntentRail({
       <div
         role="tablist"
         aria-label="Browse events by what you want to do"
-        className="shelf-rail flex items-stretch gap-2 overflow-x-auto pb-1"
+        className="shelf-rail flex items-stretch gap-2 overflow-x-auto pb-1.5"
       >
         <IntentChip
-          label="All"
+          label="All events"
           active={activeIntent === null}
           onClick={() => { haptic("light"); onIntent(null); onSub(null); }}
         />
@@ -127,34 +129,56 @@ function IntentChip({
   quiet?: boolean;
   onClick: () => void;
 }) {
-  const Icon = intent ? ICONS[intent.icon] : undefined;
+  const Icon = intent ? ICONS[intent.icon] : LayoutGrid;
   const text = label ?? intent?.label ?? "";
+  const accent = intent ? EVENT_INTENT_COLOR[intent.id] : "var(--app-brand)";
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold transition"
+      className="event-intent-tile tactile tactile-interactive tap-44 flex min-h-[90px] w-[112px] shrink-0 flex-col items-start justify-between overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left transition"
       style={{
         background: active
-          ? "var(--app-brand)"
-          : "color-mix(in srgb, var(--app-ink) 6%, var(--app-bg-elevated))",
+          ? `color-mix(in srgb, ${accent} 76%, var(--app-ink))`
+          : `color-mix(in srgb, ${accent} 9%, var(--app-bg-elevated))`,
+        borderColor: active
+          ? `color-mix(in srgb, ${accent} 76%, var(--app-ink))`
+          : `color-mix(in srgb, ${accent} 25%, var(--app-border))`,
         color: active ? "var(--app-on-brand)" : quiet ? "var(--app-ink-3)" : "var(--app-ink)",
-        boxShadow: active ? "var(--app-elev-1)" : "var(--app-edge)",
+        boxShadow: active
+          ? "var(--app-elev-2), var(--app-hi)"
+          : "var(--app-edge), var(--app-hi), var(--app-elev-1)",
         opacity: !active && (count ?? 1) === 0 ? 0.5 : 1,
       }}
     >
-      {Icon && <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />}
-      <span>{text}</span>
-      {typeof count === "number" && count > 0 && (
-        <span
-          className="font-mono text-[11px] tabular-nums"
-          style={{ color: active ? "var(--app-on-brand)" : "var(--app-ink-3)" }}
-        >
-          {count}
+      <span
+        aria-hidden
+        className="grid h-8 w-8 place-items-center rounded-[10px]"
+        style={{
+          background: active
+            ? "rgba(255,255,255,0.16)"
+            : `color-mix(in srgb, ${accent} 16%, var(--app-bg-elevated))`,
+          color: active ? "var(--app-on-brand)" : accent,
+          boxShadow: active ? "inset 0 0 0 1px rgba(255,255,255,0.16)" : "var(--app-edge)",
+        }}
+      >
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+      </span>
+      <span className="flex w-full items-end justify-between gap-2">
+        <span className="line-clamp-2 text-[12.5px] font-semibold leading-[1.08]">
+          {text}
         </span>
-      )}
+        {typeof count === "number" && count > 0 && (
+          <span
+            className="shrink-0 font-mono text-[10.5px] tabular-nums"
+            style={{ color: active ? "rgba(255,255,255,0.78)" : "var(--app-ink-3)" }}
+          >
+            {count}
+          </span>
+        )}
+      </span>
     </button>
   );
 }
