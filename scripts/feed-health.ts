@@ -16,9 +16,12 @@
  * Usage: npm run feed:health
  */
 import { VERIFIED_TOWN_WEBSITES } from "@/data/town-websites";
+import { approvedCountyHealthEndpoints } from "@/lib/integrations/fcCountyHealth";
 
 type Endpoint = {
   group: string;
+  /** Source-ledger id when this probe maps to one manifest row. */
+  sourceId?: string;
   url: string;
   /** A down critical endpoint fails the run; non-critical only warns. */
   critical: boolean;
@@ -28,6 +31,7 @@ type Endpoint = {
 
 type Result = {
   group: string;
+  sourceId?: string;
   url: string;
   status: number | string;
   ok: boolean;
@@ -116,11 +120,115 @@ const FEED_ENDPOINTS: Endpoint[] = [
   },
 ];
 
-const ENDPOINTS: Endpoint[] = [...TOWN_ENDPOINTS, ...FEED_ENDPOINTS];
+// Request-time official-data adapters fail soft and expose unavailable or
+// degraded state to their consumers. Probe every upstream here, but keep each
+// one warning-only: no single source below provides complete traffic, weather,
+// emergency, or public-health coverage by itself.
+const RUNTIME_FEED_ENDPOINTS: Endpoint[] = [
+  {
+    group: "Maryland WZDx",
+    sourceId: "md_wzdx",
+    url: "https://filter.ritis.org/wzdx_v4.1/mdot.geojson",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART traffic speeds",
+    sourceId: "mdot_chart_tss",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART travel times",
+    sourceId: "mdot_chart_travel",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTravelRouteDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART message signs",
+    sourceId: "mdot_chart_dms",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getDMSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART road weather",
+    sourceId: "mdot_chart_rwis",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getRWISMapDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART road conditions",
+    sourceId: "mdot_chart_ips",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getIPSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "CHART snow emergency",
+    sourceId: "mdot_chart_sep",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getSEPMapDataJSON.do",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "City emergency RSS",
+    sourceId: "city_emergency_rss",
+    url: "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=63&CID=City-Emergencies-4",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "County Health burn-ban RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Burn-Ban-4",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "County Health closings RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Closings-5",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "County Health notices RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Health-Notices-1",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "NWS local storm reports",
+    sourceId: "nws_lsr",
+    url: "https://api.weather.gov/products/types/LSR/locations/LWX",
+    critical: false,
+    method: "GET",
+  },
+  {
+    group: "NOAA nowCOAST lightning",
+    sourceId: "nowcoast_lightning",
+    url: "https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
+    critical: false,
+    method: "GET",
+  },
+];
+
+const ENDPOINTS: Endpoint[] = [
+  ...TOWN_ENDPOINTS,
+  ...FEED_ENDPOINTS,
+  ...RUNTIME_FEED_ENDPOINTS,
+  ...approvedCountyHealthEndpoints(),
+];
 
 async function probe(ep: Endpoint): Promise<Result> {
   const base: Omit<Result, "status" | "ok"> = {
     group: ep.group,
+    sourceId: ep.sourceId,
     url: ep.url,
     critical: ep.critical,
   };
@@ -160,6 +268,7 @@ async function main() {
     ok: r.ok ? "OK " : "DOWN",
     status: String(r.status),
     crit: r.critical ? "CRIT" : "    ",
+    source: r.sourceId ?? "",
     url: r.url + (r.note ? `  (${r.note})` : ""),
   }));
   console.table(rows);

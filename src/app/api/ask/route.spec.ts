@@ -142,6 +142,33 @@ describe("/api/ask location policy", () => {
     );
   });
 
+  it("returns a decision-first presentation contract for a place answer", async () => {
+    mocks.askFrederick.mockResolvedValue({
+      status: "matches",
+      configured: true,
+      usedModel: false,
+      answer:
+        "Gravel & Grind is the strongest match. Beans & Bagels is another option.",
+      sources: [{
+        slug: "gravel-and-grind",
+        name: "Gravel & Grind",
+        category: "coffee",
+        href: "/places/gravel-and-grind",
+      }],
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(body.intent).toMatchObject({ kind: "place" });
+    expect(body.sources[0].isPrimaryRankedResult).toBe(true);
+    expect(body.presentation).toEqual({
+      layout: "place",
+      summary: "Gravel & Grind is the strongest match.",
+      detail: "Beans & Bagels is another option.",
+    });
+  });
+
   it("uses a rounded device fix when the visitor supplied one", async () => {
     mocks.readJsonBodyWithLimit.mockResolvedValue({
       ok: true,
@@ -218,6 +245,8 @@ describe("/api/ask location policy", () => {
       label: "Open the official outage map",
       href: "https://outages-mdwv.firstenergycorp.com/",
     });
+    expect(body.intent).toMatchObject({ kind: "civic" });
+    expect(body.presentation.layout).toBe("civic");
   });
 
   it("uses the official power handoff when the FirstEnergy feed is unavailable", async () => {

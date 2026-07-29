@@ -13,6 +13,9 @@ export type CravingMatchable = {
   category: string;
   name: string;
   subcategories?: string[];
+  /** Source-backed catalog fields used by shared evidence matchers. */
+  primary_type?: string;
+  short_blurb?: string;
 };
 
 /** A sub-filter within a craving's results — "find more specific things"
@@ -69,6 +72,8 @@ export type Craving = {
    *  with no verified front-desk hours (open_status unknown) gets filtered
    *  out of the open-only Stay view entirely. */
   alwaysOpen?: boolean;
+  /** How verified hours influence an answer for this kind of place. */
+  availability?: "required" | "bonus" | "not-applicable";
 };
 
 // Brand names with no descriptor (Dairy Queen / DQ) are matched explicitly —
@@ -76,6 +81,7 @@ export type Craving = {
 // word-boundary token are added.
 const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve|dairy ?queen|\bdq\b/i;
 const PIZZA = /pizza|pizzeria/i;
+const PLAYGROUND_EVIDENCE = /\bplaygrounds?\b|\btot[\s-]?lots?\b/i;
 
 /**
  * Canonical pizza evidence — ONE matcher for every pizza entry point
@@ -101,6 +107,34 @@ export function isPizzaPlace(p: {
     (p.subcategories ?? []).includes("pizza") ||
     PIZZA.test(p.name) ||
     (p.primary_type ?? "").startsWith("pizza_")
+  );
+}
+
+/**
+ * Canonical playground evidence.
+ *
+ * Most playgrounds in the catalog are parent parks rather than standalone
+ * `playground` rows. Their official/source-backed summary is often the only
+ * structured evidence we have ("...a playground..." or "...tot lot...").
+ * Keep this deliberately narrow: category, curated subcategory, Google type,
+ * name, or the source-backed short blurb. Generic park/kid tags and free-form
+ * descriptions do not qualify.
+ */
+export function isPlaygroundPlace(p: {
+  category: string;
+  name: string;
+  subcategories?: string[];
+  primary_type?: string;
+  short_blurb?: string;
+}): boolean {
+  const primaryType = (p.primary_type ?? "").toLowerCase();
+  return (
+    p.category === "playground" ||
+    (p.subcategories ?? []).includes("playground") ||
+    primaryType === "playground" ||
+    primaryType.startsWith("playground_") ||
+    PLAYGROUND_EVIDENCE.test(p.name) ||
+    PLAYGROUND_EVIDENCE.test(p.short_blurb ?? "")
   );
 }
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|h\s*mart|megamart|mega ?mart/i;
@@ -257,6 +291,7 @@ export const CRAVINGS: Craving[] = [
     label: "Parks",
     icon: "Trees",
     color: "var(--app-positive)",
+    availability: "not-applicable",
     match: (p) =>
       p.category === "park" ||
       p.category === "trail" ||
@@ -265,7 +300,7 @@ export const CRAVINGS: Craving[] = [
     facets: [
       { key: "park", label: "Parks", match: (p) => p.category === "park" },
       { key: "trail", label: "Trails", match: (p) => p.category === "trail" || p.category === "outdoors" },
-      { key: "playground", label: "Playgrounds", match: (p) => p.category === "playground" },
+      { key: "playground", label: "Playgrounds", match: isPlaygroundPlace },
       { key: "dog", label: "Dog parks", match: (p) => /\b(dog park|bark park)\b/i.test(p.name) },
     ],
   },
@@ -278,6 +313,7 @@ export const CRAVINGS: Craving[] = [
     label: "Golf",
     icon: "Flag",
     color: "var(--app-brand-2)",
+    availability: "bonus",
     match: (p) => p.category === "golf",
   },
   {
@@ -288,6 +324,7 @@ export const CRAVINGS: Craving[] = [
     label: "Farms & PYO",
     icon: "Tractor",
     color: "var(--app-positive)",
+    availability: "bonus",
     match: (p) => p.category === "agritourism",
   },
   {
@@ -300,6 +337,7 @@ export const CRAVINGS: Craving[] = [
     label: "Live music",
     icon: "Music",
     color: "var(--app-accent)",
+    availability: "bonus",
     match: (p) =>
       p.category === "music" ||
       /\bamphitheat(er|re)|music hall|sky stage|bandshell\b/i.test(p.name),
@@ -346,6 +384,7 @@ export const CRAVINGS: Craving[] = [
     label: "Art",
     icon: "Palette",
     color: "var(--app-accent)",
+    availability: "bonus",
     match: (p) =>
       p.category === "gallery" ||
       p.category === "museum" ||
@@ -369,6 +408,7 @@ export const CRAVINGS: Craving[] = [
     label: "Family fun",
     icon: "FerrisWheel",
     color: "var(--app-cool)",
+    availability: "bonus",
     match: (p) =>
       Boolean(p.subcategories?.includes("family-fun")) ||
       (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
@@ -380,6 +420,7 @@ export const CRAVINGS: Craving[] = [
     label: "Movies",
     icon: "Film",
     color: "var(--app-accent)",
+    availability: "not-applicable",
     match: (p) => MOVIES.test(p.name),
   },
   {
@@ -391,6 +432,7 @@ export const CRAVINGS: Craving[] = [
     label: "Pools",
     icon: "Waves",
     color: "var(--app-cool)",
+    availability: "bonus",
     match: (p) => POOL.test(p.name) && !POOL_JUNK.test(p.name),
   },
   {
@@ -430,6 +472,7 @@ export const CRAVINGS: Craving[] = [
     label: "Stay",
     icon: "BedDouble",
     color: "var(--app-cool)",
+    availability: "not-applicable",
     match: (p) => p.category === "lodging",
     // A hotel/inn is always available to book — "open now" is the wrong gate,
     // and most lodging carries no verified front-desk hours. Treat lodging as

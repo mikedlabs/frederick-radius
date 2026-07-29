@@ -12,7 +12,8 @@ import { wikimediaUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 // visual shorthand for "history on the ground". Reuses the single verified
 // Commons entry (file + attribution) from LANDMARK_PHOTOS so the filename and
 // credit never drift between here and the place hero.
-const MARKERS_HERO = LANDMARK_PHOTOS["roddy-road-park-thurmont"];
+const MARKERS_HERO =
+  LANDMARK_PHOTOS["historic-roddy-road-covered-bridge-thurmont"];
 
 export const metadata: Metadata = {
   // Orphan-by-design like /trails and /rivers: real content, reachable by URL +

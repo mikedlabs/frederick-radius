@@ -6,6 +6,10 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { EVENTS } from "@/data/events";
 
 const failures: string[] = [];
+// Keep the committed seed-event checks anchored to a day with a real evening
+// program. A release gate must not start failing merely because wall-clock time
+// moved past the fixture calendar.
+const evaluationNow = new Date("2026-07-30T16:00:00.000Z");
 for (const test of ASK_EVAL_CASES) {
   const intent = parseAskIntent(test.query);
   if (intent.kind !== test.intent) {
@@ -16,6 +20,7 @@ for (const test of ASK_EVAL_CASES) {
   const result = qualifiedSearch(test.query, 12, EVENTS, {
     origin: FREDERICK_CENTER,
     contextLabel: "Downtown Frederick",
+    now: evaluationNow,
   });
   const leadPlace = result.hits.find((hit) => hit.type === "place");
   const leadEvent = result.hits.find((hit) => hit.type === "event");

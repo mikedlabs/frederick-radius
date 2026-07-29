@@ -645,6 +645,31 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   --today-section-ink: var(--app-ink-2);
 }
 
+/* Today is a decision surface, not a numbered report. The plain register keeps
+   a clear change of subject without surrounding every chapter with another
+   tinted band or ornamental folio. */
+.content-chapter--plain {
+  --today-section-ink: var(--app-ink);
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.content-chapter--plain .content-chapter__register {
+  margin-bottom: 0.75rem;
+  padding-inline: 0.125rem;
+}
+.content-chapter--plain .content-chapter__label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-transform: none;
+}
+.content-chapter--plain .content-chapter__rule {
+  background: var(--app-border);
+}
+
 /* Leaf Today sections own their vertical rhythm in the ordinary page flow.
    Inside a chapter, remove only the first inherited top margin so the band
    starts crisply. Later modules keep their spacing and remain scannable. */
@@ -688,6 +713,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
         var(--content-chapter-accent) 20%,
         var(--app-border)
       );
+  }
+  .content-chapter--plain {
+    margin-inline: 0;
+    padding-inline: 0;
+    border: 0;
+    border-radius: 0;
   }
 }
 
@@ -2977,13 +3008,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    choice is progressively disclosed in one phone panel or desktop inspector.
    ========================================================================== */
 
-/* Host marker on the map container: with the dock now at the TOP, the map's
-   bottom corners are unobstructed, so the Mapbox zoom + attribution return
-   to their conventional bottom-right corner (camera furniture, not filter).
-   The scrim dims them while a pane is open — no separate hide needed. Wins
-   the cascade over the mobile top-corner relocation rule above (equal
-   specificity, later in the file), which would otherwise send them up under
-   the search + caption bar. */
+/* Desktop keeps Mapbox's conventional lower corners. On phones the Radius
+   command bar owns the lower edge, so legal attribution moves to the quiet
+   upper corners instead of colliding with Locate or the selected-result card. */
 .dock-host .mapboxgl-ctrl-bottom-right,
 .dock-host .mapboxgl-ctrl-bottom-left {
   top: auto !important;
@@ -2996,7 +3023,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (max-width: 1023.98px) {
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
-    bottom: 14px !important;
+    top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
   }
 }
 
@@ -3015,6 +3043,42 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   max-width: 680px;
 }
 
+/* On phones the command bar belongs to the thumb, not the horizon. The map
+   canvas already stops above BottomNav, so this sits inside the map's actual
+   lower edge and visually docks to the app navigation without a second
+   reserve or floating toolbar. */
+@media (max-width: 1023.98px) {
+  .dock {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* iOS can cover a bottom-fixed search with its keyboard. While the field is
+     active, lift the whole command into the visible top shelf and let results
+     open downward. The map stays visible behind it. */
+  .dock[data-search-open="true"],
+  .dock:has(.dock-search-input:focus) {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
+  .dock[data-search-open="true"] .dock-search-results,
+  .dock:has(.dock-search-input:focus) .dock-search-results {
+    top: calc(100% + 5px);
+    bottom: auto;
+    margin-top: 0;
+  }
+  .dock[data-search-open="true"] .dock-active-state,
+  .dock:has(.dock-search-input:focus) .dock-active-state {
+    display: none;
+  }
+  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-right,
+  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-right {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
+  }
+}
+
 /* ── Search, folded into the dock's top row (the map's ONE search) ── */
 .dock-search-wrap {
   position: relative;
@@ -3023,7 +3087,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
+  height: 48px;
   padding: 0 14px;
   color: var(--app-ink-3);
   border-right: 1px solid var(--app-border);
@@ -3039,10 +3103,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13.5px;
   color: var(--app-ink);
 }
+@media (max-width: 1023.98px) {
+  .dock-search-input {
+    /* Prevent iOS Safari from zooming the page when the map search focuses. */
+    font-size: 16px;
+  }
+}
 .dock-search-input::placeholder {
   color: var(--app-ink-3);
 }
-.dock-search-input::-webkit-search-cancel-button {
+.dock-search-input::-webkit-search-cancel-button,
+.compass-search-input::-webkit-search-cancel-button {
   appearance: none;
   -webkit-appearance: none;
 }
@@ -3077,6 +3148,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-shadow-3);
   max-height: 246px;
   overflow-y: auto;
+}
+@media (max-width: 1023.98px) {
+  .dock-search-results {
+    top: auto;
+    bottom: calc(100% + 5px);
+    margin-top: 0;
+  }
 }
 .dock-search-result {
   display: flex;
@@ -3131,6 +3209,55 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 12px;
   font-weight: 700;
 }
+.dock-search-loading {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--app-ink-2);
+  font-size: 12px;
+  font-weight: 650;
+}
+.dock-search-loading svg {
+  color: var(--app-brand-press);
+}
+.dock-search-empty {
+  padding: 14px;
+}
+.dock-search-empty-title {
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.dock-search-empty-copy {
+  margin-top: 3px;
+  color: var(--app-ink-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.dock-search-empty-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 11px;
+}
+.dock-search-empty-actions button {
+  min-height: 44px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.dock-search-empty-actions button:first-child {
+  border-color: var(--app-brand-press);
+  background: var(--app-brand-press);
+  color: var(--app-on-brand);
+}
 @media (max-width: 520px) {
   .dock-search-results {
     max-height: 190px;
@@ -3161,6 +3288,85 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-shadow-3);
   border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
 }
+@media (max-width: 1023.98px) {
+  .dock-head {
+    border-radius: 17px;
+    background: var(--app-bg-elevated-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow:
+      0 1px 0 color-mix(in srgb, white 40%, transparent) inset,
+      0 7px 24px rgba(47, 38, 27, 0.18);
+  }
+  .dock.dock-open .dock-head {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .dock-search {
+    height: 52px;
+    padding-inline: 15px 12px;
+  }
+  .dock-contents {
+    min-width: 96px;
+    border-radius: 0 17px 17px 0;
+    font-size: 13px;
+  }
+}
+
+.dock-active-state {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 8px);
+  left: 4px;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 22%, var(--app-border));
+  border-radius: 13px;
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-2);
+}
+.dock-active-state-open {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 5px 0 11px;
+  color: var(--app-ink-2);
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.dock-active-state-open > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-active-state-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  box-shadow: 0 0 0 4px var(--app-brand-tint-6);
+}
+.dock-active-state-clear {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--app-ink-3);
+}
+@media (min-width: 1024px) {
+  .dock-active-state {
+    display: none;
+  }
+}
 
 /* Deep controls live in one explicit map panel, not a dropdown attached to
    search. The panel owns the only control scroll on this surface; when it is
@@ -3175,8 +3381,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   max-height: var(--map-pane-cap, 116px);
   overflow: hidden;
   background: var(--app-bg-elevated-solid);
-  backdrop-filter: blur(16px) saturate(1.08);
-  -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--app-border);
   border-radius: calc(var(--app-radius-md) + 4px);
   box-shadow: var(--app-shadow-3);
@@ -3186,6 +3392,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: translateY(24px) scale(0.985);
   transform-origin: bottom center;
   transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.28s;
+}
+.dock-pane::before {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  z-index: 4;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink-3) 38%, transparent);
+  content: "";
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 .dock-open .dock-pane {
   opacity: 1;
@@ -3201,71 +3420,86 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
      Safari where it's the default; restores it on older WebKit). */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 12px 14px 16px;
+  padding: 17px 14px 16px;
   scrollbar-width: thin;
 }
 
-/* Mobile options are a fixed grid. The old sideways ribbon intercepted the
-   same gesture used to pan the map and hid choices off-screen. This grid is
-   complete at a glance and never scrolls horizontally. Deeper panels use the
-   panel's single vertical scroll container. */
+/* Mobile Explore is a task sheet, not a launcher grid. Primary jobs read as
+   full sentences; view/share utilities recede below them. It has one vertical
+   scroll owner and never steals the map's horizontal pan gesture. */
 @media (max-width: 1023.98px) {
-  .dock-pane[data-pane="contents"] .dock-pane-scroll {
-    overflow-y: hidden;
-  }
   .dock-pane[data-pane="contents"] .dock-content-list {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin: 5px 0 0;
+    display: block;
+    margin: 4px 0 0;
     border: 0;
     border-radius: 0;
     background: transparent;
   }
+  .dock-content-primary {
+    overflow: hidden;
+    border: 1px solid var(--app-border);
+    border-radius: 15px;
+    background: var(--app-bg-elevated);
+  }
+  .dock-content-secondary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 10px;
+  }
   .dock-pane[data-pane="contents"] .dock-content-row {
-    width: auto;
-    min-width: 0;
-    min-height: 66px;
+    width: 100%;
+    min-height: 62px;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 11px;
+    padding: 9px 12px 9px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--app-border);
+    border-radius: 0;
+    background: var(--app-bg-elevated);
+    text-align: left;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-primary .dock-content-row:last-child {
+    border-bottom: 0;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-copy strong {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-copy small {
+    margin-top: 3px;
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary {
+    min-height: 70px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 5px;
-    padding: 7px 4px 6px;
+    padding: 7px 5px;
     border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-md);
-    background: var(--app-bg-elevated);
+    border-radius: 12px;
     text-align: center;
   }
-  .dock-pane[data-pane="contents"] .dock-content-row:last-child {
-    border-bottom: 1px solid var(--app-border);
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary .dock-content-icon {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: transparent;
   }
-  .dock-pane[data-pane="contents"] .dock-content-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary .dock-content-copy strong {
+    font-size: 11.5px;
   }
-  .dock-pane[data-pane="contents"] .dock-content-copy small,
-  .dock-pane[data-pane="contents"] .dock-content-row > svg {
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary .dock-content-copy small,
+  .dock-pane[data-pane="contents"] .dock-content-row-secondary > svg {
     display: none;
-  }
-  .dock-pane[data-pane="contents"] .dock-content-copy strong {
-    font-size: 10.5px;
-    line-height: 1.1;
-  }
-}
-
-@media (max-width: 480px) {
-  .dock-pane[data-pane="contents"] .dock-content-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-  }
-  .dock-pane[data-pane="contents"] .dock-content-row {
-    /* Seven choices still fit as a complete 3-row board while leaving more
-       than half of a regular phone map visible behind the panel. */
-    min-height: 66px;
-  }
-  .dock-pane[data-pane="contents"] .dock-content-copy strong {
-    font-size: 11px;
   }
 }
 
@@ -3834,6 +4068,94 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 0 2px;
 }
 
+/* Nearby essentials is a one-tap utility picker, not the complete Places
+   catalog with another accordion hidden inside it. Location is explicit and
+   every mapped type has a real icon, count, and 52px target. */
+.dock-essentials {
+  padding-top: 2px;
+}
+.dock-essential-origin {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-2);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.dock-essential-origin[data-on] {
+  border-color: color-mix(in srgb, var(--app-positive) 32%, var(--app-border));
+  background: color-mix(in srgb, var(--app-positive) 8%, var(--app-bg-elevated));
+  color: var(--app-positive);
+}
+.dock-essential-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.dock-essential-choice {
+  position: relative;
+  min-width: 0;
+  min-height: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 5px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  text-align: center;
+}
+.dock-essential-choice[data-on] {
+  border-color: color-mix(in srgb, var(--app-brand) 38%, var(--app-border));
+  background: var(--app-brand-tint-6);
+  color: var(--app-brand-press);
+}
+.dock-essential-choice-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--app-bg-sunken);
+  color: var(--app-ink-2);
+}
+.dock-essential-choice[data-on] .dock-essential-choice-icon {
+  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
+  color: var(--app-brand-press);
+}
+.dock-essential-choice > span:nth-child(2) {
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  font-size: 10.5px;
+  font-weight: 750;
+  line-height: 1.05;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dock-essential-choice small {
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  line-height: 1;
+}
+@media (max-width: 350px) {
+  .dock-essential-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* One control owns progressive disclosure. Its count is the only cold-bar
    indication of non-default state, so the map never grows another chip rail. */
 .dock-contents {
@@ -3922,7 +4244,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    stable direction and the deeper panel uses the remaining safe height. */
 @media (max-width: 1023.98px) and (max-height: 520px) and (orientation: landscape) {
   .dock {
-    top: 4px;
+    top: auto;
+    bottom: 4px;
   }
   .dock-head {
     grid-template-columns: minmax(0, 1fr) 72px;
@@ -3931,7 +4254,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     min-width: 170px;
   }
   .dock-search {
-    height: 52px;
+    height: 48px;
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
@@ -3951,10 +4274,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-pane-scroll {
     max-height: min(var(--map-pane-cap, 100px), calc(var(--app-browse-map-height) - 118px));
   }
-  .dock-pane[data-pane="contents"] .dock-content-list {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 5px;
-  }
   .dock-pane[data-pane="contents"] .dock-content-row {
     min-height: 54px;
   }
@@ -3962,12 +4281,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     width: 24px;
     height: 24px;
   }
-  .dock-pane[data-pane="contents"] .dock-pane-head {
-    display: none;
-  }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
-    bottom: 10px !important;
+    top: max(6px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
   }
   .dock-host .map-locate-fab {
     bottom: 62px;
@@ -3982,7 +4299,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* ── Outer-edge map tools. The closed rail keeps Reach + Locate discoverable
+/* ── Outer-edge map tools. The closed rail keeps essentials + location discoverable
    and leaves active layers visible. Inactive chrome softens after a few quiet
    seconds; map movement, hover, touch, focus, or keyboard use wakes it. The
    one flat flyout is intentionally not another nested MapDock pane. ── */
@@ -4118,8 +4435,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   right: -3px;
   padding-inline: 4px;
 }
-.map-edge-tool[data-attention="true"]::after,
-.map-edge-tool-choice[data-attention="true"] .map-edge-tool-choice-icon::after {
+.map-edge-tool[data-attention="true"]::after {
   position: absolute;
   inset: -3px;
   border: 2px solid color-mix(in srgb, var(--tool-color, var(--app-brand)) 55%, transparent);
@@ -4132,155 +4448,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   from { opacity: 0.7; transform: scale(0.84); }
   to { opacity: 0; transform: scale(1.18); }
 }
-.map-edge-tools-flyout {
-  position: absolute;
-  top: 50%;
-  right: 58px;
-  width: min(330px, calc(100vw - 92px));
-  max-height: min(72vh, 600px);
-  overflow-y: auto;
-  padding: 10px;
-  transform: translateY(-50%);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-md);
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent);
-  box-shadow: var(--app-shadow-3);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  pointer-events: auto;
-}
-.map-edge-tools-flyout-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1px 2px 8px;
-  color: var(--app-ink-3);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.map-edge-tools-flyout-head button {
-  min-width: 44px;
-  min-height: 44px;
-  padding-inline: 10px;
-  border-radius: 999px;
-  color: var(--app-cool);
-  letter-spacing: 0;
-  text-transform: none;
-}
-.map-edge-tools-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.map-edge-tool-choice {
-  --tool-color: var(--app-cool);
-  position: relative;
-  display: grid;
-  min-height: 58px;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 8px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-sm);
-  background: var(--app-bg-sunken);
-  color: var(--app-ink-2);
-  text-align: left;
-}
-.map-edge-tool-choice:hover,
-.map-edge-tool-choice:focus-visible,
-.map-edge-tool-choice[data-on] {
-  border-color: color-mix(in srgb, var(--tool-color) 46%, var(--app-border));
-  background: color-mix(in srgb, var(--tool-color) 9%, var(--app-bg-elevated-solid));
-}
-.map-edge-tool-choice:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
-}
-.map-edge-tool-choice-icon {
-  position: relative;
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tool-color) 12%, var(--app-bg-elevated-solid));
-  color: var(--tool-color);
-}
-.map-edge-tool-choice strong,
-.map-edge-tool-choice small {
-  display: block;
-}
-.map-edge-tool-choice strong {
-  font-size: 11.5px;
-  font-weight: 750;
-  line-height: 1.15;
-}
-.map-edge-tool-choice small {
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--app-ink-3);
-  font-size: 9.5px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-}
-.map-edge-incident-jump {
-  position: relative;
-  display: grid;
-  width: 100%;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 8px;
-  margin-top: 8px;
-  padding: 9px 32px 9px 10px;
-  border: 1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
-  border-radius: var(--app-radius-sm);
-  background: color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid));
-  color: var(--app-ink-2);
-  text-align: left;
-}
-.map-edge-incident-jump strong,
-.map-edge-incident-jump small,
-.map-edge-incident-kicker {
-  grid-column: 1;
-}
-.map-edge-incident-kicker {
-  color: var(--app-brand-press);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 8.5px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.map-edge-incident-jump strong {
-  font-size: 11px;
-  line-height: 1.3;
-}
-.map-edge-incident-jump small {
-  color: var(--app-ink-3);
-  font-size: 9.5px;
-}
-.map-edge-incident-jump > svg {
-  position: absolute;
-  top: 50%;
-  right: 9px;
-  transform: translateY(-50%);
-  color: var(--app-brand-press);
-}
-.map-edge-traffic-key {
-  margin-top: 8px;
-  padding: 7px 9px;
-  border-radius: var(--app-radius-sm);
-  background: var(--app-bg-sunken);
-  color: var(--app-ink-3);
-  font-size: 9.5px;
-  line-height: 1.35;
-}
-.map-edge-traffic-key strong {
-  color: var(--app-ink-2);
-}
 .dock-host[data-dock-pane="open"] .map-edge-tools,
 .dock-host[data-map-peek="open"] .map-edge-tools {
   opacity: 0;
@@ -4291,69 +4458,56 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .map-edge-tools {
     top: auto;
     right: max(10px, env(safe-area-inset-right, 0px));
-    bottom: 68px;
-    left: max(10px, env(safe-area-inset-left, 0px));
+    bottom: 70px;
+    left: auto;
     display: block;
     transform: none;
   }
   .map-edge-tools-rail {
-    width: max-content;
-    max-width: 100%;
+    width: 44px;
     max-height: none;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-  .map-edge-tool-primary {
-    width: auto;
-    min-width: 44px;
-    flex: 0 0 auto;
-    grid-auto-flow: column;
-    gap: 5px;
-    padding-inline: 9px;
-  }
-  .map-edge-tool-primary .map-edge-tool-label {
-    position: static;
-    display: block;
-    max-width: 112px;
+    flex-direction: column;
+    overflow: visible;
     padding: 0;
-    transform: none;
     border: 0;
     background: transparent;
     box-shadow: none;
-    font-size: 9.5px;
-    white-space: nowrap;
-    opacity: 1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
-  .map-edge-tool-label-long {
+  /* Mobile has one camera control here. Everything else lives in Explore,
+     where its label, source, and active state remain understandable. */
+  .map-edge-tool:not(.map-edge-tool-locate) {
     display: none;
   }
-  .map-edge-tool-label-short {
-    display: inline;
+  .map-edge-tool-locate {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    opacity: 1;
+    border-color: var(--app-border);
+    background: var(--app-bg-elevated-solid);
+    box-shadow: var(--app-shadow-2);
   }
-  .map-edge-tools-flyout {
-    top: auto;
-    right: auto;
-    bottom: 58px;
-    left: 0;
-    width: min(350px, calc(100vw - 20px));
-    max-height: min(58vh, 470px);
-    transform: none;
+  .map-edge-tool-locate .map-edge-tool-label {
+    display: none;
   }
-}
-@media (max-width: 379.98px) {
-  .map-edge-tools-grid {
-    grid-template-columns: 1fr;
+  /* The visible task sentence occupies the first shelf above search. Move
+     camera furniture up as one stack instead of allowing controls to hide
+     behind it. */
+  .dock-host:has(.dock-active-state) .map-edge-tools {
+    bottom: 116px;
   }
-  .map-edge-tool-primary .map-edge-tool-label {
-    max-width: 76px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .dock-host:has(.dock-active-state) .map-reset-fab {
+    bottom: 170px;
+  }
+  .dock-host:has(.dock-active-state) .mapboxgl-ctrl-bottom-right,
+  .dock-host:has(.dock-active-state) .mapboxgl-ctrl-bottom-left {
+    bottom: 116px !important;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-edge-tool[data-attention="true"]::after,
-  .map-edge-tool-choice[data-attention="true"] .map-edge-tool-choice-icon::after {
+  .map-edge-tool[data-attention="true"]::after {
     animation: none;
     opacity: 0.45;
   }
@@ -4362,7 +4516,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* ── Persistent "near me" locate FAB — above the zoom cluster ── */
 .map-locate-fab {
   position: absolute;
-  right: 10px;
+  right: max(10px, env(safe-area-inset-right, 0px));
   /* The canvas already ends above mobile navigation. Stack Locate one step
      above the conventional bottom-right zoom pair. */
   bottom: 68px;
@@ -4422,6 +4576,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   from { opacity: 0.35; transform: scale(0.78); }
   to { opacity: 1; transform: scale(1); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .map-live-status-pulse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
 .map-locate-fab[data-on] {
   color: var(--app-brand);
   background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
@@ -4446,7 +4607,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    it a true circle without the pill radius value. ── */
 .map-reset-fab {
   position: absolute;
-  right: 10px;
+  right: max(10px, env(safe-area-inset-right, 0px));
   /* One 44px FAB + a 10px gap above Locate. */
   bottom: 122px;
   z-index: var(--z-map-control);
@@ -4478,12 +4639,78 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* A gesture may inspect a new part of the county without immediately
+   reshuffling the dock's count and Radius findings. This single contextual
+   action appears only while the camera is waiting to become the result area.
+   It lives at the quiet top-center on phones (away from the bottom dock) and
+   just below the desktop instrument. */
+.map-results-here {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: var(--z-map-control);
+  min-height: 44px;
+  max-width: calc(100% - 132px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 34%, var(--app-border));
+  border-radius: 999px;
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink);
+  box-shadow: var(--app-shadow-2);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: map-results-here-in 160ms ease-out both;
+}
+.map-results-here:active {
+  transform: translateX(-50%) scale(0.97);
+}
+.map-results-here-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  box-shadow: 0 0 0 4px var(--app-brand-tint-6);
+}
+@keyframes map-results-here-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@media (min-width: 1024px) {
+  .map-results-here {
+    top: 68px;
+  }
+}
+.dock-host:has(.dock-search-input:focus) .map-results-here,
+.dock-host:has(.dock[data-search-open="true"]) .map-results-here {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-results-here {
+    animation: none;
+  }
+}
+
 /* ── Geolocation error toast on the dock surface — pinned above the FAB stack
    (bottom-right) so a denial is visible on /map browse, not only inside the
    collapsed Where pane. Dock-less embeds keep the centered toast instead. ── */
 .map-geo-toast {
   position: absolute;
-  right: 10px;
+  right: max(10px, env(safe-area-inset-right, 0px));
   bottom: 176px;
   max-width: min(19rem, 72vw);
   z-index: var(--z-map-control);
@@ -4672,9 +4899,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: absolute;
   left: 10px;
   right: 10px;
-  /* Sit above the floating nav reserve AND the iPhone home indicator so the
-     peek card's actions never fall under the home bar in standalone mode. */
-  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  /* The map canvas already ends above BottomNav and its safe-area reserve. */
+  bottom: 12px;
   z-index: var(--z-sticky);
   margin-inline: auto;
   max-width: 460px;
@@ -4980,6 +5206,71 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-parking-peek .map-peek-acts {
   grid-template-columns: minmax(0, 1fr);
 }
+.map-entity-peek .map-peek-acts {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+.map-entity-town-icon {
+  color: var(--app-cool);
+  background: color-mix(in srgb, var(--app-cool) 9%, var(--app-bg-sunken));
+}
+.map-entity-aerial-icon {
+  color: var(--app-brand-press);
+  background: var(--app-brand-tint-6);
+}
+.map-entity-history-icon {
+  color: var(--app-ink-2);
+  background: color-mix(in srgb, var(--app-ink-2) 8%, var(--app-bg-sunken));
+}
+.map-entity-transit-icon {
+  color: var(--app-cool);
+  background: color-mix(in srgb, var(--app-cool) 9%, var(--app-bg-sunken));
+}
+.map-entity-contact-list,
+.map-entity-departures {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+  color: var(--app-ink-2);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.map-entity-contact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.map-entity-contact a {
+  flex: 0 0 auto;
+  color: var(--app-cool);
+  font-weight: 700;
+}
+.map-entity-departures strong {
+  color: var(--app-ink);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.map-entity-photo {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+}
+.map-entity-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.map-entity-photo-copy {
+  min-height: 64px;
+}
+.map-entity-photo-copy .map-peek-thumb {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+}
 @media (max-width: 520px) {
   .map-peek {
     gap: 8px;
@@ -5009,7 +5300,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  bottom: 12px;
   z-index: var(--z-sticky);
   width: min(520px, calc(100% - 20px));
   max-height: min(52dvh, 410px);
@@ -5163,6 +5454,72 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* Every selected map object rises through the same physical instrument. The
+   common handle, solid paper, close position, focus behavior, and entrance
+   motion make place, parking, truck, point, and discovery cards feel like one
+   map system instead of unrelated popups. */
+.map-result-surface {
+  padding-top: 18px;
+  border-color: color-mix(in srgb, var(--app-ink) 14%, var(--app-border));
+  border-radius: 20px;
+  background: var(--app-bg-elevated-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 42%, transparent) inset,
+    0 16px 44px rgba(47, 38, 27, 0.22);
+  outline: none;
+  transform-origin: bottom center;
+  animation: map-result-arrive 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.map-result-surface.map-finding-peek {
+  padding-top: 18px;
+  background: var(--app-bg-elevated-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.map-result-handle {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink-3) 38%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.map-result-surface .map-peek-close {
+  top: 8px;
+  right: 8px;
+}
+.map-result-surface .map-finding-topline {
+  padding-right: 44px;
+}
+@keyframes map-result-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (max-width: 520px) {
+  .map-result-surface {
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    max-height: min(54dvh, 430px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-result-surface {
+    animation: none;
+  }
+}
+
 /* Mapbox attribution must stay visible, but the compact bottom controls sat
    underneath the mobile place card. When a preview is open, move both legal
    attribution corners just below the dock instead of hiding them or letting
@@ -5178,9 +5535,75 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 10px !important;
     bottom: auto !important;
   }
+
+  /* Canonical compact placement. Earlier legacy stacking rules mention the
+     old top-dock layout; keep every Mapbox legal control in one unobstructed
+     upper shelf now that search and map results own the lower edge. */
+  .dock-host .mapboxgl-ctrl-bottom-left,
+  .dock-host .mapboxgl-ctrl-bottom-right {
+    top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+  }
+  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-right,
+  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-right {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
+  }
 }
 
 /* ── The map's list face ── */
+.map-error-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-map-control);
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-bg);
+}
+.map-error-fallback-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding:
+    max(14px, env(safe-area-inset-top, 0px))
+    max(14px, env(safe-area-inset-right, 0px))
+    12px
+    max(14px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-bg-elevated-solid);
+}
+.map-error-fallback-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+.map-error-fallback .map-list {
+  position: relative;
+  inset: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding:
+    14px
+    max(12px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px))
+    max(12px, env(safe-area-inset-left, 0px));
+}
+@media (max-width: 600px) {
+  .map-error-fallback-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
 .map-list {
   position: absolute;
   inset: 0;
@@ -5355,14 +5778,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /events masthead-dock (EventsBoardDock.tsx). The collapsing almanac
-   nameplate FUSED with the pinned "What · When · Where" caption bar: at rest
-   the full plate shows; scroll and the nameplate folds to zero, leaving only
-   the caption pinned at the top edge. Each caption word is a ≥44px tab that
-   drops a top-sheet pane DOWN over the scrim-dimmed list. Sibling grammar to
-   the /map .dock — the chips (.dock-chip family below is mirrored as .eb-chip
-   with an AA-correct darkened active fill) and the .dock-sect / .dock-subrow /
-   .dock-pane-head / .dock-done classes are shared — but this dock pins to the
-   TOP and the pane opens downward, not up. Design tokens only.
+   nameplate, one filter doorway, and the compact result controls share a
+   sticky head. What, When, and Where are tabs inside the top-sheet pane so
+   filter capability stays available without filling the first viewport.
+   Sibling grammar to the /map dock; this one pins to the top and opens
+   downward. Design tokens only.
    ========================================================================== */
 .eb-dock {
   position: sticky;
@@ -5373,7 +5793,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transition: top var(--app-dur-med) var(--app-ease-out);
 }
 
-/* The pinned head: nameplate + caption bar + sub bar. Frosted paper so the
+/* The pinned head: nameplate + filter bar + sub bar. Frosted paper so the
    list scrolls legibly beneath it. Kept a SEPARATE element from .eb-dock so
    the fixed scrim / absolute pane below are NOT inside its backdrop-filter
    (which would trap fixed positioning). */
@@ -5426,10 +5846,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
-/* The when-ribbon — the date questions (Today / Tonight / Tomorrow / This
-   weekend / Later this week) one tap from the default view. Rides with the
-   masthead: collapses away on scroll so the pinned caption bar keeps its
-   compact footprint. One nowrap scrolling row of .eb-chip pills. */
+/* The when-ribbon — date shortcuts within the event controls. It collapses
+   with the masthead and keeps a single nowrap row of .eb-chip pills. */
 .eb-whenribbon {
   display: flex;
   flex-wrap: nowrap;
@@ -5457,72 +5875,95 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
 }
 
-/* The caption bar — always pinned. Three labeled cells (each a tab) + the
-   clear ×. The active tab carries a brand rule along its BOTTOM (the pane
-   drops down from here). */
-.eb-capbar {
+/* The cold state has one filter control. The three filter dimensions live
+   inside the sheet, so the first event—not interface chrome—owns the page. */
+.eb-filterbar {
   display: flex;
   align-items: stretch;
-  padding: 0 3px;
+  gap: 6px;
+  padding: 0 10px 7px;
 }
-.eb-seg {
-  flex: 1 1 0;
+.eb-filter-trigger {
   min-width: 0;
-  min-height: 52px;
-  padding: 7px 8px 6px;
+  min-height: 48px;
+  flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  box-shadow: var(--app-edge), var(--app-hi);
   text-align: left;
-  position: relative;
 }
-.eb-seg-what {
-  flex: 1.25 1 0;
-}
-.eb-seg-where {
-  flex: 1.05 1 0;
-}
-.eb-seg + .eb-seg {
-  border-left: 1px solid var(--app-border);
-}
-.eb-seg-k {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.eb-filter-trigger > svg:last-child {
   color: var(--app-ink-3);
+  transition: transform var(--app-dur-fast) var(--app-ease-out);
 }
-.eb-seg-v {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+.eb-filter-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.eb-filter-label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--app-ink);
-  white-space: nowrap;
+}
+.eb-filter-summary {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--app-ink-3);
 }
-.eb-seg-v.mono {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
-}
-.eb-seg.active-tab::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 0;
-  height: 2.5px;
-  background: var(--app-brand);
-  border-radius: 3px 3px 0 0;
-}
-.eb-clear {
-  flex: 0 0 42px;
-  min-height: 52px;
+.eb-filter-count {
+  min-width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
+  border-radius: 999px;
+  background: var(--app-brand);
+  color: var(--app-on-brand);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+}
+.eb-filter-reset {
+  flex: 0 0 auto;
+  padding-inline: 9px;
+  border-radius: var(--app-radius-md);
+  color: var(--app-brand-press);
+  font-size: 12px;
+  font-weight: 700;
+}
+.eb-pane-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin: 0 0 12px;
+  padding: 3px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+}
+.eb-pane-tabs button {
+  min-height: 40px;
+  border-radius: calc(var(--app-radius-md) - 3px);
   color: var(--app-ink-3);
-  border-left: 1px solid var(--app-border);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.eb-pane-tabs button[aria-selected="true"] {
+  background: var(--app-bg-elevated);
+  color: var(--app-ink);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
 }
 
 /* The sub bar — the mono count line (also the polite live region) on the
@@ -5601,15 +6042,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .eb-whenribbon .eb-chip:nth-child(5) {
     display: none;
   }
-  .eb-capbar {
-    padding-inline: 0;
+  .eb-filterbar {
+    padding: 0 8px 6px;
   }
-  .eb-seg {
-    min-height: 46px;
-    padding: 5px 7px 4px;
-  }
-  .eb-clear {
-    min-height: 46px;
+  .eb-filter-trigger {
+    min-height: 44px;
+    padding-block: 5px;
   }
   .eb-subbar {
     min-height: 44px;
@@ -5658,20 +6096,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* Keep the selected When and Where values readable at the supported 320px
-   floor. A clear-filter button leaves less width for the three cells; a
-   two-word value should wrap rather than collapse into "This we…". */
 @media (max-width: 360px) {
-  .eb-seg {
-    padding-inline: 4px;
-  }
-  .eb-seg-v,
-  .eb-seg-v.mono {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    font-size: 11.5px;
-    line-height: 1.05;
+  .eb-filter-summary {
+    display: none;
   }
 }
 
@@ -5717,7 +6144,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: auto;
 }
 
-/* The top-sheet pane — drops DOWN from directly under the caption bar (top:
+/* The top-sheet pane — drops down from directly under the filter bar (top:
    100% of the sticky dock) over the dimmed list. Collapsed via max-height so
    nothing above it ever shifts. */
 .eb-pane {
@@ -6988,4 +7415,52 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 @media (prefers-reduced-motion: reduce) {
   .fr-food-truck-pulse { animation: none; transform: scale(1.25); opacity: .28; }
+}
+/* WLR discussion concept. Kept global to avoid styled-jsx hydration drift. */
+.road-ready-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 82% 24%, transparent 0 54px, rgba(248, 222, 8, 0.55) 55px 56px, transparent 57px 104px, rgba(248, 222, 8, 0.2) 105px 106px, transparent 107px),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: auto, 42px 42px, 42px 42px;
+  transform: perspective(680px) rotateX(8deg) scale(1.05);
+  transform-origin: center bottom;
+}
+
+.road-ready-grid::after {
+  content: "";
+  position: absolute;
+  right: 13%;
+  top: 20%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #f8de08;
+  box-shadow:
+    -72px 86px 0 rgba(248, 222, 8, 0.82),
+    42px 132px 0 rgba(248, 222, 8, 0.56),
+    -164px 158px 0 rgba(248, 222, 8, 0.42);
+  animation: wlr-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes wlr-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .road-ready-grid::after {
+    animation: none;
+  }
 }

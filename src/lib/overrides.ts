@@ -18,7 +18,7 @@
  * keeps this module data-free.)
  */
 
-import type { Hours } from "@/data/places";
+import type { Hours, PlaceAccessibility } from "@/data/places";
 import type { LngLat } from "@/lib/geo";
 import type { CommerceLink } from "@/lib/commerce/types";
 
@@ -29,6 +29,7 @@ export type PatchFields = {
    *  Example: a deli can also be a coffee stop, and a cafe can also answer a
    *  food request. These feed the canonical multi-category intent matcher. */
   subcategories?: string[];
+  tags?: string[];
   short_blurb?: string;
   /** Human-confirmed contact and location corrections. These fields take
    * precedence over stale scrape data and automated coordinate snapping. */
@@ -37,7 +38,15 @@ export type PatchFields = {
   city?: string;
   website?: string;
   phone?: string;
+  email?: string;
   geom?: LngLat;
+  accessibility?: PlaceAccessibility;
+  /**
+   * Keep a human-confirmed destination in discovery even when providers have
+   * no rating, photo, or editorial summary. This bypasses only the thin-media
+   * gate; operational, relevance, placement, and seasonal checks still apply.
+   */
+  includeWithoutMedia?: boolean;
   /** Remap an out-of-vocabulary / wrong municipality slug to a valid one (the
    *  unincorporated communities Jefferson, Ijamsville, etc. have no town page,
    *  so a place tagged with them silently drops from every municipality filter). */
@@ -130,6 +139,7 @@ export function patchRecord<T extends { slug: string }>(
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.subcategories) (out as Record<string, unknown>).subcategories = x.subcategories;
+  if (x.tags) (out as Record<string, unknown>).tags = x.tags;
   if (x.short_blurb !== undefined) {
     (out as Record<string, unknown>).short_blurb = x.short_blurb;
   }
@@ -138,7 +148,11 @@ export function patchRecord<T extends { slug: string }>(
   if (x.city) (out as Record<string, unknown>).city = x.city;
   if (x.website) (out as Record<string, unknown>).website = x.website;
   if (x.phone) (out as Record<string, unknown>).phone = x.phone;
+  if (x.email) (out as Record<string, unknown>).email = x.email;
   if (x.geom) (out as Record<string, unknown>).geom = x.geom;
+  if (x.accessibility) {
+    (out as Record<string, unknown>).accessibility = x.accessibility;
+  }
   if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
   // hours runs here (before applyEnrichment) so the loader's
   // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule

@@ -56,7 +56,7 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
-    license: public domain, State of Maryland
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
     contact: https://chart.maryland.gov
     status: active
     collection: pipeline
@@ -139,20 +139,24 @@ sources:
   # ------------------------------------------------------------------ #
 
   - id: frederick_county_arcgis
-    name: Frederick County ArcGIS Services
+    name: Frederick County ArcGIS Services (legacy registry row)
     owner: Frederick County GIS
     url: https://maps.frederickcountymd.gov/arcgis/rest/services
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: public, Frederick County
+    license: publicly referenced; explicit reuse license absent
     contact: https://www.frederickcountymd.gov
-    status: scaffold
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-07-28
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Facilities, boundaries, and points of interest layers.
+    notes: |
+      The recorded host returns HTTP 404 and the former "public" license label
+      was unsupported. Do not use this generic row as evidence that a specific
+      County layer may be transformed or republished. Each exact service needs
+      its own rights review and ledger entry.
 
   - id: md_imap_arcgis
     name: Maryland iMAP Services
@@ -459,6 +463,29 @@ sources:
     schema_file: null
     transform_file: src/lib/integrations/ical-live.ts
     notes: Public campus events; internal meetings are filtered downstream.
+
+  - id: maryland_deaf_community_center_calendar
+    name: Maryland Deaf Community Center Events
+    owner: Maryland Deaf Community Center
+    url: https://www.deafmdcc.org/events
+    endpoint_type: html
+    format: wix-html
+    refresh_cadence: hourly
+    license: publicly accessible first-party calendar; no explicit reuse license stated; source and event links retained
+    contact: https://www.deafmdcc.org/
+    status: active
+    collection: runtime
+    evidence_aliases: [mdcc]
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: src/lib/integrations/event-schema.ts
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: |
+      Organizer-published event records are parsed from Wix's server-rendered
+      wix-warmup-data payload. Rows are deduplicated by publisher event id and
+      retain the first-party detail link. Source identity marks Deaf-community
+      programming but does not imply ASL interpretation, captions, or another
+      specific accommodation.
 
   - id: delaplaine_calendar
     name: Delaplaine Arts Center Events
@@ -774,6 +801,229 @@ sources:
       Requires GOOGLE_PLACES_API_KEY with Routes API access and limits each
       matrix to one origin by at most 25 destinations.
 
+  - id: md_wzdx
+    name: Maryland Work Zone Data Exchange
+    owner: Maryland Department of Transportation
+    url: https://filter.ritis.org/wzdx_v4.1/mdot.geojson
+    endpoint_type: rest_json
+    format: geojson
+    refresh_cadence: realtime
+    license: CC0 1.0; declared in feed_info; publisher Maryland DOT SHA
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-wzdx.ts
+    notes: |
+      Keyless WZDx 4.1 feed used by the map Traffic view and road-status
+      answers. The runtime adapter keeps only current Frederick County work
+      zones and preserves provider confidence, schedule, and lane-impact
+      caveats. A work-zone row does not establish that a route is passable.
+
+  - id: mdot_chart_tss
+    name: Maryland CHART Traffic Speed Sensors
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART traffic-sensor observations. The runtime adapter keeps
+      current online sensors in Frederick County and reports their measured
+      speeds as device observations, not a route-safety determination.
+
+  - id: mdot_chart_travel
+    name: Maryland CHART Travel Times
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTravelRouteDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART route travel-time estimates derived from roadway sensors.
+      The runtime adapter keeps fresh Frederick County routes and labels the
+      values as computed estimates rather than guarantees.
+
+  - id: mdot_chart_dms
+    name: Maryland CHART Dynamic Message Signs
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getDMSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART highway-message-sign observations. The runtime adapter
+      keeps current Frederick County signs and the message text displayed by
+      the device without inferring an incident or closure.
+
+  - id: mdot_chart_rwis
+    name: Maryland CHART Road Weather Stations
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getRWISMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART pavement and roadside weather-station observations. Each
+      value applies at the reporting station and does not establish conditions
+      along an entire route.
+
+  - id: mdot_chart_ips
+    name: Maryland CHART Road Conditions
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getIPSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART maintenance-shop area reports for interstate, primary,
+      and secondary roads. The runtime adapter preserves that broad scope and
+      never presents an area report as a road-specific safety claim.
+
+  - id: mdot_chart_sep
+    name: Maryland CHART Snow Emergency Status
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getSEPMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART county snow-emergency declarations. The runtime adapter
+      keeps Frederick County's official declared or lifted state and does not
+      infer whether an individual road is safe.
+
+  - id: city_emergency_rss
+    name: City of Frederick Emergency Alerts
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=63&CID=City-Emergencies-4
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: realtime
+    license: publicly accessible RSS for subscription; no republication license stated; City content all rights reserved; canonical source link retained
+    contact: https://www.cityoffrederickmd.gov/AlertCenter.aspx?CID=City-Emergencies-4
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/official-alert-feeds.ts
+    notes: |
+      Keyless current-alert RSS for the City's emergency category. Presence in
+      the feed is the provider's active state. This narrow category is an
+      official signal, not complete City emergency coverage.
+
+  - id: county_health_alerts
+    name: Frederick County Health Department Alerts
+    owner: Frederick County Health Department
+    url: https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Health-Notices-1
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: realtime
+    license: publicly accessible RSS for subscription; no republication license stated; Health Department content all rights reserved; canonical source link retained
+    contact: https://health.frederickcountymd.gov/AlertCenter.aspx
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/official-alert-feeds.ts
+    notes: |
+      Keyless current-alert RSS integration covering the Health Department's
+      Health Notices, Burn Ban, and Closings categories. Each category is
+      fetched independently. Together they remain narrower than complete
+      County public-health or emergency coverage.
+
+  - id: nws_lsr
+    name: NWS Baltimore/Washington Local Storm Reports
+    owner: NOAA National Weather Service
+    url: https://api.weather.gov/products/types/LSR/locations/LWX
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: NWS public domain unless specifically noted; identify NWS material; no endorsement; API disclaimer applies
+    contact: https://www.weather.gov/lwx
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/nws-local-storm-reports.ts
+    notes: |
+      Keyless index for recent Baltimore/Washington preliminary Local Storm
+      Report products. The runtime adapter follows official product URLs and
+      keeps only explicit Frederick County, Maryland observations. Reports are
+      preliminary observations and never substitute for active NWS warnings.
+
+  - id: nowcoast_lightning
+    name: NOAA nowCOAST Lightning Density
+    owner: NOAA nowCOAST / NWS-NCEP Ocean Prediction Center
+    url: https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities
+    endpoint_type: wms
+    format: xml
+    refresh_cadence: realtime (about 15 minutes)
+    license: NOAA-derived Level 5 product appropriate for public distribution; WMS Fees NONE and AccessConstraints NONE; excludes raw NLDN and GLD360 data
+    contact: https://nowcoast.noaa.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/nowcoast-lightning.ts
+    notes: |
+      Keyless WMS capabilities and map layer for NOAA's 15-minute, 8 km
+      gridded lightning-density product. Radius renders density, never
+      individual strike pins, and keeps active NWS warnings authoritative.
+
   # ------------------------------------------------------------------ #
   # Pending review. Policy decision required before any fetch.          #
   # ------------------------------------------------------------------ #
@@ -827,14 +1077,312 @@ sources:
     endpoint_type: arcgis_hub
     format: geojson
     refresh_cadence: weekly
-    license: public, Frederick County
+    license: public catalog access; explicit item reuse license absent
     contact: https://www.frederickcountymd.gov
     status: pending_approval
     last_validated: null
     last_success: null
     schema_file: null
     transform_file: null
-    notes: ArcGIS Hub datasets, parcels and facilities.
+    notes: |
+      The Hub describes datasets as open and provides download/REST access, but
+      the Hub item has blank licenseInfo/accessInformation. County terms and
+      the Hub accuracy disclaimer still apply. Treat each exact dataset as
+      pending until reuse, transformation, caching, attribution, and commercial
+      display rights are confirmed in writing.
+
+  - id: fc_planning_projects
+    name: Frederick County Open Planning Applications
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/PlanningAndPermitting/PlanningProjects/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: daily
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcPlanningProjects.ts
+    notes: |
+      Radius reads allowlisted public fields from the live County service,
+      links back to the source, and does not offer a bulk mirror. This exact
+      layer is publicly reachable but is not listed in the County Hub catalog.
+      An open application is not evidence of approval, construction, or a
+      completion date.
+
+  - id: fc_snow_command
+    name: Frederick County SnowCommand Routes
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/FeatureServices/SnowCommand/FeatureServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: realtime
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcSnowCommand.ts
+    notes: |
+      Radius reads allowlisted operational fields from the live County
+      service and never requests driver, vehicle, notes, or maintenance
+      fields. This exact layer is publicly reachable but is not listed in the
+      County Hub catalog. Route status is not proof a road is safe or passable.
+
+  - id: fc_parks_assets
+    name: Frederick County Public Park Assets
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcParkAssetsPublic.ts
+    notes: |
+      Radius requests only public-facing asset type, park, retirement, and
+      edit-date fields. It excludes inspection, cost, condition, staff,
+      ownership, and asset-tag fields. The exact layers are publicly reachable
+      but are not County Hub catalog items. A mapped asset does not prove
+      current availability.
+
+  - id: fc_high_water
+    name: Frederick County High-Water and Flood Context
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/DPW/High_Water_Areas/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcFloodRisk.ts
+    notes: |
+      Radius reads the public services live and labels them as static context,
+      not current conditions. The adapter also reads warning-sign and
+      past-rescue context from
+      https://fcgis.frederickcountymd.gov/server_pub/rest/services/PublicSafety/RoadwayFloodPoints/MapServer.
+      These exact layers are publicly reachable but are not listed in the
+      County Hub catalog. Static risk areas, warning signs, and past rescues
+      do not establish current flooding or a road closure.
+
+  - id: fc_food_truck_roster
+    name: Frederick County Licensed Mobile Units Roster
+    owner: Frederick County Health Department
+    url: https://health.frederickcountymd.gov/695/Mobile-UnitsFood-Trucks
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: daily
+    license: publicly readable; written reuse approval required
+    contact: https://health.frederickcountymd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcFoodTruckRoster.ts
+    notes: |
+      The runtime adapter is implemented but disabled unless the master
+      FREDERICK_COUNTY_GIS_REUSE_APPROVED switch is 1 and
+      FREDERICK_COUNTY_GIS_APPROVED_SOURCES includes fc_food_truck_roster.
+      Keep this row pending until written reuse approval is recorded. It
+      discovers the official roster PDF but does not parse business rows at
+      request time; a license record does not establish today's location or
+      open status.
+
+  - id: fc_municipal_boundaries
+    name: Frederick County Municipal Boundaries
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/Municipalities/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcGis.ts
+    notes: |
+      The item belongs to the official County open-data group. Radius reads it
+      live, requests only the municipality name and geometry, credits the
+      County, and does not expose a bulk mirror. The map's county outline uses
+      Census TIGER rather than depending on this feed.
+
+  - id: fc_county_parks
+    name: Frederick County Park Points
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Parks/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcGis.ts
+    notes: |
+      The named park-point item is in the official County open-data group.
+      Radius reads its public name, address, municipality, and point fields
+      live. The former committed point-and-polygon derivative remains removed.
+
+  - id: fc_park_trails
+    name: Frederick County Park Trail Geometry
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer/12
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcTrails.ts
+    notes: |
+      This exact layer is publicly reachable but is not present in the official
+      Hub catalog. Radius reads simplified display geometry live, attributes
+      the County, and does not offer the source as a download. The rich trail
+      list remains owner-reviewed rather than inferred from this sparse layer.
+
+  - id: fc_historic_cemeteries
+    name: Historic Cemeteries of Frederick County
+    owner: Frederick County Government
+    url: https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/HistoricCemeteries/FeatureServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcCemeteries.ts
+    notes: |
+      The item belongs to the official County open-data group. Its access
+      information cites Jacob M. Holdcraft's cemetery research; Radius
+      preserves that credit, the County attribution, and the located versus
+      approximate distinction. The old committed derivative remains removed.
+
+  - id: fc_recreation_locations
+    name: Frederick County Parks and Recreation Locations
+    owner: Frederick County Government
+    url: https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: weekly
+    license: publicly readable; written data and attachment-photo reuse approval required
+    contact: https://www.recreater.com
+    status: pending_approval
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcRecLocations.ts
+    notes: |
+      The County dashboard exposes amenity points and attached images, but the
+      exact item carries no recorded reuse grant. Runtime and build pulls
+      require the two-step approval gate. Old committed staging files,
+      attachment URLs, amenity rollups, and GIS-only place rows were removed.
+
+  - id: fc_county_facilities
+    name: Frederick County Facilities Legacy Ingest
+    owner: Frederick County Government
+    url: https://maps.frederickcountymd.gov/arcgis/rest/services
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: weekly
+    license: legacy host unavailable; explicit reuse license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/app/api/ingest/arcgis/route.ts
+    notes: |
+      The recorded host currently returns HTTP 404. The ingest endpoint is
+      disabled behind this exact approval id and must not write parks,
+      libraries, or fire stations until the County confirms a current source
+      and permitted reuse scope. Former committed map bundles were removed.
+
+  - id: fc_markets_overlay
+    name: Rejected Frederick County Farmers Market Static Overlay
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/PointsOfInterest/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: publicly readable; explicit transformed-redistribution license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The former committed derivative was removed from public delivery.
+      Do not restore it until written reuse, transformation, caching,
+      attribution, and commercial-display rights are recorded.
+
+  - id: fc_bridges_overlay
+    name: Rejected Frederick County Bridges Static Overlay
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/DPW/Bridges/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: publicly readable; explicit transformed-redistribution license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The former committed derivative had mixed County and Visit Frederick
+      provenance and was removed from public delivery. Any future layer needs
+      written County reuse terms and independently cleared descriptive copy.
+
+  - id: census_tiger_county_boundary
+    name: U.S. Census TIGERweb Frederick County Boundary
+    owner: U.S. Census Bureau
+    url: https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/9
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: public domain, U.S. Government work
+    contact: https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    status: active
+    collection: workflow
+    last_validated: 2026-07-28
+    last_success: 2026-07-28
+    schema_file: null
+    transform_file: scripts/refresh-census-county-boundary.ts
+    notes: |
+      GEOID 24021, 2025 vintage. The full public-domain boundary powers the
+      lazy overlay endpoint; a display-simplified copy frames the Mapbox view.
+      This replaces the former transformed County GIS boundary.
 
   - id: kfdk_metars
     name: Frederick Municipal Airport METARs (KFDK)
@@ -1138,28 +1686,25 @@ sources:
       school districts. No owner name is exposed by the source.
 
   - id: fc_parks_trails
-    name: Frederick County Parks Trails (Cartegraph)
-    owner: Frederick County GIS
+    name: Rejected legacy Frederick County parks-trails source
+    owner: Frederick County, Colorado
     url: https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: monthly
-    license: public, Frederick County GIS open data
-    contact: https://gis-fcgmd.opendata.arcgis.com
-    status: scaffold
-    last_validated: null
+    license: wrong jurisdiction; explicit reuse license absent
+    contact: https://www.frederickco.gov
+    status: pending_review
+    last_validated: 2026-07-28
     last_success: null
     schema_file: schemas/fc_parks_trails.json
     transform_file: transforms/fc_parks_trails.ts
     notes: |
-      County-wide trails, the free data lever for the "missing parks
-      and trails" gap. Layer 0 (Parks Trails -Cartegraph, polyline) and
-      its field names are confirmed from live ArcGIS layer metadata, so
-      the schema and transform are real, not guessed. The sandbox cannot
-      reach ArcGIS, so this stays scaffold: the first CI/owner pipeline
-      run fetches one live response, the worker validates it against the
-      wired schema, and only then is it flipped to active. No fabricated
-      transform was shipped against an unprobed endpoint.
+      This host is Frederick County, Colorado. Its metadata references the
+      Town of Frederick and Colorado parks, and it must never be used as a
+      Frederick County, Maryland source. The runtime call that once referenced
+      this jurisdiction is now disabled. Keep the row only as a negative audit
+      trail so the endpoint cannot be mistaken for Maryland again.
 
   - id: cof_geocoder
     name: City of Frederick Address Locator

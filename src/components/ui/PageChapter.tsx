@@ -20,6 +20,7 @@ export default function PageChapter({
   tone = "brand",
   className = "",
   bodyClassName = "",
+  variant = "chapter",
   children,
 }: {
   label: string;
@@ -27,11 +28,12 @@ export default function PageChapter({
   tone?: PageChapterTone;
   className?: string;
   bodyClassName?: string;
+  variant?: "chapter" | "plain";
   children?: ReactNode;
 }) {
   return (
     <div
-      className={`content-chapter content-chapter--${tone}${className ? ` ${className}` : ""}`}
+      className={`content-chapter content-chapter--${tone} content-chapter--${variant}${className ? ` ${className}` : ""}`}
       role="group"
       aria-label={label}
     >

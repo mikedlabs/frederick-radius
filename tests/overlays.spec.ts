@@ -13,9 +13,7 @@ import { OVERLAYS, parseLayersParam, serializeLayers } from "@/lib/overlays";
  */
 describe("overlay registry", () => {
   it("defines exactly the GIS overlays with no live-layer twin", () => {
-    expect(OVERLAYS.map((o) => o.key).sort()).toEqual(
-      ["art", "bridges", "markets", "parks"],
-    );
+    expect(OVERLAYS.map((o) => o.key)).toEqual(["art"]);
   });
 
   it("has no duplicate trails or cemeteries overlay (they are live layers)", () => {
@@ -24,22 +22,22 @@ describe("overlay registry", () => {
     expect(keys).not.toContain("historic");
   });
 
-  it("every listed overlay is seeded and ready", () => {
+  it("does not advertise a layer before its reviewed data is ready", () => {
     const ready = OVERLAYS.filter((o) => o.ready).map((o) => o.key).sort();
-    expect(ready).toEqual(["bridges", "markets", "parks"]);
+    expect(ready).toEqual([]);
   });
 });
 
 describe("parseLayersParam", () => {
   it("parses a comma list and drops unknown keys", () => {
-    expect(parseLayersParam("art,parks")).toEqual(["art", "parks"]);
-    expect(parseLayersParam("art,phantom,bridges")).toEqual(["art", "bridges"]);
+    expect(parseLayersParam("art,parks")).toEqual(["art"]);
+    expect(parseLayersParam("art,phantom,bridges")).toEqual(["art"]);
     // Retired keys no longer toggle a layer from a stale shared URL.
     expect(parseLayersParam("art,historic,trails")).toEqual(["art"]);
   });
 
   it("is whitespace and case tolerant, dedupes, and handles empty", () => {
-    expect(parseLayersParam(" ART , art , Parks ")).toEqual(["art", "parks"]);
+    expect(parseLayersParam(" ART , art , Parks ")).toEqual(["art"]);
     expect(parseLayersParam("")).toEqual([]);
     expect(parseLayersParam(null)).toEqual([]);
   });
@@ -47,12 +45,10 @@ describe("parseLayersParam", () => {
 
 describe("serializeLayers", () => {
   it("round-trips in stable registry order", () => {
-    // Output follows registry order (parks, art, markets, bridges),
-    // regardless of input order, so a shared URL is canonical.
-    expect(serializeLayers(["art", "parks"])).toBe("parks,art");
-    expect(serializeLayers(["parks", "art"])).toBe("parks,art");
-    expect(parseLayersParam(serializeLayers(["bridges", "art"]))).toEqual(["art", "bridges"]);
-    expect(serializeLayers(["bridges", "parks"])).toBe("parks,bridges");
+    expect(serializeLayers(["art", "parks"])).toBe("art");
+    expect(serializeLayers(["parks", "art"])).toBe("art");
+    expect(parseLayersParam(serializeLayers(["bridges", "art"]))).toEqual(["art"]);
+    expect(serializeLayers(["bridges", "parks"])).toBe("");
   });
 
   it("is empty when nothing is active, so the param drops from the URL", () => {

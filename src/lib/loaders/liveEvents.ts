@@ -52,11 +52,27 @@ export function liveCleanSlug(e: Pick<LiveEvent, "title" | "starts_at">): string
  * up to the full 8s per-feed timeout. The per-source `.catch` below still
  * handles genuine rejections.
  */
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+function withTimeout<T>(
+  p: Promise<T>,
+  ms: number,
+  fallback: T,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal?.aborted || ms <= 0) return Promise.resolve(fallback);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let removeAbort: (() => void) | undefined;
+  const stopped = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+    if (signal) {
+      const onAbort = () => resolve(fallback);
+      signal.addEventListener("abort", onAbort, { once: true });
+      removeAbort = () => signal.removeEventListener("abort", onAbort);
+    }
+  });
+  return Promise.race([p, stopped]).finally(() => {
+    if (timer) clearTimeout(timer);
+    removeAbort?.();
+  });
 }
 
 /** Worst-case wall time the slug resolver may spend awaiting any one
@@ -129,7 +145,13 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     // normalizes a missing URL to null and a missing date to the
     // documented backfill epoch.
     ...stampEventProvenance(
-      { slug: liveCleanSlug(e), source: e.source, source_url: e.url, last_verified_at: e.last_verified_at },
+      {
+        slug: liveCleanSlug(e),
+        source: e.source,
+        source_id: e.id,
+        source_url: e.url,
+        last_verified_at: e.last_verified_at,
+      },
     ),
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
@@ -165,7 +187,16 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
 export async function getLiveCardEventBySlug(
   slug: string,
   windowDays = 90,
+  options: { signal?: AbortSignal; deadline?: number } = {},
 ): Promise<EventWithMeta | null> {
+  if (options.signal?.aborted) return null;
+  const sourceBudget = Math.min(
+    SLUG_SOURCE_TIMEOUT_MS,
+    options.deadline == null
+      ? SLUG_SOURCE_TIMEOUT_MS
+      : Math.max(0, options.deadline - Date.now()),
+  );
+  if (sourceBudget <= 0) return null;
   // The SAME source union the /events index renders (iCal feeds +
   // Ticketmaster music/sports + Bandsintown). The resolver used to consult
   // only the iCal feeds, so every Ticketmaster/Bandsintown card on the
@@ -181,13 +212,16 @@ export async function getLiveCardEventBySlug(
   // feed up to the 8s per-feed ceiling on a primary surface; the per-source
   // bound keeps the whole parallel resolution under ~6s.
   const [ical, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
-    withTimeout(getCachedLiveEvents(windowDays).then((r) => r.events), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchTicketmasterSports(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchVisitFrederick(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchFrederickKeys(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchSquarespaceVenueEvents(windowDays), SLUG_SOURCE_TIMEOUT_MS, []).catch(() => []),
+    withTimeout(getCachedLiveEvents(windowDays).then((r) => r.events), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchTicketmasterSports(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchVisitFrederick(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchFrederickKeys(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchSquarespaceVenueEvents(windowDays), sourceBudget, [], options.signal).catch(() => []),
   ]);
+  if (options.signal?.aborted || (options.deadline != null && Date.now() >= options.deadline)) {
+    return null;
+  }
   // Ticketmaster music already arrives inside getCachedLiveEvents. Keep only
   // the separate sports query here so a cold event-detail lookup does not
   // issue the same Discovery request twice.
@@ -207,7 +241,10 @@ export async function getLiveCardEventBySlug(
   // gradient fallback for an event whose list card carried a real venue photo
   // (image audit 2026-07-07). The thumb join runs AFTER the upgrade so its
   // precise-geo containment gate sees the repaired coordinate.
-  if (hit) return withVenueThumb(await upgradeEventGeom(liveToCardEvent(hit)));
+  if (hit) {
+    if (options.signal?.aborted) return null;
+    return withVenueThumb(await upgradeEventGeom(liveToCardEvent(hit)));
+  }
   // FIFTH + SIXTH sources: extracted venue lineups — the committed
   // venue-events.json snapshot (the Weinberg's cinema/talk slate) AND the
   // runtime Squarespace `?format=json` lineups (The Banyan). The listing

@@ -7,6 +7,10 @@ import {
 const ORIGINAL = {
   PULSEPOINT_ENABLED: process.env.PULSEPOINT_ENABLED,
   PULSEPOINT_AGENCY_ID: process.env.PULSEPOINT_AGENCY_ID,
+  FREDERICK_COUNTY_GIS_REUSE_APPROVED:
+    process.env.FREDERICK_COUNTY_GIS_REUSE_APPROVED,
+  FREDERICK_COUNTY_GIS_APPROVED_SOURCES:
+    process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES,
   HOOD_CALENDAR_URL: process.env.HOOD_CALENDAR_URL,
   FCPS_FEED_URL: process.env.FCPS_FEED_URL,
 };
@@ -50,6 +54,54 @@ describe("feed configuration registry", () => {
     expect(feeds.keyless.some((feed) => feed.name === "FCPS")).toBe(true);
   });
 
+  it("lists public County GIS as keyless and keeps gated documents dark", () => {
+    const publicGis = feedStatuses().keyless.find(
+      (feed) => feed.name === "Frederick County public GIS",
+    );
+    expect(publicGis).toMatchObject({
+      configured: true,
+      sourceIds: [
+        "fc_planning_projects",
+        "fc_snow_command",
+        "fc_parks_assets",
+        "fc_high_water",
+        "fc_municipal_boundaries",
+        "fc_county_parks",
+        "fc_park_trails",
+        "fc_historic_cemeteries",
+      ],
+    });
+
+    process.env.FREDERICK_COUNTY_GIS_REUSE_APPROVED = "yes";
+    delete process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES;
+    let county = feedStatuses().keyed.find(
+      (feed) => feed.name === "Frederick County food-truck roster",
+    );
+    expect(county).toMatchObject({
+      configured: false,
+      missingEnvs: [
+        "FREDERICK_COUNTY_GIS_REUSE_APPROVED",
+        "FREDERICK_COUNTY_GIS_APPROVED_SOURCES",
+      ],
+    });
+
+    process.env.FREDERICK_COUNTY_GIS_REUSE_APPROVED = "1";
+    process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES =
+      "fc_food_truck_roster";
+    county = feedStatuses().keyed.find(
+      (feed) => feed.name === "Frederick County food-truck roster",
+    );
+    expect(county).toMatchObject({ configured: true, missingEnvs: [] });
+    expect(
+      feedStatuses().keyed.find(
+        (feed) => feed.name === "Frederick County recreation locations",
+      ),
+    ).toMatchObject({
+      configured: false,
+      missingEnvs: ["FREDERICK_COUNTY_GIS_APPROVED_SOURCES"],
+    });
+  });
+
   it("computes the dark count from every required setting", () => {
     process.env.PULSEPOINT_ENABLED = "1";
     delete process.env.PULSEPOINT_AGENCY_ID;
@@ -57,5 +109,30 @@ describe("feed configuration registry", () => {
 
     process.env.PULSEPOINT_AGENCY_ID = "test-agency";
     expect(darkFeedCount()).toBe(before - 1);
+  });
+
+  it("tracks every new official live feed without a deployment secret", () => {
+    const sourceIds = feedStatuses().keyless.flatMap(
+      (feed) => feed.sourceIds ?? [],
+    );
+
+    expect(sourceIds).toEqual(
+      expect.arrayContaining([
+        "md_wzdx",
+        "mdot_chart_tss",
+        "city_emergency_rss",
+        "county_health_alerts",
+        "nws_lsr",
+        "nowcoast_lightning",
+        "fc_planning_projects",
+        "fc_snow_command",
+        "fc_parks_assets",
+        "fc_high_water",
+        "fc_municipal_boundaries",
+        "fc_county_parks",
+        "fc_park_trails",
+        "fc_historic_cemeteries",
+      ]),
+    );
   });
 });

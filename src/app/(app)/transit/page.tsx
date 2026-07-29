@@ -7,7 +7,6 @@ import {
   Clock,
   TrainFront,
   Accessibility,
-  Ticket,
   Bike,
   Users,
   Search,
@@ -63,9 +62,9 @@ const TRANSIT_REFERENCE: TransitIntent[] = [
     external: true,
   },
   {
-    label: "Accessibility + rider help",
-    hint: "Lift, ramp, securement, and travel-training information",
-    icon: Ticket,
+    label: "Accessibility + communication",
+    hint: "Maryland Relay 711, driver assistance, lifts, ramps, and travel training",
+    icon: Accessibility,
     accent: "var(--app-cool)",
     href: "https://frederickcountymd.gov/222/Accessibility-Features",
     external: true,
@@ -264,6 +263,30 @@ export default async function TransitPage() {
       <TransitNow board={board} />
 
       <TransitStopFinder />
+
+      <a
+        href="https://frederickcountymd.gov/222/Accessibility-Features"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="tap-44-y flex items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-sunken)",
+          color: "var(--app-ink-2)",
+        }}
+      >
+        <Accessibility
+          className="h-4 w-4 shrink-0"
+          strokeWidth={2.1}
+          style={{ color: "var(--app-cool)" }}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 text-[12px] leading-snug">
+          Deaf and hard-of-hearing riders: Maryland Relay 711 and TransIT
+          accessibility help.
+        </span>
+        <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      </a>
 
       <section aria-labelledby="live-network-heading" className="space-y-2.5">
         <div className="flex items-end justify-between gap-3 px-1">

@@ -138,7 +138,7 @@ function IntentChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className="event-intent-tile tactile tactile-interactive tap-44 flex min-h-[90px] w-[112px] shrink-0 flex-col items-start justify-between overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left transition"
+      className="event-intent-tile tactile tactile-interactive tap-44 flex min-h-[76px] w-[104px] shrink-0 flex-col items-start justify-between overflow-hidden rounded-[var(--app-radius-md)] border p-2.5 text-left transition"
       style={{
         background: active
           ? `color-mix(in srgb, ${accent} 76%, var(--app-ink))`

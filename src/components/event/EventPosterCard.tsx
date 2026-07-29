@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventAttendanceLabel } from "@/lib/events/attendance";
+import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventDateBlock } from "@/lib/events/format";
 import { formatDistance } from "@/lib/geo";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -14,6 +14,7 @@ import {
   eventCardVisual,
   type EventCardVisual,
 } from "@/components/event/eventVisuals";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -35,18 +36,27 @@ export type EventPosterCardProps = {
 
 /**
  * Resolve the poster face without ever falling back to `event.hero_image`
- * directly. Place-photo proxy URLs do not carry the Google attribution needed
- * by an editorial poster, so even an accidentally supplied explicit visual
- * fails closed to the honest category plate.
+ * directly. Place-photo proxy URLs are accepted only when the event carries
+ * the matching author and direct Google Maps source; an accidentally supplied
+ * explicit visual still fails closed to the honest category plate.
  */
 export function posterVisualForEvent(
   event: EventWithMeta,
   explicit?: EventCardVisual,
 ): EventCardVisual | null {
-  const candidate = explicit ?? eventCardVisual(event);
-  if (!candidate?.caption.trim()) return null;
-  if (candidate.src.startsWith("/api/place-photo")) return null;
-  return candidate;
+  const approved = eventCardVisual(event);
+  if (!approved?.caption.trim()) return null;
+  if (
+    explicit &&
+    (explicit.key !== approved.key ||
+      explicit.src !== approved.src ||
+      explicit.caption !== approved.caption ||
+      explicit.attribution?.source_uri !== approved.attribution?.source_uri ||
+      explicit.sourceHref !== approved.sourceHref)
+  ) {
+    return null;
+  }
+  return approved;
 }
 
 /**
@@ -78,6 +88,7 @@ export default function EventPosterCard({
   const statusBg =
     isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
   const reasons = eventReasons(event);
+  const accessLabel = communicationAccessLabels(event)[0];
   const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
   const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
   const eyebrowColor = onPhoto
@@ -89,8 +100,10 @@ export default function EventPosterCard({
 
   return (
     <article
-      className={`tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
-        layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"
+      className={`tactile tactile-feature tactile-ring tactile-interactive group relative w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
+        onPhoto
+          ? `aspect-[3/2] ${layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"}`
+          : "min-h-[230px] sm:min-h-[250px] lg:min-h-[270px]"
       }`}
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
@@ -105,6 +118,7 @@ export default function EventPosterCard({
             alt=""
             fill
             priority={priorityImage}
+            unoptimized={safeVisual.src.startsWith("/api/place-photo")}
             sizes="(max-width: 640px) 100vw, 720px"
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
@@ -120,17 +134,35 @@ export default function EventPosterCard({
           />
         </>
       ) : (
-        <>
-          <CategoryGraphic category={event.category} seed={event.slug} />
+        <div
+          aria-hidden
+          data-event-fallback="date-category"
+          className="absolute inset-0 overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 13%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 68%)`,
+          }}
+        >
           <span
-            aria-hidden
-            className="absolute inset-0"
+            className="absolute left-4 top-[42px] font-editorial text-[64px] leading-none tracking-[-0.06em]"
+            style={{ color: `color-mix(in srgb, ${accent} 42%, var(--app-ink))` }}
+          >
+            {date.day}
+          </span>
+          <span
+            className="absolute left-[88px] top-[51px] flex flex-col border-l pl-3 font-mono uppercase"
             style={{
-              background:
-                "linear-gradient(to top, var(--app-bg-elevated-solid) 1%, color-mix(in srgb, var(--app-bg-elevated-solid) 86%, transparent) 42%, transparent 76%)",
+              borderColor: `color-mix(in srgb, ${accent} 38%, var(--app-border))`,
+              color: "var(--app-ink-2)",
             }}
+          >
+            <span className="text-[13px] font-semibold tracking-[0.12em]">{date.month}</span>
+            <span className="mt-1 text-[10px] tracking-[0.1em]">{date.weekday}</span>
+          </span>
+          <span
+            className="absolute left-4 right-4 top-[116px] h-px"
+            style={{ background: `color-mix(in srgb, ${accent} 24%, var(--app-border))` }}
           />
-        </>
+        </div>
       )}
 
       <span
@@ -141,7 +173,6 @@ export default function EventPosterCard({
 
       <div
         className="absolute inset-x-0 top-0 flex items-center gap-2 px-4 pt-3.5"
-        style={!onPhoto ? { paddingLeft: "3.75rem" } : undefined}
       >
         <span
           className="truncate text-[10px] font-bold uppercase tracking-[0.1em]"
@@ -170,9 +201,12 @@ export default function EventPosterCard({
           </span>
         )}
         {safeVisual ? (
-          <span className="ml-auto max-w-[62%] truncate rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold tracking-[0.02em] text-white backdrop-blur-sm">
-            {safeVisual.caption}
-          </span>
+          <EventVisualCredit
+            visual={safeVisual}
+            overlay
+            compact
+            className="relative z-20 ml-auto max-w-[68%] rounded-[9px] bg-black/55 px-2 py-1 backdrop-blur-sm"
+          />
         ) : (
           event.distance_m !== undefined && (
             <span
@@ -219,7 +253,7 @@ export default function EventPosterCard({
             {whyItMatters}
           </p>
         )}
-        {(reasons.length > 0 || event.is_free) && (
+        {(reasons.length > 0 || event.is_free || accessLabel) && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {event.is_free && (
               <span
@@ -232,6 +266,19 @@ export default function EventPosterCard({
                 }}
               >
                 Free
+              </span>
+            )}
+            {accessLabel && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
+                style={{
+                  background: onPhoto
+                    ? "rgba(255,255,255,0.92)"
+                    : "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+                  color: "var(--app-cool)",
+                }}
+              >
+                {accessLabel}
               </span>
             )}
             {!onPhoto && reasons.length > 0 && (

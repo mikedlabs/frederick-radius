@@ -34,4 +34,10 @@ describe("primaryAnswerFor", () => {
     expect(primaryAnswerFor("zzxq")).toBeNull();
     expect(primaryAnswerFor("a")).toBeNull();
   });
+
+  it("does not mistake automotive service language for retail shopping", () => {
+    expect(primaryAnswerFor("nearest auto repair shop")).toBeNull();
+    expect(primaryAnswerFor("car wash near me")).toBeNull();
+    expect(primaryAnswerFor("oil change")).toBeNull();
+  });
 });

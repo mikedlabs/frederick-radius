@@ -63,9 +63,11 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
   pub: "bar",
   bakery: "bakery",
   brewery: "brewery",
-  distillery: "brewery",
-  winery: "brewery",
-  ice_cream_shop: "bakery",
+  distillery: "distillery",
+  winery: "winery",
+  cidery: "winery",
+  meadery: "winery",
+  ice_cream_shop: "ice-cream",
   meal_takeaway: "restaurant",
   meal_delivery: "restaurant",
   pizza_restaurant: "pizza",
@@ -84,7 +86,7 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
   book_store: "book-store",
   antique_store: "antiques",
   yoga_studio: "yoga",
-  gym: "wellness",
+  gym: "yoga",
   lodging: "lodging",
   hotel: "lodging",
   bed_and_breakfast: "lodging",
@@ -135,17 +137,6 @@ function parseAddress(addr?: string): {
   return { street, city, postal };
 }
 
-function blurbFromEditorial(e: Enriched): string {
-  if (e.editorial_summary && e.editorial_summary.length >= 25) {
-    return e.editorial_summary.slice(0, 320);
-  }
-  // Fallback: a category-aware one-liner. Honest about being a
-  // placeholder so the editor knows to rewrite.
-  const cat = TYPE_TO_CATEGORY[e.detail_primary_type ?? ""] ??
-    TYPE_TO_CATEGORY[e.primary_type ?? ""] ?? "place";
-  return `A ${cat.replace("-", " ")} in ${e.municipality}. Description not yet written.`;
-}
-
 async function main() {
   const enriched = JSON.parse(readFileSync(ENRICHED, "utf8")) as Enriched[];
   // Decisions now live in the curation_decisions table (DB-backed so the owner
@@ -175,7 +166,9 @@ async function main() {
       slug,
       name: e.name,
       category: cat,
-      short_blurb: blurbFromEditorial(e),
+      // Provider-written copy remains in the attributed enrichment record.
+      // Public Radius descriptions are added only through the approved registry.
+      short_blurb: "",
       address: addr.street,
       city: addr.city,
       state: "MD",

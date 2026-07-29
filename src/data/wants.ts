@@ -80,7 +80,11 @@ export const WANTS: WantCategory[] = [
       // one link onward from there) — the guide was orphaned behind /nearby.
       { label: "Parks", icon: "Trees", href: "/parks" },
       { label: "Trails", icon: "Mountain", href: "/trails" },
-      { label: "Playgrounds", icon: "ToyBrick", href: "/category/playground" },
+      // Playgrounds are mapped public amenities, not storefronts. Send this
+      // need to the complete mapped layer and carry the visitor's near-me
+      // intent into the map instead of asking the smaller place catalog which
+      // playground has business hours.
+      { label: "Playgrounds", icon: "ToyBrick", href: "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme" },
       { label: "Rivers & creeks", icon: "Waves", href: "/rivers" },
       { label: "Dog parks", icon: "PawPrint", href: "/nearby?c=outside&facet=dog" },
       { label: "Pools & swimming", icon: "Waves", href: "/nearby?c=pools" },
@@ -155,6 +159,7 @@ export const WANTS: WantCategory[] = [
       { label: "Parking", icon: "ParkingCircle", href: "/parking" },
       { label: "MARC train", icon: "Train", href: "/transit" },
       { label: "Transit bus", icon: "Bus", href: "/transit" },
+      { label: "Auto care", icon: "CarFront", href: "/category/auto-care" },
       { label: "Amenities", icon: "Wrench", href: "/amenities" },
     ],
   },

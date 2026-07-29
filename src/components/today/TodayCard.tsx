@@ -6,6 +6,8 @@ import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
+import { easternDayKey } from "@/lib/tz";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -201,6 +203,18 @@ export default async function TodayCard() {
 
   return (
     <section aria-label="Today in Frederick" className="stagger-children" style={{ color: "currentColor" }}>
+      <OfflineTodayCapture
+        snapshot={{
+          dayKey: easternDayKey(now),
+          weather: {
+            headline: weatherRead.headline || condition,
+            condition: condition || undefined,
+            temperatureF: tempNow ?? undefined,
+            highF: high ?? undefined,
+            safetyNote: weatherRead.safetyNote ?? undefined,
+          },
+        }}
+      />
       {/* The masthead assembles like a published front-endsheet: the dateline,
           the greeting+mood headline, the weather row, and tonight's event rise
           in on load via .stagger-children (one-shot breathe-in; reduced-motion

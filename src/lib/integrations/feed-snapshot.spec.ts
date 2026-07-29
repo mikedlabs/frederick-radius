@@ -44,14 +44,31 @@ function row(
 }
 
 function insertDb(options: { rejectWith?: Error } = {}) {
-  const values = options.rejectWith
-    ? vi.fn().mockRejectedValue(options.rejectWith)
-    : vi.fn().mockResolvedValue(undefined);
+  const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+  const values = vi.fn().mockImplementation((payload: unknown) => {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    const isRollup = Boolean(
+      rows[0]
+      && typeof rows[0] === "object"
+      && "recent_mean_count" in rows[0],
+    );
+    if (isRollup) return { onConflictDoUpdate };
+    if (options.rejectWith) return Promise.reject(options.rejectWith);
+    return Promise.resolve(undefined);
+  });
   const insert = vi.fn(() => ({ values }));
+  const db = {
+    insert,
+    transaction: vi.fn(
+      (work: (tx: { insert: typeof insert }) => Promise<unknown>) =>
+        work({ insert }),
+    ),
+  };
   return {
-    db: { insert },
+    db,
     insert,
     values,
+    onConflictDoUpdate,
   };
 }
 
@@ -115,8 +132,9 @@ describe("feed snapshot persistence boundary", () => {
     ]);
 
     expect(persisted).toBe(2);
-    expect(database.insert).toHaveBeenCalledTimes(1);
-    expect(database.values).toHaveBeenCalledTimes(1);
+    expect(database.db.transaction).toHaveBeenCalledTimes(1);
+    expect(database.insert).toHaveBeenCalledTimes(2);
+    expect(database.values).toHaveBeenCalledTimes(2);
 
     const payload = database.values.mock.calls[0][0] as Array<{
       source: string;
@@ -131,6 +149,24 @@ describe("feed snapshot persistence boundary", () => {
       .toBe(2);
     expect(payload.some(({ source }) => source === "__test_failed_feed__"))
       .toBe(false);
+    const rollups = database.values.mock.calls[1][0] as Array<{
+      source: string;
+      recent_mean_count: number;
+      recent_observations: number;
+    }>;
+    expect(rollups).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: "__test_county__",
+        recent_mean_count: 2,
+        recent_observations: 1,
+      }),
+      expect.objectContaining({
+        source: "__test_library__",
+        recent_mean_count: 1,
+        recent_observations: 1,
+      }),
+    ]));
+    expect(database.onConflictDoUpdate).toHaveBeenCalledOnce();
   });
 
   it("returns zero instead of breaking the health cron when persistence fails", async () => {
@@ -167,8 +203,7 @@ describe("feed snapshot persistence boundary", () => {
   });
 
   it("lets cron workers report snapshot hydration query failures", async () => {
-    const limit = vi.fn().mockRejectedValue(new Error("read unavailable"));
-    const orderBy = vi.fn(() => ({ limit }));
+    const orderBy = vi.fn().mockRejectedValue(new Error("read unavailable"));
     const from = vi.fn(() => ({ orderBy }));
     const select = vi.fn(() => ({ from }));
     mocks.getDb.mockReturnValue({ select });

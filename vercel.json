@@ -77,6 +77,10 @@
       "schedule": "30 8 * * *"
     },
     {
+      "path": "/api/cron/spatial-places",
+      "schedule": "20 8 * * *"
+    },
+    {
       "path": "/api/cron/link-health",
       "schedule": "0 6 * * *"
     },

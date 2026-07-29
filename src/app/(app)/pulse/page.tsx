@@ -40,6 +40,9 @@ import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import { selectRoadTravelSummary } from "@/lib/live/roadIntelligenceModel";
+import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
@@ -267,13 +270,15 @@ export default async function PulsePage() {
   const requestNow = new Date();
   const [
     situation,
+    roadIntelligence,
+    officialSignals,
     fixitResult,
     news,
     press,
     rivers,
     airports,
     forecast,
-    marcBoard,
+    marcBoardResult,
     marcAlerts,
     troutStockings,
     campDavidTfr,
@@ -281,6 +286,8 @@ export default async function PulsePage() {
     // Today, Map, Ask, the global status, and Pulse all begin with the same
     // normalized conditions. Only Pulse-exclusive feeds are fetched below.
     getCurrentSituationSnapshot(),
+    getRoadIntelligenceSnapshot(),
+    getOfficialSignalsSnapshot(),
     withTimeoutStatus(getFixItIssues(15), FEED_MS, []),
     // Local headlines from Google News RSS — always-on city signal.
     withTimeout(getLocalHeadlines(), FEED_MS, []),
@@ -301,7 +308,11 @@ export default async function PulsePage() {
     // live delay overlay. The tile head shows the soonest departure; the body
     // is the full per-station board (NextTrainBoard). Complements the live bus
     // map below. Keyless MTA GTFS + GTFS-RT.
-    withTimeout(getMarcBoard(requestNow), FEED_MS, { stations: [], serviceToday: false }),
+    withTimeoutStatus(
+      getMarcBoard(requestNow),
+      FEED_MS,
+      { stations: [], serviceToday: false },
+    ),
     withTimeout(getMarcAlerts(), FEED_MS, []),
     // DNR trout stockings in Frederick waters (Carroll Creek included) —
     // near-daily during the spring/fall runs, empty mid-summer. Keyless
@@ -314,6 +325,8 @@ export default async function PulsePage() {
 
   const fixit = fixitResult.data;
   const fixitAvailable = fixitResult.available;
+  const marcBoard = marcBoardResult.data;
+  const marcBoardAvailable = marcBoardResult.available;
   const marcNow = new Date(situation.generatedAt);
   const sourceIsCurrent = (
     source: { availability: string; freshness: string },
@@ -411,6 +424,19 @@ export default async function PulsePage() {
   const activeAlerts = alertResult.alerts
     .filter((a) => !a.ends_at || Date.parse(a.ends_at) > nowMs)
     .sort(compareAlertPriority);
+  const officialCivicAlerts = [...officialSignals.civic.alerts].sort(
+    (left, right) =>
+      Number(right.kind === "city-emergency") -
+      Number(left.kind === "city-emergency"),
+  );
+  const recentStormReports = officialSignals.stormReports.reports.filter(
+    (report) => report.state === "recent",
+  );
+  const leadOfficialAlert = officialCivicAlerts[0] ?? null;
+  const officialAlertShouldLead = Boolean(
+    leadOfficialAlert &&
+      (leadOfficialAlert.kind === "city-emergency" || !activeAlerts[0]),
+  );
   // The shared snapshot has already rejected unavailable or stale AirNow
   // observations. An empty successful read stays distinct from a fresh one and
   // therefore keeps the briefing partial instead of creating a false all-clear.
@@ -429,6 +455,17 @@ export default async function PulsePage() {
   // Planned road work / closures / emergency advisories (distinct from the
   // live MDOT traffic tile). Self-hides when the feeds carry none recent.
   const advisories = advisoryReleases(press).slice(0, 6);
+  const roadTravel = selectRoadTravelSummary(roadIntelligence);
+  const roadLead = roadIntelligence.attention[0] ?? null;
+  const activeWorkZones = roadTravel.workZones.filter(
+    (zone) => zone.status === "active",
+  );
+  const supportingWorkZones = activeWorkZones.filter(
+    (zone) => zone.lanes.summary !== "all-lanes-closed",
+  );
+  const roadTrafficActive = highTraffic.length > 0 || Boolean(roadLead);
+  const roadCheckComplete =
+    trafficAvailable && roadIntelligence.summary.coverage === "complete";
 
   // Pulse is active if any trusted urgent category is active. The featured
   // police release must use this SAME model as its breaking strip; otherwise a
@@ -436,9 +473,9 @@ export default async function PulsePage() {
   // "All clear" masthead. We intentionally do not add unlike records into one
   // fake situation total.
   const { heroDegraded, allClear } = pulseStatusState({
-    weather: activeAlerts.length > 0,
+    weather: activeAlerts.length > 0 || officialCivicAlerts.length > 0,
     fireRescue: severeSafety.length > 0,
-    traffic: highTraffic.length > 0,
+    traffic: roadTrafficActive,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
     air: aqiActive,
@@ -481,6 +518,40 @@ export default async function PulsePage() {
       { label: "Category", value: aqiWorst.category.name },
       { label: "Pollutant", value: aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase()) },
       { label: "Observed", value: aqiClock(aqiWorst) },
+    ];
+  } else if (officialAlertShouldLead && leadOfficialAlert) {
+    heroTone = "warning";
+    heroLeadKey = "alerts";
+    heroLine = leadOfficialAlert.title;
+    heroSub =
+      leadOfficialAlert.summary ||
+      "Open the official notice for the affected area and current instructions.";
+    heroLeadMeta = [
+      leadOfficialAlert.scope === "city" ? "City of Frederick" : "Frederick County",
+      leadOfficialAlert.publishedAt
+        ? timeAgo(leadOfficialAlert.publishedAt)
+        : null,
+    ].filter(Boolean).join(" · ");
+    heroActionLabel = "Read the official notice";
+    heroFacts = [
+      {
+        label: "Publisher",
+        value: leadOfficialAlert.provenance.publisher,
+      },
+      {
+        label: "Area",
+        value:
+          leadOfficialAlert.scope === "city"
+            ? "City of Frederick"
+            : "Frederick County",
+      },
+      { label: "Status", value: "Active notice" },
+      {
+        label: "Published",
+        value: leadOfficialAlert.publishedAt
+          ? timeAgo(leadOfficialAlert.publishedAt) || "Current notice"
+          : "Current notice",
+      },
     ];
   } else if (leadAlert) {
     heroTone = pulseAlertPriority(leadAlert) <= 4 ? "danger" : "warning";
@@ -553,6 +624,27 @@ export default async function PulsePage() {
       {
         label: "Utility update",
         value: outageResult.asOf ? timeAgo(outageResult.asOf) : "Current report",
+      },
+    ];
+  } else if (roadLead) {
+    heroLeadKey = "traffic";
+    heroTone = roadLead.severity === "emergency" ? "danger" : "warning";
+    heroLine = roadLead.title;
+    heroSub = roadLead.detail;
+    heroLeadMeta = [
+      roadLead.scope,
+      roadLead.observedAt ? timeAgo(roadLead.observedAt) : null,
+    ].filter(Boolean).join(" · ");
+    heroActionLabel = "Check the road details";
+    heroFacts = [
+      { label: "Area", value: roadLead.scope },
+      { label: "Status", value: roadLead.severity === "emergency" ? "Emergency" : "Use caution" },
+      { label: "Source", value: roadLead.sourceLabel },
+      {
+        label: "Observed",
+        value: roadLead.observedAt
+          ? timeAgo(roadLead.observedAt) || "Current report"
+          : "Current report",
       },
     ];
   } else if (leadTraffic) {
@@ -874,12 +966,52 @@ export default async function PulsePage() {
     riverPeekHeight != null ? clampPercent((riverPeekHeight / (riverFloodRef || 15)) * 100) : 0;
 
   const fixitPct = clampPercent((fixit.length / 25) * 100);
+  const activeOfficialAlertCount =
+    activeAlerts.length + officialCivicAlerts.length;
+  const leadDisplayedAlert = officialAlertShouldLead
+    ? leadOfficialAlert
+    : leadAlert ?? leadOfficialAlert;
+  const officialAlertsCheckComplete =
+    alertResult.available &&
+    officialSignals.civic.available &&
+    !officialSignals.civic.degraded;
+  const officialAlertsDegraded = !officialAlertsCheckComplete;
+  const officialAlertsCountLabel = leadDisplayedAlert
+    ? "event" in leadDisplayedAlert
+      ? leadDisplayedAlert.event
+      : leadDisplayedAlert.title
+    : recentStormReports.length > 0
+      ? `${recentStormReports.length} preliminary ${
+          recentStormReports.length === 1 ? "report" : "reports"
+        }`
+      : officialAlertsCheckComplete
+        ? "No current notices"
+        : "Check incomplete";
+  const officialAlertsPeek = activeOfficialAlertCount > 0
+    ? `${activeOfficialAlertCount} current ${
+        activeOfficialAlertCount === 1 ? "notice" : "notices"
+      }`
+    : recentStormReports.length > 0
+      ? "Recent observations; not active warnings"
+      : officialAlertsCheckComplete
+        ? "No current notices in the checked feeds"
+        : "At least one official feed could not be checked";
+  const officialAlertsAccent = activeAlerts.some(
+    (alert) =>
+      pulseAlertPriority(alert) <= 5 ||
+      alert.severity === "Extreme" ||
+      alert.severity === "Severe",
+  )
+    ? "var(--app-danger)"
+    : activeOfficialAlertCount > 0 || officialAlertsDegraded
+      ? "var(--app-warning)"
+      : "var(--app-cool)";
 
   const situationActive: Record<string, boolean> = {
-    alerts: activeAlerts.length > 0,
+    alerts: activeAlerts.length > 0 || officialCivicAlerts.length > 0,
     air: aqiActive,
     safety: severeSafety.length > 0,
-    traffic: highTraffic.length > 0,
+    traffic: roadTrafficActive,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
   };
@@ -1045,7 +1177,7 @@ export default async function PulsePage() {
           : "var(--app-cool)",
       active: severeSafety.length > 0,
       attention: situationActive.safety,
-      degraded: safetyState === "unavailable",
+      degraded: safetyState !== "current",
       kind: "status",
       sourceLabel: "PulsePoint",
       peek: safety.length > 0
@@ -1076,25 +1208,75 @@ export default async function PulsePage() {
       key: "traffic",
       label: "Traffic",
       iconName: "Construction",
-      countLabel: traffic.length > 0
+      countLabel: roadLead
+        ? roadLead.title
+        : traffic.length > 0
         ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}`
-        : trafficAvailable
-          ? "None reported"
-          : "Feed unavailable",
-      accent: traffic.length > 0 || !trafficAvailable ? "var(--app-warning)" : "var(--app-cool)",
-      active: traffic.length > 0,
+        : activeWorkZones.length > 0
+          ? `${activeWorkZones.length} active ${activeWorkZones.length === 1 ? "work zone" : "work zones"}`
+          : roadCheckComplete
+            ? "No major impact"
+            : "Check incomplete",
+      accent: roadTrafficActive || !roadCheckComplete ? "var(--app-warning)" : "var(--app-cool)",
+      active: roadTrafficActive,
       attention: situationActive.traffic,
-      degraded: !trafficAvailable,
+      degraded: !roadCheckComplete,
       kind: "status",
-      sourceLabel: "MDOT CHART",
+      sourceLabel: "MDOT CHART + Maryland WZDx",
       peek:
-        traffic.length > 0
+        roadLead
+          ? `${roadLead.scope} · ${roadLead.detail}`
+          : traffic.length > 0
           ? `${traffic[0].road || traffic[0].location}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
-          : trafficAvailable
-            ? "roads moving"
-            : "MDOT CHART could not be reached",
-      body: traffic.length > 0
-        ? traffic.slice(0, 12).map((i) => (
+          : activeWorkZones.length > 0
+            ? `${activeWorkZones.length} official work ${activeWorkZones.length === 1 ? "zone" : "zones"} in Frederick County`
+            : roadCheckComplete
+              ? "No major road impact appears in the checked feeds"
+              : "At least one official road feed could not be checked",
+      body:
+        roadIntelligence.attention.length > 0 ||
+        supportingWorkZones.length > 0 ||
+        traffic.length > 0
+          ? (
+            <>
+              {roadIntelligence.attention.slice(0, 5).map((signal) => (
+                <Row
+                  key={signal.id}
+                  tone={signal.severity === "emergency" ? "danger" : "warning"}
+                  title={signal.title}
+                  body={signal.detail}
+                  meta={[
+                    signal.scope,
+                    signal.observedAt ? timeAgo(signal.observedAt) : undefined,
+                    signal.sourceLabel,
+                  ]}
+                />
+              ))}
+              {supportingWorkZones.slice(0, 6).map((zone) => (
+                <Row
+                  key={`work-zone-${zone.id}`}
+                  tone={zone.lanes.summary === "some-lanes-closed" ? "warning" : "muted"}
+                  title={`${zone.road} · ${zone.status === "active" ? "Active road work" : "Scheduled road work"}`}
+                  body={zone.description}
+                  meta={[
+                    zone.lanes.summary === "some-lanes-closed"
+                      ? zone.lanes.closed > 0
+                        ? `${zone.lanes.closed} ${zone.lanes.closed === 1 ? "lane" : "lanes"} closed`
+                        : "Lane closure"
+                      : "No lane closure reported",
+                    zone.direction,
+                    zone.endAt
+                      ? `Through ${new Date(zone.endAt).toLocaleString("en-US", {
+                          timeZone: "America/New_York",
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                        })}`
+                      : undefined,
+                  ]}
+                />
+              ))}
+              {traffic.slice(0, 12).map((i) => (
             <Row
               key={i.id}
               tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
@@ -1110,12 +1292,14 @@ export default async function PulsePage() {
                   : undefined,
               ]}
             />
-          ))
-        : emptyNote(
-            trafficAvailable
-              ? "No traffic incidents or roadwork are reported right now."
-              : "MDOT CHART incident data could not be loaded right now.",
-          ),
+              ))}
+            </>
+          )
+          : emptyNote(
+              roadCheckComplete
+                ? "The official feeds report no major traffic incident, severe road condition, or active work-zone closure in Frederick County."
+                : "At least one official road feed could not be checked. Open MDOT CHART before relying on this result.",
+            ),
     },
     {
       key: "schools",
@@ -1177,6 +1361,7 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: false,
       attention: false,
+      degraded: !fixitAvailable,
       kind: "gauge",
       gauge: { value: fixit.length, pct: fixitPct, unit: "open reports" },
       sourceLabel: "FCG FixIT · SeeClickFix",
@@ -1202,61 +1387,199 @@ export default async function PulsePage() {
     },
     {
       key: "alerts",
-      label: "Weather alerts",
+      label: "Official alerts",
       iconName: "CloudAlert",
-      countLabel: activeAlerts.length > 0
-        ? activeAlerts[0].event
-        : alertResult.available
-          ? "None"
-          : "Unavailable",
-      accent: activeAlerts.length > 0
-        ? "var(--app-danger)"
-        : alertResult.available
-          ? "var(--app-cool)"
-          : "var(--app-warning)",
-      active: activeAlerts.length > 0,
+      countLabel: officialAlertsCountLabel,
+      accent: officialAlertsAccent,
+      active: activeOfficialAlertCount > 0,
       attention: situationActive.alerts,
-      degraded: !alertResult.available,
+      degraded: officialAlertsDegraded,
       kind: "status",
-      sourceLabel: "NWS · weather.gov",
-      peek: activeAlerts.length > 0
-        ? `${activeAlerts.length} active`
-        : alertResult.available
-          ? "nothing posted"
-          : "feed did not answer",
-      body: activeAlerts.length > 0
-        ? activeAlerts.slice(0, 6).map((a) => {
-            const priority = pulseAlertPriority(a);
-            const tone =
-              priority <= 5 || a.severity === "Extreme" || a.severity === "Severe"
-                ? "danger"
-                : priority === 6 || a.severity === "Moderate"
-                  ? "warning"
-                  : "cool";
-            return (
-              <div key={a.id} className="space-y-1.5">
-                <Row
-                  tone={tone}
-                  title={a.event}
-                  body={alertGuidance(a.event, a.headline, a.description, freshAqiObs, marcNow)}
-                  meta={["Frederick County", alertEndLabel(a.ends_at)]}
-                />
-                <a
-                  href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-1 text-[11px] font-semibold"
-                  style={{ color: "var(--app-cool)" }}
+      sourceLabel: "NWS + City + County",
+      peek: officialAlertsPeek,
+      body: (
+        <div className="space-y-4">
+          {activeAlerts.length > 0 && (
+            <section aria-labelledby="pulse-weather-alerts-heading" className="space-y-3">
+              <p
+                id="pulse-weather-alerts-heading"
+                className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Weather alerts
+              </p>
+              {activeAlerts.slice(0, 6).map((alert) => {
+                const priority = pulseAlertPriority(alert);
+                const tone =
+                  priority <= 5 ||
+                  alert.severity === "Extreme" ||
+                  alert.severity === "Severe"
+                    ? "danger"
+                    : priority === 6 || alert.severity === "Moderate"
+                      ? "warning"
+                      : "cool";
+                return (
+                  <div key={alert.id} className="space-y-1.5">
+                    <Row
+                      tone={tone}
+                      title={alert.event}
+                      body={alertGuidance(
+                        alert.event,
+                        alert.headline,
+                        alert.description,
+                        freshAqiObs,
+                        marcNow,
+                      )}
+                      meta={["Frederick County", alertEndLabel(alert.ends_at)]}
+                    />
+                    <a
+                      href={alert.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 items-center gap-1 px-1 text-[11px] font-semibold"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      Read the NWS alert
+                      <ExternalLink aria-hidden className="h-3 w-3" />
+                    </a>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          {officialCivicAlerts.length > 0 && (
+            <section
+              aria-labelledby="pulse-civic-alerts-heading"
+              className={`${activeAlerts.length > 0 ? "border-t pt-4" : ""} space-y-3`}
+              style={
+                activeAlerts.length > 0
+                  ? { borderColor: "var(--app-border)" }
+                  : undefined
+              }
+            >
+              <p
+                id="pulse-civic-alerts-heading"
+                className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                City and County notices
+              </p>
+              {officialCivicAlerts.slice(0, 6).map((alert) => (
+                <div key={alert.id} className="space-y-1.5">
+                  <Row
+                    tone={alert.kind === "city-emergency" ? "danger" : "warning"}
+                    title={alert.title}
+                    body={
+                      alert.summary ||
+                      "Open the official notice for current instructions."
+                    }
+                    meta={[
+                      alert.scope === "city"
+                        ? "City of Frederick"
+                        : "Frederick County",
+                      alert.publishedAt
+                        ? timeAgo(alert.publishedAt)
+                        : undefined,
+                    ]}
+                  />
+                  <a
+                    href={alert.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-1 px-1 text-[11px] font-semibold"
+                    style={{ color: "var(--app-cool)" }}
+                  >
+                    Read the official notice
+                    <ExternalLink aria-hidden className="h-3 w-3" />
+                  </a>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {recentStormReports.length > 0 && (
+            <section
+              aria-labelledby="pulse-storm-reports-heading"
+              className={`${
+                activeOfficialAlertCount > 0 ? "border-t pt-4" : ""
+              } space-y-3`}
+              style={
+                activeOfficialAlertCount > 0
+                  ? { borderColor: "var(--app-border)" }
+                  : undefined
+              }
+            >
+              <div className="space-y-1 px-1">
+                <p
+                  id="pulse-storm-reports-heading"
+                  className="text-[10px] font-semibold uppercase tracking-[0.1em]"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
-                  Read the full official alert
-                  <ExternalLink aria-hidden className="h-3 w-3" />
-                </a>
+                  Recent storm reports
+                </p>
+                <p
+                  className="text-[11px] leading-relaxed"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  These are preliminary observations published by NWS. They are
+                  not active warnings.
+                </p>
               </div>
-            );
-          })
-        : alertResult.available
-          ? emptyNote("No weather alerts are active for Frederick County right now.")
-          : emptyNote("Weather alerts could not be checked right now. Use weather.gov for the official status."),
+              {recentStormReports.slice(0, 6).map((report) => (
+                <div key={report.id} className="space-y-1.5">
+                  <Row
+                    tone="muted"
+                    title={report.event}
+                    body={report.summary}
+                    meta={[
+                      report.location,
+                      report.magnitude || undefined,
+                      report.occurredAt
+                        ? timeAgo(report.occurredAt)
+                        : undefined,
+                    ]}
+                  />
+                  <a
+                    href={report.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-1 px-1 text-[11px] font-semibold"
+                    style={{ color: "var(--app-cool)" }}
+                  >
+                    Open the NWS report
+                    <ExternalLink aria-hidden className="h-3 w-3" />
+                  </a>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {activeOfficialAlertCount === 0 &&
+            recentStormReports.length === 0 &&
+            emptyNote(
+              officialAlertsCheckComplete
+                ? "No current notice appears in the official feeds Radius checked."
+                : "At least one official alert feed could not be checked. Open weather.gov or the City and County alert pages before relying on this result.",
+            )}
+
+          {officialAlertsDegraded &&
+            (activeOfficialAlertCount > 0 ||
+              recentStormReports.length > 0) && (
+              <p
+                className="rounded-[var(--app-radius-sm)] border px-3 py-2 text-[11px] leading-relaxed"
+                style={{
+                  borderColor: "var(--app-warning)",
+                  background: "var(--app-warning-tint-6)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                At least one official alert feed could not be checked. The
+                notices shown here may not be complete.
+              </p>
+            )}
+        </div>
+      ),
     },
     {
       // Rivers is live county data (rising water), not an alert — it stays a
@@ -1274,6 +1597,7 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: false,
       attention: false,
+      degraded: rivers.length === 0,
       kind: riverPeekHeight != null ? "gauge" : "status",
       ...(riverPeekHeight != null
         ? {
@@ -1366,8 +1690,17 @@ export default async function PulsePage() {
               See 24-hour trends and the gauge map
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
+            <Link
+              href="/map?show=roads"
+              className="inline-flex items-center gap-1 px-1 text-[12px] font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              See County-mapped high-water context
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </Link>
             <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Latest reading + 6-hour trend. Flood categories are the National Weather Service&rsquo;s; crest forecasts stay with them.
+              Gauge readings are live. The high-water map is static risk
+              context and does not report current flooding.
             </p>
           </div>
         )
@@ -1421,6 +1754,7 @@ export default async function PulsePage() {
       accent: marcAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: marcAlerts.length > 0,
       attention: false,
+      degraded: !marcBoardAvailable,
       kind: "status",
       sourceLabel: "MTA MARC · Brunswick Line",
       peek: marcAlerts.length > 0
@@ -1491,6 +1825,7 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: false,
       attention: false,
+      degraded: news.length === 0,
       kind: "status",
       sourceLabel: "Google News · Frederick County",
       peek: news[0]?.title,
@@ -1599,7 +1934,14 @@ export default async function PulsePage() {
     if (outagesActive) {
       addHeroChip({ tone: outageTone, label: `${outages.total_out.toLocaleString()} without power`, key: "power", meta: "Potomac Edison area" });
     }
-    if (leadTraffic) {
+    if (roadLead) {
+      addHeroChip({
+        tone: roadLead.severity === "emergency" ? "danger" : "warning",
+        label: roadLead.title,
+        key: "traffic",
+        meta: roadLead.scope,
+      });
+    } else if (leadTraffic) {
       addHeroChip({
         tone: "warning",
         label: chartTodayTitle(leadTraffic),
@@ -1664,6 +2006,9 @@ export default async function PulsePage() {
           </summary>
           <div className="grid min-w-0 grid-cols-1 gap-x-4 pb-1 pt-1 sm:grid-cols-2">
             <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
+            <SourceLine label="City alerts" source="City of Frederick" href="https://www.cityoffrederickmd.gov/AlertCenter.aspx?CID=City-Emergencies-4" />
+            <SourceLine label="County health alerts" source="Frederick County Health Department" href="https://health.frederickcountymd.gov/AlertCenter.aspx" />
+            <SourceLine label="Storm observations" source="NWS Baltimore/Washington" href="https://www.weather.gov/lwx/" />
             <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
             <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
             <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />

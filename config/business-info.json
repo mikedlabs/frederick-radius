@@ -1,5 +1,5 @@
 {
-  "_doc": "Tuning for scripts/ingest-business-info.ts — the business deep-info agent. It reads each place's official website from src/data/places-enrichment.json, extracts supported business facts, and deterministically preserves real menu, order, reservation, catering, and gift-card anchors. The model never constructs commerce URLs. This config controls which businesses to read and how often. typeIncludes/excludeDomains are substring matches. Add ANTHROPIC_API_KEY (repo secret) to run; the agent validates each fetch, falls back to a headless render when a site is JS-only, and never fabricates.",
+  "_doc": "Shared tuning for official business-site reads. scripts/refresh-official-commerce-links.ts deterministically preserves real menu, order, reservation, catering, and gift-card anchors without an AI key. scripts/ingest-business-info.ts separately uses ANTHROPIC_API_KEY for supported prose facts. Neither path constructs commerce URLs. Both validate fetches, may fall back to a headless render for JS-only sites, and exclude social networks, directories, marketplaces, and government pages.",
   "typeIncludes": [
     "restaurant", "bar", "cafe", "coffee", "bakery", "brew", "winery", "wine",
     "pub", "food", "ice_cream", "deli", "pizza", "diner", "distill", "gastropub",
@@ -8,6 +8,10 @@
   "excludeDomains": [
     "facebook.com", "instagram.com", "twitter.com", "x.com", "yelp.com",
     "tripadvisor", "doordash", "ubereats", "grubhub", "toasttab", "google.com",
+    "wheree.com", "goto-where.com", "menu-world.com", "findmenuworld.com",
+    "menus.fyi", "restaurantguru.com", "allmenus.com", "menupix.com",
+    "sirved.com", "usarestaurants.info", "restaurantji.com", "loc8nearme.com",
+    "mapquest.com", "yellowpages.com", "chamberofcommerce.com", "businessyab.com",
     "cityoffrederick", "visitfrederick.org", "nps.gov", "dnr.maryland",
     "maryland.gov", ".gov", "linktr.ee"
   ],

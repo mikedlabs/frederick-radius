@@ -23,15 +23,20 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
   const specials = (info.specials ?? []).filter(Boolean);
   const notable = info.notable?.trim();
   if (!knownFor && !happy && specials.length === 0 && !notable) return null;
+  // A commerce-only refresh record intentionally has no prose source. It can
+  // still power Menu/Order actions, but it must never render a sourced-facts
+  // card without a source for those facts.
+  if (!info.source) return null;
+  const source = info.source;
 
   const host = (() => {
     try {
-      return new URL(info.source.url).hostname.replace(/^www\./, "");
+      return new URL(source.url).hostname.replace(/^www\./, "");
     } catch {
       return "their site";
     }
   })();
-  const fresh = freshnessLabel(info.source?.fetchedAt);
+  const fresh = freshnessLabel(source.fetchedAt);
 
   return (
     <section
@@ -81,7 +86,7 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
       </dl>
 
       <a
-        href={info.source.url}
+        href={source.url}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-3 inline-flex items-center gap-1 text-[11px]"

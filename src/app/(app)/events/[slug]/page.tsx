@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
-import { formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
+import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import { resolveEventPageBySlug } from "@/lib/loaders/eventResolver";
 /**
  * Event detail resolves the hand-authored static seed first
@@ -34,15 +34,15 @@ function eventBlurb(e: {
   const town = (e.municipality_name ?? "").trim();
   return town ? `${e.category_name} in ${town}.` : `${e.category_name}.`;
 }
-import { decoratePlace, publicPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
+import { eventCardVisual } from "@/components/event/eventVisuals";
 import GettingThere from "@/components/event/GettingThere";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -61,6 +61,9 @@ import {
   eventOnlineActionUrl,
   hasPhysicalAttendance,
 } from "@/lib/events/attendance";
+import { communicationAccessLabels } from "@/lib/events/communication-access";
+import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
+import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -146,15 +149,17 @@ export async function generateMetadata(
   if (!resolution) notFound();
   const event = resolution.event;
   const blurb = eventBlurb(event).slice(0, 160);
+  const canonicalSlug =
+    resolution.kind === "seed" ? slug : event.slug;
   return {
     title: event.title,
     description: blurb,
-    alternates: { canonical: `/events/${slug}` },
+    alternates: { canonical: `/events/${canonicalSlug}` },
     openGraph: {
       title: event.title,
       description: blurb,
       type: "article",
-      images: [{ url: `/api/og?type=event&slug=${slug}`, width: 1200, height: 630 }],
+      images: [{ url: `/api/og?type=event&slug=${canonicalSlug}`, width: 1200, height: 630 }],
     },
   };
 }
@@ -194,35 +199,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
   const attendanceLabel = eventAttendanceLabel(event);
+  const communicationAccess = communicationAccessLabels(event);
 
   const cat = CATEGORY_BY_SLUG[event.category];
   const desc = (event.description ?? "").trim();
   const description = splitDescription(desc);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
   const icsUrl = `/api/events/${event.slug}/ics`;
-
-  const nearbyFood: PlaceCardData[] = physicalAttendance
-    ? publicPlaces()
-        .filter((p) => ["restaurant", "coffee", "bar", "brewery", "bakery", "pizza"].includes(p.category))
-        .map((p) => decoratePlace(p, event.geom))
-        .filter((p) => (p.distance_m ?? Infinity) < 2000)
-        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-        .slice(0, 4)
-    : [];
-
-  // Distance cap: 1.5 km (~0.93 mi) — a reasonable walking
-  // distance for a downtown event. Without this cap, a parking
-  // record miscategorized 13 miles away (e.g. "US-40 Trailhead
-  // Parking") would surface as "nearby parking" and erode trust
-  // in the recommendation layer. Same pattern as nearbyFood above.
-  const nearbyParking: PlaceCardData[] = physicalAttendance
-    ? publicPlaces()
-        .filter((p) => p.category === "parking")
-        .map((p) => decoratePlace(p, event.geom))
-        .filter((p) => (p.distance_m ?? Infinity) < 1500)
-        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-        .slice(0, 3)
-    : [];
 
   // Map our lifecycle status to schema.org's enum — a postponed/cancelled game
   // (Frederick Keys feeds these) must not tell Google "scheduled".
@@ -276,10 +259,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   };
 
   const when = formatEventWhen(event);
-  // Quiet social proof: how many devices saved this event (3+ only; the
-  // registry the reminder cron already reads — data the app collected but
-  // never surfaced). Fail-soft null.
-  const saveCount = await eventSaveCount(event.slug).catch(() => null);
   // Split the formatted when into its human date and its clock range so the
   // promoted "when" line can set the date in serif and the time in mono
   // (the brand's data voice). formatEventWhen joins same-day events as
@@ -289,56 +268,24 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const whenTime = whenSep >= 0 ? when.slice(whenSep + 3) : null;
   // Lifecycle status — drives the cancellation banner + a dimmed hero.
   const eventStatus = event.status ?? "scheduled";
+  const eventVisual = eventCardVisual(event);
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
-  // ONE unified set for the page's "what else" sections. These used to read
-  // the ~38-event static seed (EVENTS/allUpcoming), so a live or ingested
-  // event page — the overwhelming majority — showed the same stale handful
-  // under "More upcoming" and a live weekly series showed no other dates.
-  // Fail-soft to the seed-backed pool on any feed trouble.
-  const { publicEvents: unifiedPool } = await assembleUnifiedEvents(new Date(nowMs)).catch(() => ({
-    unified: [],
-    publicEvents: [] as EventWithMeta[],
-  }));
-  const lineup = event.is_recurring
-    ? unifiedPool
-        .filter((e) => seriesKey(e) === seriesKey(event) && e.slug !== event.slug)
-        .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
-    : [];
-
-  // "More upcoming" — events the user is likely to want to see right
-  // after this one. Same-venue future events come first (most useful
-  // context: "what else is happening at this place?"); we fall back to
-  // the next county-wide future events when the venue is quiet. The
-  // current event and any siblings from its recurring series are
-  // always excluded — series siblings are already covered by Full
-  // lineup above. allUpcoming() handles past-filtering + decoration.
-  const currentSeries = seriesKey(event);
-  const seedPool = allUpcoming(new Date(nowMs));
-  const upcomingPool = (unifiedPool.length > 0 ? unifiedPool : seedPool).filter(
-    (e) =>
-      e.slug !== event.slug &&
-      seriesKey(e) !== currentSeries &&
-      Date.parse(e.starts_at) > nowMs,
-  );
-  // A venue-less event has no same-venue shelf: a null/empty key would both
-  // group unrelated venue-less rows together and render the broken header
-  // "More at " — go straight to the county-wide list instead.
-  const eventVenueName = physicalAttendance ? (event.venue_name ?? "").trim() : "";
-  const venueKey = event.venue_place_slug ?? (eventVenueName ? eventVenueName.toLowerCase() : null);
-  const sameVenueUpcoming = venueKey
-    ? upcomingPool
-        .filter((e) => {
-          const k = e.venue_place_slug ?? e.venue_name.toLowerCase();
-          return k === venueKey;
-        })
-        .slice(0, 4)
-    : [];
-  const moreUpcoming =
-    sameVenueUpcoming.length >= 2 && eventVenueName
-      ? { title: `More at ${eventVenueName}`, items: sameVenueUpcoming }
-      : { title: "More upcoming events", items: upcomingPool.slice(0, 6) };
+  // Secondary context is bounded and independent. The primary event has
+  // already resolved; a slow related/nearby source degrades to the seed/slim
+  // catalog fallback instead of rebuilding the full event and place catalogs.
+  const [saveCount, related, nearby] = await Promise.all([
+    eventSaveCount(event.slug).catch(() => null),
+    loadRelatedEventSections(event, new Date(nowMs)),
+    physicalAttendance
+      ? loadEventNearbyPlaces(event)
+      : Promise.resolve({ food: [], parking: [], source: "catalog-fallback" as const }),
+  ]);
+  const lineup = related.lineup;
+  const moreUpcoming = related.moreUpcoming;
+  const nearbyFood = nearby.food;
+  const nearbyParking = nearby.parking;
   const firstLineupDates = lineup.slice(0, 4);
   const moreLineupDates = lineup.slice(4, 30);
   const firstUpcoming = moreUpcoming.items.slice(0, 3);
@@ -428,13 +375,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
         }}
       >
-        {event.hero_image ? (
+        {eventVisual ? (
           <div className="relative h-64 w-full overflow-hidden sm:h-72">
             <Image
-              src={event.hero_image}
+              src={eventVisual.src}
               alt=""
               fill
-              unoptimized={event.hero_image.startsWith("/api/place-photo")}
+              unoptimized={eventVisual.src.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -497,6 +444,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </div>
           </div>
         )}
+        {eventVisual ? (
+          <EventVisualCredit
+            visual={eventVisual}
+            className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
+          />
+        ) : null}
         {/* Below-the-hero metadata strip: trust + description + venue/
          *  free/recurrence/organizer/freshness. */}
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
@@ -564,6 +517,33 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             )}
             <FreshnessChip iso={event.last_verified_at} />
           </div>
+          {communicationAccess.length > 0 && (
+            <div
+              className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+              style={{
+                borderColor: "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
+                background: "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
+              }}
+            >
+              <Accessibility
+                className="mt-0.5 h-4 w-4 shrink-0"
+                strokeWidth={2}
+                style={{ color: "var(--app-cool)" }}
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                  Communication access
+                </p>
+                <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  {communicationAccess.join(" · ")}
+                </p>
+                <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                  Shown only when stated by the event publisher.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 

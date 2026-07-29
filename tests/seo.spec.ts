@@ -17,6 +17,7 @@ describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () 
     expect(urls.some((u) => u.endsWith("/today"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/ask"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/collections"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/access"))).toBe(true);
     // /guide now redirects to /ask; never list a redirecting URL.
     expect(urls.some((u) => u.endsWith("/guide"))).toBe(false);
   });

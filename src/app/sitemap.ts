@@ -35,10 +35,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/archive`, lastModified: now, changeFrequency: "monthly", priority: 0.65 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     // Public content surfaces with self-canonicals: the directory index and
-    // the two county-reference pages (amenities, government contacts).
+    // county-reference pages for amenities, contacts, and communication access.
     { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/access`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/pulse`, lastModified: now, changeFrequency: "hourly", priority: 0.75 },
     { url: `${BASE}/signals`, lastModified: now, changeFrequency: "daily", priority: 0.65 },
     // Mobile-vendor roster (roaming trucks live here, not in the places catalog).

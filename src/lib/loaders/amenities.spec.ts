@@ -27,4 +27,54 @@ describe("amenity evidence dedupe", () => {
     ];
     expect(dedupeAmenities(rows, [])).toEqual([rows[1]]);
   });
+
+  it("keeps a playground point near a generic park with no playground evidence", () => {
+    const playground: Amenity = {
+      id: "osm-playground-1",
+      kind: "playground",
+      name: "Playground",
+      municipality: "frederick",
+      lng: -77.41,
+      lat: 39.414,
+    };
+    expect(dedupeAmenities([playground], [{
+      name: "Baker Park",
+      category: "park",
+      short_blurb: "A downtown park with a lake and tennis courts.",
+      geom: { lng: -77.41001, lat: 39.41401 },
+    }])).toEqual([playground]);
+  });
+
+  it("drops a playground point only when the nearby place proves it", () => {
+    const playground: Amenity = {
+      id: "osm-playground-2",
+      kind: "playground",
+      name: "Playground",
+      municipality: "frederick",
+      lng: -77.41,
+      lat: 39.414,
+    };
+    expect(dedupeAmenities([playground], [{
+      name: "Riverwalk Park",
+      category: "park",
+      short_blurb: "Park featuring a playground, pavilion, and picnic tables.",
+      geom: { lng: -77.41001, lat: 39.41401 },
+    }])).toEqual([]);
+  });
+
+  it("still folds a picnic point into a generic green-space place", () => {
+    const picnic: Amenity = {
+      id: "osm-picnic-1",
+      kind: "picnic",
+      name: "Picnic table",
+      municipality: "frederick",
+      lng: -77.41,
+      lat: 39.414,
+    };
+    expect(dedupeAmenities([picnic], [{
+      name: "Baker Park",
+      category: "park",
+      geom: { lng: -77.41001, lat: 39.41401 },
+    }])).toEqual([]);
+  });
 });

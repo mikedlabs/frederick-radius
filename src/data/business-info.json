@@ -7,7 +7,19 @@
     "source": {
       "url": "http://www.linganorewines.com/",
       "fetchedAt": "2026-05-31T18:15:59.480Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://www.linganorewines.com/",
+      "checkedAt": "2026-07-29T12:34:27.216Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://www.exploretock.com/linganorewines/",
+        "anchor_text": "Porch and Deck Reservations slideshow",
+        "source_url": "https://www.linganorewines.com/"
+      }
+    ]
   },
   "ayse-meze-lounge-frederick": {
     "known_for": "Ayse serves Mediterranean and Neapolitan Italian food, including pizza, pasta, meze, and wood-fired seafood.",
@@ -53,7 +65,25 @@
     "source": {
       "url": "http://monocacybrewing.com/",
       "fetchedAt": "2026-05-31T18:16:21.178Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://monocacybrewing.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/monocacy-brewing/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "Learn More",
+        "source_url": "https://monocacybrewing.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/monocacy-brewing/?utm_source=Monocacy-Website&utm_medium=Pop-up-banner&utm_campaign=Order-Online&utm_content=Order-Online",
+        "anchor_text": "Click to Order Now →",
+        "source_url": "https://monocacybrewing.com/"
+      }
+    ]
   },
   "attaboy-beer-frederick": {
     "known_for": "Attaboy is an independent Frederick brewery making hazy and West Coast IPAs, pilsners, pale ales, lagers, Belgian styles, seltzers, and hard cider.",
@@ -63,6 +93,10 @@
     "source": {
       "url": "http://www.attaboybeer.com/",
       "fetchedAt": "2026-05-31T18:16:28.511Z"
+    },
+    "commerce_source": {
+      "url": "https://www.attaboybeer.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "rockwell-brewery-frederick": {
@@ -81,6 +115,10 @@
     "source": {
       "url": "http://www.rockwellbrewery.com/",
       "fetchedAt": "2026-05-31T18:16:35.197Z"
+    },
+    "commerce_source": {
+      "url": "https://www.rockwellbrewery.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "milkhouse-brewery-mt-airy": {
@@ -88,10 +126,14 @@
     "happy_hour": "Friday Happy Hour: 3-5pm, $1 off Pints; Thursday: $5 Pours All Night",
     "hours_text": "Taproom Hours: Thursday 5-8pm, Friday 3-8pm, Saturday 1-8pm, Sunday 1-6pm. Mercantile Hours: Saturday 2-7pm, Sunday 2-6pm",
     "notable": "Live music runs every Saturday, and Paws and Pints events welcome dogs. The on-site mercantile carries local food and goods, while the event calendar includes yoga, stargazing, and stitch-and-sip gatherings.",
-    "name": "Milkhouse Brewery",
+    "name": "Milkhouse Brewery at Stillpoint Farm",
     "source": {
       "url": "https://www.milkhousebrewery.com/",
       "fetchedAt": "2026-05-31T18:16:43.279Z"
+    },
+    "commerce_source": {
+      "url": "https://www.milkhousebrewery.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "dublin-roasters-frederick": {
@@ -102,7 +144,25 @@
     "source": {
       "url": "https://dublinroasterscoffee.com/",
       "fetchedAt": "2026-05-31T18:16:48.386Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://dublinroasterscoffee.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://dublinroasterscoffee.square.site/s/order",
+        "anchor_text": "Carryout Menu",
+        "source_url": "https://dublinroasterscoffee.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://dublinroasterscoffee.square.site/s/order?location=50GT3K56RCFER",
+        "anchor_text": "Store",
+        "source_url": "https://dublinroasterscoffee.com/"
+      }
+    ]
   },
   "frederick-coffee-company-frederick": {
     "known_for": "Frederick Coffee Co. has served espresso drinks, breakfast sandwiches, and house-made soups since 1991.",
@@ -122,16 +182,82 @@
     "source": {
       "url": "http://www.isabellas-tavern.com/",
       "fetchedAt": "2026-05-31T18:16:58.705Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://isabellas-tavern.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://isabellas-tavern.com/menus/",
+        "anchor_text": "Menu",
+        "source_url": "https://isabellas-tavern.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/isabellas-taverna-tapas-bar-new",
+        "anchor_text": "Order Online To-Go",
+        "source_url": "https://isabellas-tavern.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/isabellas-taverna-tapas-bar-new/giftcards?utm_source=undefined&utm_content=online--isabellas-taverna-tapas-bar-new&utm_medium=toast_sites&utm_campaign=giftcards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://isabellas-tavern.com/"
+      }
+    ]
   },
   "bushwaller-irish-pub-frederick": {
     "known_for": "Bushwaller's is an Irish pub with 18 draft options, including Guinness, plus whiskey and Irish-American comfort food.",
     "notable": "The building dates to the 1840s, and Guinness originally installed its 18-tap draft system. The pub draws crowds for St. Patrick's Day and televised soccer or rugby matches.",
-    "name": "Bushwaller's",
+    "name": "Bushwaller's Irish Pub",
     "source": {
       "url": "http://bushwallers.com/",
       "fetchedAt": "2026-05-31T18:17:02.489Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://www.bushwallers.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.bushwallers.com/full-menu",
+        "anchor_text": "FULL MENU",
+        "source_url": "https://www.bushwallers.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.bushwallers.com/copy-of-food",
+        "anchor_text": "DRINK MENU",
+        "source_url": "https://www.bushwallers.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.bushwallers.com/menu",
+        "anchor_text": "FOOD",
+        "source_url": "https://www.bushwallers.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.bushwallers.com/sunday-brunch-menu",
+        "anchor_text": "SUNDAY BRUNCH",
+        "source_url": "https://www.bushwallers.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/bushwallers-209-market-st",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://www.bushwallers.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/bushwallers-209-market-st/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.bushwallers.com/"
+      }
+    ]
   },
   "el-rancho-frederick": {
     "known_for": "Gran Azteca serves Mexican food made with seasonal ingredients from local farmers' markets, with dine-in, patio, and takeout options.",
@@ -152,10 +278,14 @@
   "smoketown-brewing-brunswick": {
     "known_for": "Smoketown serves beer and food in a restored Brunswick fire station, with community events and a dog-friendly patio overlooking the railroad bridge.",
     "notable": "The spacious patio welcomes dogs and overlooks the bridge and passing trains. Upstairs at Smoketown provides an event hall for gatherings.",
-    "name": "Smoketown Brewing",
+    "name": "Smoketown Brewing Station",
     "source": {
       "url": "http://www.smoketownbrewing.com/",
       "fetchedAt": "2026-05-31T18:17:17.759Z"
+    },
+    "commerce_source": {
+      "url": "https://www.smoketownbrewing.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "main-cup-middletown": {
@@ -216,7 +346,49 @@
     "source": {
       "url": "https://www.7thsister.com/",
       "fetchedAt": "2026-05-31T18:17:34.525Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://www.7thsister.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.7thsister.com/menus/",
+        "anchor_text": "Menus",
+        "source_url": "https://www.7thsister.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.7thsister.com/thisweeksmenu/",
+        "anchor_text": "Dinner Menu",
+        "source_url": "https://www.7thsister.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.7thsister.com/brunch-menu/",
+        "anchor_text": "Brunch Menu",
+        "source_url": "https://www.7thsister.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/7thsister",
+        "anchor_text": "Takeout",
+        "source_url": "https://www.7thsister.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.doordash.com/store/7th-sister-frederick-23547506/22000746/",
+        "anchor_text": "Order Delivery via DoorDash Now Available.",
+        "source_url": "https://www.7thsister.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.7thsister.com/gift-cards/",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.7thsister.com/"
+      }
+    ]
   },
   "il-porto-restaurant": {
     "hours_text": "Monday–Saturday 11:30am–10:00pm, Sunday 11:30am–9:00pm",
@@ -224,7 +396,19 @@
     "source": {
       "url": "http://www.ilportorestaurant.com/",
       "fetchedAt": "2026-05-31T18:17:38.135Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://www.ilportorestaurant.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.ilportorestaurant.com/dinner-menu/",
+        "anchor_text": "Dinner",
+        "source_url": "https://www.ilportorestaurant.com/"
+      }
+    ]
   },
   "drewskiithebarber": {
     "known_for": "The barbershop has provided haircuts and grooming services to generations of customers since 1965.",
@@ -275,21 +459,61 @@
     "known_for": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
     "hours_text": "Sunday 11:00 AM - 07:00 PM, Monday Closed, Tuesday–Saturday 11:00 AM - 07:00 PM",
     "notable": "This family-owned barbecue business operates a food truck in Olney and offers dine-in service and event catering. A portion of every sale supports local schools and first responders.",
-    "name": "Mackie's Barbecue - Catering",
+    "name": "Mackies Southern BBQ",
     "source": {
       "url": "https://www.mackiesbarbecue.com/",
       "fetchedAt": "2026-05-31T18:17:58.141Z"
+    },
+    "commerce_source": {
+      "url": "http://www.mackiessouthernbarbecue.net/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "the-station-market-and-cafe": {
     "known_for": "The Station is a farm-to-table vegetarian cafe using local ingredients in its pastries, soups, and other dishes.",
     "hours_text": "Mon Closed, Tue Closed, Wed 09:00 am – 04:00 pm, Thu 09:00 am – 04:00 pm, Fri 09:00 am – 05:00 pm, Sat 09:00 am – 05:00 pm, Sun 09:00 am – 04:00 pm",
     "notable": "The kitchen opens around 9:30am on operating days, and weekday online orders quote a 20- to 25-minute pickup time. The site hosts a Saturday farmers market and CSA pickup and is available for rentals or catering.",
-    "name": "The Station Market & Cafe",
+    "name": "The Station Market and Cafe",
     "source": {
       "url": "http://www.thestationmarketandcafe.com/",
       "fetchedAt": "2026-05-31T18:18:03.611Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://thestationmarketandcafe.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://thestationmarketandcafe.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://thestationmarketandcafe.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://thestationmarketandcafe.com/wholesale%2Fcatering%2Forders",
+        "anchor_text": "Wholesale/Catering/Orders",
+        "source_url": "https://thestationmarketandcafe.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.clover.com/online-ordering/the-station-frederick-2/Z62C4ZK6R88WA",
+        "anchor_text": "Weekday Online Ordering",
+        "source_url": "https://thestationmarketandcafe.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.clover.com/online-ordering/the-station-frederick-2",
+        "anchor_text": "get my food now",
+        "source_url": "https://thestationmarketandcafe.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.clover.com/online-ordering/the-station-frederick-2",
+        "anchor_text": "reserve my soup!",
+        "source_url": "https://thestationmarketandcafe.com/"
+      }
+    ]
   },
   "roros-mexican-grill-and-cantina": {
     "known_for": "Plaza Mexico serves Mexican standards such as quesadillas, nachos, and churros in a colorful family restaurant.",
@@ -320,6 +544,10 @@
     "source": {
       "url": "http://www.midnightrunbrew.com/",
       "fetchedAt": "2026-05-31T18:18:22.412Z"
+    },
+    "commerce_source": {
+      "url": "https://www.midnightrunbrewing.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "sweeties": {
@@ -330,6 +558,10 @@
     "source": {
       "url": "http://www.sweetiescompany.com/",
       "fetchedAt": "2026-05-31T18:18:29.208Z"
+    },
+    "commerce_source": {
+      "url": "https://sweetiescompany.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "jraymonds-steakhouse": {
@@ -349,6 +581,10 @@
     "source": {
       "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
       "fetchedAt": "2026-05-31T18:18:33.338Z"
+    },
+    "commerce_source": {
+      "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
     }
   },
   "tin-corner": {
@@ -359,7 +595,19 @@
     "source": {
       "url": "https://tincornerfrederick.com/",
       "fetchedAt": "2026-05-31T18:18:38.663Z"
-    }
+    },
+    "commerce_source": {
+      "url": "https://tincornerfrederick.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.toasttab.com/local/order/tin-corner-700-north-market-street",
+        "anchor_text": "Menu",
+        "source_url": "https://tincornerfrederick.com/"
+      }
+    ]
   },
   "a": {
     "hours_text": "Monday–Wednesday 10:00am–9:00pm, Thursday 10:00am–9:00pm, Friday 10:00am–11:00pm, Saturday 9:00am–11:00pm, Sunday 9:00am–9:00pm",
@@ -379,5 +627,1449 @@
       "url": "http://www.caciquerestaurants.com/",
       "fetchedAt": "2026-05-31T18:18:43.413Z"
     }
+  },
+  "matsutake-sushi-and-steak-frederick": {
+    "name": "Matsutake Sushi & Steak",
+    "commerce_source": {
+      "url": "https://www.matsutakerestaurant.com/",
+      "checkedAt": "2026-07-29T12:34:23.608Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.matsutakerestaurant.com/lunch_menu.html",
+        "anchor_text": "Lunch Menu",
+        "source_url": "https://www.matsutakerestaurant.com/"
+      }
+    ]
+  },
+  "andaz-modern-indian-cuisine-frederick": {
+    "name": "Andaz Modern Indian Cuisine",
+    "commerce_source": {
+      "url": "https://andazmd.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://andazmd.com/menu/",
+        "anchor_text": "Food Menu",
+        "source_url": "https://andazmd.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://andazmd.com/bar-menu/",
+        "anchor_text": "Bar Menu",
+        "source_url": "https://andazmd.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://andazmd.com/special-menu/",
+        "anchor_text": "Special Menu",
+        "source_url": "https://andazmd.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://andazmd.com/reservation/",
+        "anchor_text": "Reservation",
+        "source_url": "https://andazmd.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://andazmd.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://andazmd.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://andazmd.com/gift-card/",
+        "anchor_text": "Gift Card",
+        "source_url": "https://andazmd.com/"
+      }
+    ]
+  },
+  "my-thai-frederick": {
+    "name": "My Thai",
+    "commerce_source": {
+      "url": "https://www.mythaifrederick.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "thai-table-frederick": {
+    "name": "Thai Table",
+    "commerce_source": {
+      "url": "https://thaitablecuisine.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://thaitablecuisine.com/frederick-thai-table-reservations",
+        "anchor_text": "reservations",
+        "source_url": "https://thaitablecuisine.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://thaitablecuisine.com/-reservations?source=pop_up&spot_id=314194&destination=reservations&promotion=reservations",
+        "anchor_text": "Book Table",
+        "source_url": "https://thaitablecuisine.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://thaitablecuisine.com/-catering?source=pop_up&spot_id=314194&destination=catering&promotion=catering",
+        "anchor_text": "Catering Packages",
+        "source_url": "https://thaitablecuisine.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://thaitablecuisine.com/frederick-thai-table-catering",
+        "anchor_text": "Catering",
+        "source_url": "https://thaitablecuisine.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://thaitablecuisine.com/frederick-thai-table-food-menu",
+        "anchor_text": "Menu",
+        "source_url": "https://thaitablecuisine.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://thaitablecuisine.com/frederick-thai-table-drink-menu",
+        "anchor_text": "Drinks",
+        "source_url": "https://thaitablecuisine.com/"
+      }
+    ]
+  },
+  "fractured-prune-frederick": {
+    "name": "Fractured Prune",
+    "commerce_source": {
+      "url": "https://fracturedprune.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://fracturedprune.com/hand-dipped-doughnuts-menu/",
+        "anchor_text": "Menus",
+        "source_url": "https://fracturedprune.com/"
+      }
+    ]
+  },
+  "kulfi-ice-creams-frederick": {
+    "name": "Kulfi Ice Creams",
+    "commerce_source": {
+      "url": "https://kulfi-icecream.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "chocosombra-frederick": {
+    "name": "ChocoSombra",
+    "commerce_source": {
+      "url": "https://chocosombra.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "mariachi-restaurant-frederick": {
+    "name": "Mariachi Restaurant",
+    "commerce_source": {
+      "url": "https://www.mariachirestaurant.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.mariachirestaurant.com/menu",
+        "anchor_text": "MENU",
+        "source_url": "https://www.mariachirestaurant.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/mariachi-frederick",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://www.mariachirestaurant.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/mariachi-frederick/giftcards",
+        "anchor_text": "Buy E-Gift Card",
+        "source_url": "https://www.mariachirestaurant.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/mariachi-frederick/findcard",
+        "anchor_text": "View Gift Card Balance",
+        "source_url": "https://www.mariachirestaurant.com/"
+      }
+    ]
+  },
+  "black-ankle-vineyards-mount-airy": {
+    "name": "Black Ankle Vineyards",
+    "commerce_source": {
+      "url": "https://blackankle.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://www.exploretock.com/blackankle",
+        "anchor_text": "Reservations",
+        "source_url": "https://blackankle.com/"
+      }
+    ]
+  },
+  "catoctin-breeze-vineyard-thurmont": {
+    "name": "Catoctin Breeze Vineyard",
+    "commerce_source": {
+      "url": "https://www.catoctinbreeze.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "springfield-manor-thurmont": {
+    "name": "Springfield Manor Winery, Distillery & Brewery",
+    "commerce_source": {
+      "url": "https://www.springfieldmanor.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.springfieldmanor.com/food-truck-menus.html",
+        "anchor_text": "Food Truck Menus",
+        "source_url": "https://www.springfieldmanor.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.springfieldmanor.com/wine-beer-spirit-menu.html",
+        "anchor_text": "Wine/Beer/Spirit Menu",
+        "source_url": "https://www.springfieldmanor.com/"
+      }
+    ]
+  },
+  "links-bridge-vineyards-thurmont": {
+    "name": "Links Bridge Vineyards",
+    "commerce_source": {
+      "url": "https://www.linksbridgevineyards.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "orchid-cellar-meadery-middletown": {
+    "name": "Orchid Cellar Meadery & Winery",
+    "commerce_source": {
+      "url": "https://www.orchidcellar.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "mazzaroth-vineyard-middletown": {
+    "name": "Mazzaroth Vineyard",
+    "commerce_source": {
+      "url": "https://mazzaroth.squarespace.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "six-wicket-vineyards-myersville": {
+    "name": "Six Wicket Vineyards",
+    "commerce_source": {
+      "url": "https://sixwicketvineyards.com/",
+      "checkedAt": "2026-07-29T12:31:45.836Z"
+    }
+  },
+  "saffron-grill-and-bar-frederick": {
+    "name": "Saffron Grill & Bar",
+    "commerce_source": {
+      "url": "https://saffrongrillandbarmd.com/",
+      "checkedAt": "2026-07-29T12:40:47.381Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://saffrongrillandbarmd.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://saffrongrillandbarmd.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://saffrongrillandbarmd.com/page/menu-pdf",
+        "anchor_text": "Menu PDF",
+        "source_url": "https://saffrongrillandbarmd.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://saffrongrillandbarmd.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://saffrongrillandbarmd.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://saffrongrillandbarmd.com/menu?dialogState=orderDetails",
+        "anchor_text": "Order online",
+        "source_url": "https://saffrongrillandbarmd.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://saffrongrillandbarmd.com/menu",
+        "anchor_text": "Order Now",
+        "source_url": "https://saffrongrillandbarmd.com/"
+      }
+    ]
+  },
+  "new-market-plains-vineyards-new-market": {
+    "name": "New Market Plains Vineyards",
+    "commerce_source": {
+      "url": "https://www.newmarketplains.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "brewers-alley-frederick": {
+    "name": "Brewer's Alley",
+    "commerce_source": {
+      "url": "https://brewers-alley.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://brewers-alley.com/menus/main-menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://brewers-alley.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/brewers-alley-124-n-market-st",
+        "anchor_text": "Order Online",
+        "source_url": "https://brewers-alley.com/"
+      }
+    ]
+  },
+  "juliets-italian-market-cafe-frederick": {
+    "name": "Juliet's Italian Market & Café",
+    "commerce_source": {
+      "url": "https://www.julietsitalianmarketandcafe.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.julietsitalianmarketandcafe.com/menu-1-3",
+        "anchor_text": "Hot Sandwiches",
+        "source_url": "https://www.julietsitalianmarketandcafe.com/"
+      }
+    ]
+  },
+  "hootch-and-banter-frederick": {
+    "name": "Hootch & Banter",
+    "commerce_source": {
+      "url": "https://hootchandbanter.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://hootchandbanter.com/brunch-menu/",
+        "anchor_text": "BRUNCH",
+        "source_url": "https://hootchandbanter.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://hootchandbanter.com/dinner-menu/",
+        "anchor_text": "DINNER",
+        "source_url": "https://hootchandbanter.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://hootchandbanter.com/kids-menu/",
+        "anchor_text": "KIDS",
+        "source_url": "https://hootchandbanter.com/"
+      }
+    ]
+  },
+  "manalu-italian-restaurant-frederick": {
+    "name": "Manalu Italian Restaurant",
+    "commerce_source": {
+      "url": "https://manaluitalianrestaurant.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.doordash.com/store/manalu-italian-restaurant-frederick-37635429/85203155/?srsltid=AfmBOorfTsipunX8TJZXz308thF1jXqp1nkGFIxmHLcqJ9b0ktD69jy_",
+        "anchor_text": "Order Now",
+        "source_url": "https://manaluitalianrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://manaluitalianrestaurant.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://manaluitalianrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "http://manaluitalianrestaurant.com/menu/",
+        "anchor_text": "VIEW FULL MENU",
+        "source_url": "https://manaluitalianrestaurant.com/"
+      }
+    ]
+  },
+  "bonefish-grill-frederick": {
+    "name": "Bonefish Grill",
+    "commerce_source": {
+      "url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.bonefishgrill.com/courses-cocktails",
+        "anchor_text": "SEE MENU",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.bonefishgrill.com/menu/bonefish-frederick-md",
+        "anchor_text": "Dinner Menu",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.bonefishgrill.com/catering/menu/bonefish-frederick-md",
+        "anchor_text": "CATERING",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "order",
+        "url": "https://www.bonefishgrill.com/order/menu/bonefish-frederick-md",
+        "anchor_text": "Order Now",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.bonefishgrill.com/reservations?unit=8105",
+        "anchor_text": "Make Reservation",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.bonefishgrill.com/ecard",
+        "anchor_text": "Buy Gift Cards Now",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      }
+    ]
+  },
+  "bjs-restaurant-brewhouse-frederick": {
+    "name": "BJ's Restaurant & Brewhouse",
+    "commerce_source": {
+      "url": "https://www.bjsrestaurants.com/locations/md/frederick",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://www.bjsrestaurants.com/catering-menu",
+        "anchor_text": "CATERING",
+        "source_url": "https://www.bjsrestaurants.com/locations/md/frederick"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.bjsrestaurants.com/marketing-pages/gift-cards",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.bjsrestaurants.com/locations/md/frederick"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.opentable.com/r/bjs-restaurant-and-brewhouse-reservations-frederick?restref=434605&lang=en-US&ot_source=Restaurant%20website",
+        "anchor_text": "Reserve a table",
+        "source_url": "https://www.bjsrestaurants.com/locations/md/frederick"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.bjsrestaurants.com/marketing-pages/seasonal-menu",
+        "anchor_text": "GRASS ATTACK™ COLD IPA",
+        "source_url": "https://www.bjsrestaurants.com/locations/md/frederick"
+      }
+    ]
+  },
+  "olde-mother-brewing-frederick": {
+    "name": "Olde Mother Brewing",
+    "commerce_source": {
+      "url": "https://oldemother.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/olde-mother-brewing-526-n-market-st/giftcards",
+        "anchor_text": "https://www.toasttab.com/olde-mother-brewing-526-n-market-st/giftcards",
+        "source_url": "https://oldemother.com/"
+      }
+    ]
+  },
+  "north-market-pop-shop-frederick": {
+    "name": "North Market Pop Shop",
+    "commerce_source": {
+      "url": "https://www.northmarketpopshop.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "pretzel-mania-frederick": {
+    "name": "Pretzel & Pizza Creations",
+    "commerce_source": {
+      "url": "https://www.pretzelandpizzacreations.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.pretzelandpizzacreations.com/frederickmenus",
+        "anchor_text": "Menu",
+        "source_url": "https://www.pretzelandpizzacreations.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.pretzelandpizzacreations.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.pretzelandpizzacreations.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/pretzel-and-pizza-creations-frederick-210-n-market-st/giftcards",
+        "source_url": "https://www.pretzelandpizzacreations.com/"
+      }
+    ]
+  },
+  "the-wine-kitchen-frederick": {
+    "name": "The Wine Kitchen on the Creek",
+    "commerce_source": {
+      "url": "https://www.thewinekitchen.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.thewinekitchen.com/menus",
+        "anchor_text": "Menus",
+        "source_url": "https://www.thewinekitchen.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.thewinekitchen.com/menuslbg",
+        "anchor_text": "Menus",
+        "source_url": "https://www.thewinekitchen.com/"
+      }
+    ]
+  },
+  "rare-morsel": {
+    "name": "Rare Morsel",
+    "commerce_source": {
+      "url": "https://www.raremorsel.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/DT02J6DM6A9FN/order",
+        "anchor_text": "Gift cards",
+        "source_url": "https://www.raremorsel.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/DT02J6DM6A9FN/order",
+        "anchor_text": "Gift card",
+        "source_url": "https://www.raremorsel.com/"
+      }
+    ]
+  },
+  "agave-137-tequila-bar-and-kitchen": {
+    "name": "Agave 137 Tequila Bar and Kitchen",
+    "commerce_source": {
+      "url": "https://www.agave137.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.agave137.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.agave137.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.agave137.com/catering-menu",
+        "anchor_text": "Catering Menu",
+        "source_url": "https://www.agave137.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.agave137.com/onlineordering",
+        "anchor_text": "Take-Out and Delivery",
+        "source_url": "https://www.agave137.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/agave137toastonline/giftcards",
+        "anchor_text": "E-Gift Cards Purchase Here",
+        "source_url": "https://www.agave137.com/"
+      }
+    ]
+  },
+  "vitality-protein-smoothie-bar": {
+    "name": "Vitality Protein Smoothie Bar",
+    "commerce_source": {
+      "url": "https://www.frederickschild.com/5-places-to-sip-a-healthy-smoothie-in-frederick-county/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "black-hog-bbq-bar": {
+    "name": "Black Hog BBQ Bar",
+    "commerce_source": {
+      "url": "https://blackhogbbq.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://blackhogbbq.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://blackhogbbq.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://blackhogbbq.com/wp-content/uploads/2024/11/BH_Catering_Menu_111124.pdf",
+        "anchor_text": "Download Catering Menu",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://blackhogbbq.com/order-online/",
+        "anchor_text": "Order Online",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "order",
+        "url": "http://blackhogbbq.com/order-online/",
+        "anchor_text": "Order Online",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/black-hog-bbq-middletown/giftcards",
+        "anchor_text": "Purchase a Gift Card",
+        "source_url": "https://blackhogbbq.com/"
+      }
+    ]
+  },
+  "ibiza-cafe": {
+    "name": "Ibiza Cafe",
+    "commerce_source": {
+      "url": "https://www.theibizacafe.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.theibizacafe.com/menu.html",
+        "anchor_text": "Menu",
+        "source_url": "https://www.theibizacafe.com/"
+      }
+    ]
+  },
+  "7th-street-cafe": {
+    "name": "7th Street Cafe",
+    "commerce_source": {
+      "url": "https://www.7thstreetsandwich.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.7thstreetsandwich.com/menu-1",
+        "anchor_text": "MENU",
+        "source_url": "https://www.7thstreetsandwich.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/7th-st-cafe",
+        "anchor_text": "Order Online Now",
+        "source_url": "https://www.7thstreetsandwich.com/"
+      }
+    ]
+  },
+  "oscars-alehouse": {
+    "name": "Oscar's Alehouse",
+    "commerce_source": {
+      "url": "https://www.oscarsalehouse.net/west",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.oscarsalehouse.net/west-kids-menu",
+        "anchor_text": "Kid's Menu",
+        "source_url": "https://www.oscarsalehouse.net/west"
+      }
+    ]
+  },
+  "south-market-sandwich-co": {
+    "name": "South Market Sandwich Co",
+    "commerce_source": {
+      "url": "https://southmarketsandwiches.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://southmarketsandwiches.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://southmarketsandwiches.com/"
+      }
+    ]
+  },
+  "the-perfect-blend-cafe": {
+    "name": "The Perfect Blend Cafe",
+    "commerce_source": {
+      "url": "https://theperfectblendfrederick.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.clover.com/online-ordering/the-perfect-blend-frederick-2",
+        "anchor_text": "Order Online",
+        "source_url": "https://theperfectblendfrederick.com/"
+      }
+    ]
+  },
+  "charleys-restaurant": {
+    "name": "Charley's Restaurant",
+    "commerce_source": {
+      "url": "https://www.charleysmd.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.charleysmd.com/j9ifd7sj/charleys-restaurant-frederick-21701/order-online",
+        "anchor_text": "View Menu",
+        "source_url": "https://www.charleysmd.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.charleysmd.com/j9ifd7sj/charleys-restaurant-frederick-21701/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.charleysmd.com/j9ifd7sj/charleys-restaurant-frederick-21701/order-online"
+      }
+    ]
+  },
+  "frederick-social": {
+    "name": "Frederick Social",
+    "commerce_source": {
+      "url": "https://www.frederick-social.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.frederick-social.com/copy-of-food-menu",
+        "anchor_text": "DRINK MENUS",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.frederick-social.com/menu",
+        "anchor_text": "FOOD MENU",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.frederick-social.com/tapped-menu",
+        "anchor_text": "TAPPED MENU",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/frederick-social-50-citizens-way-suite-100/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "GIFT CARD",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/frederick-social-50-citizens-way-suite-100/giftcards?utm_source=undefined&utm_content=online--frederick-social-50-citizens-way-suite-100&utm_medium=toast_sites&utm_campaign=giftcards",
+        "anchor_text": "GIFT CERTIFICATE",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/frederick-social-50-citizens-way-suite-100",
+        "anchor_text": "ORDER TAKE-OUT",
+        "source_url": "https://www.frederick-social.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.frederick-social.com/menu?location=Citizen%27s+Way",
+        "anchor_text": "SMALL BITES",
+        "source_url": "https://www.frederick-social.com/menu"
+      }
+    ]
+  },
+  "madrones": {
+    "name": "Madrones",
+    "commerce_source": {
+      "url": "https://madrones.net/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://madrones.net/reservations/",
+        "anchor_text": "RESERVATIONS",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "order",
+        "url": "https://madronesamericanabar.olo.com/menu/madrones-american-grill",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "menu",
+        "url": "https://madrones.net/lunch-menu/",
+        "anchor_text": "LUNCH MENU",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "menu",
+        "url": "https://madrones.net/dinner-menu-2/",
+        "anchor_text": "DINNER MENU",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "menu",
+        "url": "https://madrones.net/brunch-menu-2/",
+        "anchor_text": "BRUNCH MENU",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "menu",
+        "url": "https://madrones.net/happy-hour-menu-2/",
+        "anchor_text": "HAPPY HOUR MENU",
+        "source_url": "https://madrones.net/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://madrones.net/gift-cards/",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://madrones.net/"
+      }
+    ]
+  },
+  "tempo-di-pasta": {
+    "name": "Tempo Di Pasta",
+    "commerce_source": {
+      "url": "https://www.tempodipasta.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.tempodipasta.com/menu",
+        "source_url": "https://www.tempodipasta.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.tempodipasta.com/catering",
+        "source_url": "https://www.tempodipasta.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.tempodipasta.com/new-page-2",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.tempodipasta.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.tempodipasta.com/placeanorder",
+        "anchor_text": "order online",
+        "source_url": "https://www.tempodipasta.com/eat"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.tempodipasta.com/s/TDP-Food-Truck-Menu.pdf",
+        "anchor_text": "menu pdf",
+        "source_url": "https://www.tempodipasta.com/menu"
+      }
+    ]
+  },
+  "bellisarios-pizza": {
+    "name": "Bellisario's Pizza",
+    "commerce_source": {
+      "url": "https://bellisariospizza.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "juno-bakery": {
+    "name": "Juno Bakery",
+    "commerce_source": {
+      "url": "https://junobakery.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/2ZW5FPJDJR51T/order",
+        "anchor_text": "Gift Card",
+        "source_url": "https://junobakery.com/"
+      }
+    ]
+  },
+  "wags-restaurant": {
+    "name": "Wag's Restaurant",
+    "commerce_source": {
+      "url": "https://www.eatatwags.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.eatatwags.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.eatatwags.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/wags-24-s-market-street/giftcards",
+        "anchor_text": "Order E-gift Card",
+        "source_url": "https://www.eatatwags.com/"
+      }
+    ]
+  },
+  "twin-bears-bakery": {
+    "name": "Twin Bears Bakery",
+    "commerce_source": {
+      "url": "https://twinbearsbakery.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://www.toasttab.com/catering/twin-bears-bakery-125-s-carroll-st-104",
+        "anchor_text": "Preorder bagel boxes and bread here",
+        "source_url": "https://twinbearsbakery.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/twin-bears-bakery-125-s-carroll-st-104/giftcards",
+        "anchor_text": "gift card online",
+        "source_url": "https://twinbearsbakery.com/"
+      }
+    ]
+  },
+  "the-spice-tea-exchange": {
+    "name": "The Spice Tea Exchange",
+    "commerce_source": {
+      "url": "https://www.spiceandtea.com/a/store-locator/frederick.html?srsltid=AfmBOopr8kiAODM0KOYwtutgQEKdSLJeaydgo0o-dDuvq0npyKYlko-o",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.spiceandtea.com/collections/gifts-e-gift-card",
+        "anchor_text": "e-Gift Card",
+        "source_url": "https://www.spiceandtea.com/a/store-locator/frederick.html?srsltid=AfmBOopr8kiAODM0KOYwtutgQEKdSLJeaydgo0o-dDuvq0npyKYlko-o"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.spiceandtea.com/tools/check-balance",
+        "anchor_text": "Check Gift Card Balance",
+        "source_url": "https://www.spiceandtea.com/a/store-locator/frederick.html?srsltid=AfmBOopr8kiAODM0KOYwtutgQEKdSLJeaydgo0o-dDuvq0npyKYlko-o"
+      }
+    ]
+  },
+  "plaza-mexico": {
+    "name": "Plaza Mexico",
+    "commerce_source": {
+      "url": "https://www.plazamexicomd.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.plazamexicomd.com/menu",
+        "anchor_text": "Menus",
+        "source_url": "https://www.plazamexicomd.com/"
+      }
+    ]
+  },
+  "uncle-ralphs-bakery": {
+    "name": "Uncle Ralph's Bakery",
+    "commerce_source": {
+      "url": "https://www.uncleralphsbakery.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.uncleralphsbakery.com/menus",
+        "anchor_text": "Retail Menu",
+        "source_url": "https://www.uncleralphsbakery.com/"
+      }
+    ]
+  },
+  "frederick-fudge-ice-cream": {
+    "name": "Frederick Fudge Ice Cream",
+    "commerce_source": {
+      "url": "https://fredicecream.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://fredicecream.com/our-menu/",
+        "anchor_text": "Menu & Pricing",
+        "source_url": "https://fredicecream.com/"
+      }
+    ]
+  },
+  "candy-kitchen-6": {
+    "name": "Candy Kitchen",
+    "commerce_source": {
+      "url": "https://candykitchen.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "pistarros": {
+    "name": "Pistarros",
+    "commerce_source": {
+      "url": "https://pistarro.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://pistarro.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://pistarro.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/pistarros-new-221-n-east-st-frederick-md-21701/v3",
+        "anchor_text": "Order Online To-Go",
+        "source_url": "https://pistarro.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/pistarros-new-221-n-east-st-frederick-md-21701/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://pistarro.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://pistarro.com/wp-content/uploads/2024/12/PI-Catering-Menu-1-1.pdf",
+        "anchor_text": "Catering Menu",
+        "source_url": "https://pistarro.com/"
+      }
+    ]
+  },
+  "shuckin-shack-oyster-bar": {
+    "name": "Shuckin Shack Oyster Bar",
+    "commerce_source": {
+      "url": "https://www.theshuckinshack.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.theshuckinshack.com/shuckinshack2026summermenu",
+        "anchor_text": "AMERICA 250 SUMMER MENU",
+        "source_url": "https://www.theshuckinshack.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.theshuckinshack.com/locations-and-menus",
+        "anchor_text": "LOCATIONS & MENUS",
+        "source_url": "https://www.theshuckinshack.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.theshuckinshack.com/online-gift-cards-under-construction",
+        "source_url": "https://www.theshuckinshack.com/"
+      }
+    ]
+  },
+  "jojos-restaurant-tap-house": {
+    "name": "JoJo's Restaurant Tap House",
+    "commerce_source": {
+      "url": "https://jojosrestauranttaphouse.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/jojosrestauranttaphouse",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://jojosrestauranttaphouse.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/jojosrestauranttaphouse/v3",
+        "anchor_text": "Order Online",
+        "source_url": "https://jojosrestauranttaphouse.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://jojosrestauranttaphouse.com/menu.php",
+        "anchor_text": "MENU",
+        "source_url": "https://jojosrestauranttaphouse.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/jojosrestauranttaphouse/giftcards",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://jojosrestauranttaphouse.com/"
+      }
+    ]
+  },
+  "cucina-massi": {
+    "name": "Cucina Massi",
+    "commerce_source": {
+      "url": "https://www.cucinamassi.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.cucinamassi.com/menus/",
+        "anchor_text": "Menus",
+        "source_url": "https://www.cucinamassi.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.cucinamassi.com/menus",
+        "anchor_text": "View Menus",
+        "source_url": "https://www.cucinamassi.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.cucinamassi.com/menu/happy-hour/",
+        "anchor_text": "Happy Hour",
+        "source_url": "https://www.cucinamassi.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.cucinamassi.com/private-events-and-catering/",
+        "anchor_text": "Private Events & Catering",
+        "source_url": "https://www.cucinamassi.com/"
+      }
+    ]
+  },
+  "hinzis-kitchen": {
+    "name": "Hinzi's Kitchen",
+    "commerce_source": {
+      "url": "https://hinzis.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://hinzis.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://hinzis.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://hinzis.com/page/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://hinzis.com/menu?dialogState=orderDetails",
+        "anchor_text": "Order online",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://hinzis.com/menu",
+        "anchor_text": "Order Online",
+        "source_url": "https://hinzis.com/"
+      }
+    ]
+  },
+  "cafe-nola": {
+    "name": "Cafe Nola",
+    "commerce_source": {
+      "url": "http://www.cafe-nola.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/cafe-nola-4-e-patrick-st",
+        "anchor_text": "Order Pickup",
+        "source_url": "http://www.cafe-nola.com/"
+      }
+    ]
+  },
+  "river-bar-grill": {
+    "name": "River Bar Grill",
+    "commerce_source": {
+      "url": "https://riverbargrillfrederick.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://riverbargrillfrederick.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://riverbargrillfrederick.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/river-bar-grill-129-n-market-st",
+        "anchor_text": "Order Online",
+        "source_url": "https://riverbargrillfrederick.com/"
+      }
+    ]
+  },
+  "bakehouse": {
+    "name": "Bakehouse",
+    "commerce_source": {
+      "url": "https://www.bakehousemd.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.bakehousemd.com/menu",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.bakehousemd.com/"
+      }
+    ]
+  },
+  "rosatis-pizza-5": {
+    "name": "Rosati's Pizza",
+    "commerce_source": {
+      "url": "https://www.rosatispizza.com/location/frederick-md",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.rosatispizza.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.rosatispizza.com/location/frederick-md"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.rosatispizza.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.rosatispizza.com/location/frederick-md"
+      }
+    ]
+  },
+  "zoes-chocolate-company": {
+    "name": "Zoe's Chocolate Company",
+    "commerce_source": {
+      "url": "https://zoeschocolate.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "bloom-asian-haus": {
+    "name": "Bloom Asian Haus",
+    "commerce_source": {
+      "url": "https://www.bloominfrederick.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.bloominfrederick.com/menu",
+        "anchor_text": "MENU",
+        "source_url": "https://www.bloominfrederick.com/"
+      }
+    ]
+  },
+  "sumittra-thai-cuisine": {
+    "name": "Sumittra Thai Cuisine",
+    "commerce_source": {
+      "url": "https://www.sumittra.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "hunan-gourmet-restaurant": {
+    "name": "Hunan Gourmet Restaurant",
+    "commerce_source": {
+      "url": "http://www.myhunangourmet.com/menu.asp",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    }
+  },
+  "tous-les-jours-bakery-cafe-frederick": {
+    "name": "Tous les Jours Bakery & Cafe",
+    "commerce_source": {
+      "url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://tljus.com/menus/all",
+        "anchor_text": "MENU",
+        "source_url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick"
+      },
+      {
+        "type": "menu",
+        "url": "https://tljus.com/menus/bread",
+        "anchor_text": "BREAD",
+        "source_url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick"
+      },
+      {
+        "type": "menu",
+        "url": "https://tljus.com/menus/cakes",
+        "anchor_text": "CAKES",
+        "source_url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick"
+      },
+      {
+        "type": "menu",
+        "url": "https://tljus.com/menus/sandwiches",
+        "anchor_text": "sandwiches",
+        "source_url": "https://tljus.com/stores/frederick-1170-g-west-patrick-st?utm_source=google&utm_medium=gbp&utm_campaign=frederick"
+      }
+    ]
+  },
+  "beans-bagels-frederick": {
+    "name": "Beans & Bagels",
+    "commerce_source": {
+      "url": "http://www.beansnbagels.com/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "http://www.beansnbagels.com/menu.html",
+        "anchor_text": "menu",
+        "source_url": "http://www.beansnbagels.com/"
+      }
+    ]
+  },
+  "paris-baguette-frederick": {
+    "name": "Paris Baguette",
+    "commerce_source": {
+      "url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://parisbaguette.com/menu/",
+        "anchor_text": "Menu Locations Rewards Catering Order Now",
+        "source_url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street"
+      },
+      {
+        "type": "catering",
+        "url": "https://catering.parisbaguette.com/menu/paris-baguette-catering-snowshill-st",
+        "anchor_text": "Order Catering",
+        "source_url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street"
+      },
+      {
+        "type": "order",
+        "url": "https://order.parisbaguette.com/menu/paris-baguette-snowshill-street",
+        "anchor_text": "Order Online",
+        "source_url": "https://parisbaguette.com/locations/md/frederick/520-snowshill-street"
+      }
+    ]
+  },
+  "roggenart-european-bakery-bistro-cafe-frederick": {
+    "name": "Roggenart European Bakery, Bistro & Cafe",
+    "commerce_source": {
+      "url": "https://roggenart.com/locations/frederick/",
+      "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://roggenart.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://roggenart.com/locations/frederick/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.online/business/roggenart-793975",
+        "anchor_text": "Order Online",
+        "source_url": "https://roggenart.com/locations/frederick/"
+      },
+      {
+        "type": "catering",
+        "url": "https://roggenart.com/catering-2/",
+        "anchor_text": "Catering",
+        "source_url": "https://roggenart.com/locations/frederick/"
+      }
+    ]
+  },
+  "baltimore-coffee-and-tea-co-inc-frederick": {
+    "name": "Baltimore Coffee and Tea Co., Inc.",
+    "commerce_source": {
+      "url": "https://baltcoffee.com/",
+      "checkedAt": "2026-07-29T12:40:47.383Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://baltcoffee.com/catalog/tea/eastern-shore-tea-company/reserve-collection-teas/",
+        "source_url": "https://baltcoffee.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://baltcoffee.com/catalog/gifts/baltimore-coffee-gift-cards/",
+        "source_url": "https://baltcoffee.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://baltcoffee.com/stores/food-drink-menu/",
+        "anchor_text": "Food & Drink Menu",
+        "source_url": "https://baltcoffee.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://baltcoffee.com/stores/food-drink-menu/catering-menu/",
+        "anchor_text": "Catering Menu",
+        "source_url": "https://baltcoffee.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://baltcoffee.com/wp-content/uploads/2025-Food-Drink-Menus.pdf",
+        "anchor_text": "2025 Food & Drink Menus",
+        "source_url": "https://baltcoffee.com/stores/food-drink-menu/"
+      }
+    ]
+  },
+  "averys-maryland-grille-frederick": {
+    "name": "Avery's Maryland Grille",
+    "commerce_source": {
+      "url": "https://averysmarylandgrille.com/",
+      "checkedAt": "2026-07-29T12:45:41.631Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://averysmarylandgrille.com/averys-menu",
+        "anchor_text": "Avery's Menu",
+        "source_url": "https://averysmarylandgrille.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://averysmarylandgrille.com/kids-menu",
+        "anchor_text": "Kids Menu",
+        "source_url": "https://averysmarylandgrille.com/"
+      }
+    ]
   }
 }

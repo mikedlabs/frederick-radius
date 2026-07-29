@@ -12,7 +12,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { isPizzaPlace } from "@/data/cravings";
+import { isPizzaPlace, isPlaygroundPlace } from "@/data/cravings";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import {
@@ -702,7 +702,14 @@ export type PlaceCardData = Place & PlaceEnriched & {
  * Place source union includes every value the stamper can produce.
  */
 function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source"> & { source: Place["source"] } {
-  const { source, ...rest } = stampPlaceProvenance(p, verifiedAt);
+  const listedVerification = p.last_verified_at;
+  const effectiveVerification =
+    listedVerification &&
+    !Number.isNaN(Date.parse(listedVerification)) &&
+    Date.parse(listedVerification) > Date.parse(verifiedAt)
+      ? listedVerification
+      : verifiedAt;
+  const { source, ...rest } = stampPlaceProvenance(p, effectiveVerification);
   return { ...rest, source: source as Place["source"] };
 }
 
@@ -775,6 +782,38 @@ function boundaryBlurb(raw: string | undefined, name: string): string {
   return finishCompleteBlurbClause(concise) ?? "";
 }
 
+/**
+ * A provider or partner-directory description is useful evidence, but it is
+ * not Radius-authored copy. Google context has its own request-scoped,
+ * attributed component, and DFP rows can aggregate several outside providers.
+ * Keep those permanent card blurbs empty until an approved description or a
+ * deliberate human override crosses the editorial trust boundary.
+ */
+function permanentBlurbInput(
+  p: Place,
+  approvedBlurb: string | undefined,
+): string {
+  if (approvedBlurb) return approvedBlurb;
+  if (OV_PATCH?.[p.slug]?.short_blurb !== undefined) return p.short_blurb;
+  if (p.source === "dfp" || p.source === "discovered") return "";
+  return p.short_blurb;
+}
+
+function permanentDescriptionSource(
+  p: Place,
+  approvedSource: PlaceDescriptionSourceKind | undefined,
+): PlaceDescriptionSourceKind | undefined {
+  if (approvedSource) return approvedSource;
+  if (
+    OV_PATCH?.[p.slug]?.short_blurb !== undefined ||
+    p.source === "seed" ||
+    p.source === "manual"
+  ) {
+    return "radius_editorial";
+  }
+  return undefined;
+}
+
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const acceptedIdentity = acceptedEnrichmentIdentity(p);
   const e = acceptedIdentity.enrichment;
@@ -805,11 +844,13 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
       // ("is a family-owned…") read broken regardless of enrichment, and
       // irreparable scrape debris is dropped outright.
       short_blurb: boundaryBlurb(
-        approvedDescription?.blurb ?? p.short_blurb,
+        permanentBlurbInput(p, approvedDescription?.blurb),
         p.name,
       ),
-      description_source: approvedDescription?.source.kind ??
-        (p.source === "seed" || p.source === "manual" ? "radius_editorial" : undefined),
+      description_source: permanentDescriptionSource(
+        p,
+        approvedDescription?.source.kind,
+      ),
       description_source_url: approvedDescription?.source.url,
       description_verified_at:
         approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
@@ -870,7 +911,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   // no-em-dash voice rule), stray entities, and tags. cleanFeedText normalizes
   // them (— -> ", ") and is a no-op on already-clean curated text, so both the
   // client bundle and the server detail page render consistent, on-voice copy.
-  const rawBlurb = approvedDescription?.blurb ?? p.short_blurb;
+  const rawBlurb = permanentBlurbInput(p, approvedDescription?.blurb);
   const short_blurb = boundaryBlurb(rawBlurb, p.name);
   // Hours: a hand-curated structured schedule (seed/manual, e.g. the
   // parks) always wins; otherwise parse Google's weekday strings into the
@@ -923,8 +964,10 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     review_author_photo_uri: e.review_author_photo_uri,
     review_google_maps_uri: e.review_google_maps_uri,
     google_maps_uri: e.google_maps_uri,
-    description_source: approvedDescription?.source.kind ??
-      (p.source === "seed" || p.source === "manual" ? "radius_editorial" : undefined),
+    description_source: permanentDescriptionSource(
+      p,
+      approvedDescription?.source.kind,
+    ),
     description_source_url: approvedDescription?.source.url,
     description_verified_at:
       approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
@@ -1399,6 +1442,7 @@ const ALWAYS_SUBSTANTIVE_CATEGORIES = new Set(["park", "trail"]);
 
 export function isSubstantive(p: Place): boolean {
   if (!PRUNE_THIN_ON) return true;
+  if (OV_PATCH?.[p.slug]?.includeWithoutMedia) return true;
   if (p.source !== "dfp" && p.source !== "google") return true;
   if (ALWAYS_SUBSTANTIVE_CATEGORIES.has(p.category)) return true;
   // Any real signal keeps it: a Google rating, a photo of ANY kind
@@ -1590,21 +1634,6 @@ export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): Place
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
 }
 
-/**
- * THE county-wide open-now count. Every surface that headlines a
- * county-wide "N open now" number reads this one function, so two
- * screens can never disagree (2026-06 redesign audit, offender 2:
- * /today said 54 while /open-now said 15 within minutes, because the
- * briefing counted raw PLACES with every curated hour trusted as
- * verified, while /open-now counted the decorated pipeline with the
- * freshness-window policy). Population and predicate are exactly the
- * /open-now headline's: the discovery pipeline, recommendable places,
- * the shared isOpenNow predicate over decorated open_status.
- */
-export function countOpenNow(now: Date = new Date()): number {
-  return openNowHighlights(0, now).count;
-}
-
 /** Leading honorific on a personal-practice listing ("Dr Atul Purohit"). */
 const PERSON_HONORIFIC = /^(?:dr|mr|mrs|ms)\.?$/i;
 /** Trailing practitioner credential ("Gaffar Syed MD", "Adam J Frieder DDS"). */
@@ -1665,44 +1694,244 @@ function looksLikeBarePersonName(
     : category === "wellness" || category === "health";
 }
 
+export type OpenNowProofModule =
+  | "eat-drink"
+  | "things-to-do"
+  | "shop-local";
+
+export type OpenNowProofPick = {
+  slug: string;
+  name: string;
+  module: OpenNowProofModule;
+};
+
+export type OpenNowSnapshot = {
+  /** The exact instant used to decorate every schedule in this snapshot. */
+  asOf: string;
+  /** Complete, untruncated county inventory with recently confirmed open hours. */
+  places: PlaceCardData[];
+  /** Small editorial proof, deliberately separate from the inventory count. */
+  worthConsidering: OpenNowProofPick[];
+  count: number;
+};
+
+const OPEN_NOW_PROOF_MODULES: ReadonlyArray<{
+  key: OpenNowProofModule;
+  categories: ReadonlySet<string>;
+}> = [
+  {
+    key: "eat-drink",
+    categories: new Set([
+      "restaurant",
+      "coffee",
+      "bar",
+      "brewery",
+      "winery",
+      "distillery",
+      "bakery",
+      "pizza",
+      "ice-cream",
+      "food-truck",
+    ]),
+  },
+  {
+    key: "things-to-do",
+    categories: new Set([
+      "park",
+      "trail",
+      "playground",
+      "golf",
+      "agritourism",
+      "museum",
+      "theater",
+      "music",
+      "public-art",
+      "tours",
+      "family",
+      "sports",
+    ]),
+  },
+  {
+    key: "shop-local",
+    // Broad "shopping" and "gallery" rows contain framing studios, agencies,
+    // and directory imports. Keep those searchable and in the honest open
+    // inventory, but use only unmistakable leisure categories as cover proof.
+    categories: new Set(["antiques", "book-store", "market"]),
+  },
+];
+
+const NON_LEISURE_PROOF_TYPE_RE =
+  /\b(?:agency|association|clinic|consultant|counsel|crossfit|dentist|doctor|fitness|government|gym|health|hospital|insurance|lawyer|medical|organization|physio|psych|real[_ ]estate|therapy|university)\b/i;
+const NON_LEISURE_PROOF_NAME_RE =
+  /\b(?:agency|associates|clinic|consulting|counseling|crossfit|dental|dentistry|fitness|gallery|government|health|insurance|medical|psychological|strateg(?:y|ies)|therapy)\b/i;
+
+export function openNowProofModule(
+  place: Pick<PlaceCardData, "category" | "name" | "primary_type">,
+): OpenNowProofModule | null {
+  if (
+    NON_LEISURE_PROOF_TYPE_RE.test(place.primary_type ?? "") ||
+    NON_LEISURE_PROOF_NAME_RE.test(place.name)
+  ) {
+    return null;
+  }
+  return (
+    OPEN_NOW_PROOF_MODULES.find(({ categories }) =>
+      categories.has(place.category),
+    )?.key ?? null
+  );
+}
+
+function compareOpenNowProofCandidates(
+  a: PlaceCardData,
+  b: PlaceCardData,
+): number {
+  return (
+    Number(Boolean(b.local_favorite)) - Number(Boolean(a.local_favorite)) ||
+    b.feature_score - a.feature_score ||
+    (b.google_rating ?? 0) - (a.google_rating ?? 0) ||
+    (b.google_rating_count ?? 0) - (a.google_rating_count ?? 0) ||
+    a.name.localeCompare(b.name, "en-US") ||
+    a.slug.localeCompare(b.slug, "en-US")
+  );
+}
+
+export function selectOpenNowProofPicks(
+  open: readonly PlaceCardData[],
+  limit: number,
+): OpenNowProofPick[] {
+  if (limit <= 0) return [];
+
+  const candidates = open
+    .filter((place) => !ENRICHMENT_QUARANTINE.has(place.slug))
+    .filter(
+      (place) =>
+        place.source === "seed" ||
+        place.source === "manual" ||
+        !looksLikeBarePersonName(
+          place.name,
+          place.primary_type,
+          place.category,
+        ),
+    )
+    .map((place) => ({
+      place,
+      module: openNowProofModule(place),
+    }))
+    .filter(
+      (
+        candidate,
+      ): candidate is { place: PlaceCardData; module: OpenNowProofModule } =>
+        candidate.module !== null,
+    );
+
+  const byModule = new Map<
+    OpenNowProofModule,
+    Array<{ place: PlaceCardData; module: OpenNowProofModule }>
+  >();
+  for (const proofModule of OPEN_NOW_PROOF_MODULES) {
+    byModule.set(
+      proofModule.key,
+      candidates
+        .filter((candidate) => candidate.module === proofModule.key)
+        .sort((a, b) =>
+          compareOpenNowProofCandidates(a.place, b.place),
+        ),
+    );
+  }
+
+  const selected: Array<{
+    place: PlaceCardData;
+    module: OpenNowProofModule;
+  }> = [];
+  const selectedSlugs = new Set<string>();
+
+  // First pass: one useful place from each user-facing module. This prevents
+  // a high-volume category such as restaurants from swallowing the proof.
+  for (const proofModule of OPEN_NOW_PROOF_MODULES) {
+    const pick = byModule.get(proofModule.key)?.[0];
+    if (!pick || selected.length >= limit) continue;
+    selected.push(pick);
+    selectedSlugs.add(pick.place.slug);
+  }
+
+  // Fill a larger requested sample deterministically, preferring a new
+  // category before repeating one already represented.
+  const representedCategories = new Set(
+    selected.map(({ place }) => place.category),
+  );
+  const remaining = candidates
+    .filter(({ place }) => !selectedSlugs.has(place.slug))
+    .sort((a, b) => compareOpenNowProofCandidates(a.place, b.place));
+  for (const preferNewCategory of [true, false]) {
+    for (const candidate of remaining) {
+      if (selected.length >= limit) break;
+      if (selectedSlugs.has(candidate.place.slug)) continue;
+      const isNewCategory = !representedCategories.has(
+        candidate.place.category,
+      );
+      if (isNewCategory !== preferNewCategory) continue;
+      selected.push(candidate);
+      selectedSlugs.add(candidate.place.slug);
+      representedCategories.add(candidate.place.category);
+    }
+  }
+
+  return selected.map(({ place, module }) => ({
+    slug: place.slug,
+    name: place.name,
+    module,
+  }));
+}
+
 /**
- * The county-wide open-now count PLUS a few real names to prove it —
- * for surfaces (the /beta cover) that want "N open right now: A, B, C"
- * instead of a bare number. Exactly the countOpenNow population and
- * predicate (countOpenNow delegates here), so the headline count and
- * the named sample can never disagree. Names are the highest
- * feature_score open places — recognizable anchors, not a random draw.
- * The COUNT is untouched, but the named sample prefers real businesses:
- * quarantined-enrichment rows and discovered solo-practitioner listings
- * ("Noah Stevens", a person) never headline the cover (2026-07 audit).
+ * The canonical county-wide open-now snapshot. Every public county count,
+ * the /beta proof, and /open-now consume this exact untruncated population
+ * and its single as-of instant. The inventory includes every recommendable,
+ * discoverable place whose recently checked schedule confirms it is open.
+ * `worthConsidering` is a separate, stricter editorial sample; a gym,
+ * agency, clinic, or civic office may remain findable without becoming the
+ * product's idea of what someone should do.
+ */
+export function getOpenNowSnapshot(
+  now: Date = new Date(),
+  origin?: LngLat,
+  proofLimit = 3,
+): OpenNowSnapshot {
+  const places = rankPlaces({ origin, now })
+    .filter(isRecommendable)
+    .filter((place) => isOpenNow(place.open_status));
+  return {
+    asOf: now.toISOString(),
+    places,
+    worthConsidering: selectOpenNowProofPicks(places, proofLimit),
+    count: places.length,
+  };
+}
+
+/**
+ * THE county-wide open-now count. Kept as a small compatibility helper for
+ * Today; the timestamped snapshot above remains the source of truth.
+ */
+export function countOpenNow(now: Date = new Date()): number {
+  return getOpenNowSnapshot(now, undefined, 0).count;
+}
+
+/**
+ * Compatibility shape for older server consumers. The count is the complete
+ * snapshot inventory; the names are the same module-diverse leisure proof
+ * used by the beta cover. Professional and clinical rows remain in the count
+ * and catalog but cannot become editorial examples.
  */
 export function openNowHighlights(
   limit: number,
   now: Date = new Date(),
-): { count: number; names: string[] } {
-  const open = publicPlaces()
-    .filter(isRecommendable)
-    .map((p) => decoratePlace(p, undefined, now))
-    .filter((p) => isOpenNow(p.open_status));
-  const names =
-    limit > 0
-      ? open
-          .filter((p) => !ENRICHMENT_QUARANTINE.has(p.slug))
-          .filter(
-            (p) =>
-              p.source === "seed" ||
-              p.source === "manual" ||
-              !looksLikeBarePersonName(p.name, p.primary_type, p.category),
-          )
-          // The named SAMPLE stays visitable: a late-night taxi service is
-          // honestly open (and stays in the count) but cannot headline a
-          // line that promises restaurants, shops, trails, and parks.
-          .filter((p) => p.category !== "services")
-          .sort((a, b) => b.feature_score - a.feature_score)
-          .slice(0, limit)
-          .map((p) => p.name)
-      : [];
-  return { count: open.length, names };
+): { count: number; names: string[]; asOf: string } {
+  const snapshot = getOpenNowSnapshot(now, undefined, limit);
+  return {
+    count: snapshot.count,
+    names: snapshot.worthConsidering.map((pick) => pick.name),
+    asOf: snapshot.asOf,
+  };
 }
 
 /**
@@ -1754,11 +1983,13 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     // 23 pizza places. Same canonical matcher the map's Pizza facet uses
     // (isPizzaPlace) — a no-op for every other category.
     const wantsPizza = match.has("pizza");
+    const wantsPlayground = match.has("playground");
     results = results.filter(
       (p) =>
         match.has(p.category) ||
         (p.subcategories ?? []).some((s) => match.has(s)) ||
-        (wantsPizza && isPizzaPlace(p)),
+        (wantsPizza && isPizzaPlace(p)) ||
+        (wantsPlayground && isPlaygroundPlace(p)),
     );
   }
   if (ctx.municipality) {

@@ -53,16 +53,11 @@ async function snapshotEvidence(
       SELECT unnest(${sourceKeys}::text[])
     )
     SELECT wanted.source,
-           latest.taken_at,
-           latest.count
+           health.taken_at,
+           health.count
     FROM wanted
-    JOIN LATERAL (
-      SELECT taken_at, count
-      FROM feed_snapshots
-      WHERE feed_snapshots.source = wanted.source
-      ORDER BY taken_at DESC, id DESC
-      LIMIT 1
-    ) latest ON true
+    JOIN feed_source_health health
+      ON health.source = wanted.source
   `) as unknown as Array<{
     source: string;
     taken_at: string | Date;

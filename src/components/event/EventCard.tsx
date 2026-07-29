@@ -19,7 +19,12 @@ import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventAttendanceLabel } from "@/lib/events/attendance";
-import type { EventCardVisual } from "@/components/event/eventVisuals";
+import { communicationAccessLabels } from "@/lib/events/communication-access";
+import {
+  eventCardVisual,
+  type EventCardVisual,
+} from "@/components/event/eventVisuals";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
 import EventPosterCard from "@/components/event/EventPosterCard";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
@@ -95,6 +100,7 @@ export default function EventCard({
         visual={visual}
         priorityImage={priorityImage}
         whyItMatters={whyItMatters}
+        live={live}
       />
     );
   }
@@ -129,6 +135,8 @@ export default function EventCard({
   // icon fills / tint grounds (3:1 domain). (audit a11y: category eyebrows)
   const accentText = `color-mix(in srgb, ${accent} 55%, var(--app-ink))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
+  const accessLabel = communicationAccessLabels(event)[0];
+  const cardVisual = eventCardVisual(event);
 
   // Utility variant — TINY single muted line for the civic / municipal
   // long tail: board meetings, recurring pickups, posted notices. One
@@ -261,6 +269,12 @@ export default function EventCard({
                   <span style={{ color: "var(--app-positive)" }}>Free</span>
                 </>
               )}
+              {accessLabel && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-cool)" }}>{accessLabel}</span>
+                </>
+              )}
               {statusText && (
                 <>
                   {" · "}
@@ -341,6 +355,11 @@ export default function EventCard({
               <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
               {venueLabel ? <> · {venueLabel}</> : null}
             </p>
+            {accessLabel && (
+              <p className="truncate text-[11px] font-medium" style={{ color: "var(--app-cool)" }}>
+                {accessLabel}
+              </p>
+            )}
             {reasons.length > 0 ? (
               <div className="pt-0.5"><ReasonChipRow reasons={reasons} /></div>
             ) : (event.price_text && !event.is_free) || event.distance_m !== undefined ? (
@@ -406,10 +425,6 @@ export default function EventCard({
           className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
           style={{ color: "var(--app-ink)" }}
         >
-          {/* Absolute click target — keeps every part of the card
-              tappable while the inner spans render at normal text
-              flow. Standard Apple-cards pattern. */}
-          <span className="absolute inset-0" aria-hidden />
           <div className="flex items-stretch gap-3">
             <div className="min-w-0 flex-1">
               {/* WHAT leads. A stack of glance cards should read as a column
@@ -473,13 +488,18 @@ export default function EventCard({
               {/* Meta row — price/free + distance only. The category WORD is
                   dropped: the left accent rail + the icon tile already encode
                   the kind, so naming it again was redundant chrome. */}
-              {(event.is_free || event.price_text || event.distance_m !== undefined) && (
+              {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && (
                 <div className="mt-2 flex items-center gap-x-2 text-[11px]">
                   {event.is_free ? (
                     <span style={{ color: "var(--app-positive)" }}>Free</span>
                   ) : event.price_text ? (
                     <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
                   ) : null}
+                  {accessLabel && (
+                    <span className="font-medium" style={{ color: "var(--app-cool)" }}>
+                      {accessLabel}
+                    </span>
+                  )}
                   {event.distance_m !== undefined && (
                     <span
                       className="ml-auto font-mono tabular-nums"
@@ -491,25 +511,30 @@ export default function EventCard({
                 </div>
               )}
             </div>
-            {/* Trailing visual anchor — the venue's photo when the event
-                carries one (events borrow their venue's hero), else a
-                centered category icon on a tonal tile. The left accent rail
-                still encodes the kind; the photo just gives the row a face. */}
-            {event.hero_image ? (
-              <div aria-hidden className="relative h-12 w-12 shrink-0 self-center overflow-hidden rounded-[12px]">
-                <Image
-                  src={event.hero_image}
-                  alt=""
-                  width={96}
-                  height={96}
-                  unoptimized={event.hero_image.startsWith("/api/place-photo")}
-                  sizes="48px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="h-full w-full object-cover"
-                />
-                <span className="absolute inset-0 rounded-[12px]" style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }} />
-              </div>
+            {/* A fixed-size, lazy thumbnail appears only after the shared
+                source/venue resolver approves it. Credit is rendered below
+                this event link so Google author/source/report links never
+                become invalid nested anchors. */}
+            {cardVisual ? (
+              <figure className="w-[72px] shrink-0 self-center">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[10px]">
+                  <Image
+                    src={cardVisual.src}
+                    alt=""
+                    fill
+                    unoptimized={cardVisual.src.startsWith("/api/place-photo")}
+                    sizes="72px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover"
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-[10px]"
+                    style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }}
+                  />
+                </div>
+              </figure>
             ) : (
               // The category glyph as a real pressed-paper SEAL — the canonical
               // IconStamp (tint over elevated paper, engraved glyph in the
@@ -521,6 +546,13 @@ export default function EventCard({
             )}
           </div>
         </Link>
+        {cardVisual ? (
+          <EventVisualCredit
+            visual={cardVisual}
+            compact
+            className="relative z-10 mt-1.5"
+          />
+        ) : null}
       </article>
     );
   }
@@ -558,6 +590,11 @@ export default function EventCard({
             </Chip>
           )}
           <TrustChip signal={eventTrust(event)} />
+          {accessLabel && (
+            <span className="text-[11px] font-medium" style={{ color: "var(--app-cool)" }}>
+              {accessLabel}
+            </span>
+          )}
           {event.is_free ? (
             <span className="text-[11px] font-medium" style={{ color: "var(--app-positive)" }}>
               Free

@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   "/radius",
   "/history",
   "/about",
+  "/access",
   "/tonight",
   "/discover",
   "/m/frederick",

@@ -8,6 +8,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
+import {
+  FREDERICK_COUNTY_APPROVAL_GATED_SOURCE_IDS,
+  FREDERICK_COUNTY_PUBLIC_RUNTIME_SOURCE_IDS,
+  FREDERICK_COUNTY_SOURCE_IDS,
+} from "@/lib/integrations/fcCountySource";
 
 type Collection = "pipeline" | "runtime" | "workflow";
 type SourceRow = {
@@ -39,9 +44,19 @@ const REQUIRED_POLICY_GATED = [
   "eventbrite_frederick",
   "bandsintown",
   "seatgeek",
+  "frederick_county_arcgis",
+  "fc_open_data_hub",
+  "fc_parks_trails",
 ] as const;
 
-export function auditSourceRows(rows: SourceRow[], root = process.cwd()): string[] {
+const COUNTY_APPROVAL_GATED = FREDERICK_COUNTY_APPROVAL_GATED_SOURCE_IDS;
+const COUNTY_PUBLIC_RUNTIME = FREDERICK_COUNTY_PUBLIC_RUNTIME_SOURCE_IDS;
+
+export function auditSourceRows(
+  rows: SourceRow[],
+  root = process.cwd(),
+  approvedCountySources: ReadonlySet<string> = new Set(),
+): string[] {
   const issues: string[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
@@ -82,17 +97,71 @@ export function auditSourceRows(rows: SourceRow[], root = process.cwd()): string
       issues.push(`${id}: policy-gated adapter must stay pending, found ${row.status}`);
     }
   }
+  for (const id of COUNTY_PUBLIC_RUNTIME) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: public County GIS adapter is missing from the manifest`);
+    } else if (row.status !== "active" || row.collection !== "runtime") {
+      issues.push(
+        `${id}: public County GIS adapter must be active/runtime, found ${row.status}/${row.collection ?? "unowned"}`,
+      );
+    }
+  }
+  for (const id of COUNTY_APPROVAL_GATED) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: County approval-gated adapter is missing from the manifest`);
+      continue;
+    }
+    if (approvedCountySources.has(id)) {
+      if (row.status !== "active" || row.collection !== "runtime") {
+        issues.push(
+          `${id}: configured County source must be active/runtime in the ledger, found ${row.status}/${row.collection ?? "unowned"}`,
+        );
+      }
+    } else if (!["pending_approval", "pending_review"].includes(row.status)) {
+      issues.push(
+        `${id}: County source without configured approval must stay pending, found ${row.status}`,
+      );
+    }
+  }
   return issues;
 }
 
-export function auditSourceManifest(text: string, root = process.cwd()): string[] {
+export function auditSourceManifest(
+  text: string,
+  root = process.cwd(),
+  approvedCountySources: ReadonlySet<string> = new Set(),
+): string[] {
   const doc = parse(text) as { sources?: SourceRow[] };
-  return auditSourceRows(doc.sources ?? [], root);
+  return auditSourceRows(doc.sources ?? [], root, approvedCountySources);
 }
 
 function main() {
   const path = resolve("data/sources.yaml");
-  const issues = auditSourceManifest(readFileSync(path, "utf8"));
+  const masterApproved =
+    process.env.FREDERICK_COUNTY_GIS_REUSE_APPROVED === "1";
+  const approvedCountySources = new Set(
+    (process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const issues = auditSourceManifest(
+    readFileSync(path, "utf8"),
+    process.cwd(),
+    masterApproved ? approvedCountySources : new Set(),
+  );
+  if (masterApproved && approvedCountySources.size === 0) {
+    issues.push(
+      "County GIS master approval is enabled but FREDERICK_COUNTY_GIS_APPROVED_SOURCES is empty",
+    );
+  }
+  for (const id of approvedCountySources) {
+    if (!(FREDERICK_COUNTY_SOURCE_IDS as readonly string[]).includes(id)) {
+      issues.push(`${id}: unknown County approval id`);
+    }
+  }
   if (issues.length > 0) {
     console.error(`Source registry audit failed (${issues.length}):`);
     for (const issue of issues) console.error(`  - ${issue}`);

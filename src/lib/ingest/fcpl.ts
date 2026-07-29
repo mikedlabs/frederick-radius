@@ -39,6 +39,8 @@ export type FcplRaw = {
   age_group?: unknown;
   description?: unknown;
   program_description?: unknown;
+  image?: unknown;
+  imagealt?: unknown;
 };
 
 /** Branch display name (substring) -> the municipality slug it sits in. The
@@ -104,6 +106,31 @@ function asText(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
+function fcplEventImage(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== SOURCE_DOMAIN ||
+      !url.pathname.startsWith("/sites/default/files/")
+    ) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function fcplEventImageAlt(value: unknown): string | undefined {
+  const cleaned = asText(value)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned ? cleaned.slice(0, 300) : undefined;
+}
+
 /** Convert a local "YYYY-MM-DD HH:MM:SS" wall time in `tzid` to a UTC ISO
  *  string. "2026-06-20 09:00:00" ET -> "2026-06-20T13:00:00.000Z" (EDT). */
 export function localToUtcIso(local: unknown, tzid = "America/New_York"): string | null {
@@ -142,12 +169,15 @@ export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
   // Use changed timestamp as the change-detection key (DTSTAMP analogue);
   // fall back to start so re-runs still upsert idempotently.
   const dtstamp = localToUtcIso(raw.changed, tzid) ?? startsAtUtc;
+  const heroImage = fcplEventImage(raw.image);
 
   const event: ParsedEvent = {
     uid,
     summary: title,
     description: (asText(raw.description) || asText(raw.program_description)).trim() || undefined,
     sourceUrl: asText(raw.url).trim() || undefined,
+    heroImage,
+    heroImageAlt: heroImage ? fcplEventImageAlt(raw.imagealt) : undefined,
     rawLocation: [branchLabel, room].filter(Boolean).join(", ") || undefined,
     startsAtUtc,
     endsAtUtc,

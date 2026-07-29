@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
-import { nearbyNow } from "@/lib/connect";
+import { after, NextResponse } from "next/server";
+import { DEFAULT_NEARBY_RADIUS_M, nearbyNow } from "@/lib/connect";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import {
+  postgisNearbyMode,
+  postgisNearbyPlaceDistances,
+} from "@/lib/spatial/place-spatial-index";
 import { roundCoord } from "@/lib/walkTime";
 
 /**
@@ -76,10 +80,73 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "private, no-store" },
     });
   }
-  const ctx = nearbyNow(
-    approximateOrigin,
-    { now: new Date(), limit, ...(radiusM ? { radiusM } : {}) },
-  );
+  const now = new Date();
+  const effectiveRadiusM = radiusM ?? DEFAULT_NEARBY_RADIUS_M;
+  const baseOptions = {
+    now,
+    limit,
+    ...(radiusM ? { radiusM } : {}),
+  };
+  const mode = postgisNearbyMode();
+  let ctx = nearbyNow(approximateOrigin, baseOptions);
+
+  if (mode === "on") {
+    const distances = await postgisNearbyPlaceDistances(
+      approximateOrigin,
+      effectiveRadiusM,
+    );
+    if (distances) {
+      ctx = nearbyNow(approximateOrigin, {
+        ...baseOptions,
+        placeDistances: distances,
+      });
+    }
+  } else if (mode === "shadow") {
+    // Shadow work cannot change the response or add latency. It records only
+    // aggregate parity—never the query origin, place slugs, or raw distances.
+    after(async () => {
+      const distances = await postgisNearbyPlaceDistances(
+        approximateOrigin,
+        effectiveRadiusM,
+      );
+      if (!distances) {
+        console.info("[postgis-nearby-shadow]", {
+          available: false,
+          baselinePlaceCount: ctx.openPlaces.length,
+        });
+        return;
+      }
+      const shadow = nearbyNow(approximateOrigin, {
+        ...baseOptions,
+        placeDistances: distances,
+      });
+      const baselinePlaces = ctx.openPlaces;
+      const shadowPlaces = shadow.openPlaces;
+      const shadowBySlug = new Map(
+        shadowPlaces.map((place) => [place.slug, place.distance_m]),
+      );
+      const distanceDeltas = baselinePlaces.flatMap((place) => {
+        const shadowDistance = shadowBySlug.get(place.slug);
+        return typeof place.distance_m === "number" &&
+          typeof shadowDistance === "number"
+          ? [Math.abs(place.distance_m - shadowDistance)]
+          : [];
+      });
+      console.info("[postgis-nearby-shadow]", {
+        available: true,
+        baselinePlaceCount: baselinePlaces.length,
+        shadowPlaceCount: shadowPlaces.length,
+        sameFirstPlace:
+          (baselinePlaces[0]?.slug ?? null) ===
+          (shadowPlaces[0]?.slug ?? null),
+        samePlaceOrder:
+          baselinePlaces.map((place) => place.slug).join("\0") ===
+          shadowPlaces.map((place) => place.slug).join("\0"),
+        maxDistanceDeltaM:
+          distanceDeltas.length > 0 ? Math.max(...distanceDeltas) : null,
+      });
+    });
+  }
 
   return NextResponse.json(ctx, {
     headers: {

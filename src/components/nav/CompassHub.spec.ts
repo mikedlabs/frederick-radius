@@ -4,6 +4,7 @@ import {
   buildCompassOutcomes,
   buildCompassSections,
   commonCompassTasks,
+  compassSearchAction,
   splitEssentialItems,
 } from "./CompassHub";
 
@@ -101,5 +102,41 @@ describe("Compass browse model", () => {
       "trails",
       "rivers",
     ]));
+  });
+});
+
+describe("Compass search contract", () => {
+  it.each([
+    ["parking", "/search?q=parking"],
+    ["Gravel and Grind", "/search?q=Gravel%20and%20Grind"],
+    ["parking?", "/search?q=parking%3F"],
+    ["Gravel and Grind?", "/search?q=Gravel%20and%20Grind%3F"],
+  ])("keeps the direct term %s in Search", (query, href) => {
+    expect(compassSearchAction(query)).toEqual({ kind: "search", href });
+  });
+
+  it.each([
+    [
+      "Where can I park downtown?",
+      "/ask?q=Where%20can%20I%20park%20downtown%3F",
+    ],
+    [
+      "Help me plan a rainy afternoon",
+      "/ask?q=Help%20me%20plan%20a%20rainy%20afternoon",
+    ],
+    [
+      "Looking for somewhere quiet with kids",
+      "/ask?q=Looking%20for%20somewhere%20quiet%20with%20kids",
+    ],
+  ])("uses Ask as the primary action for %s", (query, href) => {
+    expect(compassSearchAction(query)).toEqual({ kind: "ask", href });
+  });
+
+  it("normalizes the submitted query and has no action for an empty field", () => {
+    expect(compassSearchAction("  coffee   downtown  ")).toEqual({
+      kind: "search",
+      href: "/search?q=coffee%20downtown",
+    });
+    expect(compassSearchAction("   ")).toBeNull();
   });
 });

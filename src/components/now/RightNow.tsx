@@ -57,7 +57,9 @@ import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSourc
 import {
   canUseOriginForRanking,
   compareRightNowCandidates,
+  resolveRightNowAvailabilityMode,
   rightNowSortLabel,
+  type RightNowAvailabilityMode,
   type RightNowSort,
 } from "@/lib/right-now-ranking";
 import { useSavedList } from "@/hooks/useSaved";
@@ -311,9 +313,17 @@ export default function RightNow({
   // the craving/meal label ("food").
   const activeNoun = (facetDefs.find((f) => f.key === facetKey)?.label ?? active?.label ?? "").toLowerCase();
 
-  // matched = the craving set narrowed by the active facet, sorted open-first
-  // then nearest. The basis for the open count and the displayed list.
-  const matched = useMemo(() => {
+  // The requested policy comes from the craving vocabulary. Existing intents
+  // without an explicit policy retain their established required-hours
+  // behavior whenever the result set has enough current-hours coverage.
+  const requestedAvailability: RightNowAvailabilityMode = craving?.alwaysOpen
+    ? "not-applicable"
+    : craving?.availability ?? "required";
+
+  // The craving set narrowed by the active facet and town, before ranking.
+  // Hours coverage must be measured on this exact set before deciding whether
+  // open-first is an honest ordering.
+  const matchedUnsorted = useMemo(() => {
     const passFacet = (p: PlaceCardData): boolean => {
       if (!facetKey) return true;
       if (craving?.cuisineFacets) return cuisinesOf(p).includes(facetKey);
@@ -330,24 +340,44 @@ export default function RightNow({
         // by the open-now gate just because its front-desk hours aren't posted.
         const open = Boolean(craving?.alwaysOpen) || isOpenNow(p.open_status);
         return { p, dist, open };
-      })
-      .sort((a, b) =>
-        compareRightNowCandidates(a, b, sort, hasRankingOrigin, {
-          savedSlugs: savedPlaceSlugs,
-          visitedSlugs,
-        }),
-      );
+      });
   }, [
     cravingMatchedAll,
     craving,
     facetKey,
     townKey,
-    sort,
     origin,
-    hasRankingOrigin,
-    savedPlaceSlugs,
-    visitedSlugs,
   ]);
+
+  // A zero count only means "closed" when enough of this set can state an
+  // open or closed hour at all. Below that bar, hours become a soft signal;
+  // unknown listings remain eligible and nearby relevance can lead.
+  const mayReportNoneOpen = useMemo(
+    () => mayAssertNoneOpen(matchedUnsorted.map((m) => m.p.open_status)),
+    [matchedUnsorted],
+  );
+  const rankingAvailability = resolveRightNowAvailabilityMode(
+    requestedAvailability,
+    mayReportNoneOpen,
+  );
+
+  const matched = useMemo(
+    () =>
+      [...matchedUnsorted].sort((a, b) =>
+        compareRightNowCandidates(a, b, sort, hasRankingOrigin, {
+          savedSlugs: savedPlaceSlugs,
+          visitedSlugs,
+        }, rankingAvailability),
+      ),
+    [
+      matchedUnsorted,
+      sort,
+      hasRankingOrigin,
+      savedPlaceSlugs,
+      visitedSlugs,
+      rankingAvailability,
+    ],
+  );
 
   // A town with no verified in-town match should not become a blank page.
   // Keep the scope honest, then offer the three closest verified alternatives
@@ -369,10 +399,27 @@ export default function RightNow({
         distance: haversineMeters(origin, place.geom),
         open: Boolean(craving?.alwaysOpen) || isOpenNow(place.open_status),
       }))
-      .sort((a, b) => Number(b.open) - Number(a.open) || a.distance - b.distance)
+      .sort((a, b) =>
+        compareRightNowCandidates(
+          { p: a.place, dist: a.distance, open: a.open },
+          { p: b.place, dist: b.distance, open: b.open },
+          "nearest",
+          true,
+          {},
+          rankingAvailability,
+        ),
+      )
       .slice(0, 3)
       .map(({ place, distance }) => ({ place, distance }));
-  }, [cravingMatchedAll, craving, facetKey, townKey, matched.length, origin]);
+  }, [
+    cravingMatchedAll,
+    craving,
+    facetKey,
+    townKey,
+    matched.length,
+    origin,
+    rankingAvailability,
+  ]);
 
   // Towns that actually have a result for this craving — so the town row only
   // offers places that lead somewhere, never a dead "0 in Myersville" chip.
@@ -382,13 +429,6 @@ export default function RightNow({
   }, [cravingMatchedAll]);
 
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
-  // A zero count only means "closed" when enough of this set can state an
-  // open or closed hour at all. Below that bar the honest report is about our
-  // coverage, not about the county.
-  const mayReportNoneOpen = useMemo(
-    () => mayAssertNoneOpen(matched.map((m) => m.p.open_status)),
-    [matched],
-  );
   // Open, but closing within the hour (getOpenStatus → "closing-soon"). Drives
   // the urgency chip + filter; closing-soon places are a subset of "open".
   const closingSoonCount = useMemo(
@@ -452,7 +492,7 @@ export default function RightNow({
             Find something nearby
           </h1>
           <p id="nearby-intro" className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            Choose what you need. Open places lead the list.
+            Choose what you need. Nearby places lead unless current hours are essential.
           </p>
         </header>
 
@@ -516,7 +556,7 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const availabilityLeads = !openOnly && !craving?.alwaysOpen;
+  const availabilityLeads = !openOnly && rankingAvailability === "required";
   const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLeads);
   const areaLabel = townName
     ? `in ${townName}`
@@ -577,6 +617,8 @@ export default function RightNow({
             <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               {matched.length === 0
                 ? `No matching places ${townName ? `in ${townName}` : "in the county"} · ${sortLabel}`
+                : requestedAvailability === "not-applicable"
+                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} ${origin ? "nearby" : "in the county"} · ${sortLabel}`
                 : meal
                 ? openCount > 0
                   ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
@@ -704,9 +746,9 @@ export default function RightNow({
           )}
         </div>
 
-        {/* Sort — open places lead either way; this toggles the secondary
-            ordering (best fit, distance, or rating). Its own quiet row so it reads as a
-            sort, not another filter. */}
+        {/* Sort — the result set's availability policy decides whether open
+            is a hard tier or a soft signal. This row names the actual ordering
+            instead of promising nearest-first when the data cannot support it. */}
         <div className="flex items-center gap-1.5 pt-0.5">
           <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
             Sort
@@ -768,10 +810,10 @@ export default function RightNow({
             style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
           >
             <h2 id="nearby-town-fallback-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Verified options beyond town
+              Nearby options beyond town
             </h2>
             <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Radius has no verified listing for {activeNoun} in {townName} yet. These matches are outside town, with open places first.
+              Radius has no matching listing for {activeNoun} in {townName} yet. These are the closest matches outside town; each card shows what Radius can confirm about its hours.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { CornerUpRight, SquareParking, X } from "lucide-react";
+import { CornerUpRight, SquareParking } from "lucide-react";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -11,6 +11,7 @@ import {
   type ParkingPin,
 } from "@/lib/map/parking";
 import { formatMapTimestamp } from "./mapContent";
+import MapResultSurface from "./MapResultSurface";
 
 /**
  * MapParkingPeek — the quick-peek card for a downtown garage.
@@ -54,16 +55,12 @@ export default function MapParkingPeek({
   const updated = formatMapTimestamp(pin.updated);
 
   return (
-    <div className="map-peek map-parking-peek" role="dialog" aria-label={pin.name}>
-      <button
-        type="button"
-        className="map-peek-close tap-44"
-        onClick={onClose}
-        aria-label="Close"
-      >
-        <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-      </button>
-
+    <MapResultSurface
+      className="map-peek map-parking-peek"
+      ariaLabel={pin.name}
+      closeLabel={`Close ${pin.name}`}
+      onClose={onClose}
+    >
       <div className="map-peek-body" style={{ cursor: "default" }}>
         <span
           className="map-peek-thumb"
@@ -116,6 +113,6 @@ export default function MapParkingPeek({
           Directions
         </a>
       </div>
-    </div>
+    </MapResultSurface>
   );
 }

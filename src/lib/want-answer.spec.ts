@@ -3,6 +3,7 @@ import {
   buildWantAnswer,
   partitionWant,
   rankBestFit,
+  resolveWantAvailability,
   usefulDealHook,
   usefulFallbackSignature,
   type WantCandidate,
@@ -175,6 +176,121 @@ describe("buildWantAnswer context", () => {
     expect(ranked[0]?.slug).toBe("nearby");
   });
 
+  it("keeps a nearby unknown-hours place ahead of a far open place for a timeless intent", () => {
+    const resolution = resolveWantAvailability(
+      [
+        cand({
+          slug: "walkersville-open",
+          name: "Walkersville Playground",
+          distance_m: 11_100,
+          feature_score: 5,
+        }),
+        cand({
+          slug: "downtown-hours-unknown",
+          name: "Downtown Playground",
+          distance_m: 220,
+          feature_score: 5,
+          open_status: { state: "unverified" },
+        }),
+      ],
+      "not-applicable",
+      true,
+    );
+
+    expect(resolution).toMatchObject({
+      hardAvailability: false,
+      rankingMode: "best-fit",
+      mayAssertNoneOpen: false,
+    });
+    expect(resolution.current.map((candidate) => candidate.slug)).toEqual([
+      "downtown-hours-unknown",
+      "walkersville-open",
+    ]);
+  });
+
+  it("treats confirmed-open as evidence, not a gate, when required-hours coverage is thin", () => {
+    const resolution = resolveWantAvailability(
+      [
+        cand({
+          slug: "far-open",
+          distance_m: 8_000,
+          feature_score: 5,
+        }),
+        cand({
+          slug: "near-unknown",
+          distance_m: 120,
+          feature_score: 5,
+          open_status: { state: "unknown" },
+        }),
+        cand({
+          slug: "mid-unverified",
+          distance_m: 900,
+          feature_score: 5,
+          open_status: { state: "unverified" },
+        }),
+      ],
+      "required",
+      true,
+    );
+
+    expect(resolution.hardAvailability).toBe(false);
+    expect(resolution.current[0]?.slug).toBe("near-unknown");
+    expect(resolution.current.map((candidate) => candidate.slug)).toContain(
+      "far-open",
+    );
+  });
+
+  it("keeps confirmed-open food as a hard gate when hours coverage is sufficient", () => {
+    const resolution = resolveWantAvailability(
+      [
+        cand({ slug: "open-near", distance_m: 180 }),
+        cand({ slug: "open-far", distance_m: 1_800 }),
+        cand({
+          slug: "near-unknown",
+          distance_m: 40,
+          feature_score: 20,
+          open_status: { state: "unverified" },
+        }),
+      ],
+      "required",
+      true,
+    );
+
+    expect(resolution).toMatchObject({
+      hardAvailability: true,
+      rankingMode: "open-now",
+      mayAssertNoneOpen: true,
+    });
+    expect(resolution.current.map((candidate) => candidate.slug)).toEqual([
+      "open-near",
+      "open-far",
+    ]);
+  });
+
+  it("keeps downtown playgrounds ahead of an open Walkersville playground", () => {
+    const answer = buildWantAnswer(
+      "cat:playground",
+      null,
+      { lng: -77.4105, lat: 39.4143 },
+      new Date("2026-07-28T16:00:00.000Z"),
+      {
+        contextLabel: "Near you",
+        contextSource: "device",
+      },
+    );
+
+    expect(answer).toMatchObject({
+      rankingMode: "best-fit",
+      mayAssertNoneOpen: false,
+      contextSource: "device",
+    });
+    expect(answer?.hero?.slug).not.toBe(
+      "walkersville-community-park-playground-walkersville",
+    );
+    expect(answer?.hero?.where).toBe("Frederick");
+    expect(answer?.hero?.confidence).toBeUndefined();
+  });
+
   it("leads with Gravel & Grind for coffee beside its downtown storefront", () => {
     const answer = buildWantAnswer(
       "coffee",
@@ -190,8 +306,8 @@ describe("buildWantAnswer context", () => {
     expect(answer?.hero).toMatchObject({
       slug: "gravel-and-grind-frederick",
       name: "Gravel & Grind",
-      confidence: "likely",
     });
+    expect(answer?.hero?.confidence).toBeUndefined();
     expect(answer?.hero?.distance).toBe("1 min walk");
     expect(answer?.also.some((row) => /starbucks/i.test(row.name))).toBe(false);
   });
@@ -224,7 +340,7 @@ describe("buildWantAnswer context", () => {
     expect(new Set(answer?.open?.map((row) => row.slug)).size).toBe(answer?.open?.length);
   });
 
-  it("uses a conservative, labeled fallback when confirmed hours have expired", () => {
+  it("keeps expired hours neutral instead of presenting them as current", () => {
     const answer = buildWantAnswer(
       "coffee",
       null,
@@ -233,9 +349,11 @@ describe("buildWantAnswer context", () => {
     );
 
     expect(answer?.hero).not.toBeNull();
-    expect(answer?.hero?.confidence).toBe("likely");
-    expect(answer?.hero?.fact).toBe("Likely open · check hours");
-    expect(answer?.also.every((row) => row.confidence === "likely")).toBe(true);
+    expect(answer?.rankingMode).toBe("best-fit");
+    expect(answer?.mayAssertNoneOpen).toBe(false);
+    expect(answer?.hero?.confidence).toBeUndefined();
+    expect(answer?.hero?.fact).toBe("Hours not posted");
+    expect(answer?.also.every((row) => row.confidence == null)).toBe(true);
   });
 
   it("answers movies with both local cinemas and their official showtime actions", () => {

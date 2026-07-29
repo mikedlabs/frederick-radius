@@ -8,10 +8,10 @@ import {
 
 describe("TopBar search ownership", () => {
   it.each(["/map", "/search", "/compass", "/ask", "/ask/history"])(
-    "keeps a mobile search action available alongside local tools on %s",
+    "lets the route's own search or composer lead on %s",
     (pathname) => {
       expect(pageOwnsPrimarySearch(pathname)).toBe(true);
-      expect(shouldShowGlobalMobileSearch(pathname)).toBe(true);
+      expect(shouldShowGlobalMobileSearch(pathname)).toBe(false);
     },
   );
 
@@ -21,7 +21,7 @@ describe("TopBar search ownership", () => {
     expect(topBarFindTarget("/compass")).toBe("global");
   });
 
-  it.each(["/today", "/events", "/pulse", "/places/gravel-and-grind"])(
+  it.each(["/today", "/events", "/pulse", "/access", "/places/gravel-and-grind"])(
     "keeps global Find available on %s",
     (pathname) => {
       expect(pageOwnsPrimarySearch(pathname)).toBe(false);
@@ -29,13 +29,13 @@ describe("TopBar search ownership", () => {
     },
   );
 
-  it("compacts labels below 390px without removing search or alert controls", () => {
+  it("keeps the narrow mobile header to brand, location, and route-appropriate search", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
     const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
 
     expect(topBar).toContain('className="hidden text-[15px] min-[390px]:inline"');
     expect(location).toContain("min-[390px]:block sm:max-w-[160px]");
-    expect(topBar).toContain("<PulseIndicator />");
+    expect(topBar).toContain('className="hidden sm:contents"');
     expect(topBar).toContain("{showMobileSearch && (");
   });
 

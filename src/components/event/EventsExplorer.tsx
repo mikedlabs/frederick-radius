@@ -9,7 +9,6 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import EventsIntentRail from "@/components/event/EventsIntentRail";
-import EventPosterCard from "@/components/event/EventPosterCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
@@ -26,6 +25,7 @@ import {
   type IntentId,
 } from "@/lib/events/intents";
 import { isLgbtqEvent } from "@/lib/events/lgbtq";
+import { hasDeafCommunityOrCommunicationAccess } from "@/lib/events/communication-access";
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -45,6 +45,10 @@ import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
 import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
+import {
+  horizonLeadVariant,
+  primaryLeadPrecedesInterestRail,
+} from "@/components/event/eventsExplorerLayout";
 import { compareForLead } from "@/lib/events/lead-rank";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
@@ -95,10 +99,70 @@ type Props = {
 
 type BrowseResponse = {
   events: EventWithMeta[];
-  liveSlugs: string[];
+  liveSlugs?: string[];
   generatedAt: string;
   sourceHealth?: EventSourceHealth;
 };
+
+type ReconciledBrowseResponse = {
+  events: EventWithMeta[];
+  liveSlugs: string[];
+  sourceHealth: EventSourceHealth;
+  dataComplete: boolean;
+};
+
+function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
+  return `${event.slug}@@${event.starts_at}`;
+}
+
+/**
+ * A deferred browse response is authoritative only when its source health is
+ * healthy. A degraded response is still useful for adding events that did
+ * arrive, but it must never erase a trustworthy server-rendered snapshot just
+ * because one or more calendars timed out.
+ *
+ * Missing health metadata also fails closed: the endpoint contract promises
+ * it, so an unlabelled response cannot honestly be treated as complete.
+ */
+export function reconcileBrowseResponse(
+  currentEvents: EventWithMeta[],
+  currentLiveSlugs: string[],
+  payload: BrowseResponse,
+): ReconciledBrowseResponse {
+  if (!Array.isArray(payload.events)) {
+    throw new Error("Events response was incomplete");
+  }
+
+  const sourceHealth = payload.sourceHealth ?? {
+    degraded: true,
+    unavailable: [],
+  };
+  const nextLiveSlugs = Array.isArray(payload.liveSlugs) ? payload.liveSlugs : [];
+
+  if (!sourceHealth.degraded) {
+    return {
+      events: payload.events,
+      liveSlugs: nextLiveSlugs,
+      sourceHealth,
+      dataComplete: true,
+    };
+  }
+
+  const merged = new Map<string, EventWithMeta>();
+  for (const event of currentEvents) merged.set(eventIdentity(event), event);
+  // Successfully loaded rows may carry a correction, so they win on identity
+  // while rows omitted by the degraded fetch remain available.
+  for (const event of payload.events) merged.set(eventIdentity(event), event);
+
+  return {
+    events: [...merged.values()],
+    liveSlugs: [...new Set([...currentLiveSlugs, ...nextLiveSlugs])],
+    sourceHealth,
+    // Keep the continuation open so a later user retry can replace this
+    // merged snapshot once every calendar answers.
+    dataComplete: false,
+  };
+}
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
@@ -150,6 +214,8 @@ export default function EventsExplorer({
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const requestRef = useRef<Promise<void> | null>(null);
+  const eventPoolRef = useRef(events);
+  const liveSlugsRef = useRef(liveSlugs);
 
   // Server-safe defaults let this Client Component emit useful static HTML.
   // URL and device preferences are applied after hydration, then mirrored
@@ -184,6 +250,12 @@ export default function EventsExplorer({
   // (Pride/queer/drag-performance contexts) or a verified community venue
   // (The Frederick Center). Same composable-facet contract as the rest.
   const [lgbtqOnly, setLgbtqOnly] = useState(false);
+  // Deaf-community programming and communication access (?access=1).
+  // This is deliberately conservative: the shared predicate only matches
+  // facts stated by the publisher (ASL, captions, assistive listening,
+  // interpreter by request) or an event published by the Maryland School
+  // for the Deaf. Radius never guesses that an accommodation is available.
+  const [communicationAccessOnly, setCommunicationAccessOnly] = useState(false);
   // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
   const [recurringOnly, setRecurringOnly] = useState(false);
   // Recommended is the discovery-first default: distinctive draws lead each
@@ -237,6 +309,7 @@ export default function EventsExplorer({
     setTod(DAYPART_KEYS.includes(todParam as Daypart) ? todParam as Daypart : null);
     setKidsOnly(bool("kids"));
     setLgbtqOnly(bool("lgbtq"));
+    setCommunicationAccessOnly(bool("access"));
     setRecurringOnly(bool("recurring"));
     setSort(
       sortParam === "time" || sortParam === "az" || sortParam === "venue"
@@ -290,11 +363,17 @@ export default function EventsExplorer({
       .then(async (response) => {
         if (!response.ok) throw new Error(`Events request failed (${response.status})`);
         const payload = await response.json() as BrowseResponse;
-        if (!Array.isArray(payload.events)) throw new Error("Events response was incomplete");
-        setEventPool(payload.events);
-        setCurrentLiveSlugs(payload.liveSlugs);
-        if (payload.sourceHealth) setCurrentSourceHealth(payload.sourceHealth);
-        setDataComplete(true);
+        const reconciled = reconcileBrowseResponse(
+          eventPoolRef.current,
+          liveSlugsRef.current,
+          payload,
+        );
+        eventPoolRef.current = reconciled.events;
+        liveSlugsRef.current = reconciled.liveSlugs;
+        setEventPool(reconciled.events);
+        setCurrentLiveSlugs(reconciled.liveSlugs);
+        setCurrentSourceHealth(reconciled.sourceHealth);
+        setDataComplete(reconciled.dataComplete);
       })
       .catch(() => {
         setLoadError("Couldn’t load the rest of the calendar. Try again.");
@@ -324,7 +403,8 @@ export default function EventsExplorer({
   const anyFilter =
     cat !== null || intent !== null || sub !== null || town !== null ||
     time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
-    tod !== null || kidsOnly || lgbtqOnly || recurringOnly || day !== null;
+    tod !== null || kidsOnly || lgbtqOnly || communicationAccessOnly ||
+    recurringOnly || day !== null;
 
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
   // exact cat). The intent rail's badges count against THIS set, so a
@@ -355,6 +435,10 @@ export default function EventsExplorer({
       if (tod && eventDaypart(e) !== tod) return false;
       if (kidsOnly && !isForKids(e)) return false;
       if (lgbtqOnly && !isLgbtqEvent(e)) return false;
+      if (
+        communicationAccessOnly &&
+        !hasDeafCommunityOrCommunicationAccess(e)
+      ) return false;
       if (recurringOnly && !isRecurringEvent(e)) return false;
       if (happyOnly) {
         // Match against title + venue + description so we catch both
@@ -365,14 +449,14 @@ export default function EventsExplorer({
       }
       if (
         term &&
-        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""}`
+        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
           .toLowerCase()
           .includes(term)
       )
         return false;
       return true;
     });
-  }, [eventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [eventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Rail badges — per-intent counts over the base set (post time/town/free,
   // pre intent/sub) so picking an intent doesn't zero out the other badges.
@@ -481,7 +565,7 @@ export default function EventsExplorer({
     const sp = new URLSearchParams(window.location.search);
     for (const key of [
       "cats", "m", SCOPE_PARAM, "when", "d", "lens", "tod", "intent", "sub",
-      "free", "happy", "kids", "lgbtq", "recurring", "sort",
+      "free", "happy", "kids", "lgbtq", "access", "recurring", "sort",
     ]) sp.delete(key);
     const structural = new URLSearchParams(toQuery(viewState));
     for (const [k, v] of structural) sp.set(k, v);
@@ -495,12 +579,13 @@ export default function EventsExplorer({
     if (happyOnly) sp.set("happy", "true");
     if (kidsOnly) sp.set("kids", "true");
     if (lgbtqOnly) sp.set("lgbtq", "true");
+    if (communicationAccessOnly) sp.set("access", "true");
     if (recurringOnly) sp.set("recurring", "true");
     if (sort !== "recommended") sp.set("sort", sort);
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, recurringOnly, sort, urlReady]);
+  }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, sort, urlReady]);
 
   // The bounded preview is sufficient for the default list. Every operation
   // that promises a complete answer promotes the cached continuation exactly
@@ -525,6 +610,7 @@ export default function EventsExplorer({
     setTod(null);
     setKidsOnly(false);
     setLgbtqOnly(false);
+    setCommunicationAccessOnly(false);
     setRecurringOnly(false);
   };
 
@@ -540,6 +626,7 @@ export default function EventsExplorer({
   if (tod) relaxations.push({ key: "tod", label: DAYPARTS.find((d) => d.key === tod)?.label ?? tod, drop: () => setTod(null) });
   if (kidsOnly) relaxations.push({ key: "kids", label: "Kid-friendly", drop: () => setKidsOnly(false) });
   if (lgbtqOnly) relaxations.push({ key: "lgbtq", label: "LGBTQ+", drop: () => setLgbtqOnly(false) });
+  if (communicationAccessOnly) relaxations.push({ key: "access", label: "Deaf community & access", drop: () => setCommunicationAccessOnly(false) });
   if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
   if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
   if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
@@ -550,26 +637,32 @@ export default function EventsExplorer({
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 
+  const primaryHorizon = horizonGroups[0];
+  const primaryLead = primaryHorizon?.events[0] ?? null;
+  const showPrimaryLeadBeforeRail = primaryLeadPrecedesInterestRail({
+    view,
+    sort,
+    resultCount: filtered.length,
+    horizonCount: horizonGroups.length,
+  });
+
   // Sheet boundary: a plain tap on any event link below opens the
   // EventSheet in place (essentials without a page navigation; the
   // full page stays one tap away and every anchor stays real).
   // Modified clicks and unknown slugs fall through to navigation.
   return (
     <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
-      {/* The masthead-dock — the almanac nameplate (collapses on scroll) +
-          the pinned What · When · Where caption bar (each word a tab into a
-          top-sheet pane) + the mono count line and the "how you look"
-          controls (view lens + sort). It REPLACES the old five stacked
-          rows (intent rail + quick pills + search + view toggle + Filters
-          button/sheet). Every filter param and the results engine below
-          are untouched: the dock is pure control chrome over this
+      {/* The masthead-dock — the almanac nameplate, one filter doorway, the
+          mono count line, and the display controls. What, When, and Where stay
+          inside the filter sheet instead of occupying the results horizon.
+          Every filter param and the results engine below are untouched: the
+          dock is pure control chrome over this
           component's state. Saved events live on /my-radius now, so there's
           no saved rail above the first event — the board leads with events. */}
       <EventsBoardDock
         nowISO={nowISO}
         dayCounts={summary.dayCounts}
         filteredCount={!dataComplete && !anyFilter ? summary.totalCount : filtered.length}
-        intentCounts={intentCounts}
         categories={categories}
         towns={towns}
         intent={intent}
@@ -596,6 +689,8 @@ export default function EventsExplorer({
         setKidsOnly={setKidsOnly}
         lgbtqOnly={lgbtqOnly}
         setLgbtqOnly={setLgbtqOnly}
+        communicationAccessOnly={communicationAccessOnly}
+        setCommunicationAccessOnly={setCommunicationAccessOnly}
         recurringOnly={recurringOnly}
         setRecurringOnly={setRecurringOnly}
         anyFilter={anyFilter}
@@ -605,6 +700,17 @@ export default function EventsExplorer({
         sort={sort}
         setSort={setSort}
       />
+
+      {showPrimaryLeadBeforeRail && primaryLead && (
+        <div data-events-primary-lead="before-interest">
+          <PromotedEvent
+            event={primaryLead}
+            visual={eventCardVisual(primaryLead)}
+            live={live.has(primaryLead.slug)}
+            priorityImage
+          />
+        </div>
+      )}
 
       {/* The intent taxonomy used to live one tap deep in the What pane,
           which made a smart filter system look like another text form. This
@@ -657,17 +763,31 @@ export default function EventsExplorer({
       </section>
 
       {currentSourceHealth.degraded && (
-        <p
+        <div
           role="status"
-          className="rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
+          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
           style={{
             borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
             background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
             color: "var(--app-ink-2)",
           }}
         >
-          Some live calendars didn&rsquo;t answer. This board is showing the events that loaded successfully.
-        </p>
+          <span>
+            {!dataComplete
+              ? "Some live calendars didn’t answer. Radius kept the last available events instead of treating missing feeds as empty."
+              : "Some live calendars didn’t answer. This board only includes events Radius could confirm."}
+          </span>
+          {!dataComplete && (
+            <button
+              type="button"
+              onClick={() => void ensureAllEvents()}
+              className="tap-44-y shrink-0 font-semibold underline"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Check again
+            </button>
+          )}
+        </div>
       )}
 
       {loadingAll && (
@@ -831,34 +951,46 @@ export default function EventsExplorer({
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
             const EXPANDED_CAP = 40;
-            // One large poster plus three smaller posters gives every window
-            // a visual rhythm without recreating the old pile of overlapping
-            // rails. Expanded rows switch back to the compact agenda density.
-            const PEEK = 3;
-            const lead = g.events[0];
-            const rest = g.events.slice(1);
+            // Every horizon gets one lead. The immediate horizon earns the
+            // full poster; later windows use the restrained glance card, whose
+            // own resolver allows only safe thumbnails or a category seal.
+            const lead = g.events[0] ?? null;
+            const leadVariant = horizonLeadVariant(groupIdx);
+            const leadMovedBeforeRail =
+              groupIdx === 0 && showPrimaryLeadBeforeRail;
+            const leadVisual =
+              lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
+            const rest = lead ? g.events.slice(1) : g.events;
+            const PEEK = leadVariant === "feature" ? 2 : 3;
             const groupCount = !dataComplete && !anyFilter
               ? summary.horizonCounts[g.key]
               : g.events.length;
-            const totalRest = Math.max(0, groupCount - 1);
+            const totalRest = Math.max(0, groupCount - (lead ? 1 : 0));
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen && dataComplete ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
-            const moreCount = Math.max(0, totalRest - preview.length);
             const canExpand = totalRest > PEEK;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
-                <PromotedEvent
-                  event={lead}
-                  visual={eventCardVisual(lead)}
-                  live={live.has(lead.slug)}
-                  priorityImage={groupIdx === 0}
-                />
+                {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
+                  <PromotedEvent
+                    event={lead}
+                    visual={leadVisual}
+                    live={live.has(lead.slug)}
+                    priorityImage
+                  />
+                ) : lead && !leadMovedBeforeRail ? (
+                  <EventCard
+                    event={lead}
+                    variant="glance"
+                    live={live.has(lead.slug)}
+                  />
+                ) : null}
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      <EventPosterShelf events={preview} live={live} />
+                      <CompactEventList events={preview} live={live} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
@@ -890,7 +1022,7 @@ export default function EventsExplorer({
                               : "Try loading more"
                             : isOpen
                               ? "Show fewer"
-                              : `Show ${moreCount} more`}
+                              : "Show more"}
                           <ChevronDown
                             className="h-4 w-4 transition-transform"
                             strokeWidth={2.25}
@@ -961,30 +1093,6 @@ export default function EventsExplorer({
   );
 }
 
-function EventPosterShelf({
-  events,
-  live,
-}: {
-  events: EventWithMeta[];
-  live: ReadonlySet<string>;
-}) {
-  if (events.length === 0) return null;
-  return (
-    <ol className="event-poster-shelf">
-      {events.map((event) => (
-        <li key={`${event.slug}-${event.starts_at}`}>
-          <EventPosterCard
-            event={event}
-            live={live.has(event.slug)}
-            layout="shelf"
-            priorityImage={false}
-          />
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function CompactEventList({
   events,
   live,
@@ -1026,22 +1134,12 @@ function PromotedEvent({
   live: boolean;
 }) {
   return (
-    <div className="relative">
-      {live && (
-        <span
-          className="absolute right-3 top-12 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-          style={{ background: "var(--app-positive)" }}
-        >
-          <span className="live-dot" /> Live
-        </span>
-      )}
-      <EventCard
-        event={event}
-        variant="feature"
-        live={live}
-        priorityImage={priorityImage}
-        visual={visual ?? undefined}
-      />
-    </div>
+    <EventCard
+      event={event}
+      variant="feature"
+      live={live}
+      priorityImage={priorityImage}
+      visual={visual ?? undefined}
+    />
   );
 }

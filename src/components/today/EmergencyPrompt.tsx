@@ -29,8 +29,8 @@ export default function EmergencyPrompt() {
           Emergency &amp; urgent care
         </span>
         <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          911, the ER, urgent care, and the poison and crisis lines. Good to
-          know before you need it.
+          Call or text 911, find the ER or urgent care, and reach poison or
+          crisis help.
         </span>
       </span>
       <ArrowRight

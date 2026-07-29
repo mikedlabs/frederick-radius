@@ -18,6 +18,7 @@ import { normalizeMapReturnTo } from "@/lib/map-return";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 
 const PlaceSheet = lazy(() => import("./PlaceSheet"));
+let placeLayerSequence = 0;
 
 type Ctx = {
   openSheet: (p: PlaceCardData) => void;
@@ -31,6 +32,8 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const [place, setPlace] = useState<PlaceCardData | null>(null);
   const [mapReturnTo, setMapReturnTo] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const historyLayerIdRef = useRef("");
+  const activePlaceSlugRef = useRef<string | null>(null);
   const openPathRef = useRef(pathname);
   // Quietly record the open so /saved's "Recently viewed" row can
   // surface it later. Stored locally only; the slug is the entire
@@ -39,30 +42,36 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const pushRecent = usePushRecentPlace();
   const openSheet = useCallback(
     (p: PlaceCardData) => {
-      openerRef.current =
-        typeof document !== "undefined" && document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      // Capture this at the moment the sheet opens. The map updates its camera,
-      // layers, and query through native history replacement; relying on a
-      // layout-level `useSearchParams` snapshot can therefore miss the latest
-      // values. A validated pathname is safe to carry into the full detail.
-      const current =
-        typeof window === "undefined" ? null : new URL(window.location.href);
-      openPathRef.current = current?.pathname ?? pathname;
-      setMapReturnTo(
-        normalizeMapReturnTo(
-          current?.pathname === "/map"
-            ? `${current.pathname}${current.search}${current.hash}`
-            : current?.searchParams.get("returnTo"),
-        ),
-      );
+      const hydrationUpdate = activePlaceSlugRef.current === p.slug;
+      if (!hydrationUpdate) {
+        openerRef.current =
+          typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        historyLayerIdRef.current = `place-sheet:${Date.now()}:${++placeLayerSequence}`;
+        // Capture this only when the sheet first opens. Map replaces a slim pin
+        // with a hydrated record moments later; treating that data refresh as a
+        // second open used to overwrite the real trigger with a control inside
+        // the sheet and stack another temporary history entry.
+        const current =
+          typeof window === "undefined" ? null : new URL(window.location.href);
+        openPathRef.current = current?.pathname ?? pathname;
+        setMapReturnTo(
+          normalizeMapReturnTo(
+            current?.pathname === "/map"
+              ? `${current.pathname}${current.search}${current.hash}`
+              : current?.searchParams.get("returnTo"),
+          ),
+        );
+        pushRecent(p.slug);
+      }
+      activePlaceSlugRef.current = p.slug;
       setPlace(p);
-      pushRecent(p.slug);
     },
     [pathname, pushRecent],
   );
   const closeSheet = useCallback(() => {
+    activePlaceSlugRef.current = null;
     setPlace(null);
     setMapReturnTo(null);
   }, []);
@@ -72,7 +81,6 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   // have that sheet appear later over the destination page.
   useEffect(() => {
     if (!place || pathname === openPathRef.current) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; discard the pending overlay before its lazy bundle resolves
     closeSheet();
   }, [closeSheet, pathname, place]);
 
@@ -86,6 +94,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
               label={`Loading ${place.name}`}
               onClose={closeSheet}
               returnFocusRef={openerRef}
+              historyLayerId={historyLayerIdRef.current}
             />
           )}
         >
@@ -94,6 +103,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
             mapReturnTo={mapReturnTo}
             onClose={closeSheet}
             returnFocusRef={openerRef}
+            historyLayerId={historyLayerIdRef.current}
           />
         </Suspense>
       ) : null}

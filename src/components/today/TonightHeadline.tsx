@@ -10,6 +10,9 @@ import { isKeysEvent } from "@/lib/today/keysEvent";
 import KeysCard from "@/components/today/KeysCard";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventCardVisual } from "@/components/event/eventVisuals";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
+import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
+import { easternDayKey } from "@/lib/tz";
 
 /**
  * TonightHeadline — the ONE headline of /today, rendered only when the day
@@ -62,6 +65,17 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
 
   return (
     <section aria-label="The headliner" className="mt-6">
+      <OfflineTodayCapture
+        snapshot={{
+          dayKey: easternDayKey(now),
+          lead: {
+            kind: "event",
+            title: event.title,
+            detail: [live ? "On now when saved" : date.time, where].filter(Boolean).join(" · "),
+            href: `/events/${event.slug}`,
+          },
+        }}
+      />
       <p
         className="mb-1.5 flex items-center gap-1.5 px-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
         style={{ color: "var(--app-brand-press)" }}
@@ -121,16 +135,12 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
                   alt=""
                   fill
                   priority
+                  unoptimized={featureImage.startsWith("/api/place-photo")}
                   sizes="(max-width: 640px) 100vw, 720px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.015]"
                 />
-                {approvedVisual.caption && (
-                  <figcaption className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
-                    {approvedVisual.caption}
-                  </figcaption>
-                )}
                 <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
               </figure>
             ) : (
@@ -147,6 +157,12 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
               </span>
             )}
           </Link>
+          {approvedVisual ? (
+            <EventVisualCredit
+              visual={approvedVisual}
+              className="mt-1.5 px-0.5"
+            />
+          ) : null}
         </article>
       )}
     </section>

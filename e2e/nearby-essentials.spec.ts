@@ -48,3 +48,36 @@ test("the full amenity catalog stays behind one disclosure", async ({ page }) =>
     page.getByRole("link", { name: /Show all essentials on the map/ }),
   ).toBeVisible();
 });
+
+test("Today playgrounds opens the complete layer around the current location", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({
+        lng: -77.4105,
+        lat: 39.4143,
+        accuracy: 15,
+        municipality_slug: "frederick",
+        label: "Downtown Frederick",
+        timestamp: Date.now(),
+      }),
+    );
+  });
+
+  await page.goto("/today", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Browse by category" }).click();
+  await page.getByRole("button", { name: "Get outside" }).click();
+
+  const playgrounds = page.getByRole("link", { name: "Playgrounds" });
+  await expect(playgrounds).toHaveAttribute(
+    "href",
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme",
+  );
+  await playgrounds.click();
+
+  await expect(page).toHaveURL(
+    /\/map\?intent=outside&sub=playgrounds&amenity=play&in=nearme$/,
+  );
+});

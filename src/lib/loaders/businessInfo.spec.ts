@@ -40,7 +40,7 @@ describe("business-info commerce links", () => {
     expect(commerceLinksFromBusinessInfo("example", info)).toEqual([]);
   });
 
-  it("exposes one safe direct link per extracted commerce type", () => {
+  it("keeps distinct menu documents while limiting other action types", () => {
     const info: BusinessInfo = {
       commerce_links: [
         {
@@ -66,20 +66,35 @@ describe("business-info commerce links", () => {
         url: "https://example.com",
         fetchedAt: "2026-07-20T12:00:00.000Z",
       },
+      commerce_source: {
+        url: "https://example.com",
+        checkedAt: "2026-07-28T12:00:00.000Z",
+      },
     };
 
     expect(commerceLinksFromBusinessInfo("example", info)).toMatchObject([
       {
         type: "menu",
         url: "https://example.com/dinner-menu",
+        label: "Dinner menu",
         provider: "website",
         source: "imported",
+        last_verified_at: "2026-07-28T12:00:00.000Z",
+      },
+      {
+        type: "menu",
+        url: "https://example.com/lunch-menu",
+        label: "Lunch menu",
+        provider: "website",
+        source: "imported",
+        last_verified_at: "2026-07-28T12:00:00.000Z",
       },
       {
         type: "order",
         url: "https://order.toasttab.com/online/example",
         provider: "toast",
         source: "imported",
+        last_verified_at: "2026-07-28T12:00:00.000Z",
       },
     ]);
   });
@@ -107,13 +122,43 @@ describe("business-info commerce links", () => {
     expect(commerceLinksFromBusinessInfo("example", info)).toEqual([]);
   });
 
-  it("exposes the reservation links already present in the feed", () => {
-    expect(businessInfoCommerceLinks("7th-sister")).toMatchObject([
+  it("supports a commerce-only record without inventing a business-fact source", () => {
+    const info: BusinessInfo = {
+      commerce_links: [
+        {
+          type: "menu",
+          url: "https://example.com/menu",
+          source_url: "https://example.com/",
+        },
+      ],
+      commerce_source: {
+        url: "https://example.com/",
+        checkedAt: "2026-07-29T12:00:00.000Z",
+      },
+    };
+
+    expect(commerceLinksFromBusinessInfo("example", info)).toEqual([
       {
-        type: "reservation",
-        url: "https://7thsister.com/reservations",
+        place_id: "example",
+        type: "menu",
+        url: "https://example.com/menu",
+        provider: "website",
         source: "imported",
+        last_verified_at: "2026-07-29T12:00:00.000Z",
+        notes: "Published on the business's official website.",
       },
     ]);
+  });
+
+  it("exposes the reservation links already present in the feed", () => {
+    expect(businessInfoCommerceLinks("7th-sister")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "reservation",
+          url: "https://7thsister.com/reservations",
+          source: "imported",
+        }),
+      ]),
+    );
   });
 });

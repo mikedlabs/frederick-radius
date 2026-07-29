@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { setMaxListeners } from "node:events";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
@@ -14,7 +15,10 @@ import {
   startIngestRunStrict,
   type IngestRunResult,
 } from "@/lib/ingest/run-log";
-import { withDeadlineOutcome } from "@/lib/promise-deadline";
+import {
+  createAbortDeadline,
+  withDeadlineOutcome,
+} from "@/lib/promise-deadline";
 import { DATA_HEALTH_FEEDS_RUN } from "@/lib/quality/data-health-phases";
 
 export const runtime = "nodejs";
@@ -24,6 +28,7 @@ export const maxDuration = 60;
 const RUN_LOG_DEADLINE_MS = 5_000;
 const HYDRATE_DEADLINE_MS = 8_000;
 const LIVE_FEED_DEADLINE_MS = 15_000;
+const LIVE_FEED_ABORT_SETTLE_MS = 1_000;
 const SNAPSHOT_WRITE_DEADLINE_MS = 8_000;
 const FAILURE_EVIDENCE_DEADLINE_MS = 5_000;
 
@@ -51,10 +56,22 @@ export async function GET(request: Request) {
     hydrateSnapshotsStrict(),
     HYDRATE_DEADLINE_MS,
   );
-  const liveOutcome = await withDeadlineOutcome(
-    getLiveEvents(60, { includeTicketmaster: false }),
+  const liveDeadline = createAbortDeadline(
     LIVE_FEED_DEADLINE_MS,
+    request.signal,
   );
+  // The request-local signal intentionally fans out to the whole registry.
+  // Raise only this signal's listener ceiling so Node does not report a false
+  // leak warning when more than ten providers compose their own deadlines.
+  setMaxListeners(0, liveDeadline.signal);
+  const liveOutcome = await withDeadlineOutcome(
+    getLiveEvents(60, {
+      includeTicketmaster: false,
+      signal: liveDeadline.signal,
+    }),
+    LIVE_FEED_DEADLINE_MS + LIVE_FEED_ABORT_SETTLE_MS,
+  );
+  liveDeadline.dispose();
   const live =
     liveOutcome.status === "fulfilled"
       ? liveOutcome.value

@@ -15,7 +15,6 @@ import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
-import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
 import {
   consumeFindRequest,
@@ -24,8 +23,10 @@ import {
 } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
+let searchLayerSequence = 0;
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
   return pathname === "/map"
@@ -35,10 +36,9 @@ export function pageOwnsPrimarySearch(pathname: string): boolean {
 }
 
 export function shouldShowGlobalMobileSearch(pathname: string): boolean {
-  // A search action is permanent app chrome on mobile. On /map that action
-  // focuses the map's own field; everywhere else it opens global Find.
-  void pathname;
-  return true;
+  // A route that already opens with its own search or composer should not
+  // repeat the same action in the 56px app bar.
+  return !pageOwnsPrimarySearch(pathname);
 }
 
 export function topBarFindTarget(pathname: string): FindTarget {
@@ -48,10 +48,10 @@ export function topBarFindTarget(pathname: string): FindTarget {
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
+  const searchLayerIdRef = useRef("");
   const searchPathRef = useRef<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const hidden = useHideOnScroll(searchOpen);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // Has the user navigated WITHIN the app since arriving? The TopBar lives in
@@ -66,21 +66,6 @@ export default function TopBar() {
     if (seenFirstPath.current) inAppNavs.current += 1;
     else seenFirstPath.current = true;
   }, [pathname]);
-
-  // Publish the bar's real bottom edge as --app-topbar-offset on <html> so
-  // sticky bars pinned under it (RightNow's filter bar, the /events dock)
-  // collapse in sync with the auto-hide instead of orphaning a band of raw
-  // list above themselves. Removing the inline value falls back to the
-  // :root default (= --app-topbar-h); consumers transition `top` at the
-  // same medium-duration ease this header uses for its transform.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (hidden) root.style.setProperty("--app-topbar-offset", "0px");
-    else root.style.removeProperty("--app-topbar-offset");
-    return () => {
-      root.style.removeProperty("--app-topbar-offset");
-    };
-  }, [hidden]);
 
   // These routes own the middle of the header because their primary workspace
   // already contains a full search or query control. That changes the desktop
@@ -97,8 +82,11 @@ export default function TopBar() {
       return;
     }
     searchPathRef.current = pathname;
+    if (!searchOpen) {
+      searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
+    }
     setSearchOpen(true);
-  }, [pathname]);
+  }, [pathname, searchOpen]);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -135,19 +123,21 @@ export default function TopBar() {
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       searchPathRef.current = pathname;
+      if (!searchOpen) {
+        searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
+      }
       setSearchOpen(true);
     };
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, [pathname]);
+  }, [pathname, searchOpen]);
 
   // Search belongs to the route that opened it. The persistent app layout must
   // not let a still-loading overlay appear over a different destination after
   // browser Back or another navigation wins the race.
   useEffect(() => {
     if (!searchOpen || searchPathRef.current === pathname) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; discard the pending overlay before its lazy bundle resolves
     setSearchOpen(false);
   }, [pathname, searchOpen]);
 
@@ -191,9 +181,6 @@ export default function TopBar() {
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
-          transform: hidden ? "translateY(-100%)" : "translateY(0)",
-          transition: "transform var(--app-dur-med) var(--app-ease-out)",
-          willChange: "transform",
         }}
       >
         <div
@@ -339,31 +326,34 @@ export default function TopBar() {
               narrow phones. */}
           <LocationChip />
 
-          {/* Live county Pulse stays discoverable even when conditions are
-              quiet; its indicator still reports active alerts or feed state. */}
+          {/* Pulse stays named on larger screens. On a phone it appears only
+              when active, unavailable, or already open, so safety never gets
+              hidden but a quiet feed does not crowd the app bar. */}
           <PulseIndicator />
 
           {/* Compass is the field-guide index. Keep the destination visible on
               its own page so the top navigation does not change shape. */}
-          <Link
-            href="/compass"
-            prefetch={false}
-            onMouseEnter={() => router.prefetch("/compass")}
-            onFocus={() => router.prefetch("/compass")}
-            onPointerDown={() => router.prefetch("/compass")}
-            aria-label="Open Compass"
-            aria-current={pathname === "/compass" ? "page" : undefined}
-            title="Compass"
-            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
-            style={{
-              borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-              color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
-              background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
-            }}
-          >
-            <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
-          </Link>
+          <div className="hidden sm:contents">
+            <Link
+              href="/compass"
+              prefetch={false}
+              onMouseEnter={() => router.prefetch("/compass")}
+              onFocus={() => router.prefetch("/compass")}
+              onPointerDown={() => router.prefetch("/compass")}
+              aria-label="Open Compass"
+              aria-current={pathname === "/compass" ? "page" : undefined}
+              title="Compass"
+              className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+              style={{
+                borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
+                color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
+              }}
+            >
+              <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+              <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -373,6 +363,7 @@ export default function TopBar() {
             <SearchOverlayFallback
               onClose={closeSearch}
               openerRef={searchOpenerRef}
+              historyLayerId={searchLayerIdRef.current}
             />
           )}
         >
@@ -380,6 +371,7 @@ export default function TopBar() {
             open
             onClose={closeSearch}
             openerRef={searchOpenerRef}
+            historyLayerId={searchLayerIdRef.current}
           />
         </Suspense>
       ) : null}
@@ -390,18 +382,26 @@ export default function TopBar() {
 function SearchOverlayFallback({
   onClose,
   openerRef,
+  historyLayerId,
 }: {
   onClose: () => void;
   openerRef: RefObject<HTMLElement | null>;
+  historyLayerId: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useFocusTrap(dialogRef, true);
 
-  const dismiss = useCallback(() => {
+  const finishDismiss = useCallback(() => {
     onClose();
     window.requestAnimationFrame(() => openerRef.current?.focus?.());
   }, [onClose, openerRef]);
+  const historyLayer = useReversibleHistoryLayer({
+    active: true,
+    id: historyLayerId,
+    onDismiss: finishDismiss,
+  });
+  const dismiss = historyLayer.dismiss;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

@@ -1,13 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   normalizeParkLocations,
   enrichParksWithLocations,
+  getFrederickParkLocations,
   normParkName,
 } from "@/lib/integrations/fcParkLocations";
 
-// Real ArcGIS field names + shape (confirmed live against
-// Park_Locations/MapServer/0). f=geojson Point geometry = [lng, lat];
-// Frederick County ~39.3-39.7 / -77.7--77.15.
+// Legacy fixture for the retired parser contract. These fields came from a
+// Frederick County, Colorado source and must never be treated as Maryland
+// production data. The synthetic coordinates exercise Maryland-boundary
+// rejection only.
 const raw = {
   type: "FeatureCollection",
   features: [
@@ -136,5 +138,25 @@ describe("enrichParksWithLocations", () => {
   it("is identity when there are no locations", () => {
     const parks = [{ name: "Baker Park", type: "COMMUNITY PARK" }];
     expect(enrichParksWithLocations(parks, [])).toEqual(parks);
+  });
+});
+
+describe("getFrederickParkLocations", () => {
+  it("uses the Maryland County service, never the retired Colorado host", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ type: "FeatureCollection", features: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    await expect(getFrederickParkLocations()).resolves.toEqual([]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
+      "fcgis.frederickcountymd.gov",
+    );
+    expect(String(fetchSpy.mock.calls[0]?.[0])).not.toContain(
+      "gis.frederickco.gov",
+    );
+    fetchSpy.mockRestore();
   });
 });

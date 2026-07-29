@@ -33,6 +33,12 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
     if (!withPhoto) return;
     const [out] = withVenueThumbs([ev({ venue_place_slug: withPhoto.slug })]);
     expect(out.hero_image).toBe(withPhoto.google_photo_url);
+    expect(out.hero_image_attribution).toMatchObject({
+      kind: "venue",
+      venue_name: withPhoto.name,
+      provider: "google_maps",
+    });
+    expect(out.hero_image_attribution?.source_uri).toMatch(/^https:\/\//);
   });
 
   it("does NOT borrow a downtown shop's photo for a county event located only as 'Frederick' (the Voila bug)", () => {

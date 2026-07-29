@@ -2,18 +2,18 @@ import { expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-test("All tools starts with decisions and reveals the directory only on request", async ({
+test("Compass starts with decisions and reveals the full directory only on request", async ({
   page,
 }) => {
   await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "All tools" }),
+    page.getByRole("heading", { level: 1, name: "What do you need?" }),
   ).toBeAttached();
   await expect(page.getByRole("link", { name: /Ask Radius/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Near me" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Explore nearby" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Live conditions" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Nearby essentials" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Find an essential" })).toBeVisible();
   const outcomes = page.getByRole("group", { name: "Choose what you need" });
   await expect(outcomes.getByRole("button")).toHaveCount(5);
   const localHelp = outcomes.getByRole("button", { name: /Find local help/ });
@@ -21,6 +21,10 @@ test("All tools starts with decisions and reveals the directory only on request"
   await expect(page.getByRole("heading", { name: "Public essentials" })).toHaveCount(0);
   await localHelp.click();
   await expect(localHelp).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("link", { name: /Nearby essentials/ })).toBeVisible();
+  const allTools = page.locator("summary").filter({ hasText: /See all \d+ tools/ });
+  await expect(allTools).toBeVisible();
+  await allTools.click();
   await expect(page.getByRole("heading", { name: "Public essentials" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Find nearest/ })).toBeVisible();
   const layers = page.locator("summary").filter({

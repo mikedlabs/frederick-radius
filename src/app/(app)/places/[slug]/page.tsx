@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -19,7 +19,6 @@ import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
 import NearbyContext from "@/components/places/NearbyContext";
 import NearbyArchiveContext from "@/components/archive/NearbyArchiveContext";
-import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import CourseInfoStrip from "@/components/place/CourseInfoStrip";
 import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
@@ -49,6 +48,7 @@ import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
+import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -242,6 +242,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     },
     geo: { "@type": "GeoCoordinates", latitude: place.geom.lat, longitude: place.geom.lng },
     telephone: place.phone,
+    email: place.email,
     url: place.website,
     priceRange: place.price_band ? "$".repeat(place.price_band) : undefined,
   };
@@ -385,6 +386,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       <div className="hidden grid-cols-2 gap-2 lg:grid">
         <ActionButton href={googleUrl} icon={Navigation} label="Directions" external primary />
+        {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" />}
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
         {place.website && (
           <ActionButton
@@ -413,11 +415,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           closure + action controls, so the first screen answers whether the
           place is visitable and what the user can do next. */}
       <div className="space-y-3">
+        <PlaceCommunicationAccess place={place} />
         <KnownForCard
           knownFor={place.known_for}
           customersLoved={place.customers_loved}
         />
-        <ParkAmenitiesStrip slug={place.slug} />
         <CourseInfoStrip slug={place.slug} />
         <PlaceAudienceTags tags={place.tags} />
         {hasFieldNotes(place.slug) ? (
@@ -644,6 +646,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           external
           primary
         />
+        {place.email && (
+          <MobileBarLink
+            href={`mailto:${place.email}`}
+            icon={Mail}
+            label="Email"
+            ariaLabel={`Email ${place.name}`}
+          />
+        )}
         {place.phone && (
           <MobileBarLink
             href={`tel:${place.phone}`}
@@ -660,7 +670,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             ariaLabel={`${mobileCommerceAction.label} at ${place.name}`}
             external
           />
-        ) : place.website ? (
+        ) : place.website && !place.email ? (
           <MobileBarLink
             href={place.website}
             icon={Globe}

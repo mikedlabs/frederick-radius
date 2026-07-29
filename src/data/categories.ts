@@ -86,6 +86,7 @@ export const CATEGORIES: Category[] = [
   { slug: "services", name: "Services", icon: "Wrench", color: "#4A4A48", display_order: 80, blurb: "Pharmacies, hardware stores, postal services, and other practical stops are grouped here." },
   { slug: "pharmacy", name: "Pharmacies", parent: "services", icon: "Pill", color: BRAND.colors.forest, display_order: 81, blurb: "The directory includes independent and chain pharmacies." },
   { slug: "hardware", name: "Hardware", parent: "services", icon: "Hammer", color: "#4A4A48", display_order: 82, blurb: "Hardware, lumber, and home-supply stores appear in this section." },
+  { slug: "auto-care", name: "Auto care", parent: "services", icon: "CarFront", color: BRAND.colors.creek, display_order: 83, blurb: "Oil changes, car washes, inspections, maintenance, and repair shops are grouped by the work they perform." },
 
   { slug: "lodging", name: "Lodging", icon: "Hotel", color: "#5B1E55", display_order: 90, blurb: "Overnight options range from downtown hotels to country inns and farm stays." },
 

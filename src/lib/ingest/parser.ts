@@ -19,6 +19,11 @@ export type ParsedEvent = {
   description?: string;
   /** Absolute URL from VEVENT URL or a URL embedded in DESCRIPTION. */
   sourceUrl?: string;
+  /** Publisher-provided event artwork. Scheduled JSON ingesters set this only
+   *  after validating the exact source host/path. */
+  heroImage?: string;
+  /** Publisher-written description of the event artwork, when supplied. */
+  heroImageAlt?: string;
   rawLocation?: string;
   startsAtUtc: string;
   endsAtUtc?: string;

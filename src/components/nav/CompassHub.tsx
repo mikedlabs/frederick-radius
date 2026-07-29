@@ -51,6 +51,7 @@ type DirectoryItem = {
   description: string;
   icon: LucideIcon;
   color: string;
+  featured?: boolean;
   /** Extra words a resident might type to reach this item, folded into filter
    *  matching alongside the label and description. */
   keywords?: string[];
@@ -64,6 +65,7 @@ function toDirectoryItem(tool: RadiusTool): DirectoryItem {
     description: tool.description,
     icon: TOOL_ICONS[tool.icon],
     color: TONE_COLOR[tool.tone],
+    featured: tool.featured,
     keywords: tool.keywords,
   };
 }
@@ -163,11 +165,52 @@ const COMMON_TASK_IDS = [
 ] as const;
 
 const COMMON_TASK_LABELS: Partial<Record<(typeof COMMON_TASK_IDS)[number], string>> = {
+  nearby: "Explore nearby",
   "county-pulse": "Live conditions",
-  "public-essentials": "Nearby essentials",
+  "public-essentials": "Find an essential",
 };
 
 const RECENT_TOOLS_KEY = "fr.compass.recent.v1";
+
+export type CompassSearchAction = {
+  kind: "ask" | "search";
+  href: string;
+};
+
+const QUESTION_LEAD =
+  /^(?:can|could|did|do|does|has|have|how|is|may|might|should|what|when|where|which|who|why|will|would)\b/i;
+const GUIDANCE_REQUEST =
+  /^(?:find me|help me|i (?:need|want|would like)|i['’]?m looking for|looking for|need|plan(?: me)?|recommend(?: me)?|show me|something\b|suggest(?: me)?|tell me|want|we (?:need|want|would like))\b/i;
+const CONVERSATIONAL_QUESTION =
+  /\b(?:because|could|for me|i|me|my|should|we|where|with|would)\b/i;
+
+/**
+ * Ask is useful for a resident's actual question or guidance request, not as a
+ * competing action beside every direct place, event, or tool term. Requiring
+ * at least two words also keeps terse searches such as "parking?" in Search.
+ */
+export function compassSearchAction(query: string): CompassSearchAction | null {
+  const normalized = query.trim().replace(/\s+/g, " ");
+  if (!normalized) return null;
+
+  const words = normalized.match(/[a-z0-9]+/gi) ?? [];
+  const questionLike =
+    words.length >= 2
+    && (
+      QUESTION_LEAD.test(normalized)
+      || GUIDANCE_REQUEST.test(normalized)
+      || (
+        words.length >= 4
+        && normalized.endsWith("?")
+        && CONVERSATIONAL_QUESTION.test(normalized)
+      )
+    );
+  const encoded = encodeURIComponent(normalized);
+
+  return questionLike
+    ? { kind: "ask", href: `/ask?q=${encoded}` }
+    : { kind: "search", href: `/search?q=${encoded}` };
+}
 
 /** Build the directory once from the registry. When a home town has not been
  * chosen, Settings becomes the single setup row instead of rendering two links
@@ -353,6 +396,7 @@ export default function CompassHub() {
     (count, section) => count + section.items.length,
     0,
   );
+  const primarySearchAction = compassSearchAction(query);
 
   return (
     <div className="space-y-5" data-compass-ready={hydrated ? "true" : "false"}>
@@ -363,46 +407,69 @@ export default function CompassHub() {
           background: "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated-solid))",
         }}
       >
-        <h1 className="sr-only">
-          All tools
+        <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
+          Radius index
+        </p>
+        <h1
+          className="mt-1 font-editorial text-[30px] leading-none tracking-[-0.025em] sm:text-[34px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          What do you need?
         </h1>
-        <label className="mt-3 block">
-          <span className="sr-only">Search all tools</span>
-          <span className="relative block">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-              style={{ color: "var(--app-ink-3)" }}
-              aria-hidden
-            />
-            <input
-              type="text"
-              role="searchbox"
-              inputMode="search"
-              enterKeyHint="search"
-              value={query}
-              data-compass-ready={hydrated ? "true" : "false"}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search restrooms, parking, events…"
-              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2.5 pl-10 pr-11 text-[14px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                aria-label="Clear tool filter"
-                className="absolute inset-y-0 right-0 grid min-w-11 place-items-center rounded-r-[var(--app-radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-              >
-                <X className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
-              </button>
-            ) : null}
-          </span>
-        </label>
+        <p
+          className="mt-1.5 text-[12.5px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Start with a task or search for something specific.
+        </p>
+        <form
+          className="mt-3"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!primarySearchAction) return;
+            track("compass_search_submit");
+            router.push(primarySearchAction.href);
+          }}
+        >
+          <label className="block">
+            <span className="sr-only">Search Frederick and Radius tools</span>
+            <span className="relative block">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-hidden
+              />
+              <input
+                type="search"
+                role="searchbox"
+                inputMode="search"
+                enterKeyHint="search"
+                value={query}
+                data-compass-ready={hydrated ? "true" : "false"}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search places, events, or tools…"
+                className="compass-search-input min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2.5 pl-10 pr-11 text-[14px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute inset-y-0 right-0 grid min-w-11 place-items-center rounded-r-[var(--app-radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                >
+                  <X className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                </button>
+              ) : null}
+            </span>
+          </label>
+        </form>
         {normalizedQuery ? (
           <p className="relative mt-2 px-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }} role="status">
             {resultCount > 0
-              ? `${resultCount} matching ${resultCount === 1 ? "tool" : "tools"}`
-              : "No Radius tool matches that yet."}
+              ? `${resultCount} matching tool ${resultCount === 1 ? "shortcut" : "shortcuts"}`
+              : "No tool shortcut matches. You can still search all Radius."}
           </p>
         ) : null}
       </header>
@@ -418,10 +485,27 @@ export default function CompassHub() {
       {normalizedQuery
         ? (
           <>
+            {primarySearchAction ? (
+              <CompassSearchPrimaryAction
+                action={primarySearchAction}
+                query={query.trim()}
+                intentProps={intentProps}
+              />
+            ) : null}
+            {visibleSections.length > 0 ? (
+              <div className="space-y-4" aria-labelledby="compass-tool-shortcuts-heading">
+                <h2
+                  id="compass-tool-shortcuts-heading"
+                  className="font-sans text-[18px] font-semibold"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  Tool shortcuts
+                </h2>
             {visibleSections.map((section) => (
               <SearchResultSection key={section.id} section={section} intentProps={intentProps} />
             ))}
-            <CompassSearchActions query={query.trim()} intentProps={intentProps} />
+              </div>
+            ) : null}
           </>
         )
         : (
@@ -629,16 +713,13 @@ function CompassOutcomePicker({
               {active ? (
                 <div
                   id={panelId}
-                  className="space-y-5 border-t bg-[var(--app-bg-sunken)] p-3"
+                  className="border-t bg-[var(--app-bg-sunken)] p-3"
                   style={{ borderColor: "var(--app-border)" }}
                 >
-                  {outcome.sections.map((section) => (
-                    <ActiveToolSection
-                      key={section.id}
-                      section={section}
-                      intentProps={intentProps}
-                    />
-                  ))}
+                  <OutcomeToolReveal
+                    sections={outcome.sections}
+                    intentProps={intentProps}
+                  />
                 </div>
               ) : null}
             </div>
@@ -646,6 +727,65 @@ function CompassOutcomePicker({
         })}
       </div>
     </section>
+  );
+}
+
+function OutcomeToolReveal({
+  sections,
+  intentProps,
+}: {
+  sections: CompassSection[];
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
+}) {
+  const seen = new Set<string>();
+  const allItems = sections
+    .flatMap((section) => section.items)
+    .filter((item) => {
+      const key = `${item.id}|${item.href}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const ordered = [
+    ...allItems.filter((item) => item.featured),
+    ...allItems.filter((item) => !item.featured),
+  ];
+  const preview = ordered.slice(0, 3);
+
+  return (
+    <div className="space-y-3">
+      <LedgerList items={preview} intentProps={intentProps} />
+      {allItems.length > preview.length ? (
+        <details
+          className="group overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-[12.5px] font-semibold">
+            <span style={{ color: "var(--app-ink)" }}>
+              See all {allItems.length} tools
+            </span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+          </summary>
+          <div
+            className="space-y-5 border-t bg-[var(--app-bg-sunken)] p-3"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {sections.map((section) => (
+              <ActiveToolSection
+                key={section.id}
+                section={section}
+                intentProps={intentProps}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </div>
   );
 }
 
@@ -698,25 +838,26 @@ function SearchResultSection({
 }) {
   return (
     <section aria-labelledby={`compass-search-${section.id}`} className="space-y-2.5">
-      <h2 id={`compass-search-${section.id}`} className="font-sans text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
+      <h3 id={`compass-search-${section.id}`} className="font-sans text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
         {section.label}
-      </h2>
+      </h3>
       <LedgerList items={section.items} intentProps={intentProps} />
     </section>
   );
 }
 
-function CompassSearchActions({
+function CompassSearchPrimaryAction({
+  action,
   query,
   intentProps,
 }: {
+  action: CompassSearchAction;
   query: string;
   intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
-  const encodedQuery = encodeURIComponent(query);
-  const askHref = `/ask?q=${encodedQuery}`;
-  const searchHref = `/search?q=${encodedQuery}`;
+  const asking = action.kind === "ask";
   const displayQuery = query.length > 32 ? `${query.slice(0, 31)}…` : query;
+  const ActionIcon = asking ? MessageCircleQuestion : Search;
 
   return (
     <div
@@ -724,9 +865,9 @@ function CompassSearchActions({
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
     >
       <Link
-        href={searchHref}
+        href={action.href}
         prefetch={false}
-        {...intentProps(searchHref)}
+        {...intentProps(action.href)}
         className="tactile-interactive group flex min-h-[58px] items-center gap-3 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-elevated-solid)] px-3 outline-none shadow-[var(--app-elev-1)] transition focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
       >
         <span
@@ -737,31 +878,21 @@ function CompassSearchActions({
             background: "color-mix(in srgb, var(--app-brand) 10%, transparent)",
           }}
         >
-          <Search className="h-4 w-4" strokeWidth={2.1} />
+          <ActionIcon className="h-4 w-4" strokeWidth={2.1} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Search Frederick for “{displayQuery}”
+            {asking
+              ? `Ask Radius about “${displayQuery}”`
+              : `Search Frederick for “${displayQuery}”`}
           </span>
           <span className="mt-0.5 block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-            Places, events, and towns
+            {asking
+              ? "Get help choosing, planning, or finding an answer"
+              : "Places, events, and towns"}
           </span>
         </span>
         <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
-      </Link>
-      <Link
-        href={askHref}
-        prefetch={false}
-        {...intentProps(askHref)}
-        className="tactile-interactive mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-3 text-[12px] font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        style={{
-          borderColor: "var(--app-border)",
-          color: "var(--app-ink)",
-          background: "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
-        }}
-      >
-        Ask Radius about this
-        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
       </Link>
     </div>
   );

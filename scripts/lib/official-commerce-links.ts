@@ -148,6 +148,8 @@ const COMMERCE_PROVIDER_DOMAINS = [
   "opentable.com",
   "resy.com",
   "exploretock.com",
+  "sevenrooms.com",
+  "tableagent.com",
   "toasttab.com",
   "chownow.com",
   "olo.com",
@@ -157,11 +159,106 @@ const COMMERCE_PROVIDER_DOMAINS = [
   "grubhub.com",
   "squareup.com",
   "square.site",
+  "order.online",
+  "spoton.com",
+  "menufy.com",
+  "sliceapp.com",
+  "ezcater.com",
 ] as const;
 
 function isCommerceProviderHost(host: string): boolean {
   return COMMERCE_PROVIDER_DOMAINS.some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+}
+
+const BLOCKED_EXTERNAL_DESTINATION_DOMAINS = [
+  "yelp.com",
+  "tripadvisor.com",
+  "restaurantguru.com",
+  "allmenus.com",
+  "menupix.com",
+  "sirved.com",
+  "happycow.net",
+  "findmeglutenfree.com",
+  "facebook.com",
+  "instagram.com",
+  "tiktok.com",
+  "x.com",
+  "twitter.com",
+  "google.com",
+] as const;
+
+const TRUSTED_MENU_ASSET_DOMAINS = [
+  "static1.squarespace.com",
+  "static.wixstatic.com",
+  "filesusr.com",
+  "cdn.prod.website-files.com",
+] as const;
+
+function normalizedHost(host: string): string {
+  return host.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+}
+
+function hostMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
+function isSameSiteFamily(left: string, right: string): boolean {
+  const a = normalizedHost(left);
+  const b = normalizedHost(right);
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+}
+
+/**
+ * An official page may link to its own site, a business-specific commerce
+ * provider, or a narrowly allowlisted site-builder asset host for a menu PDF.
+ * It may not turn an unrelated directory/aggregator URL into a Radius action
+ * merely because the anchor text says "menu."
+ */
+export function isSafeOfficialCommerceDestination(
+  sourceUrl: string,
+  destinationUrl: string,
+  type: ExtractedBusinessCommerceLink["type"],
+): boolean {
+  let source: URL;
+  let destination: URL;
+  try {
+    source = new URL(sourceUrl);
+    destination = new URL(destinationUrl);
+  } catch {
+    return false;
+  }
+  if (
+    !["http:", "https:"].includes(source.protocol) ||
+    !["http:", "https:"].includes(destination.protocol) ||
+    !source.hostname ||
+    !destination.hostname ||
+    destination.username ||
+    destination.password
+  ) {
+    return false;
+  }
+
+  const sourceHost = normalizedHost(source.hostname);
+  const destinationHost = normalizedHost(destination.hostname);
+  if (
+    BLOCKED_EXTERNAL_DESTINATION_DOMAINS.some((domain) =>
+      hostMatches(destinationHost, domain),
+    )
+  ) {
+    return false;
+  }
+  if (isSameSiteFamily(sourceHost, destinationHost)) return true;
+  if (isCommerceProviderHost(destinationHost)) return true;
+
+  const path = destination.pathname.toLowerCase();
+  return (
+    type === "menu" &&
+    path.endsWith(".pdf") &&
+    TRUSTED_MENU_ASSET_DOMAINS.some((domain) =>
+      hostMatches(destinationHost, domain),
+    )
   );
 }
 
@@ -193,9 +290,39 @@ function classifyAnchor(
     // Keep the literal URL path. A malformed percent escape must not crash a
     // whole ingestion batch, and the classifier can still use anchor text.
   }
+  const itemQueryKeys = [
+    "item",
+    "itemid",
+    "matchitemname",
+    "product",
+    "productid",
+  ];
+  const isItemDeepLink =
+    itemQueryKeys.some((key) => url.searchParams.has(key)) ||
+    /(?:^|\/)(?:menu-item|items?|products?)(?:\/|$)/i.test(path) ||
+    /\/menus\/[^/]+\/\d+(?:\/|$)/i.test(path) ||
+    (anchor.text.length > 100 && /[$€£]\s*\d/.test(anchor.text));
+  const isNonActionPath =
+    /[\[\]{}]/.test(path) ||
+    /(?:^|\/)(?:account|admin|archive|author|blog|blogs|cart|categories|category|checkout|login|search|tag|tags)(?:\/|$)/i.test(
+      path,
+    ) ||
+    /(?:^|\/)(?:locations?|restaurants?|stores?)\/?$/i.test(path);
+  if (isItemDeepLink || isNonActionPath) return null;
+
   const signal = `${text} ${host} ${path.replace(/[-_/]+/g, " ")}`;
   const fromText = (pattern: RegExp) => pattern.test(text);
   const fromUrl = (pattern: RegExp) => pattern.test(`${host} ${path}`);
+  const menuText = fromText(
+    /\b(?:view |our |food |drink |lunch |dinner |brunch )?menus?\b/,
+  );
+  const orderText = fromText(
+    /\b(?:order online|online ordering|start (?:an )?order|order (?:now|pickup|delivery)|take[- ]?out|pickup (?:and|or) delivery)\b/,
+  );
+  const menuUrl = fromUrl(/(?:^|[-_/])menus?(?:[-_/]|$)/);
+  const orderUrl = fromUrl(
+    /(?:^|[-_/])(?:order(?:ing|-online)?|online-ordering|takeout|take-out|pickup)(?:[-_/]|$)/,
+  );
 
   let type: ExtractedBusinessCommerceLink["type"] | null = null;
   let score = 0;
@@ -223,25 +350,40 @@ function classifyAnchor(
   ) {
     type = "reservation";
     score = fromText(/\b(?:reserv|book a table|table booking)/) ? 110 : 72;
-  } else if (
-    fromText(
-      /\b(?:order online|online ordering|start (?:an )?order|order (?:now|pickup|delivery)|take[- ]?out|pickup (?:and|or) delivery)\b/,
-    ) ||
-    fromUrl(
-      /(?:^|[-_/])(?:order(?:ing|-online)?|online-ordering|takeout|take-out|pickup)(?:[-_/]|$)/,
-    )
-  ) {
+  } else if (orderText) {
     type = "order";
-    score = fromText(/\border|take[- ]?out|pickup/) ? 105 : 68;
-  } else if (
-    fromText(/\b(?:view |our |food |drink |lunch |dinner |brunch )?menus?\b/) ||
-    fromUrl(/(?:^|[-_/])menus?(?:[-_/]|$)/)
-  ) {
+    score = 105;
+  } else if (menuText) {
     type = "menu";
-    score = fromText(/\bmenus?\b/) ? 100 : 65;
+    score = 100;
+  } else if (orderUrl) {
+    type = "order";
+    score = 68;
+  } else if (menuUrl) {
+    type = "menu";
+    score = 65;
   }
 
   if (!type || !signal.trim()) return null;
+  // A navigation item on a followed dining page can point back to the
+  // business homepage with text such as "Menu." The homepage is not an exact
+  // menu/action destination, so do not turn that ambiguous backlink into a
+  // Radius commerce button.
+  let sourceHost = "";
+  try {
+    sourceHost = new URL(sourceUrl).hostname;
+  } catch {
+    return null;
+  }
+  if (
+    path === "/" &&
+    isSameSiteFamily(sourceHost, url.hostname)
+  ) {
+    return null;
+  }
+  if (!isSafeOfficialCommerceDestination(sourceUrl, url.toString(), type)) {
+    return null;
+  }
   if (url.protocol === "https:") score += 2;
 
   return {

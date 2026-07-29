@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import { tryFetchPoints, FC_LAYERS, type ArcGISPoint } from "@/lib/integrations/arcgis";
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -64,6 +65,16 @@ async function upsertPoint(p: ArcGISPoint): Promise<"created" | "updated" | "ski
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
+
+  if (!frederickCountySourceEnabled("fc_county_facilities")) {
+    return NextResponse.json(
+      {
+        error: "County facility reuse is not approved for this deployment.",
+        configured: false,
+      },
+      { status: 409 },
+    );
+  }
 
   const db = getDb();
   if (!db) {

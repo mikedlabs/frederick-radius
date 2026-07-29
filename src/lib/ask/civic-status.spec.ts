@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   publicSafetyActivityAskResult,
   roadStatusAskResult,
+  wantsCountySnowOperations,
   schoolStatusAskResult,
   wantsPublicSafetyActivity,
   wantsRoadStatus,
@@ -9,6 +10,57 @@ import {
   wantsWaterAdvisory,
   waterAdvisoryAskResult,
 } from "./civic-status";
+import {
+  buildRoadIntelligenceSnapshot,
+  type RoadIntelligenceSources,
+} from "@/lib/live/roadIntelligenceModel";
+import { MDOT_WZDX_SOURCE_URL } from "@/lib/integrations/mdot-wzdx";
+import { CHART_ROAD_SOURCES } from "@/lib/integrations/mdot-road-feeds";
+import type { CountyDataSnapshot } from "@/lib/integrations/fcCountySource";
+import type { CountySnowRoute } from "@/lib/integrations/fcSnowCommand";
+
+const ROAD_NOW = new Date("2026-07-28T16:00:00.000Z");
+
+function quietRoadSources(): RoadIntelligenceSources {
+  return {
+    workZones: {
+      data: [],
+      available: true,
+      asOf: ROAD_NOW.toISOString(),
+      sourceUrl: MDOT_WZDX_SOURCE_URL,
+    },
+    speeds: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+    travelTimes: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+    messages: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+    weatherStations: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+    roadConditions: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+    snowEmergency: { data: [], available: true, asOf: ROAD_NOW.toISOString() },
+  };
+}
+
+function countySnowSnapshot(
+  routes: CountySnowRoute[],
+): CountyDataSnapshot<CountySnowRoute> {
+  return {
+    configured: true,
+    availability: "available",
+    records: routes,
+    provenance: {
+      id: "frederick-county-snow-command",
+      ledgerId: "fc_snow_command",
+      title: "SnowCommand Snow Routes",
+      authority: "Frederick County Government",
+      sourceUrl:
+        "https://fcgis.frederickcountymd.gov/server_pub/rest/services/FeatureServices/SnowCommand/FeatureServer",
+      dataUrl:
+        "https://fcgis.frederickcountymd.gov/server_pub/rest/services/FeatureServices/SnowCommand/FeatureServer/0/query",
+      cacheSeconds: 300,
+      caveat:
+        "A route status is an operational report, not proof that a road is safe or passable.",
+      checkedAt: ROAD_NOW.toISOString(),
+    },
+  };
+}
 
 describe("civic Ask intent boundaries", () => {
   it.each([
@@ -17,8 +69,32 @@ describe("civic Ask intent boundaries", () => {
     "Any traffic incidents on I-70?",
     "Is I-70 open?",
     "Is MD 26 blocked?",
+    "Are the roads icy?",
+    "Are roads slippery after the snow?",
+    "Where are the plows?",
   ])("recognizes a road-status question: %s", (query) => {
     expect(wantsRoadStatus(query)).toBe(true);
+  });
+
+  it("checks County snow operations for explicit winter conditions or wintertime road questions", () => {
+    expect(
+      wantsCountySnowOperations(
+        "Have the roads been plowed?",
+        new Date("2026-07-28T16:00:00Z"),
+      ),
+    ).toBe(true);
+    expect(
+      wantsCountySnowOperations(
+        "How are the roads?",
+        new Date("2026-12-28T16:00:00Z"),
+      ),
+    ).toBe(true);
+    expect(
+      wantsCountySnowOperations(
+        "How are the roads?",
+        new Date("2026-07-28T16:00:00Z"),
+      ),
+    ).toBe(false);
   });
 
   it.each([
@@ -240,6 +316,235 @@ describe("civic Ask grounded results", () => {
     expect(result.sources).toHaveLength(1);
     expect(result.sources[0]?.slug).toBe("mdot-chart");
     expect(result.sources[0]?.reason).toContain("No active I-70 incident");
+  });
+
+  it("uses WZDx work zones for a named-road answer even without an incident", () => {
+    const roadSources = quietRoadSources();
+    roadSources.workZones.data = [{
+      id: "wz-i70",
+      road: "I-70",
+      roadNames: ["I-70"],
+      description: "Bridge deck repair near MD 144",
+      direction: "eastbound",
+      status: "active",
+      startAt: ROAD_NOW.toISOString(),
+      endAt: "2026-07-28T20:00:00.000Z",
+      updatedAt: ROAD_NOW.toISOString(),
+      geometry: {
+        type: "LineString",
+        coordinates: [[-77.37, 39.39], [-77.35, 39.39]],
+      },
+      lanes: { total: 3, closed: 1, summary: "some-lanes-closed" },
+      positionConfidence: "verified",
+      sourceUrl: MDOT_WZDX_SOURCE_URL,
+    }];
+    const roads = buildRoadIntelligenceSnapshot({
+      sources: roadSources,
+      now: ROAD_NOW,
+    });
+
+    const result = roadStatusAskResult(
+      { available: true, data: [] },
+      { query: "Is I-70 open?" },
+      ROAD_NOW,
+      roads,
+    );
+
+    expect(result.answer).toContain("1 active work zone for I-70");
+    expect(result.answer).toContain("1 lane closed");
+    expect(result.sources[0]).toMatchObject({
+      name: "I-70 · 1 lane closed",
+      eyebrow: "Maryland WZDx · Official road work",
+    });
+    expect(result.actions).toContainEqual({
+      label: "See roads on the map",
+      kind: "open",
+      href: "/map?show=roads",
+    });
+  });
+
+  it("emits one trust anchor for an all-lanes-closed WZDx record", () => {
+    const roadSources = quietRoadSources();
+    roadSources.workZones.data = [{
+      id: "wz-i70-closure",
+      road: "I-70",
+      roadNames: ["I-70"],
+      description: "Emergency bridge work near MD 144",
+      direction: "eastbound",
+      status: "active",
+      startAt: ROAD_NOW.toISOString(),
+      endAt: "2026-07-28T20:00:00.000Z",
+      updatedAt: ROAD_NOW.toISOString(),
+      geometry: {
+        type: "LineString",
+        coordinates: [[-77.37, 39.39], [-77.35, 39.39]],
+      },
+      lanes: { total: 3, closed: 3, summary: "all-lanes-closed" },
+      positionConfidence: "verified",
+      sourceUrl: MDOT_WZDX_SOURCE_URL,
+    }];
+    const roads = buildRoadIntelligenceSnapshot({
+      sources: roadSources,
+      now: ROAD_NOW,
+    });
+
+    const result = roadStatusAskResult(
+      { available: true, data: [] },
+      { query: "Is I-70 open?" },
+      ROAD_NOW,
+      roads,
+    );
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0]).toMatchObject({
+      slug: "road-signal-work-zone:wz-i70-closure",
+      name: "I-70 work-zone closure",
+      href: MDOT_WZDX_SOURCE_URL,
+    });
+  });
+
+  it.each([
+    ["I-70", "MD 70"],
+    ["US 15", "MD 15"],
+    ["MD 26", "US 26"],
+  ])(
+    "does not use a %s signal for a different route prefix (%s)",
+    (requestedRoute, reportedRoute) => {
+      const roadSources = quietRoadSources();
+      roadSources.workZones.data = [{
+        id: `wrong-prefix-${reportedRoute.replace(/\s+/g, "-")}`,
+        road: reportedRoute,
+        roadNames: [reportedRoute],
+        description: `All lanes closed on ${reportedRoute}`,
+        direction: "eastbound",
+        status: "active",
+        startAt: ROAD_NOW.toISOString(),
+        endAt: "2026-07-28T20:00:00.000Z",
+        updatedAt: ROAD_NOW.toISOString(),
+        geometry: {
+          type: "LineString",
+          coordinates: [[-77.37, 39.39], [-77.35, 39.39]],
+        },
+        lanes: { total: 2, closed: 2, summary: "all-lanes-closed" },
+        positionConfidence: "verified",
+        sourceUrl: MDOT_WZDX_SOURCE_URL,
+      }];
+      const roads = buildRoadIntelligenceSnapshot({
+        sources: roadSources,
+        now: ROAD_NOW,
+      });
+
+      const result = roadStatusAskResult(
+        { available: true, data: [] },
+        { query: `Is ${requestedRoute} open?` },
+        ROAD_NOW,
+        roads,
+      );
+
+      expect(result.answer).toContain(
+        `no active incident or work-zone closure for ${requestedRoute}`,
+      );
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0]?.slug).toBe("mdot-chart");
+      expect(result.sources[0]?.name).not.toContain(reportedRoute);
+    },
+  );
+
+  it("puts an official snow emergency ahead of a quiet incident feed", () => {
+    const roadSources = quietRoadSources();
+    roadSources.snowEmergency.data = [{
+      id: "sep-frederick",
+      county: "Frederick County",
+      status: "active",
+      declaredAt: ROAD_NOW.toISOString(),
+      liftedAt: null,
+      exception: null,
+      evidence: "official-declaration",
+      sourceUrl: CHART_ROAD_SOURCES.snowEmergency,
+    }];
+    const roads = buildRoadIntelligenceSnapshot({
+      sources: roadSources,
+      now: ROAD_NOW,
+    });
+
+    const result = roadStatusAskResult(
+      { available: true, data: [] },
+      { query: "How are the roads?" },
+      ROAD_NOW,
+      roads,
+    );
+
+    expect(result.answer).toMatch(/^Snow emergency plan is active\./);
+    expect(result.sources[0]?.eyebrow).toBe(
+      "MDOT CHART snow emergency",
+    );
+  });
+
+  it("adds current County snow operations without calling a clear route safe", () => {
+    const roads = buildRoadIntelligenceSnapshot({
+      sources: quietRoadSources(),
+      now: ROAD_NOW,
+    });
+    const result = roadStatusAskResult(
+      { available: true, data: [] },
+      { query: "Have the roads been plowed?" },
+      ROAD_NOW,
+      roads,
+      countySnowSnapshot([
+        {
+          id: "fc-snow-route-1",
+          district: "North",
+          reportedStatus: "clear",
+          observedAt: "2026-07-28T15:45:00.000Z",
+          freshness: "current",
+          geometry: {
+            type: "LineString",
+            coordinates: [[-77.42, 39.42], [-77.43, 39.43]],
+          },
+          roadSafety: "not_established",
+        },
+      ]),
+    );
+
+    expect(result.answer).toContain(
+      "These provider statuses do not prove that a road is safe or passable.",
+    );
+    expect(result.answer).not.toContain("the roads are safe");
+    expect(result.sources.some(
+      (source) => source.slug === "frederick-county-snow-operations",
+    )).toBe(true);
+    expect(result.intelligence?.tools).toContain("county-snow-operations");
+  });
+
+  it("keeps stale County snow records out of the road answer", () => {
+    const roads = buildRoadIntelligenceSnapshot({
+      sources: quietRoadSources(),
+      now: ROAD_NOW,
+    });
+    const result = roadStatusAskResult(
+      { available: true, data: [] },
+      { query: "Have the roads been plowed?" },
+      ROAD_NOW,
+      roads,
+      countySnowSnapshot([
+        {
+          id: "fc-snow-route-old",
+          reportedStatus: "closed",
+          observedAt: "2026-07-26T15:45:00.000Z",
+          freshness: "stale",
+          geometry: {
+            type: "LineString",
+            coordinates: [[-77.42, 39.42], [-77.43, 39.43]],
+          },
+          roadSafety: "not_established",
+        },
+      ]),
+    );
+
+    expect(result.answer).not.toContain("County SnowCommand");
+    expect(result.sources.some(
+      (source) => source.slug === "frederick-county-snow-operations",
+    )).toBe(false);
   });
 
   it("uses the current FCPS operations notice", () => {

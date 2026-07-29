@@ -1,53 +1,69 @@
-import { describe, expect, it } from "vitest";
-import { isBetaExempt } from "./proxy";
+import { NextRequest } from "next/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("beta wall exemptions", () => {
-  it.each(["/privacy", "/privacy/", "/terms", "/terms/"])(
-    "keeps consent destination %s reachable before unlock",
-    (pathname) => {
-      expect(isBetaExempt(pathname)).toBe(true);
-    },
-  );
+const mocks = vi.hoisted(() => ({
+  updateSession: vi.fn(async () => new Response(null, { status: 200 })),
+}));
 
-  it("preserves the existing beta, API, and static-file exemptions", () => {
-    expect(isBetaExempt("/beta")).toBe(true);
-    expect(isBetaExempt("/api/beta/email")).toBe(true);
-    expect(isBetaExempt("/manifest.webmanifest")).toBe(true);
+vi.mock("@/lib/supabase/middleware", () => ({
+  updateSession: mocks.updateSession,
+}));
+
+import { proxy } from "./proxy";
+
+const previousBetaPassword = process.env.BETA_PASSWORD;
+const previousAdminUser = process.env.ADMIN_USER;
+const previousAdminPassword = process.env.ADMIN_PASSWORD;
+
+describe("public access proxy", () => {
+  beforeEach(() => {
+    mocks.updateSession.mockClear();
+    process.env.BETA_PASSWORD = "legacy-beta-password";
+    delete process.env.ADMIN_USER;
+    delete process.env.ADMIN_PASSWORD;
   });
 
-  it("opens the shareable food-truck board and operator surfaces", () => {
-    expect(isBetaExempt("/food-trucks")).toBe(true);
-    expect(isBetaExempt("/food-trucks/claim")).toBe(true);
-    expect(isBetaExempt("/food-trucks/out")).toBe(true);
-    expect(
-      isBetaExempt(
-        "/submit/place",
-        new URLSearchParams({ category: "food-truck" }),
-      ),
-    ).toBe(true);
+  afterEach(() => {
+    if (previousBetaPassword === undefined) delete process.env.BETA_PASSWORD;
+    else process.env.BETA_PASSWORD = previousBetaPassword;
+    if (previousAdminUser === undefined) delete process.env.ADMIN_USER;
+    else process.env.ADMIN_USER = previousAdminUser;
+    if (previousAdminPassword === undefined) delete process.env.ADMIN_PASSWORD;
+    else process.env.ADMIN_PASSWORD = previousAdminPassword;
   });
 
-  it("does not open the general place-submission form", () => {
-    expect(isBetaExempt("/submit/place")).toBe(false);
-    expect(
-      isBetaExempt(
-        "/submit/place",
-        new URLSearchParams({ category: "coffee" }),
-      ),
-    ).toBe(false);
+  it.each([
+    "/",
+    "/today",
+    "/map?q=coffee",
+    "/events",
+    "/places/gravel-and-grind-frederick",
+    "/submit/place",
+  ])("keeps %s public even when the legacy beta password is configured", async (path) => {
+    const request = new NextRequest(`https://frederickradius.app${path}`);
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mocks.updateSession).toHaveBeenCalledWith(request);
   });
 
-  it("opens the NFC tap endpoint so a card can grant its own access", () => {
-    expect(isBetaExempt("/j/a3kq-7mtp")).toBe(true);
-    expect(isBetaExempt("/j/frederick-market")).toBe(true);
-    // The bare /j prefix is only exempt WITH a code segment; there is no /j page.
-    expect(isBetaExempt("/j")).toBe(false);
+  it("keeps the optional beta page reachable without making it the front door", async () => {
+    const request = new NextRequest("https://frederickradius.app/beta");
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mocks.updateSession).toHaveBeenCalledWith(request);
   });
 
-  it("does not open ordinary app routes", () => {
-    expect(isBetaExempt("/today")).toBe(false);
-    expect(isBetaExempt("/places/privacy-cafe")).toBe(false);
-    // Opening the exact public board must not blanket-open future nested pages.
-    expect(isBetaExempt("/food-trucks/some-truck")).toBe(false);
+  it("continues to fail closed on admin routes", async () => {
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin"),
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("Basic");
+    expect(mocks.updateSession).not.toHaveBeenCalled();
   });
 });

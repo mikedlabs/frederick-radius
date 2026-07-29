@@ -15,10 +15,12 @@ import RippleMark from "@/components/brand/RippleMark";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Frederick Radius: early-access beta",
-  description: "A local guide to Frederick, kept live to the minute. The beta is open by personal code.",
+  description:
+    "A local guide to Frederick built from posted hours, local sources, and current conditions. Early access is open by personal code.",
   openGraph: {
     title: "Frederick, the way a local knows it",
-    description: "A local guide to Frederick, kept live to the minute. The beta is open by personal code.",
+    description:
+      "A local guide to Frederick built from posted hours, local sources, and current conditions. Early access is open by personal code.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
@@ -35,8 +37,8 @@ export const metadata: Metadata = {
  * is never buried; the title leads with what the guide is before the proof.
  *
  * This route must STAY dynamic (it already awaits searchParams): the
- * dateline, the briefing minute, and every live figure are honest only
- * because they render per request. Do not add ISR here.
+ * dateline, the briefing timestamp, and the time-sensitive figures share
+ * one request instant. Do not add ISR here.
  */
 export default async function BetaPage({
   searchParams,
@@ -59,9 +61,8 @@ export default async function BetaPage({
   const dateline = `${part("weekday")} · ${part("month")} ${part("day")} · Frederick, MD`.toUpperCase();
   const dateISO = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(now);
   const briefingWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long" }).format(now);
-  // The minute is honest per request (this route stays dynamic, no ISR);
-  // LiveEasternTime keeps it honest while the tab sits open. Same formatter
-  // both places so the SSR seed and the first client tick never disagree.
+  // The request timestamp is the seed for every time-sensitive proof below.
+  // LiveEasternTime advances the visible clock while the tab stays open.
   const briefingTime = formatEasternClock(now);
 
   return (
@@ -115,7 +116,7 @@ export default async function BetaPage({
               Frederick, the way a local knows it.
             </h1>
             <p className="mt-2.5 max-w-[34rem] text-[15px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
-              A local guide to Frederick, kept live to the minute.
+              Radius uses posted hours and local sources to respond to current conditions.
             </p>
 
             <section

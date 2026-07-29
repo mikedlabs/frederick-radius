@@ -42,7 +42,14 @@ export type MunicipalCivic = {
   /** Anything else worth surfacing the agent found. */
   extras?: CivicContact[];
   /** Provenance — REQUIRED so the UI can cite source + freshness. */
-  source: { url: string; fetchedAt: string };
+  source: {
+    url: string;
+    fetchedAt: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    requestedUrl?: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    finalUrl?: string;
+  };
 };
 
 const DATA = RAW as unknown as Record<string, MunicipalCivic>;

@@ -24,4 +24,21 @@ describe("PageChapter", () => {
     expect(html).toContain(">Around town<");
     expect(html).toContain("<h2>Local guides</h2>");
   });
+
+  it("supports a quiet chapter break without a decorative folio", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        PageChapter,
+        {
+          label: "Useful right now",
+          variant: "plain",
+        },
+        createElement("p", null, "Current conditions"),
+      ),
+    );
+
+    expect(html).toContain("content-chapter--plain");
+    expect(html).toContain(">Useful right now<");
+    expect(html).not.toContain("content-chapter__folio");
+  });
 });

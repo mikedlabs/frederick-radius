@@ -18,6 +18,7 @@ const EVENT_FIELD_MAX_LENGTHS: Record<string, number> = {
   description: 4_000,
   price_text: 80,
   ticket_url: 2_048,
+  photo_url: 2_048,
   submitter_name: 120,
   submitter_email: 254,
 };
@@ -54,6 +55,8 @@ export default function SubmitEventForm() {
       price_text: String(data.get("price_text") ?? ""),
       ticket_url: String(data.get("ticket_url") ?? ""),
       organizer: String(data.get("organizer") ?? ""),
+      photo_url: String(data.get("photo_url") ?? ""),
+      photo_permission: data.get("photo_permission") === "on",
       submitter_email: String(data.get("submitter_email") ?? ""),
       submitter_name: String(data.get("submitter_name") ?? ""),
       contact_fax: String(data.get("contact_fax") ?? ""),
@@ -64,6 +67,10 @@ export default function SubmitEventForm() {
     }
     if (!/^\S+@\S+\.\S+$/.test(input.submitter_email)) {
       setError("Enter a valid email so we can follow up about this event.");
+      return;
+    }
+    if (input.photo_url && !input.photo_permission) {
+      setError("Please confirm that we have permission to display the photo you shared.");
       return;
     }
     startTransition(async () => {
@@ -117,6 +124,25 @@ export default function SubmitEventForm() {
         <input type="checkbox" name="is_free" className="h-4 w-4" />
         Free admission
       </label>
+      <fieldset className="space-y-3 rounded-[var(--app-radius-md)] border p-3.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+        <legend className="px-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          Event photo <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>(optional)</span>
+        </legend>
+        <p id="event-photo-help" className="text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Share one public image link from your website or cloud storage. We review it with the event; it does not publish automatically.
+        </p>
+        <Field
+          name="photo_url"
+          label="Photo link"
+          type="url"
+          placeholder="https://…"
+          describedBy="event-photo-help"
+        />
+        <label className="flex min-h-11 items-start gap-2 py-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          <input type="checkbox" name="photo_permission" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>I own this photo or have permission for Frederick Radius to display it.</span>
+        </label>
+      </fieldset>
       <div className="space-y-1.5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
         <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>About you</p>
         <Field name="submitter_name" label="Your name" />
@@ -135,11 +161,28 @@ export default function SubmitEventForm() {
       >
         {pending ? "Submitting…" : "Submit event"}
       </button>
+      <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Every submission is reviewed by hand before it appears. Your email is not shown publicly.
+      </p>
     </form>
   );
 }
 
-function Field({ name, label, required, type = "text", placeholder }: { name: string; label: string; required?: boolean; type?: string; placeholder?: string }) {
+function Field({
+  name,
+  label,
+  required,
+  type = "text",
+  placeholder,
+  describedBy,
+}: {
+  name: string;
+  label: string;
+  required?: boolean;
+  type?: string;
+  placeholder?: string;
+  describedBy?: string;
+}) {
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
@@ -148,6 +191,7 @@ function Field({ name, label, required, type = "text", placeholder }: { name: st
       <input
         name={name} type={type} required={required} placeholder={placeholder}
         maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
+        aria-describedby={describedBy}
         className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />

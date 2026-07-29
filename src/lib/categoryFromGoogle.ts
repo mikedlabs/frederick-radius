@@ -163,8 +163,8 @@ const MAP: Record<string, string> = {
   community_center: "civic",
   // Practical → services
   bank: "services",
-  car_repair: "services",
-  car_wash: "services",
+  car_repair: "auto-care",
+  car_wash: "auto-care",
   laundry: "services",
   // Retail → shopping
   liquor_store: "shopping",
@@ -179,7 +179,7 @@ const MAP: Record<string, string> = {
   thrift_store: "shopping",
   home_improvement_store: "shopping",
   building_materials_store: "shopping",
-  tire_shop: "services",
+  tire_shop: "auto-care",
   gas_station: "services",
   body_art_service: "wellness", // tattoo / piercing
   swimming_pool: "wellness",
@@ -194,10 +194,13 @@ const MAP: Record<string, string> = {
   buffet_restaurant: "restaurant",
   food_court: "restaurant",
   brewpub: "brewery",
-  distillery: "brewery", // tagged via subcategory "distillery" at render
-  cidery: "brewery",
-  meadery: "brewery",
-  winery: "brewery",
+  // These have first-class Radius categories. Collapsing them into brewery
+  // made wineries appear on the beer page and left the dedicated wine and
+  // spirits routes incomplete.
+  distillery: "distillery",
+  cidery: "winery",
+  meadery: "winery",
+  winery: "winery",
   amusement_center: "family",
   amusement_park: "family",
   zoo: "family",

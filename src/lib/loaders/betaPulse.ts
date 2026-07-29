@@ -11,7 +11,10 @@
 import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { openNowHighlights } from "@/lib/loaders/places";
+import {
+  getOpenNowSnapshot,
+  type OpenNowProofModule,
+} from "@/lib/loaders/places";
 import { getKeysScoreToday, type KeysScore } from "@/lib/integrations/keysScore";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
@@ -24,9 +27,13 @@ export type BetaPulse = {
    *  row can show the calendar itself, not just count it. Null exactly
    *  when eventsToday is null (the same timed fetch produces both). */
   eventsSample: { title: string; startsAt: string; venue: string | null }[] | null;
-  /** County-wide open-right-now: the shared countOpenNow population, plus
-   *  a few real names so the proof strip can say who, not just how many. */
-  openNow: { count: number; names: string[] } | null;
+  /** County-wide inventory and a separate, diverse editorial sample. Both
+   *  are computed from the same snapshot and exact as-of instant. */
+  openNow: {
+    inventoryCount: number;
+    worthConsidering: { name: string; module: OpenNowProofModule }[];
+    asOf: string;
+  } | null;
   keys: KeysScore | null;
   troutThisWeek: boolean;
 };
@@ -48,7 +55,7 @@ export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
   // a fabricated number.
   let openNow: BetaPulse["openNow"] = null;
   try {
-    openNow = openNowHighlights(3, now);
+    openNow = betaOpenNowSnapshot(now);
   } catch {
     openNow = null;
   }
@@ -84,5 +91,20 @@ export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
     openNow,
     keys,
     troutThisWeek: trout,
+  };
+}
+
+/** Synchronous seam used by the beta proof and its count-consistency tests. */
+export function betaOpenNowSnapshot(
+  now: Date = new Date(),
+): NonNullable<BetaPulse["openNow"]> {
+  const snapshot = getOpenNowSnapshot(now);
+  return {
+    inventoryCount: snapshot.count,
+    worthConsidering: snapshot.worthConsidering.map(({ name, module }) => ({
+      name,
+      module,
+    })),
+    asOf: snapshot.asOf,
   };
 }

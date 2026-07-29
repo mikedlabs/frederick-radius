@@ -22,9 +22,11 @@
  *    the stable download URL is `<layer>/<objectId>/attachments/<id>`.
  *    We surface that URL with provenance; mirroring to blob is a separate
  *    step (see scripts/ingest-rec-locations.ts).
- *  - This is public county open data published for a public dashboard.
- *    Attribute "Frederick County Parks & Recreation".
+ * Anonymous readability is not a commercial reuse grant. Runtime and build
+ * pulls remain dark until written permission activates this exact source id
+ * and specifies attachment-photo reuse.
  */
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 
 const LAYER =
   "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/" +
@@ -118,6 +120,7 @@ const str = (v: unknown): string | undefined => {
  * Returns [] on any failure (never throws into a page).
  */
 export async function fetchRecLocations(): Promise<RecLocation[]> {
+  if (!frederickCountySourceEnabled("fc_recreation_locations")) return [];
   const featUrl =
     `${LAYER}/query?where=${encodeURIComponent("1=1")}` +
     `&outFields=${encodeURIComponent(OUT_FIELDS)}&returnGeometry=true&outSR=4326&f=json`;

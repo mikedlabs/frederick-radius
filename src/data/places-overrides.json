@@ -90,6 +90,70 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "maryland-school-for-the-deaf": {
+      "category": "community",
+      "tags": [
+        "deaf-community",
+        "asl"
+      ],
+      "address": "101 Clarke Pl",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "240-575-2966",
+      "website": "https://www.msd.edu/",
+      "accessibility": {
+        "communication": {
+          "deaf_community": true,
+          "asl_environment": true,
+          "source_url": "https://www.msd.edu/apps/pages/index.jsp?pREC_ID=2690688&type=d&uREC_ID=1090021",
+          "verified_at": "2026-07-28",
+          "notes": "Maryland School for the Deaf says its Frederick campus is an ASL- and English-rich environment."
+        }
+      }
+    },
+    "maryland-deaf-center": {
+      "name": "Maryland Deaf Community Center",
+      "category": "community",
+      "tags": [
+        "deaf-community",
+        "asl"
+      ],
+      "address": "720 N East St",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "240-560-5028",
+      "email": "info@deafmdcc.org",
+      "website": "https://www.deafmdcc.org/",
+      "geom": {
+        "lng": -77.4025511,
+        "lat": 39.4238076
+      },
+      "accessibility": {
+        "communication": {
+          "deaf_community": true,
+          "asl_environment": true,
+          "written_contact": true,
+          "videophone": true,
+          "source_url": "https://www.deafmdcc.org/contact",
+          "verified_at": "2026-07-28",
+          "notes": "The center publishes email and telephone/videophone contact methods."
+        }
+      }
+    },
+    "bjorlee-museum": {
+      "category": "museum",
+      "includeWithoutMedia": true,
+      "subcategories": [
+        "museum",
+        "history"
+      ],
+      "tags": [
+        "deaf-community"
+      ],
+      "address": "101 Clarke Pl",
+      "city": "Frederick",
+      "postal_code": "21701"
+    },
     "eagles-aeire-1067": {
       "category": "civic"
     },
@@ -225,14 +289,12 @@
     "pumpernickel-rye-urbana": {
       "subcategories": [
         "coffee"
-      ],
-      "short_blurb": "This local deli and coffee bar serves Rise Up coffee, espresso, tea, bagels, and breakfast."
+      ]
     },
     "panera-bread-urbana": {
       "subcategories": [
         "restaurant"
-      ],
-      "short_blurb": "This cafe serves coffee, breakfast, sandwiches, soups, salads, and bakery items."
+      ]
     },
     "musket-ridge-golf-club-myersville": {
       "category": "golf"
@@ -623,7 +685,6 @@
     "jkw-beauty": {
       "address": "8 N East St",
       "category": "wellness",
-      "short_blurb": "This appointment-based studio offers hair, makeup, beauty lessons, and custom spray tans.",
       "website": "https://jkwbeauty.com/"
     },
     "tin-corner": {
@@ -651,9 +712,6 @@
     },
     "ledo-pizza-ijamsville": {
       "municipality": "urbana"
-    },
-    "visitation-hotel": {
-      "short_blurb": "Boutique hotel in a restored downtown landmark that began as a monastery, then a school, now home to the Voltaggio brothers' Wye Oak Tavern."
     },
     "alice-mccormick-acupuncture": {
       "category": "wellness"
@@ -788,8 +846,7 @@
         "lng": -77.4207553,
         "lat": 39.4132905
       },
-      "category": "wellness",
-      "short_blurb": "Orchard Mental Health Group offers therapy, psychological testing, and medication management near downtown Frederick."
+      "category": "wellness"
     },
     "red-canyon-physical-therapy": {
       "category": "wellness"
@@ -952,8 +1009,7 @@
       "clearPhoto": true
     },
     "memorial-grounds": {
-      "category": "park",
-      "short_blurb": "Downtown memorial park with the county's World War I memorial."
+      "category": "park"
     },
     "edward-p-thomas-memorial-pool-playground": {
       "category": "playground"
@@ -1286,9 +1342,6 @@
           "notes": "The business publishes this link on its official website."
         }
       ]
-    },
-    "rides-for-good": {
-      "short_blurb": "This volunteer program matches Frederick County residents who need rides with community volunteers for essential appointments and services."
     }
   }
 }

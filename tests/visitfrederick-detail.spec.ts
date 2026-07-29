@@ -20,7 +20,7 @@ const detailHtml = readFileSync(
 );
 
 describe("parseVisitFrederickDetail", () => {
-  it("extracts venue, address, in-county geo, and description from the Event JSON-LD", () => {
+  it("extracts venue, address, in-county geo, description, and event art from the Event JSON-LD", () => {
     const d = parseVisitFrederickDetail(detailHtml);
     expect(d).not.toBeNull();
     expect(d!.venue_name).toBe("Frederick City Hall");
@@ -28,6 +28,9 @@ describe("parseVisitFrederickDetail", () => {
     expect(d!.municipality).toBe("frederick");
     expect(d!.geom).toEqual({ lng: -77.4127749, lat: 39.4157432 });
     expect(d!.description).toContain("250th anniversary");
+    expect(d!.hero_image).toMatch(
+      /^https:\/\/assets\.simpleviewinc\.com\//,
+    );
   });
 
   it("skips non-Event JSON-LD blocks (the decoy BreadcrumbList)", () => {
@@ -60,6 +63,16 @@ describe("parseVisitFrederickDetail", () => {
     const d = parseVisitFrederickDetail(html);
     expect(d?.venue_name).toBe("Sky Stage");
     expect(d?.geom).toEqual({ lng: -77.411, lat: 39.414 });
+  });
+
+  it("rejects event art that is not on Visit Frederick's Simpleview host", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Event",
+      name: "Wrong image host",
+      image: "https://images.example.com/untrusted.jpg",
+      location: { "@type": "Place", name: "Sky Stage" },
+    })}</script>`;
+    expect(parseVisitFrederickDetail(html)?.hero_image).toBeUndefined();
   });
 
   it("uses a known structured locality instead of the RSS county-seat fallback", () => {

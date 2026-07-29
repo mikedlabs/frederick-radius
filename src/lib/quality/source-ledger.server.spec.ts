@@ -53,4 +53,33 @@ describe("server source ledger evidence", () => {
       evidenceKinds: ["artifact"],
     });
   });
+
+  it("reads current feed evidence from the compact projection, not full history", async () => {
+    const queries: string[] = [];
+    const sql = vi.fn((parts: TemplateStringsArray) => {
+      const query = parts.join("?");
+      queries.push(query);
+      if (query.includes("feed_source_health")) {
+        return Promise.resolve([
+          {
+            source: "county",
+            taken_at: "2026-07-28T11:55:00.000Z",
+            count: 12,
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    await getSourceHealthLedger({
+      now: new Date("2026-07-28T12:00:00.000Z"),
+    });
+
+    const snapshotQuery = queries.find((query) =>
+      query.includes("feed_source_health"));
+    expect(snapshotQuery).toBeDefined();
+    expect(snapshotQuery).not.toContain("FROM feed_snapshots");
+    expect(snapshotQuery).not.toContain("JOIN LATERAL");
+  });
 });

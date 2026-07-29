@@ -120,8 +120,8 @@ export function pulseStatusWord({
   hasLead: boolean;
   tone: PulseHeroChip["tone"];
 }): string {
-  if (allClear) return "Checked";
   if (degraded) return "Partial data";
+  if (allClear) return "Checked";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
@@ -145,6 +145,39 @@ export type PulseTile = {
   feature?: { temp: number; condition: string; hl?: string };
   body: ReactNode;
 };
+
+export function pulseTilesWithData(tiles: PulseTile[]): PulseTile[] {
+  return tiles.filter((tile) => !tile.degraded);
+}
+
+export function pulseTilesWithoutData(tiles: PulseTile[]): PulseTile[] {
+  return tiles.filter((tile) => tile.degraded);
+}
+
+export function pulseMoreCheckLabel(tile: PulseTile): string {
+  if (!tile.degraded) return tile.countLabel;
+  if (tile.active && tile.countLabel.trim()) {
+    return `Last confirmed: ${tile.countLabel}`;
+  }
+  return "Unavailable";
+}
+
+export function pulseClearedKeys(
+  previousActive: Record<string, string>,
+  tiles: PulseTile[],
+): string[] {
+  const currentActiveKeys = new Set(
+    tiles
+      .filter((tile) => tile.attention && !tile.degraded)
+      .map((tile) => tile.key),
+  );
+  const unavailableKeys = new Set(
+    tiles.filter((tile) => tile.degraded).map((tile) => tile.key),
+  );
+  return Object.keys(previousActive).filter(
+    (key) => !currentActiveKeys.has(key) && !unavailableKeys.has(key),
+  );
+}
 
 type Snapshot = {
   at: number;
@@ -286,7 +319,7 @@ function HeroFacts({ chips, onOpen, dark = false }: { chips: PulseHeroChip[]; on
   );
 }
 
-function AlertDataPanel({
+export function AlertDataPanel({
   facts,
   lead,
   meta,
@@ -323,10 +356,10 @@ function AlertDataPanel({
         >
           {createElement(iconFor(lead), { className: "h-4 w-4", strokeWidth: 2.2 })}
         </span>
-        <span className="min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-2)" }}>
+        <span className="text-caption min-w-0 flex-1 font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-2)" }}>
           Verified data
         </span>
-        <span className="max-w-[44%] text-right text-[9.5px] font-medium leading-tight" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-caption max-w-[44%] text-right font-medium" style={{ color: "var(--app-ink-3)" }}>
           {lead.sourceLabel}
         </span>
       </div>
@@ -338,7 +371,7 @@ function AlertDataPanel({
             className="min-w-0 border-b px-3 py-2.5 odd:border-r"
             style={{ borderColor: `color-mix(in srgb, ${color} 20%, var(--app-border))` }}
           >
-            <dt className="text-[8.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            <dt className="text-caption font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
               {fact.label}
             </dt>
             <dd
@@ -348,7 +381,7 @@ function AlertDataPanel({
               {fact.value}
             </dd>
             {fact.detail ? (
-              <dd className="mt-0.5 break-words text-[9.5px] leading-tight" style={{ color: "var(--app-ink-3)" }}>
+              <dd className="text-caption mt-0.5 break-words" style={{ color: "var(--app-ink-3)" }}>
                 {fact.detail}
               </dd>
             ) : null}
@@ -358,7 +391,7 @@ function AlertDataPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
         {meta ? (
-          <p className="flex min-w-0 items-center gap-1.5 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-caption flex min-w-0 items-center gap-1.5 font-medium" style={{ color: "var(--app-ink-3)" }}>
             <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
             {meta}
           </p>
@@ -389,7 +422,9 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
     // deterministic and the first briefing render is never delayed by it.
     const timer = window.setTimeout(() => {
       const current = Object.fromEntries(
-        tiles.filter((tile) => tile.attention).map((tile) => [tile.key, tile.countLabel]),
+        tiles
+          .filter((tile) => tile.attention && !tile.degraded)
+          .map((tile) => [tile.key, tile.countLabel]),
       );
       let previous: Snapshot | null = null;
       try {
@@ -400,7 +435,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
 
       if (previous?.at) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
-        const cleared = Object.keys(previous.active).filter((key) => !(key in current));
+        const cleared = pulseClearedKeys(previous.active, tiles);
         if (added.length > 0) {
           const labels = added
             .map((key) => tiles.find((tile) => tile.key === key)?.label)
@@ -439,7 +474,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   );
 }
 
-function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
+export function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
   if (tiles.length === 0) return null;
   const degradedCount = tiles.filter((tile) => tile.degraded).length;
   const hasDegraded = degradedCount > 0;
@@ -457,7 +492,7 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
           </span>
           <span className="shrink-0 text-[10.5px]" style={{ color: hasDegraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>
             {hasDegraded
-              ? `${degradedCount} ${degradedCount === 1 ? "feed needs" : "feeds need"} a refresh`
+              ? `${degradedCount} unavailable`
               : `${tiles.length} checked`}
           </span>
           <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-55 transition-transform group-open:rotate-180" />
@@ -465,13 +500,14 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
         <ul className="grid min-w-0 grid-cols-2 gap-x-4 border-t px-1 py-2 sm:grid-cols-4" style={{ borderColor: "var(--app-border)" }}>
           {tiles.map((tile) => {
             const degraded = tile.degraded === true;
+            const statusLabel = pulseMoreCheckLabel(tile);
             return (
               <li key={tile.key} className="min-w-0">
                 <button
                   type="button"
                   onClick={() => onOpen(tile.key)}
                   className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
-                  aria-label={`${tile.label}: ${tile.countLabel}`}
+                  aria-label={`${tile.label}: ${statusLabel}`}
                 >
                   {degraded ? (
                     <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
@@ -480,7 +516,7 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
                   )}
                   <span className="min-w-0">
                     <span className="block truncate text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>{tile.label}</span>
-                    <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{tile.countLabel}</span>
+                    <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{statusLabel}</span>
                   </span>
                 </button>
               </li>
@@ -512,13 +548,23 @@ function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
 
 /** One compact instrument card. Pulse shows the four readings most likely to
  * change a trip first; the remaining feeds stay one tap away in More checks. */
-function ConditionReading({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+function ConditionReading({
+  tile,
+  onOpen,
+  wide = false,
+}: {
+  tile: PulseTile;
+  onOpen: () => void;
+  wide?: boolean;
+}) {
   const f = tile.feature;
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group flex min-h-[108px] min-w-0 flex-col border-t-2 p-3 text-left transition active:bg-black/[0.025]"
+      className={`group flex min-h-[92px] min-w-0 flex-col border-t-2 p-2.5 text-left transition active:bg-black/[0.025] ${
+        wide ? "col-span-2 !border-r-0" : ""
+      }`}
       style={{
         borderColor: "var(--app-border)",
         borderTopColor: tile.degraded
@@ -539,15 +585,15 @@ function ConditionReading({ tile, onOpen }: { tile: PulseTile; onOpen: () => voi
         >
           {createElement(iconFor(tile), { className: "h-3.5 w-3.5", strokeWidth: 2 })}
         </span>
-        <span className="min-w-0 flex-1 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+        <span className="min-w-0 flex-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.045em]" style={{ color: "var(--app-ink-2)" }}>
           {tile.label}
         </span>
         <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5" />
       </span>
-      <span className="mt-auto block min-w-0 pt-3">
+      <span className="mt-auto block min-w-0 pt-2">
         {f ? (
           <span className="block min-w-0">
-            <span className="block font-serif text-[28px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+            <span className="block font-serif text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
               {f.temp}°
             </span>
             <span className="mt-1 block min-w-0 text-[11px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
@@ -559,7 +605,7 @@ function ConditionReading({ tile, onOpen }: { tile: PulseTile; onOpen: () => voi
             {tile.countLabel}
           </span>
         )}
-        {f?.hl && <span className="mt-1 block truncate text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{f.hl}</span>}
+        {f?.hl && <span className="mt-1 block truncate text-[11px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{f.hl}</span>}
       </span>
     </button>
   );
@@ -613,12 +659,24 @@ export default function PulseBoard({
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
   const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
-  const summarizedKeys = new Set(chips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
-  const attention = tiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const conditions = tiles.filter((tile) => CONDITIONS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const gettingAround = tiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const steady = tiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const localUpdates = tiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  // A feed that did not answer does not earn a full card beside live,
+  // actionable information. Keep it in the underlying tile set so a direct
+  // detail URL remains honest, but omit it from the briefing until it has a
+  // current reading.
+  const availableTiles = pulseTilesWithData(tiles);
+  const unavailableTiles = pulseTilesWithoutData(tiles);
+  const unavailableKeys = new Set(
+    unavailableTiles.map((tile) => tile.key),
+  );
+  const visibleChips = chips.filter(
+    (chip) => !chip.key || !unavailableKeys.has(chip.key),
+  );
+  const summarizedKeys = new Set(visibleChips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
+  const attention = availableTiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
+  const conditions = availableTiles.filter((tile) => CONDITIONS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const gettingAround = availableTiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const steady = availableTiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
+  const localUpdates = availableTiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
   const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
   const beforeYouGo = [...conditions, ...gettingAround];
   const atGlance = [
@@ -627,6 +685,7 @@ export default function PulseBoard({
   ].slice(0, 4);
   const atGlanceKeys = new Set(atGlance.map((tile) => tile.key));
   const moreChecks = [
+    ...unavailableTiles,
     ...beforeYouGo.filter((tile) => !atGlanceKeys.has(tile.key)),
     ...steady,
   ];
@@ -668,7 +727,15 @@ export default function PulseBoard({
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
   const heroColor = CHIP_TONE[heroTone];
   const heroFacts = hero.facts?.filter((fact) => fact.value.trim().length > 0).slice(0, 4) ?? [];
-  const showAlertData = !hero.allClear && Boolean(lead) && heroFacts.length > 0;
+  const leadUsesMetricPanel = Boolean(
+    lead &&
+    lead.key !== "alerts" &&
+    lead.key !== "police",
+  );
+  const showAlertData =
+    !hero.allClear &&
+    leadUsesMetricPanel &&
+    heroFacts.length > 0;
   const statusWord = pulseStatusWord({
     allClear: hero.allClear,
     degraded,
@@ -728,8 +795,8 @@ export default function PulseBoard({
               </button>}
             </div>
           )}
-          {!hero.allClear && chips.length > 0 ? (
-            <div className="mt-3"><HeroFacts chips={chips} onOpen={openTile} /></div>
+          {!hero.allClear && visibleChips.length > 0 ? (
+            <div className="mt-3"><HeroFacts chips={visibleChips} onOpen={openTile} /></div>
           ) : null}
         </div>
       </header>
@@ -753,15 +820,20 @@ export default function PulseBoard({
             <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
               <GroupHeading
                 id="pulse-live-board-heading"
-                title={hero.allClear ? "At a glance" : "Other conditions"}
+                title={hero.allClear ? "At a glance" : "Before you go"}
                 note="Open for details"
               />
               <div
                 className="grid min-w-0 grid-cols-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] shadow-[var(--app-elev-1)] [&>button:nth-child(-n+2)]:border-b [&>button:nth-child(odd)]:border-r"
                 style={{ borderColor: "var(--app-border)" }}
               >
-                {atGlance.map((tile) => (
-                  <ConditionReading key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                {atGlance.map((tile, index) => (
+                  <ConditionReading
+                    key={tile.key}
+                    tile={tile}
+                    onOpen={() => openTile(tile.key)}
+                    wide={atGlance.length % 2 === 1 && index === atGlance.length - 1}
+                  />
                 ))}
               </div>
             </section>

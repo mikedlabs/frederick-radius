@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
-import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronDown, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import { ExternalLink, Phone, Mail, Globe, Navigation, Expand, ChevronDown, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import {
   groupPlaceActions,
   placeActions,
@@ -38,6 +38,7 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import { normalizeMapReturnTo, withMapReturnTo } from "@/lib/map-return";
+import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
 
 /**
  * Bottom-sheet detail view for a place. The presence/drag/focus/exit
@@ -53,6 +54,7 @@ type Props = {
   mapReturnTo?: string | null;
   onClose: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  historyLayerId: string;
 };
 
 export default function PlaceSheet({
@@ -60,12 +62,14 @@ export default function PlaceSheet({
   mapReturnTo,
   onClose,
   returnFocusRef,
+  historyLayerId,
 }: Props) {
   return (
     <BottomSheet
       present={Boolean(place)}
       onClose={onClose}
       ariaLabel={place?.name ?? "Place details"}
+      historyLayerId={historyLayerId}
       returnFocusRef={returnFocusRef}
     >
       {(dismiss) => place && (
@@ -525,6 +529,12 @@ function PlaceSheetContent({
           />
         </div>
 
+        {place.accessibility?.communication ? (
+          <div className="mt-4">
+            <PlaceCommunicationAccess place={place} />
+          </div>
+        ) : null}
+
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (
           <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
@@ -720,6 +730,7 @@ function PlaceSheetContent({
 const ACTION_ICON = {
   directions: Navigation,
   call: Phone,
+  email: Mail,
   website: Globe,
   reserve: UtensilsCrossed,
   order: ShoppingBag,

@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
+  daypartPhotoSrc,
+  daypartPickScopeLabel,
+  isPhotoFailureSignal,
   isDaypartCountywideContext,
   liveShelfFromWantAnswer,
 } from "./DaypartNeeds";
@@ -129,6 +132,21 @@ describe("DaypartNeeds", () => {
     expect(isDaypartCountywideContext("none")).toBe(true);
   });
 
+  it("only calls picks nearby when a real user location is active", () => {
+    expect(daypartPickScopeLabel("county", "Whole county")).toBe(
+      "Countywide picks",
+    );
+    expect(daypartPickScopeLabel("none", "Frederick County")).toBe(
+      "Countywide picks",
+    );
+    expect(daypartPickScopeLabel("ip", "Ranked from Frederick")).toBe(
+      "Countywide picks",
+    );
+    expect(daypartPickScopeLabel("device", "Near you")).toBe("Nearby picks");
+    expect(daypartPickScopeLabel("home", "Near home")).toBe("Nearby picks");
+    expect(daypartPickScopeLabel("town", "Urbana")).toBe("Urbana picks");
+  });
+
   it("keeps a successful scoped zero instead of restoring countywide picks", () => {
     const shelf = liveShelfFromWantAnswer(
       {
@@ -180,7 +198,9 @@ describe("DaypartNeeds", () => {
       }),
     );
 
-    expect(html).toContain("Posted hours · check before going");
+    expect(html).toContain(
+      "Countywide picks · Posted hours; check before going",
+    );
     expect(html).toContain("Likely Cup, likely open");
     expect(html).toContain("Likely open");
     expect(html).not.toContain("confirmed open");
@@ -215,11 +235,33 @@ describe("DaypartNeeds", () => {
     );
     expect(withPhoto).toContain("<img");
     expect(withPhoto).toContain("places%2FChIJtest%2Fphotos%2Ffront");
+    expect(withPhoto).toContain("fallback=signal");
     expect(withPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
 
     const withoutPhoto = renderPick();
     expect(withoutPhoto).not.toContain("<img");
-    expect(withoutPhoto).toContain('data-radius-plate="gravel-and-grind"');
+    expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
+    expect(withoutPhoto).toContain("min-h-[76px]");
+    expect(withoutPhoto).toContain('class="h-5 w-5"');
+  });
+
+  it("uses the photo proxy signal and recognizes its 1x1 failure image", () => {
+    expect(
+      daypartPhotoSrc(
+        "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800",
+      ),
+    ).toBe(
+      "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800&fallback=signal",
+    );
+    expect(
+      daypartPhotoSrc("https://images.example.com/coffee.jpg"),
+    ).toBe("https://images.example.com/coffee.jpg");
+    expect(
+      isPhotoFailureSignal({ naturalWidth: 1, naturalHeight: 1 }),
+    ).toBe(true);
+    expect(
+      isPhotoFailureSignal({ naturalWidth: 800, naturalHeight: 600 }),
+    ).toBe(false);
   });
 
   it("keeps expanded daypart results on the location-aware Nearby journey", () => {

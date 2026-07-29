@@ -29,6 +29,10 @@ import { sendPush, configurePush } from "@/lib/push";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
+import {
+  archivedEventBySlug,
+  archivedEventFromSnapshot,
+} from "@/lib/events/event-identity";
 import { noticeForEvent } from "@/lib/events/notices";
 import { cancellationPush, effectiveEventStatus } from "@/lib/saved-cancellations";
 
@@ -48,9 +52,34 @@ type Resolved = { title: string; startsAt: string; status?: string } | null;
  *  /events/[slug] uses: curated seed (sync) → cached live feed → cached
  *  ingested. Fail-soft. Status rides along so the cancellation pass and the
  *  reminder gate read the same claim the event page shows. */
-async function resolveEvent(slug: string): Promise<Resolved> {
+async function resolveEvent(
+  slug: string,
+  savedSnapshot?: unknown,
+  savedCanonicalSlug?: string | null,
+): Promise<Resolved> {
+  const retained = savedSnapshot
+    ? archivedEventFromSnapshot(
+        savedSnapshot,
+        savedCanonicalSlug ?? slug,
+      )
+    : null;
+  if (retained?.starts_at) {
+    return {
+      title: retained.title,
+      startsAt: retained.starts_at,
+      status: retained.status,
+    };
+  }
   const seed = getEventBySlug(slug);
   if (seed?.starts_at) return { title: seed.title, startsAt: seed.starts_at, status: seed.status };
+  const archived = await archivedEventBySlug(slug).catch(() => null);
+  if (archived?.event.starts_at) {
+    return {
+      title: archived.event.title,
+      startsAt: archived.event.starts_at,
+      status: archived.event.status,
+    };
+  }
   try {
     const live = await getLiveCardEventBySlug(slug);
     if (live?.starts_at) return { title: live.title, startsAt: live.starts_at, status: live.status };
@@ -91,11 +120,19 @@ export async function GET(request: Request) {
 
   // Every saved event that belongs to a device with a LIVE push subscription.
   const rows = (await sql`
-    SELECT se.event_slug, se.endpoint, ps.p256dh, ps.auth
+    SELECT
+      se.event_slug,
+      se.canonical_event_slug,
+      se.event_snapshot,
+      se.endpoint,
+      ps.p256dh,
+      ps.auth
     FROM saved_events se
     JOIN push_subscriptions ps ON ps.endpoint = se.endpoint
   `) as unknown as Array<{
     event_slug: string;
+    canonical_event_slug: string | null;
+    event_snapshot: unknown;
     endpoint: string;
     p256dh: string;
     auth: string;
@@ -117,6 +154,7 @@ export async function GET(request: Request) {
     key: string,
     msg: { title: string; body: string; tag: string },
   ): Promise<boolean> => {
+    const eventUrlSlug = row.canonical_event_slug ?? row.event_slug;
     let claimed = false;
     try {
       const claim = await db
@@ -125,7 +163,7 @@ export async function GET(request: Request) {
           topic,
           dedupe_key: key,
           title: msg.title,
-          url: `/events/${row.event_slug}`,
+          url: `/events/${eventUrlSlug}`,
         })
         .onConflictDoNothing({ target: [push_log.topic, push_log.dedupe_key] })
         .returning({ id: push_log.id });
@@ -138,7 +176,7 @@ export async function GET(request: Request) {
     try {
       await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        { ...msg, url: `/events/${row.event_slug}` },
+        { ...msg, url: `/events/${eventUrlSlug}` },
       );
       return true;
     } catch (err) {
@@ -164,7 +202,11 @@ export async function GET(request: Request) {
   for (const row of rows) {
     let ev = startCache.get(row.event_slug);
     if (ev === undefined) {
-      ev = await resolveEvent(row.event_slug);
+      ev = await resolveEvent(
+        row.event_slug,
+        row.event_snapshot,
+        row.canonical_event_slug,
+      );
       startCache.set(row.event_slug, ev);
     }
     if (!ev) continue;
@@ -172,7 +214,8 @@ export async function GET(request: Request) {
     // Plans-changed pass: the event this device saved got cancelled or
     // postponed (feed status, or the owner's event-notices override). The
     // status is part of the dedupe key so postponed → cancelled re-alerts.
-    const noticeStatus = noticeForEvent(row.event_slug, nowDate)?.status;
+    const noticeSlug = row.canonical_event_slug ?? row.event_slug;
+    const noticeStatus = noticeForEvent(noticeSlug, nowDate)?.status;
     const change = cancellationPush(ev, noticeStatus, nowDate);
     if (change) {
       const ok = await claimAndSend(

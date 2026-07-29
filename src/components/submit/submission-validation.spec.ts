@@ -38,6 +38,8 @@ function validEvent() {
     price_text: "",
     ticket_url: "https://example.com/tickets",
     organizer: "Frederick Parks",
+    photo_url: "",
+    photo_permission: false,
     submitter_email: "events@example.com",
     submitter_name: "Sam",
     contact_fax: "",
@@ -159,6 +161,56 @@ describe("public submission validation", () => {
     ).toMatchObject({
       status: "invalid",
       message: "End time must be after the start time.",
+    });
+  });
+
+  it("accepts a permission-backed event photo link", () => {
+    expect(
+      validateEventSubmission({
+        ...validEvent(),
+        photo_url: " https://events.example.com/posters/live-music.jpg ",
+        photo_permission: true,
+      }),
+    ).toEqual({
+      status: "valid",
+      data: expect.objectContaining({
+        photo_url: "https://events.example.com/posters/live-music.jpg",
+        photo_permission: true,
+      }),
+    });
+  });
+
+  it("requires display permission for event photos and rejects unsafe links", () => {
+    expect(
+      validateEventSubmission({
+        ...validEvent(),
+        photo_url: "https://events.example.com/poster.jpg",
+      }),
+    ).toMatchObject({
+      status: "invalid",
+      message: expect.stringContaining("permission to display"),
+    });
+
+    expect(
+      validateEventSubmission({
+        ...validEvent(),
+        photo_url: "javascript:alert(1)",
+        photo_permission: true,
+      }),
+    ).toMatchObject({
+      status: "invalid",
+      message: expect.stringContaining("complete http or https URL"),
+    });
+
+    expect(
+      validateEventSubmission({
+        ...validEvent(),
+        photo_url: `https://events.example.com/${"x".repeat(2_100)}`,
+        photo_permission: true,
+      }),
+    ).toMatchObject({
+      status: "invalid",
+      message: "Photo link is too long.",
     });
   });
 

@@ -1,0 +1,69 @@
+name: Mobile performance budget
+
+on:
+  schedule:
+    # Weekly, off the top of the hour. PRs keep the small resilience browser
+    # gate; this heavier five-route Lighthouse pass runs independently.
+    - cron: "43 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-performance-budget
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the production app
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Start the production app
+        run: |
+          npm start > /tmp/frederick-radius-performance.log 2>&1 &
+          echo "$!" > /tmp/frederick-radius-performance.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/today > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -100 /tmp/frederick-radius-performance.log
+          exit 1
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Enforce key-route mobile budgets
+        run: >-
+          npm run perf --
+          --url=http://127.0.0.1:3000
+          --label=ci-${GITHUB_SHA::12}
+          --enforce
+
+      - name: Upload Lighthouse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-performance-reports
+          path: .perf
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Show server log on failure
+        if: failure()
+        run: tail -200 /tmp/frederick-radius-performance.log

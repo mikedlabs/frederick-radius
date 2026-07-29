@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import { shouldShowBottomNav } from "./BottomNav";
 
 describe("BottomNav contextual chrome", () => {
-  it("yields the bottom edge to detail actions and the focused Ask workspace", () => {
+  it("yields the bottom edge only to a real contextual action bar", () => {
     expect(shouldShowBottomNav("/places/gravel-and-grind", true)).toBe(false);
     expect(shouldShowBottomNav("/events/alive-at-five-2026", true)).toBe(false);
-    expect(shouldShowBottomNav("/ask")).toBe(false);
-    expect(shouldShowBottomNav("/ask/history")).toBe(false);
+    expect(shouldShowBottomNav("/ask")).toBe(true);
+    expect(shouldShowBottomNav("/ask/history")).toBe(true);
   });
 
   it("stays present whenever a contextual bar was not actually rendered", () => {

@@ -4,10 +4,11 @@
  * WantAnswerPanel — the in-place answer when a craving chip is tapped.
  *
  * The page never navigates: the panel expands inside the "I want…" strip
- * with ONE hero answer (the best open-now pick), a short "also open now"
- * list, and a folded "opens later" group. Tapping a place opens the
- * global PlaceSheet — the same no-navigation detail layer the map uses —
- * so the grammar is page → panel → sheet throughout the app.
+ * with ONE hero answer, a short alternative list, and a folded "opens later"
+ * group when hours matter. Verified availability leads storefront decisions;
+ * proximity leads public amenities and low-coverage categories. Tapping a
+ * place opens the global PlaceSheet — the same no-navigation detail layer the
+ * map uses — so the grammar is page → panel → sheet throughout the app.
  *
  * Layout rules it lives by: typography carries hierarchy (hairline
  * separators, no per-row boxes), exactly one count on the whole panel
@@ -53,6 +54,7 @@ type WantRow = {
 type WantAnswer = {
   key: string;
   label: string;
+  rankingMode: "best-fit" | "open-now";
   hero: WantRow | null;
   also: WantRow[];
   later: WantRow[];
@@ -146,6 +148,16 @@ export default function WantAnswerPanel({
   const { openSheet } = usePlaceSheet();
   const router = useRouter();
   const likelyAnswer = answer?.hero?.confidence === "likely";
+  const modeLabel =
+    cKey === "movies"
+      ? "showtimes"
+      : !answer
+        ? "finding"
+        : answer.rankingMode === "best-fit"
+          ? answer.contextSource === "device"
+            ? "nearby"
+            : "best matches"
+          : "right now";
 
   // Fetch the answer through the shared want cache, which reuses the request
   // the chip already kicked off on pointerdown (and any cached fix rides
@@ -207,7 +219,7 @@ export default function WantAnswerPanel({
   return (
     <section
       className="overflow-hidden rounded-[var(--app-radius-lg)]"
-      aria-label={`${label}, ${cKey === "movies" ? "showtimes" : "right now"}`}
+      aria-label={`${label}, ${modeLabel}`}
       style={{
         border: `1px solid color-mix(in srgb, ${accent} 40%, var(--app-border))`,
         background: "var(--app-bg-elevated-solid)",
@@ -225,7 +237,7 @@ export default function WantAnswerPanel({
         >
           {label}
           <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: `color-mix(in srgb, ${accent} 75%, var(--app-ink))` }}>
-            {cKey === "movies" ? "showtimes" : "right now"}
+            {modeLabel}
           </span>
         </h3>
         <button
@@ -318,9 +330,12 @@ export default function WantAnswerPanel({
                 <span
                   className="mt-1 block truncate font-mono text-[11.5px]"
                   style={{
-                    color: likelyAnswer
-                      ? "var(--app-warning)"
-                      : "var(--app-positive)",
+                    color:
+                      answer.hero.confidence === "confirmed"
+                        ? "var(--app-positive)"
+                        : likelyAnswer
+                          ? "var(--app-warning)"
+                          : "var(--app-ink-3)",
                   }}
                 >
                   {answer.hero.fact}
@@ -373,9 +388,11 @@ export default function WantAnswerPanel({
             </div>
           ) : (
             <p className="px-4 pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {answer.mayAssertNoneOpen
-                ? "No matching place is open right now."
-                : "No matching place is confirmed open right now."}
+              {answer.rankingMode === "best-fit"
+                ? "No matching place is available in this area."
+                : answer.mayAssertNoneOpen
+                  ? "No matching place is open right now."
+                  : "No matching place is confirmed open right now."}
               {answer.later[0] ? ` Earliest: ${answer.later[0].name}, ${answer.later[0].fact.replace(/^Opens /, "").toLowerCase()}.` : ""}
             </p>
           )}
@@ -383,7 +400,13 @@ export default function WantAnswerPanel({
           {answer.key !== "movies" && answer.also.length > 0 && (
             <div className="px-4 pb-1">
               <p className="border-t pb-1 pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)", borderColor: "var(--app-border)" }}>
-                {likelyAnswer ? "Also likely open" : "Also open now"}
+                {answer.rankingMode === "best-fit"
+                  ? answer.contextSource === "device"
+                    ? "More nearby"
+                    : "More matches"
+                  : likelyAnswer
+                    ? "Also likely open"
+                    : "Also open now"}
               </p>
               <ul>
                 {answer.also.map((r) => (

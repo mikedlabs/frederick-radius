@@ -58,12 +58,14 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("1 source answer.")).toBeVisible();
     await expect(page.getByText("Source 1", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Browse all Radius tools/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse tools" })).toBeVisible();
 
     await submit(page, "three sources");
     await expect(page.getByText("3 source answer.")).toBeVisible();
     await expect(page.getByText("Source 3", { exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Show all 3 matches" }).click();
+    await page.locator("summary").filter({ hasText: "Sources behind this answer" }).click();
+    await expect(page.getByText("Source 2", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Show all 3 sources" }).click();
     await expect(page.getByText("Source 3", { exact: true })).toBeVisible();
 
     await submit(page, "zero sources");
@@ -320,7 +322,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.goto("/ask");
     await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
     await expect(page.locator("#all-radius-tools")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Browse all Radius tools/ })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Browse tools" })).toHaveAttribute(
       "href",
       "/compass",
     );

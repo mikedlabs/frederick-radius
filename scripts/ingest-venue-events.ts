@@ -26,12 +26,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  fetchPageText,
+  fetchPageSnapshot,
   fetchSquarespaceEvents,
   extractJson,
   extractJsonFromImage,
+  formatFirecrawlFallbackUsageSummary,
   nowISO,
   preflightKey,
+  resetFirecrawlFallbackUsage,
 } from "./lib/extract-agent";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 
@@ -46,6 +48,8 @@ type VenueSource = {
   method?: Method;
   urls: string[];
   imageUrl?: string;
+  /** Exact reviewed redirect destinations beyond the configured source host. */
+  allowedRedirectHosts?: string[];
   // Legacy flag kept for back-compat: render:true == method "render".
   render?: boolean;
 };
@@ -62,7 +66,13 @@ type VenueEvent = RawEvent & {
   venue_slug: string;
   venue_name: string;
   category?: string;
-  source: { url: string; fetchedAt: string };
+  source: SourceProvenance & { fetchedAt: string };
+};
+type SourceProvenance = {
+  /** Canonical publisher URL retained for existing readers and citations. */
+  url: string;
+  requestedUrl: string;
+  finalUrl: string;
 };
 
 const SHAPE =
@@ -91,13 +101,19 @@ const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase
  * events plus the source URL to stamp on each. Never throws: a failed
  * fetch/extract yields [] so the caller leaves prior data untouched.
  */
-async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; sourceUrl: string }> {
+function directSource(url: string): SourceProvenance {
+  return { url, requestedUrl: url, finalUrl: url };
+}
+
+async function collect(
+  venue: VenueSource,
+): Promise<{ events: RawEvent[]; source: SourceProvenance }> {
   const method = methodOf(venue);
 
   if (method === "image") {
     if (!venue.imageUrl) {
       console.log(`  – no imageUrl configured`);
-      return { events: [], sourceUrl: venue.urls[0] ?? "" };
+      return { events: [], source: directSource(venue.urls[0] ?? "") };
     }
     const events = await extractJsonFromImage<RawEvent[]>(
       `Venue: ${venue.name} (Frederick County, MD).\n${IMAGE_SHAPE}`,
@@ -112,7 +128,7 @@ async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; source
             ...(event.description ? { description_origin: "radius-summary" as const } : {}),
           }))
         : [],
-      sourceUrl: venue.urls[0] ?? venue.imageUrl,
+      source: directSource(venue.urls[0] ?? venue.imageUrl),
     };
   }
 
@@ -123,37 +139,45 @@ async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; source
       const events = await fetchSquarespaceEvents(url);
       if (events.length) {
         console.log(`  ✓ ${events.length} event(s) from feed ${url}`);
-        return { events, sourceUrl: url };
+        return { events, source: directSource(url) };
       }
     }
     console.log(`  – feed returned no upcoming events`);
-    return { events: [], sourceUrl: venue.urls[0] ?? "" };
+    return { events: [], source: directSource(venue.urls[0] ?? "") };
   }
 
   // render | fetch — page text → model. Try each URL; first hit wins.
   for (const url of venue.urls) {
-    const text = await fetchPageText(url, { render: method === "render" });
-    if (!text) continue;
+    const snapshot = await fetchPageSnapshot(url, {
+      render: method === "render",
+      allowedRedirectHosts: venue.allowedRedirectHosts ?? [],
+    });
+    if (!snapshot) continue;
     const events = await extractJson<RawEvent[]>(
       `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
-      text,
+      snapshot.text,
     );
     if (Array.isArray(events) && events.length) {
       console.log(`  ✓ ${events.length} event(s) from ${url}`);
       return {
         events: events.map((event) => ({
           ...event,
-          ...(event.description ? { description_origin: "radius-summary" as const } : {}),
-        })),
-        sourceUrl: url,
+            ...(event.description ? { description_origin: "radius-summary" as const } : {}),
+          })),
+        source: {
+          url: snapshot.requestedUrl,
+          requestedUrl: snapshot.requestedUrl,
+          finalUrl: snapshot.finalUrl,
+        },
       };
     }
     console.log(`  – 0 event(s) from ${url}`);
   }
-  return { events: [], sourceUrl: venue.urls[0] ?? "" };
+  return { events: [], source: directSource(venue.urls[0] ?? "") };
 }
 
 async function main() {
+  resetFirecrawlFallbackUsage();
   // The key gates only the MODEL-ASSISTED methods (render/fetch/image). The
   // deterministic Squarespace `feed` venues need no model, so a keyless run
   // still refreshes them instead of bailing entirely — that global bail is
@@ -178,7 +202,7 @@ async function main() {
       continue;
     }
     console.log(`• ${venue.name} [${methodOf(venue)}]`);
-    const { events, sourceUrl } = await collect(venue);
+    const { events, source } = await collect(venue);
     for (const ev of events) {
       if (!ev.title || !ev.starts_at) continue;
       const full: VenueEvent = {
@@ -186,7 +210,7 @@ async function main() {
         venue_slug: venue.slug,
         venue_name: venue.name,
         category: inferredNonMusicCategory(ev.title) ?? venue.category,
-        source: { url: sourceUrl, fetchedAt: nowISO() },
+        source: { ...source, fetchedAt: nowISO() },
       };
       const k = keyOf(full);
       if (!byKey.has(k)) added++;
@@ -203,6 +227,7 @@ async function main() {
 
   writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
   console.log(`\nDone. +${added} new, ${kept.length} total → src/data/venue-events.json`);
+  console.log(formatFirecrawlFallbackUsageSummary());
   if (!hasKey && process.env.CI) {
     console.error(
       "Deterministic venue feeds were refreshed, but model-assisted venue sources were skipped.",

@@ -116,12 +116,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run refresh:hours
 
-      # Park data remains fail-soft so a temporary government endpoint outage
-      # does not hide a successful place-data refresh. Transit has its own job
-      # below so missing paid-place secrets cannot prevent its refresh.
-      - name: Rebuild park amenities
-        run: npm run build:park-amenities || true
-
       # Rebuild the exact public snapshot and enforce critical safety gates.
       # High-severity coverage debt is reported separately below: it must stay
       # visible, but it cannot prevent an incremental refresh PR from opening.
@@ -148,7 +142,7 @@ jobs:
             Automated nightly refresh from the data-steward workflow.
 
             Ran: build:place-refresh-identities, refresh:business-status,
-            refresh:hours, build:park-amenities, build:client-places, and the
+            refresh:hours, build:client-places, and the
             data-quality scorecard. Transit refresh runs in its own independent
             job. Critical gates block this PR; existing high-severity coverage
             debt remains visible without blocking an incremental refresh.

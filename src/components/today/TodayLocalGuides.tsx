@@ -150,16 +150,9 @@ export default function TodayLocalGuides({
   ];
 
   return (
-    <section className="mt-6" aria-labelledby="today-local-guides">
-      <h2
-        id="today-local-guides"
-        className="px-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Local guides
-      </h2>
+    <section className="mt-6" aria-label="Local guides">
       <div
-        className="mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
         {rows.map(({ href, title, detail, marks, Icon }, index) => (

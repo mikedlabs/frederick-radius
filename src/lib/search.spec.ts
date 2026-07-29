@@ -128,6 +128,15 @@ describe("qualifiedSearch — event intent survives location language", () => {
     const events = hits.flatMap((hit) => hit.type === "event" ? [hit.event.slug] : []);
     expect(events.slice(0, 2)).toEqual([concert.slug, far.slug]);
   });
+
+  it("keeps mixed event and place results in one relevance order", () => {
+    const { hits } = qualifiedSearch("live music near me", 20, [concert], context);
+    expect(
+      hits.every(
+        (hit, index) => index === 0 || hits[index - 1].score >= hit.score,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("qualifiedSearch — natural category plurals", () => {

@@ -197,6 +197,22 @@ describe("buildMapDiscoveries", () => {
     expect(finding.evidence[1].sourceUrl).toBe("https://www.openstreetmap.org/way/67890");
   });
 
+  it("does not misattribute County park assets to OpenStreetMap", () => {
+    const park = place({ slug: "county-park", name: "County Park", category: "park" });
+    const amenities: Amenity[] = [
+      { id: "fc-park-bench-1", kind: "bench", name: "Park bench", municipality: "frederick-county", lng: -77.4103, lat: 39.4142 },
+      { id: "fc-park-amenity-2", kind: "water", name: "Drinking fountain", municipality: "frederick-county", lng: -77.4102, lat: 39.4141 },
+    ];
+    const finding = buildMapDiscoveries(input({ places: [park], amenities }))[0];
+
+    expect(finding.evidence.every(
+      (item) => item.source === "Frederick County park map",
+    )).toBe(true);
+    expect(finding.evidence.every(
+      (item) => item.sourceUrl?.includes("ParksAndRecreation/Assets/MapServer"),
+    )).toBe(true);
+  });
+
   it("keeps mass-noun amenity copy grammatical", () => {
     const park = place({ slug: "baker-park", name: "Baker Park", category: "park" });
     const amenities: Amenity[] = [

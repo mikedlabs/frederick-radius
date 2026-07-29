@@ -23,12 +23,15 @@ describe("normalizeMunicipalBoundaries", () => {
     ],
   };
 
-  it("keeps polygons + multipolygons, carries name only", () => {
+  it("keeps polygons + multipolygons with canonical app identities", () => {
     const fc = normalizeMunicipalBoundaries(raw);
     expect(fc.features).toHaveLength(2);
     expect(fc.features.map((f) => f.properties.name)).toEqual(["New Market", "Brunswick"]);
-    // strips everything but name
-    expect(Object.keys(fc.features[0].properties)).toEqual(["name"]);
+    expect(fc.features[0].properties).toEqual({
+      name: "New Market",
+      slug: "new-market",
+      sourceName: "New Market",
+    });
   });
 
   it("returns empty FC for junk", () => {

@@ -1,9 +1,19 @@
 import {
   pgTable, uuid, text, integer, real, boolean, jsonb, date,
   smallint, timestamp, index, uniqueIndex, doublePrecision,
+  check, customType,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { CommerceLink } from "@/lib/commerce/types";
+
+/**
+ * Stored PostGIS points are generated from the existing lng/lat columns in
+ * migration 0037. Keeping those scalar columns as the write contract means
+ * current ingesters remain unchanged while spatial reads gain a GiST index.
+ */
+const geographyPoint = customType<{ data: string; driverData: string }>({
+  dataType: () => "extensions.geography(Point, 4326)",
+});
 
 export const municipalities = pgTable(
   "municipalities",
@@ -75,6 +85,14 @@ export const places = pgTable(
     municipality_slug: text("municipality_slug"),
     lng: doublePrecision("lng").notNull(),
     lat: doublePrecision("lat").notNull(),
+    location: geographyPoint("location")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`extensions.st_setsrid(
+          extensions.st_makepoint("lng", "lat"),
+          4326
+        )::extensions.geography`,
+      ),
     phone: text("phone"),
     email: text("email"),
     website: text("website"),
@@ -107,8 +125,26 @@ export const places = pgTable(
     muniIdx: index("places_municipality_idx").on(t.municipality_slug),
     catIdx: index("places_category_idx").on(t.category_slug),
     lngLatIdx: index("places_lng_lat_idx").on(t.lng, t.lat),
+    locationIdx: index("places_location_gist_idx").using("gist", t.location),
   }),
 );
+
+/**
+ * One server-owned checksum proving that the active PostGIS mirror matches the
+ * exact public catalog shipped by a deployment. Spatial reads fail back to the
+ * in-memory path whenever this state is absent or its hash/count do not match.
+ */
+export const placeSpatialSyncState = pgTable("place_spatial_sync_state", {
+  catalog_key: text("catalog_key").primaryKey(),
+  catalog_hash: text("catalog_hash").notNull(),
+  place_count: integer("place_count").notNull(),
+  synced_at: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  countCheck: check(
+    "place_spatial_sync_state_count_check",
+    sql`${t.place_count} >= 0`,
+  ),
+}));
 
 export const events = pgTable(
   "events",
@@ -155,6 +191,95 @@ export const events = pgTable(
     muniTimeIdx: index("events_muni_starts_idx").on(t.municipality_slug, t.starts_at),
   }),
 );
+
+/**
+ * Durable event routing. A publisher UID remains stable while titles and
+ * human-readable slugs change; aliases and snapshots keep shared/saved links
+ * useful after that churn. These tables are server-only with deny-all RLS.
+ */
+export const eventCanonicalRecords = pgTable(
+  "event_canonical_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    canonical_slug: text("canonical_slug").notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    starts_at: timestamp("starts_at", { withTimezone: true }).notNull(),
+    ends_at: timestamp("ends_at", { withTimezone: true }),
+    event_status: text("event_status").notNull().default("scheduled"),
+    source_url: text("source_url"),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    snapshot_at: timestamp("snapshot_at", { withTimezone: true }).notNull().defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    slugUq: uniqueIndex("event_canonical_records_slug_uq").on(t.canonical_slug),
+    upcomingIdx: index("event_canonical_records_upcoming_idx")
+      .on(t.starts_at, t.id)
+      .where(sql`${t.event_status} = 'scheduled'`),
+    lastSeenIdx: index("event_canonical_records_last_seen_idx").on(t.last_seen_at),
+    slugCheck: check(
+      "event_canonical_records_slug_check",
+      sql`${t.canonical_slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`,
+    ),
+    snapshotCheck: check(
+      "event_canonical_records_snapshot_object_check",
+      sql`jsonb_typeof(${t.snapshot}) = 'object'`,
+    ),
+    statusCheck: check(
+      "event_canonical_records_status_check",
+      sql`${t.event_status} in ('scheduled', 'cancelled', 'postponed')`,
+    ),
+    windowCheck: check(
+      "event_canonical_records_window_check",
+      sql`${t.ends_at} is null or ${t.ends_at} >= ${t.starts_at}`,
+    ),
+  }),
+);
+
+export const eventSourceIdentities = pgTable(
+  "event_source_identities",
+  {
+    source: text("source").notNull(),
+    source_uid: text("source_uid").notNull(),
+    canonical_event_id: uuid("canonical_event_id")
+      .notNull()
+      .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    identityUq: uniqueIndex("event_source_identities_pk").on(t.source, t.source_uid),
+    eventIdx: index("event_source_identities_event_idx").on(t.canonical_event_id),
+  }),
+);
+
+export const eventSlugAliases = pgTable(
+  "event_slug_aliases",
+  {
+    slug: text("slug").primaryKey(),
+    canonical_event_id: uuid("canonical_event_id")
+      .notNull()
+      .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    eventIdx: index("event_slug_aliases_event_idx").on(t.canonical_event_id),
+  }),
+);
+
+export const eventTombstones = pgTable("event_tombstones", {
+  canonical_event_id: uuid("canonical_event_id")
+    .primaryKey()
+    .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+  last_snapshot: jsonb("last_snapshot").$type<Record<string, unknown>>().notNull(),
+  reason: text("reason").notNull().default("source_gone"),
+  tombstoned_at: timestamp("tombstoned_at", { withTimezone: true }).notNull().defaultNow(),
+  source_last_seen_at: timestamp("source_last_seen_at", { withTimezone: true }),
+  expires_at: timestamp("expires_at", { withTimezone: true }),
+});
 
 /**
  * Rolling hours refresh (data brief 4.3). The hours-refresh cron upserts
@@ -261,6 +386,58 @@ export const feed_snapshots = pgTable(
       t.taken_at,
     ),
     takenIdx: index("feed_snapshots_taken_idx").on(t.taken_at),
+  }),
+);
+
+/**
+ * Compact current-state projection for feed health.
+ *
+ * `feed_snapshots` is the bounded historical audit trail. Public/admin health
+ * reads should not repeatedly scan that history just to learn the newest
+ * observation for each source, so the cron updates this one-row-per-source
+ * projection in the same transaction as the historical append.
+ */
+export const feed_source_health = pgTable(
+  "feed_source_health",
+  {
+    source: text("source").primaryKey(),
+    taken_at: timestamp("taken_at", { withTimezone: true }).notNull(),
+    count: integer("count").notNull(),
+    free_ratio: real("free_ratio").notNull(),
+    empty_desc_ratio: real("empty_desc_ratio").notNull(),
+    top_venue: jsonb("top_venue").$type<{ name: string; share: number } | null>(),
+    top_category: jsonb("top_category").$type<{ name: string; share: number } | null>(),
+    earliest: timestamp("earliest", { withTimezone: true }),
+    latest: timestamp("latest", { withTimezone: true }),
+    prior_snapshot: jsonb("prior_snapshot").$type<{
+      taken_at: string;
+      count: number;
+      free_ratio: number;
+      empty_desc_ratio: number;
+      top_venue: { name: string; share: number } | null;
+      top_category: { name: string; share: number } | null;
+      earliest: string | null;
+      latest: string | null;
+    } | null>(),
+    recent_mean_count: real("recent_mean_count").notNull(),
+    recent_observations: smallint("recent_observations").notNull().default(1),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    takenIdx: index("feed_source_health_taken_idx").on(t.taken_at),
+    countCheck: check("feed_source_health_count_check", sql`${t.count} >= 0`),
+    freeRatioCheck: check(
+      "feed_source_health_free_ratio_check",
+      sql`${t.free_ratio} >= 0 AND ${t.free_ratio} <= 1`,
+    ),
+    emptyDescriptionRatioCheck: check(
+      "feed_source_health_empty_desc_ratio_check",
+      sql`${t.empty_desc_ratio} >= 0 AND ${t.empty_desc_ratio} <= 1`,
+    ),
+    observationCheck: check(
+      "feed_source_health_observations_check",
+      sql`${t.recent_observations} BETWEEN 1 AND 84`,
+    ),
   }),
 );
 
@@ -454,11 +631,21 @@ export const saved_events = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     endpoint: text("endpoint").notNull(),
     event_slug: text("event_slug").notNull(),
+    canonical_event_id: uuid("canonical_event_id").references(
+      () => eventCanonicalRecords.id,
+      { onDelete: "set null" },
+    ),
+    canonical_event_slug: text("canonical_event_slug"),
+    event_snapshot: jsonb("event_snapshot").$type<Record<string, unknown>>(),
+    snapshot_at: timestamp("snapshot_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
     endpointSlugUq: uniqueIndex("saved_events_endpoint_slug_uq").on(t.endpoint, t.event_slug),
     slugIdx: index("saved_events_slug_idx").on(t.event_slug),
+    canonicalEventIdx: index("saved_events_canonical_event_idx")
+      .on(t.canonical_event_id)
+      .where(sql`${t.canonical_event_id} is not null`),
   }),
 );
 
@@ -963,11 +1150,426 @@ export const dear_frederick_submissions = pgTable(
   }),
 );
 
-// Run once after migration:
-export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
--- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),
--- so qualify the opclass: extensions.gin_trgm_ops.
--- CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
--- CREATE INDEX places_name_trgm_idx ON places USING GIN (name extensions.gin_trgm_ops);
--- CREATE INDEX places_fts_idx ON places USING GIN (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'')));
--- CREATE INDEX events_fts_idx ON events USING GIN (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(description,'')));`;
+// ════════════════════════════════════════════════════════════════════
+//                  Native restaurant menu data plane
+// ════════════════════════════════════════════════════════════════════
+//
+// These tables are the provider-neutral storage behind native menu reading
+// and item search. `place_slug` remains a loose key because the runtime place
+// catalog is file-sourced and can be ahead of the database mirror. The
+// hand-applied migration enables deny-all RLS for anon/authenticated; app reads
+// and all writes stay server-side through DATABASE_URL.
+
+export const menu_sources = pgTable(
+  "menu_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    provider: text("provider").notNull(),
+    source_kind: text("source_kind").notNull(),
+    source_key: text("source_key").notNull(),
+    source_label: text("source_label").notNull(),
+    source_url: text("source_url"),
+    external_merchant_id: text("external_merchant_id"),
+    provenance_method: text("provenance_method").notNull(),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    verification_status: text("verification_status").notNull().default("unverified"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    identityUq: uniqueIndex("menu_sources_identity_uq").on(
+      t.place_slug,
+      t.provider,
+      t.source_key,
+    ),
+    publicPlaceIdx: index("menu_sources_public_place_idx")
+      .on(t.place_slug, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.verification_status} = 'verified'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    providerCheck: check(
+      "menu_sources_provider_check",
+      sql`${t.provider} in (
+        'toast',
+        'square',
+        'clover',
+        'official_website',
+        'owner_upload',
+        'manual',
+        'other'
+      )`,
+    ),
+    kindCheck: check(
+      "menu_sources_kind_check",
+      sql`${t.source_kind} in (
+        'pos_api',
+        'official_html',
+        'official_pdf',
+        'owner_upload',
+        'manual'
+      )`,
+    ),
+    provenanceMethodCheck: check(
+      "menu_sources_provenance_method_check",
+      sql`${t.provenance_method} in (
+        'merchant_authorized',
+        'official_public_source',
+        'business_submission',
+        'manual_verification'
+      )`,
+    ),
+    statusCheck: check(
+      "menu_sources_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    verificationCheck: check(
+      "menu_sources_verification_status_check",
+      sql`${t.verification_status} in ('unverified', 'verified', 'rejected')`,
+    ),
+    freshnessCheck: check(
+      "menu_sources_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_sources_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_sources_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_sources_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.verification_status} = 'verified'
+          and ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const native_menus = pgTable(
+  "native_menus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    source_id: uuid("source_id")
+      .notNull()
+      .references(() => menu_sources.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    menu_type: text("menu_type").notNull().default("other"),
+    currency: text("currency").notNull().default("USD"),
+    canonical_url: text("canonical_url"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    sourceKeyUq: uniqueIndex("native_menus_source_key_uq").on(t.source_id, t.source_key),
+    publicSourceIdx: index("native_menus_public_source_idx")
+      .on(t.source_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    typeCheck: check(
+      "native_menus_type_check",
+      sql`${t.menu_type} in (
+        'main',
+        'breakfast',
+        'brunch',
+        'lunch',
+        'dinner',
+        'kids',
+        'drinks',
+        'dessert',
+        'happy_hour',
+        'catering',
+        'other'
+      )`,
+    ),
+    currencyCheck: check(
+      "native_menus_currency_check",
+      sql`${t.currency} ~ '^[A-Z]{3}$'`,
+    ),
+    statusCheck: check(
+      "native_menus_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "native_menus_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "native_menus_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "native_menus_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "native_menus_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const menu_sections = pgTable(
+  "menu_sections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    menu_id: uuid("menu_id")
+      .notNull()
+      .references(() => native_menus.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    menuKeyUq: uniqueIndex("menu_sections_menu_key_uq").on(t.menu_id, t.source_key),
+    publicMenuIdx: index("menu_sections_public_menu_idx")
+      .on(t.menu_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    statusCheck: check(
+      "menu_sections_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "menu_sections_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_sections_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_sections_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_sections_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const menu_items = pgTable(
+  "menu_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    section_id: uuid("section_id")
+      .notNull()
+      .references(() => menu_sections.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    price_minor: integer("price_minor"),
+    price_currency: text("price_currency").notNull().default("USD"),
+    price_display: text("price_display"),
+    availability_status: text("availability_status").notNull().default("unknown"),
+    availability_evidence: text("availability_evidence")
+      .notNull()
+      .default("not_provided"),
+    availability_checked_at: timestamp("availability_checked_at", {
+      withTimezone: true,
+    }),
+    dietary_tags: text("dietary_tags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    dietary_evidence: text("dietary_evidence").notNull().default("not_provided"),
+    allergen_statement: text("allergen_statement"),
+    calorie_count: integer("calorie_count"),
+    order_url: text("order_url"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    sectionKeyUq: uniqueIndex("menu_items_section_key_uq").on(t.section_id, t.source_key),
+    publicSectionIdx: index("menu_items_public_section_idx")
+      .on(t.section_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    searchIdx: index("menu_items_search_idx").using(
+      "gin",
+      sql`to_tsvector(
+        'english',
+        coalesce(${t.name}, '') || ' ' || coalesce(${t.description}, '')
+      )`,
+    ),
+    priceCheck: check(
+      "menu_items_price_minor_check",
+      sql`${t.price_minor} is null or ${t.price_minor} >= 0`,
+    ),
+    currencyCheck: check(
+      "menu_items_price_currency_check",
+      sql`${t.price_currency} ~ '^[A-Z]{3}$'`,
+    ),
+    calorieCheck: check(
+      "menu_items_calorie_count_check",
+      sql`${t.calorie_count} is null or ${t.calorie_count} >= 0`,
+    ),
+    availabilityCheck: check(
+      "menu_items_availability_status_check",
+      sql`${t.availability_status} in (
+        'unknown',
+        'available',
+        'unavailable',
+        'sold_out',
+        'seasonal'
+      )`,
+    ),
+    availabilityEvidenceCheck: check(
+      "menu_items_availability_evidence_check",
+      sql`${t.availability_evidence} in (
+        'not_provided',
+        'provider_api',
+        'business_submission',
+        'official_menu',
+        'manual_verification'
+      )`,
+    ),
+    availabilityClaimCheck: check(
+      "menu_items_availability_claim_check",
+      sql`${t.availability_status} = 'unknown'
+        or (
+          ${t.availability_evidence} <> 'not_provided'
+          and ${t.availability_checked_at} is not null
+        )`,
+    ),
+    dietaryEvidenceCheck: check(
+      "menu_items_dietary_evidence_check",
+      sql`${t.dietary_evidence} in (
+        'not_provided',
+        'provider_api',
+        'business_submission',
+        'official_menu',
+        'manual_verification'
+      )`,
+    ),
+    dietaryClaimCheck: check(
+      "menu_items_dietary_claim_check",
+      sql`(
+          cardinality(${t.dietary_tags}) = 0
+          and ${t.allergen_statement} is null
+          and ${t.calorie_count} is null
+        )
+        or ${t.dietary_evidence} <> 'not_provided'`,
+    ),
+    statusCheck: check(
+      "menu_items_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "menu_items_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_items_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_items_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_items_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { ArrowRight, Crosshair, Navigation, X } from "lucide-react";
+import { ArrowRight, Crosshair, Navigation } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { formatDistance, type LngLat } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import type { NearbyUtility } from "./mapNearby";
 import type { MapSpotContext } from "./mapSpotContext";
+import MapResultSurface from "./MapResultSurface";
 
 function eventTime(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -36,11 +36,6 @@ export default function MapSpotPeek({
   onClose: () => void;
   onOpenPlace: (slug: string) => void;
 }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-
   const hasContext =
     Boolean(context.place) ||
     Boolean(context.parking) ||
@@ -50,17 +45,12 @@ export default function MapSpotPeek({
     utilities.length > 0;
 
   return (
-    <div className="map-peek map-spot-peek" role="dialog" aria-label="At this spot">
-      <button
-        ref={closeRef}
-        type="button"
-        className="map-peek-close tap-44"
-        onClick={onClose}
-        aria-label="Close this spot"
-      >
-        <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-      </button>
-
+    <MapResultSurface
+      className="map-peek map-spot-peek"
+      ariaLabel={label || "At this spot"}
+      closeLabel="Close this map result"
+      onClose={onClose}
+    >
       <div className="map-peek-body" style={{ cursor: "default" }}>
         <span
           className="map-peek-thumb"
@@ -181,6 +171,6 @@ export default function MapSpotPeek({
           </button>
         )}
       </div>
-    </div>
+    </MapResultSurface>
   );
 }

@@ -1,4 +1,5 @@
 import AMENITIES_RAW from "@/data/amenities.json" with { type: "json" };
+import { isPlaygroundPlace } from "@/data/cravings";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 
 /**
@@ -12,6 +13,8 @@ export type AmenityKind =
   | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
   | "pool"
   | "river_gauge"
+  | "dog_park"
+  | "water_access"
   // Field-collected kinds (the /collect walkabout tool). These ride the
   // same Amenity shape + map layer as the static OSM amenities; the
   // points come from the field_amenities table, not amenities.json.
@@ -46,6 +49,8 @@ export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[
   { kind: "recycling", label: "Recycling", blurb: "Find public recycling drop-offs and collection containers." },
   { kind: "bench", label: "Benches", blurb: "Find benches along streets and trails, and in parks." },
   { kind: "dog_waste", label: "Dog-waste stations", blurb: "Find dog-bag dispensers and waste bins." },
+  { kind: "dog_park", label: "Dog parks", blurb: "Find County-mapped public dog parks." },
+  { kind: "water_access", label: "Water access", blurb: "Find County-mapped boat ramps and paddle launches." },
   { kind: "bike_repair", label: "Bike repair", blurb: "Find public fix-it stations and pumps." },
   // Pools — scaffolding for public swimming pools (city, county
   // recreation, Y branches). The kind is registered so the map's
@@ -80,17 +85,21 @@ export function amenitiesByKind(): { kind: AmenityKind; label: string; blurb: st
 }
 
 /** Slim place projection the amenity de-dupe needs (no loader import). */
-export type AmenityPlacePoint = { name: string; category: string; geom: LngLat };
+export type AmenityPlacePoint = {
+  name: string;
+  category: string;
+  geom: LngLat;
+  subcategories?: string[];
+  primary_type?: string;
+  short_blurb?: string;
+};
 
-// Place categories that ARE a green space — a park/trail/playground
-// place already conveys "there is a park here", so the generic
-// picnic/playground OSM nodes piled on top of it are the visible
-// doubling, not new information. Utility amenities (restroom, Wi-Fi,
-// EV, bike) are NOT dropped near a park — those stay useful.
+// Place categories that imply a picnic destination. A playground point has a
+// stricter rule below: generic "park" is not proof that a playground exists.
+// Utility amenities (restroom, Wi-Fi, EV, bike) are never dropped near a park.
 const GREENSPACE = new Set([
   "park", "trail", "playground", "outdoors", "recreation", "nature",
 ]);
-const PLACE_IMPLIED_KINDS = new Set<AmenityKind>(["picnic", "playground"]);
 
 // A blanket 45m collapse erased legitimate street furniture: two benches or
 // trash cans on the same block are two assets, not duplicate records. Broad
@@ -103,6 +112,8 @@ const CLUSTER_M_BY_KIND: Partial<Record<AmenityKind, number>> = {
   restroom: 18,
   pool: 18,
   river_gauge: 12,
+  dog_park: 25,
+  water_access: 18,
   trash: 8,
   recycling: 8,
   water: 8,
@@ -131,10 +142,10 @@ const cell = (lat: number, lng: number, sizeM: number) => {
  *     one representative. The tolerance follows the asset: 45m for broad
  *     picnic areas, 8m for street furniture, and only 2m between two
  *     field-mapped points. This keeps two real bins or benches on a block.
- *  2. Place-overlap — a `picnic`/`playground` point sitting on a
- *     canonical green-space PLACE (≤60 m) is dropped: the park place
- *     already represents it. Utility kinds (restroom/Wi-Fi/EV/bike)
- *     are intentionally kept — they are real, distinct utility.
+ *  2. Place-overlap — a `picnic` point sitting on a canonical green-space
+ *     place is dropped. A `playground` point is dropped only when the nearby
+ *     place carries explicit playground evidence; a generic park must not
+ *     erase the only mapped playground. Utility kinds remain distinct.
  *
  * Pure (places passed in), so the same result on server + tests.
  */
@@ -195,19 +206,24 @@ export function dedupeAmenities(
     }
   }
 
-  // Pass 2 — drop place-implied kinds that sit on a green-space place.
-  const parks = places.filter((p) => GREENSPACE.has(p.category));
+  // Pass 2 — drop place-implied kinds only when the place proves that kind.
+  const parks = places.filter(
+    (p) => GREENSPACE.has(p.category) || isPlaygroundPlace(p),
+  );
   const pIdx: Record<string, AmenityPlacePoint[]> = {};
   for (const p of parks)
     (pIdx[cell(p.geom.lat, p.geom.lng, PLACE_OVERLAP_M)] ??= []).push(p);
   return kept.filter((a) => {
-    if (!PLACE_IMPLIED_KINDS.has(a.kind)) return true;
+    if (a.kind !== "picnic" && a.kind !== "playground") return true;
     const cy = Math.round((a.lat * 111_320) / PLACE_OVERLAP_M);
     const cx = Math.round((a.lng * 111_320) / PLACE_OVERLAP_M);
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++)
         for (const p of pIdx[`${cy + dz},${cx + dx}`] ?? [])
           if (
+            (a.kind === "picnic"
+              ? GREENSPACE.has(p.category)
+              : isPlaygroundPlace(p)) &&
             haversineMeters({ lng: a.lng, lat: a.lat }, p.geom) <=
             PLACE_OVERLAP_M
           )

@@ -208,11 +208,14 @@ async function loadDesk(): Promise<{
     const r = (
       await raw`
         select
-          (with latest as (select distinct on (source) source, count, taken_at from feed_snapshots order by source, taken_at desc),
-                avg7 as (select source, avg(count) avg_count from feed_snapshots where taken_at > now() - interval '7 days' group by source)
-           select count(*)::int from latest l join avg7 a using (source)
-           where l.count = 0 and a.avg_count >= 1 and l.taken_at > now() - interval '36 hours') as quiet_feeds,
-          (select count(distinct source)::int from feed_snapshots where taken_at > now() - interval '36 hours') as feeds_live,
+          (select count(*)::int
+           from feed_source_health
+           where count = 0
+             and recent_mean_count >= 1
+             and taken_at > now() - interval '36 hours') as quiet_feeds,
+          (select count(*)::int
+           from feed_source_health
+           where taken_at > now() - interval '36 hours') as feeds_live,
           (select coalesce(json_agg(t order by t.ended_at desc nulls last), '[]'::json)
            from (
              select distinct on (source_slug) source_slug as src, ended_at,

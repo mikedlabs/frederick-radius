@@ -99,6 +99,7 @@ describe("liveToCardEvent", () => {
     expect(card.slug.startsWith("live-")).toBe(false);
     expect(card.slug).not.toBe(e.id);
     expect(card.source_url).toBe(e.url);
+    expect(card.source_id).toBe(e.id);
     // The feed's real source flows through since the provenance work;
     // the old hardcoded "manual" let live rows claim curated trust.
     expect(card.source).toBe("celebrate");

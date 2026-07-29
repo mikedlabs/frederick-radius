@@ -21,6 +21,7 @@ import {
   schoolStatusAskResult,
   wantsPublicSafetyActivity,
   wantsRoadStatus,
+  wantsCountySnowOperations,
   wantsSchoolStatus,
   wantsWaterAdvisory,
   waterAdvisoryAskResult,
@@ -32,7 +33,24 @@ import {
   selectChartIncidentsResult,
   type CurrentSituationSnapshot,
 } from "@/lib/live/currentSituationModel";
-import { withPrimaryRankedResult } from "@/lib/ask/presentation";
+import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
+import { withAskResponsePresentation } from "@/lib/ask/presentation";
+import {
+  getCountySnowRoutes,
+  type CountySnowRoute,
+} from "@/lib/integrations/fcSnowCommand";
+import type {
+  CountyDataSnapshot,
+} from "@/lib/integrations/fcCountySource";
+import {
+  countyPlanningAskResult,
+  wantsCountyPlanningApplications,
+} from "@/lib/ask/county-planning";
+import {
+  getCountyPlanningApplications,
+  type CountyPlanningApplication,
+} from "@/lib/integrations/fcPlanningProjects";
 
 const ASK_SAFETY_DEADLINE_MS = 1_500;
 const ASK_CIVIC_DEADLINE_MS = 2_000;
@@ -123,6 +141,27 @@ export async function POST(req: NextRequest) {
     approximateOrigin: null,
     approximateStatus: "missing",
   });
+  if (wantsCountyPlanningApplications(query)) {
+    const planning = await failSoftWithin<
+      CountyDataSnapshot<CountyPlanningApplication> | null
+    >(
+      getCountyPlanningApplications(),
+      null,
+      ASK_CIVIC_DEADLINE_MS,
+    );
+    return NextResponse.json(
+      withAskResponsePresentation(
+        countyPlanningAskResult(planning, {
+          label: context.label,
+          origin: context.origin,
+          canShowDistance: context.canShowDistance,
+          query,
+        }),
+        query,
+        { kind: "civic" },
+      ),
+    );
+  }
   // Utility status is a direct live-data question. Do not send it through the
   // place catalog or the outdoor-safety rewrite: both can turn "is my power
   // out?" into unrelated businesses or air-quality cards. FirstEnergy's county
@@ -137,26 +176,59 @@ export async function POST(req: NextRequest) {
       },
       ASK_CIVIC_DEADLINE_MS,
     );
-    return NextResponse.json(powerOutageAskResult(outageResult, context.label));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        powerOutageAskResult(outageResult, context.label),
+        query,
+        { kind: "civic" },
+      ),
+    );
   }
   // Traffic, school, public-safety, and public-water status questions are
   // civic lookups, not discovery prompts. Keep them out of catalog retrieval
   // so a failed official feed never turns into unrelated place cards.
   if (wantsRoadStatus(query)) {
-    const situation = await failSoftWithin<CurrentSituationSnapshot | null>(
-      getCurrentSituationSnapshot(),
-      null,
-      ASK_CIVIC_DEADLINE_MS,
-    );
+    const now = new Date();
+    const [situation, roads, countySnow] = await Promise.all([
+      failSoftWithin<CurrentSituationSnapshot | null>(
+        getCurrentSituationSnapshot(),
+        null,
+        ASK_CIVIC_DEADLINE_MS,
+      ),
+      failSoftWithin<RoadIntelligenceSnapshot | null>(
+        getRoadIntelligenceSnapshot(),
+        null,
+        ASK_CIVIC_DEADLINE_MS,
+      ),
+      wantsCountySnowOperations(query, now)
+        ? failSoftWithin<CountyDataSnapshot<CountySnowRoute> | null>(
+            getCountySnowRoutes(now),
+            null,
+            ASK_CIVIC_DEADLINE_MS,
+          )
+        : Promise.resolve(null),
+    ]);
     const traffic = situation
       ? selectChartIncidentsResult(situation)
       : { data: [], available: false };
-    return NextResponse.json(roadStatusAskResult(traffic, {
-      label: context.label,
-      origin: context.origin,
-      canShowDistance: context.canShowDistance,
-      query,
-    }));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        roadStatusAskResult(
+          traffic,
+          {
+            label: context.label,
+            origin: context.origin,
+            canShowDistance: context.canShowDistance,
+            query,
+          },
+          now,
+          roads,
+          countySnow,
+        ),
+        query,
+        { kind: "civic" },
+      ),
+    );
   }
   if (wantsSchoolStatus(query)) {
     const schools = await failSoftWithin(
@@ -164,14 +236,26 @@ export async function POST(req: NextRequest) {
       { data: [], available: false },
       ASK_CIVIC_DEADLINE_MS,
     );
-    return NextResponse.json(schoolStatusAskResult(schools, {
-      label: context.label,
-    }));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        schoolStatusAskResult(schools, {
+          label: context.label,
+        }),
+        query,
+        { kind: "civic" },
+      ),
+    );
   }
   if (wantsPublicSafetyActivity(query)) {
-    return NextResponse.json(publicSafetyActivityAskResult({
-      label: context.label,
-    }));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        publicSafetyActivityAskResult({
+          label: context.label,
+        }),
+        query,
+        { kind: "civic" },
+      ),
+    );
   }
   if (wantsWaterAdvisory(query)) {
     const notices = await failSoftWithin(
@@ -185,9 +269,15 @@ export async function POST(req: NextRequest) {
       },
       ASK_CIVIC_DEADLINE_MS,
     );
-    return NextResponse.json(waterAdvisoryAskResult(notices, {
-      label: context.label,
-    }));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        waterAdvisoryAskResult(notices, {
+          label: context.label,
+        }),
+        query,
+        { kind: "civic" },
+      ),
+    );
   }
   // Outdoor safety is a final response constraint, not a suggestion to the
   // model. Load cached NWS alerts and measured AirNow AQI with retrieval,
@@ -209,7 +299,7 @@ export async function POST(req: NextRequest) {
       deadlineMs: ASK_SAFETY_DEADLINE_MS,
     }),
   ]);
-  const result = withPrimaryRankedResult(
+  const result = withAskResponsePresentation(
     applyAskOutdoorSafety(
       rawResult,
       query,
@@ -221,6 +311,7 @@ export async function POST(req: NextRequest) {
         return isOutdoorRecommendation(place ?? source);
       },
     ),
+    query,
   );
   if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.

@@ -46,27 +46,24 @@ function joinNames(names: string[]): string {
 export function openNowLine(
   openNow: NonNullable<BetaPulse["openNow"]>,
 ): { lead: string; rest: string } | null {
-  const { count, names } = openNow;
-  if (count <= 0) return null;
-  if (names.length === 0) {
+  const { inventoryCount, worthConsidering, asOf } = openNow;
+  if (inventoryCount <= 0) return null;
+  const checkedAt = formatEasternTime(asOf);
+  const inventorySentence =
+    inventoryCount === 1
+      ? `As of ${checkedAt}, recently checked posted hours confirm one county listing is open.`
+      : `As of ${checkedAt}, recently checked posted hours confirm ${inventoryCount.toLocaleString()} county listings are open.`;
+  if (worthConsidering.length === 0) {
     return {
       lead: "",
-      rest:
-        count === 1
-          ? "The guide counts one place open across Frederick at this minute."
-          : `The guide counts ${count.toLocaleString()} places open across Frederick at this minute.`,
+      rest: inventorySentence,
     };
   }
-  const joined = joinNames(names);
-  const verb = names.length === 1 ? "is" : "are";
-  const others = count - names.length;
-  const tail =
-    others >= 2
-      ? `, along with ${others.toLocaleString()} other places across Frederick.`
-      : others === 1
-        ? ", along with one other place across Frederick."
-        : ".";
-  return { lead: joined, rest: ` ${verb} open at this minute${tail}` };
+  const joined = joinNames(worthConsidering.map(({ name }) => name));
+  return {
+    lead: "Worth considering now:",
+    rest: ` ${joined}. ${inventorySentence}`,
+  };
 }
 
 /** The Keys sentence, per the copy branch table. Null renders nothing. */
@@ -177,15 +174,17 @@ export function GuideContents({
       </div>
       <ul className="mt-4 list-none">
         <Row
-          title="Places, with live hours"
-          description="The guide covers restaurants, shops, trails, and parks, with current hours."
+          title="Places, with checked hours"
+          description="The guide covers restaurants, shops, trails, and parks. It says confirmed open only when recently checked posted hours support that claim."
           figures={
             <>
               <MonoFigure>{PLACES_COUNT.toLocaleString()} PLACES</MonoFigure>
               {pending ? (
                 <FigureSlot />
-              ) : pulse?.openNow && pulse.openNow.count > 0 ? (
-                <MonoFigure dot>{pulse.openNow.count.toLocaleString()} OPEN NOW</MonoFigure>
+              ) : pulse?.openNow && pulse.openNow.inventoryCount > 0 ? (
+                <MonoFigure dot>
+                  {pulse.openNow.inventoryCount.toLocaleString()} CONFIRMED OPEN
+                </MonoFigure>
               ) : null}
             </>
           }

@@ -28,4 +28,16 @@ describe("map interaction state contracts", () => {
     );
     expect(source).not.toContain("if (!routeQuery) return;");
   });
+
+  it("uses category artwork instead of unattributed remote event photos on pins", () => {
+    const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const pageSource = readFileSync("src/app/(app)/map/page.tsx", "utf8");
+    const typeSource = readFileSync("src/components/map/types.ts", "utf8");
+
+    expect(mapSource).toContain("<CategoryIcon");
+    expect(mapSource).toContain("slug={lead.category}");
+    expect(mapSource).not.toContain("lead.hero_image");
+    expect(pageSource).not.toContain("hero_image: e.hero_image");
+    expect(typeSource).not.toContain("hero_image?: string;");
+  });
 });

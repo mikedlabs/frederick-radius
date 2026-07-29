@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 describe("mapLayerPrefs", () => {
-  it("round-trips explicit choices", () => {
+  it("round-trips reference layers without restoring old task filters", () => {
     writeMapLayerPrefs({
       cats: ["coffee", "arts"],
       amenities: ["restroom"],
@@ -26,8 +26,8 @@ describe("mapLayerPrefs", () => {
       aviation: true,
     });
     const p = readMapLayerPrefs();
-    expect(p.cats).toEqual(["coffee", "arts"]);
-    expect(p.amenities).toEqual(["restroom"]);
+    expect(p.cats).toBeUndefined();
+    expect(p.amenities).toBeUndefined();
     expect(p.transit).toBe(true);
     expect(p.traffic).toBe(true);
     expect(p.aviation).toBe(true);
@@ -67,7 +67,6 @@ describe("mapLayerPrefs", () => {
     });
     const p = readMapLayerPrefs();
     expect(p).toEqual({
-      cats: ["food"],
       aerial: true,
       cemeteries: true,
       radar: true,
@@ -77,6 +76,22 @@ describe("mapLayerPrefs", () => {
       cameras: true,
     });
     expect(p.civic).toBeUndefined();
+  });
+
+  it("purges task filters written by an older v2 client", () => {
+    window.localStorage.setItem(
+      "fr:map-layers:v2",
+      JSON.stringify({
+        cats: ["coffee"],
+        amenities: ["restroom"],
+        radar: true,
+      }),
+    );
+
+    expect(readMapLayerPrefs()).toEqual({ radar: true });
+    expect(window.localStorage.getItem("fr:map-layers:v2")).toBe(
+      '{"radar":true}',
+    );
   });
 
   it("survives corrupt storage", () => {

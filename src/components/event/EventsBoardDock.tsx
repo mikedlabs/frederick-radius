@@ -1,6 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { easternDayKey } from "@/lib/tz";
 import { LENS_WORDS } from "@/lib/timeLens";
 import {
@@ -11,6 +19,7 @@ import {
   CalendarRange,
   ChevronDown,
   Search,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -18,10 +27,9 @@ import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { PRIMARY_INTENTS, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import { INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
 import type { Daypart } from "@/lib/daypart";
 import {
-  EVENT_INTENT_COLOR,
   WHEN_PRESETS,
   activeWhenPreset,
   countLine,
@@ -67,8 +75,6 @@ export type EventsBoardDockProps = {
   dayCounts: Record<string, number>;
   /** True count of the filtered set (the mono count line). */
   filteredCount: number;
-  /** Per-intent counts over the base set (the What chip badges). */
-  intentCounts: Record<IntentId, number>;
   /** Categories present in the set (the granular Type pills). */
   categories: { slug: string; name: string }[];
   /** Towns present in the set — drives the true town count on the line. */
@@ -99,6 +105,8 @@ export type EventsBoardDockProps = {
   setKidsOnly: (v: boolean) => void;
   lgbtqOnly: boolean;
   setLgbtqOnly: (v: boolean) => void;
+  communicationAccessOnly: boolean;
+  setCommunicationAccessOnly: (v: boolean) => void;
   recurringOnly: boolean;
   setRecurringOnly: (v: boolean) => void;
 
@@ -204,7 +212,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     nowISO,
     dayCounts,
     filteredCount,
-    intentCounts,
     categories,
     towns,
     intent,
@@ -231,6 +238,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setKidsOnly,
     lgbtqOnly,
     setLgbtqOnly,
+    communicationAccessOnly,
+    setCommunicationAccessOnly,
     recurringOnly,
     setRecurringOnly,
     anyFilter,
@@ -345,6 +354,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   if (freeOnly) goods.push("Free");
   if (kidsOnly) goods.push("Kid-friendly");
   if (lgbtqOnly) goods.push("LGBTQ+");
+  if (communicationAccessOnly) goods.push("Deaf community & access");
   if (recurringOnly) goods.push("Recurring");
   if (happyOnly) goods.push("Happy hour");
 
@@ -354,30 +364,46 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     subLabel: civicOn ? null : subLabel,
     civic: civicOn,
   });
-  const whatColor = intentDef
-    ? `color-mix(in srgb, ${EVENT_INTENT_COLOR[intent!]} 82%, var(--app-ink))`
-    : what.active
-      ? "var(--app-brand-press)"
-      : "var(--app-ink)";
-
   const dayLabel = day ? formatDayLabel(day) : null;
   const when = whenCaption({ dayLabel, lens, tod });
-  const whenColor = when.mono
-    ? "var(--app-cool)"
-    : when.text === "Anytime"
-      ? "var(--app-ink)"
-      : "var(--app-brand)";
 
   const townName = town
     ? MUNICIPALITY_BY_SLUG[town]?.name ?? towns.find((t) => t.slug === town)?.name ?? town
     : null;
   const whereText = townName ?? "Whole county";
-  const whereColor = town ? "var(--app-cool)" : "var(--app-ink)";
 
   const line = countLine({ events: filteredCount, townName, townCount: towns.length });
 
-  const everythingCount = Object.values(intentCounts).reduce((a, b) => a + b, 0);
+  const whatActive = Boolean(
+    intent ||
+    sub ||
+    cat ||
+    q.trim() ||
+    goods.length > 0,
+  );
+  const whenActive = Boolean(day || tod || lens !== "all");
+  const whereActive = Boolean(town);
+  const activeFilterGroups = [whatActive, whenActive, whereActive].filter(Boolean).length;
+  const filterSummary =
+    [
+      whatActive ? (q.trim() ? `“${q.trim()}”` : what.text) : null,
+      whenActive ? when.text : null,
+      whereActive ? whereText : null,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(" · ") || "Everything · Anytime · Whole county";
+  const firstActivePane: Pane = whatActive
+    ? "what"
+    : whenActive
+      ? "when"
+      : whereActive
+        ? "where"
+        : "what";
+
   const activePreset = activeWhenPreset({ lens, tod });
+  const [visibleWhenPreset, setOptimisticWhenPreset] =
+    useOptimistic(activePreset);
+  const [, startWhenTransition] = useTransition();
   // "Tomorrow" is a day pick, not a lens — the ?d= plumbing already
   // exists, so the ribbon chip just targets tomorrow's Eastern day key.
   const tomorrowKey = easternDayKey(new Date(Date.parse(nowISO) + 86_400_000));
@@ -402,11 +428,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   }, [activePreset, day, tomorrowKey]);
 
   // ── Pane control handlers ──
-  const pickIntent = (id: IntentId) => {
-    haptic("light");
-    setIntent(intent === id ? null : id);
-    setSub(null);
-  };
   const pickEverything = () => {
     haptic("light");
     setIntent(null);
@@ -415,14 +436,23 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   };
   const pickPreset = (p: (typeof WHEN_PRESETS)[number]) => {
     haptic("light");
-    if (activePreset === p.key) {
-      setLens("all");
-      setTod(null);
-    } else {
-      setLens(p.lens);
-      setTod(p.tod);
-    }
-    setDay(null);
+    const turningOff = visibleWhenPreset === p.key;
+    startWhenTransition(async () => {
+      setOptimisticWhenPreset(turningOff ? null : p.key);
+      // Let the selected state paint before the potentially larger event list
+      // re-slices and requests its continuation payload.
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+      if (turningOff) {
+        setLens("all");
+        setTod(null);
+      } else {
+        setLens(p.lens);
+        setTod(p.tod);
+      }
+      setDay(null);
+    });
   };
   const pickDaypart = (d: Daypart) => {
     haptic("light");
@@ -441,9 +471,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setTod(null);
     setDay(null);
   };
-
-  const paneTitle =
-    pane === "what" ? "What’s on" : pane === "when" ? "When" : pane === "where" ? "Where" : "";
 
   return (
     <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
@@ -475,7 +502,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           {WHEN_PRESETS.map((p, i) => (
             <Fragment key={p.key}>
               <EbChip
-                on={activePreset === p.key}
+                on={visibleWhenPreset === p.key}
                 color="var(--app-brand)"
                 onClick={() => pickPreset(p)}
               >
@@ -497,58 +524,46 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           ))}
         </div>
 
-        {/* The caption bar — pinned. Each word opens its filter pane. */}
-        <div className="eb-capbar" role="group" aria-label="Filter events">
+        {/* One quiet filter control keeps the cold state focused on events.
+            What, When, and Where remain one tap away inside the sheet. */}
+        <div className="eb-filterbar">
           <button
             type="button"
-            aria-expanded={pane === "what"}
+            aria-expanded={pane !== null}
             aria-controls="eb-pane"
             aria-haspopup="dialog"
-            className={`eb-seg eb-seg-what${pane === "what" ? " active-tab" : ""}`}
-            onClick={() => toggle("what")}
+            aria-label={`Filters: ${filterSummary}`}
+            className="eb-filter-trigger"
+            onClick={() => toggle(pane ?? firstActivePane)}
           >
-            <span className="eb-seg-k">What</span>
-            <span className="eb-seg-v" style={{ color: whatColor }}>
-              {what.text}
+            <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
+            <span className="eb-filter-copy">
+              <span className="eb-filter-label">Filters</span>
+              <span className="eb-filter-summary">{filterSummary}</span>
             </span>
-          </button>
-          <button
-            type="button"
-            aria-expanded={pane === "when"}
-            aria-controls="eb-pane"
-            aria-haspopup="dialog"
-            className={`eb-seg${pane === "when" ? " active-tab" : ""}`}
-            onClick={() => toggle("when")}
-          >
-            <span className="eb-seg-k">When</span>
-            <span className={`eb-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
-              {when.text}
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-expanded={pane === "where"}
-            aria-controls="eb-pane"
-            aria-haspopup="dialog"
-            className={`eb-seg eb-seg-where${pane === "where" ? " active-tab" : ""}`}
-            onClick={() => toggle("where")}
-          >
-            <span className="eb-seg-k">Where</span>
-            <span className="eb-seg-v" style={{ color: whereColor }}>
-              {whereText}
-            </span>
+            {activeFilterGroups > 0 && (
+              <span className="eb-filter-count" aria-hidden>
+                {activeFilterGroups}
+              </span>
+            )}
+            <ChevronDown
+              className="h-[15px] w-[15px] shrink-0"
+              strokeWidth={2.2}
+              aria-hidden
+              style={{ transform: pane ? "rotate(180deg)" : undefined }}
+            />
           </button>
           {anyFilter && (
             <button
               type="button"
-              className="eb-clear tap-44"
+              className="eb-filter-reset tap-44"
               onClick={() => {
                 haptic("light");
                 clear();
               }}
-              aria-label="Clear all filters"
+              aria-label="Reset all event filters"
             >
-              <X className="h-[15px] w-[15px]" strokeWidth={2.6} aria-hidden />
+              Reset
             </button>
           )}
         </div>
@@ -594,7 +609,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         className="eb-pane"
         id="eb-pane"
         role="dialog"
-        aria-label={paneTitle}
+        aria-label="Event filters"
         aria-hidden={pane === null}
         // Collapsed via max-height:0 (not display:none), so without `inert` a
         // keyboard user still Tabs onto the hidden "Done" button (2026-07
@@ -606,10 +621,26 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       >
         <div className="eb-pane-scroll">
           <div className="dock-pane-head">
-            <span className="dock-pane-title font-serif">{paneTitle}</span>
+            <span className="dock-pane-title font-serif">Filters</span>
             <button type="button" className="dock-done" onClick={closePane}>
               Done
             </button>
+          </div>
+          <div className="eb-pane-tabs" role="tablist" aria-label="Event filter sections">
+            {(["what", "when", "where"] as const).map((section) => (
+              <button
+                key={section}
+                type="button"
+                role="tab"
+                aria-selected={pane === section}
+                onClick={() => {
+                  haptic("light");
+                  setPane(section);
+                }}
+              >
+                {section === "what" ? "What" : section === "when" ? "When" : "Where"}
+              </button>
+            ))}
           </div>
 
           {/* ── WHAT ── */}
@@ -625,69 +656,30 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 />
               </label>
 
-              <Sect>Type</Sect>
-              <div className="eb-chips">
-                <EbChip on={!intent && !cat} onClick={pickEverything} count={everythingCount}>
-                  Everything
-                </EbChip>
-                {PRIMARY_INTENTS.map((it) => (
-                  <EbChip
-                    key={it.id}
-                    on={intent === it.id}
-                    color={EVENT_INTENT_COLOR[it.id]}
-                    count={intentCounts[it.id]}
-                    onClick={() => pickIntent(it.id)}
-                  >
-                    {it.label}
-                  </EbChip>
-                ))}
-                <EbChip
-                  on={civicOn}
-                  color={EVENT_INTENT_COLOR.civic}
-                  count={intentCounts.civic}
-                  quiet
-                  onClick={() => pickIntent("civic")}
-                >
-                  Government &amp; notices
-                </EbChip>
-              </div>
-
-              {/* Sub running-head — only where the taxonomy has subs. */}
-              {intentDef?.subs && intentDef.subs.length > 0 && (
-                <div
-                  className="dock-subrow"
-                  role="group"
-                  aria-label={`Narrow ${intentDef.label}`}
-                  style={{ "--c": EVENT_INTENT_COLOR[intent!] } as React.CSSProperties}
-                >
+              {intent || cat ? (
+                <>
+                  <Sect>Current interest</Sect>
                   <button
                     type="button"
-                    aria-pressed={!sub}
-                    data-on={!sub || undefined}
-                    onClick={() => {
-                      haptic("light");
-                      setSub(null);
+                    onClick={pickEverything}
+                    className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[12px] font-semibold"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      background: "var(--app-bg-elevated)",
+                      color: "var(--app-ink-2)",
                     }}
                   >
-                    All
-                    <span className="dock-chip-n">{intentCounts[intent!]}</span>
+                    {subLabel ?? (civicOn ? "Government & notices" : intentDef?.label) ?? "Selected interest"}
+                    <X className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
                   </button>
-                  {intentDef.subs.map((s) => (
-                    <button
-                      key={s.slug}
-                      type="button"
-                      aria-pressed={sub === s.slug}
-                      data-on={sub === s.slug || undefined}
-                      onClick={() => {
-                        haptic("light");
-                        setSub(sub === s.slug ? null : s.slug);
-                      }}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  <p
+                    className="mt-1.5 px-1 text-[11px] leading-relaxed"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    Change the main interest from the visual rail below.
+                  </p>
+                </>
+              ) : null}
 
               <Sect>Good for</Sect>
               <div className="eb-chips">
@@ -704,6 +696,17 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                   onClick={() => { haptic("light"); setLgbtqOnly(!lgbtqOnly); }}
                 >
                   LGBTQ+
+                </EbChip>
+                <EbChip
+                  on={communicationAccessOnly}
+                  color="var(--app-accent)"
+                  ariaLabel="Events for the Deaf community or with confirmed communication access"
+                  onClick={() => {
+                    haptic("light");
+                    setCommunicationAccessOnly(!communicationAccessOnly);
+                  }}
+                >
+                  Deaf community &amp; access
                 </EbChip>
                 <EbChip on={recurringOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setRecurringOnly(!recurringOnly); }}>
                   Recurring

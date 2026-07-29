@@ -29,6 +29,8 @@ import {
 import {
   fetchLiveTicketmasterMusicResult,
   getLiveEvents,
+  runPublicEventAdapter,
+  type LiveEvent,
 } from "@/lib/integrations/ical-live";
 import {
   fetchTicketmasterSportsResult,
@@ -48,7 +50,11 @@ import {
   stripFacilityPrefix,
   titleIsJustVenue,
 } from "@/lib/events/normalize";
-import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
+import {
+  venueEventsAsCards,
+  venueEventsToCards,
+  type VenueEvent,
+} from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEventsResult } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { upgradeEventGeoms } from "@/lib/integrations/mapboxGeocode";
@@ -65,6 +71,7 @@ import {
   eventAdapterIsDegraded,
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
+import { mapEventSourcesWithConcurrency } from "@/lib/integrations/event-source-circuit";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -146,14 +153,16 @@ function withTimeout<T>(
 const FEED_MS = 8000;
 
 function readAdapter<T>(
-  resultPromise: Promise<EventAdapterResult<T>>,
+  resultFactory: () => Promise<EventAdapterResult<T>>,
   source: string,
   unavailable: Set<string>,
+  circuitKey = source,
+  timeoutMs = FEED_MS,
 ): Promise<T[]> {
   const markUnavailable = () => unavailable.add(source);
   return withTimeout(
-    resultPromise,
-    FEED_MS,
+    runPublicEventAdapter(circuitKey, resultFactory),
+    timeoutMs,
     eventAdapterFailed<T>(),
     markUnavailable,
   ).then((result) => {
@@ -170,7 +179,99 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const unavailable = new Set<string>();
   const markUnavailable = (source: string) => () => unavailable.add(source);
 
-  const [liveResult, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
+  type LiveAdapterKey =
+    | "tmMusic"
+    | "tmSports"
+    | "bandsintown"
+    | "seatgeek"
+    | "eventbrite"
+    | "visitFrederick"
+    | "frederickKeys";
+  const liveAdapterSources: Array<{
+    key: LiveAdapterKey;
+    label: string;
+    read: () => Promise<EventAdapterResult<LiveEvent>>;
+  }> = [
+    {
+      key: "tmMusic",
+      label: "Ticketmaster music",
+      read: fetchLiveTicketmasterMusicResult,
+    },
+    {
+      key: "tmSports",
+      label: "Ticketmaster sports",
+      read: fetchTicketmasterSportsResult,
+    },
+    {
+      key: "bandsintown",
+      label: "Bandsintown",
+      read: () => fetchBandsintownForArtistsResult(BANDSINTOWN_ARTISTS),
+    },
+    {
+      key: "seatgeek",
+      label: "SeatGeek",
+      read: fetchSeatGeekResult,
+    },
+    {
+      key: "eventbrite",
+      label: "Eventbrite",
+      read: fetchEventbriteResult,
+    },
+    {
+      key: "visitFrederick",
+      label: "Visit Frederick",
+      read: fetchVisitFrederickResult,
+    },
+    {
+      key: "frederickKeys",
+      label: "Frederick Keys",
+      read: fetchFrederickKeysResult,
+    },
+  ];
+  type AdapterFanoutResult =
+    | { key: LiveAdapterKey; items: LiveEvent[] }
+    | { key: "venueCalendars"; items: VenueEvent[] };
+  const adapterFanoutDeadlineMs = Date.now() + FEED_MS;
+  const adapterTasks: Array<() => Promise<AdapterFanoutResult>> = [
+    ...liveAdapterSources.map((adapter) => async () => {
+      const remainingMs = adapterFanoutDeadlineMs - Date.now();
+      if (remainingMs <= 0) {
+        unavailable.add(adapter.label);
+        return { key: adapter.key, items: [] };
+      }
+      return {
+        key: adapter.key,
+        items: await readAdapter(
+          adapter.read,
+          adapter.label,
+          unavailable,
+          adapter.key === "tmMusic"
+            ? "ticketmaster-music"
+            : adapter.label,
+          remainingMs,
+        ),
+      };
+    }),
+    async () => {
+      const remainingMs = adapterFanoutDeadlineMs - Date.now();
+      if (remainingMs <= 0) {
+        unavailable.add("venue calendars");
+        return { key: "venueCalendars", items: [] };
+      }
+      return {
+        key: "venueCalendars",
+        items: await readAdapter(
+          () => fetchSquarespaceVenueEventsResult(60),
+          "venue calendars",
+          unavailable,
+          "venue calendars",
+          remainingMs,
+        ),
+      };
+    },
+  ];
+
+  const [liveResult, adapterResults, ingestedSeries] = await Promise.all([
     // The unified assembly owns Ticketmaster as a separately monitored
     // adapter below. Excluding it from this municipal-feed fanout prevents the
     // same Discovery request from running twice on every cold assembly.
@@ -179,31 +280,36 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
       sources_succeeded: [] as string[],
       sources_failed: [] as string[],
     }, markUnavailable("municipal calendars")),
-    readAdapter(fetchLiveTicketmasterMusicResult(), "Ticketmaster music", unavailable),
-    readAdapter(fetchTicketmasterSportsResult(), "Ticketmaster sports", unavailable),
-    readAdapter(fetchBandsintownForArtistsResult(BANDSINTOWN_ARTISTS), "Bandsintown", unavailable),
-    // SeatGeek area discovery (Phase 4 item 3): inert without
-    // SEATGEEK_CLIENT_ID, fail-soft like the others.
-    readAdapter(fetchSeatGeekResult(), "SeatGeek", unavailable),
-    // Eventbrite organizer registry (Phase 4 item 4): inert without
-    // EVENTBRITE_TOKEN or an empty registry.
-    readAdapter(fetchEventbriteResult(), "Eventbrite", unavailable),
-    // Visit Frederick destination-marketing events RSS (keyless Simpleview
-    // feed). Partner-confidence county listings; fail-soft to [].
-    readAdapter(fetchVisitFrederickResult(), "Visit Frederick", unavailable),
-    // Frederick Keys home games from the keyless MLB Stats API. Dedupes against
-    // Ticketmaster on the clean slug; fail-soft to [].
-    readAdapter(fetchFrederickKeysResult(), "Frederick Keys", unavailable),
-    // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
-    // venue's `?format=json` events feed. Inert ([]) until a venue carries a
-    // `squarespace` URL in live-music-venues.ts.
-    readAdapter(fetchSquarespaceVenueEventsResult(60), "venue calendars", unavailable),
+    // Keep the independent adapters under a hard fanout cap. Their individual
+    // deadlines still apply; this prevents a cold board from opening every
+    // ticketing, destination, sports, and venue connection simultaneously.
+    mapEventSourcesWithConcurrency(
+      adapterTasks,
+      4,
+      (read) => read(),
+    ),
     // Cron-ingested PUBLIC draws (FCPL library + FCVFRA fire-company carnivals
     // /bingo) lifted into the rails so the gap-town events that have no other
     // feed read as real "what's on", not a tucked civic row. County CivicEngage
     // is excluded by the adapter (it already arrives via the live county iCal).
     withTimeout(getIngestedSeries(), FEED_MS, [], markUnavailable("ingested calendars")),
   ]);
+  const liveAdapterItems = new Map<LiveAdapterKey, LiveEvent[]>();
+  let squarespaceRaw: VenueEvent[] = [];
+  for (const result of adapterResults) {
+    if (result.key === "venueCalendars") {
+      squarespaceRaw = result.items;
+    } else {
+      liveAdapterItems.set(result.key, result.items);
+    }
+  }
+  const tmMusic = liveAdapterItems.get("tmMusic") ?? [];
+  const tmSports = liveAdapterItems.get("tmSports") ?? [];
+  const bitEvents = liveAdapterItems.get("bandsintown") ?? [];
+  const sgEvents = liveAdapterItems.get("seatgeek") ?? [];
+  const ebEvents = liveAdapterItems.get("eventbrite") ?? [];
+  const vfEvents = liveAdapterItems.get("visitFrederick") ?? [];
+  const keysEvents = liveAdapterItems.get("frederickKeys") ?? [];
   const liveEventsRaw = liveResult.events;
   for (const source of liveResult.sources_failed) unavailable.add(source);
 

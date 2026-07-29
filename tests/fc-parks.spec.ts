@@ -1,10 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { normalizeParks } from "@/lib/integrations/fcParks";
+import { describe, it, expect, vi } from "vitest";
+import {
+  getFrederickParks,
+  normalizeParks,
+} from "@/lib/integrations/fcParks";
 
-// Real ArcGIS field names (confirmed live against POS_Areas_Cartegraph
-// layer 1). Frederick County ~39.3-39.7 / -77.7--77.15. GeoJSON
-// Polygon coords = [ ring ][ [lng,lat] … ]; MultiPolygon adds one more
-// level. polyPoint averages the outer ring's vertices.
+// Legacy Colorado ArcGIS fixture shape. These pure-normalizer tests stay useful
+// for rejecting out-of-county geometry, but runtime must never query that host.
+// Frederick County, Maryland is roughly 39.3-39.7 / -77.7--77.15. GeoJSON
+// Polygon coords = [ ring ][ [lng,lat] … ]; MultiPolygon adds one more level.
 function squareRing(cx: number, cy: number, r = 0.01) {
   return [[
     [cx - r, cy - r],
@@ -80,6 +83,16 @@ const raw = {
 };
 
 describe("normalizeParks", () => {
+  it("uses the reviewed Maryland list without making a network request", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const parks = await getFrederickParks();
+
+    expect(parks.length).toBeGreaterThan(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it("keeps in-county named parks, collapsing same-named polygons", () => {
     const out = normalizeParks(raw);
     // Baker (merged) + Tiny Tot Lot. Junk/nameless/out-of-county/no-geom dropped.

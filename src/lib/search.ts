@@ -121,6 +121,39 @@ function fieldScore(haystack: string, terms: string[]): number {
   return score;
 }
 
+/** Match editorial aliases as complete phrases, not loose bags of words.
+ *
+ * "Wash Lube Repair" is a real brand alias. Treating its three words as
+ * independent evidence would make a Lube Center answer the generic query
+ * "repair." Complete-phrase matching preserves the brand doorway while the
+ * place's category, tags, and service-specific aliases decide ordinary jobs.
+ */
+function aliasPhraseScore(query: string, aliases: readonly string[] | undefined): number {
+  if (!aliases?.length) return 0;
+  const normalizedQuery = query
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!normalizedQuery) return 0;
+
+  let best = 0;
+  for (const alias of aliases) {
+    const normalizedAlias = alias
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+    if (!normalizedAlias) continue;
+    const wrappedQuery = ` ${normalizedQuery} `;
+    const wrappedAlias = ` ${normalizedAlias} `;
+    if (wrappedQuery.includes(wrappedAlias)) {
+      best = Math.max(best, normalizedQuery === normalizedAlias ? 16 : 12);
+    }
+  }
+  return best;
+}
+
 function compoundCoverage(
   query: string,
   evidenceText: string,
@@ -181,6 +214,27 @@ type Intent = {
 };
 
 const INTENTS: Intent[] = [
+  {
+    triggers: ["oil change", "quick lube", "lube center"],
+    boostCats: new Set(["auto-care"]),
+    boostTags: new Set(["oil-change", "preventive-maintenance"]),
+    downCats: new Set<string>(),
+    downTags: new Set<string>(),
+  },
+  {
+    triggers: ["car wash", "auto wash"],
+    boostCats: new Set(["auto-care"]),
+    boostTags: new Set(["car-wash", "express-car-wash", "full-service-car-wash"]),
+    downCats: new Set<string>(),
+    downTags: new Set<string>(),
+  },
+  {
+    triggers: ["auto repair", "car repair", "vehicle repair", "auto mechanic"],
+    boostCats: new Set(["auto-care"]),
+    boostTags: new Set(["auto-repair", "vehicle-repair", "state-inspection"]),
+    downCats: new Set<string>(),
+    downTags: new Set<string>(),
+  },
   {
     triggers: ["breakfast sandwich", "breakfast sandwiches", "egg sandwich", "egg sandwiches", "bagel sandwich", "bagel sandwiches"],
     boostCats: new Set(["coffee", "bakery", "restaurant", "cafe"]),
@@ -363,6 +417,8 @@ export type SearchOptions = {
   rankEventsByDistance?: boolean;
   eventMunicipality?: string | null;
   eventFilter?: (event: Event) => boolean;
+  /** Injectable clock for deterministic evaluations and time-scoped callers. */
+  now?: Date;
 };
 
 /** Pre-tokenized page registry — the app's own guides/tools as search
@@ -391,7 +447,7 @@ export function search(
   const hits: SearchHit[] = [];
   const intent = detectIntent(query);
   const eventIntent = detectEventIntent(query);
-  const now = new Date();
+  const now = options.now ?? new Date();
 
   for (const p of clientPlaces()) {
     if (options.placeFilter && !options.placeFilter(p)) continue;
@@ -401,6 +457,7 @@ export function search(
       fieldScore(p.description ?? "", terms) * 1 +
       fieldScore(p.category, terms) * 2 +
       fieldScore(p.city, terms) * 1 +
+      aliasPhraseScore(query, p.search_aliases) +
       // Curated subcategories are corrected roles (places-overrides.json) —
       // score them like tags so "pizza" finds Pistarro's (subcategory pizza,
       // no pizza in the name) the same way it finds category matches.
@@ -417,8 +474,17 @@ export function search(
       p.primary_type ?? "",
       ...(p.subcategories ?? []),
       ...(p.tags ?? []),
+      ...(p.search_aliases ?? []),
     ].join(" ");
-    const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, evidenceText, intent) : 0;
+    const iv = intent
+      ? intentScore(
+          p.category,
+          [...(p.tags ?? []), ...(p.subcategories ?? [])],
+          p.name,
+          evidenceText,
+          intent,
+        )
+      : 0;
     const coverage = compoundCoverage(query, evidenceText, terms);
     // Event intent ("live music"): genuine venues stay in play, but a
     // place whose only claim was an incidental name token (the candle
@@ -538,11 +604,18 @@ export function search(
   }
 
   hits.sort((a, b) => {
+    // Keep one transitive ordering across mixed result types. The previous
+    // comparator sorted event-vs-event pairs by distance but event-vs-place
+    // pairs by relevance, which could push a higher-scoring event below a
+    // page of weaker venue cards. Relevance wins globally; distance breaks
+    // ties between equally relevant events.
+    const scoreDifference = b.score - a.score;
+    if (scoreDifference !== 0) return scoreDifference;
     if (options.rankEventsByDistance && a.type === "event" && b.type === "event") {
       const distance = (a.event.distance_m ?? Infinity) - (b.event.distance_m ?? Infinity);
       if (distance !== 0) return distance;
     }
-    return b.score - a.score;
+    return 0;
   });
   return hits.slice(0, limit);
 }
@@ -555,6 +628,8 @@ export type QualifiedSearchContext = {
    * rank results, but must not be presented as the visitor's distance. */
   canShowDistance?: boolean;
   fallbackReason?: "outside-county" | "location-unavailable" | null;
+  /** Injectable clock for deterministic evaluations and tests. */
+  now?: Date;
 };
 
 export type QualifiedSearchMeta = {
@@ -609,6 +684,7 @@ export function qualifiedSearch(
         placeFilter: municipality
           ? (place) => place.municipality === municipality
           : undefined,
+        now: context.now,
       }),
       meta: {
         qualifiers,
@@ -658,6 +734,7 @@ export function qualifiedSearch(
     placeFilter: (place) =>
       matchesSearchQualifiers(place, qualifiers, municipality) &&
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
+    now: context.now,
   });
   const hits = regionalScope
     ? balanceRegionalHits(candidates, qualifiers.regions, limit)

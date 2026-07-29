@@ -38,6 +38,8 @@ jobs:
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
         run: npm run ingest:venues
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.

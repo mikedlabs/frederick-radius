@@ -29,9 +29,15 @@ export type BusinessInfo = {
   hours_text?: string;
   reservations_url?: string;
   commerce_links?: BusinessInfoCommerceLink[];
+  commerce_source?: {
+    /** Final official page whose real anchors were inspected. */
+    url: string;
+    /** Separate from prose/hours freshness; a link crawl verifies links only. */
+    checkedAt: string;
+  };
   notable?: string;
   name?: string;
-  source: { url: string; fetchedAt: string };
+  source?: { url: string; fetchedAt: string };
 };
 
 export type BusinessInfoCommerceLink = {
@@ -89,14 +95,31 @@ export function commerceLinksFromBusinessInfo(
     "catering",
     "gift_card",
   ]);
-  const seenTypes = new Set<BusinessInfoCommerceLink["type"]>();
+  const seen = new Set<string>();
+  const typeCounts = new Map<BusinessInfoCommerceLink["type"], number>();
   const links: CommerceLink[] = [];
+
+  const menuLabel = (anchorText: string | undefined): string | undefined => {
+    const text = anchorText?.replace(/\s+/g, " ").trim();
+    if (!text) return undefined;
+    if (/\bkids?(?:'|’)?\b/i.test(text)) return "Kids menu";
+    if (/\bbrunch\b/i.test(text)) return "Brunch menu";
+    if (/\blunch\b/i.test(text)) return "Lunch menu";
+    if (/\bdinner\b/i.test(text)) return "Dinner menu";
+    if (/\bdessert\b/i.test(text)) return "Dessert menu";
+    if (/\b(?:drink|cocktail|wine|beer|tapped)\b/i.test(text)) {
+      return "Drinks menu";
+    }
+    if (/\bpdf\b/i.test(text)) return "Menu PDF";
+    return undefined;
+  };
 
   const add = (
     type: BusinessInfoCommerceLink["type"],
     rawUrl: string | undefined,
+    anchorText?: string,
   ) => {
-    if (seenTypes.has(type) || !rawUrl?.trim()) return;
+    if (!rawUrl?.trim()) return;
     let url: URL;
     try {
       url = new URL(rawUrl.trim());
@@ -108,21 +131,31 @@ export function commerceLinksFromBusinessInfo(
     url.hash = "";
     const provider = detectProvider(url.toString());
     if (isCommerceSearchLink({ provider, url: url.toString() })) return;
+    const key = `${type}::${url.toString()}`;
+    if (seen.has(key)) return;
+    const typeCount = typeCounts.get(type) ?? 0;
+    const typeLimit = type === "menu" ? 4 : 1;
+    if (typeCount >= typeLimit) return;
+    const label = type === "menu" ? menuLabel(anchorText) : undefined;
 
     links.push({
       place_id: slug,
       type,
       url: url.toString(),
       provider,
+      ...(label ? { label } : {}),
       source: "imported",
-      last_verified_at: info.source.fetchedAt,
+      last_verified_at:
+        info.commerce_source?.checkedAt ?? info.source?.fetchedAt,
       notes: "Published on the business's official website.",
     });
-    seenTypes.add(type);
+    seen.add(key);
+    typeCounts.set(type, typeCount + 1);
   };
 
-  // The extractor preserves every classified anchor in score order. The
-  // public commerce block stays calm by exposing the strongest link per type.
+  // The extractor preserves classified anchors in score order. Keep one
+  // action for each commerce type, but retain a few meaningfully different
+  // official menu documents (main, kids, brunch, drinks) on the detail page.
   for (const raw of info.commerce_links ?? []) {
     if (
       !raw ||
@@ -132,7 +165,7 @@ export function commerceLinksFromBusinessInfo(
     ) {
       continue;
     }
-    add(raw.type, raw.url);
+    add(raw.type, raw.url, raw.anchor_text);
   }
 
   // Backward compatibility for the two records written before direct anchor

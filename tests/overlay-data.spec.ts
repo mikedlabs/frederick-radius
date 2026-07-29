@@ -1,68 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { isInFrederickCounty } from "@/components/map/constants";
 
-/**
- * Committed overlay data (6.3/6.4). The GIS pulls live as static GeoJSON
- * in public/overlays. These tests guard the load-bearing properties: the
- * files parse, carry features, sit inside the county, and stay small
- * enough to ship static (the brief's 1 MB ceiling), so a future re-pull
- * that breaks any of these fails the build.
- */
+/** Public-domain static boundary used to frame the county map. */
 function load(layer: string) {
   const raw = readFileSync(path.join(process.cwd(), "public", "overlays", `${layer}.geojson`), "utf-8");
   return { raw, gj: JSON.parse(raw) as GeoJSON.FeatureCollection };
 }
 
-describe.each(["parks", "markets", "bridges", "historic"])("overlay %s", (layer) => {
-  const { raw, gj } = load(layer);
-
-  it("is a FeatureCollection with features", () => {
-    expect(gj.type).toBe("FeatureCollection");
-    expect(gj.features.length).toBeGreaterThan(0);
-  });
-
-  it("every point feature sits inside the county", () => {
-    for (const f of gj.features) {
-      if (f.geometry.type !== "Point") continue;
-      const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates;
-      expect(isInFrederickCounty(lng, lat)).toBe(true);
-    }
-  });
-
-  it("ships well under the 1 MB static ceiling", () => {
-    expect(raw.length).toBeLessThan(1_000_000);
-  });
-});
-
-describe("parks overlay carries the park polygons", () => {
-  const { gj } = load("parks");
-  it("mixes area fills (the grounds) with named points (the markers)", () => {
-    const types = new Set(gj.features.map((f) => f.geometry.type));
-    expect(types.has("Point")).toBe(true);
-    expect(types.has("Polygon") || types.has("MultiPolygon")).toBe(true);
-    // Polygons lead in the file so fills draw under the markers.
-    expect(["Polygon", "MultiPolygon"]).toContain(gj.features[0].geometry.type);
-  });
-});
-
-describe("covered bridges overlay", () => {
-  const { gj } = load("bridges");
-  it("is exactly the three named covered bridges", () => {
-    const names = gj.features.map((f) => f.properties?.name).sort();
-    expect(names).toEqual([
-      "Loy's Station Covered Bridge",
-      "Roddy Road Covered Bridge",
-      "Utica Mills Covered Bridge",
-    ]);
-  });
-});
-
 describe("county boundary overlay", () => {
-  const { gj } = load("county-boundary");
+  const { raw, gj } = load("county-boundary");
   it("is a single polygon", () => {
     expect(gj.features).toHaveLength(1);
     expect(["Polygon", "MultiPolygon"]).toContain(gj.features[0].geometry.type);
+    expect(gj.features[0].properties).toMatchObject({
+      geoid: "24021",
+      source: "U.S. Census Bureau TIGERweb",
+    });
+    expect(raw.length).toBeLessThan(1_000_000);
   });
 });

@@ -11,9 +11,16 @@ import {
 import { activeEventNotices } from "@/lib/events/notices";
 import { summarizeAirQualityAlert } from "@/lib/air-quality";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import {
+  selectTodayRoadSignal,
+  type RoadAttentionSignal,
+} from "@/lib/live/roadIntelligenceModel";
+import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
+import type { OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 
 type UnifiedAlert = {
-  source: "NWS" | "NPS" | "MDOT";
+  source: "NWS" | "NPS" | "MDOT" | "CITY" | "HEALTH";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
   /** Short one-line tail under the title (e.g. "Until 8:00 PM" or
@@ -177,6 +184,48 @@ function trafficAlerts(now: Date, incidents: ChartIncident[]): UnifiedAlert[] {
   ];
 }
 
+function roadIntelligenceAlert(
+  signal: RoadAttentionSignal | null,
+): UnifiedAlert[] {
+  if (!signal) return [];
+  return [{
+    source: "MDOT",
+    severity: signal.severity,
+    title: signal.title,
+    tail: signal.detail,
+    scope: signal.scope,
+    url: "/pulse?open=traffic",
+    external: false,
+  }];
+}
+
+function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
+  return alerts.map((alert) => {
+    const copy = `${alert.title} ${alert.summary}`;
+    const urgent =
+      alert.kind === "city-emergency" ||
+      alert.kind === "health-burn-ban" ||
+      /\b(?:emergency|evacuat|boil|unsafe|outbreak|closed|closure|do not|avoid)\b/i.test(copy);
+    const actionable =
+      urgent ||
+      alert.kind === "health-closing" ||
+      /\b(?:warning|advisory|recall|exposure|contaminat|suspend|cancel|restricted)\b/i.test(copy);
+    return {
+      source: alert.kind === "city-emergency" ? "CITY" as const : "HEALTH" as const,
+      severity: urgent
+        ? "warning" as const
+        : actionable
+          ? "advisory" as const
+          : "info" as const,
+      title: alert.title,
+      tail: firstSentence(alert.summary) || "Active official notice",
+      scope: alert.scope === "city" ? "City of Frederick" : "Frederick County",
+      url: alert.url,
+      external: true,
+    };
+  });
+}
+
 const STYLES = {
   emergency: { bg: "var(--app-danger)", icon: AlertCircle, fg: "var(--app-on-brand)" },
   warning:   { bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
@@ -201,8 +250,10 @@ const STYLES = {
  * moment a real feed exists — absent until then, never faked.
  */
 export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
-  const [situation, nps] = await Promise.all([
+  const [situation, roads, official, nps] = await Promise.all([
     getCurrentSituationSnapshot(),
+    getRoadIntelligenceSnapshot(),
+    getOfficialCivicAlertsSnapshot(),
     getNpsAlerts(),
   ]);
   const weatherIsFresh =
@@ -215,7 +266,16 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const nws =
     includeWeather && weatherIsFresh ? situation.sources.weather.data : [];
   const chart = trafficIsFresh ? situation.sources.traffic.data : [];
-  const alerts = normalize(nws, nps, trafficAlerts(now, chart), now);
+  const alerts = normalize(
+    nws,
+    nps,
+    [
+      ...officialCivicAlerts(official.alerts),
+      ...roadIntelligenceAlert(selectTodayRoadSignal(roads)),
+      ...trafficAlerts(now, chart),
+    ],
+    now,
+  );
   // Owner event notices (event-notices.json) — "Alive @ Five is cancelled
   // tonight" is exactly the news this slot exists for. They render as their
   // OWN rows below the weather alert (never folded into the one-alert
@@ -237,28 +297,6 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
       <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
         Heads up
       </p>
-      {notices.map((n) => (
-        <a
-          key={n.slug}
-          href={`/events/${n.slug}`}
-          className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
-          style={{
-            background: n.status === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
-            color: "var(--app-on-brand)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <CalendarX className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">{n.headline}</p>
-            <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
-              {n.status === "cancelled" ? "Cancelled" : n.status === "postponed" ? "Postponed" : "Update"}
-            </span>
-          </div>
-          {n.note && (
-            <p className="mt-1 truncate text-[11px] opacity-90">{n.note}</p>
-          )}
-        </a>
-      ))}
       {top && s && (
       <a
         href={top.url ?? "#"}
@@ -285,6 +323,28 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
         </div>
       </a>
       )}
+      {notices.map((n) => (
+        <a
+          key={n.slug}
+          href={`/events/${n.slug}`}
+          className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
+          style={{
+            background: n.status === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
+            color: "var(--app-on-brand)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <CalendarX className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">{n.headline}</p>
+            <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
+              {n.status === "cancelled" ? "Cancelled" : n.status === "postponed" ? "Postponed" : "Update"}
+            </span>
+          </div>
+          {n.note && (
+            <p className="mt-1 truncate text-[11px] opacity-90">{n.note}</p>
+          )}
+        </a>
+      ))}
       {more > 0 && (
         <a href="/pulse" className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />

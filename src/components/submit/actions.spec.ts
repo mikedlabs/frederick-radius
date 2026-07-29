@@ -17,7 +17,9 @@ vi.mock("@/lib/origin-check", () => ({
 }));
 
 import {
+  submitEventAction,
   submitPlaceAction,
+  type SubmitEventInput,
   type SubmitPlaceInput,
 } from "./actions";
 
@@ -38,6 +40,31 @@ function validPlace(
     submitter_email: "owner@example.com",
     submitter_name: "Owner",
     is_owner: true,
+    contact_fax: "",
+    ...overrides,
+  };
+}
+
+function validEvent(
+  overrides: Partial<SubmitEventInput> = {},
+): SubmitEventInput {
+  return {
+    title: "Live music",
+    description: "An evening concert in Baker Park.",
+    starts_at: "2026-08-01T19:00",
+    ends_at: "2026-08-01T21:00",
+    venue_name: "Baker Park",
+    address: "121 N Bentz St",
+    municipality: "frederick",
+    category: "music",
+    is_free: true,
+    price_text: "",
+    ticket_url: "https://events.example.com/live-music",
+    organizer: "Frederick Parks",
+    photo_url: "",
+    photo_permission: false,
+    submitter_email: "events@example.com",
+    submitter_name: "Organizer",
     contact_fax: "",
     ...overrides,
   };
@@ -117,6 +144,27 @@ describe("public submission server actions", () => {
       payload?: Record<string, unknown>;
     };
     expect(row.payload).not.toHaveProperty("contact_fax");
+  });
+
+  it("keeps documented event-photo permission with the reviewed submission", async () => {
+    const result = await submitEventAction(
+      validEvent({
+        photo_url: "https://events.example.com/posters/live-music.jpg",
+        photo_permission: true,
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: true, token: expect.any(String) });
+    expect(mocks.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "event",
+        submitter_email: "events@example.com",
+        payload: expect.objectContaining({
+          photo_url: "https://events.example.com/posters/live-music.jpg",
+          photo_permission: true,
+        }),
+      }),
+    );
   });
 
   it("rejects attacker-shaped runtime input even when TypeScript is bypassed", async () => {

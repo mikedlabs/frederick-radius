@@ -5,6 +5,10 @@ import {
   normalizePageAnchor,
   type PageAnchor,
 } from "./official-commerce-links";
+import {
+  fetchFirecrawlPage,
+  FirecrawlRestError,
+} from "./firecrawl-rest";
 
 /**
  * Extraction engine — the shared core behind every "go get the buried
@@ -28,6 +32,8 @@ import {
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const DEFAULT_MODEL = process.env.EXTRACT_MODEL || "claude-haiku-4-5-20251001";
 const UA = "FrederickRadius/1.0 (+civic data ingest)";
+const DEFAULT_FIRECRAWL_FALLBACK_LIMIT = 6;
+const ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT = 20;
 
 function htmlToText(html: string, maxChars: number): string {
   return html
@@ -43,9 +49,225 @@ function htmlToText(html: string, maxChars: number): string {
 export type PageSnapshot = {
   text: string;
   links: PageAnchor[];
+  /** URL exactly requested by the extraction profile. */
+  requestedUrl: string;
   /** Final URL after redirects; this is the page on which links were found. */
   finalUrl: string;
 };
+
+export type FirecrawlFallbackUsage = {
+  limit: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  deniedByLimit: number;
+};
+
+export type FetchPageSnapshotOptions = {
+  render?: boolean;
+  maxChars?: number;
+  /** Explicit opt-out for sources that must never use the external fallback. */
+  firecrawlFallback?: boolean;
+  /** Exact reviewed destination hosts; same-host redirects are always allowed. */
+  allowedRedirectHosts?: readonly string[];
+  /** Reviewed exception for a source that genuinely has no HTTPS endpoint. */
+  firecrawlAllowHttp?: boolean;
+};
+
+let firecrawlFallbackUsage: FirecrawlFallbackUsage | null = null;
+
+function configuredFirecrawlFallbackLimit(): number {
+  const parsed = Number.parseInt(
+    process.env.FIRECRAWL_FALLBACK_MAX_REQUESTS ?? "",
+    10,
+  );
+  const requested = Number.isInteger(parsed)
+    ? parsed
+    : DEFAULT_FIRECRAWL_FALLBACK_LIMIT;
+  return Math.max(
+    0,
+    Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT),
+  );
+}
+
+/** Reset the per-process fallback budget at the start of one operator run. */
+export function resetFirecrawlFallbackUsage(limit?: number): void {
+  const requested =
+    limit === undefined || !Number.isFinite(limit)
+      ? configuredFirecrawlFallbackLimit()
+      : Math.trunc(limit);
+  firecrawlFallbackUsage = {
+    limit: Math.max(
+      0,
+      Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT),
+    ),
+    attempted: 0,
+    succeeded: 0,
+    failed: 0,
+    deniedByLimit: 0,
+  };
+}
+
+function mutableFirecrawlFallbackUsage(): FirecrawlFallbackUsage {
+  if (!firecrawlFallbackUsage) resetFirecrawlFallbackUsage();
+  return firecrawlFallbackUsage!;
+}
+
+export function getFirecrawlFallbackUsage(): FirecrawlFallbackUsage {
+  return { ...mutableFirecrawlFallbackUsage() };
+}
+
+export function formatFirecrawlFallbackUsageSummary(): string {
+  const usage = getFirecrawlFallbackUsage();
+  return (
+    `Firecrawl fallback: ${usage.attempted}/${usage.limit} request(s); ` +
+    `${usage.succeeded} succeeded, ${usage.failed} failed, ` +
+    `${usage.deniedByLimit} blocked by the run ceiling.`
+  );
+}
+
+function canonicalHost(value: string): string | null {
+  try {
+    return new URL(value).hostname
+      .toLowerCase()
+      .replace(/\.$/, "")
+      .replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function configuredRedirectHost(value: string): string | null {
+  const candidate = value.trim().toLowerCase().replace(/\.$/, "");
+  if (!candidate || candidate.includes("/") || candidate.includes("@")) {
+    return null;
+  }
+  return candidate.replace(/^www\./, "");
+}
+
+function isAllowedRedirectHost(
+  requestedUrl: string,
+  finalUrl: string,
+  allowedRedirectHosts: readonly string[],
+): boolean {
+  const requestedHost = canonicalHost(requestedUrl);
+  const finalHost = canonicalHost(finalUrl);
+  if (!requestedHost || !finalHost) return false;
+  if (requestedHost === finalHost) return true;
+  return allowedRedirectHosts
+    .map(configuredRedirectHost)
+    .some((host) => host === finalHost);
+}
+
+async function fetchFirecrawlFallback(
+  url: string,
+  maxChars: number,
+  opts: Pick<
+    FetchPageSnapshotOptions,
+    "allowedRedirectHosts" | "firecrawlAllowHttp"
+  >,
+): Promise<PageSnapshot | null> {
+  if (
+    process.env.FIRECRAWL_FETCH_FALLBACK !== "1" ||
+    !process.env.FIRECRAWL_API_KEY
+  ) {
+    return null;
+  }
+
+  const usage = mutableFirecrawlFallbackUsage();
+  if (usage.attempted >= usage.limit) {
+    usage.deniedByLimit += 1;
+    console.log(`  – ${url} (Firecrawl fallback run ceiling reached)`);
+    return null;
+  }
+  usage.attempted += 1;
+
+  try {
+    const snapshot = await fetchFirecrawlPage(url, {
+      allowHttp: opts.firecrawlAllowHttp === true,
+    });
+    if (
+      !isAllowedRedirectHost(
+        snapshot.requestedUrl,
+        snapshot.finalUrl,
+        opts.allowedRedirectHosts ?? [],
+      )
+    ) {
+      usage.failed += 1;
+      console.log(`  ✗ ${url} (Firecrawl fallback: CROSS_HOST_REDIRECT)`);
+      return null;
+    }
+    const text = snapshot.text.replace(/\s+/g, " ").trim().slice(0, maxChars);
+    if (!text) {
+      usage.failed += 1;
+      console.log(`  ✗ ${url} (Firecrawl fallback: EMPTY_RESPONSE)`);
+      return null;
+    }
+    const links = snapshot.links
+      .slice(0, 500)
+      .map((href) => normalizePageAnchor(href, "", snapshot.finalUrl))
+      .filter((link): link is PageAnchor => link !== null);
+    usage.succeeded += 1;
+    console.log(`  ✓ ${url} (Firecrawl fallback)`);
+    return {
+      text,
+      links,
+      requestedUrl: snapshot.requestedUrl,
+      finalUrl: snapshot.finalUrl,
+    };
+  } catch (error) {
+    usage.failed += 1;
+    const code =
+      error instanceof FirecrawlRestError ? error.code : "UNKNOWN_ERROR";
+    console.log(`  ✗ ${url} (Firecrawl fallback: ${code})`);
+    return null;
+  }
+}
+
+async function fetchRenderedPage(
+  url: string,
+  maxChars: number,
+): Promise<PageSnapshot | null> {
+  let browser: Awaited<ReturnType<
+    (typeof import("@playwright/test"))["chromium"]["launch"]
+  >> | null = null;
+  try {
+    const { chromium } = await import("@playwright/test");
+    browser = await chromium.launch();
+    const page = await browser.newPage({
+      userAgent: UA,
+      // Opt-in escape hatch for environments behind a TLS-intercepting
+      // proxy whose CA the bundled Chromium does not trust (render would
+      // otherwise fail ERR_CERT_AUTHORITY_INVALID on every page). Off by
+      // default, so production and CI keep full certificate validation.
+      ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
+    });
+    await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+    await page.waitForTimeout(1200); // let late calendar widgets settle
+    const text = (await page.innerText("body"))
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxChars);
+    if (!text) return null;
+    const finalUrl = page.url();
+    const rawLinks = await page.locator("a[href]").evaluateAll((nodes) =>
+      nodes.slice(0, 500).map((node) => ({
+        href: (node as HTMLAnchorElement).getAttribute("href") ?? "",
+        text: (node as HTMLAnchorElement).innerText ?? "",
+      })),
+    );
+    const links = rawLinks
+      .map((link) => normalizePageAnchor(link.href, link.text, finalUrl))
+      .filter((link): link is PageAnchor => link !== null);
+    return { text, links, requestedUrl: url, finalUrl };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.log(`  ✗ ${url} (render) → ${message}`);
+    return null;
+  } finally {
+    await browser?.close();
+  }
+}
 
 /**
  * Fetch a public page as model-friendly text plus the real anchors needed by
@@ -60,76 +282,94 @@ export type PageSnapshot = {
  */
 export async function fetchPageSnapshot(
   url: string,
-  opts: { render?: boolean; maxChars?: number } = {},
+  opts: FetchPageSnapshotOptions = {},
 ): Promise<PageSnapshot | null> {
   const maxChars = opts.maxChars ?? 18_000;
+  const allowFirecrawl = opts.firecrawlFallback !== false;
 
   if (opts.render) {
-    let browser: Awaited<ReturnType<
-      (typeof import("@playwright/test"))["chromium"]["launch"]
-    >> | null = null;
-    try {
-      const { chromium } = await import("@playwright/test");
-      browser = await chromium.launch();
-      const page = await browser.newPage({
-        userAgent: UA,
-        // Opt-in escape hatch for environments behind a TLS-intercepting
-        // proxy whose CA the bundled Chromium does not trust (render would
-        // otherwise fail ERR_CERT_AUTHORITY_INVALID on every page). Off by
-        // default, so production and CI keep full certificate validation.
-        ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
-      });
-      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-      await page.waitForTimeout(1200); // let late calendar widgets settle
-      const text = (await page.innerText("body")).replace(/\s+/g, " ").trim().slice(0, maxChars);
-      if (!text) return null;
-      const finalUrl = page.url();
-      const rawLinks = await page.locator("a[href]").evaluateAll((nodes) =>
-        nodes.slice(0, 500).map((node) => ({
-          href: (node as HTMLAnchorElement).getAttribute("href") ?? "",
-          text: (node as HTMLAnchorElement).innerText ?? "",
-        })),
-      );
-      const links = rawLinks
-        .map((link) => normalizePageAnchor(link.href, link.text, finalUrl))
-        .filter((link): link is PageAnchor => link !== null);
-      return { text, links, finalUrl };
-    } catch (err) {
-      console.log(`  ✗ ${url} (render) → ${(err as Error).message}`);
-      return null;
-    } finally {
-      await browser?.close();
+    const rendered = await fetchRenderedPage(url, maxChars);
+    if (
+      rendered &&
+      (opts.allowedRedirectHosts === undefined ||
+        isAllowedRedirectHost(
+          rendered.requestedUrl,
+          rendered.finalUrl,
+          opts.allowedRedirectHosts,
+        ))
+    ) {
+      return rendered;
     }
+    if (rendered) {
+      console.log(`  ✗ ${url} (render: CROSS_HOST_REDIRECT)`);
+    }
+    return allowFirecrawl
+      ? await fetchFirecrawlFallback(url, maxChars, opts)
+      : null;
   }
 
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20_000);
-    const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
-    clearTimeout(timer);
+    const { response: r, html } = await (async () => {
+      try {
+        const response = await fetch(url, {
+          headers: { "User-Agent": UA },
+          redirect: "follow",
+          signal: ctrl.signal,
+        });
+        return {
+          response,
+          html: response.ok ? await response.text() : "",
+        };
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
     if (!r.ok) {
-      console.log(`  ✗ ${url} → HTTP ${r.status}${r.status === 403 ? " (try render:true)" : ""}`);
-      return null;
+      console.log(
+        `  ✗ ${url} → HTTP ${r.status}${
+          r.status === 403 ? " (try render:true)" : ""
+        }`,
+      );
+      return allowFirecrawl
+        ? await fetchFirecrawlFallback(url, maxChars, opts)
+        : null;
     }
-    const html = await r.text();
     const finalUrl = r.url || url;
     const text = htmlToText(html, maxChars);
-    if (!text) return null;
+    if (!text) {
+      return allowFirecrawl
+        ? await fetchFirecrawlFallback(url, maxChars, opts)
+        : null;
+    }
+    if (
+      opts.allowedRedirectHosts !== undefined &&
+      !isAllowedRedirectHost(url, finalUrl, opts.allowedRedirectHosts)
+    ) {
+      console.log(`  ✗ ${url} (fetch: CROSS_HOST_REDIRECT)`);
+      return allowFirecrawl
+        ? await fetchFirecrawlFallback(url, maxChars, opts)
+        : null;
+    }
     return {
       text,
       links: extractPageAnchors(html, finalUrl),
+      requestedUrl: url,
       finalUrl,
     };
   } catch (err) {
     console.log(`  ✗ ${url} → ${(err as Error).message}`);
-    return null;
+    return allowFirecrawl
+      ? await fetchFirecrawlFallback(url, maxChars, opts)
+      : null;
   }
 }
 
 /** Backward-compatible text-only view used by existing extraction profiles. */
 export async function fetchPageText(
   url: string,
-  opts: { render?: boolean; maxChars?: number } = {},
+  opts: FetchPageSnapshotOptions = {},
 ): Promise<string | null> {
   return (await fetchPageSnapshot(url, opts))?.text ?? null;
 }

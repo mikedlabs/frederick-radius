@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Amenity } from "@/lib/loaders/amenities";
-import { hoursRefreshCycleDay } from "@/lib/hours-refresh-targets";
+import {
+  HOURS_REFRESH_CYCLE_DAYS,
+  hoursRefreshCycleDay,
+} from "@/lib/hours-refresh-targets";
 import {
   summarizeAmenityCoverage,
   summarizeEventQuality,
@@ -122,9 +125,13 @@ describe("operator data coverage", () => {
     });
   });
 
-  it("shows whether the deterministic seven-day hours cycle is warming, healthy, or stalled", () => {
-    const slugs = Array.from({ length: 7 }, (_, cycleDay) =>
+  it("shows whether the deterministic hours cycle is warming, healthy, or stalled", () => {
+    const slugs = Array.from({ length: HOURS_REFRESH_CYCLE_DAYS }, (_, cycleDay) =>
       slugForCycleDay(cycleDay),
+    );
+    const missingCycleDays = Array.from(
+      { length: HOURS_REFRESH_CYCLE_DAYS - 1 },
+      (_, index) => index + 1,
     );
     const expected = new Set(slugs);
     const now = new Date("2026-07-28T12:00:00Z");
@@ -146,14 +153,14 @@ describe("operator data coverage", () => {
       now,
     );
     expect(healthy.cycle).toMatchObject({
-      days: 7,
+      days: HOURS_REFRESH_CYCLE_DAYS,
       state: "healthy",
-      completedDays: 7,
+      completedDays: HOURS_REFRESH_CYCLE_DAYS,
       missingDays: [],
       underfilledDays: [],
       refreshCoveragePct: 100,
     });
-    expect(healthy.cycle.buckets).toHaveLength(7);
+    expect(healthy.cycle.buckets).toHaveLength(HOURS_REFRESH_CYCLE_DAYS);
     expect(
       healthy.cycle.buckets.every(
         (bucket) =>
@@ -177,8 +184,9 @@ describe("operator data coverage", () => {
     expect(warming.cycle).toMatchObject({
       state: "warming",
       completedDays: 1,
-      missingDays: [1, 2, 3, 4, 5, 6],
-      refreshCoveragePct: 14.3,
+      missingDays: missingCycleDays,
+      refreshCoveragePct:
+        Math.round((100 / HOURS_REFRESH_CYCLE_DAYS) * 10) / 10,
     });
     expect(warming.freshRefreshRows).toBe(1);
     expect(warming.freshRows).toBe(0);
@@ -188,7 +196,8 @@ describe("operator data coverage", () => {
         [slugs[0]]: {
           weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
           refreshed_at: new Date(
-            now.getTime() - 6 * 86_400_000,
+            now.getTime() -
+              (HOURS_REFRESH_CYCLE_DAYS - 1) * 86_400_000,
           ).toISOString(),
         },
       },
@@ -198,7 +207,7 @@ describe("operator data coverage", () => {
     expect(stalled.cycle).toMatchObject({
       state: "stalled",
       completedDays: 1,
-      missingDays: [1, 2, 3, 4, 5, 6],
+      missingDays: missingCycleDays,
     });
   });
 

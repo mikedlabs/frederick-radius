@@ -49,13 +49,33 @@ const AppMap = dynamic(() => import("./AppMap"), {
 });
 
 /**
- * Map + a results list synced to the viewport. Pan/zoom the map → the list
- * below shows exactly what's in view, nearest-center first, tappable
- * (opens the place sheet). This turns a wall of pins into something you
- * can actually browse.
+ * Shared interactive map shell. The full browse map keeps its result area
+ * stable while somebody pans, then accepts the new camera through one
+ * contextual action. Embedded subject maps continue to settle immediately.
  */
-export type { CivicPin, MapLineFC, EventPin, CemeteryPin, BrowseDockInfo } from "./types";
-import type { CivicPin, MapLineFC, EventPin, CemeteryPin, BrowseDockInfo } from "./types";
+export type {
+  CivicPin,
+  MapLineFC,
+  EventPin,
+  CemeteryPin,
+  BrowseDockInfo,
+  RoadWorkZoneFC,
+  FloodContextFC,
+  SnowRouteFC,
+} from "./types";
+import {
+  EMPTY_FLOOD_CONTEXT_FC,
+  EMPTY_ROAD_WORK_ZONE_FC,
+  EMPTY_SNOW_ROUTE_FC,
+  type CivicPin,
+  type MapLineFC,
+  type EventPin,
+  type CemeteryPin,
+  type BrowseDockInfo,
+  type RoadWorkZoneFC,
+  type FloodContextFC,
+  type SnowRouteFC,
+} from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
@@ -76,6 +96,9 @@ export default function AppMapClient({
   transitStops = [],
   marcStations = [],
   foodTruckPins = [],
+  roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
+  floodContext = EMPTY_FLOOD_CONTEXT_FC,
+  snowRoutes = EMPTY_SNOW_ROUTE_FC,
   fullBleed = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
@@ -132,6 +155,12 @@ export default function AppMapClient({
   marcStations?: MarcStationPin[];
   /** Operator-confirmed, self-expiring food-truck pins. */
   foodTruckPins?: FoodTruckMapPin[];
+  /** Official WZDx work-zone geometry, shown under the existing Traffic view. */
+  roadWorkZones?: RoadWorkZoneFC;
+  /** Public County high-water context; static, attributed, and not a live alert. */
+  floodContext?: FloodContextFC;
+  /** Current County SnowCommand route-operation reports. */
+  snowRoutes?: SnowRouteFC;
   /** Full-bleed canvas: the map fills the parent, no card border, no
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
@@ -205,6 +234,9 @@ export default function AppMapClient({
           transitStops={transitStops}
           marcStations={marcStations}
           foodTruckPins={foodTruckPins}
+          roadWorkZones={roadWorkZones}
+          floodContext={floodContext}
+          snowRoutes={snowRoutes}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}
@@ -226,7 +258,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
     </div>
   );
 }

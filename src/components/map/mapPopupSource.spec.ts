@@ -18,6 +18,14 @@ describe("mapPopupSource", () => {
     });
   });
 
+  it("credits County park assets to Frederick County GIS", () => {
+    expect(mapPopupSource("fc-park-amenity-14")).toEqual({
+      kind: "frederick-county-gis",
+      label: "Frederick County GIS",
+      href: "https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer",
+    });
+  });
+
   it.each([
     ["bench-n-4173183053", "https://www.openstreetmap.org/node/4173183053"],
     ["ev_charging-node-8664305062", "https://www.openstreetmap.org/node/8664305062"],

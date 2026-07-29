@@ -56,6 +56,7 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     source_url: e.source_url,
     source: e.source,
     hero_image: e.hero_image,
+    hero_image_attribution: e.hero_image_attribution,
     status: e.status,
     geo_confidence: e.geo_confidence,
     distance_m: e.distance_m,

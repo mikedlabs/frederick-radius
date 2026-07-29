@@ -79,6 +79,9 @@ describe("fcplMapOne — raw record to a ParsedEvent", () => {
     program_type: "Recurring Storytime",
     age_group: "Birth - 5",
     description: "Songs and stories for toddlers.",
+    image:
+      "https://frederick.librarycalendar.com/sites/default/files/2026-07/storytime.jpg",
+    imagealt: "Children reading together",
   };
 
   it("maps a public future event with the right shape", () => {
@@ -91,6 +94,8 @@ describe("fcplMapOne — raw record to a ParsedEvent", () => {
     expect(m!.event.startsAtUtc).toBe("2026-06-20T13:00:00.000Z");
     expect(m!.event.endsAtUtc).toBe("2026-06-20T13:45:00.000Z");
     expect(m!.event.sourceUrl).toBe(base.url);
+    expect(m!.event.heroImage).toBe(base.image);
+    expect(m!.event.heroImageAlt).toBe(base.imagealt);
     expect(m!.event.rawLocation).toBe("Brunswick Branch Library, Story Room");
     expect(m!.event.allDay).toBe(false);
   });
@@ -106,6 +111,28 @@ describe("fcplMapOne — raw record to a ParsedEvent", () => {
   it("drops a record with no title or id", () => {
     expect(fcplMapOne({ ...base, title: "" }, NOW)).toBeNull();
     expect(fcplMapOne({ ...base, id: undefined, uuid: undefined }, NOW)).toBeNull();
+  });
+
+  it("drops event art outside FCPL's own public-files path", () => {
+    const wrongHost = fcplMapOne(
+      {
+        ...base,
+        image: "https://images.example.com/untrusted.jpg",
+        imagealt: "<b>Untrusted</b> image",
+      },
+      NOW,
+    );
+    expect(wrongHost?.event.heroImage).toBeUndefined();
+    expect(wrongHost?.event.heroImageAlt).toBeUndefined();
+
+    const wrongPath = fcplMapOne(
+      {
+        ...base,
+        image: "https://frederick.librarycalendar.com/user/login/avatar.jpg",
+      },
+      NOW,
+    );
+    expect(wrongPath?.event.heroImage).toBeUndefined();
   });
 });
 

@@ -35,6 +35,9 @@ const contentSecurityPolicy = [
     // raster tiles via XHR, so they need connect-src, not img-src.
     "https://api.rainviewer.com",
     "https://tilecache.rainviewer.com",
+    // NOAA nowCOAST serves the current county-bounded lightning-density
+    // image that Mapbox GL loads as an image source.
+    "https://nowcoast.noaa.gov",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://plausible.io",
@@ -172,6 +175,28 @@ const nextConfig: NextConfig = {
       // remote edition). Keep this list and EVENT_IMAGE_HOSTS in sync.
       { protocol: "https", hostname: "s1.ticketm.net" },
       { protocol: "https", hostname: "seatgeek.com" },
+      // Publisher-provided event art. Each source adapter enforces the same
+      // exact host + account path before it sets hero_image.
+      {
+        protocol: "https",
+        hostname: "assets.simpleviewinc.com",
+        pathname: "/sv-frederick-county/image/fetch/**",
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
+        pathname: "/vibemap/**",
+      },
+      {
+        protocol: "https",
+        hostname: "frederick.librarycalendar.com",
+        pathname: "/sites/default/files/**",
+      },
+      {
+        protocol: "https",
+        hostname: "static.wixstatic.com",
+        pathname: "/media/**",
+      },
       // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },

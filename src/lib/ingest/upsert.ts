@@ -28,6 +28,8 @@ type ExistingEventRow = {
   category: string | null;
   raw_source_url: string | null;
   normalized_source_url: string | null;
+  normalized_hero_image: string | null;
+  normalized_hero_image_alt: string | null;
 };
 
 /**
@@ -62,7 +64,9 @@ export async function upsertEvent(
     select raw_events.id, raw_events.dtstamp,
            raw_events.source_url as raw_source_url,
            ingested_events.id as normalized_id, ingested_events.category,
-           ingested_events.source_url as normalized_source_url
+           ingested_events.source_url as normalized_source_url,
+           ingested_events.hero_image as normalized_hero_image,
+           ingested_events.hero_image_alt as normalized_hero_image_alt
     from raw_events
     left join ingested_events
       on ingested_events.source_domain = raw_events.source_domain
@@ -79,8 +83,12 @@ export async function upsertEvent(
     const sourceUrlUnchanged =
       initialRow.raw_source_url === (e.sourceUrl ?? null) &&
       initialRow.normalized_source_url === (e.sourceUrl ?? null);
+    const mediaUnchanged =
+      initialRow.normalized_hero_image === (e.heroImage ?? null) &&
+      initialRow.normalized_hero_image_alt === (e.heroImageAlt ?? null);
     if (
       sourceUrlUnchanged &&
+      mediaUnchanged &&
       (!categoryCoverageComplete || initialRow.category === opts.category)
     ) {
       stats.rawUnchanged += 1;
@@ -89,10 +97,20 @@ export async function upsertEvent(
     if (sourceUrlUnchanged) {
       const healed = await sql<{ id: string }[]>`
         update ingested_events
-        set category = ${opts.category}, updated_at = now()
+        set category = case
+              when ${categoryCoverageComplete} then ${opts.category}
+              else category
+            end,
+            hero_image = ${e.heroImage ?? null},
+            hero_image_alt = ${e.heroImageAlt ?? null},
+            updated_at = now()
         where source_domain = ${opts.sourceDomain}
           and source_uid = ${e.uid}
-          and category is distinct from ${opts.category}
+          and (
+            (${categoryCoverageComplete} and category is distinct from ${opts.category})
+            or hero_image is distinct from ${e.heroImage ?? null}
+            or hero_image_alt is distinct from ${e.heroImageAlt ?? null}
+          )
         returning id
       `;
       if (healed.length > 0) {
@@ -114,7 +132,9 @@ export async function upsertEvent(
       select raw_events.id, raw_events.dtstamp,
              raw_events.source_url as raw_source_url,
              ingested_events.id as normalized_id, ingested_events.category,
-             ingested_events.source_url as normalized_source_url
+             ingested_events.source_url as normalized_source_url,
+             ingested_events.hero_image as normalized_hero_image,
+             ingested_events.hero_image_alt as normalized_hero_image_alt
       from raw_events
       left join ingested_events
         on ingested_events.source_domain = raw_events.source_domain
@@ -147,7 +167,9 @@ export async function upsertEvent(
           select raw_events.id, raw_events.dtstamp,
                  raw_events.source_url as raw_source_url,
                  ingested_events.id as normalized_id, ingested_events.category,
-                 ingested_events.source_url as normalized_source_url
+                 ingested_events.source_url as normalized_source_url,
+                 ingested_events.hero_image as normalized_hero_image,
+                 ingested_events.hero_image_alt as normalized_hero_image_alt
           from raw_events
           left join ingested_events
             on ingested_events.source_domain = raw_events.source_domain
@@ -207,7 +229,16 @@ export async function upsertEvent(
         const healCategory =
           categoryCoverageComplete &&
           currentCategory !== opts.category;
-        if (healSourceUrl || healCategory) {
+        const healHeroImage =
+          existing[0]?.normalized_hero_image !== (e.heroImage ?? null);
+        const healHeroImageAlt =
+          existing[0]?.normalized_hero_image_alt !== (e.heroImageAlt ?? null);
+        if (
+          healSourceUrl ||
+          healCategory ||
+          healHeroImage ||
+          healHeroImageAlt
+        ) {
           // Category membership can change because a previously missing feed
           // recovered. Source URLs can also improve after a parser correction
           // even when the VEVENT itself retained its DTSTAMP.
@@ -220,6 +251,14 @@ export async function upsertEvent(
                 category = case
                   when ${healCategory} then ${opts.category}
                   else category
+                end,
+                hero_image = case
+                  when ${healHeroImage} then ${e.heroImage ?? null}
+                  else hero_image
+                end,
+                hero_image_alt = case
+                  when ${healHeroImageAlt} then ${e.heroImageAlt ?? null}
+                  else hero_image_alt
                 end,
                 updated_at = now()
             where source_domain = ${opts.sourceDomain}
@@ -245,13 +284,14 @@ export async function upsertEvent(
         insert into ingested_events (
           raw_event_id, source_domain, source_uid, source_url, title, description,
           starts_at_utc, ends_at_utc, tzid, all_day, venue_name, address,
-          municipality, category, updated_at
+          municipality, category, hero_image, hero_image_alt, updated_at
         ) values (
           ${rawId}, ${opts.sourceDomain}, ${e.uid}, ${e.sourceUrl ?? null},
           ${e.summary}, ${e.description ?? null},
           ${e.startsAtUtc}, ${e.endsAtUtc ?? null}, ${e.tzid}, ${e.allDay},
           ${loc.venueName ?? null}, ${loc.address ?? null},
-          ${opts.municipality}, ${opts.category}, now()
+          ${opts.municipality}, ${opts.category},
+          ${e.heroImage ?? null}, ${e.heroImageAlt ?? null}, now()
         )
         on conflict (source_domain, source_uid) do update set
           raw_event_id = excluded.raw_event_id,
@@ -281,6 +321,8 @@ export async function upsertEvent(
                            when ${categoryCoverageComplete} then excluded.category
                            else ingested_events.category
                          end,
+          hero_image   = excluded.hero_image,
+          hero_image_alt = excluded.hero_image_alt,
           updated_at   = now()
       `;
       result.normUpserted += 1;

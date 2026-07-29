@@ -2,10 +2,13 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
   type ReactNode,
@@ -20,9 +23,10 @@ import {
   type PanInfo,
 } from "framer-motion";
 import { X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 /**
  * BottomSheet — the shared progressive-detail shell (app-like pass,
@@ -45,6 +49,8 @@ type Props = {
   onClose: () => void;
   /** Accessible name for the dialog. */
   ariaLabel: string;
+  /** Stable across the lazy fallback and the real sheet mount. */
+  historyLayerId?: string;
   /**
    * The trigger captured before a lazy fallback takes focus. Without this,
    * a lazily mounted sheet remembers the fallback's Close button, which is
@@ -58,14 +64,68 @@ const SheetDragContext = createContext<
   ((event: ReactPointerEvent<HTMLElement>) => void) | null
 >(null);
 
+type FocusReturn = {
+  element: HTMLElement;
+  tagName: string;
+  id: string;
+  ariaLabel: string | null;
+  href: string | null;
+  text: string;
+};
+
+function describeFocusReturn(element: HTMLElement): FocusReturn {
+  return {
+    element,
+    tagName: element.tagName,
+    id: element.id,
+    ariaLabel: element.getAttribute("aria-label"),
+    href: element.getAttribute("href"),
+    text: element.textContent?.trim() ?? "",
+  };
+}
+
+function resolveFocusReturn(saved: FocusReturn): HTMLElement | null {
+  if (saved.element.isConnected) return saved.element;
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(saved.tagName.toLowerCase()),
+  );
+  if (saved.id) {
+    const byId = document.getElementById(saved.id);
+    if (byId instanceof HTMLElement) return byId;
+  }
+  if (saved.ariaLabel) {
+    const byLabel = candidates.find(
+      (candidate) =>
+        candidate.getAttribute("aria-label") === saved.ariaLabel,
+    );
+    if (byLabel) return byLabel;
+  }
+  if (saved.href) {
+    const byHref = candidates.find(
+      (candidate) => candidate.getAttribute("href") === saved.href,
+    );
+    if (byHref) return byHref;
+  }
+  return (
+    candidates.find(
+      (candidate) =>
+        saved.text.length > 0 &&
+        candidate.textContent?.trim() === saved.text &&
+        candidate.offsetParent !== null,
+    ) ?? null
+  );
+}
+
 export default function BottomSheet({
   present,
   onClose,
   ariaLabel,
+  historyLayerId,
   returnFocusRef,
   children,
 }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const dragControls = useDragControls();
@@ -73,7 +133,7 @@ export default function BottomSheet({
   const sheetRef = useRef<HTMLDivElement>(null);
   // Remember what was focused before opening so we can restore it on close —
   // a baseline dialog expectation.
-  const lastFocused = useRef<HTMLElement | null>(null);
+  const lastFocused = useRef<FocusReturn | null>(null);
   const openPath = useRef(pathname);
   const onCloseRef = useRef(onClose);
   // A sheet that was already in the shell mounts closed and follows `present`
@@ -81,6 +141,35 @@ export default function BottomSheet({
   // from that value prevents Suspense from replacing its fallback with one
   // blank frame before the opening effect runs.
   const [open, setOpen] = useState(present);
+  const historyLayer = useReversibleHistoryLayer({
+    active: open && present && Boolean(historyLayerId),
+    id: historyLayerId ?? "",
+    onDismiss: () => setOpen(false),
+  });
+  const dismiss = useCallback(() => {
+    haptic("light");
+    historyLayer.dismiss();
+  }, [historyLayer]);
+  const restoreLastFocus = useCallback(() => {
+    const saved = lastFocused.current;
+    if (!saved) return;
+    lastFocused.current = null;
+
+    // A same-URL Back traversal can make Map replace its peek node. Restore
+    // after the exit has completed, when the obscured surface is interactive
+    // again, and allow two paint frames for an equivalent trigger to settle.
+    const restore = (attempt = 0) => {
+      const target = resolveFocusReturn(saved);
+      if (target) {
+        target.focus({ preventScroll: true });
+        return;
+      }
+      if (attempt < 2) {
+        window.requestAnimationFrame(() => restore(attempt + 1));
+      }
+    };
+    restore();
+  }, []);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -92,10 +181,13 @@ export default function BottomSheet({
   useEffect(() => {
     if (present) {
       openPath.current = window.location.pathname;
-      lastFocused.current =
+      const focusReturn =
         returnFocusRef?.current ??
         (document.activeElement as HTMLElement | null) ??
         null;
+      lastFocused.current = focusReturn
+        ? describeFocusReturn(focusReturn)
+        : null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming presence prop to drive the open animation
       setOpen(true);
       haptic("light");
@@ -117,13 +209,11 @@ export default function BottomSheet({
     onCloseRef.current();
   }, [open, pathname]);
 
-  // Move focus into the sheet on open; restore it to the trigger on close.
-  useEffect(() => {
+  // Move focus into the sheet on open. Focus returns from onExitComplete,
+  // after the closing layer is gone and the underlying control is usable.
+  useLayoutEffect(() => {
     if (open) {
       sheetRef.current?.focus();
-    } else if (lastFocused.current) {
-      lastFocused.current.focus?.();
-      lastFocused.current = null;
     }
   }, [open]);
 
@@ -136,33 +226,87 @@ export default function BottomSheet({
   }, [open]);
 
   // ESC dismisses — a baseline keyboard-accessibility expectation.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") dismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [dismiss, open]);
 
-  const dismiss = () => {
+  const onLinkCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest<HTMLAnchorElement>("a[href]");
+    if (
+      !anchor ||
+      (anchor.target && anchor.target !== "_self") ||
+      anchor.hasAttribute("download")
+    ) {
+      return;
+    }
+    const destination = new URL(anchor.href, window.location.href);
+    if (
+      destination.origin !== window.location.origin ||
+      !["http:", "https:"].includes(destination.protocol)
+    ) {
+      return;
+    }
+    const href = `${destination.pathname}${destination.search}${destination.hash}`;
+    const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (href === here) return;
+
+    // Own same-origin sheet navigation so the temporary history entry is gone
+    // before Next creates the destination entry. Sheet links only add a
+    // haptic/close handler, which this shared path supplies directly.
+    event.preventDefault();
+    event.stopPropagation();
     haptic("light");
-    setOpen(false);
+    historyLayer.leave(() => router.push(href));
   };
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 120 || info.velocity.y > 500) {
       haptic("light");
-      setOpen(false);
+      historyLayer.dismiss();
     } else {
       y.set(0);
     }
   };
 
   return (
-    <AnimatePresence onExitComplete={onClose}>
+    <AnimatePresence
+      onExitComplete={() => {
+        restoreLastFocus();
+        onClose();
+      }}
+    >
       {open && present && (
-        <div className="fixed inset-0 z-[var(--z-overlay)]" aria-modal="true" role="dialog" aria-label={ariaLabel}>
+        <div
+          className="fixed inset-0 z-[var(--z-overlay)]"
+          aria-modal="true"
+          role="dialog"
+          aria-label={ariaLabel}
+          onKeyDown={(event) => {
+            // The window listener covers focus that escapes the dialog; this
+            // synchronous handler also honors Escape on the very first frame,
+            // before passive effects have installed that listener.
+            if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            event.stopPropagation();
+            dismiss();
+          }}
+        >
           {/* Backdrop */}
           <motion.button
             type="button"
@@ -179,6 +323,7 @@ export default function BottomSheet({
           {/* Sheet */}
           <motion.div
             ref={sheetRef}
+            onClickCapture={onLinkCapture}
             tabIndex={-1}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}

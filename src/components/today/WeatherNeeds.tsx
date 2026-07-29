@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Phone, Waves, Zap, TrafficCone, Thermometer, ShieldAlert, ArrowRight,
+  Phone, MessageSquareText, Waves, Zap, TrafficCone, Thermometer, ShieldAlert, ArrowRight,
   ExternalLink, Snowflake, Wind, CloudRain, Tornado, ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -66,52 +66,66 @@ const CALL_911: Row = {
   danger: true,
 };
 
+const TEXT_911: Row = {
+  label: "Text 911",
+  sub: "If you cannot make a voice call, send your exact location first",
+  href: "sms:911",
+  icon: MessageSquareText,
+  danger: true,
+};
+
 const POWER: Row = { label: "Power outages", sub: "The live county outage board", href: "/pulse", icon: Zap };
 const ROADS: Row = { label: "Road closures and hazards", sub: "Live traffic and incidents", href: "/pulse", icon: TrafficCone };
 const RIVERS: Row = { label: "River and creek levels", sub: "Live gauges around the county", href: "/rivers", icon: Waves };
+const HIGH_WATER: Row = {
+  label: "Known high-water areas",
+  sub: "County-mapped risk areas and warning signs; not live flooding",
+  href: "/map?show=roads",
+  icon: Waves,
+};
 
 const HAZARDS: Record<Hazard, { label: string; advice: string; icon: LucideIcon; rows: Row[] }> = {
   flood: {
     label: "Flooding",
     advice: "Move to higher ground, and never drive or walk through flood water. A foot of moving water can carry off a car.",
     icon: CloudRain,
-    rows: [CALL_911, RIVERS, ROADS, emRow],
+    rows: [CALL_911, TEXT_911, RIVERS, HIGH_WATER, ROADS, emRow],
   },
   tornado: {
     label: "Tornado warning",
     advice: "Get to a small interior room on the lowest floor, away from windows, and stay there until the warning ends.",
     icon: Tornado,
-    rows: [CALL_911, POWER, emRow],
+    rows: [CALL_911, TEXT_911, POWER, emRow],
   },
   storm: {
     label: "Severe storms",
     advice: "Stay indoors and away from windows. Treat any downed power line as live, and call 911 to report it.",
     icon: Wind,
-    rows: [CALL_911, POWER, ROADS, emRow],
+    rows: [CALL_911, TEXT_911, POWER, ROADS, emRow],
   },
   winter: {
     label: "Snow and ice",
     advice: "Stay off the roads if you can. Keep a phone charged and check on older neighbors in case the power drops.",
     icon: Snowflake,
-    rows: [CALL_911, ROADS, POWER, emRow],
+    rows: [CALL_911, TEXT_911, ROADS, POWER, emRow],
   },
   heat: {
     label: "Extreme heat",
     advice: "Drink water, find air conditioning, and check on older neighbors and anyone without cooling.",
     icon: Thermometer,
-    rows: [CALL_911, emRow],
+    rows: [CALL_911, TEXT_911, emRow],
   },
   cold: {
     label: "Dangerous cold",
     advice: "Limit time outside and cover exposed skin. Check on neighbors, and bring pets indoors.",
     icon: Snowflake,
-    rows: [CALL_911, POWER, emRow],
+    rows: [CALL_911, TEXT_911, POWER, emRow],
   },
   severe: {
     label: "Severe weather",
     advice: "Keep an eye on official updates and hold off on nonessential trips until it passes.",
     icon: Wind,
-    rows: [CALL_911, POWER, ROADS, emRow],
+    rows: [CALL_911, TEXT_911, POWER, ROADS, emRow],
   },
 };
 
@@ -141,66 +155,137 @@ export default async function WeatherNeeds() {
   const HazardIcon = h.icon;
 
   return (
-    <section
-      aria-label={`${h.label}: what you need`}
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+    <details
+      className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+        boxShadow: "var(--app-elev-1), var(--app-hi)",
+      }}
     >
-      {/* Header — calm, not a second alarm. The banner above is the alarm. */}
-      <div className="flex items-start gap-2.5 px-3.5 pb-2 pt-3">
-        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-warning) 20%, transparent)" }}>
-          <HazardIcon className="h-4 w-4" strokeWidth={2.1} style={{ color: "var(--app-warning-press)" }} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-sans text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            {h.label}: what you need
-          </h2>
-          <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            {h.advice}
-          </p>
-        </div>
-      </div>
-
-      <ul className="px-2 pb-2">
-        {h.rows.map((r) => {
-          const Icon = r.icon;
-          const tint = r.danger ? "var(--app-danger)" : "var(--app-ink-2)";
-          const inner = (
-            <>
-              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: r.danger ? "color-mix(in srgb, var(--app-danger) 13%, transparent)" : "color-mix(in srgb, var(--app-ink) 7%, transparent)" }}>
-                <Icon className="h-4 w-4" strokeWidth={2.1} style={{ color: tint }} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: r.danger ? "var(--app-danger)" : "var(--app-ink)" }}>{r.label}</span>
-                <span className="mt-0.5 block truncate text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{r.sub}</span>
-              </span>
-              {r.external
-                ? <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                : <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
-            </>
-          );
-          const cls = "flex min-h-[52px] items-center gap-3 rounded-[var(--app-radius-md)] px-2 py-1.5 transition active:scale-[0.99]";
-          return (
-            <li key={`${r.label}-${r.href}`}>
-              {r.external ? (
-                <a href={r.href} target="_blank" rel="noopener noreferrer" className={cls}>{inner}</a>
-              ) : (
-                <Link href={r.href} className={cls}>{inner}</Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* All the numbers, one tap away. */}
-      <Link
-        href="/contacts"
-        className="flex min-h-11 items-center gap-1.5 border-t px-3.5 py-2.5 text-[12px] font-semibold"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+      <summary
+        className="tap-44-y flex cursor-pointer list-none items-center gap-2.5 px-3.5 py-3"
+        aria-label={`Open safety steps for ${h.label}`}
       >
-        All emergency and county numbers
-        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      </Link>
-    </section>
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-warning) 20%, transparent)" }}
+        >
+          <HazardIcon
+            className="h-4 w-4"
+            strokeWidth={2.1}
+            style={{ color: "var(--app-warning-press)" }}
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block text-[14px] font-semibold leading-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Safety steps for {h.label.toLowerCase()}
+          </span>
+          <span
+            className="mt-0.5 block text-[11.5px] leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Emergency actions, roads, outages, and official updates
+          </span>
+        </span>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90"
+          strokeWidth={2.2}
+          aria-hidden
+          style={{ color: "var(--app-ink-3)" }}
+        />
+      </summary>
+
+      <div className="border-t" style={{ borderColor: "var(--app-border)" }}>
+        <p
+          className="px-3.5 pb-1 pt-3 text-[12.5px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {h.advice}
+        </p>
+        <ul className="px-2 pb-2">
+          {h.rows.map((r) => {
+            const Icon = r.icon;
+            const tint = r.danger ? "var(--app-danger)" : "var(--app-ink-2)";
+            const inner = (
+              <>
+                <span
+                  aria-hidden
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                  style={{
+                    background: r.danger
+                      ? "color-mix(in srgb, var(--app-danger) 13%, transparent)"
+                      : "color-mix(in srgb, var(--app-ink) 7%, transparent)",
+                  }}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2.1} style={{ color: tint }} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    className="block text-[13.5px] font-semibold leading-tight"
+                    style={{ color: r.danger ? "var(--app-danger)" : "var(--app-ink)" }}
+                  >
+                    {r.label}
+                  </span>
+                  <span
+                    className="mt-0.5 block truncate text-[11.5px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {r.sub}
+                  </span>
+                </span>
+                {r.external ? (
+                  <ExternalLink
+                    className="h-3.5 w-3.5 shrink-0"
+                    strokeWidth={2}
+                    aria-hidden
+                    style={{ color: "var(--app-ink-3)" }}
+                  />
+                ) : (
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0"
+                    strokeWidth={2.2}
+                    aria-hidden
+                    style={{ color: "var(--app-ink-3)" }}
+                  />
+                )}
+              </>
+            );
+            const cls =
+              "flex min-h-[52px] items-center gap-3 rounded-[var(--app-radius-md)] px-2 py-1.5 transition active:scale-[0.99]";
+            return (
+              <li key={`${r.label}-${r.href}`}>
+                {r.external ? (
+                  <a
+                    href={r.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cls}
+                  >
+                    {inner}
+                  </a>
+                ) : (
+                  <Link href={r.href} className={cls}>
+                    {inner}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <Link
+          href="/contacts"
+          className="flex min-h-11 items-center gap-1.5 border-t px-3.5 py-2.5 text-[12px] font-semibold"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          All emergency and county numbers
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </div>
+    </details>
   );
 }

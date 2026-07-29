@@ -95,14 +95,11 @@ export default async function EventsIndexPage() {
           uses: silent one-time reload, then an honest "rendered on {day}" banner. */}
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
-      {/* ── THE BOARD — the almanac nameplate is now the FIRST thing inside the
-          masthead-dock (EventsBoardDock): the collapsing "What's on" nameplate +
-          the pinned What·When·Where caption bar + the mono count line all live
-          together in one sticky header that leads the board (owner-approved
-          "Sticky masthead-dock" redesign). The old static server <header>
-          nameplate was removed so the board carries exactly one nameplate — the
-          collapsing one. Everything event-dependent still streams behind the
-          boundary below so the route stays a static (ISR) shell. */}
+      {/* ── THE BOARD — EventsBoardDock owns the single "What's on" nameplate,
+          one filter doorway, and the compact result controls. What, When, and
+          Where live inside the filter sheet so the first event can reach the
+          initial viewport. Everything event-dependent still streams behind
+          the boundary below so the route stays a static (ISR) shell. */}
       <Suspense
         fallback={
           <div className="min-h-[calc(100dvh-var(--app-topbar-h))]">

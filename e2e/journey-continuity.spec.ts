@@ -31,7 +31,7 @@ test("expanded map search carries the exact map state through a place detail", a
     waitUntil: "domcontentloaded",
   });
 
-  const search = page.getByRole("searchbox", { name: "Search this map" });
+  const search = page.getByRole("combobox", { name: "Search this map" });
   await search.fill("coffee");
   await expect(page.getByRole("button", { name: "See all results" })).toBeVisible();
   await page.getByRole("button", { name: "See all results" }).click();
@@ -69,7 +69,7 @@ test("expanded map search carries the exact map state through a place detail", a
       return `${url.pathname}${url.search}${url.hash}`;
     })
     .toBe(mapReturnHref);
-  await expect(page.getByRole("searchbox", { name: "Search this map" })).toHaveValue(
+  await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
     "coffee",
   );
 });
@@ -88,7 +88,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   });
 
   await page
-    .getByRole("searchbox", { name: "Search this map" })
+    .getByRole("combobox", { name: "Search this map" })
     .fill("Gravel and Grind");
   const result = page.locator(
     '[data-map-search-result="place:gravel-and-grind-frederick"]',
@@ -136,7 +136,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
       return `${url.pathname}${url.search}${url.hash}`;
     })
     .toBe(mapReturnHref);
-  await expect(page.getByRole("searchbox", { name: "Search this map" })).toHaveValue(
+  await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
     "Gravel and Grind",
   );
   expect(missingCategoryImages).toEqual([]);

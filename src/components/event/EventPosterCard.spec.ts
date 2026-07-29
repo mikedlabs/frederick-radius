@@ -43,7 +43,9 @@ describe("EventPosterCard visual trust", () => {
     );
 
     expect(html).toContain('data-event-poster="category"');
-    expect(html).toContain('data-radius-plate="raw-place-photo"');
+    expect(html).toContain('data-event-fallback="date-category"');
+    expect(html).toContain(">28<");
+    expect(html).toContain(">JUL<");
     expect(html).not.toContain("/api/place-photo");
   });
 
@@ -58,8 +60,37 @@ describe("EventPosterCard visual trust", () => {
     );
 
     expect(html).toContain('data-event-poster="photo"');
-    expect(html).toContain("Image via Ticketmaster");
-    expect(html).not.toContain("data-radius-plate");
+    expect(html).toContain("Event image · Ticketmaster");
+    expect(html).toContain('alt=""');
+    expect(html).not.toContain("data-event-fallback");
+  });
+
+  it("renders a credited venue image with its author and direct Google Maps source", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventPosterCard, {
+        event: event({
+          hero_image: "/api/place-photo?name=credited",
+          hero_image_attribution: {
+            kind: "venue",
+            venue_name: "Baker Park",
+            provider: "google_maps",
+            source_uri: "https://www.google.com/maps/place/example-photo",
+            authors: [
+              {
+                display_name: "Local photographer",
+                uri: "https://maps.google.com/maps/contrib/123",
+              },
+            ],
+          },
+        }),
+      }),
+    );
+
+    expect(html).toContain('data-event-poster="photo"');
+    expect(html).toContain("data-event-photo-credit");
+    expect(html).toContain("Local photographer");
+    expect(html).toContain("Google Maps");
+    expect(html).toContain("https://www.google.com/maps/place/example-photo");
   });
 
   it("keeps a photo-less EventCard feature in the poster layout", () => {
@@ -71,10 +102,77 @@ describe("EventPosterCard visual trust", () => {
     );
 
     expect(html).toContain('data-event-poster="category"');
-    expect(html).toContain('data-radius-plate="summer-concert"');
+    expect(html).toContain('data-event-fallback="date-category"');
   });
 
-  it("keeps desktop shelf cards tall enough for their content", () => {
+  it("does not render an unattributed place photo in a glance card", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          source: "manual",
+          hero_image: "/api/place-photo?name=unattributed",
+        }),
+        variant: "glance",
+      }),
+    );
+
+    expect(html).not.toContain("/api/place-photo");
+    expect(html).not.toContain("<figcaption");
+  });
+
+  it("renders a lazy, source-captioned glance thumbnail from an approved provider", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          source: "ticketmaster",
+          hero_image: "https://s1.ticketm.net/dam/a/glance-event.jpg",
+        }),
+        variant: "glance",
+      }),
+    );
+
+    expect(html).toContain("Event image · Ticketmaster");
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('alt=""');
+    expect(html).toContain("text-[9px]");
+  });
+
+  it("renders full Google venue credit outside the glance card event link", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          hero_image: "/api/place-photo?name=credited-glance",
+          hero_image_attribution: {
+            kind: "venue",
+            venue_name: "Baker Park",
+            provider: "google_maps",
+            source_uri: "https://www.google.com/maps/place/example-photo",
+            flag_content_uri: "https://www.google.com/local/imagery/report/",
+            authors: [
+              {
+                display_name: "Local photographer",
+                uri: "https://maps.google.com/maps/contrib/123",
+              },
+            ],
+          },
+        }),
+        variant: "glance",
+      }),
+    );
+
+    const eventLinkStart = html.indexOf('href="/events/summer-concert"');
+    const eventLinkEnd = html.indexOf("</a>", eventLinkStart);
+    expect(eventLinkStart).toBeGreaterThan(-1);
+    expect(eventLinkEnd).toBeGreaterThan(eventLinkStart);
+    expect(html.slice(eventLinkStart, eventLinkEnd)).not.toContain(
+      "Local photographer",
+    );
+    expect(html.slice(eventLinkEnd)).toContain("Local photographer");
+    expect(html.slice(eventLinkEnd)).toContain("Google Maps");
+    expect(html.slice(eventLinkEnd)).toContain("Report photo");
+  });
+
+  it("keeps a photo-less shelf useful without reserving a giant image ratio", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
         event: event(),
@@ -82,7 +180,7 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    expect(html).toContain("lg:aspect-[4/3]");
-    expect(html).not.toContain("lg:aspect-[21/9]");
+    expect(html).toContain("lg:min-h-[270px]");
+    expect(html).not.toContain("lg:aspect-[4/3]");
   });
 });

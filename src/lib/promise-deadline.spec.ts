@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createAbortDeadline,
   withDeadlineFallback,
   withDeadlineOutcome,
 } from "./promise-deadline";
@@ -40,5 +41,33 @@ describe("withDeadlineOutcome", () => {
     await vi.advanceTimersByTimeAsync(25);
     await expect(pending).resolves.toEqual({ status: "timed_out" });
     vi.useRealTimers();
+  });
+});
+
+describe("createAbortDeadline", () => {
+  it("aborts at its own deadline and composes an earlier parent abort", async () => {
+    vi.useFakeTimers();
+
+    const timed = createAbortDeadline(50);
+    expect(timed.signal.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(timed.signal.aborted).toBe(true);
+    timed.dispose();
+
+    const parent = new AbortController();
+    const composed = createAbortDeadline(5_000, parent.signal);
+    parent.abort();
+    expect(composed.signal.aborted).toBe(true);
+    composed.dispose();
+  });
+
+  it("disposes a fast operation without aborting it later", async () => {
+    vi.useFakeTimers();
+
+    const deadline = createAbortDeadline(50);
+    deadline.dispose();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(deadline.signal.aborted).toBe(false);
   });
 });

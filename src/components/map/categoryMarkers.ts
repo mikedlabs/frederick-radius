@@ -36,6 +36,7 @@ const BUCKET: Record<string, Bucket> = {
   bakery: "bakery", bar: "bar", brewery: "brewery", coffee: "coffee",
   winery: "wine", wine: "wine", cidery: "wine", distillery: "wine",
   outdoors: "outdoors", park: "outdoors", trail: "outdoors", playground: "outdoors",
+  "dog-park": "outdoors", "water-access": "outdoors",
   arts: "arts", museum: "arts", gallery: "arts", theater: "arts", music: "music",
   family: "family",
   library: "library", "book-store": "library",

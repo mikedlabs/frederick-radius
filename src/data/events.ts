@@ -1,6 +1,21 @@
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 
+export type EventHeroImageAttribution = {
+  /** A place photograph documents the venue, not the event itself. */
+  kind: "venue";
+  venue_name: string;
+  provider: "google_maps";
+  /** Direct link to the individual source photo on Google Maps. */
+  source_uri: string;
+  flag_content_uri?: string;
+  authors: Array<{
+    display_name?: string;
+    uri?: string;
+    photo_uri?: string;
+  }>;
+};
+
 export type Event = {
   slug: string;
   title: string;
@@ -39,6 +54,12 @@ export type Event = {
    */
   presenter?: string;
   hero_image?: string;
+  /**
+   * Provenance for a venue photograph borrowed from the canonical place.
+   * Event-specific provider images are governed by their source adapter;
+   * Google venue photos must carry this record or visual surfaces fail closed.
+   */
+  hero_image_attribution?: EventHeroImageAttribution;
   /** Know-before-you-go: admission, what to drink, what to eat on site. */
   info?: { admission?: string; drinks?: string; food?: string };
   /**
@@ -83,7 +104,7 @@ export type Event = {
     // which let a Ticketmaster row claim first party curated trust.
     | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
     | "fcpl" | "fcvfra" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick"
-    | "monocacy" | "msd" | "mount-st-marys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc"
+    | "monocacy" | "msd" | "mdcc" | "mount-st-marys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc"
     | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract" | "frederick-keys";
   is_verified: boolean;
   /**

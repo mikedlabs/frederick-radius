@@ -1,5 +1,11 @@
 import "server-only";
-import { CRAVINGS, isPizzaPlace, matchesCraving, matchesCravingFacet } from "@/data/cravings";
+import {
+  CRAVINGS,
+  isPizzaPlace,
+  isPlaygroundPlace,
+  matchesCraving,
+  matchesCravingFacet,
+} from "@/data/cravings";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
@@ -105,6 +111,8 @@ export type WantAnswer = {
   contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
+
+export type WantAvailability = "required" | "bonus" | "not-applicable";
 
 /** The slice of a decorated place the partition logic reads — kept minimal
  *  and exported so the ranking rules are unit-testable with plain objects.
@@ -323,11 +331,13 @@ function resolveWant(
 ): {
   label: string;
   browseHref: string;
+  availability: WantAvailability;
   match: (p: {
     category: string;
     name: string;
     subcategories?: string[];
     primary_type?: string;
+    short_blurb?: string;
   }) => boolean;
 } | null {
   // Category chips (/category/<slug>) answer inline too, not just the
@@ -345,13 +355,22 @@ function resolveWant(
     // pizzerias carry a "restaurant" category from Google, so category
     // matching alone answered "pizza" with a fraction of the real list.
     const wantsPizza = match.has("pizza");
+    const wantsPlayground = match.has("playground");
+    const availability: WantAvailability =
+      ["park", "playground", "trail", "outdoors"].includes(slug)
+        ? "not-applicable"
+        : ["library", "worship", "market"].includes(slug)
+          ? "bonus"
+          : "required";
     return {
       label: cat.name,
       browseHref: `/category/${slug}`,
+      availability,
       match: (p) =>
         match.has(p.category) ||
         (p.subcategories ?? []).some((s) => match.has(s)) ||
-        (wantsPizza && isPizzaPlace(p)),
+        (wantsPizza && isPizzaPlace(p)) ||
+        (wantsPlayground && isPlaygroundPlace(p)),
     };
   }
   if (isMealKey(cKey)) {
@@ -359,6 +378,7 @@ function resolveWant(
     return {
       label: meal.label,
       browseHref: `/nearby?c=${cKey}`,
+      availability: "required",
       match: (p) => matchMeal(meal, p),
     };
   }
@@ -368,6 +388,7 @@ function resolveWant(
   return {
     label: facet?.label ?? craving.label,
     browseHref: `/nearby?c=${cKey}${facet ? `&facet=${facet.key}` : ""}`,
+    availability: craving.availability ?? (craving.alwaysOpen ? "not-applicable" : "required"),
     // A facet narrows the already-matched set, same as /nearby.
     match: (p) =>
       matchesCraving(craving, p) && (!facet || matchesCravingFacet(facet, p)),
@@ -425,6 +446,94 @@ export function rankBestFit(candidates: WantCandidate[], preciseOrigin = false):
   });
 }
 
+function hasUnknownAvailability(candidate: WantCandidate): boolean {
+  return (
+    candidate.open_status.state === "unknown" ||
+    candidate.open_status.state === "unverified"
+  );
+}
+
+function rankFlexibleBestFit(
+  candidates: WantCandidate[],
+  availability: WantAvailability,
+  preciseOrigin: boolean,
+): WantCandidate[] {
+  return [...candidates].sort((a, b) => {
+    const availabilityBonus = (candidate: WantCandidate) =>
+      availability !== "not-applicable" && isOpenNow(candidate.open_status)
+        ? 0.75
+        : 0;
+    const scoreDelta =
+      bestFitScore(b, preciseOrigin) +
+      availabilityBonus(b) -
+      bestFitScore(a, preciseOrigin) -
+      availabilityBonus(a);
+    if (scoreDelta !== 0) return scoreDelta;
+    const distanceDelta =
+      (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+    if (distanceDelta !== 0) return distanceDelta;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export type WantAvailabilityResolution = ReturnType<typeof partitionWant> & {
+  /** Places eligible to lead the answer under the current coverage policy. */
+  current: WantCandidate[];
+  /** True only when verified-hours coverage can support an open-only answer. */
+  hardAvailability: boolean;
+  rankingMode: WantAnswer["rankingMode"];
+  /** False for bonus/timeless intents even when their hours happen to be well-covered. */
+  mayAssertNoneOpen: boolean;
+};
+
+/**
+ * Resolve the availability policy before presentation.
+ *
+ * Current hours are a hard gate only when the intent actually requires them
+ * and enough of the matched set has trustworthy hours to support that
+ * judgment. With thin coverage, a confirmed-open place remains useful
+ * evidence, but it cannot erase a much closer place whose hours are simply
+ * unknown. Confirmed-closed places stay out of the lead pool either way.
+ */
+export function resolveWantAvailability(
+  candidates: WantCandidate[],
+  availability: WantAvailability,
+  preciseOrigin = false,
+): WantAvailabilityResolution {
+  const partitioned = partitionWant(candidates);
+  const coverageSupportsOpenOnly = mayAssertNoneOpen(
+    candidates.map((candidate) => candidate.open_status),
+  );
+  const hardAvailability =
+    availability === "required" && coverageSupportsOpenOnly;
+
+  if (hardAvailability) {
+    return {
+      ...partitioned,
+      current: partitioned.open,
+      hardAvailability: true,
+      rankingMode: "open-now",
+      mayAssertNoneOpen: true,
+    };
+  }
+
+  return {
+    ...partitioned,
+    current: rankFlexibleBestFit(
+      candidates.filter(
+        (candidate) =>
+          isOpenNow(candidate.open_status) ||
+          hasUnknownAvailability(candidate),
+      ),
+      availability,
+      preciseOrigin,
+    ),
+    hardAvailability: false,
+    rankingMode: "best-fit",
+    mayAssertNoneOpen: false,
+  };
+}
+
 export function buildWantAnswer(
   cKey: string,
   facetKey: string | null,
@@ -456,6 +565,7 @@ export function buildWantAnswer(
         name: p.name,
         subcategories: p.subcategories,
         primary_type: p.primary_type,
+        short_blurb: p.short_blurb,
       }),
     )
     .filter(
@@ -463,7 +573,7 @@ export function buildWantAnswer(
         !opts?.refine ||
         opts.refine({
           name: p.name,
-          category: p.want_match_category,
+          category: p.category,
           municipality: p.municipality,
           geom: p.geom,
           short_blurb: p.short_blurb,
@@ -489,11 +599,20 @@ export function buildWantAnswer(
       };
     });
 
-  const { open, later, other, total } = partitionWant(candidates);
-  const rankingMode = opts?.rankingMode ?? "open-now";
-  const noneOpenIsSayable = mayAssertNoneOpen(
-    candidates.map((candidate) => candidate.open_status),
+  const preciseOrigin = Boolean(origin && !opts?.approximateOrigin);
+  const availability = resolveWantAvailability(
+    candidates,
+    want.availability,
+    preciseOrigin,
   );
+  const { open, later, other, total } = availability;
+  const requestedRankingMode = opts?.rankingMode;
+  const rankingMode =
+    requestedRankingMode ?? availability.rankingMode;
+  const noneOpenIsSayable =
+    requestedRankingMode === "best-fit"
+      ? false
+      : availability.mayAssertNoneOpen;
 
   // "Movies" is not an open-now storefront question. Cinema hours do not
   // answer which films are playing, and most theaters do not publish useful
@@ -502,7 +621,7 @@ export function buildWantAnswer(
   if (cKey === "movies") {
     const ranked = rankBestFit(
       candidates,
-      Boolean(origin && !opts?.approximateOrigin),
+      preciseOrigin,
     );
     return {
       key: cKey,
@@ -523,16 +642,62 @@ export function buildWantAnswer(
   }
 
   if (rankingMode === "best-fit") {
-    const best = rankBestFit(candidates, Boolean(origin && !opts?.approximateOrigin));
+    // An explicit best-fit request (Ask questions that are not about current
+    // availability) remains timeless. The automatic best-fit fallback caused
+    // by thin hours coverage is stricter: confirmed-closed places do not lead,
+    // and an open badge is attached only to a place that is truly open now.
+    const best =
+      requestedRankingMode === "best-fit"
+        ? rankBestFit(candidates, preciseOrigin)
+        : availability.current;
+    const rowForBestFit = (candidate: WantCandidate) =>
+      toRow(
+        candidate,
+        false,
+        isOpenNow(candidate.open_status) ? "confirmed" : undefined,
+      );
+    const breweryCurrent =
+      cKey !== "breweries"
+        ? undefined
+        : open.length > 0
+          ? open.map((candidate) => toRow(candidate, false, "confirmed"))
+          : other
+              .filter(
+                (candidate) =>
+                  mayUseLikelyOpenFallback(candidate.open_status) &&
+                  isLikelyOpenNow(candidate.slug, now),
+              )
+              .map((candidate) => toRow(candidate, false, "likely"));
     return {
       key: cKey,
       label: want.label,
       rankingMode,
-      hero: best[0] ? toRow(best[0], false) : null,
-      also: best.slice(1, ALSO_MAX + 1).map((candidate) => toRow(candidate, false)),
-      later: [],
-      laterMore: 0,
-      notable: [],
+      hero: best[0] ? rowForBestFit(best[0]) : null,
+      also: best.slice(1, ALSO_MAX + 1).map(rowForBestFit),
+      open: breweryCurrent,
+      later:
+        requestedRankingMode === "best-fit"
+          ? []
+          : later.slice(0, LATER_PREVIEW).map((candidate) =>
+              toRow(candidate, true),
+            ),
+      laterMore:
+        requestedRankingMode === "best-fit"
+          ? 0
+          : Math.max(0, later.length - LATER_PREVIEW),
+      notable:
+        requestedRankingMode === "best-fit" ||
+        best.length > 0 ||
+        later.length > 0
+          ? []
+          : other
+              .filter(
+                (candidate) =>
+                  !isOpenNow(candidate.open_status) &&
+                  !hasUnknownAvailability(candidate),
+              )
+              .slice(0, NOTABLE_MAX)
+              .map((candidate) => toRow(candidate, false)),
       total,
       mayAssertNoneOpen: noneOpenIsSayable,
       browseHref: browseHrefForScope(want.browseHref, opts?.municipality),

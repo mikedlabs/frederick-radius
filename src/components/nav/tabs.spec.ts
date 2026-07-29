@@ -44,6 +44,7 @@ describe("Ask Radius navigation context", () => {
   it("keeps registered secondary tools inside their parent journey", () => {
     expect(tabIndexForPath("/beer")).toBe(0);
     expect(tabIndexForPath("/pulse")).toBe(0);
+    expect(tabIndexForPath("/access")).toBe(0);
     expect(tabIndexForPath("/parks")).toBe(1);
     expect(tabIndexForPath("/amenities")).toBe(1);
     expect(tabIndexForPath("/sports")).toBe(2);

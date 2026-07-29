@@ -9,12 +9,14 @@
  * the County Parks point layer (Name / Address / CityMuni). The REST
  * `query` endpoint returns WGS84 GeoJSON directly with outSR=4326.
  *
- * Runtime integration, the overpass/transit pattern: server fetch,
- * weekly revalidate (boundaries and park inventories change rarely),
- * graceful empty on any failure, no key, nothing fabricated.
+ * Runtime integration with a weekly revalidate and graceful empty on failure.
+ * Radius reads only allowlisted fields from the official public service,
+ * credits the County, and does not expose a mirrored download.
  */
 import { EMPTY_LINE_FC, type MapLineFC } from "@/components/map/types";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 
 // Display-slimming for the boundary overlays (payload audit 2026-07-02:
 // raw county GIS shipped 439 KB of 17-digit coordinates into /map's HTML).
@@ -34,10 +36,37 @@ const PARKS_URL =
 
 const TIMEOUT_MS = 15_000;
 
+function canonicalMunicipality(rawName: string): {
+  name: string;
+  slug: string;
+} {
+  const normalized = rawName
+    .toLowerCase()
+    .replace(/^(?:city|town|village)\s+of\s+/, "")
+    .replace(/\b(?:city|town|village)\b/g, "")
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const match = MUNICIPALITIES.find(
+    (municipality) =>
+      municipality.slug === normalized ||
+      municipality.name
+        .toLowerCase()
+        .replace(/\b(?:city|town|village)\b/g, "")
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-") === normalized,
+  );
+  return {
+    name: match?.name ?? rawName,
+    slug: match?.slug ?? normalized,
+  };
+}
+
 /**
  * Pure: ArcGIS GeoJSON FeatureCollection → a MapLineFC of municipal
- * polygons carrying just `{ name }`. Drops anything that is not a
- * Polygon / MultiPolygon. Exported for unit tests (no network).
+ * polygons carrying the County name plus Radius's canonical display name and
+ * slug. Drops anything that is not a Polygon / MultiPolygon. Exported for
+ * unit tests (no network).
  */
 export function normalizeMunicipalBoundaries(raw: unknown): MapLineFC {
   const feats = (raw as { features?: unknown[] })?.features;
@@ -46,16 +75,26 @@ export function normalizeMunicipalBoundaries(raw: unknown): MapLineFC {
   for (const f of feats as Array<{ geometry?: { type?: string }; properties?: Record<string, unknown> }>) {
     const t = f?.geometry?.type;
     if (t !== "Polygon" && t !== "MultiPolygon") continue;
+    const sourceName = String(f.properties?.MUNIC ?? "").trim();
+    if (!sourceName) continue;
+    const municipality = canonicalMunicipality(sourceName);
     out.push({
       type: "Feature",
       geometry: f.geometry,
-      properties: { name: String(f.properties?.MUNIC ?? "").trim() },
+      properties: {
+        name: municipality.name,
+        slug: municipality.slug,
+        sourceName,
+      },
     });
   }
   return { type: "FeatureCollection", features: out };
 }
 
 export async function getMunicipalBoundaries(): Promise<MapLineFC> {
+  if (!frederickCountySourceEnabled("fc_municipal_boundaries")) {
+    return EMPTY_LINE_FC;
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -78,11 +117,10 @@ export async function getMunicipalBoundaries(): Promise<MapLineFC> {
  * Frederick County, drawn always-on under the place pins so the map
  * reads as a county field guide, not a generic basemap.
  *
- * Unlike the municipal boundaries (a runtime county-GIS fetch), the
- * county outline is committed static GeoJSON (public/overlays), so this
- * reads the file rather than calling ArcGIS — deterministic, no network,
- * the pull is a build step (6.3). Returns the polygon FC; the map draws
- * its edges with a line layer. Fails soft to empty.
+ * Unlike municipal boundaries, the county outline is committed static
+ * GeoJSON from U.S. Census TIGERweb (GEOID 24021), so this reads the file
+ * rather than calling County GIS. TIGER/Line is U.S. Government data.
+ * Returns the polygon FC; the map draws its edges with a line layer.
  */
 export async function getCountyBoundary(): Promise<MapLineFC> {
   try {
@@ -140,6 +178,7 @@ export function normalizeCountyParks(raw: unknown): CountyPark[] {
 }
 
 export async function getCountyParks(): Promise<CountyPark[]> {
+  if (!frederickCountySourceEnabled("fc_county_parks")) return [];
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
