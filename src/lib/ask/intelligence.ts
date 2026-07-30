@@ -29,6 +29,7 @@ import type { Event } from "@/data/events";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
 import { isChainName } from "@/lib/category-ranking";
+import { isRecommendable } from "@/lib/relevance";
 import { getParkingOccupancy, parkingFeedConfigured } from "@/lib/integrations/parking-live";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { matchesSearchQualifiers, parseSearchQualifiers } from "@/lib/search/qualifiers";
@@ -124,6 +125,11 @@ function eventSource(event: Event): AskSource {
 }
 
 function semanticPlaceAllowed(place: PlaceCardData, query: string, context: QualifiedSearchContext): boolean {
+  // Hybrid recall is an answer-expansion path, not a bypass around the shared
+  // recommendation gate. Keep office-only addresses, private membership venues,
+  // and bulk institutional rows searchable on their normal surfaces, but never
+  // let semantic recall promote them as somewhere a user should go.
+  if (!isRecommendable(place)) return false;
   const qualifiers = parseSearchQualifiers(query);
   const municipality = qualifiers.downtown ? "frederick" : context.municipality;
   if (!matchesSearchQualifiers(place, qualifiers, municipality)) return false;
