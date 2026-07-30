@@ -112,7 +112,10 @@ around that window — adaptive freshness without hammering sites.
 
 ## To turn a profile on
 1. Fill `urls` in the source config (the agent validates + skips empties).
-2. Add `ANTHROPIC_API_KEY` as a repo secret.
+2. Add standard workspace API keys to GitHub's protected **Data Enrichment**
+   environment: `ANTHROPIC_BUSINESS_INFO_API_KEY`,
+   `ANTHROPIC_CIVIC_API_KEY`, and `ANTHROPIC_VENUE_EVENTS_API_KEY`. Do not use
+   an Anthropic Admin API key.
 3. The scheduled GitHub Action runs the agent and commits the refreshed
    data; or `npm run ingest:civic` / `npm run ingest:venues` locally.
 

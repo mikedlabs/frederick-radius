@@ -3,7 +3,8 @@ name: Ingest venue events
 # Captures lineups from venues that only post on their own site
 # (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
 # extraction agent, refreshes src/data/venue-events.json, commits.
-# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
+# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
+# Data Enrichment environment. Never use an Anthropic Admin API key here.
 # Configure: config/venue-sources.json
 
 on:
@@ -21,8 +22,9 @@ concurrency:
 
 jobs:
   ingest:
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    environment: Production
+    environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
@@ -43,7 +45,7 @@ jobs:
             0) ;;
             1)
               if [ -z "$FIRECRAWL_API_KEY" ]; then
-                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Production environment has no key."
+                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Data Enrichment environment has no key."
                 exit 1
               fi
               ;;
@@ -66,7 +68,7 @@ jobs:
         id: extract
         continue-on-error: true
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
           FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
@@ -103,5 +105,5 @@ jobs:
         if: ${{ always() && steps.extract.outcome != 'success' }}
         run: |
           echo "The deterministic venue feeds were allowed to refresh, but at least one model-assisted source could not run."
-          echo "Check ANTHROPIC_API_KEY and the extraction log above."
+          echo "Check ANTHROPIC_VENUE_EVENTS_API_KEY in the Data Enrichment environment and the extraction log above."
           exit 1

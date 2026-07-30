@@ -33,6 +33,29 @@
   ],
   "profiles": [
     {
+      "id": "provider-smoke",
+      "label": "Provider smoke check",
+      "purpose": "Make exactly one basic, official-domain search to verify Tavily connectivity, response parsing, and source filtering without starting a broader discovery run.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 1,
+      "cacheTtlHours": 1,
+      "queries": [
+        {
+          "id": "city-official-provider-check",
+          "text": "Frederick Maryland city service notice road closure parking transit {month} {year}",
+          "allowedDomains": [
+            "cityoffrederickmd.gov"
+          ],
+          "reviewFor": [
+            "provider connectivity",
+            "response parsing",
+            "official-source filtering"
+          ]
+        }
+      ]
+    },
+    {
       "id": "official-civic-mdot",
       "label": "Official civic and travel changes",
       "purpose": "Find first-party notices that may change a user's plan. A candidate still requires source verification before Radius can label it current.",

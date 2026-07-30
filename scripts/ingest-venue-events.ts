@@ -23,7 +23,7 @@
  * Social-only venues aren't scraped here (ToS/access) — see
  * docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   fetchPageSnapshot,
@@ -35,10 +35,27 @@ import {
   preflightKey,
   resetFirecrawlFallbackUsage,
 } from "./lib/extract-agent";
+import {
+  hashSourceBytes,
+  hashSourceContent,
+} from "./lib/source-content-fingerprint";
+import {
+  emptyVenueSourceState,
+  parseVenueSourceState,
+  recordVenueSourceObservation,
+  serializeVenueSourceState,
+  unchangedVenueSourceOutcome,
+  type ModelVenueMethod,
+  type VenueSourceState,
+} from "./lib/venue-source-state";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 
 const OUT = resolve("src/data/venue-events.json");
 const CONFIG = resolve("config/venue-sources.json");
+const SOURCE_STATE = resolve("src/data/venue-event-source-state.json");
+const MAX_IMAGE_FINGERPRINT_BYTES = 12_000_000;
+const VENUE_TEXT_EXTRACTOR_VERSION = "venue-events-text-v1";
+const VENUE_IMAGE_EXTRACTOR_VERSION = "venue-events-image-v1";
 
 type Method = "feed" | "image" | "render" | "fetch";
 type VenueSource = {
@@ -74,6 +91,13 @@ type SourceProvenance = {
   requestedUrl: string;
   finalUrl: string;
 };
+type CollectResult = {
+  events: RawEvent[];
+  source: SourceProvenance;
+  modelUnavailable?: boolean;
+  sourceUnchanged?: boolean;
+};
+type EnsureModelReady = () => Promise<boolean>;
 
 const SHAPE =
   `Extract UPCOMING events from this venue's page as a JSON array. Each item:\n` +
@@ -105,9 +129,62 @@ function directSource(url: string): SourceProvenance {
   return { url, requestedUrl: url, finalUrl: url };
 }
 
+function loadVenueSourceState(): VenueSourceState {
+  if (!existsSync(SOURCE_STATE)) return emptyVenueSourceState();
+  return parseVenueSourceState(
+    JSON.parse(readFileSync(SOURCE_STATE, "utf8")) as unknown,
+  );
+}
+
+async function fetchImageFingerprint(
+  imageUrl: string,
+): Promise<{ contentHash: string; finalUrl: string } | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  try {
+    const response = await fetch(imageUrl, {
+      headers: { "User-Agent": "FrederickRadius/1.0 (+venue data ingest)" },
+      redirect: "follow",
+      signal: ctrl.signal,
+    });
+    if (!response.ok) {
+      console.log(`  – image fingerprint unavailable (HTTP ${response.status})`);
+      return null;
+    }
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (
+      Number.isFinite(declaredLength) &&
+      declaredLength > MAX_IMAGE_FINGERPRINT_BYTES
+    ) {
+      console.log(`  – image exceeds fingerprint safety limit`);
+      return null;
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > MAX_IMAGE_FINGERPRINT_BYTES) {
+      console.log(`  – image fingerprint payload is empty or too large`);
+      return null;
+    }
+    return {
+      contentHash: hashSourceBytes(bytes),
+      finalUrl: response.url || imageUrl,
+    };
+  } catch {
+    // Fingerprinting is a cost guard, not a new availability dependency. If
+    // the local fetch cannot read the image, Claude vision keeps its previous
+    // server-side URL path and the run simply cannot skip this source.
+    console.log(`  – image fingerprint unavailable; vision fallback retained`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function collect(
   venue: VenueSource,
-): Promise<{ events: RawEvent[]; source: SourceProvenance }> {
+  sourceState: VenueSourceState,
+  ensureModelReady: EnsureModelReady,
+  hasRetainedVenueEvents: boolean,
+): Promise<CollectResult> {
   const method = methodOf(venue);
 
   if (method === "image") {
@@ -115,19 +192,69 @@ async function collect(
       console.log(`  – no imageUrl configured`);
       return { events: [], source: directSource(venue.urls[0] ?? "") };
     }
+    const fingerprint = await fetchImageFingerprint(venue.imageUrl);
+    if (fingerprint) {
+      const unchanged = unchangedVenueSourceOutcome(
+        sourceState,
+        venue.slug,
+        venue.imageUrl,
+        {
+          ...fingerprint,
+          method,
+          extractorVersion: VENUE_IMAGE_EXTRACTOR_VERSION,
+        },
+      );
+      if (unchanged) {
+        if (unchanged === "empty" || hasRetainedVenueEvents) {
+          console.log(
+            `  = image source unchanged (${unchanged}); Claude vision skipped`,
+          );
+          return {
+            events: [],
+            source: directSource(venue.urls[0] ?? venue.imageUrl),
+            sourceUnchanged: unchanged === "events",
+          };
+        }
+        console.log(
+          `  – image source unchanged but no current rows remain; re-extracting`,
+        );
+      }
+    }
+    if (!(await ensureModelReady())) {
+      return {
+        events: [],
+        source: directSource(venue.urls[0] ?? venue.imageUrl),
+        modelUnavailable: true,
+      };
+    }
     const events = await extractJsonFromImage<RawEvent[]>(
       `Venue: ${venue.name} (Frederick County, MD).\n${IMAGE_SHAPE}`,
       venue.imageUrl,
     );
+    if (!Array.isArray(events)) {
+      console.log(`  – vision extraction incomplete; source will retry`);
+      return {
+        events: [],
+        source: directSource(venue.urls[0] ?? venue.imageUrl),
+      };
+    }
+    if (fingerprint) {
+      recordVenueSourceObservation(sourceState, venue.slug, venue.imageUrl, {
+        ...fingerprint,
+        method,
+        extractorVersion: VENUE_IMAGE_EXTRACTOR_VERSION,
+        outcome: events.length ? "events" : "empty",
+      });
+    }
     const n = Array.isArray(events) ? events.length : 0;
     console.log(`  ✓ ${n} event(s) from image ${venue.imageUrl}`);
     return {
-      events: Array.isArray(events)
-        ? events.map((event) => ({
-            ...event,
-            ...(event.description ? { description_origin: "radius-summary" as const } : {}),
-          }))
-        : [],
+      events: events.map((event) => ({
+        ...event,
+        ...(event.description
+          ? { description_origin: "radius-summary" as const }
+          : {}),
+      })),
       source: directSource(venue.urls[0] ?? venue.imageUrl),
     };
   }
@@ -153,17 +280,67 @@ async function collect(
       allowedRedirectHosts: venue.allowedRedirectHosts ?? [],
     });
     if (!snapshot) continue;
+    const fingerprint = {
+      contentHash: hashSourceContent(snapshot.text),
+      finalUrl: snapshot.finalUrl,
+      method: method as ModelVenueMethod,
+      extractorVersion: VENUE_TEXT_EXTRACTOR_VERSION,
+    };
+    const unchanged = unchangedVenueSourceOutcome(
+      sourceState,
+      venue.slug,
+      url,
+      fingerprint,
+    );
+    if (unchanged) {
+      if (unchanged === "events" && hasRetainedVenueEvents) {
+        console.log(`  = source unchanged (${unchanged}); Claude skipped: ${url}`);
+        return {
+          events: [],
+          source: {
+            url: snapshot.requestedUrl,
+            requestedUrl: snapshot.requestedUrl,
+            finalUrl: snapshot.finalUrl,
+          },
+          sourceUnchanged: true,
+        };
+      }
+      if (unchanged === "empty") {
+        console.log(`  = source unchanged (${unchanged}); Claude skipped: ${url}`);
+        continue;
+      }
+      console.log(
+        `  – source unchanged but no current rows remain; re-extracting: ${url}`,
+      );
+    }
+    if (!(await ensureModelReady())) {
+      return {
+        events: [],
+        source: directSource(url),
+        modelUnavailable: true,
+      };
+    }
     const events = await extractJson<RawEvent[]>(
       `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
       snapshot.text,
     );
-    if (Array.isArray(events) && events.length) {
+    if (!Array.isArray(events)) {
+      console.log(`  – extraction incomplete; source will retry: ${url}`);
+      continue;
+    }
+    recordVenueSourceObservation(sourceState, venue.slug, url, {
+      ...fingerprint,
+      outcome: events.length ? "events" : "empty",
+    });
+    if (events.length) {
       console.log(`  ✓ ${events.length} event(s) from ${url}`);
       return {
         events: events.map((event) => ({
           ...event,
-            ...(event.description ? { description_origin: "radius-summary" as const } : {}),
-          })),
+          ...(event.description
+            ? { description_origin: "radius-summary" as const }
+            : {}),
+        })),
         source: {
           url: snapshot.requestedUrl,
           requestedUrl: snapshot.requestedUrl,
@@ -178,31 +355,72 @@ async function collect(
 
 async function main() {
   resetFirecrawlFallbackUsage();
-  // The key gates only the MODEL-ASSISTED methods (render/fetch/image). The
-  // deterministic Squarespace `feed` venues need no model, so a keyless run
-  // still refreshes them instead of bailing entirely — that global bail is
-  // how the whole snapshot silently expired (data audit P0-1: 25/25 events
-  // stale) when no key was around to re-run it.
-  const hasKey = await preflightKey({ failInCi: false });
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as VenueEvent[];
   const byKey = new Map(existing.map((e) => [keyOf(e), e]));
   const venues = cfg.venues.filter((v) => (only ? v.slug === only : true));
+  const sourceState = loadVenueSourceState();
+  const sourceStateBefore = serializeVenueSourceState(sourceState);
+
+  let modelReady: boolean | undefined;
+  let modelUnavailable = false;
+  const ensureModelReady = async (): Promise<boolean> => {
+    if (modelReady !== undefined) return modelReady;
+    // The key gates only changed MODEL-ASSISTED sources. Feed collectors and
+    // successfully fingerprinted unchanged sources need no Anthropic call.
+    modelReady = await preflightKey({ failInCi: false });
+    return modelReady;
+  };
 
   let added = 0;
+  let unchangedSources = 0;
+  const runStartedAt = Date.now();
   for (const venue of venues) {
     const hasSource = venue.urls?.length || venue.imageUrl;
     if (!hasSource) {
       console.log(`• ${venue.name}: no source configured — skipped`);
       continue;
     }
-    if (!hasKey && methodOf(venue) !== "feed") {
-      console.log(`• ${venue.name} [${methodOf(venue)}]: needs ANTHROPIC_API_KEY — skipped (prior data untouched)`);
-      continue;
-    }
     console.log(`• ${venue.name} [${methodOf(venue)}]`);
-    const { events, source } = await collect(venue);
+    const hasRetainedVenueEvents = [...byKey.values()].some((event) => {
+      if (event.venue_slug !== venue.slug) return false;
+      const startsAt = Date.parse(event.starts_at ?? "");
+      return (
+        !Number.isFinite(startsAt) ||
+        startsAt >= runStartedAt - 86_400_000
+      );
+    });
+    const {
+      events,
+      source,
+      modelUnavailable: sourceModelUnavailable,
+      sourceUnchanged,
+    } = await collect(
+      venue,
+      sourceState,
+      ensureModelReady,
+      hasRetainedVenueEvents,
+    );
+    if (sourceModelUnavailable) {
+      modelUnavailable = true;
+      console.log(`  – model unavailable; prior venue data retained`);
+    }
+    if (sourceUnchanged) {
+      const fetchedAt = nowISO();
+      for (const [key, event] of byKey) {
+        if (event.venue_slug !== venue.slug) continue;
+        byKey.set(key, {
+          ...event,
+          source: {
+            ...event.source,
+            ...source,
+            fetchedAt,
+          },
+        });
+      }
+      unchangedSources += 1;
+    }
     for (const ev of events) {
       if (!ev.title || !ev.starts_at) continue;
       const full: VenueEvent = {
@@ -219,18 +437,29 @@ async function main() {
   }
 
   // Keep only future-ish events: drop anything whose date clearly parsed in the past.
-  const now = Date.now();
   const kept = [...byKey.values()].filter((e) => {
     const t = Date.parse(e.starts_at ?? "");
-    return !Number.isFinite(t) || t >= now - 86_400_000; // keep unparseable + within last day
+    return !Number.isFinite(t) || t >= runStartedAt - 86_400_000; // keep unparseable + within last day
   });
 
   writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
-  console.log(`\nDone. +${added} new, ${kept.length} total → src/data/venue-events.json`);
+  const sourceStateAfter = serializeVenueSourceState(sourceState);
+  if (sourceStateAfter !== sourceStateBefore) {
+    writeFileSync(SOURCE_STATE, sourceStateAfter);
+  }
+  console.log(
+    `\nDone. +${added} new, ${unchangedSources} unchanged source(s) skipped, ` +
+      `${kept.length} total → src/data/venue-events.json`,
+  );
+  console.log(
+    sourceStateAfter === sourceStateBefore
+      ? "Venue source fingerprints unchanged."
+      : "Venue source fingerprints updated.",
+  );
   console.log(formatFirecrawlFallbackUsageSummary());
-  if (!hasKey && process.env.CI) {
+  if (modelUnavailable && process.env.CI) {
     console.error(
-      "Deterministic venue feeds were refreshed, but model-assisted venue sources were skipped.",
+      "Deterministic and unchanged venue sources were preserved, but at least one changed model-assisted source could not run.",
     );
     process.exitCode = 1;
   }

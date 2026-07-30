@@ -26,13 +26,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  AnthropicProviderError,
+  extractJsonStrict,
   fetchPageSnapshot,
   formatFirecrawlFallbackUsageSummary,
+  preflightKey,
   resetFirecrawlFallbackUsage,
 } from "./lib/extract-agent";
 
 const MODEL = process.env.CIVIC_INGEST_MODEL || "claude-haiku-4-5-20251001";
-const API_KEY = process.env.ANTHROPIC_API_KEY;
 const OUT = resolve("src/data/municipal-civic.json");
 const CONFIG = resolve("config/municipal-civic-sources.json");
 
@@ -60,45 +62,50 @@ const EXTRACTION_SCHEMA = `{
   "police":         { "label": "Police (non-emergency)", "phone"?: string, "website"?: string }
 }`;
 
-async function extract(townName: string, sourceUrl: string, text: string): Promise<Record<string, unknown> | null> {
-  if (!API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
-  const prompt =
-    `You are extracting civic contact info for the Town of ${townName}, Maryland from its official government webpage text.\n\n` +
+async function extract(
+  townName: string,
+  sourceUrl: string,
+  text: string,
+): Promise<Record<string, unknown> | null> {
+  const instructions =
+    `You are extracting civic contact info for the Town of ${townName}, Maryland ` +
+    `from its official government webpage at ${sourceUrl}.\n\n` +
     `Return ONLY a JSON object matching this shape (omit any field you cannot find ON THIS PAGE — do not guess, do not invent phone numbers or hours):\n${EXTRACTION_SCHEMA}\n\n` +
-    `Rules: phone as digits-with-dashes; website as absolute URLs only; "schedule" is a short plain-English trash/recycling pickup rule if present; omit the whole object for any category not present. If nothing civic is found, return {}.\n\n` +
-    `PAGE TEXT:\n${text}`;
+    `Rules: phone as digits-with-dashes; website as absolute URLs only; "schedule" is a short plain-English trash/recycling pickup rule if present; omit the whole object for any category not present. If nothing civic is found, return {}.`;
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+  const extracted = await extractJsonStrict<Record<string, unknown>>(
+    instructions,
+    text,
+    {
       model: MODEL,
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!r.ok) {
-    console.log(`  ✗ Claude → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    return null;
+      maxTokens: 1024,
+    },
+  );
+  if (!extracted) {
+    throw new AnthropicProviderError(
+      `Claude returned no usable JSON for ${townName}`,
+      {
+        kind: "response",
+        status: 200,
+        attempts: 1,
+      },
+    );
   }
-  const data = (await r.json()) as { content?: { text?: string }[] };
-  const raw = data.content?.[0]?.text ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    console.log(`  ✗ Claude returned non-JSON for ${townName}`);
-    return null;
-  }
+  return extracted;
 }
 
 async function main() {
   resetFirecrawlFallbackUsage();
+  // Civic has no deterministic/model-free path. A rejected key or provider
+  // outage must fail the scheduled run before sources are fetched or the
+  // existing snapshot is written, rather than producing a green no-op.
+  const providerReady = await preflightKey({ failInCi: false });
+  if (!providerReady) {
+    throw new Error(
+      "Municipal civic ingest stopped because the Anthropic preflight failed.",
+    );
+  }
+
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { towns: TownSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, unknown>;
@@ -155,7 +162,15 @@ async function main() {
   console.log(formatFirecrawlFallbackUsageSummary());
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+main().catch((error) => {
+  if (error instanceof AnthropicProviderError) {
+    console.error(
+      `Municipal civic ingest stopped: ${error.message}` +
+        (error.status ? ` (HTTP ${error.status})` : "") +
+        `. Attempts: ${error.attempts}.`,
+    );
+  } else {
+    console.error(error);
+  }
+  process.exitCode = 1;
 });

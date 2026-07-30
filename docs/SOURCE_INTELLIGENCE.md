@@ -119,14 +119,21 @@ without allowing two healthy runs to overlap.
    npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --profile <id> --live --confirm
    ```
 
-4. A deliberately approved full capped run is:
+4. Use the dedicated one-request profile when verifying a new key or provider
+   response:
+
+   ```sh
+   npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --profile provider-smoke --live --confirm
+   ```
+
+5. A deliberately approved full capped run is:
 
    ```sh
    npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --live --confirm
    ```
 
-5. Review `scripts/reports/source-scout-latest.json`. The reusable provider cache is `scripts/reports/source-scout-cache.json`. Neither artifact retains Tavily content snippets.
-6. Reject directories, copied pages, wrong-location matches, old articles, and unsupported snippets. Add a promising exact source to the appropriate Radius registry or to Source Watch for verification.
+6. Review `scripts/reports/source-scout-latest.json`. The reusable provider cache is `scripts/reports/source-scout-cache.json`. Neither artifact retains Tavily content snippets.
+7. Reject directories, copied pages, wrong-location matches, old articles, and unsupported snippets. Add a promising exact source to the appropriate Radius registry or to Source Watch for verification.
 
 Source Scout never writes to `src/data`. A search result becomes useful only after Radius verifies the original source and matches it to the correct canonical entity.
 

@@ -84,12 +84,24 @@ describe("Radius Source Scout", () => {
       maxResultsPerQuery: 5,
     });
     expect(config.profiles.map((profile) => profile.id)).toEqual([
+      "provider-smoke",
       "official-civic-mdot",
       "official-new-events",
       "menus-reservations-accessibility",
       "food-truck-schedules",
       "unresolved-source-recovery",
     ]);
+    expect(
+      config.profiles.find((profile) => profile.id === "provider-smoke"),
+    ).toMatchObject({
+      searchDepth: "basic",
+      maxQueriesPerRun: 1,
+      queries: [
+        {
+          allowedDomains: ["cityoffrederickmd.gov"],
+        },
+      ],
+    });
     const openQueries = config.profiles
       .flatMap((profile) => profile.queries)
       .filter((query) => query.allowedDomains.length === 0);

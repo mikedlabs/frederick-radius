@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AnthropicProviderError,
   extractJson,
   extractJsonFromImage,
+  extractJsonStrict,
   preflightKey,
 } from "../scripts/lib/extract-agent";
 
@@ -11,6 +13,66 @@ afterEach(() => {
 });
 
 describe("Anthropic extractor preflight", () => {
+  it.each([200, 201, 299])(
+    "accepts a real 2xx response (HTTP %s)",
+    async (status) => {
+      const fetchImpl = vi.fn(
+        async () => new Response("", { status }),
+      );
+
+      await expect(
+        preflightKey({
+          apiKey: "test-key",
+          failInCi: false,
+          fetchImpl,
+        }),
+      ).resolves.toBe(true);
+    },
+  );
+
+  it.each([300, 400, 401, 403, 408])(
+    "rejects a non-2xx response (HTTP %s)",
+    async (status) => {
+      const fetchImpl = vi.fn(
+        async () => new Response("not accepted", { status }),
+      );
+
+      await expect(
+        preflightKey({
+          apiKey: "test-key",
+          failInCi: false,
+          fetchImpl,
+          maxRetries: 0,
+        }),
+      ).resolves.toBe(false);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("honors Retry-After for a retryable preflight failure", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("busy", {
+          status: 529,
+          headers: { "retry-after": "2" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response("", { status: 200 }));
+    const sleepImpl = vi.fn(async () => {});
+
+    await expect(
+      preflightKey({
+        apiKey: "test-key",
+        failInCi: false,
+        fetchImpl,
+        sleepImpl,
+      }),
+    ).resolves.toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenCalledWith(2_000);
+  });
+
   it("returns a controlled failure when the network rejects", async () => {
     const fetchImpl = vi.fn(async () => {
       throw new TypeError("network unavailable");
@@ -149,5 +211,143 @@ describe("Anthropic extraction requests", () => {
         { apiKey: "test-key", fetchImpl },
       ),
     ).resolves.toBeNull();
+  });
+});
+
+describe("strict Anthropic extraction requests", () => {
+  const success = () =>
+    new Response(
+      JSON.stringify({
+        content: [{ text: '{"townHall":{"label":"Town Hall"}}' }],
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      },
+    );
+
+  it.each([429, 500, 529])(
+    "retries HTTP %s and honors Retry-After",
+    async (status) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("try later", {
+            status,
+            headers: { "retry-after": "1.5" },
+          }),
+        )
+        .mockResolvedValueOnce(success());
+      const sleepImpl = vi.fn(async () => {});
+
+      await expect(
+        extractJsonStrict("Return civic data.", "page text", {
+          apiKey: "test-key",
+          fetchImpl,
+          sleepImpl,
+        }),
+      ).resolves.toEqual({ townHall: { label: "Town Hall" } });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      expect(sleepImpl).toHaveBeenCalledWith(1_500);
+    },
+  );
+
+  it.each([400, 401, 403, 408])(
+    "does not retry non-retryable HTTP %s",
+    async (status) => {
+      const fetchImpl = vi.fn(
+        async () => new Response("hard failure", { status }),
+      );
+      const sleepImpl = vi.fn(async () => {});
+
+      const result = extractJsonStrict("Return civic data.", "page text", {
+        apiKey: "test-key",
+        fetchImpl,
+        sleepImpl,
+      });
+      await expect(result).rejects.toMatchObject({
+        name: "AnthropicProviderError",
+        status,
+        attempts: 1,
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(sleepImpl).not.toHaveBeenCalled();
+    },
+  );
+
+  it("fails provider-wide after the bounded retry ceiling", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("overloaded", {
+          status: 529,
+          headers: { "retry-after": "0" },
+        }),
+    );
+    const sleepImpl = vi.fn(async () => {});
+
+    const result = extractJsonStrict("Return civic data.", "page text", {
+      apiKey: "test-key",
+      fetchImpl,
+      sleepImpl,
+      maxRetries: 2,
+    });
+    await expect(result).rejects.toMatchObject({
+      name: "AnthropicProviderError",
+      kind: "provider",
+      status: 529,
+      attempts: 3,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(sleepImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry earlier than an oversized Retry-After", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("rate limited", {
+          status: 429,
+          headers: { "retry-after": "120" },
+        }),
+    );
+    const sleepImpl = vi.fn(async () => {});
+
+    await expect(
+      extractJsonStrict("Return civic data.", "page text", {
+        apiKey: "test-key",
+        fetchImpl,
+        sleepImpl,
+        maxRetryDelayMs: 5_000,
+      }),
+    ).rejects.toMatchObject({
+      name: "AnthropicProviderError",
+      kind: "rate-limit",
+      status: 429,
+      attempts: 1,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(sleepImpl).not.toHaveBeenCalled();
+  });
+
+  it("does not retry network failures", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("network unavailable");
+    });
+    const sleepImpl = vi.fn(async () => {});
+
+    await expect(
+      extractJsonStrict("Return civic data.", "page text", {
+        apiKey: "test-key",
+        fetchImpl,
+        sleepImpl,
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<AnthropicProviderError>>({
+        name: "AnthropicProviderError",
+        kind: "network",
+        attempts: 1,
+      }),
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(sleepImpl).not.toHaveBeenCalled();
   });
 });

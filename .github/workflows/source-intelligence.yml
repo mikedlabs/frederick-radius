@@ -21,6 +21,7 @@ on:
         type: choice
         default: menus-reservations-accessibility
         options:
+          - provider-smoke
           - official-civic-mdot
           - official-new-events
           - menus-reservations-accessibility

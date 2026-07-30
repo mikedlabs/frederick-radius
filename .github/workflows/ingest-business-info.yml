@@ -6,7 +6,8 @@ name: Ingest business deep-info
 # Incremental + batched, so it works through the ~600 eligible businesses
 # a chunk at a time and refreshes stale entries.
 #
-# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
+# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
+# Data Enrichment environment. Never use an Anthropic Admin API key here.
 # Tuning: config/business-info.json
 
 on:
@@ -15,9 +16,14 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "How many businesses to read this run"
+        description: "Businesses to read (normal max 60; reviewed backfill max 100)"
         required: false
         default: "60"
+      reviewed_backfill:
+        description: "I reviewed this backfill and approve a limit above 60"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -29,8 +35,9 @@ concurrency:
 
 jobs:
   ingest:
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    environment: Production
+    environment: "Data Enrichment"
     # Opt the JS actions into Node 24 now (GitHub forces it June 16 2026);
     # clears the Node-20 deprecation warning. Job-level env is valid YAML
     # (unlike the top-level block that broke parsing before).
@@ -43,10 +50,10 @@ jobs:
           node-version: 22
       - name: Verify extractor secret
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_BUSINESS_INFO_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error title=Missing ANTHROPIC_API_KEY::Add the Actions secret to the GitHub Production environment before running first-party copy extraction."
+            echo "::error title=Missing business extractor key::Add ANTHROPIC_BUSINESS_INFO_API_KEY to the GitHub Data Enrichment environment."
             exit 1
           fi
       - run: npm ci
@@ -62,7 +69,7 @@ jobs:
             0) ;;
             1)
               if [ -z "$FIRECRAWL_API_KEY" ]; then
-                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Production environment has no key."
+                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Data Enrichment environment has no key."
                 exit 1
               fi
               ;;
@@ -83,11 +90,12 @@ jobs:
           fi
       - name: Extract business deep-info
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_BUSINESS_INFO_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
           FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
-          INGEST_LIMIT: ${{ github.event.inputs.limit || '60' }}
+          INGEST_LIMIT: ${{ inputs.limit || '60' }}
+          REVIEWED_BACKFILL: ${{ inputs.reviewed_backfill || 'false' }}
         run: |
           case "$INGEST_LIMIT" in
             ''|*[!0-9]*)
@@ -95,6 +103,21 @@ jobs:
               exit 1
               ;;
           esac
+          if [ "$INGEST_LIMIT" -lt 1 ] || [ "$INGEST_LIMIT" -gt 100 ]; then
+            echo "::error title=Invalid ingest limit::Use a value from 1 through 100."
+            exit 1
+          fi
+          case "$REVIEWED_BACKFILL" in
+            true|false) ;;
+            *)
+              echo "::error title=Invalid backfill confirmation::reviewed_backfill must be true or false."
+              exit 1
+              ;;
+          esac
+          if [ "$INGEST_LIMIT" -gt 60 ] && [ "$REVIEWED_BACKFILL" != "true" ]; then
+            echo "::error title=Backfill review required::Normal runs are capped at 60. Check reviewed_backfill to approve a reviewed batch of up to 100."
+            exit 1
+          fi
           npm run ingest:business -- --limit="$INGEST_LIMIT"
       - name: Build description review queue
         run: npm run descriptions:candidates

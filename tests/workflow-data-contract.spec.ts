@@ -78,16 +78,38 @@ describe("scheduled data workflow contracts", () => {
   });
 
   it.each([
-    "ingest-business-info.yml",
-    "ingest-civic.yml",
-    "ingest-venues.yml",
-  ])("%s uses the Production environment's Anthropic secret", (name) => {
-    const workflow = workflowText(name);
-    expect(workflow).toContain("environment: Production");
-    expect(workflow).toContain(
-      "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
-    );
-  });
+    [
+      "ingest-business-info.yml",
+      "ANTHROPIC_BUSINESS_INFO_API_KEY",
+      'cron: "0 8 * * *"',
+    ],
+    [
+      "ingest-civic.yml",
+      "ANTHROPIC_CIVIC_API_KEY",
+      'cron: "30 8 * * *"',
+    ],
+    [
+      "ingest-venues.yml",
+      "ANTHROPIC_VENUE_EVENTS_API_KEY",
+      'cron: "30 9 * * *"',
+    ],
+  ])(
+    "%s isolates its Anthropic key in the Data Enrichment environment",
+    (name, secretName, schedule) => {
+      const workflow = workflowText(name);
+
+      expect(workflow).toContain('environment: "Data Enrichment"');
+      expect(workflow).toContain(
+        `ANTHROPIC_API_KEY: \${{ secrets.${secretName} }}`,
+      );
+      expect(workflow).toContain(schedule);
+      expect(workflow).toContain(
+        "github.event_name != 'schedule' || github.ref == 'refs/heads/main'",
+      );
+      expect(workflow).not.toContain("secrets.ANTHROPIC_API_KEY");
+      expect(workflow).not.toContain("ANTHROPIC_ADMIN_API_KEY");
+    },
+  );
 
   it.each([
     "ingest-business-info.yml",
@@ -117,10 +139,23 @@ describe("scheduled data workflow contracts", () => {
     const workflow = workflowText("ingest-business-info.yml");
 
     expect(workflow).toContain(
-      "INGEST_LIMIT: ${{ github.event.inputs.limit || '60' }}",
+      "INGEST_LIMIT: ${{ inputs.limit || '60' }}",
     );
     expect(workflow).toContain('--limit="$INGEST_LIMIT"');
     expect(workflow).not.toContain("--limit=${{");
+  });
+
+  it("caps normal business runs at 60 and reviewed backfills at 100", () => {
+    const workflow = workflowText("ingest-business-info.yml");
+
+    expect(workflow).toContain("reviewed_backfill:");
+    expect(workflow).toContain(
+      "REVIEWED_BACKFILL: ${{ inputs.reviewed_backfill || 'false' }}",
+    );
+    expect(workflow).toContain('"$INGEST_LIMIT" -gt 100');
+    expect(workflow).toContain(
+      '[ "$INGEST_LIMIT" -gt 60 ] && [ "$REVIEWED_BACKFILL" != "true" ]',
+    );
   });
 
   it("grants explicit write permissions to every workflow that opens a PR", () => {
