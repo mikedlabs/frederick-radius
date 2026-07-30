@@ -126,6 +126,6 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     ev_charging: true,
     hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
-      "At East All Saints and South Carroll Streets, south of Carroll Creek.",
+      "This garage sits at East All Saints and South Carroll Streets, south of Carroll Creek.",
   },
 ];
