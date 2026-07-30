@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   Accessibility,
   ArrowUpRight,
@@ -71,7 +72,7 @@ const INTENTS: ParkingIntent[] = [
   },
 ];
 
-function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
+function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}
@@ -86,7 +87,7 @@ function SourceLink({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
-function FactBadge({ children }: { children: React.ReactNode }) {
+function FactBadge({ children }: { children: ReactNode }) {
   return (
     <span
       className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold"
@@ -146,7 +147,7 @@ export default function ParkingPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Start with your destination
+              Choose where you&rsquo;re going
             </p>
             <h2
               id="parking-start-heading"
