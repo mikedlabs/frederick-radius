@@ -26,12 +26,11 @@ import { getCommunityReports } from "@/lib/loaders/communityReports";
 import { getPublicCountyParkAssets } from "@/lib/integrations/fcParkAssetsPublic";
 import { getCountyFloodContext } from "@/lib/integrations/fcFloodRisk";
 import { getCountySnowRoutes } from "@/lib/integrations/fcSnowCommand";
+import { MAP_FEED_DEADLINE_MS } from "./config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 45;
-
-export const MAP_FEED_DEADLINE_MS = 20_000;
 
 const MAP_FEEDS: ReadonlyArray<
   readonly [string, () => Promise<unknown>]
