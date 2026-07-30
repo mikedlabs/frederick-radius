@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   GoogleContentReportLink,
   GooglePhotoAttributionLine,
+  GooglePhotoAttributionOverlay,
   GoogleReviewAttribution,
   googlePhotoAttributionForUrl,
   googlePhotoNameFromUrl,
@@ -61,5 +62,41 @@ describe("Google content reporting links", () => {
     }));
     expect(photoHtml).toContain("Report photo");
     expect(reviewHtml).toContain("Report review");
+  });
+});
+
+describe("Google photo attribution overlay", () => {
+  it("keeps every author and the exact source photo linked inside a quiet edge rail", () => {
+    const html = renderToStaticMarkup(
+      createElement(GooglePhotoAttributionOverlay, {
+        attribution: {
+          photo_name: "places/example/photos/photo-one",
+          google_maps_uri: "https://www.google.com/maps/place/example/data=!3m1!1e2",
+          authors: [
+            {
+              display_name: "Frederick Photographer",
+              uri: "https://maps.google.com/maps/contrib/123",
+            },
+            {
+              display_name: "Taproom Owner",
+              uri: "https://maps.google.com/maps/contrib/456",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(html).toContain('data-google-photo-attribution="overlay"');
+    expect(html).toContain('href="https://maps.google.com/maps/contrib/123"');
+    expect(html).toContain('href="https://maps.google.com/maps/contrib/456"');
+    expect(html).toContain("Frederick Photographer");
+    expect(html).toContain("Taproom Owner");
+    expect(html).toContain(
+      'href="https://www.google.com/maps/place/example/data=!3m1!1e2"',
+    );
+    expect(html).toContain('aria-label="View this photo on Google Maps"');
+    expect(html).toContain("bg-gradient-to-t");
+    expect(html).not.toContain("truncate");
+    expect(html).not.toContain("bg-black/72");
   });
 });
