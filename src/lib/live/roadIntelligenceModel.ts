@@ -56,6 +56,24 @@ export type RoadIntelligenceSnapshot = {
   };
 };
 
+/**
+ * Human-facing status for an attention signal.
+ *
+ * Severity controls visual priority, but it is not always the action a driver
+ * should take. In particular, a warning-level work zone can still close every
+ * lane, so calling it only "Use caution" understates the actual restriction.
+ */
+export function roadAttentionStatusLabel(
+  signal: RoadAttentionSignal,
+): string {
+  if (signal.kind === "work-zone-closure") {
+    return "Closed · avoid this route";
+  }
+  if (signal.severity === "emergency") return "Emergency";
+  if (signal.severity === "warning") return "Use caution";
+  return "Advisory";
+}
+
 const CONDITION_LABELS: Record<0 | 1 | 2, string> = {
   0: "Normal",
   1: "Use caution",
@@ -114,7 +132,7 @@ function workZoneSignals(result: MdotWorkZonesResult): RoadAttentionSignal[] {
       priority: 82,
       severity: "warning" as const,
       title: `${zone.road} work-zone closure`,
-      detail: `${laneImpact(zone)}. ${zone.description}`,
+      detail: `All lanes are closed. Avoid this route. ${zone.description}`,
       scope: zone.direction ? `${zone.road} · ${zone.direction}` : zone.road,
       sourceLabel: "Maryland WZDx",
       sourceUrl: zone.sourceUrl,
