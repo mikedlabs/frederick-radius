@@ -51,6 +51,14 @@ export function trigramSimilarity(a: string, b: string): number {
  * other name words diluting the score, and "carrol creek" needs both
  * words to land somewhere.
  */
+/**
+ * How different in length two words may be and still be considered a
+ * typo of one another. 0.6 keeps every real correction the app cares
+ * about (thurmount→Thurmont is 0.89) while rejecting the short-word
+ * coincidences that made the fallback embarrassing (king→kayaking, 0.5).
+ */
+const LENGTH_RATIO_FLOOR = 0.6;
+
 export function fuzzyNameScore(query: string, name: string): number {
   const qWords = words(query);
   const nWords = words(name);
@@ -59,6 +67,16 @@ export function fuzzyNameScore(query: string, name: string): number {
   for (const qw of qWords) {
     let best = 0;
     for (const nw of nWords) {
+      // A typo is roughly the same LENGTH as the word it meant. Without
+      // that guard a long word shares enough padded trigrams with a much
+      // shorter one to clear the floor by coincidence, and the fallback
+      // answers confidently with nonsense: "kayaking" returned King's
+      // Pizza and Burger King, "barbecue" returned three barber shops
+      // (answer audit, Jul 2026). Real corrections are unaffected —
+      // brewrey/brewery and thurmount/Thurmont sit near 1.0.
+      if (Math.min(qw.length, nw.length) / Math.max(qw.length, nw.length) < LENGTH_RATIO_FLOOR) {
+        continue;
+      }
       const s = trigramSimilarity(qw, nw);
       if (s > best) best = s;
     }

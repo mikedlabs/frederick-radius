@@ -20,6 +20,7 @@ import {
   type SearchQualifiers,
 } from "@/lib/search/qualifiers";
 import { isTimedActivityRequest } from "@/lib/ask/intent";
+import { expandQuery, type QueryExpansion } from "@/lib/search/synonyms";
 
 export type SearchHit =
   | {
@@ -90,6 +91,34 @@ function hasExplicitQueryEvidence(
     ...(place.search_aliases ?? []),
   ].join(" ");
   return terms.every((term) => fieldScore(evidence, [term]) > 0);
+}
+
+/**
+ * Score a place against the query's everyday-word expansion.
+ *
+ * Deliberately asymmetric. A category hit is worth a solid lift but not
+ * more than a real name match, so "prescription" surfaces the pharmacies
+ * without letting a synonym outrank someone typing an actual place name.
+ * A topic term only counts when the place carries the evidence, which is
+ * what keeps "barbecue" from promoting all 165 restaurants.
+ */
+function expansionScore(
+  category: string,
+  evidenceText: string,
+  expansion: QueryExpansion,
+): number {
+  if (expansion.cats.length === 0 && expansion.terms.length === 0) return 0;
+  let v = 0;
+  if (expansion.cats.includes(category)) v += 5;
+  const lower = evidenceText.toLowerCase();
+  let matched = 0;
+  for (const t of expansion.terms) {
+    if (lower.includes(t)) matched++;
+  }
+  // Cap the topic contribution: three pieces of evidence is already a
+  // confident match, and uncapped it would drown the name-match signal.
+  v += Math.min(matched, 3) * 3;
+  return v;
 }
 
 /** Small, deliberately conservative inflection normalizer. Search data uses
@@ -466,6 +495,7 @@ export function search(
   const hits: SearchHit[] = [];
   const intent = detectIntent(query);
   const eventIntent = detectEventIntent(query);
+  const expansion = expandQuery(query);
   const now = options.now ?? new Date();
 
   for (const p of clientPlaces()) {
@@ -505,18 +535,24 @@ export function search(
         )
       : 0;
     const coverage = compoundCoverage(query, evidenceText, terms);
+    // Everyday words the catalog does not use ("prescription" for the
+    // pharmacy category, "barbecue" for the BBQ places filed under
+    // restaurant). `cats` answers the need outright; `terms` needs the
+    // evidence to be present, so a synonym never promotes a whole
+    // category on topic words alone.
+    const xv = expansionScore(p.category, evidenceText, expansion);
     // Event intent ("live music"): genuine venues stay in play, but a
     // place whose only claim was an incidental name token (the candle
     // shop "Liveyoung") steps aside for the actual events below.
     const ev = eventIntent ? (eventIntent.venueCats.has(p.category) ? 2 : -6) : 0;
-    if (s > 0 || iv > 0 || options.includeMatchingPlaces) {
+    if (s > 0 || iv > 0 || xv > 0 || options.includeMatchingPlaces) {
       const place = options.origin
         ? { ...p, distance_m: haversineMeters(options.origin, p.geom) }
         : p;
       hits.push({
         type: "place",
         place,
-        score: s + p.feature_score + iv + ev + (coverage?.score ?? 0),
+        score: s + p.feature_score + iv + ev + xv + (coverage?.score ?? 0),
         conceptCoverage: coverage
           ? { matched: coverage.matched, total: coverage.total }
           : undefined,
