@@ -2,6 +2,7 @@
 
 import { Navigation } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { setScope } from "@/lib/scope";
 
 /**
  * LocationPrime — the page's ONE location opt-in, as a COMPACT pill that rides
@@ -22,11 +23,19 @@ export default function LocationPrime() {
   // hint, not a button; idle/loading is the tappable consent.
   const label = denied ? "Location off" : loading ? "Locating…" : "Use my location";
 
+  const useMyLocation = () => {
+    if (loading || denied) return;
+    // The control promises location-aware answers, so it must also switch
+    // decision scope away from any town saved earlier in the visit.
+    setScope("nearme");
+    request();
+  };
+
   return (
     <button
       type="button"
-      onClick={() => !loading && !denied && request()}
-      aria-label="Use my location so nearby answers find the closest open spot"
+      onClick={useMyLocation}
+      aria-label="Use my location so nearby answers start with the closest useful place"
       aria-disabled={denied || loading}
       className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition"
       style={{

@@ -45,6 +45,8 @@ jobs:
         run: npm run db:audit
       - name: Unit tests
         run: npm run test:all
+      - name: Production recovery selection tests
+        run: node --test scripts/lib/production-rollback.test.mjs
       - name: Build
         run: npm run build
         env:
@@ -67,3 +69,32 @@ jobs:
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  browser-chaos:
+    # Keep this job name stable and mark it required in the main branch rule.
+    # The broad UX sweep still runs nightly; this small PR gate attacks the
+    # higher-risk failure mode: several dependencies failing in different ways
+    # while the four primary decision surfaces remain useful and honest.
+    name: Required browser chaos
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise combined dependency failures and app upgrades
+        run: >-
+          npx playwright test
+          e2e/critical-dependency-chaos.spec.ts
+          e2e/service-worker-upgrade-contract.spec.ts
+          --project=chromium
+          --workers=1
+          --retries=1
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-07-27
+**Last updated:** 2026-07-29
 
 ---
 
@@ -26,6 +26,7 @@ food-truck jobs.
 | Nightly 09:00 UTC | `ingest/civicengage` | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain. | Vercel cron (`/api/ingest/civicengage`) |
 | Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
+| Nightly 08:20 UTC | `spatial-places` | Atomically syncs the deployed public place catalog into its private PostGIS mirror and stamps a checksum only after exact coordinate parity. Requires verified migration `0037` and `RADIUS_POSTGIS_SYNC=1`. | Vercel cron (`/api/cron/spatial-places`) |
 | Nightly 08:30 UTC | `radius-search` | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`. | Vercel cron (`/api/cron/radius-search`) |
 | Nightly 09:05 UTC | `data-health-feeds` | Pulls the bounded live-feed set and persists one current snapshot for each successful source. | Vercel cron (`/api/cron/data-health-feeds`) |
 | Nightly 09:10 UTC | `data-health-retention` | Remains inert unless `DATA_RETENTION_PRUNE=1`; when explicitly enabled after a backup check, removes bounded oldest-first batches. | Vercel cron (`/api/cron/data-health-retention`) |

@@ -13,6 +13,7 @@ import { EventSheetProvider } from "@/components/event/EventSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
+import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
 import { Suspense } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               default mode immediately and quietly flips to Resident
               only when the user is inside the Frederick County bbox. */}
           <ModeBootstrap />
+          {/* One bounded, privacy-safe IndexedDB handoff for the generic
+              offline page. It stores aggregate Saved counts and coarse
+              preference ids only; personalized HTML remains network-only. */}
+          <OfflineSnapshotSync />
           {/* Reads ?for=visitor | ?for=resident off the URL on every
               navigation and applies it to the persisted mode, then
               strips the param. Lets marketing / partner deep links

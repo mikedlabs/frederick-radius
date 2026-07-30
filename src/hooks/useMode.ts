@@ -30,6 +30,7 @@ import { isInsideFrederickCounty } from "@/lib/geo";
 
 const STORAGE_KEY = "fr:mode:v1";
 const SUGGEST_KEY = "fr:mode:suggested:v1";
+const OFFLINE_PREFERENCES_CHANGE_EVENT = "fr:offline-preferences-change";
 
 export type Mode = "resident" | "visitor";
 
@@ -80,6 +81,7 @@ function write(mode: Mode) {
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new Event(OFFLINE_PREFERENCES_CHANGE_EVENT));
   listeners.forEach((l) => l());
 }
 

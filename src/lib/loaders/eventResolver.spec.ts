@@ -12,8 +12,8 @@ function event(slug: string): EventWithMeta {
     slug,
     title: slug,
     description: "",
-    starts_at: "2026-07-23T22:00:00.000Z",
-    ends_at: "2026-07-24T00:00:00.000Z",
+    starts_at: "2026-07-30T22:00:00.000Z",
+    ends_at: "2026-07-31T00:00:00.000Z",
     timezone: "America/New_York",
     is_all_day: false,
     is_recurring: false,
@@ -27,7 +27,7 @@ function event(slug: string): EventWithMeta {
     status: "scheduled",
     source: "celebrate",
     is_verified: false,
-    source_id: slug,
+    source_id: "publisher-uid-123",
     source_url: "https://example.com/event",
     license: "Partner feed terms",
     first_seen_at: "2026-07-23T12:00:00.000Z",
@@ -39,102 +39,133 @@ function event(slug: string): EventWithMeta {
   };
 }
 
-function sources(overrides: Partial<Parameters<typeof resolveEventPageBySlugWithSources>[2]> = {}) {
+function sources(
+  overrides: Partial<
+    Parameters<typeof resolveEventPageBySlugWithSources>[2]
+  > = {},
+) {
   return {
     seed: vi.fn(() => null),
-    unified: vi.fn(async () => [] as EventWithMeta[]),
+    archive: vi.fn(async () => null),
     live: vi.fn(async () => null),
     ingested: vi.fn(async () => null),
+    persist: vi.fn(async (value: EventWithMeta) => ({
+      id: "event-id",
+      canonicalSlug: value.slug,
+      snapshot: value,
+    })),
     ...overrides,
   };
 }
 
 describe("resolveEventPageBySlugWithSources", () => {
-  it("resolves every event link emitted by the unified public snapshot", async () => {
-    const visible = [event("alive-at-five-2026-07-23"), event("library-storytime-2026-07-24")];
+  it("resolves the exact incident URL from the durable archive without rebuilding event feeds", async () => {
+    const retained = event("game-time-urbana-2026-07-27");
     const loaders = sources({
-      unified: vi.fn(async () => visible),
-      // Simulate the cold-provider failure that used to create a temporary 404.
-      live: vi.fn(async () => {
-        throw new Error("provider timed out");
-      }),
-      ingested: vi.fn(async () => null),
+      archive: vi.fn(async () => ({
+        id: "identity-1",
+        canonicalSlug: retained.slug,
+        event: retained,
+        tombstoned: true,
+        lastSeenAt: "2026-07-27T18:00:00.000Z",
+      })),
     });
 
-    for (const visibleEvent of visible) {
-      await expect(
-        resolveEventPageBySlugWithSources(visibleEvent.slug, new Date(), loaders),
-      ).resolves.toEqual({ event: visibleEvent, kind: "unified" });
-    }
-
+    await expect(
+      resolveEventPageBySlugWithSources(
+        retained.slug,
+        new Date("2026-07-28T16:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: retained, kind: "archive" });
     expect(loaders.live).not.toHaveBeenCalled();
     expect(loaders.ingested).not.toHaveBeenCalled();
   });
 
-  it("keeps older shared links resolvable when the unified snapshot misses", async () => {
-    const older = event("older-shared-event-2026-07-20");
-    const loaders = sources({ live: vi.fn(async () => older) });
-
-    await expect(
-      resolveEventPageBySlugWithSources(older.slug, new Date(), loaders),
-    ).resolves.toEqual({ event: older, kind: "live" });
-  });
-
-  it("falls through a failed unified read to the ingested resolver", async () => {
-    const ingested = event("library-program-fcpl-20260723");
+  it("resolves an old slug alias to the current canonical snapshot", async () => {
+    const canonical = event("first-saturday-art-walk-2026-07-30");
     const loaders = sources({
-      unified: vi.fn(async () => {
-        throw new Error("cache unavailable");
-      }),
-      live: vi.fn(async () => null),
-      ingested: vi.fn(async () => ingested),
+      archive: vi.fn(async () => ({
+        id: "identity-2",
+        canonicalSlug: canonical.slug,
+        event: canonical,
+        tombstoned: false,
+        lastSeenAt: "2026-07-29T12:00:00.000Z",
+      })),
     });
 
     await expect(
-      resolveEventPageBySlugWithSources(ingested.slug, new Date(), loaders),
-    ).resolves.toEqual({ event: ingested, kind: "ingested" });
+      resolveEventPageBySlugWithSources(
+        "live-first-saturday-art-walk-legacy",
+        new Date(),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: canonical, kind: "archive" });
   });
 
-  it("returns seed events without paying for any live source", async () => {
+  it("returns curated events without paying for database or network sources", async () => {
     const curated = event("curated-event");
     const loaders = sources({ seed: vi.fn(() => curated) });
 
     await expect(
       resolveEventPageBySlugWithSources(curated.slug, new Date(), loaders),
     ).resolves.toEqual({ event: curated, kind: "seed" });
-    expect(loaders.unified).not.toHaveBeenCalled();
+    expect(loaders.archive).not.toHaveBeenCalled();
     expect(loaders.live).not.toHaveBeenCalled();
     expect(loaders.ingested).not.toHaveBeenCalled();
   });
 
-  it("does not resolve a stranded online-only event", async () => {
-    const stranded = {
-      ...event("stranded-online-class"),
-      title: "Online class",
-      attendance_mode: "online" as const,
-      source_url: null,
-    };
+  it("persists a publisher UID and requested alias after a direct live hit", async () => {
+    const current = event("new-title-2026-07-30");
+    const persist = vi.fn(async (value: EventWithMeta) => ({
+      id: "identity-3",
+      canonicalSlug: value.slug,
+      snapshot: value,
+    }));
     const loaders = sources({
-      live: vi.fn(async () => stranded),
-      ingested: vi.fn(async () => null),
+      live: vi.fn(async () => current),
+      persist,
     });
 
     await expect(
-      resolveEventPageBySlugWithSources(stranded.slug, new Date(), loaders),
-    ).resolves.toBeNull();
+      resolveEventPageBySlugWithSources(
+        "old-title-2026-07-30",
+        new Date(),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: current, kind: "live" });
+    expect(persist).toHaveBeenCalledWith(current, [
+      "old-title-2026-07-30",
+      current.slug,
+    ]);
+    expect(current.source_id).toBe("publisher-uid-123");
   });
 
-  it("does not turn an incomplete timed-out lookup into a false 404", async () => {
+  it("aborts the losing source when the first usable event wins", async () => {
+    let losingSignal: AbortSignal | undefined;
+    const winner = event("alive-at-five-2026-07-30");
+    const loaders = sources({
+      live: vi.fn(async () => winner),
+      ingested: vi.fn((_slug, context) => {
+        losingSignal = context.signal;
+        return new Promise<EventWithMeta | null>(() => undefined);
+      }),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(winner.slug, new Date(), loaders),
+    ).resolves.toEqual({ event: winner, kind: "live" });
+    expect(losingSignal?.aborted).toBe(true);
+  });
+
+  it("does not turn an incomplete source lookup into a false 404", async () => {
     vi.useFakeTimers();
     try {
       const loaders = sources({
-        unified: vi.fn(() => new Promise<EventWithMeta[]>(() => undefined)),
         live: vi.fn(
           () => new Promise<EventWithMeta | null>(() => undefined),
         ),
-        ingested: vi.fn(async () => null),
       });
-
       const pending = resolveEventPageBySlugWithSources(
         "game-time-urbana-2026-07-27",
         new Date("2026-07-28T16:00:00.000Z"),
@@ -142,72 +173,17 @@ describe("resolveEventPageBySlugWithSources", () => {
       );
       const rejection = expect(pending).rejects.toMatchObject({
         name: "EventResolutionTimeoutError",
-        sources: ["unified", "live"],
+        sources: ["live"],
       } satisfies Partial<EventResolutionTimeoutError>);
       await vi.advanceTimersByTimeAsync(EVENT_DEEP_LINK_TIMEOUT_MS);
       await rejection;
-      expect(loaders.unified).toHaveBeenCalledOnce();
-      expect(loaders.live).toHaveBeenCalledOnce();
-      expect(loaders.ingested).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("returns an already-found fallback at the shared deadline", async () => {
-    vi.useFakeTimers();
-    try {
-      const older = event("game-time-urbana-2026-07-27");
-      const loaders = sources({
-        unified: vi.fn(() => new Promise<EventWithMeta[]>(() => undefined)),
-        live: vi.fn(async () => older),
-      });
-
-      const pending = resolveEventPageBySlugWithSources(
-        older.slug,
-        new Date("2026-07-28T16:00:00.000Z"),
-        loaders,
-      );
-      await vi.advanceTimersByTimeAsync(EVENT_DEEP_LINK_TIMEOUT_MS);
-      await expect(pending).resolves.toEqual({ event: older, kind: "live" });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("preserves unified priority when it settles before the shared deadline", async () => {
-    vi.useFakeTimers();
-    try {
-      const listed = event("alive-at-five-2026-07-30");
-      const fallback = event("alive-at-five-2026-07-30");
-      const loaders = sources({
-        unified: vi.fn(
-          () =>
-            new Promise<EventWithMeta[]>((resolve) => {
-              setTimeout(() => resolve([listed]), 1_000);
-            }),
-        ),
-        live: vi.fn(async () => fallback),
-      });
-
-      const pending = resolveEventPageBySlugWithSources(
-        listed.slug,
-        new Date("2026-07-28T16:00:00.000Z"),
-        loaders,
-      );
-      await vi.advanceTimersByTimeAsync(1_000);
-      await expect(pending).resolves.toEqual({ event: listed, kind: "unified" });
-      expect(loaders.unified).toHaveBeenCalledOnce();
-      expect(loaders.live).toHaveBeenCalledOnce();
-      expect(loaders.ingested).toHaveBeenCalledOnce();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("reserves null for a definitive miss from every source", async () => {
+  it("reserves null for a definitive miss from the archive and both source readers", async () => {
     const loaders = sources();
-
     await expect(
       resolveEventPageBySlugWithSources("missing-event", new Date(), loaders),
     ).resolves.toBeNull();
@@ -215,31 +191,28 @@ describe("resolveEventPageBySlugWithSources", () => {
 
   it("does not turn a failed provider read into a definitive miss", async () => {
     const loaders = sources({
-      unified: vi.fn(async () => {
-        throw new Error("snapshot unavailable");
+      live: vi.fn(async () => {
+        throw new Error("provider unavailable");
       }),
     });
-
     await expect(
-      resolveEventPageBySlugWithSources("possibly-valid-event", new Date(), loaders),
+      resolveEventPageBySlugWithSources(
+        "possibly-valid-event",
+        new Date(),
+        loaders,
+      ),
     ).rejects.toBeInstanceOf(EventResolutionUnavailableError);
   });
 
-  it("keeps deep-link fallbacks when the unified snapshot itself is unavailable", async () => {
-    const older = event("game-time-urbana-2026-07-27");
-    const loaders = sources({
-      unified: vi.fn(async () => {
-        throw new Error("snapshot unavailable");
-      }),
-      live: vi.fn(async () => older),
-    });
-
+  it("does not resolve an online-only event with no actionable join URL", async () => {
+    const stranded = {
+      ...event("stranded-online-class"),
+      attendance_mode: "online" as const,
+      source_url: null,
+    };
+    const loaders = sources({ live: vi.fn(async () => stranded) });
     await expect(
-      resolveEventPageBySlugWithSources(
-        older.slug,
-        new Date("2026-07-28T16:00:00.000Z"),
-        loaders,
-      ),
-    ).resolves.toEqual({ event: older, kind: "live" });
+      resolveEventPageBySlugWithSources(stranded.slug, new Date(), loaders),
+    ).resolves.toBeNull();
   });
 });

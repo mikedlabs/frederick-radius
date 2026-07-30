@@ -38,6 +38,7 @@ import { CalendarCheck,
   FlaskConical,
   Armchair,
   Building2,
+  CarFront,
   Heart,
   Library,
   Hotel,
@@ -108,7 +109,7 @@ const ICONS: Record<string, LucideIcon> = {
   Beer, Wine, Martini, Trees, Mountain, Waves, Flag, Tractor, FerrisWheel, Music,
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
   BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
-  Armchair, Building2, Heart, Library, Hotel, Film, Scissors, PawPrint,
+  Armchair, Building2, CarFront, Heart, Library, Hotel, Film, Scissors, PawPrint,
   Church, Pill, CalendarCheck,
 };
 

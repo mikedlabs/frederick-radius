@@ -24,6 +24,7 @@ export type PlaceAction = {
   icon:
     | "directions"
     | "call"
+    | "email"
     | "website"
     | "reserve"
     | "order"
@@ -64,6 +65,19 @@ export function placeActions(p: Place): PlaceAction[] {
     icon: "directions",
     accent: "var(--app-cool)",
   });
+
+  // Written contact — when the organization publishes an address, keep a
+  // communication-neutral route visible ahead of a phone call.
+  if (p.email) {
+    actions.push({
+      key: "email",
+      label: "Email",
+      href: `mailto:${p.email}`,
+      external: false,
+      icon: "email",
+      accent: "var(--app-cool)",
+    });
+  }
 
   // Call
   if (p.phone) {
@@ -203,6 +217,7 @@ export function groupPlaceActions(
   const primary = actions.find((action) => action.key === primaryKey) ?? null;
   const secondaryOrder = [
     "reserve",
+    "email",
     "call",
     "order",
     "menu",

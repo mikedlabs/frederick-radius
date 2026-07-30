@@ -48,7 +48,19 @@ function event(
 
 describe("events browse payload", () => {
   it("keeps browse provenance while removing detail-only fields and clamping descriptions", () => {
-    const slim = slimEventForBrowse(event("slim", "2026-07-14T14:00:00.000Z"));
+    const heroImageAttribution = {
+      kind: "venue" as const,
+      venue_name: "Test Venue",
+      provider: "google_maps" as const,
+      source_uri: "https://www.google.com/maps/place/example-photo",
+      authors: [],
+    };
+    const slim = slimEventForBrowse(
+      event("slim", "2026-07-14T14:00:00.000Z", {
+        hero_image: "/api/place-photo?name=credited",
+        hero_image_attribution: heroImageAttribution,
+      }),
+    );
 
     expect(slim.description).toHaveLength(160);
     expect("ticket_url" in slim).toBe(false);
@@ -56,6 +68,7 @@ describe("events browse payload", () => {
     expect(slim.source).toBe("seed");
     expect(slim.geo_confidence).toBe("venue_match");
     expect(slim.municipality_name).toBe("Frederick");
+    expect(slim.hero_image_attribution).toEqual(heroImageAttribution);
   });
 
   it("collapses repeated long-tail series but keeps nearby dates distinct", () => {

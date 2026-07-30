@@ -51,6 +51,7 @@ const FEED_URL = "https://www.visitfrederick.org/event/rss/";
 const FETCH_TIMEOUT_MS = 15_000;
 const SOURCE_LABEL = "Visit Frederick";
 const USER_AGENT = "FrederickRadius/1.0 (+https://frederickradius.app)";
+const EVENT_IMAGE_HOST = "assets.simpleviewinc.com";
 
 // Detail-page enrichment (Item 1): each RSS link points at a detail page that
 // embeds schema.org Event JSON-LD with the venue, address, and coordinates the
@@ -162,6 +163,45 @@ function firstMatch(block: string, re: RegExp): string | undefined {
   return re.exec(block)?.[1];
 }
 
+/**
+ * Visit Frederick publishes event-specific artwork through its Simpleview
+ * account. Keep the adapter boundary narrow: an unexpected URL in RSS or
+ * JSON-LD is discarded rather than becoming an arbitrary remote image.
+ */
+function visitFrederickEventImage(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(decodeEntities(value.trim()));
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== EVENT_IMAGE_HOST ||
+      !url.pathname.startsWith("/sv-frederick-county/image/fetch/")
+    ) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function eventImageFromJsonLd(value: unknown): string | undefined {
+  if (typeof value === "string") return visitFrederickEventImage(value);
+  if (Array.isArray(value)) {
+    for (const candidate of value) {
+      const image = eventImageFromJsonLd(candidate);
+      if (image) return image;
+    }
+    return undefined;
+  }
+  if (!value || typeof value !== "object") return undefined;
+  const image = value as Record<string, unknown>;
+  return (
+    eventImageFromJsonLd(image.contentUrl) ??
+    eventImageFromJsonLd(image.url)
+  );
+}
+
 /** All category tag values in one item block, decoded + trimmed + lower-cased. */
 function categoriesOf(block: string): string[] {
   const out: string[] = [];
@@ -227,6 +267,9 @@ export function normalizeVisitFrederickRss(xml: string, now: Date = new Date()):
     // Blurb: inner text of the first <p>, tags stripped, entities decoded.
     const blurb = firstMatch(descRaw, /<p[^>]*>([\s\S]*?)<\/p>/i) ?? "";
     const description = decodeEntities(blurb.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    const heroImage = visitFrederickEventImage(
+      firstMatch(descRaw, /<img\b[^>]*\bsrc=["']([^"']+)["']/i),
+    );
 
     const cats = categoriesOf(block);
     const municipality = pickMunicipality(cats);
@@ -254,6 +297,7 @@ export function normalizeVisitFrederickRss(xml: string, now: Date = new Date()):
       source_label: SOURCE_LABEL,
       url: link,
       is_free: cats.includes("free"),
+      hero_image: heroImage,
       status: "scheduled" as const,
       last_verified_at: now.toISOString(),
     });
@@ -270,6 +314,8 @@ export type VfDetail = {
   /** Precise venue coordinate, only when finite AND inside the county. */
   geom: { lng: number; lat: number } | null;
   description: string;
+  /** Event artwork published by Visit Frederick in schema.org JSON-LD. */
+  hero_image?: string;
 };
 
 const LD_JSON_RE = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -350,6 +396,7 @@ export function parseVisitFrederickDetail(html: string): VfDetail | null {
       municipality: municipalityFromLocality(addr.addressLocality),
       geom,
       description: typeof ev.description === "string" ? ev.description.trim() : "",
+      hero_image: eventImageFromJsonLd(ev.image),
     };
   }
   return null;
@@ -455,6 +502,7 @@ async function fetchVisitFrederickResultUncached(): Promise<
         venue_name: d.venue_name || e.venue_name,
         address: d.address || e.address,
         description,
+        hero_image: d.hero_image ?? e.hero_image,
         municipality: d.municipality ?? e.municipality,
         // Precise coord -> mark "geocoded" so the card shows a real distance.
         // No coord -> stay on the town centroid (no placement -> "area").

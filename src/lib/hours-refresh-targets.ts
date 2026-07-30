@@ -2,8 +2,51 @@
  * policy out of the route makes it difficult to silently omit an entire source
  * tier again. */
 
-export const HOURS_REFRESH_CYCLE_DAYS = 7;
-export const HOURS_REFRESH_MIN_SUCCESS_RATIO = 0.5;
+// Refresh inside the seven-day publication window so one delayed run does not
+// immediately turn a whole bucket stale.
+export const HOURS_REFRESH_CYCLE_DAYS = 6;
+export const HOURS_REFRESH_MIN_SUCCESS_RATIO = 0.9;
+const DAY_MS = 86_400_000;
+
+export type HoursRefreshCycleSelection = {
+  cycleDay: number;
+  mode: "scheduled" | "backfill";
+};
+
+/**
+ * Resolve the deterministic daily bucket, with an authenticated route-level
+ * escape hatch for a missed bucket. The route still enforces the same paid-call
+ * cap, provider-identity checks, and cron bearer secret for backfills.
+ */
+export function resolveHoursRefreshCycleSelection(
+  requestUrl: string,
+  nowMs = Date.now(),
+): HoursRefreshCycleSelection {
+  const values = new URL(requestUrl).searchParams.getAll("cycleDay");
+  if (values.length === 0) {
+    return {
+      cycleDay: Math.floor(nowMs / DAY_MS) % HOURS_REFRESH_CYCLE_DAYS,
+      mode: "scheduled",
+    };
+  }
+  const requestedDay = values.length === 1 && /^\d+$/.test(values[0])
+    ? Number(values[0])
+    : Number.NaN;
+  if (
+    values.length !== 1 ||
+    !Number.isInteger(requestedDay) ||
+    requestedDay < 0 ||
+    requestedDay >= HOURS_REFRESH_CYCLE_DAYS
+  ) {
+    throw new RangeError(
+      `cycleDay must be one integer from 0 to ${HOURS_REFRESH_CYCLE_DAYS - 1}`,
+    );
+  }
+  return {
+    cycleDay: requestedDay,
+    mode: "backfill",
+  };
+}
 
 export function hoursRefreshCycleDay(slug: string): number {
   let h = 5381;

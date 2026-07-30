@@ -84,6 +84,7 @@ const FALLBACK_META: SourceMeta = {
 export type ProvenanceInput = {
   slug: string;
   source?: string;
+  source_url?: string | null;
   google_place_id?: string;
   updated_at?: string;
   hours_updated_at?: string;
@@ -123,9 +124,11 @@ export function stampPlaceProvenance(
   // UUID in google_place_id (DQ-020), and maps/place?q=place_id:<uuid> resolves
   // to nothing — a broken "source" link that misrepresents provenance. Emit the
   // URL only for a conforming Google id; a UUID gets no fabricated link.
-  const source_url = isGooglePlaceId(p.google_place_id)
-    ? `https://www.google.com/maps/place/?q=place_id:${p.google_place_id}`
-    : null;
+  const source_url = p.source_url?.startsWith("https://")
+    ? p.source_url
+    : isGooglePlaceId(p.google_place_id)
+      ? `https://www.google.com/maps/place/?q=place_id:${p.google_place_id}`
+      : null;
   return {
     source,
     source_id,
@@ -180,6 +183,7 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   "heritage-frederick": { license: "Public calendar, Heritage Frederick",         confidence: "partner" },
   monocacy:         { license: "Public calendar, Monocacy Brewing",               confidence: "partner" },
   msd:              { license: "Maryland School for the Deaf calendar",          confidence: "verified" },
+  mdcc:             { license: "Maryland Deaf Community Center calendar",        confidence: "verified" },
   "mount-st-marys": { license: "Mount St. Mary's University calendar",           confidence: "verified" },
   isf:              { license: "Islamic Society of Frederick public calendar",   confidence: "verified" },
   elc:              { license: "Public calendar, Evangelical Lutheran Church",    confidence: "partner" },
@@ -197,19 +201,22 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
 export type EventProvenanceInput = {
   slug: string;
   source?: string;
+  /** Stable identifier supplied by the publisher. Unlike a title-derived
+   * slug, this must survive copy edits and route changes. */
+  source_id?: string;
   source_url?: string | null;
   last_verified_at?: string;
 };
 
-/** Event side of the stamp. Events have no external id retained beyond
- *  their source URL, so source_id is the namespaced slug. */
+/** Event side of the stamp. Prefer a publisher UID; older/curated records that
+ * do not carry one retain the namespaced-slug fallback. */
 export function stampEventProvenance(
   e: EventProvenanceInput,
   verifiedAt?: string,
 ): Omit<Provenance, "source" | "source_url"> & { source_url: string | null } {
   const meta = EVENT_SOURCE_REGISTRY[e.source ?? ""] ?? FALLBACK_META;
   return {
-    source_id: `slug:${e.slug}`,
+    source_id: e.source_id?.trim() || `slug:${e.slug}`,
     source_url: e.source_url ?? null,
     license: meta.license,
     confidence: meta.confidence,

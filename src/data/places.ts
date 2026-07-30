@@ -12,12 +12,44 @@ export type OperationalStatus =
   | "closed_permanently"
   | "needs_verification";
 
+/**
+ * Communication access is source-backed place information, not an inferred
+ * extension of wheelchair access. An absent value means unknown.
+ */
+export type CommunicationAccess = {
+  deaf_community?: boolean;
+  asl_environment?: boolean;
+  asl_interpretation?: boolean;
+  captions?: boolean;
+  assistive_listening?: boolean;
+  relay_supported?: boolean;
+  written_contact?: boolean;
+  videophone?: boolean;
+  notes?: string;
+  source_url: string;
+  verified_at: string;
+};
+
+export type PlaceAccessibility = {
+  wheelchair?: boolean;
+  restroom?: boolean;
+  parking?: boolean;
+  communication?: CommunicationAccess;
+};
+
 export type Place = {
   slug: string;
   name: string;
   category: string;
   subcategories?: string[];
   tags?: string[];
+  /**
+   * Source-backed names and service phrases people actually search for.
+   * Multi-word aliases are matched as complete phrases so a brand name such
+   * as "Wash Lube Repair" does not make every WLR location answer the generic
+   * word "repair."
+   */
+  search_aliases?: string[];
   short_blurb: string;
   description?: string;
   address: string;
@@ -27,11 +59,13 @@ export type Place = {
   municipality: string;
   geom: LngLat;
   phone?: string;
+  /** Published business/organization email; never synthesized. */
+  email?: string;
   website?: string;
   hours?: Hours;
   price_band?: 1 | 2 | 3 | 4;
   amenities?: string[];
-  accessibility?: { wheelchair?: boolean; restroom?: boolean; parking?: boolean };
+  accessibility?: PlaceAccessibility;
   hero_image?: string;
   is_verified: boolean;
   /** Editorial: a lesser-known local standout. Set via HIDDEN_GEM_SLUGS at
@@ -53,6 +87,10 @@ export type Place = {
     // are normalized to "discovered" by the provenance stamper).
     | "fc-gis" | "discovered" | "osm";
   updated_at: string;
+  /** Stable public record used to verify a manually curated listing. */
+  source_url?: string | null;
+  /** ISO timestamp when this listing was checked against that source. */
+  last_verified_at?: string;
 
   // ── Reservation / ordering / parking integrations ──
   /** OpenTable restaurant reference id (the integer in the URL after restref=) */
@@ -96,6 +134,35 @@ const HOURS_PARK: Hours = {
   sun: [{ open: "06:00", close: "22:00" }],
 };
 
+const HOURS_LUBE_CENTER: Hours = {
+  mon: [{ open: "08:00", close: "19:00" }],
+  tue: [{ open: "08:00", close: "19:00" }],
+  wed: [{ open: "08:00", close: "19:00" }],
+  thu: [{ open: "08:00", close: "19:00" }],
+  fri: [{ open: "08:00", close: "19:00" }],
+  sat: [{ open: "08:00", close: "17:00" }],
+  sun: [{ open: "09:00", close: "16:00" }],
+};
+
+const HOURS_AUTO_REPAIR: Hours = {
+  mon: [{ open: "08:00", close: "18:00" }],
+  tue: [{ open: "08:00", close: "18:00" }],
+  wed: [{ open: "08:00", close: "18:00" }],
+  thu: [{ open: "08:00", close: "18:00" }],
+  fri: [{ open: "08:00", close: "18:00" }],
+  sat: [{ open: "08:00", close: "16:00" }],
+};
+
+const HOURS_AUTO_SPA: Hours = {
+  mon: [{ open: "07:00", close: "20:00" }],
+  tue: [{ open: "07:00", close: "20:00" }],
+  wed: [{ open: "07:00", close: "20:00" }],
+  thu: [{ open: "07:00", close: "20:00" }],
+  fri: [{ open: "07:00", close: "20:00" }],
+  sat: [{ open: "07:00", close: "20:00" }],
+  sun: [{ open: "08:00", close: "18:00" }],
+};
+
 /**
  * Curated seed list — civic infrastructure and major venues only.
  *
@@ -113,6 +180,241 @@ const HOURS_PARK: Hours = {
  * stays as the editorial spine; everything else hydrates from Google.
  */
 export const PLACES: Place[] = [
+  // ──── WLR Automotive Group — official location pages, 2026-07-29 ────
+  // Normal weekly hours, contact details, and coordinates were checked
+  // against each first-party location page and its embedded map. Holiday
+  // closures are not represented by this repeating schedule.
+  {
+    slug: "route-40-lube-center-frederick",
+    name: "Route 40 Lube Center",
+    category: "auto-care",
+    subcategories: ["oil-change", "preventive-maintenance"],
+    tags: ["oil-change", "vehicle-maintenance", "drive-through"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "Route 40 Lube",
+      "Rt 40 Lube",
+      "The Lube Center",
+      "quick lube",
+      "no-appointment oil change",
+      "battery testing",
+      "cabin air filter",
+      "transmission fluid service",
+      "wiper blades",
+      "free oil top-off",
+      "fleet service",
+    ],
+    short_blurb: "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    address: "1395 W Patrick St",
+    city: "Frederick", state: "MD", postal_code: "21702",
+    municipality: "frederick",
+    geom: { lng: -77.4600143, lat: 39.4199638 },
+    phone: "(301) 694-3450",
+    website: "https://www.washluberepair.com/location/route-40-lube-center/",
+    hours: HOURS_LUBE_CENTER,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/route-40-lube-center/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "route-85-lube-center-frederick",
+    name: "Route 85 Lube Center",
+    category: "auto-care",
+    subcategories: ["oil-change", "preventive-maintenance"],
+    tags: ["oil-change", "vehicle-maintenance", "drive-through"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "Route 85 Lube",
+      "Rt 85 Lube",
+      "The Lube Center",
+      "quick lube",
+      "no-appointment oil change",
+      "battery testing",
+      "cabin air filter",
+      "transmission fluid service",
+      "wiper blades",
+      "free oil top-off",
+      "fleet service",
+    ],
+    short_blurb: "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    address: "5715 Buckeystown Pike",
+    city: "Frederick", state: "MD", postal_code: "21704",
+    municipality: "frederick",
+    geom: { lng: -77.408797, lat: 39.39129 },
+    phone: "(301) 668-1151",
+    website: "https://www.washluberepair.com/location/route-85-lube-center/",
+    hours: HOURS_LUBE_CENTER,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/route-85-lube-center/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "jefferson-street-lube-center-frederick",
+    name: "Jefferson Street Lube Center",
+    category: "auto-care",
+    subcategories: ["oil-change", "preventive-maintenance"],
+    tags: ["oil-change", "vehicle-maintenance", "drive-through"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "Jefferson Street Lube",
+      "The Lube Center",
+      "quick lube",
+      "no-appointment oil change",
+      "battery testing",
+      "cabin air filter",
+      "transmission fluid service",
+      "wiper blades",
+      "free oil top-off",
+      "fleet service",
+    ],
+    short_blurb: "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    address: "421 S Jefferson St",
+    city: "Frederick", state: "MD", postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.430772, lat: 39.407312 },
+    phone: "(301) 846-4380",
+    website: "https://www.washluberepair.com/location/jefferson-street-lube-center/",
+    hours: HOURS_LUBE_CENTER,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/jefferson-street-lube-center/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "frederick-auto-repair",
+    name: "Frederick Auto Repair",
+    category: "auto-care",
+    subcategories: ["auto-repair", "vehicle-repair", "state-inspection"],
+    tags: ["auto-repair", "diagnostics", "brakes", "tires", "vehicle-maintenance"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "The Auto Repair",
+      "mechanic",
+      "ASE-certified technician",
+      "Maryland state inspection",
+      "state inspection",
+      "wheel alignment",
+      "fleet service",
+    ],
+    short_blurb: "This Route 40 shop provides major vehicle repairs and Maryland state inspections, with walk-in service and a night drop box.",
+    address: "1395 W Patrick St",
+    city: "Frederick", state: "MD", postal_code: "21702",
+    municipality: "frederick",
+    geom: { lng: -77.4600237, lat: 39.4199729 },
+    phone: "(301) 663-6304",
+    website: "https://www.washluberepair.com/location/frederick-auto-repair/",
+    hours: HOURS_AUTO_REPAIR,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/frederick-auto-repair/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "frederick-auto-spa-route-40",
+    name: "Frederick Auto Spa – Route 40",
+    category: "auto-care",
+    subcategories: ["car-wash", "full-service-car-wash", "express-car-wash"],
+    tags: ["car-wash", "auto-detailing", "vacuums"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "The Auto Spa",
+      "Route 40 Auto Spa",
+      "Rt 40 Auto Spa",
+      "full-service car wash",
+      "free vacuums",
+      "wash membership",
+    ],
+    short_blurb: "This Route 40 Auto Spa offers express and full-service car washes, with a self-service detailing area.",
+    address: "1509 Garrett Dr",
+    city: "Frederick", state: "MD", postal_code: "21702",
+    municipality: "frederick",
+    geom: { lng: -77.468537, lat: 39.422295 },
+    phone: "(301) 631-1421",
+    website: "https://www.washluberepair.com/location/frederick-auto-spa-rt-40/",
+    hours: HOURS_AUTO_SPA,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/frederick-auto-spa-rt-40/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "frederick-auto-spa-express-route-85",
+    name: "Frederick Auto Spa Express – Route 85",
+    category: "auto-care",
+    subcategories: ["car-wash", "express-car-wash", "self-service-detailing"],
+    tags: ["car-wash", "vacuums", "mat-cleaners", "air-hoses"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "The Auto Spa Express",
+      "Route 85 Auto Spa",
+      "Rt 85 Auto Spa",
+      "free vacuums",
+      "wash membership",
+    ],
+    short_blurb: "This Route 85 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    address: "5718 Buckeystown Pike",
+    city: "Frederick", state: "MD", postal_code: "21704",
+    municipality: "frederick",
+    geom: { lng: -77.4111144, lat: 39.3918069 },
+    phone: "(301) 228-9027",
+    website: "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-85/",
+    hours: HOURS_AUTO_SPA,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-85/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+  {
+    slug: "frederick-auto-spa-express-route-26",
+    name: "Frederick Auto Spa Express – Route 26",
+    category: "auto-care",
+    subcategories: ["car-wash", "express-car-wash", "self-service-detailing"],
+    tags: ["car-wash", "vacuums", "mat-cleaners", "air-hoses"],
+    search_aliases: [
+      "WLR",
+      "Wash Lube Repair",
+      "WLR Automotive Group",
+      "The Auto Spa Express",
+      "Route 26 Auto Spa",
+      "Rt 26 Auto Spa",
+      "free vacuums",
+      "wash membership",
+    ],
+    short_blurb: "This Route 26 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    address: "2415 Monocacy Blvd",
+    city: "Frederick", state: "MD", postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.3881256, lat: 39.4492136 },
+    phone: "(240) 815-7995",
+    website: "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-26-2/",
+    hours: HOURS_AUTO_SPA,
+    is_verified: true, hours_verified: true, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-29",
+    source_url: "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-26-2/",
+    last_verified_at: "2026-07-29T12:23:10.000Z",
+    hours_updated_at: "2026-07-29T12:23:10.000Z",
+  },
+
   // ──── Curated additions — data-completeness audit, July 2026 ──────────
   // Web-verified open businesses the catalog was missing (heaviest in
   // Indian and sit-down Japanese). Coordinates are real Nominatim geocodes

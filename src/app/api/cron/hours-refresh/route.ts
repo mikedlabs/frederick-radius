@@ -1,7 +1,7 @@
 /**
  * Rolling hours refresh (data brief, Phase 1, section 4.3).
  *
- * Walks the Google-backed catalog on a 7 day cycle: each run handles the
+ * Walks the Google-backed catalog on a six-day cycle: each run handles the
  * slice of slugs whose hash lands on today's cycle day. Every canonical
  * record with a Google place ID participates, including the discovered
  * tail. Field mask scoped to hours and business status only, so every
@@ -12,6 +12,8 @@
  * npm run refresh:hours pulls the table into the committed
  * places-hours-refresh.json, matching the repo's existing refresh
  * pattern for business status. The freshness policy reads refreshed_at.
+ * An authenticated operator may add ?cycleDay=0..5 to recover one missed
+ * bucket without weakening the paid-call cap or the freshness policy.
  *
  * PAID and OFF by default, same contract as the business-status cron:
  * no-ops unless HOURS_REFRESH_CRON is "1", requires the Google key and
@@ -29,6 +31,7 @@ import {
 import {
   assessHoursRefreshRun,
   HOURS_REFRESH_CYCLE_DAYS,
+  resolveHoursRefreshCycleSelection,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
 import { isGooglePlaceId } from "@/lib/provenance";
@@ -41,7 +44,7 @@ export const maxDuration = 300;
 // bucketing. Keep headroom so a deterministic slice can never strand the tail
 // forever.
 const BATCH_CAP = 400;
-const CONCURRENCY = 5;
+const CONCURRENCY = 6;
 
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
@@ -52,6 +55,22 @@ export async function GET(request: Request) {
       enabled: false,
       note: "Set HOURS_REFRESH_CRON=1 to enable. Off by default to avoid Google Places spend.",
     });
+  }
+  let cycle: ReturnType<typeof resolveHoursRefreshCycleSelection>;
+  try {
+    cycle = resolveHoursRefreshCycleSelection(request.url);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : `cycleDay must be 0-${HOURS_REFRESH_CYCLE_DAYS - 1}`,
+      },
+      { status: 400 },
+    );
   }
   if (!googlePlacesConfigured()) {
     return NextResponse.json(
@@ -98,7 +117,7 @@ export async function GET(request: Request) {
   // upstream of live status and season: a closed or off-season place remains
   // refreshable, which is how a later reopening is discovered. The cap still
   // provides a hard upper bound on paid calls.
-  const today = Math.floor(Date.now() / 86400000) % HOURS_REFRESH_CYCLE_DAYS;
+  const today = cycle.cycleDay;
   const places = placeRefreshIdentities();
   const placesWithGoogleId = places.filter((place) =>
     Boolean(place.google_place_id),
@@ -121,6 +140,7 @@ export async function GET(request: Request) {
         enabled: true,
         healthy: false,
         cycleDay: today,
+        cycleMode: cycle.mode,
         catalog: places.length,
         validGoogleIds: validGooglePlaces.length,
         invalidGoogleIds,
@@ -136,7 +156,7 @@ export async function GET(request: Request) {
   const deferred = eligibleTargets.length - targets.length;
 
   // A deterministic bucket that exceeds the cap would strand the same tail on
-  // every seven-day cycle. Stop before spending and make the capacity problem
+  // every six-day cycle. Stop before spending and make the capacity problem
   // explicit instead of pretending the partial batch is a rolling refresh.
   if (targets.length === 0 || deferred > 0) {
     const health = assessHoursRefreshRun({
@@ -150,6 +170,7 @@ export async function GET(request: Request) {
         enabled: true,
         healthy: false,
         cycleDay: today,
+        cycleMode: cycle.mode,
         catalog: places.length,
         validGoogleIds: validGooglePlaces.length,
         invalidGoogleIds,
@@ -167,7 +188,7 @@ export async function GET(request: Request) {
   let withHours = 0;
   const failures: string[] = [];
 
-  // A five-wide pool keeps a 300-second function from timing out on the full
+  // A six-wide pool keeps a 300-second function from timing out on the full
   // discovered-inclusive slice without creating a burst large enough to be
   // rude to Google or the database.
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
@@ -224,6 +245,7 @@ export async function GET(request: Request) {
       enabled: true,
       healthy: health.healthy,
       cycleDay: today,
+      cycleMode: cycle.mode,
       catalog: places.length,
       validGoogleIds: validGooglePlaces.length,
       invalidGoogleIds,
@@ -235,7 +257,9 @@ export async function GET(request: Request) {
       failures: failures.slice(0, 10),
       ...(health.error ? { error: health.error } : {}),
       note: health.healthy
-        ? "Run npm run refresh:hours to pull the table into places-hours-refresh.json."
+        ? cycle.mode === "backfill"
+          ? "Backfill bucket persisted. Run npm run refresh:hours to materialize it into places-hours-refresh.json."
+          : "Run npm run refresh:hours to pull the table into places-hours-refresh.json."
         : "Check the Google Places key and the database write role before the next paid run.",
     },
     { status: health.status },

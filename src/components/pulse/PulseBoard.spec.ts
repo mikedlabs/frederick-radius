@@ -1,5 +1,9 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  AlertDataPanel,
+  pulseClearedKeys,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -49,6 +53,15 @@ describe("Pulse status language", () => {
     })).toBe("Urgent");
   });
 
+  it("never lets a contradictory all-clear flag hide partial data", () => {
+    expect(pulseStatusWord({
+      allClear: true,
+      degraded: true,
+      hasLead: false,
+      tone: "positive",
+    })).toBe("Partial data");
+  });
+
   it("keeps verified quiet conditions separate from advisories", () => {
     expect(pulseStatusWord({
       allClear: true,
@@ -63,6 +76,67 @@ describe("Pulse status language", () => {
       hasLead: true,
       tone: "warning",
     })).toBe("Advisory");
+  });
+
+  it("does not report an unavailable feed as cleared since the last look", () => {
+    const tile = (
+      key: string,
+      attention: boolean,
+      degraded = false,
+    ): PulseTile => ({
+      key,
+      label: key,
+      iconName: "CloudAlert",
+      sourceLabel: "Test source",
+      countLabel: attention ? "1 active" : "No active issue",
+      accent: "var(--app-warning)",
+      active: attention,
+      attention,
+      degraded,
+      kind: "status",
+      body: null,
+    });
+
+    expect(
+      pulseClearedKeys(
+        { alerts: "1 active", traffic: "1 active" },
+        [
+          tile("alerts", false, true),
+          tile("traffic", false),
+        ],
+      ),
+    ).toEqual(["traffic"]);
+  });
+
+  it("keeps every alert fact caption at the 11px mobile floor", () => {
+    const lead: PulseTile = {
+      key: "air",
+      label: "Air quality",
+      iconName: "CloudAlert",
+      sourceLabel: "AirNow",
+      countLabel: "AQI 151",
+      accent: "var(--app-warning)",
+      active: true,
+      attention: true,
+      kind: "status",
+      body: null,
+    };
+    const html = renderToStaticMarkup(
+      createElement(AlertDataPanel, {
+        facts: [
+          { label: "Current AQI", value: "151", detail: "Frederick" },
+          { label: "Observed", value: "12:05 PM" },
+        ],
+        lead,
+        meta: "Observed 5 minutes ago",
+        actionLabel: "See the air-quality reading",
+        color: "var(--app-warning)",
+        onOpen: () => undefined,
+      }),
+    );
+
+    expect(html).toContain("text-caption");
+    expect(html).not.toMatch(/text-\[(?:8\.5|9\.5|10)px\]/);
   });
 });
 

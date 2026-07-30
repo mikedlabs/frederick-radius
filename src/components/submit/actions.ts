@@ -44,6 +44,8 @@ export type SubmitEventInput = PublicSubmissionProof & {
   price_text: string;
   ticket_url: string;
   organizer: string;
+  photo_url: string;
+  photo_permission: boolean;
   submitter_email: string;
   submitter_name: string;
 };

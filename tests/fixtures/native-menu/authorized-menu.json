@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "place_id": "test-kitchen-frederick",
+  "authorization": {
+    "authorized": true,
+    "basis": "owner_upload",
+    "granted_at": "2026-07-29T10:00:00-04:00"
+  },
+  "source": {
+    "provider": "owner_upload",
+    "url": "https://testkitchen.example.com/menu?utm_source=radius",
+    "checked_at": "2026-07-29T10:15:00-04:00",
+    "published_at": "2026-07-28T12:00:00-04:00"
+  },
+  "menus": [
+    {
+      "id": "dinner",
+      "name": "Dinner",
+      "currency": "USD",
+      "sections": [
+        {
+          "id": "dinner-sandwiches",
+          "name": "Sandwiches",
+          "items": [
+            {
+              "id": "fried-chicken-sandwich",
+              "name": "Fried Chicken Sandwich",
+              "description": "Pickles, slaw, and hot honey",
+              "price_cents": 1600,
+              "available": true,
+              "availability_evidence": "owner_attested",
+              "dietary_tags": ["dairy_free"],
+              "dietary_evidence": "owner_attested",
+              "source_url": "https://testkitchen.example.com/menu#sandwiches"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

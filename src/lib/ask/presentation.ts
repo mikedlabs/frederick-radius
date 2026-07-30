@@ -1,4 +1,12 @@
-import type { AskResult, AskSource } from "@/lib/ask/contracts";
+import type {
+  AskResponsePresentation,
+  AskResult,
+  AskSource,
+} from "@/lib/ask/contracts";
+import {
+  parseAskIntent,
+  type AskIntentKind,
+} from "@/lib/ask/intent";
 
 const DISCOVERY_KINDS = new Set(["place", "event", "explore"]);
 
@@ -91,4 +99,155 @@ export function withPrimaryRankedResult(result: AskResult): AskResult {
         : source,
     ),
   };
+}
+
+function firstCompleteSentence(value: string): string {
+  const text = value.trim();
+  if (!text) return "";
+  const sentenceEnd = /[.!?](?=\s|$)/g;
+  let match: RegExpExecArray | null;
+  while ((match = sentenceEnd.exec(text)) !== null) {
+    const candidate = text.slice(0, match.index + 1).trim();
+    // Do not turn a road, place, or honorific abbreviation into a sentence.
+    const remainder = text.slice(match.index + 1).trimStart();
+    const honorific = /\b(?:Mr|Mrs|Ms|Dr)\.$/i.test(candidate);
+    const contextualAbbreviation =
+      /\b(?:St|Mt|Ave|Rd|U\.S|D\.C)\.$/i.test(candidate) &&
+      (candidate.length <= 5 || /^[a-z0-9]/.test(remainder));
+    if (honorific || contextualAbbreviation) {
+      continue;
+    }
+    return candidate;
+  }
+  return text;
+}
+
+function answerRemainder(answer: string, summary: string): string | null {
+  const text = answer.trim();
+  if (!text || !summary || text === summary) return null;
+  if (!text.startsWith(summary)) return text;
+  const remaining = text.slice(summary.length).trim();
+  return remaining || null;
+}
+
+export function askResponsePresentation(
+  result: AskResult,
+): AskResponsePresentation {
+  const unsupportedLowConfidence =
+    result.intelligence?.confidence === "medium" &&
+    result.sources.length === 0 &&
+    !result.plan;
+  const layout: AskResponsePresentation["layout"] =
+    result.status === "empty" || unsupportedLowConfidence
+      ? "recovery"
+      : result.intent?.kind === "plan" && result.plan
+        ? "plan"
+        : result.intent?.kind === "place"
+          ? "place"
+          : result.intent?.kind === "civic"
+            ? "civic"
+            : "standard";
+  const answer = result.answer?.trim() ?? "";
+  const summary = firstCompleteSentence(answer) || null;
+
+  return {
+    layout,
+    summary,
+    detail:
+      answer && summary
+        ? answerRemainder(answer, summary)
+        : answer || null,
+  };
+}
+
+/**
+ * Decorate every API success with the same intent and reading-order contract.
+ * Direct civic handlers bypass the general Ask engine, so the route can force
+ * their known intent instead of making the client infer it from copy.
+ */
+export function withAskResponsePresentation(
+  result: AskResult,
+  query: string,
+  options: { kind?: AskIntentKind } = {},
+): AskResult {
+  const parsedIntent = result.intent ?? parseAskIntent(query);
+  const intent = options.kind
+    ? {
+        ...parsedIntent,
+        kind: options.kind,
+        label:
+          options.kind === "civic"
+            ? "Official local help"
+            : parsedIntent.label,
+      }
+    : parsedIntent;
+  const ranked = withPrimaryRankedResult({ ...result, intent });
+
+  return {
+    ...ranked,
+    presentation: askResponsePresentation(ranked),
+  };
+}
+
+export type AskResponseSection =
+  | "summary"
+  | "context-controls"
+  | "plan"
+  | "primary-action"
+  | "primary-source"
+  | "supporting-sources"
+  | "secondary-actions"
+  | "detail";
+
+/**
+ * DOM order, not visual CSS order. This makes the hierarchy testable and
+ * keeps assistive technology in the same decision-first sequence.
+ */
+export function askResponseSectionOrder(
+  presentation: Pick<AskResponsePresentation, "layout">,
+): AskResponseSection[] {
+  switch (presentation.layout) {
+    case "plan":
+      return [
+        "summary",
+        "context-controls",
+        "plan",
+        "primary-action",
+        "primary-source",
+        "supporting-sources",
+        "secondary-actions",
+        "detail",
+      ];
+    case "place":
+      return [
+        "primary-source",
+        "summary",
+        "context-controls",
+        "supporting-sources",
+        "primary-action",
+        "secondary-actions",
+        "detail",
+      ];
+    case "civic":
+      return [
+        "summary",
+        "primary-action",
+        "primary-source",
+        "supporting-sources",
+        "secondary-actions",
+        "detail",
+      ];
+    case "recovery":
+      return ["summary", "primary-action"];
+    default:
+      return [
+        "summary",
+        "context-controls",
+        "primary-source",
+        "primary-action",
+        "supporting-sources",
+        "secondary-actions",
+        "detail",
+      ];
+  }
 }

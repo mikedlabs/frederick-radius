@@ -3,6 +3,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import {
   canUseOriginForRanking,
   compareRightNowCandidates,
+  resolveRightNowAvailabilityMode,
   rightNowQualityScore,
   rightNowSortLabel,
   smartNearbyScore,
@@ -105,6 +106,67 @@ describe("right-now no-origin ranking", () => {
       { p: open, dist: 10_000, open: true },
     ].sort((a, b) => compareRightNowCandidates(a, b, "nearest", false));
     expect(ranked[0]?.p.name).toBe("Open but modest");
+  });
+
+  it("downgrades required hours to a bonus when coverage cannot support open-first", () => {
+    expect(resolveRightNowAvailabilityMode("required", false)).toBe("bonus");
+    expect(resolveRightNowAvailabilityMode("required", true)).toBe("required");
+    expect(resolveRightNowAvailabilityMode("bonus", false)).toBe("bonus");
+    expect(resolveRightNowAvailabilityMode("not-applicable", false)).toBe("not-applicable");
+  });
+
+  it("lets a nearby unknown-hours place beat a far confirmed-open place in flexible mode", () => {
+    const nearbyUnknown = place("Around the corner", {
+      feature_score: 4,
+      open_status: { state: "unknown" },
+    });
+    const farOpen = place("Eleven miles away", {
+      feature_score: 10,
+      google_rating: 4.9,
+      google_rating_count: 900,
+      local_favorite: true,
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false },
+    });
+    const ranked = [
+      { p: farOpen, dist: 17_700, open: true },
+      { p: nearbyUnknown, dist: 180, open: false },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "smart", true, {}, "bonus"),
+    );
+    expect(ranked[0]?.p.name).toBe("Around the corner");
+  });
+
+  it("still places a confirmed closure after a nearby unknown-hours option", () => {
+    const unknown = place("Hours unknown", {
+      open_status: { state: "unknown" },
+    });
+    const closed = place("Confirmed closed", {
+      feature_score: 10,
+      open_status: { state: "closed" },
+    });
+    const ranked = [
+      { p: closed, dist: 10, open: false },
+      { p: unknown, dist: 300, open: false },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "nearest", true, {}, "bonus"),
+    );
+    expect(ranked[0]?.p.name).toBe("Hours unknown");
+  });
+
+  it("keeps the explicit required-hours tier for food and open-now decisions", () => {
+    const nearbyUnknown = place("Nearby unknown", {
+      open_status: { state: "unknown" },
+    });
+    const farOpen = place("Far open", {
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false },
+    });
+    const ranked = [
+      { p: nearbyUnknown, dist: 100, open: false },
+      { p: farOpen, dist: 12_000, open: true },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "nearest", true, {}, "required"),
+    );
+    expect(ranked[0]?.p.name).toBe("Far open");
   });
 
   it("puts places with real review evidence ahead of unrated places in Top rated", () => {

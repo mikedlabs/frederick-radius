@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppMapClient, {
   type CivicPin,
   type EventPin,
   type MapLineFC,
+  type RoadWorkZoneFC,
+  type FloodContextFC,
+  type SnowRouteFC,
   type CemeteryPin,
 } from "@/components/map/AppMapClient";
+import {
+  EMPTY_FLOOD_CONTEXT_FC,
+  EMPTY_ROAD_WORK_ZONE_FC,
+  EMPTY_SNOW_ROUTE_FC,
+} from "@/components/map/types";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
@@ -50,9 +58,9 @@ import { parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope"
  * views stay shareable), but the server always answers with the same
  * cached static payload instead of re-rendering per param combination.
  *
- * The one clock nuance: `now` is the BROWSER clock, captured once per
- * mount (the app template remounts per navigation, so this matches the
- * old per-request freshness — and beats it once the page is ISR-stale).
+ * Time-sensitive event windows use a visibility-aware browser clock. A map
+ * left open across an event boundary updates itself instead of keeping the
+ * moment from its first mount forever.
  */
 
 /**
@@ -125,6 +133,9 @@ export default function BrowseMapClient({
   transitStops,
   marcStations,
   foodTruckPins,
+  roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
+  floodContext = EMPTY_FLOOD_CONTEXT_FC,
+  snowRoutes = EMPTY_SNOW_ROUTE_FC,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
@@ -149,6 +160,12 @@ export default function BrowseMapClient({
   marcStations: MarcStationPin[];
   /** Operator-confirmed live locations; empty until a vendor drops a beacon. */
   foodTruckPins: FoodTruckMapPin[];
+  /** Official Maryland work zones, already reduced to Frederick geometry. */
+  roadWorkZones?: RoadWorkZoneFC;
+  /** Static high-water context. It never represents a current closure. */
+  floodContext?: FloodContextFC;
+  /** Current SnowCommand route-operation reports, shown with Roads. */
+  snowRoutes?: SnowRouteFC;
 }) {
   const sp = useSearchParams();
   const intentParam = sp.get("intent") ?? undefined;
@@ -158,8 +175,37 @@ export default function BrowseMapClient({
   const atParam = sp.get("at") ?? undefined;
   const amenityParam = sp.get("amenity") ?? undefined;
 
-  // One clock per mount (see the doc comment above).
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer: number | null = null;
+
+    const scheduleMinute = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      if (document.visibilityState !== "visible") return;
+      const delay = 60_000 - (Date.now() % 60_000) + 100;
+      timer = window.setTimeout(() => {
+        setNow(new Date());
+        scheduleMinute();
+      }, delay);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setNow(new Date());
+        scheduleMinute();
+      } else if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    scheduleMinute();
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, []);
 
   // A clean map entry is always the whole county. A shared link can still ask
   // for a town or Near me with `?in=`, but a scope saved on another page must
@@ -351,6 +397,9 @@ export default function BrowseMapClient({
       transitStops={transitStops}
       marcStations={marcStations}
       foodTruckPins={foodTruckPins}
+      roadWorkZones={roadWorkZones}
+      floodContext={floodContext}
+      snowRoutes={snowRoutes}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope

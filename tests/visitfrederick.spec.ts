@@ -26,6 +26,7 @@ function item(opts: {
   start: string;
   end?: string;
   blurb?: string;
+  image?: string;
 }): string {
   const cats = opts.cats.map((c) => `<category><![CDATA[ ${c} ]]></category>`).join("\n");
   const range = opts.end ? `${opts.start} to\n${opts.end}` : `${opts.start} to\n${opts.start}`;
@@ -37,7 +38,7 @@ function item(opts: {
       <guid ispermalink="false">https://www.visitfrederick.org/event/some-slug/${opts.id}/</guid>
       <pubDate>Mon, 29 Jun 2026 23:59:59 -0400</pubDate>
       <description><![CDATA[
-        <img src='https://example/img.jpg'/>
+        <img src='${opts.image ?? "https://assets.simpleviewinc.com/sv-frederick-county/image/fetch/c_fill,h_100,q_75,w_150/https://assets.simpleviewinc.com/simpleview/image/upload/crm/frederickcountymd/event.jpg"}'/>
         ${range}
         -
         <p>${opts.blurb ?? "A thing happening in town."}</p>
@@ -64,6 +65,9 @@ describe("normalizeVisitFrederickRss", () => {
     expect(e.municipality).toBe("frederick");
     expect(e.category).toBe("arts");
     expect(e.is_free).toBe(true);
+    expect(e.hero_image).toMatch(
+      /^https:\/\/assets\.simpleviewinc\.com\//,
+    );
     // Town centroid -> "area" geo confidence (lists, never claims a distance).
     expect(e.geom).toEqual(MUNICIPALITY_BY_SLUG.frederick!.centroid);
     expect(eventGeoConfidence({ geom: e.geom })).toBe("area");
@@ -108,6 +112,20 @@ describe("normalizeVisitFrederickRss", () => {
     expect(e.description).toBe("Tom & Jerry's show");
   });
 
+  it("rejects an image that is not on Visit Frederick's Simpleview host", () => {
+    const [e] = normalizeVisitFrederickRss(
+      rss(item({
+        title: "Wrong image host",
+        id: 8,
+        cats: ["Downtown Frederick"],
+        start: "07/01/2026",
+        image: "https://images.example.com/untrusted.jpg",
+      })),
+      NOW,
+    );
+    expect(e.hero_image).toBeUndefined();
+  });
+
   it("skips an item with no parseable date (no honest time anchor)", () => {
     const noDate = `<item><title>Mystery</title><link>https://www.visitfrederick.org/event/x/9/</link><description><![CDATA[<p>No dates here</p>]]></description></item>`;
     expect(normalizeVisitFrederickRss(rss(noDate), NOW)).toHaveLength(0);
@@ -135,6 +153,9 @@ describe("normalizeVisitFrederickRss", () => {
       expect(Number.isFinite(Date.parse(e.starts_at))).toBe(true);
       expect(Number.isFinite(Date.parse(e.ends_at))).toBe(true);
       expect(Date.parse(e.ends_at)).toBeGreaterThanOrEqual(Date.parse(e.starts_at));
+      expect(e.hero_image).toMatch(
+        /^https:\/\/assets\.simpleviewinc\.com\//,
+      );
       // Every row sits on a known town centroid -> never claims a precise distance.
       expect(eventGeoConfidence({ geom: e.geom })).toBe("area");
     }

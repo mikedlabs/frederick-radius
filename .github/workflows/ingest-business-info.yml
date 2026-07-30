@@ -55,6 +55,8 @@ jobs:
       - name: Extract business deep-info
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
           INGEST_LIMIT: ${{ github.event.inputs.limit || '60' }}
         run: |
           case "$INGEST_LIMIT" in

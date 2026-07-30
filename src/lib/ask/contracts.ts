@@ -13,6 +13,7 @@ export type AskSource = {
   distance?: string;
   status?: string;
   phone?: string;
+  email?: string;
   region?: CountyRegion;
   confidence?: "high" | "medium";
   /**
@@ -69,6 +70,19 @@ export type AskIntelligence = {
   personalized?: string;
 };
 
+/**
+ * A small server-owned reading contract for Ask's different answer shapes.
+ * The client uses this to put the useful decision before supporting prose
+ * without guessing from card order or clipping a paragraph with CSS.
+ */
+export type AskResponsePresentation = {
+  layout: "plan" | "place" | "civic" | "standard" | "recovery";
+  /** A complete sentence copied from grounded answer data. */
+  summary: string | null;
+  /** Remaining grounded prose, shown after the primary decision surface. */
+  detail: string | null;
+};
+
 export type AskResult = {
   status: "answered" | "matches" | "empty";
   configured: boolean;
@@ -80,4 +94,5 @@ export type AskResult = {
   actions?: AskAction[];
   plan?: AskPlanPreview | null;
   intelligence?: AskIntelligence;
+  presentation?: AskResponsePresentation;
 };

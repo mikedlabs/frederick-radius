@@ -13,7 +13,8 @@ import {
  * the mono strip inside the frame is the drone's own flight log (fix,
  * altitude, month), and the serif caption beneath states what Radius
  * knows about the ground in frame: places within a half mile, and how
- * many are open at this minute. The rotation is ambient — no controls,
+ * many recently checked schedules confirm open at the shared request
+ * time. The rotation is ambient — no controls,
  * no dots — because it is a cover, not a carousel.
  *
  * Motion: ~7s per frame with a 900ms crossfade and a slow push-in on the

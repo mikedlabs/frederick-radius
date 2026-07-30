@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { normalizeMapReturnTo } from "@/lib/map-return";
@@ -17,13 +16,17 @@ export default function MapReturnLink() {
   if (!returnTo) return null;
 
   return (
-    <Link
+    // Use a document navigation here on purpose. Next may keep the previous
+    // map segment alive while a place page is open; a client transition can
+    // then revive its older camera/query snapshot instead of the exact
+    // returnTo URL the user just created.
+    <a
       href={returnTo}
       className="tap-44-y -ml-1 inline-flex items-center gap-1.5 px-1 text-[12.5px] font-semibold"
       style={{ color: "var(--app-brand-press)" }}
     >
       <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       Back to map
-    </Link>
+    </a>
   );
 }

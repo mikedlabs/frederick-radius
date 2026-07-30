@@ -75,13 +75,18 @@ function sortRows(rows: IndexRow[], sort: SortKey): IndexRow[] {
 export default function PlaceIndex({
   sections,
   showSort = true,
+  prioritizeFirstPhoto = false,
 }: {
   sections: IndexSection[];
   showSort?: boolean;
+  prioritizeFirstPhoto?: boolean;
 }) {
   const [sort, setSort] = useState<SortKey>("ranked");
   const populated = sections.filter((s) => s.rows.length > 0);
   if (populated.length === 0) return null;
+  const priorityPhotoSlug = prioritizeFirstPhoto
+    ? populated.flatMap((section) => section.rows).find((row) => row.photo)?.slug
+    : undefined;
   // Closing-soonest only makes sense when some cell knows its closing time.
   const canSortClosing = populated.some((s) => s.rows.some((r) => r.closesMin != null));
 
@@ -117,13 +122,26 @@ export default function PlaceIndex({
       )}
 
       {populated.map((section) => (
-        <IndexSectionBlock key={section.key} section={section} sort={sort} />
+        <IndexSectionBlock
+          key={section.key}
+          section={section}
+          sort={sort}
+          priorityPhotoSlug={priorityPhotoSlug}
+        />
       ))}
     </div>
   );
 }
 
-function IndexSectionBlock({ section, sort }: { section: IndexSection; sort: SortKey }) {
+function IndexSectionBlock({
+  section,
+  sort,
+  priorityPhotoSlug,
+}: {
+  section: IndexSection;
+  sort: SortKey;
+  priorityPhotoSlug?: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const rows = sortRows(section.rows, sort);
   const visible = expanded ? rows : rows.slice(0, INITIAL_ROWS);
@@ -171,7 +189,10 @@ function IndexSectionBlock({ section, sort }: { section: IndexSection; sort: Sor
             key={row.slug}
             style={i > 0 ? { borderTop: "1px solid color-mix(in srgb, var(--app-ink) 7%, transparent)" } : undefined}
           >
-            <PlaceCell row={row} />
+            <PlaceCell
+              row={row}
+              eagerPhoto={row.slug === priorityPhotoSlug}
+            />
           </li>
         ))}
         {hidden > 0 && (
@@ -194,7 +215,13 @@ function IndexSectionBlock({ section, sort }: { section: IndexSection; sort: Sor
   );
 }
 
-function PlaceCell({ row }: { row: IndexRow }) {
+function PlaceCell({
+  row,
+  eagerPhoto = false,
+}: {
+  row: IndexRow;
+  eagerPhoto?: boolean;
+}) {
   const { openSheet } = usePlaceSheet();
 
   async function open() {
@@ -234,6 +261,8 @@ function PlaceCell({ row }: { row: IndexRow }) {
           width={88}
           height={88}
           sizes="44px"
+          loading={eagerPhoto ? "eager" : "lazy"}
+          fetchPriority={eagerPhoto ? "high" : "auto"}
           className="h-11 w-11 shrink-0 rounded-[9px] object-cover"
           style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
         />

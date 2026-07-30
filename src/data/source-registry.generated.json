@@ -175,6 +175,17 @@
     "rowsRequired": false
   },
   {
+    "id": "city_emergency_rss",
+    "name": "City of Frederick Emergency Alerts",
+    "owner": "City of Frederick",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "cof_floodplain",
     "name": "City of Frederick Floodplain",
     "owner": "City of Frederick GIS",
@@ -394,9 +405,9 @@
   },
   {
     "id": "frederick_county_arcgis",
-    "name": "Frederick County ArcGIS Services",
+    "name": "Frederick County ArcGIS Services (legacy registry row)",
     "owner": "Frederick County GIS",
-    "status": "scaffold",
+    "status": "pending_review",
     "collection": null,
     "refreshCadence": "weekly",
     "manifestLastSuccess": null,
@@ -418,6 +429,17 @@
     "rowsRequired": false
   },
   {
+    "id": "fc_county_facilities",
+    "name": "Frederick County Facilities Legacy Ingest",
+    "owner": "Frederick County Government",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "fc_restaurant_inspections",
     "name": "Frederick County Health — Restaurant Inspections",
     "owner": "Frederick County Health Department",
@@ -429,11 +451,88 @@
     "rowsRequired": false
   },
   {
+    "id": "county_health_alerts",
+    "name": "Frederick County Health Department Alerts",
+    "owner": "Frederick County Health Department",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_high_water",
+    "name": "Frederick County High-Water and Flood Context",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_food_truck_roster",
+    "name": "Frederick County Licensed Mobile Units Roster",
+    "owner": "Frederick County Health Department",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_municipal_boundaries",
+    "name": "Frederick County Municipal Boundaries",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "fc_open_data_hub",
     "name": "Frederick County Open Data Hub",
     "owner": "Frederick County GIS",
     "status": "pending_approval",
     "collection": null,
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_planning_projects",
+    "name": "Frederick County Open Planning Applications",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_county_parks",
+    "name": "Frederick County Park Points",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_park_trails",
+    "name": "Frederick County Park Trail Geometry",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
     "refreshCadence": "weekly",
     "manifestLastSuccess": null,
     "evidenceAliases": [],
@@ -453,12 +552,12 @@
     "rowsRequired": false
   },
   {
-    "id": "fc_parks_trails",
-    "name": "Frederick County Parks Trails (Cartegraph)",
-    "owner": "Frederick County GIS",
-    "status": "scaffold",
+    "id": "fc_recreation_locations",
+    "name": "Frederick County Parks and Recreation Locations",
+    "owner": "Frederick County Government",
+    "status": "pending_approval",
     "collection": null,
-    "refreshCadence": "monthly",
+    "refreshCadence": "weekly",
     "manifestLastSuccess": null,
     "evidenceAliases": [],
     "rowsRequired": false
@@ -477,12 +576,34 @@
     "rowsRequired": false
   },
   {
+    "id": "fc_parks_assets",
+    "name": "Frederick County Public Park Assets",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "fcps_news",
     "name": "Frederick County Public Schools News",
     "owner": "Frederick County Public Schools",
     "status": "active",
     "collection": "runtime",
     "refreshCadence": "daily",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_snow_command",
+    "name": "Frederick County SnowCommand Routes",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
     "manifestLastSuccess": null,
     "evidenceAliases": [],
     "rowsRequired": false
@@ -651,6 +772,17 @@
     "rowsRequired": false
   },
   {
+    "id": "fc_historic_cemeteries",
+    "name": "Historic Cemeteries of Frederick County",
+    "owner": "Frederick County Government",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "weekly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "hood_athletics",
     "name": "Hood College Blazers Athletics",
     "owner": "Hood College Athletics",
@@ -710,6 +842,50 @@
     "rowsRequired": false
   },
   {
+    "id": "mdot_chart_dms",
+    "name": "Maryland CHART Dynamic Message Signs",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart_ips",
+    "name": "Maryland CHART Road Conditions",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart_rwis",
+    "name": "Maryland CHART Road Weather Stations",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart_sep",
+    "name": "Maryland CHART Snow Emergency Status",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "mdot_chart",
     "name": "Maryland CHART Traffic Incidents",
     "owner": "Maryland Department of Transportation",
@@ -718,6 +894,41 @@
     "refreshCadence": "hourly",
     "manifestLastSuccess": "2026-07-23T04:55:35.450Z",
     "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart_tss",
+    "name": "Maryland CHART Traffic Speed Sensors",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "mdot_chart_travel",
+    "name": "Maryland CHART Travel Times",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "maryland_deaf_community_center_calendar",
+    "name": "Maryland Deaf Community Center Events",
+    "owner": "Maryland Deaf Community Center",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [
+      "mdcc"
+    ],
     "rowsRequired": false
   },
   {
@@ -788,6 +999,17 @@
     "evidenceAliases": [
       "msd"
     ],
+    "rowsRequired": false
+  },
+  {
+    "id": "md_wzdx",
+    "name": "Maryland Work Zone Data Exchange",
+    "owner": "Maryland Department of Transportation",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
     "rowsRequired": false
   },
   {
@@ -885,6 +1107,28 @@
     "rowsRequired": true
   },
   {
+    "id": "nowcoast_lightning",
+    "name": "NOAA nowCOAST Lightning Density",
+    "owner": "NOAA nowCOAST / NWS-NCEP Ocean Prediction Center",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime (about 15 minutes)",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "nws_lsr",
+    "name": "NWS Baltimore/Washington Local Storm Reports",
+    "owner": "NOAA National Weather Service",
+    "status": "active",
+    "collection": "runtime",
+    "refreshCadence": "realtime",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "open_brewery_db",
     "name": "Open Brewery DB, Maryland",
     "owner": "Open Brewery DB",
@@ -924,6 +1168,39 @@
     "status": "scaffold",
     "collection": null,
     "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_bridges_overlay",
+    "name": "Rejected Frederick County Bridges Static Overlay",
+    "owner": "Frederick County Government",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_markets_overlay",
+    "name": "Rejected Frederick County Farmers Market Static Overlay",
+    "owner": "Frederick County Government",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
+    "id": "fc_parks_trails",
+    "name": "Rejected legacy Frederick County parks-trails source",
+    "owner": "Frederick County, Colorado",
+    "status": "pending_review",
+    "collection": null,
+    "refreshCadence": "monthly",
     "manifestLastSuccess": null,
     "evidenceAliases": [],
     "rowsRequired": false
@@ -996,6 +1273,17 @@
     "evidenceAliases": [
       "thurmont"
     ],
+    "rowsRequired": false
+  },
+  {
+    "id": "census_tiger_county_boundary",
+    "name": "U.S. Census TIGERweb Frederick County Boundary",
+    "owner": "U.S. Census Bureau",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "yearly",
+    "manifestLastSuccess": "2026-07-28",
+    "evidenceAliases": [],
     "rowsRequired": false
   },
   {

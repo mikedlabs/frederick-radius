@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { publicEventSourceCircuits } from "@/lib/integrations/event-source-circuit";
 
 /**
  * PR1 — events cold-load hardening. The /events render awaits the live
@@ -8,6 +9,9 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
  * never block the render indefinitely.
  */
 afterEach(() => {
+  // Each case represents a fresh worker. A failure in one test must not leave
+  // the process-local circuit open and suppress the next test's fetches.
+  publicEventSourceCircuits.reset();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -36,8 +40,12 @@ describe("getLiveEvents — feed failures never block or break the page", () => 
     );
     vi.useFakeTimers();
     const p = getLiveEvents(60);
-    // Advance past FEED_FETCH_TIMEOUT_MS (8s) so every feed's abort fires.
-    await vi.advanceTimersByTimeAsync(9_000);
+    // Source reads are concurrency-limited, so later waves do not create
+    // their deadlines until an earlier wave aborts. Advance through every
+    // wave instead of stopping after the first four feeds.
+    for (let wave = 0; wave < 8; wave += 1) {
+      await vi.advanceTimersByTimeAsync(9_000);
+    }
     const res = await p;
     expect(res.events).toEqual([]);
   });

@@ -5,7 +5,6 @@ import type { CommerceLink, CommerceLinkType } from "@/lib/commerce/types";
 import {
   commerceActionLabel,
   commerceTrustLine,
-  isToastConnected,
   orderCommerceForDetail,
 } from "@/lib/commerce/links";
 import ReportLinkButton from "./ReportLinkButton";
@@ -55,7 +54,11 @@ export default function CommerceActions({
     ? [primary, ...ordered.filter((link) => link !== primary)]
     : ordered;
 
-  const toast = isToastConnected(links);
+  const toastOrdering = ordered.some(
+    (link) =>
+      link.provider === "toast" &&
+      (link.type === "menu" || link.type === "order"),
+  );
   const hasMenuOrOrder = ordered.some((l) => l.type === "menu" || l.type === "order");
   const hasReservation = ordered.some((l) => l.type === "reservation");
   const title = hasMenuOrOrder ? "Menu & ordering" : hasReservation ? "Reservations" : "Order";
@@ -75,7 +78,7 @@ export default function CommerceActions({
       <h2 className="eyebrow inline-flex items-center gap-1.5">
         <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
         {title}
-        {toast && (
+        {toastOrdering && (
           <span
             className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal"
             style={{
@@ -83,7 +86,7 @@ export default function CommerceActions({
               color: "var(--app-brand-press)",
             }}
           >
-            Toast-connected
+            Ordering via Toast
           </span>
         )}
       </h2>
@@ -125,7 +128,11 @@ export default function CommerceActions({
             </span>
           </>
         )}
-        <ReportLinkButton placeSlug={placeSlug} placeName={placeName} />
+        <ReportLinkButton
+          placeSlug={placeSlug}
+          placeName={placeName}
+          links={displayLinks}
+        />
       </div>
     </section>
   );

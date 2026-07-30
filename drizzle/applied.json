@@ -183,6 +183,36 @@
       "sha256": "cbf8858b44d17b446c40cced86edb186095d3a961b6545c29878d812d6f15732",
       "production_state": "effects_present",
       "note": "Applied and verified in production through the Supabase management migration tool on 2026-07-27. Anon has column-level SELECT on the five public snapshot fields, one SELECT-only RLS policy, and no write privileges."
+    },
+    {
+      "file": "0035_ingested_event_media.sql",
+      "sha256": "9f6f4885d83c52ebaa6d75693f58eee0effc4d394fde252d9b6bb2d907038e53",
+      "production_state": "unverified"
+    },
+    {
+      "file": "0036_native_menus.sql",
+      "sha256": "d4e9ebfb0c0c50bc3b53551b0c8ad4c845c6d28d590c8c94bd2a84dcb39c30b5",
+      "production_state": "unverified",
+      "note": "Recorded from the repository; production has not been checked."
+    },
+    {
+      "file": "0037_places_postgis.sql",
+      "sha256": "efd1db8293018937ac3291b229e6ec3dd2635224f1893f8be05ec543c55aa542",
+      "production_state": "migration_recorded",
+      "migration_record": "add_places_postgis_spatial_index_and_sync_guard",
+      "note": "Supabase migration history records add_places_postgis_spatial_index_and_sync_guard at version 20260729145527. A live check confirmed PostGIS 3.3.7 in extensions, the generated geography column, validated coordinate constraint, ready GiST index, deny-by-default sync-state table, and enabled invalidation trigger."
+    },
+    {
+      "file": "0038_event_identity_archive.sql",
+      "sha256": "a02faac9e07c03bb04c442a7d0d0f3ee7f7333de648ead2fee66a5214575c8ab",
+      "production_state": "unverified",
+      "note": "Recorded from the repository; production has not been checked."
+    },
+    {
+      "file": "0039_feed_source_health_rollups.sql",
+      "sha256": "f5b56e8964cbbd0f7ba26bd7d26b160231beb04d1e93e568e860c059d0e79841",
+      "production_state": "unverified",
+      "note": "Recorded from the repository; production has not been checked."
     }
   ]
 }

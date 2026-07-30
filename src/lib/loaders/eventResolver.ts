@@ -1,36 +1,75 @@
+import { cache } from "react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
 import { hasActionableAttendance } from "@/lib/events/attendance";
-import { cache } from "react";
+import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import {
+  archivedEventBySlug,
+  persistEventIdentity,
+  type ArchivedEventIdentity,
+  type PersistedEventIdentity,
+} from "@/lib/events/event-identity";
 
-export type EventResolutionKind = "seed" | "unified" | "live" | "ingested";
+export type EventResolutionKind = "seed" | "archive" | "live" | "ingested";
 
 export type ResolvedEventPage = {
   event: EventWithMeta;
   kind: EventResolutionKind;
 };
 
+export type EventLookupContext = {
+  signal: AbortSignal;
+  deadline: number;
+};
+
 type EventResolverSources = {
   seed: (slug: string) => EventWithMeta | null;
-  unified: (now: Date) => Promise<EventWithMeta[]>;
-  live: (slug: string) => Promise<EventWithMeta | null>;
-  ingested: (slug: string) => Promise<EventWithMeta | null>;
+  archive: (
+    slug: string,
+    context: EventLookupContext,
+  ) => Promise<ArchivedEventIdentity | null>;
+  live: (
+    slug: string,
+    context: EventLookupContext,
+  ) => Promise<EventWithMeta | null>;
+  ingested: (
+    slug: string,
+    context: EventLookupContext,
+  ) => Promise<EventWithMeta | null>;
+  persist: (
+    event: EventWithMeta,
+    aliases: readonly string[],
+  ) => Promise<PersistedEventIdentity | null>;
 };
 
 const DEFAULT_SOURCES: EventResolverSources = {
-  seed: getEventBySlug,
-  unified: async (now) => (await assembleUnifiedEvents(now)).publicEvents,
-  live: getLiveCardEventBySlug,
-  ingested: getIngestedCardBySlug,
+  seed: (slug) => {
+    const event = getEventBySlug(slug);
+    return event ? withVenueThumb(event) : null;
+  },
+  archive: (slug, context) =>
+    archivedEventBySlug(slug, {
+      signal: context.signal,
+      timeoutMs: Math.max(0, context.deadline - Date.now()),
+    }),
+  live: (slug, context) =>
+    context.signal.aborted
+      ? Promise.resolve(null)
+      : getLiveCardEventBySlug(slug, 90, context),
+  ingested: (slug, context) =>
+    context.signal.aborted
+      ? Promise.resolve(null)
+      : getIngestedCardBySlug(slug, context),
+  persist: (event, aliases) => persistEventIdentity(event, aliases),
 };
 
 export const EVENT_DEEP_LINK_TIMEOUT_MS = 2_500;
-const UNIFIED_HEAD_START_MS = 500;
+export const EVENT_ARCHIVE_HEAD_START_MS = 450;
 
 type AsyncEventSource = Exclude<EventResolutionKind, "seed">;
+type DirectEventSource = Extract<AsyncEventSource, "live" | "ingested">;
 
 type EventLookupOutcome =
   | { status: "hit"; event: EventWithMeta }
@@ -60,35 +99,24 @@ export class EventResolutionUnavailableError extends Error {
 }
 
 function eventLookup(
-  lookup: () => Promise<EventWithMeta | EventWithMeta[] | null>,
-  slug: string,
+  lookup: () => Promise<EventWithMeta | null>,
 ): Promise<EventLookupOutcome> {
-  // Install both fulfillment and rejection handlers before the shared timeout
-  // can win. If a provider rejects later, that rejection is still consumed
-  // instead of becoming an unhandled rejection after the request has ended.
   return Promise.resolve()
     .then(lookup)
     .then(
-      (value): EventLookupOutcome => {
-        const candidate = Array.isArray(value)
-          ? value.find((event) => event.slug === slug) ?? null
-          : value;
-        return candidate && hasActionableAttendance(candidate)
-          ? { status: "hit", event: candidate }
-          : { status: "miss" };
-      },
+      (event): EventLookupOutcome =>
+        event && hasActionableAttendance(event)
+          ? { status: "hit", event }
+          : { status: "miss" },
       (error): EventLookupOutcome => ({ status: "error", error }),
     );
 }
 
-async function settleBeforeDeadline(
-  lookup: Promise<EventLookupOutcome>,
+async function settleBeforeDeadline<T>(
+  lookup: Promise<T>,
   deadline: number,
-): Promise<EventLookupOutcome | typeof LOOKUP_TIMEOUT> {
+): Promise<T | typeof LOOKUP_TIMEOUT> {
   if (deadline <= Date.now()) {
-    // An already-settled lookup is queued before this resolved timeout marker;
-    // a still-pending lookup loses immediately without adding another timer
-    // turn beyond the shared request budget.
     return Promise.race([lookup, Promise.resolve(LOOKUP_TIMEOUT)]);
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -107,18 +135,66 @@ async function settleBeforeDeadline(
   }
 }
 
+async function resolveArchive(
+  slug: string,
+  deadline: number,
+  sources: EventResolverSources,
+): Promise<
+  | { status: "hit"; resolution: ResolvedEventPage }
+  | { status: "miss" | "error" | "timeout" }
+> {
+  const controller = new AbortController();
+  const archiveDeadline = Math.min(
+    deadline,
+    Date.now() + EVENT_ARCHIVE_HEAD_START_MS,
+  );
+  const lookup = Promise.resolve()
+    .then(() =>
+      sources.archive(slug, {
+        signal: controller.signal,
+        deadline: archiveDeadline,
+      }),
+    )
+    .then(
+      (archive) => {
+        if (!archive || !hasActionableAttendance(archive.event)) {
+          return { status: "miss" as const };
+        }
+        return {
+          status: "hit" as const,
+          resolution: {
+            event: archive.event,
+            kind: "archive" as const,
+          },
+        };
+      },
+      () => ({ status: "error" as const }),
+    );
+  const outcome = await settleBeforeDeadline(lookup, archiveDeadline);
+  controller.abort();
+  return outcome === LOOKUP_TIMEOUT ? { status: "timeout" } : outcome;
+}
+
+async function persistWinner(
+  event: EventWithMeta,
+  requestedSlug: string,
+  sources: EventResolverSources,
+): Promise<EventWithMeta> {
+  try {
+    const identity = await sources.persist(event, [requestedSlug, event.slug]);
+    return identity?.snapshot ?? event;
+  } catch {
+    // Identity storage is additive. A missing migration or transient database
+    // failure must not take down a source event that already resolved.
+    return event;
+  }
+}
+
 /**
- * Resolve the event-detail page from the same cached public set that emitted
- * its link before consulting any source-specific fallback.
- *
- * This ordering is load-bearing. The event sheet and event-list surfaces read
- * assembleUnifiedEvents, while the old detail route rebuilt seven upstream
- * feeds with independent six-second deadlines. A cold or slow provider could
- * therefore make a card visible and its "See full page" link return a
- * temporary 404. The stable unified snapshot is now the first live lookup, so
- * every event currently visible in the app remains resolvable even while an
- * upstream refresh is degraded. The 90-day live and ingested resolvers remain
- * as fallbacks for older shared links that have left the current list window.
+ * Event detail never assembles the full event board. It resolves a cheap seed,
+ * then the durable alias/snapshot index, then races the two source-specific
+ * deep-link readers under one deadline. The first usable answer wins and
+ * aborts the losing work; a transient timeout is never misreported as a 404.
  */
 export async function resolveEventPageBySlugWithSources(
   slug: string,
@@ -126,70 +202,77 @@ export async function resolveEventPageBySlugWithSources(
   sources: EventResolverSources,
 ): Promise<ResolvedEventPage | null> {
   const seed = sources.seed(slug);
-  if (seed && hasActionableAttendance(seed)) return { event: seed, kind: "seed" };
+  if (seed && hasActionableAttendance(seed)) {
+    return { event: seed, kind: "seed" };
+  }
 
-  // Give the stable unified snapshot a brief head start. A warm cache hit
-  // returns without launching source-specific work; a miss or slow cache
-  // launches both useful fallbacks once, in parallel, under the same deadline.
   const deadline = Date.now() + EVENT_DEEP_LINK_TIMEOUT_MS;
-  const unifiedLookup = eventLookup(() => sources.unified(now), slug);
   const timedOut: AsyncEventSource[] = [];
   const failed: AsyncEventSource[] = [];
 
-  let unifiedOutcome = await settleBeforeDeadline(
-    unifiedLookup,
-    Math.min(deadline, Date.now() + UNIFIED_HEAD_START_MS),
-  );
-  if (unifiedOutcome !== LOOKUP_TIMEOUT) {
-    if (unifiedOutcome.status === "hit") {
-      return { event: unifiedOutcome.event, kind: "unified" };
-    }
-    if (unifiedOutcome.status === "error") failed.push("unified");
+  const archive = await resolveArchive(slug, deadline, sources);
+  if (archive.status === "hit") return archive.resolution;
+  if (archive.status === "timeout") timedOut.push("archive");
+  if (archive.status === "error") failed.push("archive");
+
+  if (Date.now() >= deadline) {
+    throw new EventResolutionTimeoutError(
+      timedOut.length > 0 ? timedOut : ["live", "ingested"],
+    );
   }
 
-  const fallbackLookups = {
-    live: eventLookup(() => sources.live(slug), slug),
-    ingested: eventLookup(() => sources.ingested(slug), slug),
-  };
+  const controller = new AbortController();
+  const context = { signal: controller.signal, deadline };
+  const pending = new Map<
+    DirectEventSource,
+    Promise<{ source: DirectEventSource; outcome: EventLookupOutcome }>
+  >();
 
-  // If the head start expired, keep the original unified lookup alive while
-  // the fallbacks run. This preserves unified priority when it finishes inside
-  // the overall budget without invoking that provider a second time.
-  if (unifiedOutcome === LOOKUP_TIMEOUT) {
-    unifiedOutcome = await settleBeforeDeadline(unifiedLookup, deadline);
-    if (unifiedOutcome === LOOKUP_TIMEOUT) {
-      timedOut.push("unified");
-    } else if (unifiedOutcome.status === "hit") {
-      return { event: unifiedOutcome.event, kind: "unified" };
-    } else if (unifiedOutcome.status === "error") {
-      failed.push("unified");
-    }
+  // Both are independent, useful deep-link sources. They launch only after the
+  // archive index misses and only while budget remains.
+  for (const source of ["live", "ingested"] as const) {
+    if (Date.now() >= deadline || controller.signal.aborted) break;
+    pending.set(
+      source,
+      eventLookup(() => sources[source](slug, context)).then((outcome) => ({
+        source,
+        outcome,
+      })),
+    );
   }
 
-  for (const kind of ["live", "ingested"] as const) {
-    const outcome = await settleBeforeDeadline(fallbackLookups[kind], deadline);
-    if (outcome === LOOKUP_TIMEOUT) {
-      timedOut.push(kind);
-      continue;
+  while (pending.size > 0) {
+    const settled = await settleBeforeDeadline(
+      Promise.race(pending.values()),
+      deadline,
+    );
+    if (settled === LOOKUP_TIMEOUT) {
+      timedOut.push(...pending.keys());
+      controller.abort();
+      break;
     }
-    if (outcome.status === "hit") {
-      return { event: outcome.event, kind };
+    pending.delete(settled.source);
+    if (settled.outcome.status === "hit") {
+      controller.abort();
+      const event = await persistWinner(
+        settled.outcome.event,
+        slug,
+        sources,
+      );
+      return { event, kind: settled.source };
     }
-    if (outcome.status === "error") {
-      failed.push(kind);
+    if (settled.outcome.status === "error") {
+      failed.push(settled.source);
     }
   }
+  controller.abort();
 
-  // A 404 is reserved for a definitive miss from every source. A timeout or
-  // provider failure is transient and must reach Next's error path instead of
-  // permanently telling crawlers and users that a slow, valid event is gone.
   if (timedOut.length > 0) {
-    throw new EventResolutionTimeoutError(timedOut);
+    throw new EventResolutionTimeoutError([...new Set(timedOut)]);
   }
   if (failed.length > 0) {
-    throw new EventResolutionUnavailableError(failed);
+    throw new EventResolutionUnavailableError([...new Set(failed)]);
   }
-
   return null;
 }
 
@@ -200,7 +283,5 @@ async function resolveEventPageBySlugUncached(
   return resolveEventPageBySlugWithSources(slug, now, DEFAULT_SOURCES);
 }
 
-// generateMetadata and the page body both resolve the same slug during one
-// render. React's request-scoped cache keeps that from rebuilding the event
-// source union twice; the pure resolver above remains directly testable.
+// Metadata and body resolve the same slug during one render.
 export const resolveEventPageBySlug = cache(resolveEventPageBySlugUncached);

@@ -5,11 +5,10 @@
  * border, so the map reads as a field-guide plate of one place — not a
  * slice of an endless world map. The county glows; the rest recedes.
  *
- * The boundary is the county's own authoritative outline (Frederick
- * County GIS · Basemap/CountyBoundary), fetched once and committed as
- * static data so there's no runtime dependency. Simplified to ~245
- * vertices (≈1m precision) — crisp at every zoom the app uses, tiny on
- * the wire.
+ * The boundary is the U.S. Census Bureau TIGERweb county outline for
+ * GEOID 24021, committed as static data so there is no runtime dependency.
+ * The display copy is simplified to a precision appropriate for this
+ * field-guide frame; it is not survey geometry.
  *
  * Two layers, both added beneath the app's own pins (which mount via
  * react-map-gl after load), so places and the radius reach always sit

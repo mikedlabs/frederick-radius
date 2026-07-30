@@ -4,7 +4,7 @@ import { GET } from "@/app/sw.js/route";
 
 type Listener = (event: Record<string, unknown>) => void;
 
-function response(url: string, cacheControl = "") {
+function response(url: string, cacheControl = "", body?: string) {
   return {
     ok: true,
     status: 200,
@@ -15,6 +15,7 @@ function response(url: string, cacheControl = "") {
     clone() {
       return this;
     },
+    ...(body === undefined ? {} : { text: vi.fn(async () => body) }),
   };
 }
 
@@ -108,6 +109,43 @@ describe("service worker cache boundaries", () => {
 
     await pending;
     expect(worker.puts).toHaveLength(0);
+  });
+
+  it("pre-caches only the generic offline page's immutable assets", async () => {
+    const worker = await workerHarness();
+    worker.fetch
+      .mockResolvedValueOnce(
+        response(
+          "https://frederick.example/offline",
+          "",
+          [
+            '<script src="/_next/static/chunks/offline-a1.js"></script>',
+            '<link href="/_next/static/css/offline-b2.css" rel="stylesheet">',
+            '<script src="https://evil.example/_next/static/chunks/no.js"></script>',
+            '<a href="/today">Today</a>',
+          ].join(""),
+        ),
+      )
+      .mockResolvedValueOnce(
+        response("https://frederick.example/_next/static/chunks/offline-a1.js"),
+      )
+      .mockResolvedValueOnce(
+        response("https://frederick.example/_next/static/css/offline-b2.css"),
+      );
+    let pending: Promise<unknown> | undefined;
+    worker.listeners.get("install")!({
+      waitUntil(value: Promise<unknown>) {
+        pending = value;
+      },
+    });
+
+    await pending;
+    expect(worker.puts.map((entry) => entry.request)).toEqual([
+      "/offline",
+      "https://frederick.example/_next/static/chunks/offline-a1.js",
+      "https://frederick.example/_next/static/css/offline-b2.css",
+    ]);
+    expect(worker.fetch).toHaveBeenCalledTimes(3);
   });
 
   it("never stores navigation HTML and uses only the generic offline fallback", async () => {

@@ -31,9 +31,11 @@ import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
@@ -94,6 +96,11 @@ import StopArrivalsPopup, {
 // each photo was taken in the county.
 import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 
+// The readable result face is loaded only when WebGL fails. Keeping it out of
+// the healthy-map path preserves the interactive map payload while ensuring a
+// graphics failure never turns the page into a generic dead-end link.
+const MapList = dynamic(() => import("./MapList"), { ssr: false });
+
 type AerialPhoto = {
   src: string;
   lat: number;
@@ -108,6 +115,15 @@ const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
 type CameraSnapshot = {
   getZoom: () => number;
   getCenter: () => { lng: number; lat: number };
+};
+
+type ResultViewportMap = CameraSnapshot & {
+  getBounds: () => {
+    getWest: () => number;
+    getEast: () => number;
+    getSouth: () => number;
+    getNorth: () => number;
+  } | null;
 };
 
 /** A county overview is a camera state, not a hard-coded zoom. A person can
@@ -179,24 +195,25 @@ const COUNTY_CURATED_CLUSTER_MAX_ZOOM = 13;
 const COMPACT_CURATED_CLUSTER_RADIUS = 46;
 const COMPACT_CURATED_CLUSTER_MAX_ZOOM = 12;
 
-/** Boundary "MUNIC" name -> municipality slug (slugified; matches our slugs). */
-function townSlug(name: string): string {
-  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
 // Types, constants, and popup components are kept in focused siblings so this
 // file can own map state, effects, and layout.
 import {
+  EMPTY_FLOOD_CONTEXT_FC,
   EMPTY_LINE_FC,
+  EMPTY_ROAD_WORK_ZONE_FC,
+  EMPTY_SNOW_ROUTE_FC,
   type BrowseDockInfo,
   type CemeteryPin,
   type CivicPin,
   type EventPin,
+  type FloodContextFC,
   type FoodTruckMapPin,
   type MapLineFC,
   type MapPinPlace,
   type MarcStationPin,
+  type RoadWorkZoneFC,
   type Selected,
+  type SnowRouteFC,
   type TransitStopPin,
 } from "./types";
 import {
@@ -226,14 +243,16 @@ import MapOverlays from "./MapOverlays";
 import LiveBuses from "./LiveBuses";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
+import LightningDensity from "./LightningDensity";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
 } from "./LiveRotorcraft";
 import TrafficCameras from "./TrafficCameras";
 import MapboxTraffic from "./MapboxTraffic";
-import FireStations from "./FireStations";
-import CivicPlaces from "./CivicPlaces";
+import RoadWorkZones from "./RoadWorkZones";
+import FloodContext from "./FloodContext";
+import SnowRoutes from "./SnowRoutes";
 import {
   parseLayersParam,
   serializeLayers,
@@ -252,6 +271,14 @@ import type { MapEdgeOverlayId, MapEdgeOverlayState } from "./mapEdgeToolsModel"
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
 import MapFoodTruckPeek from "./MapFoodTruckPeek";
+import {
+  MapAerialPeek,
+  MapCemeteryPeek,
+  MapEventPeek,
+  MapMarcPeek,
+  MapRawPeek,
+  MapTownPeek,
+} from "./MapEntityPeek";
 import MapSpotPeek from "./MapSpotPeek";
 import MapDiscoveryOverlay from "./MapDiscoveryOverlay";
 import {
@@ -268,7 +295,7 @@ import {
   mapStyleWithStandardPreview,
 } from "./mapboxStandardPreview";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, Shrink, Truck } from "lucide-react";
+import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -278,12 +305,42 @@ import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
+import { mapCameraPadding } from "./mapCameraPadding";
+import { rememberMapSelectionOpener } from "./mapSelectionFocus";
+import {
+  mapResultCountAnnouncement,
+  resultViewportChanged,
+  type MapResultViewport,
+  type MapViewportBounds,
+} from "./mapViewportCommit";
 
 type MapSpotSelection = LngLat & {
   label?: string;
   temporary?: boolean;
   attribution?: string;
 };
+
+type CivicTownSelection = {
+  name: string;
+  slug: string;
+  lng: number;
+  lat: number;
+};
+
+type MapSelectionRequest =
+  | { kind: "place"; value: MapPinPlace }
+  | { kind: "raw"; value: NonNullable<Selected> }
+  | { kind: "event"; value: EventPin }
+  | { kind: "event-group"; value: MapEventGroup }
+  | { kind: "town"; value: CivicTownSelection }
+  | { kind: "transit"; value: SelectedStop }
+  | { kind: "marc"; value: string }
+  | { kind: "aerial"; value: AerialPhoto }
+  | { kind: "cemetery"; value: CemeteryPin }
+  | { kind: "parking"; value: ParkingPin }
+  | { kind: "food-truck"; value: FoodTruckMapPin }
+  | { kind: "discovery"; value: MapDiscovery }
+  | { kind: "spot"; value: MapSpotSelection };
 
 /** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
  *  from "now" by the delta so getOpenStatus (which reads Frederick time)
@@ -302,32 +359,40 @@ function prefersReducedMotion(): boolean {
     && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 }
 
-/** Keep the county outline clear of the top instrument and mobile nav. On a
- * manual refit we measure the real dock; first paint uses the same responsive
- * fallback before those nodes exist. */
+/** Keep the county outline clear of whichever edge owns the map instrument.
+ * Mobile is bottom-mounted; desktop is top-mounted. A manual refit measures
+ * the live controls while first paint uses the same responsive fallback. */
 function countyFitPadding(measureDock = true): { top: number; right: number; bottom: number; left: number } {
   if (typeof window === "undefined") {
     return { top: 96, right: 32, bottom: 64, left: 32 };
   }
-  const mobile = window.innerWidth < 768;
-  const short = window.innerHeight < 600;
-  const shortLandscape = window.innerHeight < 520 && window.innerWidth > window.innerHeight;
-  const mapTop = measureDock
-    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect().top ?? 0
-    : 0;
-  const dockBottom = measureDock
-    ? document.querySelector<HTMLElement>("[data-map-dock]")?.getBoundingClientRect().bottom
+  const mapRect = measureDock
+    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect()
     : undefined;
-  const measuredTop = dockBottom ? Math.ceil(dockBottom - mapTop + 16) : 0;
-  // The first-paint dock is roughly 138–148px tall. Its nodes do not exist yet,
-  // so reserve the full instrument plus breathing room on every viewport.
-  const fallbackTop = shortLandscape ? 72 : 164;
-  return {
-    top: Math.max(fallbackTop, measuredTop),
-    right: shortLandscape ? 20 : mobile ? 20 : 40,
-    bottom: shortLandscape ? 16 : mobile ? (short ? 72 : 104) : 56,
-    left: shortLandscape ? 20 : mobile ? 20 : 40,
-  };
+  const dock = measureDock
+    ? document.querySelector<HTMLElement>("[data-map-dock]")
+    : null;
+  const dockRect = dock?.getBoundingClientRect();
+  const activeStateRect = dock
+    ?.querySelector<HTMLElement>(".dock-active-state")
+    ?.getBoundingClientRect();
+  const paneRect =
+    dock?.classList.contains("dock-open") === true
+      ? dock
+          .querySelector<HTMLElement>('.dock-pane[aria-hidden="false"]')
+          ?.getBoundingClientRect()
+      : undefined;
+
+  return mapCameraPadding({
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    mapTop: mapRect?.top ?? 0,
+    mapBottom: mapRect?.bottom ?? window.innerHeight,
+    dockTop: dockRect?.top,
+    dockBottom: dockRect?.bottom,
+    activeStateTop: activeStateRect?.top,
+    paneTop: paneRect?.top,
+  });
 }
 
 const SHORT_LANDSCAPE_MAX_BOUNDS: [[number, number], [number, number]] = [
@@ -361,8 +426,9 @@ type Props = {
   /** Single-subject county overview. Its small place set is clustered at wide
    * zoom, all resulting marks are tappable, and location furniture stays off. */
   compactSubjectMap?: boolean;
-  /** Fires on map idle with curated places currently in the viewport,
-   *  nearest-to-center first — powers the synced results list. */
+  /** Fires when a result area is committed with curated places inside it,
+   *  nearest-to-origin first. Gesture-driven cameras wait for the explicit
+   *  "Show results here" action; programmatic cameras commit automatically. */
   onPlacesInView?: (slugs: string[]) => void;
   /** Tap a result in the synced list → fly the map there and glow it.
    *  `n` is a nonce so re-tapping the same place re-triggers. */
@@ -414,6 +480,12 @@ type Props = {
   marcStations?: MarcStationPin[];
   /** Operator-confirmed, self-expiring truck locations. */
   foodTruckPins?: FoodTruckMapPin[];
+  /** Official WZDx work-zone lines, grouped with the existing Traffic view. */
+  roadWorkZones?: RoadWorkZoneFC;
+  /** Known County high-water context. It never asserts a live flood. */
+  floodContext?: FloodContextFC;
+  /** Current County SnowCommand route-operation reports. */
+  snowRoutes?: SnowRouteFC;
   /** Open centered on the user's last-known location when a fresh
    *  cached fix exists (no prompt) — set when arriving via a category
    *  so the map and its list read "from where you're standing." Falls
@@ -472,6 +544,9 @@ export default function AppMap({
   transitStops = [],
   marcStations = [],
   foodTruckPins = [],
+  roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
+  floodContext = EMPTY_FLOOD_CONTEXT_FC,
+  snowRoutes = EMPTY_SNOW_ROUTE_FC,
   events = [],
   initialAmenityGroups,
   dock,
@@ -627,11 +702,11 @@ export default function AppMap({
     // captures its return path so the full page always comes back to the same
     // highlighted place rather than a visually similar, unselected map.
     try {
-      const url = new URL(window.location.href);
-      if (url.pathname === "/map") {
-        url.searchParams.set("place", pin.slug);
-        url.searchParams.delete("event");
-        window.history.replaceState(window.history.state, "", url.toString());
+      if (window.location.pathname === "/map") {
+        replaceMapUrl((params) => {
+          params.set("place", pin.slug);
+          params.delete("event");
+        });
       }
     } catch {
       // The sheet still opens if address-bar persistence is unavailable.
@@ -686,11 +761,10 @@ export default function AppMap({
   // to move the map — the "too responsive, snaps up something while moving"
   // complaint. Cached once; `(hover: hover)` is false on phones/tablets.
   const canHoverRef = useRef<boolean | null>(null);
-  // Remembered layer choices (per device). Read ONCE on mount — layers on top
-  // of the clean cold open without reversing it: only explicit prior choices
-  // restore, a first-timer still gets the clean default, deep-links win below.
+  // Remembered reference-layer choices (per device). Task filters such as
+  // categories and amenities never restore on a clean visit; deep-links win.
   const [layerPrefs] = useState(readMapLayerPrefs);
-  // Layers a deep-link asked to turn on (e.g. /map?at=...&show=firestations),
+  // Layers a deep-link asked to turn on (e.g. /map?at=...&show=transit),
   // so a search result can center AND reveal the pin. Read once; stored prefs
   // still win when present. AppMap is ssr:false, so window is available.
   const [deepLinkLayers] = useState<Set<string>>(() => {
@@ -709,7 +783,7 @@ export default function AppMap({
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
-  const wantsOsmInitially = (initialAmenityGroups ?? layerPrefs.amenities ?? []).length > 0;
+  const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
   const [osmLoading, setOsmLoading] = useState(wantsOsmInitially && osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
@@ -738,8 +812,8 @@ export default function AppMap({
   // /amenities or /today) pre-activates those groups and opens the tray so the
   // requested amenity layer is on at first paint.
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(
-    // Deep-link (?amenity=) wins; otherwise restore the remembered set.
-    () => new Set(initialAmenityGroups ?? layerPrefs.amenities ?? []),
+    // Only an explicit deep-link/task may activate an amenity layer.
+    () => new Set(initialAmenityGroups ?? []),
   );
   useEffect(() => {
     if (!dock) return;
@@ -765,10 +839,6 @@ export default function AppMap({
   useEffect(() => {
     setAmenityMarksHealth(amenityGroups.size > 0 ? "pending" : "off");
   }, [amenityGroups]);
-  // While the map is actively panning/zooming, the floating filter dock fades
-  // back so it's not in the way of the map you're reading; it returns the
-  // moment the map settles. Never fades while a pane is open (you're mid-edit).
-  const [mapMoving, setMapMoving] = useState(false);
   // The outer-edge tools introduce themselves, then soften when the map is
   // quiet. Any real map/tool interaction wakes them; active layer buttons stay
   // fully visible through CSS even after the inactive chrome fades.
@@ -776,7 +846,10 @@ export default function AppMap({
   const edgeToolsIdleTimerRef = useRef<number | null>(null);
   const edgeToolsLastWakeRef = useRef(0);
   const wakeMapEdgeTools = useCallback(() => {
-    if (!dock) return;
+    // Phone browse exposes only the always-visible Locate action. Pointer
+    // movement should not wake parent React state and rebuild the full map
+    // tree when there is no fading desktop rail to reveal.
+    if (!dock || compactMapViewport) return;
     const now = window.performance.now();
     if (
       now - edgeToolsLastWakeRef.current < 300 &&
@@ -793,7 +866,7 @@ export default function AppMap({
       edgeToolsIdleTimerRef.current = null;
       setEdgeToolsAwake(false);
     }, 5_000);
-  }, [dock]);
+  }, [compactMapViewport, dock]);
   useEffect(() => {
     wakeMapEdgeTools();
     return () => {
@@ -804,8 +877,13 @@ export default function AppMap({
   }, [wakeMapEdgeTools]);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [eventGroup, setEventGroup] = useState<MapEventGroup | null>(null);
-  // DOM pins outside the camera must not remain in the keyboard sequence.
-  // This set refreshes after every settled move and on the initial load.
+  // Camera membership and committed result membership are separate. The first
+  // keeps DOM pins outside the visible canvas out of the keyboard sequence;
+  // the second keeps result counts and discovery ranking stable until the
+  // reader accepts a manually panned area.
+  const [eventSlugsInCamera, setEventSlugsInCamera] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [eventSlugsInView, setEventSlugsInView] = useState<Set<string>>(
     () => new Set(),
   );
@@ -837,6 +915,7 @@ export default function AppMap({
     setQ((current) => (current === routeQuery ? current : routeQuery));
   }, [routeQuery]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
+  const [searchSettledQuery, setSearchSettledQuery] = useState("");
   const [searchOpeningId, setSearchOpeningId] = useState<string | null>(null);
   const searchRequestRef = useRef(0);
   const searchSessionRef = useRef<string | null>(null);
@@ -861,12 +940,12 @@ export default function AppMap({
   const [selectionUrlReady, setSelectionUrlReady] = useState(false);
   useEffect(() => {
     if (!dock || !selectionUrlReady) return;
-    const url = new URL(window.location.href);
-    if (selectedSlug) url.searchParams.set("place", selectedSlug);
-    else url.searchParams.delete("place");
-    if (selectedEvent) url.searchParams.set("event", selectedEvent.slug);
-    else url.searchParams.delete("event");
-    window.history.replaceState(window.history.state, "", url.toString());
+    replaceMapUrl((params) => {
+      if (selectedSlug) params.set("place", selectedSlug);
+      else params.delete("place");
+      if (selectedEvent) params.set("event", selectedEvent.slug);
+      else params.delete("event");
+    });
   }, [dock, selectedEvent, selectedSlug, selectionUrlReady]);
   // Pin peek — the compact bottom card that rises when a curated pin is
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
@@ -1046,32 +1125,6 @@ export default function AppMap({
       setFoodTruckPeek(null);
     }
   }, [foodTruckPeek, liveFoodTruckPins]);
-  useEffect(() => {
-    if (foodTruckPeek && (peekPlace || parkingPeek || selected || selectedEvent || selectedDiscovery)) {
-      setFoodTruckPeek(null);
-    }
-  }, [foodTruckPeek, parkingPeek, peekPlace, selected, selectedDiscovery, selectedEvent]);
-  useEffect(() => {
-    if (
-      eventGroup &&
-      (peekPlace ||
-        parkingPeek ||
-        foodTruckPeek ||
-        selected ||
-        selectedEvent ||
-        selectedDiscovery)
-    ) {
-      setEventGroup(null);
-    }
-  }, [
-    eventGroup,
-    foodTruckPeek,
-    parkingPeek,
-    peekPlace,
-    selected,
-    selectedDiscovery,
-    selectedEvent,
-  ]);
   // A finding may reveal the handful of support layers needed to understand
   // its constellation. These are render-only unions: the user's own choices
   // stay untouched, are the only values persisted below, and reappear exactly
@@ -1144,11 +1197,6 @@ export default function AppMap({
       }),
     [transitLines.features.length],
   );
-  // Frederick County fire & rescue companies (GIS, static) — opt-in, OFF by
-  // default. Each pin is the station number, the root of its call signs.
-  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? deepLinkLayers.has("firestations"));
-  // County parks + public libraries (GIS, static) — opt-in, OFF by default.
-  const [showCivicPlaces, setShowCivicPlaces] = useState(() => layerPrefs.civicplaces ?? deepLinkLayers.has("civicplaces"));
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -1156,12 +1204,72 @@ export default function AppMap({
   // map. Keeping it in a bottom drawer makes the result reachable with one
   // thumb and leaves the map visible behind it.
   const [selectedTransitStop, setSelectedTransitStop] = useState<SelectedStop | null>(null);
-  // Current viewport bounds (set on every settled move) — makes the dock's
-  // count line honest to what the EYES see, not the whole county
-  // (viewport-honest count, 2026-07-17 map audit). Null until first settle
-  // (initial render counts everything, which at county zoom is the truth).
-  const [viewBounds, setViewBounds] = useState<{ w: number; e: number; s: number; n: number } | null>(null);
+  // The camera and the result area are deliberately separate. Camera bounds
+  // follow every settled pan so off-screen DOM pins leave the tab order. The
+  // result bounds move only after a programmatic camera action or an explicit
+  // "Show results here" tap, which keeps counts and recommendations from
+  // shuffling under a person's finger while they explore.
+  const [cameraBounds, setCameraBounds] = useState<MapViewportBounds | null>(null);
+  const [viewBounds, setViewBounds] = useState<{
+    w: number;
+    e: number;
+    s: number;
+    n: number;
+  } | null>(null);
+  const isPointInView = useCallback(
+    (lng: number, lat: number) =>
+      !cameraBounds ||
+      (lng >= cameraBounds.west &&
+        lng <= cameraBounds.east &&
+        lat >= cameraBounds.south &&
+        lat <= cameraBounds.north),
+    [cameraBounds],
+  );
   const [viewCenter, setViewCenter] = useState<LngLat | null>(null);
+  const viewCenterRef = useRef<LngLat | null>(null);
+  useEffect(() => {
+    viewCenterRef.current = viewCenter;
+  }, [viewCenter]);
+  const committedResultViewportRef = useRef<MapResultViewport | null>(null);
+  const manualViewportGestureRef = useRef(false);
+  const cameraControlGestureRef = useRef(false);
+  const [showResultsHere, setShowResultsHere] = useState(false);
+  const [resultAreaAnnouncement, setResultAreaAnnouncement] = useState({
+    message: "",
+    nonce: 0,
+  });
+  useEffect(() => {
+    if (!cameraBounds) return;
+    setEventSlugsInCamera(
+      new Set(
+        events
+          .filter(
+            (event) =>
+              event.lng >= cameraBounds.west &&
+              event.lng <= cameraBounds.east &&
+              event.lat >= cameraBounds.south &&
+              event.lat <= cameraBounds.north,
+          )
+          .map((event) => event.slug),
+      ),
+    );
+  }, [cameraBounds, events]);
+  useEffect(() => {
+    if (!viewBounds) return;
+    setEventSlugsInView(
+      new Set(
+        events
+          .filter(
+            (event) =>
+              event.lng >= viewBounds.w &&
+              event.lng <= viewBounds.e &&
+              event.lat >= viewBounds.s &&
+              event.lat <= viewBounds.n,
+          )
+          .map((event) => event.slug),
+      ),
+    );
+  }, [events, viewBounds]);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>(deepLinkedAerial?.season ?? "all");
@@ -1170,8 +1278,112 @@ export default function AppMap({
   const aerialFade = (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) ? 0 : 450;
   // Tap-a-town: the municipality under the last empty-map tap (name +
   // tap point for the popup anchor). Null when no town sheet is open.
-  const [civicTown, setCivicTown] = useState<{ name: string; lng: number; lat: number } | null>(null);
+  const [civicTown, setCivicTown] = useState<CivicTownSelection | null>(null);
   const [spotSelection, setSpotSelection] = useState<MapSpotSelection | null>(null);
+
+  /** The browse map has many data kinds, but only one foreground result. Keep
+   * the existing domain-specific states for their specialized renderers while
+   * coordinating every transition through one gate so stale cards can never
+   * reappear under the next selection. */
+  const clearMapSelection = useCallback(() => {
+    setSelected(null);
+    setSelectedSlug(null);
+    setSelectedEvent(null);
+    setEventGroup(null);
+    setCivicTown(null);
+    setSelectedTransitStop(null);
+    setMarcPeek(null);
+    setPeekPlace(null);
+    setSelectedAerial(null);
+    setSelectedCemetery(null);
+    setParkingPeek(null);
+    setFoodTruckPeek(null);
+    setSelectedDiscovery(null);
+    setSpotSelection(null);
+    setHover(null);
+  }, []);
+
+  const openMapSelection = useCallback(
+    (next: MapSelectionRequest) => {
+      rememberMapSelectionOpener();
+      clearMapSelection();
+      switch (next.kind) {
+        case "place":
+          setSelectedSlug(next.value.slug);
+          setPeekPlace(next.value);
+          break;
+        case "raw":
+          setSelected(next.value);
+          break;
+        case "event":
+          setSelectedEvent(next.value);
+          break;
+        case "event-group":
+          setEventGroup(next.value);
+          break;
+        case "town":
+          setCivicTown(next.value);
+          break;
+        case "transit":
+          setSelectedTransitStop(next.value);
+          break;
+        case "marc":
+          setMarcPeek(next.value);
+          break;
+        case "aerial":
+          setSelectedAerial(next.value);
+          break;
+        case "cemetery":
+          setSelectedCemetery(next.value);
+          break;
+        case "parking":
+          setParkingPeek(next.value);
+          break;
+        case "food-truck":
+          setFoodTruckPeek(next.value);
+          break;
+        case "discovery":
+          setSelectedDiscovery(next.value);
+          break;
+        case "spot":
+          setSpotSelection(next.value);
+          break;
+      }
+    },
+    [clearMapSelection],
+  );
+
+  const selectionOpen = Boolean(
+    selected ||
+      selectedEvent ||
+      eventGroup ||
+      civicTown ||
+      selectedTransitStop ||
+      marcPeek ||
+      peekPlace ||
+      selectedAerial ||
+      selectedCemetery ||
+      parkingPeek ||
+      foodTruckPeek ||
+      selectedDiscovery ||
+      spotSelection,
+  );
+
+  const handleDockPaneOpenChange = useCallback(
+    (open: boolean) => {
+      setDockPaneOpen(open);
+      if (open) clearMapSelection();
+    },
+    [clearMapSelection],
+  );
+
+  useEffect(() => {
+    if (!dock) return;
+    const clearForSearch = () => clearMapSelection();
+    window.addEventListener("fr:focus-map-search", clearForSearch);
+    return () =>
+      window.removeEventListener("fr:focus-map-search", clearForSearch);
+  }, [clearMapSelection, dock]);
 
   // 3D relief while browsing the drone archive. The aerial layer is the
   // one mode where the county's terrain IS the content, so toggling it
@@ -1211,10 +1423,6 @@ export default function AppMap({
   // are intentionally excluded — see mapLayerPrefs.
   useEffect(() => {
     writeMapLayerPrefs({
-      // cats retired with the dock (see above) — writing an empty list
-      // clears any previously stored set.
-      cats: [],
-      amenities: [...amenityGroups],
       civic: showCivic,
       transit: showTransit,
       trails: showTrails,
@@ -1226,10 +1434,8 @@ export default function AppMap({
       incidents: showIncidents,
       aviation: showRotorcraft,
       cameras: showCameras,
-      firestations: showFireStations,
-      civicplaces: showCivicPlaces,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras, showFireStations, showCivicPlaces]);
+  }, [showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
 
   // Live road and aircraft choices are first-class share/deep-link layers.
   // Expand the composite `roads` alias into explicit state so turning one
@@ -1465,55 +1671,134 @@ export default function AppMap({
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
-  // Emit the curated places inside the current viewport whenever the map
-  // settles — drives the synced results list. Ranked nearest-FIRST from the
-  // reader's OWN location when we know it (a cached or granted fix — this is
-  // Radius, the closest thing to you leads), and nearest-to-map-center only as
-  // the fallback, so the top result is never an arbitrary place across a
-  // county-wide view.
-  const emitInView = () => {
-    if (!mapRef.current) return;
-    const map = mapRef.current.getMap();
+  const readResultViewport = (map: ResultViewportMap): MapResultViewport | null => {
     const b = map.getBounds();
-    if (!b) return;
-    setViewBounds({ w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() });
+    if (!b) return null;
+    const c = map.getCenter();
+    return {
+      center: { lng: c.lng, lat: c.lat },
+      zoom: map.getZoom(),
+      bounds: {
+        west: b.getWest(),
+        east: b.getEast(),
+        south: b.getSouth(),
+        north: b.getNorth(),
+      },
+    };
+  };
+
+  // Keyboard reachability follows the camera even while the result contract
+  // is waiting for a deliberate commit. A panned-off pin must never remain in
+  // the tab order merely because the result count is still anchored elsewhere.
+  const syncCameraViewport = (viewport: MapResultViewport) => {
+    setCameraBounds(viewport.bounds);
+    setEventSlugsInCamera(
+      new Set(
+        events
+          .filter(
+            (event) =>
+              event.lng >= viewport.bounds.west &&
+              event.lng <= viewport.bounds.east &&
+              event.lat >= viewport.bounds.south &&
+              event.lat <= viewport.bounds.north,
+          )
+          .map((event) => event.slug),
+      ),
+    );
+  };
+
+  // Commit the area used by result counts, discovery ranking, and any synced
+  // list consumer. Programmatic moves commit automatically; a gesture commits
+  // only through the contextual button below.
+  const commitResultViewport = (
+    map: ResultViewportMap,
+    {
+      announce = false,
+      writeUrl = false,
+    }: { announce?: boolean; writeUrl?: boolean } = {},
+  ) => {
+    const viewport = readResultViewport(map);
+    if (!viewport) return 0;
+
+    syncCameraViewport(viewport);
+    committedResultViewportRef.current = viewport;
+    setViewBounds({
+      w: viewport.bounds.west,
+      e: viewport.bounds.east,
+      s: viewport.bounds.south,
+      n: viewport.bounds.north,
+    });
+    setViewCenter(viewport.center);
     setEventSlugsInView(
       new Set(
         events
           .filter(
             (event) =>
-              event.lng >= b.getWest() &&
-              event.lng <= b.getEast() &&
-              event.lat >= b.getSouth() &&
-              event.lat <= b.getNorth(),
+              event.lng >= viewport.bounds.west &&
+              event.lng <= viewport.bounds.east &&
+              event.lat >= viewport.bounds.south &&
+              event.lat <= viewport.bounds.north,
           )
           .map((event) => event.slug),
       ),
     );
-    const c = map.getCenter();
-    setViewCenter({ lng: c.lng, lat: c.lat });
-    if (!onPlacesInView) return;
+    setShowResultsHere(false);
+    manualViewportGestureRef.current = false;
+    cameraControlGestureRef.current = false;
+
+    const inside = visiblePlaces
+      .filter(
+        (place) =>
+          place.geom.lng >= viewport.bounds.west &&
+          place.geom.lng <= viewport.bounds.east &&
+          place.geom.lat >= viewport.bounds.south &&
+          place.geom.lat <= viewport.bounds.north,
+      );
+
+    if (writeUrl) {
+      try {
+        replaceMapUrl((params) => {
+          params.set(
+            "c",
+            `${viewport.center.lng.toFixed(4)},${viewport.center.lat.toFixed(4)},${viewport.zoom.toFixed(2)}`,
+          );
+        });
+      } catch {
+        /* Camera sharing is an enhancement; the committed results still hold. */
+      }
+    }
+
+    if (announce) {
+      setResultAreaAnnouncement((current) => ({
+        message: mapResultCountAnnouncement(inside.length),
+        nonce: current.nonce + 1,
+      }));
+    }
+
+    if (!onPlacesInView) return inside.length;
     // Rank from the reader's own fix when we have one (cached or granted),
     // else their saved home town's centroid, else the map center. Squared-
     // degree distance is enough to ORDER at county scale (same metric the
     // center sort has always used).
-    const ref = userLoc ?? homeCentroid ?? { lng: c.lng, lat: c.lat };
-    const inside = filteredPlaces
-      .filter(
-        (p) =>
-          p.geom.lng >= b.getWest() &&
-          p.geom.lng <= b.getEast() &&
-          p.geom.lat >= b.getSouth() &&
-          p.geom.lat <= b.getNorth()
-      )
-      .map((p) => ({
-        slug: p.slug,
-        d: (p.geom.lng - ref.lng) ** 2 + (p.geom.lat - ref.lat) ** 2,
+    const ref = userLoc ?? homeCentroid ?? viewport.center;
+    const ranked = inside
+      .map((place) => ({
+        slug: place.slug,
+        d: (place.geom.lng - ref.lng) ** 2 + (place.geom.lat - ref.lat) ** 2,
       }))
       .sort((a, z) => a.d - z.d)
       .slice(0, 60)
       .map((x) => x.slug);
-    onPlacesInView(inside);
+    onPlacesInView(ranked);
+    return inside.length;
+  };
+
+  const commitCurrentResultArea = () => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const count = commitResultViewport(map, { announce: true, writeUrl: true });
+    haptic("light");
+    track("map_results_area_commit", { place_count: count });
   };
 
   // Spatial hash of curated places (as DedupeRecords) for the OSM
@@ -1832,47 +2117,36 @@ export default function AppMap({
   // the camera position.
 
   const onClick = (e: MapMouseEvent) => {
-    // A map gesture ends the search interaction. This prevents a result tray
-    // from staying stacked above a pin or place preview.
-    if (q.trim()) setQ("");
-    setSelectedEvent(null);
-    setEventGroup(null);
-    setCivicTown(null); // any tap dismisses a prior town sheet
-    setSelectedTransitStop(null);
-    setMarcPeek(null);
-    setSelected(null);
-    setSpotSelection(null);
-    // A direct map selection takes over from a synthesized finding. The map
-    // should never make the user wonder which of two different cards is live.
-    if (selectedDiscovery) setSelectedDiscovery(null);
+    // A map gesture dismisses transient panels through `fr:map-gesture`, but
+    // it does not erase the person's search or shareable query. Clearing text
+    // merely because someone adjusted the map made the search feel unreliable.
+    clearMapSelection();
     const feature = e.features?.[0];
     if (!feature) {
-      // On the full county map an intentional empty tap is useful: keep the
-      // exact point and reveal a compact local read from data already loaded
-      // into Radius. Embedded maps retain their simple dismiss behavior.
-      setPeekPlace(null);
-      setParkingPeek(null);
-      setFoodTruckPeek(null);
-      setSelectedSlug(null);
-      setSelectedDiscovery(null);
-      if (dock) {
-        setSpotSelection({ lng: e.lngLat.lng, lat: e.lngLat.lat });
-        haptic("light");
-      }
+      // Empty map space is for panning, orientation, and dismissing a result.
+      // Do not invent a new "At this spot" task from every stray tap. The spot
+      // card remains available for an explicit temporary search result.
       return;
     }
     const layer = feature.layer?.id;
     if (!layer) { setSelectedSlug(null); return; }
     if (layer === "muni-label") {
       const name = String(feature.properties?.name ?? "");
-      if (name) {
-        setCivicTown({ name, lng: e.lngLat.lng, lat: e.lngLat.lat });
+      const slug = String(feature.properties?.slug ?? "");
+      if (name && slug) {
+        openMapSelection({
+          kind: "town",
+          value: { name, slug, lng: e.lngLat.lng, lat: e.lngLat.lat },
+        });
         haptic("light");
       }
       return;
     }
     if (layer === "marc-station-pins" || layer === "marc-station-hit") {
-      setMarcPeek(String(feature.properties?.name ?? ""));
+      openMapSelection({
+        kind: "marc",
+        value: String(feature.properties?.name ?? ""),
+      });
       haptic("light");
       return;
     }
@@ -1890,11 +2164,14 @@ export default function AppMap({
         setSelectedAerial(null);
         setSelectedCemetery(null);
         const [lng, lat] = feature.geometry.coordinates as [number, number];
-        setSelectedTransitStop({
-          id: String(props.id),
-          name: String(props.name ?? "Bus stop"),
-          lng,
-          lat,
+        openMapSelection({
+          kind: "transit",
+          value: {
+            id: String(props.id),
+            name: String(props.name ?? "Bus stop"),
+            lng,
+            lat,
+          },
         });
         haptic("light");
       }
@@ -2004,10 +2281,7 @@ export default function AppMap({
         // A quick PEEK card rises from the bottom (photo, open state,
         // distance, Save + Directions) so the user can act without leaving
         // the map; "Open page" in the peek hands off to the full sheet.
-        setSelected(null);
-        setSelectedEvent(null);
-        setParkingPeek(null);
-        setPeekPlace(place);
+        openMapSelection({ kind: "place", value: place });
         // Lift the tapped pin above the bottom card (Google/Apple pattern):
         // shift the camera up so the pin + its selected glow stay visible
         // instead of hiding under the card that just rose over them.
@@ -2030,7 +2304,7 @@ export default function AppMap({
       const photo = AERIAL_PHOTOS[idx];
       if (photo) {
         haptic("light");
-        setSelectedAerial(photo);
+        openMapSelection({ kind: "aerial", value: photo });
       }
       return;
     }
@@ -2040,7 +2314,7 @@ export default function AppMap({
       const cem = cemeteries.find((c) => c.id === id);
       if (cem) {
         haptic("light");
-        setSelectedCemetery(cem);
+        openMapSelection({ kind: "cemetery", value: cem });
       }
       return;
     }
@@ -2049,22 +2323,25 @@ export default function AppMap({
       const props = feature.properties as Record<string, string>;
       setSelectedSlug(null);
       haptic("light");
-      setSelected({
-        _kind: "osm",
-        osm_id: props.osm_id,
-        name: props.name,
-        category_slug: props.category,
-        osm_tag: props.osm_tag,
-        address: props.address,
-        city: props.city,
-        phone: props.phone,
-        website: props.website,
-        opening_hours: props.opening_hours,
-        cuisine: props.cuisine,
-        photo: props.photo || undefined,
-        observed_at: props.observed_at || undefined,
-        lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
-        lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
+      openMapSelection({
+        kind: "raw",
+        value: {
+          _kind: "osm",
+          osm_id: props.osm_id,
+          name: props.name,
+          category_slug: props.category,
+          osm_tag: props.osm_tag,
+          address: props.address,
+          city: props.city,
+          phone: props.phone,
+          website: props.website,
+          opening_hours: props.opening_hours,
+          cuisine: props.cuisine,
+          photo: props.photo || undefined,
+          observed_at: props.observed_at || undefined,
+          lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
+          lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
+        },
       });
     }
   };
@@ -2185,6 +2462,7 @@ export default function AppMap({
     // phrase waits for its debounce or network response.
     setSearchMatches([]);
     if (term.length < 2) {
+      setSearchSettledQuery(term);
       searchSessionRef.current = null;
       searchSessionStartedRef.current = false;
       searchSessionLastUsedRef.current = 0;
@@ -2194,7 +2472,8 @@ export default function AppMap({
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
-      const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
+      const origin =
+        userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
       params.set("lat", origin.lat.toFixed(4));
@@ -2211,6 +2490,7 @@ export default function AppMap({
 
         if (local.length > 0) {
           setSearchMatches(local);
+          setSearchSettledQuery(term);
           const routedCandidates = userLoc
             ? local
                 .filter(
@@ -2280,7 +2560,10 @@ export default function AppMap({
           return;
         }
 
-        if (!dock || term.length < 3) return;
+        if (!dock || term.length < 3) {
+          setSearchSettledQuery(term);
+          return;
+        }
         const now = Date.now();
         const sessionExpired =
           searchSessionLastUsedRef.current > 0 &&
@@ -2335,6 +2618,9 @@ export default function AppMap({
           !Array.isArray(fallback.suggestions) ||
           requestId !== searchRequestRef.current
         ) {
+          if (requestId === searchRequestRef.current) {
+            setSearchSettledQuery(term);
+          }
           return;
         }
         searchSessionStartedRef.current = true;
@@ -2359,12 +2645,14 @@ export default function AppMap({
             attribution: fallback.attribution,
           })),
         );
+        setSearchSettledQuery(term);
       } catch (error) {
         if (
           (error as { name?: string })?.name !== "AbortError" &&
           requestId === searchRequestRef.current
         ) {
           setSearchMatches([]);
+          setSearchSettledQuery(term);
         }
       }
     }, 150);
@@ -2372,7 +2660,7 @@ export default function AppMap({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [dock, q, userLoc, viewCenter]);
+  }, [dock, q, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -2383,7 +2671,7 @@ export default function AppMap({
 
   const pickSearch = async (r: SearchResult) => {
     haptic("light");
-    setSpotSelection(null);
+    clearMapSelection();
     if (r.temporary && r.provider === "Mapbox") {
       const sessionToken = searchSessionRef.current;
       const mapboxId = r.mapbox_id ?? r.id.replace(/^mapbox:/, "");
@@ -2428,18 +2716,15 @@ export default function AppMap({
         searchSessionStartedRef.current = false;
         searchSessionLastUsedRef.current = 0;
         searchSessionSuggestCountRef.current = 0;
-        setSelected(null);
-        setSelectedEvent(null);
-        setPeekPlace(null);
-        setParkingPeek(null);
-        setSelectedSlug(null);
-        setCivicTown(null);
-        setSpotSelection({
-          lng,
-          lat,
-          label: body.result.name || r.title,
-          temporary: true,
-          attribution: body.attribution ?? r.attribution,
+        openMapSelection({
+          kind: "spot",
+          value: {
+            lng,
+            lat,
+            label: body.result.name || r.title,
+            temporary: true,
+            attribution: body.attribution ?? r.attribution,
+          },
         });
         cameraIntentRef.current = true;
         mapRef.current?.getMap().easeTo({
@@ -2462,9 +2747,7 @@ export default function AppMap({
     // synchronously because unrelated URL effects can still be settling while
     // the user chooses a result.
     if (q.trim()) {
-      const url = new URL(window.location.href);
-      url.searchParams.set("q", q.trim());
-      window.history.replaceState(window.history.state, "", url.toString());
+      replaceMapUrl((params) => params.set("q", q.trim()));
     }
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
@@ -2485,6 +2768,18 @@ export default function AppMap({
       const amenityParam = target.searchParams.get("amenity");
       const showParam = target.searchParams.get("show");
       if (amenityParam || showParam) {
+        const requestedShow = new Set(
+          (showParam ?? "")
+            .split(",")
+            .map((key) => key.trim())
+            .filter(Boolean),
+        );
+        const roadsRequested = requestedShow.has("roads");
+
+        // A search command is a new task, not another hidden toggle. Replace
+        // the previous task-level amenity/live state so "trash can near me"
+        // cannot quietly remain combined with a restroom or radar choice from
+        // an earlier visit. Deliberate archival `layers` remain independent.
         if (amenityParam) {
           const validGroups = new Set(AMENITY_GROUPS.map((group) => group.key));
           const requested = amenityParam
@@ -2492,47 +2787,29 @@ export default function AppMap({
             .map((key) => key.trim())
             .filter((key) => validGroups.has(key));
           if (requested.length > 0) {
-            setAmenityGroups((current) => new Set([...current, ...requested]));
+            setAmenityGroups(new Set(requested));
           }
+        } else {
+          setAmenityGroups(new Set());
         }
 
-        for (const layerKey of (showParam ?? "").split(",")) {
-          if (layerKey === "parking") setShowParking(true);
-          else if (layerKey === "transit") setShowTransit(true);
-          else if (layerKey === "radar") setShowRadar(true);
-          else if (layerKey === "traffic") setShowTraffic(true);
-          else if (layerKey === "incidents") setShowIncidents(true);
-          else if (layerKey === "air") setShowRotorcraft(true);
-          else if (layerKey === "cameras") setShowCameras(true);
-          else if (layerKey === "trails") setShowTrails(true);
-          else if (layerKey === "civic") setShowCivic(true);
-          else if (layerKey === "roads") {
-            setShowTraffic(true);
-            setShowCivic(true);
-            setShowIncidents(true);
-          }
-        }
+        setShowParking(requestedShow.has("parking"));
+        setShowTransit(requestedShow.has("transit"));
+        setShowRadar(requestedShow.has("radar"));
+        setShowTraffic(requestedShow.has("traffic") || roadsRequested);
+        setShowIncidents(requestedShow.has("incidents") || roadsRequested);
+        setShowRotorcraft(requestedShow.has("air"));
+        setShowCameras(requestedShow.has("cameras"));
+        setShowTrails(requestedShow.has("trails"));
+        setShowCivic(requestedShow.has("civic") || roadsRequested);
 
         const current = new URL(window.location.href);
         current.searchParams.delete("q");
         if (amenityParam) {
-          const existing = (current.searchParams.get("amenity") ?? "")
-            .split(",")
-            .filter(Boolean);
-          current.searchParams.set(
-            "amenity",
-            [...new Set([...existing, ...amenityParam.split(",")])].join(","),
-          );
-        }
-        if (showParam) {
-          const existing = (current.searchParams.get("show") ?? "")
-            .split(",")
-            .filter(Boolean);
-          current.searchParams.set(
-            "show",
-            [...new Set([...existing, ...showParam.split(",")])].join(","),
-          );
-        }
+          current.searchParams.set("amenity", amenityParam);
+        } else current.searchParams.delete("amenity");
+        if (showParam) current.searchParams.set("show", showParam);
+        else current.searchParams.delete("show");
         window.history.replaceState(window.history.state, "", current);
         if (/\bnear\s+me\b/i.test(q)) {
           if (userLoc) {
@@ -2559,16 +2836,13 @@ export default function AppMap({
       const p = placesBySlug.get(r.id.replace(/^place:/, ""));
       if (p) {
         const map = mapRef.current?.getMap();
-        setSelectedSlug(p.slug);
-        setQ("");
         if (map) {
           cameraIntentRef.current = true;
           // A named search result is an explicit destination, not a gentle
           // browse nudge. Land close enough to identify the selected place.
           smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15, maxStep: 6 });
         }
-        setParkingPeek(null);
-        setPeekPlace(p);
+        openMapSelection({ kind: "place", value: p });
         return;
       }
     }
@@ -2581,13 +2855,7 @@ export default function AppMap({
       const event = events.find((candidate) => candidate.slug === r.id.replace(/^event:/, ""));
       if (event) {
         const map = mapRef.current?.getMap();
-        setQ("");
-        setSelected(null);
-        setPeekPlace(null);
-        setParkingPeek(null);
-        setSelectedSlug(null);
-        setCivicTown(null);
-        setSelectedEvent(event);
+        openMapSelection({ kind: "event", value: event });
         if (map) {
           cameraIntentRef.current = true;
           smoothFocus(map, [event.lng, event.lat], { minZoom: 14.5, maxStep: 6 });
@@ -2606,12 +2874,6 @@ export default function AppMap({
       const town = MUNICIPALITIES.find((candidate) => candidate.slug === slug);
       if (town) {
         setQ("");
-        setSelected(null);
-        setSelectedEvent(null);
-        setPeekPlace(null);
-        setParkingPeek(null);
-        setSelectedSlug(null);
-        setCivicTown(null);
         cameraIntentRef.current = true;
 
         try {
@@ -2846,6 +3108,9 @@ export default function AppMap({
   }), [cemeteries]);
 
   const goNearMe = () => {
+    setShowResultsHere(false);
+    manualViewportGestureRef.current = false;
+    cameraControlGestureRef.current = false;
     locateRequestedRef.current = true;
     setLocating(true);
     setGeoMsg(null);
@@ -2858,6 +3123,13 @@ export default function AppMap({
   // a return to the default frame, not a user pan the leash should preserve.
   const fitCounty = () => {
     cameraIntentRef.current = false;
+    setShowResultsHere(false);
+    manualViewportGestureRef.current = false;
+    cameraControlGestureRef.current = false;
+    // The control is the user's explicit return to overview. Hide it
+    // immediately instead of leaving a seemingly broken button on-screen for
+    // the duration of Mapbox's camera animation.
+    setOffOverview(false);
     mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
       padding: countyFitPadding(),
       duration: prefersReducedMotion() ? 0 : 900,
@@ -2937,14 +3209,7 @@ export default function AppMap({
     : -1;
 
   const showDiscovery = (discovery: MapDiscovery) => {
-    setSelectedDiscovery(discovery);
-    setSelected(null);
-    setSelectedEvent(null);
-    setSelectedSlug(null);
-    setPeekPlace(null);
-    setParkingPeek(null);
-    setCivicTown(null);
-    setSpotSelection(null);
+    openMapSelection({ kind: "discovery", value: discovery });
     const map = mapRef.current?.getMap();
     if (map) {
       cameraIntentRef.current = true;
@@ -3104,16 +3369,24 @@ export default function AppMap({
           : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
       }
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
-      data-map-peek={dock && (peekPlace || parkingPeek || foodTruckPeek || selectedDiscovery || spotSelection) ? "open" : undefined}
+      data-map-peek={dock && selectionOpen ? "open" : undefined}
+      data-map-error={mapError || undefined}
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
+      data-flood-context-count={dock ? floodContext.features.length : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
         wakeMapEdgeTools();
         const target = event.target as Element;
         if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
           cameraIntentRef.current = true;
-          window.dispatchEvent(new Event("fr:map-edge-gesture"));
+        }
+        if (
+          target.closest(
+            ".mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out, .mapboxgl-ctrl-compass",
+          )
+        ) {
+          cameraControlGestureRef.current = true;
         }
         if (dockPaneOpen && target.closest(".mapboxgl-canvas-container")) {
           window.dispatchEvent(new Event("fr:map-gesture"));
@@ -3121,9 +3394,21 @@ export default function AppMap({
       }}
       onPointerMoveCapture={wakeMapEdgeTools}
       onFocusCapture={wakeMapEdgeTools}
-      onKeyDownCapture={wakeMapEdgeTools}
+      onKeyDownCapture={(event) => {
+        wakeMapEdgeTools();
+        const target = event.target as Element;
+        if (
+          target.closest(".mapboxgl-canvas") &&
+          ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "+", "=", "-"].includes(
+            event.key,
+          )
+        ) {
+          cameraControlGestureRef.current = true;
+        }
+      }}
       onWheelCapture={() => {
         cameraIntentRef.current = true;
+        cameraControlGestureRef.current = true;
         wakeMapEdgeTools();
       }}
     >
@@ -3151,39 +3436,62 @@ export default function AppMap({
       )}
 
         {mapError && (
-          <div
-            className="absolute inset-0 z-[var(--z-map-control)] flex flex-col items-center justify-center gap-2 px-6 text-center"
-            style={{ background: "var(--app-bg)" }}
-            role="alert"
+          <section
+            className="map-error-fallback"
+            aria-labelledby="map-error-title"
           >
-            <p className="font-sans text-base font-semibold" style={{ color: "var(--app-ink)" }}>
-              {mapUnsupported ? "This browser can't show the map" : "The map is temporarily unavailable"}
-            </p>
-            <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              {mapUnsupported
-                ? "The interactive map needs graphics support this browser does not have. You can still browse the Radius place catalog by list."
-                : "It should be back shortly. Reload the map or browse the Radius place catalog by list."}
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              {!mapUnsupported && (
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="inline-flex min-h-11 items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            <div className="map-error-fallback-head" role="alert">
+              <div>
+                <h2
+                  id="map-error-title"
+                  className="font-sans text-base font-semibold"
+                  style={{ color: "var(--app-ink)" }}
                 >
-                  Reload the map
-                </button>
-              )}
-              <Link
-                href="/places"
-                className="inline-flex min-h-11 items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
-                style={{ background: "var(--app-brand-press)" }}
-              >
-                Browse all places
-              </Link>
+                  {mapUnsupported
+                    ? "This browser cannot draw the map"
+                    : "The map is temporarily unavailable"}
+                </h2>
+                <p
+                  className="mt-1 max-w-xl text-xs leading-relaxed"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {mapUnsupported
+                    ? "The same places and events are available below in a readable list."
+                    : "Your current results are still available below. Reload the map when you are ready."}
+                </p>
+              </div>
+              <div className="map-error-fallback-actions">
+                {!mapUnsupported && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="tap-44 inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-ink-2)",
+                    }}
+                  >
+                    Reload map
+                  </button>
+                )}
+                <Link
+                  href="/places"
+                  className="tap-44 inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
+                  style={{ background: "var(--app-brand-press)" }}
+                >
+                  All places
+                </Link>
+              </div>
             </div>
-          </div>
+            <MapList
+              places={inViewPlaces}
+              events={visibleEvents}
+              userLoc={userLoc}
+              sortOrigin={viewCenter ?? searchFallbackOriginRef.current}
+              onPick={openPlaceSheet}
+              onPickEvent={(event) => router.push(`/events/${event.slug}`)}
+            />
+          </section>
         )}
         {/* A geolocation denial or failure has to be visible where the user
             just tapped locate. On the dock surface it anchors above the locate
@@ -3192,14 +3500,21 @@ export default function AppMap({
             was silent (it lived inside the collapsed Where pane). */}
         {geoMsg && (
           <div
-            className={`z-[var(--z-map-control)] flex items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`z-[var(--z-map-control)] flex items-center gap-1 rounded-[var(--app-radius-md)] border bg-white/95 py-1 pl-3 pr-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
               dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
             }`}
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            role="status"
           >
-            {geoMsg}
-            <button type="button" onClick={() => setGeoMsg(null)} aria-label="Dismiss" style={{ color: "var(--app-ink-3)" }}>✕</button>
+            <span role="status" aria-live="polite">{geoMsg}</span>
+            <button
+              type="button"
+              className="tap-44 grid shrink-0 place-items-center rounded-full"
+              onClick={() => setGeoMsg(null)}
+              aria-label="Dismiss location message"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
+            </button>
           </div>
         )}
         {/* Transient OSM status only — loading + error. The old steady-state
@@ -3286,8 +3601,16 @@ export default function AppMap({
             each pin + the in-view drawer's place cards are the legend
             now. */}
 
+        <p id="frederick-map-help" className="sr-only">
+          Interactive map of Frederick County. Use arrow keys to pan and plus
+          or minus to zoom when the map has focus. Use Map view to choose
+          places, nearby essentials, live conditions, time, or area.
+        </p>
+
         <Map
           ref={attachMapRef}
+          aria-label="Interactive map of Frederick County"
+          aria-describedby="frederick-map-help"
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
             urlCamera ?? (locationSeed.camera
@@ -3361,6 +3684,29 @@ export default function AppMap({
             "marc-station-hit",
             "muni-label",
           ]}
+          onMoveStart={(e) => {
+            const isUserMove =
+              Boolean((e as { originalEvent?: unknown }).originalEvent) ||
+              cameraControlGestureRef.current;
+            // Mapbox can emit dragstart just before movestart. Preserve that
+            // positive user signal when movestart itself omits originalEvent.
+            if (isUserMove) {
+              manualViewportGestureRef.current = true;
+            } else if (!manualViewportGestureRef.current) {
+              setShowResultsHere(false);
+            }
+          }}
+          onDragStart={() => {
+            manualViewportGestureRef.current = true;
+          }}
+          onZoomStart={(e) => {
+            if (
+              Boolean((e as { originalEvent?: unknown }).originalEvent) ||
+              cameraControlGestureRef.current
+            ) {
+              manualViewportGestureRef.current = true;
+            }
+          }}
           onClick={onClick}
           onLoad={(e) => {
             edgeToolsLastWakeRef.current = Number.NEGATIVE_INFINITY;
@@ -3412,7 +3758,7 @@ export default function AppMap({
             // like one place and not two different maps.
             installCountySpotlight(e.target);
             markMapOnLoad();
-            emitInView();
+            commitResultViewport(e.target);
             // A restored `?c=` camera can open already zoomed in without ever
             // firing moveend, so seed the reset FAB's visibility from the
             // initial frame too.
@@ -3448,8 +3794,7 @@ export default function AppMap({
               deepLinkPlaceAppliedRef.current = true;
               const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
               if (place) {
-                setSelectedSlug(place.slug);
-                setPeekPlace(place);
+                openMapSelection({ kind: "place", value: place });
               }
             }
             if (
@@ -3462,7 +3807,7 @@ export default function AppMap({
                 (candidate) => candidate.slug === initialEventSlug,
               );
               if (event) {
-                setSelectedEvent(event);
+                openMapSelection({ kind: "event", value: event });
                 if (!urlCamera) {
                   cameraIntentRef.current = true;
                   smoothFocus(e.target, [event.lng, event.lat], {
@@ -3522,37 +3867,40 @@ export default function AppMap({
               }
             }
           }}
-          onMoveStart={() => setMapMoving(true)}
           onMoveEnd={(e) => {
-            setMapMoving(false);
             markMapIdleOnce();
-            emitInView();
             // The reset FAB only earns its place once zoom or pan has clipped
             // the county overview (see offOverview).
             setOffOverview(!isCountyOverview(e.target));
-            // Persist the camera to the URL so the view is shareable and
-            // survives reload. moveend is already debounced by Mapbox, so
-            // this writes once per settled move; replaceState preserves the
-            // sibling `layers` param.
-            try {
-              const c = e.target.getCenter();
-              if (urlCamera && !cameraUrlWriteReadyRef.current) {
-                const restored =
-                  Math.abs(c.lng - urlCamera.longitude) < 0.00005 &&
-                  Math.abs(c.lat - urlCamera.latitude) < 0.00005 &&
-                  Math.abs(e.target.getZoom() - urlCamera.zoom) < 0.005;
-                if (!restored) return;
-                cameraUrlWriteReadyRef.current = true;
-              }
-              replaceMapUrl((params) => {
-                params.set(
-                  "c",
-                  `${c.lng.toFixed(4)},${c.lat.toFixed(4)},${e.target.getZoom().toFixed(2)}`,
-                );
-              });
-            } catch {
-              /* URL write is best-effort */
+            const c = e.target.getCenter();
+            if (urlCamera && !cameraUrlWriteReadyRef.current) {
+              const restored =
+                Math.abs(c.lng - urlCamera.longitude) < 0.00005 &&
+                Math.abs(c.lat - urlCamera.latitude) < 0.00005 &&
+                Math.abs(e.target.getZoom() - urlCamera.zoom) < 0.005;
+              if (!restored) return;
+              cameraUrlWriteReadyRef.current = true;
             }
+
+            const viewport = readResultViewport(e.target);
+            if (!viewport) return;
+            syncCameraViewport(viewport);
+
+            if (
+              dock &&
+              manualViewportGestureRef.current &&
+              resultViewportChanged(committedResultViewportRef.current, viewport)
+            ) {
+              setShowResultsHere(true);
+              manualViewportGestureRef.current = false;
+              cameraControlGestureRef.current = false;
+              return;
+            }
+
+            // Initial/restored cameras, Locate, Whole County, search picks, and
+            // selected pins all commit immediately. A tiny finger wobble that
+            // stayed inside the committed result area does the same.
+            commitResultViewport(e.target, { writeUrl: true });
           }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
@@ -3634,11 +3982,29 @@ export default function AppMap({
             onNewestFrame={setRadarFrameEpoch}
             onHealth={setRadarHealth}
           />
+          {showRadar ? (
+            <LightningDensity show beforeId="muni-label" />
+          ) : null}
 
           {/* Current congestion is context, not the closure authority. It
               sits below the incident/camera pins; the dock keeps Maryland
               CHART and Radius's public incident feed visibly distinct. */}
           <MapboxTraffic show={showTraffic} />
+
+          {/* Static high-water areas and warning infrastructure are context,
+              never a live flood claim. They share the Roads view and sit
+              beneath current work-zone and incident geometry. */}
+          {showTraffic ? <FloodContext show data={floodContext} /> : null}
+
+          {/* SnowCommand reports route operations, not moving plows or road
+              safety. Current reports share the Roads view so winter context
+              never adds another primary map control. */}
+          {showTraffic ? <SnowRoutes show data={snowRoutes} /> : null}
+
+          {/* Official lane-level roadwork belongs to Traffic, not another
+              switch. A wide transparent hit line makes the geometry easy to
+              inspect on a phone without covering congestion or incident pins. */}
+          {showTraffic ? <RoadWorkZones show data={roadWorkZones} /> : null}
 
           {/* Live public scanner incidents — caution pins (crashes, wires
               down, fires) that self-refresh and age out. Empty until the
@@ -3667,13 +4033,6 @@ export default function AppMap({
             show={showCameras}
             onHealth={setCameraHealth}
           />
-
-          {/* Frederick County fire & rescue companies — static GIS pins, each
-              its station number. Tap for the company name + call-sign key. */}
-          <FireStations show={showFireStations} />
-
-          {/* County parks + public libraries — static GIS pins. */}
-          <CivicPlaces show={showCivicPlaces} />
 
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
@@ -3891,7 +4250,7 @@ export default function AppMap({
               id="municipal-boundary-highlight"
               type="line"
               layout={{ "line-join": "round", "line-cap": "round" }}
-              filter={["==", ["get", "name"], civicTown?.name ?? "__none__"]}
+              filter={["==", ["get", "slug"], civicTown?.slug ?? "__none__"]}
               paint={{
                 "line-color": "#285D73",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 2, 13, 3.5],
@@ -3905,14 +4264,9 @@ export default function AppMap({
               (town hall, trash, ...) and a link to the town guide. Resolved
               by point-in-polygon in onClick; honest when a town has no
               civic record yet. */}
-          {civicTown && (() => {
-            // Boundary "MUNIC" name -> municipality. Handles "Frederick
-            // City" -> slug "frederick" and our "Downtown Frederick" naming
-            // by stripping the city/town suffix and the downtown- prefix.
-            const base = townSlug(civicTown.name.replace(/\b(city|town|village)\b/gi, " "));
+          {civicTown && (!dock || !compactMapViewport) && (() => {
             const muni =
-              MUNICIPALITIES.find((m) => m.slug === base) ??
-              MUNICIPALITIES.find((m) => townSlug(m.name).replace(/^downtown-/, "") === base) ??
+              MUNICIPALITIES.find((municipality) => municipality.slug === civicTown.slug) ??
               null;
             const rec = muni ? municipalCivicFor(muni.slug) : null;
             const contacts = rec ? civicContacts(rec).slice(0, 2) : [];
@@ -3923,7 +4277,7 @@ export default function AppMap({
                 latitude={civicTown.lat}
                 offset={14}
                 closeOnClick={false}
-                onClose={() => setCivicTown(null)}
+                onClose={clearMapSelection}
                 maxWidth="250px"
               >
                 <div style={{ padding: "2px 2px 4px", minWidth: 198 }}>
@@ -4663,14 +5017,14 @@ export default function AppMap({
               a generous size + the season tag + the capture date.
               Designed to feel like opening a postcard from the spot
               the pin marks. */}
-          {selectedAerial && (
+          {selectedAerial && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selectedAerial.lng}
               latitude={selectedAerial.lat}
               anchor="bottom"
               offset={20}
               closeOnClick={true}
-              onClose={() => setSelectedAerial(null)}
+              onClose={clearMapSelection}
               maxWidth="320px"
             >
               <div className="space-y-2">
@@ -4752,14 +5106,14 @@ export default function AppMap({
               under, and an honest note when the county itself marks the
               point approximate. No established date: the county layer
               doesn't carry one, and we never invent data. */}
-          {selectedCemetery && (
+          {selectedCemetery && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selectedCemetery.lng}
               latitude={selectedCemetery.lat}
               anchor="bottom"
               offset={12}
               closeOnClick={true}
-              onClose={() => setSelectedCemetery(null)}
+              onClose={clearMapSelection}
               maxWidth="240px"
             >
               <div style={{ padding: "2px 2px 4px", minWidth: 170 }}>
@@ -4779,6 +5133,17 @@ export default function AppMap({
                     This location is approximate and based on county records.
                   </p>
                 )}
+                <p style={{ marginTop: 7, fontSize: 10, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}>
+                  <a
+                    href="https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/HistoricCemeteries/FeatureServer/0"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "inherit", textDecoration: "underline" }}
+                  >
+                    Frederick County GIS
+                  </a>
+                  {" · "}compiled from Jacob M. Holdcraft records
+                </p>
               </div>
             </Popup>
           )}
@@ -4794,7 +5159,9 @@ export default function AppMap({
               real location. */}
           {eventGroups.map((group) => {
             const lead = group.events[0];
-            const inView = group.events.some((event) => eventSlugsInView.has(event.slug));
+            const inView = group.events.some((event) =>
+              eventSlugsInCamera.has(event.slug),
+            );
             const discoveryMatch = group.events.some((event) =>
               selectedDiscovery?.points.some((point) => point.id === `event:${event.slug}`),
             );
@@ -4812,16 +5179,10 @@ export default function AppMap({
                   onClick={(pointerEvent) => {
                     pointerEvent.stopPropagation();
                     haptic("light");
-                    setSelectedDiscovery(null);
-                    setSelected(null);
-                    setPeekPlace(null);
-                    setSelectedSlug(null);
                     if (group.events.length === 1) {
-                      setEventGroup(null);
-                      setSelectedEvent(lead);
+                      openMapSelection({ kind: "event", value: lead });
                     } else {
-                      setSelectedEvent(null);
-                      setEventGroup(group);
+                      openMapSelection({ kind: "event-group", value: group });
                     }
                     const map = mapRef.current?.getMap();
                     if (map && map.getZoom() < 14) {
@@ -4846,12 +5207,18 @@ export default function AppMap({
                     aria-hidden
                     className="fr-event-marker-face"
                     style={{
-                      background: lead.hero_image
-                        ? `center/cover no-repeat url("${sizedImage(lead.hero_image, 128)}")`
-                        : lead.category_color || "var(--app-brand)",
+                      background: lead.category_color || "var(--app-brand)",
                     }}
                   >
-                    {group.events.length > 1 ? group.events.length : !lead.hero_image ? "\u{1F4C5}" : ""}
+                    {group.events.length > 1 ? (
+                      group.events.length
+                    ) : (
+                      <CategoryIcon
+                        slug={lead.category}
+                        className="h-4 w-4"
+                        strokeWidth={2.25}
+                      />
+                    )}
                   </span>
                 </button>
               </Marker>
@@ -4873,17 +5240,12 @@ export default function AppMap({
               <button
                 type="button"
                 className="fr-food-truck-marker"
+                tabIndex={isPointInView(pin.lng, pin.lat) ? 0 : -1}
                 aria-label={`${pin.name}, operator-confirmed live location`}
                 onClick={(event) => {
                   event.stopPropagation();
                   haptic("light");
-                  setSelectedDiscovery(null);
-                  setSelected(null);
-                  setSelectedEvent(null);
-                  setPeekPlace(null);
-                  setParkingPeek(null);
-                  setSelectedSlug(null);
-                  setFoodTruckPeek(pin);
+                  openMapSelection({ kind: "food-truck", value: pin });
                 }}
               >
                 <span aria-hidden className="fr-food-truck-pulse" />
@@ -4913,15 +5275,11 @@ export default function AppMap({
                 >
                   <button
                     type="button"
+                    tabIndex={isPointInView(g.lng, g.lat) ? 0 : -1}
                     onClick={(ev) => {
                       ev.stopPropagation();
                       haptic("light");
-                      setSelectedDiscovery(null);
-                      setSelected(null);
-                      setSelectedEvent(null);
-                      setPeekPlace(null);
-                      setSelectedSlug(null);
-                      setParkingPeek(g);
+                      openMapSelection({ kind: "parking", value: g });
                     }}
                     aria-label={`${g.name} parking garage`}
                     className="fr-park-marker"
@@ -4933,21 +5291,21 @@ export default function AppMap({
               );
             })}
 
-          {selectedEvent && (
+          {selectedEvent && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selectedEvent.lng}
               latitude={selectedEvent.lat}
               anchor="bottom"
               offset={28}
               closeOnClick={true}
-              onClose={() => setSelectedEvent(null)}
+              onClose={clearMapSelection}
               maxWidth="280px"
             >
               <EventPopup e={selectedEvent} />
             </Popup>
           )}
 
-          {hover && !selected && (
+          {hover && !selectionOpen && (
             <Popup
               longitude={hover.lng}
               latitude={hover.lat}
@@ -4968,14 +5326,14 @@ export default function AppMap({
             </Popup>
           )}
 
-          {selected && (
+          {selected && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selected._kind === "place" ? selected.geom.lng : selected.lng}
               latitude={selected._kind === "place" ? selected.geom.lat : selected.lat}
               anchor="bottom"
               offset={14}
               closeOnClick={true}
-              onClose={() => setSelected(null)}
+              onClose={clearMapSelection}
               maxWidth="300px"
             >
               {selected._kind === "place" ? (
@@ -4986,12 +5344,11 @@ export default function AppMap({
             </Popup>
           )}
 
-          {/* Zoom stays as corner furniture — camera, not filter. With the
-              dock now pinned at the TOP, the bottom-right corner is
-              unobstructed, so dock-host CSS returns the zoom cluster there.
-              GeolocateControl only rides dock-less maps: on /map browse,
-              locate's one home is the Where pane. */}
-          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && !spotSelection && (
+          {/* Desktop keeps stock zoom as camera furniture. Mobile follows the
+              native-map pattern: pinch/double-tap on the canvas, one visible
+              Locate action, and no permanent zoom stack competing with the
+              bottom command bar. GeolocateControl stays on dock-less embeds. */}
+          {(!dock || !compactMapViewport) && !dockPaneOpen && !selectionOpen && (
             <NavigationControl position="bottom-right" showCompass={false} />
           )}
           {!dock && !compactSubjectMap && (
@@ -4999,7 +5356,33 @@ export default function AppMap({
           )}
         </Map>
 
-        {dock && !mapError && !selectedTransitStop && (
+        <p
+          key={resultAreaAnnouncement.nonce}
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-map-result-announcement
+        >
+          {resultAreaAnnouncement.message}
+        </p>
+
+        {dock &&
+          !mapError &&
+          !dockPaneOpen &&
+          !selectionOpen &&
+          showResultsHere && (
+            <button
+              type="button"
+              className="map-results-here tap-44"
+              onClick={commitCurrentResultArea}
+            >
+              <span className="map-results-here-dot" aria-hidden />
+              Show results here
+            </button>
+          )}
+
+        {dock && !mapError && !dockPaneOpen && !selectionOpen && (
           <MapEdgeTools
             awake={edgeToolsAwake}
             onWake={wakeMapEdgeTools}
@@ -5007,12 +5390,6 @@ export default function AppMap({
             located={Boolean(userLoc)}
             onLocate={goNearMe}
             overlays={edgeOverlayState}
-            unavailable={{
-              parking: parking.length === 0,
-              transit: transitHealth.status === "unavailable",
-              trails: trailLines.features.length === 0,
-              aerial: AERIAL_PHOTOS.length === 0,
-            }}
             onToggle={toggleEdgeOverlay}
             incidentHealth={incidentHealth}
             recentIncidentCount={recentIncidentCount}
@@ -5028,19 +5405,24 @@ export default function AppMap({
 
         {/* ── The dock: one instrument for the browse map. Scrim + card;
             collapsed face is the What · When · Where caption. ── */}
-        {dock && (
+        {dock && !mapError && (
           <div
-            className="transition-opacity duration-200 motion-reduce:transition-none"
-            style={{ opacity: mapMoving && !dockPaneOpen ? 0.35 : 1 }}
+            className="map-dock-slot"
+            inert={compactMapViewport && selectionOpen}
+            aria-hidden={compactMapViewport && selectionOpen}
           >
           <MapDock
             browse={dock}
             placeCount={inViewPlaces.length}
-            eventCount={visibleEvents.length}
+            eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
             q={q}
             setQ={setQ}
             searchMatches={searchMatches}
+            searchPending={
+              q.trim().length >= 2 &&
+              searchSettledQuery !== q.trim()
+            }
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
             searchDistanceOriginLabel={userLoc ? "from you" : "from map center"}
@@ -5084,6 +5466,8 @@ export default function AppMap({
             radarHealth={radarHealth}
             showTraffic={showTraffic}
             setShowTraffic={setShowTraffic}
+            floodContextCount={floodContext.features.length}
+            snowRouteCount={snowRoutes.features.length}
             roadsNowActive={showTraffic || showCivic || showIncidents}
             roadsNowFullyOn={showTraffic && showCivic && showIncidents}
             setShowRoadsNow={(show) => {
@@ -5099,10 +5483,6 @@ export default function AppMap({
             showCameras={showCameras}
             setShowCameras={setShowCameras}
             cameraHealth={cameraHealth}
-            showFireStations={showFireStations}
-            setShowFireStations={setShowFireStations}
-            showCivicPlaces={showCivicPlaces}
-            setShowCivicPlaces={setShowCivicPlaces}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
@@ -5130,7 +5510,7 @@ export default function AppMap({
               const discovery = discoveries.find((item) => item.id === id);
               if (discovery) showDiscovery(discovery);
             }}
-            onPaneOpenChange={setDockPaneOpen}
+            onPaneOpenChange={handleDockPaneOpenChange}
           />
           </div>
         )}
@@ -5140,7 +5520,7 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && !spotSelection && offOverview && (
+        {dock && !mapError && !dockPaneOpen && !selectionOpen && offOverview && (
           <button
             type="button"
             className="map-reset-fab tap-44"
@@ -5158,9 +5538,51 @@ export default function AppMap({
             total={Math.max(1, discoveryDeck.length)}
             onPrevious={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) - 1)}
             onNext={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) + 1)}
-            onClose={() => setSelectedDiscovery(null)}
+            onClose={clearMapSelection}
           />
         )}
+
+        {dock && compactMapViewport && selectedEvent && (
+          <MapEventPeek event={selectedEvent} onClose={clearMapSelection} />
+        )}
+
+        {dock && compactMapViewport && selected && (
+          <MapRawPeek item={selected} onClose={clearMapSelection} />
+        )}
+
+        {dock && compactMapViewport && civicTown && (() => {
+          const municipality =
+            MUNICIPALITIES.find((item) => item.slug === civicTown.slug) ?? null;
+          const civicRecord = municipality
+            ? municipalCivicFor(municipality.slug)
+            : null;
+          return (
+            <MapTownPeek
+              title={municipality?.name ?? civicTown.name}
+              contacts={civicRecord ? civicContacts(civicRecord).slice(0, 2) : []}
+              guideHref={municipality ? `/m/${municipality.slug}` : undefined}
+              onClose={clearMapSelection}
+            />
+          );
+        })()}
+
+        {dock && compactMapViewport && selectedAerial && (
+          <MapAerialPeek photo={selectedAerial} onClose={clearMapSelection} />
+        )}
+
+        {dock && compactMapViewport && selectedCemetery && (
+          <MapCemeteryPeek
+            cemetery={selectedCemetery}
+            onClose={clearMapSelection}
+          />
+        )}
+
+        {dock && compactMapViewport && marcPeek && (() => {
+          const station = marcStations.find((item) => item.name === marcPeek);
+          return station ? (
+            <MapMarcPeek station={station} onClose={clearMapSelection} />
+          ) : null;
+        })()}
 
         {dock && spotSelection && spotContext && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
           <MapSpotPeek
@@ -5170,13 +5592,11 @@ export default function AppMap({
             label={spotSelection.label}
             temporary={spotSelection.temporary}
             attribution={spotSelection.attribution}
-            onClose={() => setSpotSelection(null)}
+            onClose={clearMapSelection}
             onOpenPlace={(slug) => {
               const place = places.find((candidate) => candidate.slug === slug);
               if (!place) return;
-              setSpotSelection(null);
-              setSelectedSlug(place.slug);
-              setPeekPlace(place);
+              openMapSelection({ kind: "place", value: place });
               const map = mapRef.current?.getMap();
               cameraIntentRef.current = true;
               if (map) {
@@ -5225,10 +5645,7 @@ export default function AppMap({
             // results retain the explicit map-center distance before selection.
             distanceOrigin={userLoc}
             distanceOriginLabel="from you"
-            onClose={() => {
-              setPeekPlace(null);
-              setSelectedSlug(null);
-            }}
+            onClose={clearMapSelection}
             onDetails={() => openPlaceSheet(peekPlace)}
           />
         )}
@@ -5236,11 +5653,11 @@ export default function AppMap({
         {/* The parking garage peek — its own compact card (a garage isn't a
             saveable place): live spaces, hourly rate, and Directions. */}
         {parkingPeek && (
-          <MapParkingPeek pin={parkingPeek} userLoc={userLoc} onClose={() => setParkingPeek(null)} />
+          <MapParkingPeek pin={parkingPeek} userLoc={userLoc} onClose={clearMapSelection} />
         )}
 
         {foodTruckPeek && !peekPlace && !parkingPeek && (
-          <MapFoodTruckPeek pin={foodTruckPeek} onClose={() => setFoodTruckPeek(null)} />
+          <MapFoodTruckPeek pin={foodTruckPeek} onClose={clearMapSelection} />
         )}
 
         <BottomDrawer
@@ -5248,7 +5665,7 @@ export default function AppMap({
           subtitle="Live Frederick County TransIT arrivals"
           open={selectedTransitStop !== null}
           onOpenChange={(open) => {
-            if (!open) setSelectedTransitStop(null);
+            if (!open) clearMapSelection();
           }}
         >
           {selectedTransitStop && (
@@ -5273,7 +5690,7 @@ export default function AppMap({
         {/* MARC station popup — the next scheduled trains, as clock times
             from the committed GTFS schedule (weekday commuter service;
             honest empty line when no more trains today). */}
-        {marcPeek && (() => {
+        {marcPeek && (!dock || !compactMapViewport) && (() => {
           const st = marcStations.find((m) => m.name === marcPeek);
           if (!st) return null;
           return (
@@ -5281,7 +5698,7 @@ export default function AppMap({
               longitude={st.lng}
               latitude={st.lat}
               anchor="bottom"
-              onClose={() => setMarcPeek(null)}
+              onClose={clearMapSelection}
               closeOnClick
               maxWidth="260px"
             >
@@ -5337,7 +5754,7 @@ export default function AppMap({
           }
           open={eventGroup !== null}
           onOpenChange={(open) => {
-            if (!open) setEventGroup(null);
+            if (!open) clearMapSelection();
           }}
         >
           <ul className="space-y-1 pb-4">
@@ -5359,8 +5776,7 @@ export default function AppMap({
                     type="button"
                     className="tap-44 flex w-full items-center gap-3 rounded-[var(--app-radius-sm)] px-2.5 py-2.5 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
                     onClick={() => {
-                      setEventGroup(null);
-                      setSelectedEvent(event);
+                      openMapSelection({ kind: "event", value: event });
                       haptic("light");
                       const map = mapRef.current?.getMap();
                       if (map) {

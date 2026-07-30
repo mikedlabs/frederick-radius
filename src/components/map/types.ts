@@ -26,6 +26,92 @@ export const EMPTY_LINE_FC: MapLineFC = {
   features: [],
 };
 
+/**
+ * Public WZDx work-zone geometry, reduced to the facts the map can explain.
+ * The server adapter owns the provider schema; the browser never receives the
+ * statewide feed or unreviewed provider fields.
+ */
+export type RoadWorkZoneFC = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    id?: string | number;
+    geometry: unknown;
+    properties: {
+      id: string;
+      road: string;
+      title: string;
+      detail?: string;
+      laneImpact?: string;
+      status?: string;
+      startAt?: string;
+      endAt?: string;
+      updatedAt?: string;
+      sourceUrl: string;
+    };
+  }>;
+};
+
+export const EMPTY_ROAD_WORK_ZONE_FC: RoadWorkZoneFC = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+/**
+ * Static County flood context. These shapes mark known risk areas and physical
+ * warning infrastructure; `currentStatus` is deliberately fixed so the map
+ * can never turn historical context into a live flood claim.
+ */
+export type FloodContextFC = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    id?: string | number;
+    geometry: unknown;
+    properties: {
+      id: string;
+      kind: "mapped_high_water_area" | "warning_sign" | "past_water_rescue";
+      title: string;
+      creek?: string;
+      currentStatus: "Not a live flooding report";
+      sourceUrl: string;
+    };
+  }>;
+};
+
+export const EMPTY_FLOOD_CONTEXT_FC: FloodContextFC = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+/** Current County SnowCommand route-operation reports. */
+export type SnowRouteFC = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    id?: string | number;
+    geometry: unknown;
+    properties: {
+      id: string;
+      district?: string;
+      reportedStatus:
+        | "clear"
+        | "narrow_clear"
+        | "emergency_access"
+        | "closed"
+        | "unknown";
+      observedAt?: string;
+      roadSafety: "not_established";
+      sourceUrl: string;
+    };
+  }>;
+};
+
+export const EMPTY_SNOW_ROUTE_FC: SnowRouteFC = {
+  type: "FeatureCollection",
+  features: [],
+};
+
 export type CivicPin = {
   kind: "traffic" | "issue";
   lng: number;
@@ -51,8 +137,9 @@ export type CemeteryPin = {
  * Compact shape we render as an event pin on the map. Server-fetched on
  * /map/page.tsx from allUpcoming() and filtered to the next 48 hours so
  * the layer reads as "what's happening soon" instead of "all events
- * ever." Hero image is rendered as a circular photo bubble; if absent
- * we fall back to a category-colored badge with a calendar glyph.
+ * ever." Event markers deliberately carry category identity instead of raw
+ * remote photography: a 36px map marker has no legal, readable place for
+ * image attribution.
  */
 export type EventPin = {
   slug: string;
@@ -68,7 +155,6 @@ export type EventPin = {
   lat: number;
   category: string;
   category_color?: string;
-  hero_image?: string;
 };
 
 /** Operator-confirmed, self-expiring food-truck location. */

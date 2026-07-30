@@ -2,7 +2,13 @@
 
 import { track } from "@/lib/track";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity, Toilet } from "lucide-react";
@@ -18,6 +24,7 @@ import { findQuickAnswers } from "@/lib/answers/intents";
 import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 import type { IntentIcon } from "@/lib/answers/types";
 import { commandDestination } from "@/lib/command-routing";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -118,16 +125,32 @@ const COLOR_BY_TYPE: Record<SearchResultType, string> = {
   action: "var(--app-cool)",
 };
 
+function isPlainNavigationClick(
+  event: ReactMouseEvent<HTMLAnchorElement>,
+): boolean {
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey &&
+    (!event.currentTarget.target ||
+      event.currentTarget.target === "_self")
+  );
+}
+
 export default function SearchOverlay({
   open,
   onClose,
   openerRef,
+  historyLayerId,
 }: {
   open: boolean;
   onClose: () => void;
   /** Explicit opener for touch browsers, which do not always move focus to
    * the button a person taps before mounting the dialog. */
   openerRef?: React.RefObject<HTMLElement | null>;
+  historyLayerId: string;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -137,6 +160,7 @@ export default function SearchOverlay({
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [retryNonce, setRetryNonce] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +172,18 @@ export default function SearchOverlay({
   const recent = useRecentSearches();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
+  const historyLayer = useReversibleHistoryLayer({
+    active: open,
+    id: historyLayerId,
+    onDismiss: onClose,
+  });
+  const dismiss = historyLayer.dismiss;
+  const navigateFromSearch = useCallback(
+    (href: string) => {
+      historyLayer.leave(() => router.push(href));
+    },
+    [historyLayer, router],
+  );
 
   const updateQuery = (next: string) => {
     setQuery(next);
@@ -209,7 +245,7 @@ export default function SearchOverlay({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [query, coords]);
+  }, [query, coords, retryNonce]);
 
   // Report zero-result searches. The queries people type and get nothing
   // for are the app's real backlog, so the query text rides with the event
@@ -269,7 +305,7 @@ export default function SearchOverlay({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        dismiss();
         return;
       }
       // Focus trap: this is role="dialog" aria-modal, so Tab must cycle
@@ -299,7 +335,7 @@ export default function SearchOverlay({
     // pushRecent + query are read inside the handler when Enter is
     // pressed — without them, a stale closure can persist the previous
     // query string after the user edits the input and hits Enter.
-  }, [open, onClose]);
+  }, [dismiss, open]);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -345,8 +381,7 @@ export default function SearchOverlay({
           ? "search"
           : "direct",
     });
-    onClose();
-    router.push(destination);
+    navigateFromSearch(destination);
   };
 
   return (
@@ -370,7 +405,7 @@ export default function SearchOverlay({
         type="button"
         tabIndex={-1}
         aria-label="Close search"
-        onClick={onClose}
+        onClick={dismiss}
         className="absolute inset-0 hidden bg-black/40 backdrop-blur-[2px] sm:block"
       />
 
@@ -393,7 +428,7 @@ export default function SearchOverlay({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={dismiss}
             aria-label="Close Find"
             className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition active:scale-95"
             style={{ color: "var(--app-ink-2)" }}
@@ -460,7 +495,11 @@ export default function SearchOverlay({
                       <li key={qa.href}>
                         <Link
                           href={qa.href}
-                          onClick={onClose}
+                          onClick={(event) => {
+                            if (!isPlainNavigationClick(event)) return;
+                            event.preventDefault();
+                            navigateFromSearch(qa.href);
+                          }}
                           className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                           style={{ borderColor: "var(--app-border)" }}
                         >
@@ -562,7 +601,7 @@ export default function SearchOverlay({
               recent={recent}
               onPick={updateQuery}
               onClearRecent={clearRecent}
-              onClose={onClose}
+              onNavigate={navigateFromSearch}
             />
           ) : results.length === 0 ? (
             // No live role on this block — regions mounted WITH content aren't
@@ -572,7 +611,21 @@ export default function SearchOverlay({
             status === "error" ? (
               <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
                 <p style={{ color: "var(--app-ink-2)" }}>Search is unavailable right now.</p>
-                <p className="mt-1 text-xs">Check your connection and try again in a moment.</p>
+                <p className="mt-1 text-xs">Check your connection, then try the same search again.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("loading");
+                    setRetryNonce((value) => value + 1);
+                  }}
+                  className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold"
+                  style={{
+                    borderColor: "var(--app-brand-press)",
+                    color: "var(--app-brand-press)",
+                  }}
+                >
+                  Try again
+                </button>
               </div>
             ) : status === "loading" ? (
               <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
@@ -593,10 +646,12 @@ export default function SearchOverlay({
                 const distance = coords && r.lat != null && r.lng != null
                   ? formatDistance(haversineMeters(coords, { lng: r.lng, lat: r.lat }))
                   : null;
-                const pick = () => {
+                const pick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+                  if (!isPlainNavigationClick(event)) return;
+                  event.preventDefault();
                   if (query.trim()) pushRecent(query.trim());
                   track("search_pick", { type: r.type });
-                  onClose();
+                  navigateFromSearch(r.href);
                 };
                 const art = r.thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -664,10 +719,12 @@ export default function SearchOverlay({
                         {mapHref ? (
                           <Link
                             href={mapHref}
-                            onClick={() => {
+                            onClick={(event) => {
+                              if (!isPlainNavigationClick(event)) return;
+                              event.preventDefault();
                               if (query.trim()) pushRecent(query.trim());
                               track("search_map");
-                              onClose();
+                              navigateFromSearch(mapHref);
                             }}
                             className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
                             style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
@@ -678,9 +735,13 @@ export default function SearchOverlay({
                         ) : (
                           <Link
                             href={`/ask?q=${encodeURIComponent(query.trim())}`}
-                            onClick={() => {
+                            onClick={(event) => {
+                              if (!isPlainNavigationClick(event)) return;
+                              event.preventDefault();
                               track("ask_open");
-                              onClose();
+                              navigateFromSearch(
+                                `/ask?q=${encodeURIComponent(query.trim())}`,
+                              );
                             }}
                             className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
                             style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
@@ -731,9 +792,13 @@ export default function SearchOverlay({
             <div className="border-t px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
               <Link
                 href={`/ask?q=${encodeURIComponent(query.trim())}`}
-                onClick={() => {
+                onClick={(event) => {
+                  if (!isPlainNavigationClick(event)) return;
+                  event.preventDefault();
                   track("ask_open", { source: "search" });
-                  onClose();
+                  navigateFromSearch(
+                    `/ask?q=${encodeURIComponent(query.trim())}`,
+                  );
                 }}
                 className="tactile-interactive flex min-h-14 items-center gap-3 border-y px-1 py-3 transition active:opacity-75"
                 style={{
@@ -824,12 +889,12 @@ function EmptyHint({
   recent,
   onPick,
   onClearRecent,
-  onClose,
+  onNavigate,
 }: {
   recent: string[];
   onPick: (s: string) => void;
   onClearRecent: () => void;
-  onClose: () => void;
+  onNavigate: (href: string) => void;
 }) {
   const hour = frederickHour();
   const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Clock }> = [
@@ -867,7 +932,7 @@ function EmptyHint({
             </button>
           </div>
           <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
-            {recent.map((s) => (
+            {recent.slice(0, 2).map((s) => (
               <li key={`recent-${s}`}>
                 <button
                   type="button"
@@ -883,37 +948,49 @@ function EmptyHint({
             ))}
           </ul>
         </div>
-      ) : (
-        <div>
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            Useful now
-          </p>
-          <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
-            {quickStart.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={onClose}
-                  className="group flex min-h-[62px] items-center gap-3 border-b px-1 py-2.5 last:border-b-0"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
-                    <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.title}</span>
-                    <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      ) : null}
+
+      <div className={recent.length > 0 ? "mt-5" : undefined}>
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          Useful now
+        </p>
+        <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
+          {quickStart.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                onClick={(event) => {
+                  if (!isPlainNavigationClick(event)) return;
+                  event.preventDefault();
+                  onNavigate(item.href);
+                }}
+                className="group flex min-h-[58px] items-center gap-3 border-b px-1 py-2 last:border-b-0"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
+                  <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.title}</span>
+                  <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-        <Link href="/ask" onClick={onClose} className="group flex min-h-12 items-center gap-3 px-1">
+        <Link
+          href="/ask"
+          onClick={(event) => {
+            if (!isPlainNavigationClick(event)) return;
+            event.preventDefault();
+            onNavigate("/ask");
+          }}
+          className="group flex min-h-12 items-center gap-3 px-1"
+        >
           <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.1} style={{ color: "var(--app-brand)" }} aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Ask Radius</span>

@@ -248,7 +248,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       {
         id: "parks",
         label: "Parks",
-        description: "Browse parks returned by Frederick County GIS.",
+        description: "Browse Radius's reviewed park and open-space listings.",
         href: "/parks",
         icon: "trees",
         tone: "positive",
@@ -286,7 +286,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         label: "Nearby essentials",
         description: "Find the closest mapped restroom, water, trash, dog bags, seating, or power.",
         href: "/amenities",
-        icon: "map-pin",
+        icon: "toilet",
         tone: "civic",
         featured: true,
         keywords: ["nearby essentials", "public essentials", "restroom", "water", "trash", "dog bags", "seating", "power"],
@@ -528,6 +528,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "landmark",
         tone: "civic",
         keywords: ["contacts", "who do i call", "county services", "city services", "government", "311"],
+      },
+      {
+        id: "communication-access",
+        label: "Communication access",
+        description: "Find Deaf-community places, accessible events, written help, and official access information.",
+        href: "/access",
+        icon: "landmark",
+        tone: "civic",
+        keywords: ["deaf", "hard of hearing", "asl", "captions", "interpreter", "relay", "communication access", "accessibility"],
       },
       {
         id: "nonprofits",

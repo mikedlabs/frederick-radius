@@ -1,10 +1,42 @@
 // Client-safe slim set (already decorated) — NOT @/lib/loaders/places
 // (static-imports the ~12MB enrichment into client bundles).
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
+import VENUE_PHOTO_CREDITS_RAW from "@/data/event-venue-photo-credits.json" with { type: "json" };
+import type { EventHeroImageAttribution } from "@/data/events";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters } from "@/lib/geo";
 import { MUNICIPALITIES } from "@/data/municipalities";
+
+type VenuePhotoCredit = {
+  google_maps_uri: string;
+  flag_content_uri?: string;
+  authors: EventHeroImageAttribution["authors"];
+};
+
+const VENUE_PHOTO_CREDITS = VENUE_PHOTO_CREDITS_RAW as Record<
+  string,
+  VenuePhotoCredit
+>;
+
+function isPlacePhotoProxy(value?: string): boolean {
+  return Boolean(value?.startsWith("/api/place-photo"));
+}
+
+function venuePhotoAttribution(
+  place: PlaceCardData,
+): EventHeroImageAttribution | null {
+  const credit = VENUE_PHOTO_CREDITS[place.slug];
+  if (!credit?.google_maps_uri?.startsWith("https://")) return null;
+  return {
+    kind: "venue",
+    venue_name: place.name,
+    provider: "google_maps",
+    source_uri: credit.google_maps_uri,
+    flag_content_uri: credit.flag_content_uri,
+    authors: credit.authors ?? [],
+  };
+}
 
 /**
  * Give events a thumbnail by borrowing their venue's verified photo.
@@ -38,8 +70,9 @@ import { MUNICIPALITIES } from "@/data/municipalities";
  *     uncertain falls back to the engraved category plate, which is
  *     honest, not a guessed photo.
  *
- * Server-only by design: imports the multi-MB enrichment JSON and
- * emits only a small proxied URL string onto each event.
+ * Server-only by design. The client place catalog supplies the image URL while
+ * a generated, compact credit artifact supplies the matching author and direct
+ * Google Maps source. A venue photo is never attached without both halves.
  */
 const normLoose = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
@@ -170,7 +203,10 @@ export function withVenueThumb(e: EventWithMeta): EventWithMeta {
 
 export function withVenueThumbs(events: EventWithMeta[]): EventWithMeta[] {
   return events.map((e) => {
-    if (e.hero_image) return e;
+    // Publisher-provided event art stays intact. A place-photo proxy is
+    // different: it must be rejoined to its canonical venue credit below or
+    // fail closed, even when an upstream row already carried the URL.
+    if (e.hero_image && !isPlacePhotoProxy(e.hero_image)) return e;
     // A precise per-event geocode (not a feed centroid) is what makes the
     // fuzzy name-match's proximity gate meaningful — see findByVenueName.
     const precise =
@@ -178,8 +214,22 @@ export function withVenueThumbs(events: EventWithMeta[]): EventWithMeta[] {
     let place: PlaceCardData | null | undefined = null;
     if (e.venue_place_slug) place = clientPlaceBySlug(e.venue_place_slug);
     if (!place && e.venue_name) place = findByVenueName(e.venue_name, e.geom, precise);
-    if (!place) return e;
+    if (!place) {
+      return isPlacePhotoProxy(e.hero_image)
+        ? { ...e, hero_image: undefined, hero_image_attribution: undefined }
+        : e;
+    }
     const photo = place.google_photo_url;
-    return photo ? { ...e, hero_image: photo } : e;
+    const attribution = venuePhotoAttribution(place);
+    if (!photo || !attribution) {
+      return isPlacePhotoProxy(e.hero_image)
+        ? { ...e, hero_image: undefined, hero_image_attribution: undefined }
+        : e;
+    }
+    return {
+      ...e,
+      hero_image: photo,
+      hero_image_attribution: attribution,
+    };
   });
 }

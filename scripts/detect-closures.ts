@@ -1,5 +1,5 @@
 /**
- * detect-closures.ts — FREE closure detector using the AnySearch web API.
+ * detect-closures.ts — review-only closure detector using Tavily Search.
  *
  * Why: a local guide loses trust the moment it lists a place that has closed
  * (see the Idiom Brewing example). The paid path (refresh:business-status)
@@ -15,27 +15,27 @@
  * confirmed closures to KNOWN_CLOSED_CANONICAL by hand. Human corrections win
  * (CLAUDE.md).
  *
- * BUDGET. The AnySearch free tier is limited (~1000 calls). The full PLACES
+ * BUDGET. Web-search credits are finite. The full PLACES
  * catalog is ~2450 (seed/manual/fc-gis curated + the dfp/discovered long
  * tail), so a full sweep would blow the budget AND is noisy (the long tail is
  * realtors, agents, and LLCs whose pages say "closed 400 transactions" or
  * carry directory chrome). Therefore the DEFAULT is the ~100 curated editorial
- * places only. The long tail is opt-in via --all and prints its call cost
- * first.
+ * places only. The long tail is opt-in via --all --confirm-all. Every run has
+ * an immutable 125-request / 125-credit ceiling, including failed attempts.
  *
  * CACHING. Every raw response is cached to scripts/reports/closure-raw.json.
  * Re-run with --rescore to re-evaluate the heuristics against the cache with
  * ZERO API calls. Iterate on precision for free; only fetch new places once.
  *
  * Setup: put your key in .env.local (gitignored):
- *   ANYSEARCH_API_KEY=as_sk_...
+ *   TAVILY_API_KEY=tvly-...
  *
  * Usage:
  *   npm run closures:detect                    # ~100 curated places (safe)
  *   npm run closures:detect -- --limit 5       # cheap smoke test
  *   npm run closures:detect -- --slug some-slug
  *   npm run closures:detect -- --rescore       # re-score cache, no API calls
- *   npm run closures:detect -- --all           # + long tail (2000+ calls!)
+ *   npm run closures:detect -- --all --confirm-all # capped long-tail review
  *   npm run closures:detect -- --min medium    # report medium+ only
  *
  * Output: scripts/reports/closure-candidates.json (+ closure-raw.json cache),
@@ -47,27 +47,97 @@ config();
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PLACES } from "@/data/places";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import {
+  searchTavilyCandidates,
+  TavilySearchError,
+} from "./lib/tavily-search";
 
-const ENDPOINT = "https://api.anysearch.com/mcp";
-const KEY = process.env.ANYSEARCH_API_KEY;
+const ANYSEARCH_ENDPOINT = "https://api.anysearch.com/mcp";
+const TAVILY_KEY = process.env.TAVILY_API_KEY;
+const ANYSEARCH_KEY = process.env.ANYSEARCH_API_KEY;
+const SEARCH_PROVIDER = TAVILY_KEY ? "Tavily" : "AnySearch";
 const REPORT_DIR = resolve("scripts/reports");
 const RAW_PATH = resolve(REPORT_DIR, "closure-raw.json");
 const OUT_PATH = resolve(REPORT_DIR, "closure-candidates.json");
 
 // ── CLI args ────────────────────────────────────────────────────────────────
-const argv = process.argv.slice(2);
-const has = (name: string) => argv.includes(`--${name}`);
-function flag(name: string): string | undefined {
-  const i = argv.indexOf(`--${name}`);
-  return i >= 0 ? argv[i + 1] : undefined;
+export const MAX_CLOSURE_REQUESTS_PER_RUN = 125;
+export const MAX_CLOSURE_CREDITS_PER_RUN = 125;
+
+export type ClosureDetectorCliOptions = {
+  onlySlug?: string;
+  limit?: number;
+  includeLongTail: boolean;
+  confirmedLongTail: boolean;
+  rescore: boolean;
+  minConfidence: "low" | "medium" | "high";
+};
+
+function singleFlagValue(
+  args: readonly string[],
+  name: string,
+): string | undefined {
+  const flag = `--${name}`;
+  const indexes = args.flatMap((argument, index) =>
+    argument === flag ? [index] : [],
+  );
+  if (indexes.length > 1) {
+    throw new Error(`${flag} may be provided only once.`);
+  }
+  const index = indexes[0];
+  if (index === undefined) return undefined;
+  const value = args[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return value;
 }
-const onlySlug = flag("slug");
-const limit = flag("limit") ? Math.max(1, parseInt(flag("limit") as string, 10)) : undefined;
-const includeLongTail = has("all");
-const rescore = has("rescore");
-const minConf = (flag("min") as "low" | "medium" | "high" | undefined) ?? "low";
+
+export function parseClosureDetectorArgs(
+  args: readonly string[],
+): ClosureDetectorCliOptions {
+  const limitValue = singleFlagValue(args, "limit");
+  let limit: number | undefined;
+  if (limitValue !== undefined) {
+    if (!/^[1-9]\d*$/.test(limitValue)) {
+      throw new Error("--limit must be a positive whole number.");
+    }
+    limit = Number(limitValue);
+    if (
+      !Number.isSafeInteger(limit) ||
+      limit > MAX_CLOSURE_REQUESTS_PER_RUN
+    ) {
+      throw new Error(
+        `--limit cannot exceed the immutable ${MAX_CLOSURE_REQUESTS_PER_RUN}-request run ceiling.`,
+      );
+    }
+  }
+
+  const minValue = singleFlagValue(args, "min") ?? "low";
+  if (!["low", "medium", "high"].includes(minValue)) {
+    throw new Error("--min must be low, medium, or high.");
+  }
+  const onlySlug = singleFlagValue(args, "slug");
+  const includeLongTail = args.includes("--all");
+  const confirmedLongTail = args.includes("--confirm-all");
+  if (includeLongTail && !confirmedLongTail) {
+    throw new Error(
+      "--all requires --confirm-all. The immutable run ceiling still applies.",
+    );
+  }
+
+  return {
+    ...(onlySlug ? { onlySlug } : {}),
+    ...(limit === undefined ? {} : { limit }),
+    includeLongTail,
+    confirmedLongTail,
+    rescore: args.includes("--rescore"),
+    minConfidence: minValue as ClosureDetectorCliOptions["minConfidence"],
+  };
+}
 const CONF_RANK = { low: 0, medium: 1, high: 2 } as const;
 
 // Sources that make up the curated editorial catalog (everything that isn't
@@ -156,7 +226,7 @@ function snippetAround(text: string, re: RegExp): string {
     .trim();
 }
 
-// AnySearch returns one markdown blob: "### N. Title\n- **URL**: x\n- <content>".
+// Preserve the legacy cache shape so old runs still rescore with zero calls.
 function parseResults(text: string): Array<{ url: string; content: string }> {
   const out: Array<{ url: string; content: string }> = [];
   for (const block of text.split(/\n(?=###\s*\d+\.)/)) {
@@ -166,6 +236,19 @@ function parseResults(text: string): Array<{ url: string; content: string }> {
     out.push({ url: urlM[1], content: after.replace(/^\s*-?\s*/, "").trim() });
   }
   return out;
+}
+
+function tavilyResultsAsLegacyMarkdown(
+  results: Array<{ url: string; title: string; content: string }>,
+): string {
+  return results
+    .map(
+      (result, index) =>
+        `### ${index + 1}. ${result.title.replace(/\s+/g, " ").trim()}\n` +
+        `- **URL**: ${result.url}\n` +
+        `- ${result.content.replace(/\s+/g, " ").trim()}`,
+    )
+    .join("\n");
 }
 
 function evaluate(
@@ -234,41 +317,108 @@ function evaluate(
   };
 }
 
-async function anysearch(query: string, tries = 3): Promise<string> {
-  for (let attempt = 1; attempt <= tries; attempt++) {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-        Authorization: `Bearer ${KEY}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name: "search", arguments: { query, max_results: 3 } },
-      }),
-    });
-    if (res.status === 429) {
-      const wait = 2000 * attempt;
-      console.warn(`  rate limited, backing off ${wait}ms…`);
-      await new Promise((r) => setTimeout(r, wait));
-      continue;
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as { error?: { message: string }; result?: { content?: Array<{ text?: string }> } };
-    if (data.error) throw new Error(`AnySearch: ${data.error.message}`);
-    return data.result?.content?.[0]?.text ?? "";
+class ClosureSearchProviderError extends Error {
+  readonly status: number | null;
+  readonly terminal: boolean;
+
+  constructor(
+    message: string,
+    options: { status?: number | null; terminal?: boolean } = {},
+  ) {
+    super(message);
+    this.name = "ClosureSearchProviderError";
+    this.status = options.status ?? null;
+    this.terminal = options.terminal === true;
   }
-  throw new Error("rate limited after retries");
 }
 
-function targetsFor() {
+export function isTerminalClosureSearchError(error: unknown): boolean {
+  if (error instanceof TavilySearchError) {
+    return [
+      "configuration",
+      "unauthorized",
+      "rate_limited",
+      "plan_limit_exceeded",
+      "payg_limit_exceeded",
+    ].includes(error.code);
+  }
+  if (error instanceof ClosureSearchProviderError) {
+    return error.terminal;
+  }
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : "";
+  return /(unauthori[sz]ed|forbidden|rate limit|billing|payment|plan limit|credit limit)/.test(
+    message,
+  );
+}
+
+export function canReserveClosureSearchAttempt(
+  attemptedRequests: number,
+  attemptedCredits: number,
+  estimatedCredits = 1,
+): boolean {
+  return (
+    attemptedRequests + 1 <= MAX_CLOSURE_REQUESTS_PER_RUN &&
+    attemptedCredits + estimatedCredits <=
+      MAX_CLOSURE_CREDITS_PER_RUN
+  );
+}
+
+async function anysearch(query: string): Promise<string> {
+  const res = await fetch(ANYSEARCH_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+      Authorization: `Bearer ${ANYSEARCH_KEY}`,
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "search", arguments: { query, max_results: 3 } },
+    }),
+  });
+  if (!res.ok) {
+    throw new ClosureSearchProviderError(`HTTP ${res.status}`, {
+      status: res.status,
+      terminal: [401, 402, 403, 429].includes(res.status),
+    });
+  }
+  const data = (await res.json()) as {
+    error?: { message: string };
+    result?: { content?: Array<{ text?: string }> };
+  };
+  if (data.error) {
+    const terminal =
+      /(unauthori[sz]ed|forbidden|rate limit|billing|payment|plan limit|credit limit)/i.test(
+        data.error.message,
+      );
+    throw new ClosureSearchProviderError(
+      `AnySearch: ${data.error.message}`,
+      { terminal },
+    );
+  }
+  return data.result?.content?.[0]?.text ?? "";
+}
+
+async function searchWeb(query: string): Promise<string> {
+  if (TAVILY_KEY) {
+    const result = await searchTavilyCandidates(query, {
+      apiKey: TAVILY_KEY,
+      maxResults: 3,
+      searchDepth: "basic",
+    });
+    return tavilyResultsAsLegacyMarkdown(result.candidates);
+  }
+  return anysearch(query);
+}
+
+function targetsFor(options: ClosureDetectorCliOptions) {
   let t = PLACES.filter((p) => {
     if (p.is_operational === "closed_permanently" || p.is_operational === "closed_temporarily") return false;
     if (isKnownClosed(p.name)) return false;
-    if (!includeLongTail && !onlySlug && !CURATED.has(p.source)) return false;
+    if (!options.includeLongTail && !options.onlySlug && !CURATED.has(p.source)) return false;
     return true;
   }).map((p) => ({
     slug: p.slug,
@@ -276,13 +426,19 @@ function targetsFor() {
     town: titleCase(p.municipality),
     siteHost: p.website ? host(p.website) : "",
   }));
-  if (onlySlug) t = t.filter((x) => x.slug === onlySlug);
-  if (limit) t = t.slice(0, limit);
+  if (options.onlySlug) t = t.filter((x) => x.slug === options.onlySlug);
+  if (options.limit) t = t.slice(0, options.limit);
   return t;
 }
 
-function writeReport(candidates: Candidate[], calls: number, checked: number) {
-  const rank = CONF_RANK[minConf] ?? 0;
+function writeReport(
+  candidates: Candidate[],
+  attemptedRequests: number,
+  attemptedCredits: number,
+  checked: number,
+  minConfidence: ClosureDetectorCliOptions["minConfidence"],
+) {
+  const rank = CONF_RANK[minConfidence] ?? 0;
   const report = candidates
     .filter((c) => CONF_RANK[c.confidence] >= rank)
     .sort((a, b) => CONF_RANK[b.confidence] - CONF_RANK[a.confidence]);
@@ -292,7 +448,14 @@ function writeReport(candidates: Candidate[], calls: number, checked: number) {
     JSON.stringify(
       {
         generated_at: new Date().toISOString(),
-        api_calls: calls,
+        provider: SEARCH_PROVIDER,
+        review_only: true,
+        no_public_writes: true,
+        api_calls: attemptedRequests,
+        api_calls_attempted: attemptedRequests,
+        credits_attempted: attemptedCredits,
+        immutable_request_ceiling: MAX_CLOSURE_REQUESTS_PER_RUN,
+        immutable_credit_ceiling: MAX_CLOSURE_CREDITS_PER_RUN,
         checked,
         candidate_count: report.length,
         note: "DRY RUN. Verify each, then add confirmed closures to KNOWN_CLOSED_CANONICAL in src/lib/integrations/closures.ts.",
@@ -304,8 +467,8 @@ function writeReport(candidates: Candidate[], calls: number, checked: number) {
   );
 
   console.log(`\n─────────────────────────────────────────────`);
-  console.log(`AnySearch calls used: ${calls}`);
-  console.log(`Candidates (${minConf}+): ${report.length} of ${checked} checked\n`);
+  console.log(`${SEARCH_PROVIDER} calls attempted: ${attemptedRequests}`);
+  console.log(`Candidates (${minConfidence}+): ${report.length} of ${checked} checked\n`);
   for (const c of report) {
     const badge = c.status === "closed_permanently" ? "CLOSED" : "TEMP  ";
     console.log(
@@ -318,9 +481,11 @@ function writeReport(candidates: Candidate[], calls: number, checked: number) {
   console.log(`Next: verify each, then add confirmed ones to KNOWN_CLOSED_CANONICAL (src/lib/integrations/closures.ts).`);
 }
 
-async function main() {
+async function main(
+  options = parseClosureDetectorArgs(process.argv.slice(2)),
+) {
   // ── Re-score mode: no API calls, re-evaluate the cached raw responses. ──
-  if (rescore) {
+  if (options.rescore) {
     if (!existsSync(RAW_PATH)) {
       console.error(`No cache at ${RAW_PATH}. Run a fetch first (npm run closures:detect).`);
       process.exit(1);
@@ -340,34 +505,42 @@ async function main() {
       if (cand) candidates.push(cand);
     }
     console.log(`Re-scored ${checked} cached responses (0 API calls).`);
-    writeReport(candidates, 0, checked);
+    writeReport(candidates, 0, 0, checked, options.minConfidence);
     return;
   }
 
-  if (!KEY) {
-    console.error("ANYSEARCH_API_KEY is not set. Add it to .env.local:\n  ANYSEARCH_API_KEY=as_sk_...");
+  if (!TAVILY_KEY && !ANYSEARCH_KEY) {
+    console.error(
+      "TAVILY_API_KEY is not set. Add a fresh key to .env.local. " +
+        "Legacy ANYSEARCH_API_KEY remains supported as a fallback.",
+    );
     process.exit(1);
   }
 
-  const targets = targetsFor();
+  const targets = targetsFor(options);
   if (targets.length === 0) {
     console.log("No targets (check --slug, or everything is already flagged closed).");
     return;
   }
-  if (includeLongTail) {
+  if (options.includeLongTail) {
     console.warn(
-      `\n⚠  --all selected: ${targets.length} places = ~${targets.length} AnySearch calls.` +
-        ` The free tier is limited. Ctrl-C now to abort.\n`,
+      `\n⚠  --all confirmed: ${targets.length} places are eligible, but this run will stop at ` +
+        `${MAX_CLOSURE_REQUESTS_PER_RUN} requests / ${MAX_CLOSURE_CREDITS_PER_RUN} credits.\n`,
     );
   }
-  console.log(`Checking ${targets.length} place(s) via AnySearch. Est. ${Math.ceil((targets.length * 2.2) / 60)} min.\n`);
+  console.log(
+    `Checking ${targets.length} place(s) via ${SEARCH_PROVIDER}. ` +
+      `Est. ${Math.ceil((targets.length * 2.2) / 60)} min.\n`,
+  );
 
   // Load any existing cache so repeated runs accumulate instead of refetching.
   const raw: Record<string, string> = existsSync(RAW_PATH)
     ? (JSON.parse(readFileSync(RAW_PATH, "utf8")) as Record<string, string>)
     : {};
   const candidates: Candidate[] = [];
-  let calls = 0;
+  let attemptedRequests = 0;
+  let attemptedCredits = 0;
+  let checked = 0;
 
   const persist = () => {
     mkdirSync(REPORT_DIR, { recursive: true });
@@ -376,11 +549,29 @@ async function main() {
 
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
+    if (
+      !canReserveClosureSearchAttempt(
+        attemptedRequests,
+        attemptedCredits,
+      )
+    ) {
+      console.warn(
+        `Immutable run ceiling reached at ${attemptedRequests} requests / ` +
+          `${attemptedCredits} credits. Partial review artifacts will be saved.`,
+      );
+      break;
+    }
     process.stdout.write(`[${i + 1}/${targets.length}] ${t.name} … `);
+    // Reserve before the network call. Failed calls still count against the
+    // immutable ceiling, so retries or error loops cannot spend past it.
+    attemptedRequests += 1;
+    attemptedCredits += 1;
     try {
-      const text = await anysearch(`${t.name} ${t.town} Frederick County MD hours closed`);
-      calls++;
+      const text = await searchWeb(
+        `${t.name} ${t.town} Frederick County MD hours closed`,
+      );
       raw[t.slug] = text;
+      checked += 1;
       const cand = evaluate(t, parseResults(text));
       if (cand) {
         candidates.push(cand);
@@ -390,19 +581,32 @@ async function main() {
       }
     } catch (e) {
       console.log(`error: ${(e as Error).message}`);
-      if ((e as Error).message.includes("rate limited")) {
-        console.warn("Stopping early to preserve budget. Partial report + cache saved.");
+      if (isTerminalClosureSearchError(e)) {
+        console.warn(
+          "Stopping on a terminal authentication, rate, plan, or billing error. Partial review artifacts will be saved.",
+        );
         break;
       }
     }
-    if (calls % 20 === 0) persist(); // checkpoint so a crash never loses fetched calls
+    if (attemptedRequests % 20 === 0) persist(); // checkpoint so a crash never loses fetched calls
     await new Promise((r) => setTimeout(r, 250));
   }
   persist();
-  writeReport(candidates, calls, targets.length);
+  writeReport(
+    candidates,
+    attemptedRequests,
+    attemptedCredits,
+    checked,
+    options.minConfidence,
+  );
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+const isEntrypoint =
+  process.argv[1] !== undefined &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isEntrypoint) {
+  main().catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  });
+}

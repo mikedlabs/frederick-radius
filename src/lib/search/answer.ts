@@ -62,6 +62,18 @@ export function primaryAnswerFor(query: string): PrimaryAnswer | null {
   const q = query.toLowerCase().trim();
   if (q.length < 2) return null;
 
+  // "Shop" describes the kind of automotive business in "auto repair shop";
+  // it is not a request to browse retail. Leave these service jobs with the
+  // ordinary place search, where the exact oil-change / repair / wash role
+  // and the visitor's location can decide the answer.
+  if (
+    /\b(?:oil change|quick lube|lube center|(?:auto|car|vehicle)\s+(?:repair|wash|service|maintenance|mechanic)|car wash)\b/i.test(
+      q,
+    )
+  ) {
+    return null;
+  }
+
   for (const [key, terms] of CRAVING_TERMS) {
     if (terms.some((t) => hasTerm(q, t))) {
       const craving = CRAVING_BY_KEY[key];

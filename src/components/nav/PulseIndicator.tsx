@@ -85,6 +85,7 @@ export default function PulseIndicator() {
       : unknown
         ? "Pulse: status unavailable"
         : "Pulse: all clear";
+  const mobileVisible = current || active || unknown;
 
   return (
     <Link
@@ -93,7 +94,9 @@ export default function PulseIndicator() {
       aria-label={statusLabel}
       aria-current={current ? "page" : undefined}
       title={statusLabel}
-      className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:px-2.5"
+      className={`relative h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:px-2.5 ${
+        mobileVisible ? "inline-flex" : "hidden"
+      }`}
       style={{
         borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current

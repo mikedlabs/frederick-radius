@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   water: vi.fn(),
   ev: vi.fn(),
   cemeteries: vi.fn(),
+  parkAssets: vi.fn(),
+  floodContext: vi.fn(),
+  snowRoutes: vi.fn(),
   reports: vi.fn(),
 }));
 
@@ -53,6 +56,15 @@ vi.mock("@/lib/integrations/evCharging", () => ({
 vi.mock("@/lib/integrations/fcCemeteries", () => ({
   getHistoricCemeteries: mocks.cemeteries,
 }));
+vi.mock("@/lib/integrations/fcParkAssetsPublic", () => ({
+  getPublicCountyParkAssets: mocks.parkAssets,
+}));
+vi.mock("@/lib/integrations/fcFloodRisk", () => ({
+  getCountyFloodContext: mocks.floodContext,
+}));
+vi.mock("@/lib/integrations/fcSnowCommand", () => ({
+  getCountySnowRoutes: mocks.snowRoutes,
+}));
 vi.mock("@/lib/loaders/communityReports", () => ({
   getCommunityReports: mocks.reports,
 }));
@@ -85,6 +97,9 @@ describe("GET /api/cron/warm-map", () => {
       mocks.water,
       mocks.ev,
       mocks.cemeteries,
+      mocks.parkAssets,
+      mocks.floodContext,
+      mocks.snowRoutes,
       mocks.reports,
     ]) {
       warm.mockResolvedValue([]);
@@ -111,7 +126,17 @@ describe("GET /api/cron/warm-map", () => {
         water: true,
         ev: true,
         cemeteries: true,
+        "park-assets": true,
+        "flood-context": true,
+        "snow-routes": true,
         reports: true,
+      },
+      feedDetails: {
+        "park-assets": {
+          status: "fulfilled",
+          count: 0,
+          availability: null,
+        },
       },
     });
   });

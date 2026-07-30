@@ -4,9 +4,9 @@
  * The county's open-data hub (gis-fcgmd.opendata.arcgis.com) publishes
  * "Historic Cemeteries of Frederick County, Maryland" as a hosted ArcGIS
  * FeatureServer: 307 named point features (church yards, family plots,
- * burial grounds), keyless and open. A quiet heritage discovery layer —
- * sibling to the National Register sites in historicSites.ts — surfaced
- * as an opt-in map overlay, never a default.
+ * burial grounds). Radius reads the official public service at runtime,
+ * preserves its approximation status, and credits both Frederick County GIS
+ * and the Holdcraft research named by the source.
  *
  * Live-verified 2026-07-07: attributes are Name / PlaceName (the locale,
  * e.g. "Foxville") / LocType ("Located" | "Approximate Location" |
@@ -29,6 +29,7 @@
 import { unstable_cache } from "next/cache";
 import { isInFrederickCountyArea } from "@/lib/geo";
 import { cleanFeedText } from "@/lib/format/text";
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 
 const ENDPOINT =
   "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/HistoricCemeteries/FeatureServer/0/query" +
@@ -117,8 +118,13 @@ async function fetchCemeteries(): Promise<HistoricCemetery[]> {
  * SHA-pinned key (a deploy that changes the cleaning auto-invalidates —
  * the #509 lesson). Empty array on any failure.
  */
-export const getHistoricCemeteries = unstable_cache(
+const getHistoricCemeteriesCached = unstable_cache(
   fetchCemeteries,
   ["fc-cemeteries-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 604_800 },
 );
+
+export async function getHistoricCemeteries(): Promise<HistoricCemetery[]> {
+  if (!frederickCountySourceEnabled("fc_historic_cemeteries")) return [];
+  return getHistoricCemeteriesCached();
+}

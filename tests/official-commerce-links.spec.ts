@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyOfficialCommerceLinks,
   extractPageAnchors,
+  isSafeOfficialCommerceDestination,
   normalizePageAnchor,
 } from "../scripts/lib/official-commerce-links";
 
@@ -113,6 +114,25 @@ describe("official-site commerce-link extraction", () => {
     ]);
   });
 
+  it("does not mistake a same-site homepage backlink for an exact menu", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          { url: "https://example.com/", text: "Menu" },
+          { url: "https://example.com/dinner-menu", text: "Dinner menu" },
+        ],
+        "https://example.com/dining",
+      ),
+    ).toEqual([
+      {
+        type: "menu",
+        url: "https://example.com/dinner-menu",
+        anchor_text: "Dinner menu",
+        source_url: "https://example.com/dining",
+      },
+    ]);
+  });
+
   it("uses the published link meaning instead of guessing from a provider host", () => {
     const links = classifyOfficialCommerceLinks(
       [
@@ -136,5 +156,104 @@ describe("official-site commerce-link extraction", () => {
         source_url: "https://example.com/",
       },
     ]);
+  });
+
+  it("prefers explicit menu wording over an order-looking URL", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://example.com/frederick/order-online",
+            text: "View menu",
+          },
+        ],
+        "https://example.com/",
+      ),
+    ).toEqual([
+      {
+        type: "menu",
+        url: "https://example.com/frederick/order-online",
+        anchor_text: "View menu",
+        source_url: "https://example.com/",
+      },
+    ]);
+  });
+
+  it("rejects item deep links, generic indexes, and non-action paths", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://example.com/menu?item=crab-cake&matchItemName=Crab%20Cake",
+            text: "Crab Cake",
+          },
+          {
+            url: "https://example.com/order-online/menus/all-day/52008273",
+            text: "Crab cake · $18",
+          },
+          {
+            url: "https://example.com/menu-item/crab-cake",
+            text: "Crab cake",
+          },
+          { url: "https://example.com/locations", text: "Order online" },
+          { url: "https://example.com/login", text: "Order online" },
+          {
+            url: "https://example.com/[...marketing]",
+            text: "Order now",
+          },
+          { url: "https://example.com/menu", text: "Menu" },
+        ],
+        "https://example.com/",
+      ),
+    ).toEqual([
+      {
+        type: "menu",
+        url: "https://example.com/menu",
+        anchor_text: "Menu",
+        source_url: "https://example.com/",
+      },
+    ]);
+  });
+
+  it("rejects unrelated directories even when their anchor text says menu", () => {
+    const links = classifyOfficialCommerceLinks(
+      [
+        {
+          url: "https://unrelated.example/menu",
+          text: "View menu",
+        },
+        {
+          url: "https://www.yelp.com/menu/example-frederick",
+          text: "Menu",
+        },
+      ],
+      "https://example.com/",
+    );
+
+    expect(links).toEqual([]);
+  });
+
+  it("allows business-specific providers and narrowly trusted menu PDFs", () => {
+    expect(
+      isSafeOfficialCommerceDestination(
+        "https://example.com/",
+        "https://order.toasttab.com/online/example",
+        "order",
+      ),
+    ).toBe(true);
+    expect(
+      isSafeOfficialCommerceDestination(
+        "https://example.com/",
+        "https://static1.squarespace.com/static/123/menu.pdf",
+        "menu",
+      ),
+    ).toBe(true);
+    expect(
+      isSafeOfficialCommerceDestination(
+        "https://example.com/",
+        "https://static1.squarespace.com/static/123/menu.pdf",
+        "order",
+      ),
+    ).toBe(false);
   });
 });

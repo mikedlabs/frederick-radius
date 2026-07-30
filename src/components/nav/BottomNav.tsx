@@ -5,13 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
-import { useHideOnScroll } from "./useHideOnScroll";
 
 export function shouldShowBottomNav(
-  pathname: string,
+  _pathname: string,
   contextualActionBarPresent = false,
 ): boolean {
-  return !pathname.startsWith("/ask") && !contextualActionBarPresent;
+  return !contextualActionBarPresent;
 }
 
 /**
@@ -25,7 +24,6 @@ export function shouldShowBottomNav(
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const hidden = useHideOnScroll(false);
   const realIdx = tabIndexForPath(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
 
@@ -57,11 +55,6 @@ export default function BottomNav() {
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
           paddingLeft: "max(0.5rem, env(safe-area-inset-left, 0px))",
           paddingRight: "max(0.5rem, env(safe-area-inset-right, 0px))",
-          transform: hidden
-            ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 12px))"
-            : "translateY(0)",
-          transition: "transform var(--app-dur-med) var(--app-ease-out)",
-          willChange: "transform",
         }}
       >
         <nav

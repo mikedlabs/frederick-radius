@@ -57,6 +57,7 @@ describe("business-info source trust", () => {
     const textRichWithoutCommerce = {
       text: "x".repeat(800),
       links: [],
+      requestedUrl: "https://example.com",
       finalUrl: "https://example.com",
     };
     expect(

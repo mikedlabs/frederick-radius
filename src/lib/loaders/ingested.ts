@@ -55,6 +55,9 @@ export type IngestedSeries = {
   lat: number | null;
   lng: number | null;
   description: string | null;
+  /** Publisher-provided event artwork retained by scheduled JSON ingesters. */
+  heroImage: string | null;
+  heroImageAlt: string | null;
   /** future occurrences, soonest first */
   occurrences: IngestedOccurrence[];
   /** convenience: occurrences.length */
@@ -79,6 +82,8 @@ type Row = {
   lng: string | null;
   municipality: string;
   category: string | null;
+  hero_image: string | null;
+  hero_image_alt: string | null;
 };
 
 function seriesKeyOf(r: Row): string {
@@ -99,7 +104,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   try {
     rows = (await sql<Row[]>`
       select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
-             all_day, venue_name, address, lat, lng, municipality, category
+             all_day, venue_name, address, lat, lng, municipality, category,
+             hero_image, hero_image_alt
       from ingested_events
       where starts_at_utc >= ${since}
          or ends_at_utc >= ${since}
@@ -174,6 +180,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       description: head.description
         ? clampDescription(cleanDescription(head.description), 320) || null
         : null,
+      heroImage: head.hero_image,
+      heroImageAlt: head.hero_image_alt,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
         startsAtUtc: r.starts_at_utc,
@@ -206,7 +214,7 @@ export const getIngestedSeries = unstable_cache(
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v7", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v8", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

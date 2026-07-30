@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   ArrowRight,
   Bookmark,
@@ -8,7 +8,6 @@ import {
   ChevronDown,
   CornerUpRight,
   Share2,
-  X,
 } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -23,6 +22,7 @@ import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
 import type { NearbyUtility } from "./mapNearby";
+import MapResultSurface from "./MapResultSurface";
 
 type MapCardDetails = {
   slug: string;
@@ -95,7 +95,6 @@ export default function MapPeek({
     activeDetails?.google_photo_url ??
     activeDetails?.hero_image;
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
-  const regionRef = useRef<HTMLDivElement>(null);
   const nameId = useId();
   const descriptionId = useId();
   const aroundCount =
@@ -103,10 +102,6 @@ export default function MapPeek({
     (hostedEvent ? 1 : 0) +
     (nearestGarage ? 1 : 0) +
     nearbyUtilities.length;
-
-  useEffect(() => {
-    regionRef.current?.focus({ preventScroll: true });
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -156,25 +151,14 @@ export default function MapPeek({
   };
 
   return (
-    <div
-      ref={regionRef}
+    <MapResultSurface
       className="map-peek"
-      data-map-place-slug={place.slug}
-      role="region"
-      tabIndex={-1}
-      aria-labelledby={nameId}
-      aria-describedby={descriptionId}
+      labelledBy={nameId}
+      describedBy={descriptionId}
+      closeLabel={`Close ${place.name}`}
+      onClose={onClose}
     >
-      <button
-        type="button"
-        className="map-peek-close tap-44"
-        onClick={onClose}
-        aria-label="Close"
-      >
-        <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-      </button>
-
-      <div className="map-peek-body">
+      <div className="map-peek-body" data-map-place-slug={place.slug}>
         <button
           type="button"
           className="map-peek-visual"
@@ -328,6 +312,6 @@ export default function MapPeek({
           <span>{shareStatus === "copied" ? "Copied" : "Share"}</span>
         </button>
       </div>
-    </div>
+    </MapResultSurface>
   );
 }

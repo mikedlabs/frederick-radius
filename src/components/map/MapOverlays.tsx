@@ -19,7 +19,6 @@ import { directionsHref } from "@/lib/map/directionsHref";
  * active (dark by default), the reader pulls one in when they want it.
  */
 
-const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const LAYER_FADE_MS = 220;
 
 // Per-overlay dot color. Resolved values come from the brand contract because
@@ -60,6 +59,14 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
   );
   // Keys whose fetch has started, so a re-render never refetches.
   const started = useRef<Set<string>>(new Set());
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Keep a just-disabled layer mounted long enough for Mapbox's paint
   // transition to finish. New layers mount at opacity zero, then become
@@ -85,25 +92,34 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
 
   // Lazy load: fetch each newly active overlay's GeoJSON once.
   useEffect(() => {
-    let cancelled = false;
     for (const key of active) {
       if (started.current.has(key)) continue;
       const url = ENDPOINT.get(key);
       if (!url) continue;
       started.current.add(key);
       fetch(url)
-        .then((r) => (r.ok ? r.json() : EMPTY_FC))
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Overlay request failed with ${response.status}`);
+          }
+          return response.json();
+        })
         .then((fc: GeoJSON.FeatureCollection) => {
-          if (!cancelled) setData((d) => ({ ...d, [key]: fc }));
+          // Finish warming the cache even if the layer was switched off while
+          // its request was in flight. Turning it back on should reveal the
+          // completed data immediately instead of getting stuck behind a
+          // permanently "started" key.
+          if (mounted.current) {
+            setData((current) =>
+              current[key] ? current : { ...current, [key]: fc },
+            );
+          }
         })
         .catch(() => {
           // A failed overlay fetch degrades to nothing, never a crash.
           started.current.delete(key);
         });
     }
-    return () => {
-      cancelled = true;
-    };
   }, [active]);
 
   // Click popups + cursor feedback, attached to the live map instance so
@@ -157,6 +173,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
         m.off("mouseenter", id, enter);
         m.off("mouseleave", id, leave);
       }
+      m.getCanvas().style.cursor = "";
     };
   }, [map, active, data]);
 

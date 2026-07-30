@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
 import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
@@ -55,12 +55,19 @@ export default function MyRadiusButton({
   const toggle = useToggleFollow(slug, "place_detail");
   const [busy, setBusy] = useState(false);
   const [hover, setHover] = useState(false);
+  const [optimisticFollowed, setOptimisticFollowed] = useState<boolean | null>(null);
+  const renderedFollowed = optimisticFollowed ?? isFollowed;
+  useEffect(() => {
+    if (optimisticFollowed === null || optimisticFollowed !== isFollowed) return;
+    setOptimisticFollowed(null);
+  }, [isFollowed, optimisticFollowed]);
 
   // Pre-mount: render a placeholder pill so SSR + hydration agree.
   if (!mounted) {
     return (
       <button
         type="button"
+        data-place-save={slug}
         aria-hidden
         tabIndex={-1}
         className="tap-44 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
@@ -78,6 +85,8 @@ export default function MyRadiusButton({
 
   async function onClick() {
     if (busy) return;
+    const wasFollowed = renderedFollowed;
+    setOptimisticFollowed(!wasFollowed);
     setBusy(true);
     try {
       // One code path with the sheet's SaveButton: the toggle itself is
@@ -85,6 +94,7 @@ export default function MyRadiusButton({
       // signed in), so the tap always succeeds instantly. Anonymous saves
       // get a quiet sync upsell in the toast, never a login detour.
       const nowFollowed = await toggle();
+      setOptimisticFollowed(nowFollowed);
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
         toast.success(`Saved · ${name}`, {
@@ -102,17 +112,18 @@ export default function MyRadiusButton({
   }
 
   // Visual variants
-  if (isFollowed) {
+  if (renderedFollowed) {
     const showRemove = hover && !busy;
     return (
       <button
         type="button"
+        data-place-save={slug}
         onClick={onClick}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         disabled={busy}
         aria-pressed={true}
-        aria-label={`Saved. Tap to remove ${name}`}
+        aria-label={busy ? `Saving ${name}` : `Saved. Tap to remove ${name}`}
         className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
@@ -123,7 +134,7 @@ export default function MyRadiusButton({
         {busy ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-            …
+            Saving…
           </>
         ) : showRemove ? (
           <>
@@ -143,17 +154,18 @@ export default function MyRadiusButton({
   return (
     <button
       type="button"
+      data-place-save={slug}
       onClick={onClick}
       disabled={busy}
       aria-pressed={false}
-      aria-label={`Save ${name}`}
+      aria-label={busy ? `Removing ${name}` : `Save ${name}`}
       className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
       style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
     >
       {busy ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-          …
+          Removing…
         </>
       ) : (
         <>

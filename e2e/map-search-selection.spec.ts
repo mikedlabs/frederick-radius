@@ -6,7 +6,7 @@ test.describe("map search selection", () => {
   test("opens the same place slug the user selected", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await expect(search).toBeVisible({ timeout: 20_000 });
     await search.fill("Market Street Boba Beans");
 
@@ -32,7 +32,7 @@ test.describe("map search selection", () => {
       waitUntil: "domcontentloaded",
     });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await expect(search).toHaveValue("Market Street Boba Beans");
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
 
@@ -40,34 +40,97 @@ test.describe("map search selection", () => {
     await expect(
       page.locator('[data-map-search-result="place:market-street-boba-beans"]'),
     ).toBeVisible({ timeout: 10_000 });
+    await expect(search).toHaveAttribute("aria-expanded", "true");
+    await expect(search).toHaveAttribute("aria-autocomplete", "list");
+    await expect(search).toHaveAttribute("aria-controls", "map-search-results");
+
+    await search.press("ArrowDown");
+    const activeOptionId = await search.getAttribute("aria-activedescendant");
+    expect(activeOptionId).toBeTruthy();
+    await expect(page.locator(`#${activeOptionId}`)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
 
     await search.press("Escape");
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
-    await expect(search).not.toBeFocused();
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue("Market Street Boba Beans");
+    await expect(search).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("the header search action focuses the map field instead of global Find", async ({ page }) => {
+  test("the map owns one search field instead of repeating it in the header", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    await page.getByRole("button", { name: "Search this map" }).click();
-
-    await expect(
-      page.getByRole("searchbox", { name: "Search this map" }),
-    ).toBeFocused();
+    await expect(page.getByRole("button", { name: "Search this map" })).toHaveCount(0);
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await expect(search).toBeVisible();
+    await search.click();
+    await expect(search).toBeFocused();
     await expect(page.locator("#radius-find-dialog")).toHaveCount(0);
+  });
+
+  test("does not claim zero results while local and fallback searches are still running", async ({ page }) => {
+    const gates: {
+      releasePrimary?: () => void;
+      releaseFallback?: () => void;
+    } = {};
+
+    await page.route("**/api/search?**", async (route) => {
+      await new Promise<void>((resolve) => {
+        gates.releasePrimary = resolve;
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results: [] }),
+      });
+    });
+    await page.route("**/api/map/search-fallback", async (route) => {
+      await new Promise<void>((resolve) => {
+        gates.releaseFallback = resolve;
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          action: "suggest",
+          temporary: true,
+          provider: "Mapbox",
+          suggestions: [],
+        }),
+      });
+    });
+
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await search.fill("unlikely landmark query");
+
+    await expect(page.getByText("Searching Radius…")).toBeVisible();
+    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    await expect.poll(() => Boolean(gates.releasePrimary)).toBe(true);
+    gates.releasePrimary?.();
+
+    await expect.poll(() => Boolean(gates.releaseFallback)).toBe(true);
+    await expect(page.getByText("Searching Radius…")).toBeVisible();
+    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    gates.releaseFallback?.();
+
+    await expect(page.getByText(/Nothing on this map matches/)).toBeVisible();
   });
 
   test("a map gesture dismisses search results before another card opens", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("Market Street Boba Beans");
     await expect(
       page.locator('[data-map-search-result="place:market-street-boba-beans"]'),
     ).toBeVisible();
 
-    await page.locator("canvas.mapboxgl-canvas").click({ position: { x: 195, y: 520 } });
-    await expect(search).toHaveValue("");
+    await page.locator("canvas.mapboxgl-canvas").click({ position: { x: 195, y: 500 } });
+    await expect(search).toHaveValue("Market Street Boba Beans");
     await expect(
       page.locator('[data-map-search-result="place:market-street-boba-beans"]'),
     ).toHaveCount(0);
@@ -77,36 +140,77 @@ test.describe("map search selection", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("Market Street Boba Beans");
     await page
       .locator('[data-map-search-result="place:market-street-boba-beans"]')
       .click();
 
-    const peek = page.locator('[data-map-place-slug="market-street-boba-beans"]');
+    const peek = page.locator('[data-map-result-surface]').filter({
+      has: page.locator('[data-map-place-slug="market-street-boba-beans"]'),
+    });
     await expect(peek).toBeVisible();
     await expect(page.locator("[data-map-dock]")).toHaveCSS("opacity", "0");
 
-    const overlaps = await peek.evaluate((element) => {
+    const geometry = await peek.evaluate((element) => {
       const close = element.querySelector<HTMLElement>(".map-peek-close")?.getBoundingClientRect();
       const save = [...element.querySelectorAll<HTMLElement>(".map-peek-act")]
         .find((item) => item.textContent?.trim() === "Save")
         ?.getBoundingClientRect();
-      if (!close || !save) return true;
-      return !(
+      if (!close || !save) {
+        return { close: null, save: null, overlaps: true };
+      }
+      const overlaps = !(
         close.right <= save.left ||
         close.left >= save.right ||
         close.bottom <= save.top ||
         close.top >= save.bottom
       );
+      return {
+        close: {
+          top: close.top,
+          right: close.right,
+          bottom: close.bottom,
+          left: close.left,
+        },
+        save: {
+          top: save.top,
+          right: save.right,
+          bottom: save.bottom,
+          left: save.left,
+        },
+        overlaps,
+      };
     });
-    expect(overlaps).toBe(false);
+    expect(geometry.overlaps, JSON.stringify(geometry)).toBe(false);
+
+    await expect(peek).toBeFocused();
+    await page.locator("canvas.mapboxgl-canvas").focus();
+    await page.keyboard.press("Escape");
+    await expect(peek).toHaveCount(0);
+    await expect(search).toBeFocused();
   });
 
   test("a resident utility query turns on the requested map layer", async ({ page }) => {
-    await page.goto("/map", { waitUntil: "domcontentloaded" });
+    await page.route("**/api/map/osm", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            osm_id: "test-trash",
+            name: "Mapped trash can",
+            category_slug: "trash",
+            osm_tag: "amenity=waste_basket",
+            lng: -77.4105,
+            lat: 39.4143,
+          },
+        ]),
+      });
+    });
+    await page.goto("/map?amenity=restroom", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("trash can");
 
     const command = page.locator(
@@ -116,7 +220,11 @@ test.describe("map search selection", () => {
     await command.click();
 
     await expect(page).toHaveURL(/amenity=trash/);
+    await expect(page).not.toHaveURL(/amenity=[^#]*restroom/);
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
+    await expect(
+      page.getByRole("group", { name: "Current map view" }),
+    ).toContainText("County · Trash");
     await expect(page.locator("[data-map-amenity-marks]")).not.toHaveAttribute(
       "data-map-amenity-marks",
       "off",
@@ -126,12 +234,12 @@ test.describe("map search selection", () => {
   test("parking is a parking command, not a parks result", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("where can I park downtown");
 
     const firstResult = page.locator(".dock-search-result-item").first();
     await expect(firstResult).toContainText("Show parking on the map");
-    await firstResult.getByRole("button").click();
+    await firstResult.click();
 
     await expect(page).toHaveURL(/show=parking/);
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
@@ -195,7 +303,7 @@ test.describe("map search selection", () => {
     });
 
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    const search = page.getByRole("searchbox", { name: "Search this map" });
+    const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("12 East Church Street");
 
     const fallback = page.locator('[data-map-search-result="mapbox:test-address"]');
@@ -204,53 +312,69 @@ test.describe("map search selection", () => {
     await fallback.click();
     await expect(fallback).toHaveAttribute("aria-busy", "true");
 
-    const spot = page.getByRole("dialog", { name: "At this spot" });
+    const spot = page.getByRole("region", { name: "12 East Church Street" });
     await expect(spot).toBeVisible();
     await expect(spot).toContainText("Temporary map result");
     await expect(spot).toContainText(
       "Radius has not verified it as a local listing.",
     );
     await expect(spot).toContainText("Map data © Mapbox");
-    await expect(spot.getByRole("button", { name: "Close this spot" })).toBeFocused();
+    await expect(spot).toBeFocused();
   });
 
   test("groups live road context behind one honest control", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Map options" }).click();
+    await page.getByRole("button", { name: "What the map shows" }).click();
     await page
-      .getByRole("region", { name: "Map options" })
-      .getByRole("button", { name: "Live and reference map layers" })
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
       .click();
 
     const roads = page
-      .getByRole("region", { name: "Map layers" })
+      .getByRole("region", { name: "Live conditions" })
       .getByRole("button", { name: "Roads now" });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await roads.click();
 
     await expect(roads).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText(/Mapbox congestion context/)).toBeVisible();
-    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+    await expect(
+      page.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
+      ),
+    ).toBeVisible();
     await expect(page.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
   });
 
   test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
     await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: /Map options/ }).click();
+    await page.getByRole("button", { name: /What the map shows/ }).click();
     await page
-      .getByRole("region", { name: "Map options" })
-      .getByRole("button", { name: "Live and reference map layers" })
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
       .click();
 
-    const layers = page.getByRole("region", { name: "Map layers" });
+    const layers = page.getByRole("region", { name: "Live conditions" });
     const roads = layers.getByRole("button", { name: "Roads now" });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+    await expect(
+      page.getByText(
+        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
+      ),
+    ).toBeVisible();
 
     await roads.click();
 
     await expect(roads).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText(/Mapbox congestion context/)).toBeVisible();
-    await expect(page.getByText(/Maryland CHART and county-published issues/)).toBeVisible();
+    await expect(
+      page.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
+      ),
+    ).toBeVisible();
   });
 });

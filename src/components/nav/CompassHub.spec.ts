@@ -35,6 +35,12 @@ function pathname(href: string): string {
 describe("Compass Tool Deck model", () => {
   it("resolves the nine model groups in their stable order", () => {
     const groups = buildToolDeckGroups(null);
+    const modeledIds = new Set<string>(
+      TOOL_DECK_GROUP_DEFINITIONS.flatMap((group) => group.toolIds),
+    );
+    const unassignedRegistryIds = RADIUS_TOOLS
+      .filter((tool) => !modeledIds.has(tool.id))
+      .map((tool) => tool.id);
 
     expect(groups.map((group) => group.id)).toEqual(
       TOOL_DECK_GROUP_DEFINITIONS.map((group) => group.id),
@@ -48,6 +54,7 @@ describe("Compass Tool Deck model", () => {
         CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED
           ? [TIME_MACHINE_ID]
           : []),
+        ...(definition.id === "community" ? unassignedRegistryIds : []),
       ];
 
       expect(group, `missing Tool Deck group ${definition.id}`).toBeDefined();
@@ -71,16 +78,16 @@ describe("Compass Tool Deck model", () => {
 
   it("keeps Ask Radius as the sole non-registry tool in the base deck", () => {
     const registryIds = new Set(RADIUS_TOOLS.map((tool) => tool.id));
-    const definitionIds = TOOL_DECK_GROUP_DEFINITIONS.flatMap(
-      (group) => group.toolIds,
+    const deckIds = flattenTools(buildToolDeckGroups(null)).map(
+      (item) => item.id,
     );
-    const baseExtras = definitionIds.filter((id) => !registryIds.has(id));
+    const baseExtras = deckIds.filter((id) => !registryIds.has(id));
 
     expect(registryIds.has(ASK_RADIUS_ID)).toBe(false);
     expect(baseExtras).toEqual([ASK_RADIUS_ID]);
-    expect(occurrences(definitionIds, ASK_RADIUS_ID)).toBe(1);
-    expect(definitionIds).toHaveLength(RADIUS_TOOLS.length + 1);
-    expect(new Set(definitionIds).size).toBe(definitionIds.length);
+    expect(occurrences(deckIds, ASK_RADIUS_ID)).toBe(1);
+    expect(deckIds).toHaveLength(RADIUS_TOOLS.length + 1);
+    expect(new Set(deckIds).size).toBe(deckIds.length);
   });
 
   it("does not let a selected home town inflate the base tool count", () => {

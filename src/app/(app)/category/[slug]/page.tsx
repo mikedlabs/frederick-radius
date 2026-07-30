@@ -20,7 +20,7 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
 import ScopeBar from "@/components/nav/ScopeBar";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import type { LngLat } from "@/lib/geo";
 import { effectiveOriginSlug } from "@/lib/scope";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
@@ -56,16 +56,15 @@ export async function generateMetadata(
  * /category/[slug] — single-category surface.
  *
  * C2: ranking origin is now the user's home town (via the
- * fr_home_muni cookie that PreferencesPanel writes) with a downtown
- * Frederick fallback. The previous version ranked from
- * FREDERICK_CENTER unconditionally, which made a user in Thurmont
- * see downtown picks at the top of every category list.
+ * fr_home_muni cookie that PreferencesPanel writes). When no town can be
+ * resolved, the page ranks county-wide by quality instead of quietly using a
+ * downtown centroid while the interface says "all of Frederick County."
  *
  * C3: the generic StatStrip ("Places / Verified / Towns") that used
  * to sit above the photo wall is gone. Generic counts add no signal
  * to a category page. In its place: a "Worth your time" rail of the
- * top 3 photo-led picks, which IS what a user opens this page to
- * see. The eyebrow + serif title + blurb stay as the editorial line.
+ * top three relevance-led picks, with photos when the records have them.
+ * The eyebrow + serif title + blurb stay as the editorial line.
  */
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -83,7 +82,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // is a dead end. Send them to /amenities, their real home, instead (DQ-016).
   if (isAmenityCategory(slug)) redirect("/amenities");
 
-  // C2: origin = browsing scope > home muni centroid > FREDERICK_CENTER.
+  // C2: origin = browsing scope > home municipality centroid. A county or
+  // unresolved near-me scope has no honest server-side point, so it receives
+  // no distance origin; the client-side Today and Map routes carry a precise
+  // cached device fix when the visitor has shared one.
   // The browsing scope (fr_scope, UX-02) is the session lens set from the
   // nav chip; fr_home_muni is the long-term home written by PreferencesPanel
   // via setHomeMuni. effectiveOriginSlug resolves the precedence, so a
@@ -109,7 +111,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const homeCentroid: LngLat | null = homeMuni
     ? (MUNICIPALITY_BY_SLUG[homeMuni]?.centroid ?? null)
     : null;
-  const origin = homeCentroid ?? FREDERICK_CENTER;
+  const origin = homeCentroid ?? undefined;
 
   // slimForList drops google_photos[]/google_hours[] (no card renders them)
   // before the set crosses to the client PlaceList — ~1.4MB off big categories.
@@ -129,7 +131,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // the full set — they stay findable, just not recommended. This is the
   // Family "school admissions office as a top kids' outing" fix.
   const recommendable = places.filter(isRecommendable);
-  const placesWithPhotos = recommendable.filter((p) => p.google_photo_url);
 
   // Tag faceting (audit theme #2): turn the now-populated tags into a real
   // filter instead of buried metadata. Show only the curated, relevant tags
@@ -155,20 +156,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     .slice(0, 6)
     .map(([slug]) => ({ slug, name: TAG_BY_SLUG[slug]?.name ?? slug }));
 
-  // C3: top 3 photo-backed picks lead the page. Falls back to the
-  // top 3 by feature score if fewer than 3 places have photos.
-  //
-  // Curation/ranking fix (audit §1): the three hero picks are the page's ONE
-  // answer to "where should I go," so they must lead with what's actually
-  // usable now. rankPlaces blends quality + proximity + open, but a famous
-  // spot's feature_score could still float it to the top while CLOSED and 10+
-  // miles out — exactly what the audit caught on an "open-now aware" page.
-  // Hoist OPEN places ahead of closed ones for the hero (a stable sort keeps
-  // the existing quality+proximity order within each group, so the remaining
-  // open picks are already the nearest/best). The full browse list below is
-  // untouched — closed/far spots stay findable, just not the hero.
-  const heroPool = placesWithPhotos.length >= 3 ? placesWithPhotos : recommendable;
-  const topPicks = [...heroPool]
+  // The hero is a recommendation, not a photo gallery. Preserve the real
+  // relevance order even when the nearest useful place has no image; media
+  // completeness must never promote a farther town above the user's area.
+  const topPicks = [...recommendable]
     .sort((a, b) => {
       const ac = a.open_status.state === "closed" ? 1 : 0;
       const bc = b.open_status.state === "closed" ? 1 : 0;

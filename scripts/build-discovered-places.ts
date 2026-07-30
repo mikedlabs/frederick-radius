@@ -5,15 +5,15 @@
  * county places flow through the SAME loader spine (applyEnrichment,
  * relevance, dedupe, isOperational) as everything else.
  *
- * Pure/deterministic, no network. Honesty: short_blurb is a factual
- * "<Category> in <Town>" — never invented marketing copy. Slugs are
- * collision-safe vs curated + DFP + each other. Run AFTER Phase 2.
+ * Pure/deterministic, no network. Provider editorial summaries stay in the
+ * enrichment record for request-scoped, attributed Google context; they never
+ * become permanent Radius blurbs. Slugs are collision-safe vs curated + DFP +
+ * each other. Run AFTER Phase 2.
  *
  *   npm run build:discovered
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { resolveFrederickMunicipality } from "@/lib/location";
 import { placementRejectionReason } from "@/lib/placement-trust";
@@ -65,12 +65,13 @@ function stateFromAddress(addr?: string): string | null {
 // Google's primaryType is vague.
 const SEARCH_CAT: Record<string, string> = {
   "coffee shop": "coffee", cafe: "coffee", restaurant: "restaurant",
-  brewery: "brewery", distillery: "brewery", winery: "brewery", bar: "bar",
-  bakery: "bakery", "ice cream shop": "restaurant", "farmers market": "market",
+  brewery: "brewery", distillery: "distillery", winery: "winery", bar: "bar",
+  cidery: "winery", meadery: "winery",
+  bakery: "bakery", "ice cream shop": "ice-cream", "farmers market": "market",
   museum: "museum", "art gallery": "gallery", "live music venue": "music",
   theater: "theater", park: "park", trail: "trail", playground: "playground",
   library: "library", bookstore: "book-store", "antique store": "antiques",
-  "yoga studio": "yoga", gym: "wellness", hotel: "lodging", garden: "park",
+  "yoga studio": "yoga", gym: "yoga", hotel: "lodging", garden: "park",
   "place of worship": "worship",
 };
 
@@ -140,15 +141,15 @@ function main() {
     taken.add(slug);
 
     const category = categoryOf(e);
-    const catName = CATEGORY_BY_SLUG[category]?.name ?? "Local spot";
-
     places.push({
       slug,
       name: e.name,
       category,
-      // Google's real one-liner when it exists; factual fallback
-      // otherwise (never invented marketing copy).
-      short_blurb: e.editorial_summary?.trim() || `${catName} in ${muniName}.`,
+      // Google editorial summaries are provider content. They remain in the
+      // enrichment row below so the live Google context component can fetch
+      // and credit them; the permanent Radius description starts empty until
+      // an approved, source-backed description is available.
+      short_blurb: "",
       address: (e.address ?? "").replace(/, USA$/, ""),
       city: muniName,
       state: addrState ?? "MD",

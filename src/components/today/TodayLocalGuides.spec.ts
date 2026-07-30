@@ -1,5 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { foodTruckGuideCopy } from "./TodayLocalGuides";
+import TodayLocalGuides, { foodTruckGuideCopy } from "./TodayLocalGuides";
 
 const NEXT = {
   truckName: "The Alley Wagon",
@@ -24,5 +26,14 @@ describe("foodTruckGuideCopy", () => {
       detail: "1 truck is sharing a live location.",
       state: "live",
     });
+  });
+});
+
+describe("TodayLocalGuides hierarchy", () => {
+  it("uses the parent Around town chapter as its only visible heading", () => {
+    const html = renderToStaticMarkup(createElement(TodayLocalGuides));
+
+    expect(html).toContain('aria-label="Local guides"');
+    expect(html).not.toMatch(/<h[1-6][^>]*>\s*Local guides\s*<\/h[1-6]>/);
   });
 });

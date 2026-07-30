@@ -25,39 +25,31 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  fetchPageSnapshot,
+  formatFirecrawlFallbackUsageSummary,
+  resetFirecrawlFallbackUsage,
+} from "./lib/extract-agent";
 
 const MODEL = process.env.CIVIC_INGEST_MODEL || "claude-haiku-4-5-20251001";
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const OUT = resolve("src/data/municipal-civic.json");
 const CONFIG = resolve("config/municipal-civic-sources.json");
-const UA = "FrederickRadius/1.0 (+https://frederickradius civic ingest)";
 
-type TownSource = { slug: string; name: string; searchHint?: string; urls: string[] };
+type TownSource = {
+  slug: string;
+  name: string;
+  searchHint?: string;
+  urls: string[];
+  /** Exact reviewed redirect destinations beyond the configured source host. */
+  allowedRedirectHosts?: string[];
+};
 
-async function fetchText(url: string): Promise<string | null> {
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20_000);
-    const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!r.ok) {
-      console.log(`  ✗ ${url} → HTTP ${r.status}`);
-      return null;
-    }
-    const html = await r.text();
-    // Crude HTML → text: drop script/style, tags, collapse whitespace.
-    const text = html
-      .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return text.slice(0, 18_000); // keep token cost sane
-  } catch (err) {
-    console.log(`  ✗ ${url} → ${(err as Error).message}`);
-    return null;
-  }
-}
+type SourceProvenance = {
+  url: string;
+  requestedUrl: string;
+  finalUrl: string;
+};
 
 const EXTRACTION_SCHEMA = `{
   "townHall":       { "label": "Town Hall", "phone"?: string, "website"?: string, "hours"?: string, "address"?: string },
@@ -106,6 +98,7 @@ async function extract(townName: string, sourceUrl: string, text: string): Promi
 }
 
 async function main() {
+  resetFirecrawlFallbackUsage();
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { towns: TownSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, unknown>;
@@ -119,20 +112,37 @@ async function main() {
     }
     console.log(`• ${town.name}: ${town.urls.length} url(s)`);
     const merged: Record<string, unknown> = { slug: town.slug, name: town.name };
-    let primarySource = "";
+    let primarySource: SourceProvenance | null = null;
     for (const url of town.urls) {
-      const text = await fetchText(url);
-      if (!text) continue;
-      const extracted = await extract(town.name, url, text);
+      const snapshot = await fetchPageSnapshot(url, {
+        maxChars: 18_000,
+        allowedRedirectHosts: town.allowedRedirectHosts ?? [],
+      });
+      if (!snapshot) continue;
+      const extracted = await extract(
+        town.name,
+        snapshot.finalUrl,
+        snapshot.text,
+      );
       if (extracted && Object.keys(extracted).length > 0) {
         Object.assign(merged, extracted); // later URLs fill gaps
-        if (!primarySource) primarySource = url;
+        primarySource ??= {
+          url: snapshot.requestedUrl,
+          requestedUrl: snapshot.requestedUrl,
+          finalUrl: snapshot.finalUrl,
+        };
         console.log(`  ✓ extracted ${Object.keys(extracted).length} categories from ${url}`);
       }
     }
     const hasData = Object.keys(merged).some((k) => k !== "slug" && k !== "name");
     if (hasData) {
-      merged.source = { url: primarySource || town.urls[0], fetchedAt: new Date().toISOString() };
+      const source =
+        primarySource ?? {
+          url: town.urls[0],
+          requestedUrl: town.urls[0],
+          finalUrl: town.urls[0],
+        };
+      merged.source = { ...source, fetchedAt: new Date().toISOString() };
       existing[town.slug] = merged;
       updated++;
     } else {
@@ -142,6 +152,7 @@ async function main() {
 
   writeFileSync(OUT, JSON.stringify(existing, null, 2) + "\n");
   console.log(`\nDone. ${updated} town(s) updated → src/data/municipal-civic.json`);
+  console.log(formatFirecrawlFallbackUsageSummary());
 }
 
 main().catch((e) => {

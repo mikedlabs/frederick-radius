@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Info, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import type { MapDiscovery } from "./mapDiscoveries";
 import { discoveryTrustLine } from "./mapContent";
+import MapResultSurface from "./MapResultSurface";
 
 function evidenceCue(item: MapDiscovery["evidence"][number]): string | null {
   const parts: string[] = [];
@@ -41,15 +42,15 @@ export default function MapDiscoveryPeek({
   onNext: () => void;
   onClose: () => void;
 }) {
-  const regionRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
-    regionRef.current?.focus({ preventScroll: true });
-  }, []);
-
   return (
-    <div ref={regionRef} className="map-finding-peek" role="region" tabIndex={-1} aria-labelledby={titleId}>
+    <MapResultSurface
+      className="map-finding-peek"
+      labelledBy={titleId}
+      closeLabel="Close finding"
+      onClose={onClose}
+    >
       <div className="map-finding-topline">
         <span className="map-finding-index">{index + 1} of {total}</span>
         <div className="map-finding-nav" role="group" aria-label="Browse map findings">
@@ -58,9 +59,6 @@ export default function MapDiscoveryPeek({
           </button>
           <button type="button" className="map-finding-nav-btn tap-44" onClick={onNext} aria-label="Next finding">
             <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-          </button>
-          <button type="button" className="map-finding-nav-btn tap-44" onClick={onClose} aria-label="Close finding">
-            <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
           </button>
         </div>
       </div>
@@ -110,6 +108,6 @@ export default function MapDiscoveryPeek({
           </Link>
         )}
       </div>
-    </div>
+    </MapResultSurface>
   );
 }

@@ -6,7 +6,7 @@ import {
   ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
   Wifi, Wine, Wrench, MapPin,
   Flag, Grape, FlaskConical, Tractor, IceCream, BusFront,
-  Scissors, Sparkles,
+  CarFront, Scissors, Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -33,7 +33,7 @@ const MAP: Record<string, LucideIcon> = {
   // falling back to the generic pin.
   Flag, Grape, FlaskConical, Tractor, IceCream, BusFront,
   // Wellness subcategories (massage uses HeartPulse above; salon / spa here).
-  Scissors, Sparkles,
+  CarFront, Scissors, Sparkles,
   // Long-tail names declared in categories.ts that are not 1:1 Lucide
   // exports resolve to a sensible vector rather than a broken import.
   PinCircle: MapPin,

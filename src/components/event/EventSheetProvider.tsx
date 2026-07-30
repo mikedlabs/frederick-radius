@@ -14,8 +14,10 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
+import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const EventSheet = lazy(() => import("./EventSheet"));
+let eventLayerSequence = 0;
 
 /**
  * EventSheetProvider — the event half of the shared sheet system
@@ -47,6 +49,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
   const [event, setEvent] = useState<EventWithMeta | null>(null);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const historyLayerIdRef = useRef("");
   const openPathRef = useRef(pathname);
   const router = useRouter();
   // Monotonic request id: a stale fetch resolving after a newer open
@@ -58,6 +61,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
       typeof document !== "undefined" && document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    historyLayerIdRef.current = `event-sheet:${Date.now()}:${++eventLayerSequence}`;
     reqRef.current++;
     openPathRef.current = pathname;
     setPendingSlug(null);
@@ -70,6 +74,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
         typeof document !== "undefined" && document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null;
+      historyLayerIdRef.current = `event-sheet:${Date.now()}:${++eventLayerSequence}`;
       openPathRef.current = pathname;
       const req = ++reqRef.current;
       setEvent(null);
@@ -85,13 +90,17 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
             // The unified set doesn't know this slug (rotated out, or a
             // page-only event) — honor the tap with the page it meant.
             setPendingSlug(null);
-            router.push(`/events/${slug}`);
+            navigateAfterHistoryLayer(historyLayerIdRef.current, () => {
+              router.push(`/events/${slug}`);
+            });
           }
         })
         .catch(() => {
           if (reqRef.current !== req) return;
           setPendingSlug(null);
-          router.push(`/events/${slug}`);
+          navigateAfterHistoryLayer(historyLayerIdRef.current, () => {
+            router.push(`/events/${slug}`);
+          });
         });
     },
     [pathname, router],
@@ -108,7 +117,6 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
   // it, including while the lazy sheet bundle is still pending.
   useEffect(() => {
     if ((!event && !pendingSlug) || pathname === openPathRef.current) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- route ownership changed; cancel pending client work before it can repopulate the overlay
     closeEventSheet();
   }, [closeEventSheet, event, pathname, pendingSlug]);
 
@@ -122,6 +130,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
               label="Loading event details"
               onClose={closeEventSheet}
               returnFocusRef={openerRef}
+              historyLayerId={historyLayerIdRef.current}
             />
           )}
         >
@@ -130,6 +139,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
             pending={pendingSlug !== null}
             onClose={closeEventSheet}
             returnFocusRef={openerRef}
+            historyLayerId={historyLayerIdRef.current}
           />
         </Suspense>
       ) : null}

@@ -3,12 +3,11 @@
  *
  * The map's cold open is intentionally CLEAN — activeCats starts empty ("show
  * everything") and deep-links / mode-defaults drive first paint. Persistence
- * layers ON TOP of that WITHOUT reversing it: only what the user EXPLICITLY
- * turned on is restored, and a first-time visitor (no stored prefs) still gets
- * the clean default. Deep-links take precedence over stored prefs at the call
- * site. The transient "saved only" / "field notes only" FOCUS filters are
- * deliberately NOT persisted — a returning user shouldn't be stuck seeing only
- * their saves without asking.
+ * reference layers ON TOP of that WITHOUT reversing it: only deliberate GIS
+ * context (radar, transit, trails, and similar layers) is restored. Task state
+ * such as a place category or restroom/trash search is deliberately NOT
+ * persisted; a returning user should never inherit an invisible old question.
+ * Deep-links remain authoritative at the call site.
  *
  * localStorage only, read/written client-side (AppMap is dynamic ssr:false, so
  * there is no SSR/hydration concern).
@@ -30,8 +29,6 @@ export type MapLayerPrefs = {
   incidents?: boolean;
   aviation?: boolean;
   cameras?: boolean;
-  firestations?: boolean;
-  civicplaces?: boolean;
 };
 
 export function readMapLayerPrefs(): MapLayerPrefs {
@@ -40,7 +37,14 @@ export function readMapLayerPrefs(): MapLayerPrefs {
     const current = window.localStorage.getItem(KEY);
     if (current) {
       const parsed = JSON.parse(current);
-      return parsed && typeof parsed === "object" ? (parsed as MapLayerPrefs) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+      const cleaned = { ...(parsed as MapLayerPrefs) };
+      // Older v2 clients stored task filters. Purge them on read so a clean
+      // /map visit is actually clean after this release.
+      delete cleaned.cats;
+      delete cleaned.amenities;
+      if ("cats" in parsed || "amenities" in parsed) writeMapLayerPrefs(cleaned);
+      return cleaned;
     }
 
     // v1 wrote Transit=true during the old automatic cold open, so it cannot
@@ -66,8 +70,6 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     // Drop empty/false noise so the stored blob stays small. Every layer now
     // defaults off, so only an explicit On choice needs to survive reload.
     const slim: MapLayerPrefs = {};
-    if (p.cats && p.cats.length) slim.cats = p.cats;
-    if (p.amenities && p.amenities.length) slim.amenities = p.amenities;
     if (p.civic) slim.civic = true;
     if (p.transit) slim.transit = true;
     if (p.trails) slim.trails = true;
@@ -79,8 +81,6 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     if (p.incidents) slim.incidents = true;
     if (p.aviation) slim.aviation = true;
     if (p.cameras) slim.cameras = true;
-    if (p.firestations) slim.firestations = true;
-    if (p.civicplaces) slim.civicplaces = true;
     if (Object.keys(slim).length === 0) window.localStorage.removeItem(KEY);
     else window.localStorage.setItem(KEY, JSON.stringify(slim));
   } catch {

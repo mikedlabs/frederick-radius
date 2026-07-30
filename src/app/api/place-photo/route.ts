@@ -14,8 +14,7 @@
  */
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
-import { unstable_cache } from "next/cache";
-import { photoUrl, getPlaceDetails } from "@/lib/integrations/google-places";
+import { photoUrl } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -155,52 +154,6 @@ function imageResponse(upstream: Response): Response {
   });
 }
 
-/**
- * Photo SELF-HEAL. Google rotates photo resource names, and ours are
- * stamped statically into the dataset — so they all eventually expire and
- * every thumbnail on prod degraded to the initials tile (owner report,
- * Jul 2026; every media fetch returned 400). On a 4xx we look up the
- * place's CURRENT photo names (the id is embedded in the stale name),
- * cached for a week per place so healing costs about one details call
- * per stale place per week, and serve the real image. An empty result
- * THROWS so a transient failure is never cached as "no photos" for a week
- * (same sentinel pattern as the ask answer cache). The durable refill is
- * regenerating the dataset; this keeps the app whole between refills.
- */
-const freshPhotoNames = unstable_cache(
-  async (placeId: string): Promise<string[]> => {
-    const d = await getPlaceDetails(placeId, "photos");
-    if (!d || d.photo_names.length === 0) throw new Error("photo-heal:none");
-    return d.photo_names;
-  },
-  ["photo-heal-v1"],
-  { revalidate: 7 * 24 * 3600 },
-);
-
-async function healAndFetch(staleName: string, w: number): Promise<Response | null> {
-  const placeId = staleName.split("/")[1];
-  if (!placeId) return null;
-  let fresh: string[];
-  try {
-    fresh = await freshPhotoNames(`places/${placeId}`);
-  } catch {
-    return null;
-  }
-  // The stale name's position in the old array is unknowable here, so pick a
-  // STABLE pseudo-index from the name hash: gallery tiles heal to distinct,
-  // consistent photos of the right place instead of all collapsing to [0].
-  let h = 0;
-  for (let i = 0; i < staleName.length; i++) h = (h * 31 + staleName.charCodeAt(i)) | 0;
-  const candidate = fresh[Math.abs(h) % fresh.length];
-  if (!candidate || candidate === staleName) return null;
-  const url = photoUrl(candidate, w);
-  if (!url) return null;
-  meterUsage("google_photo");
-  const retry = await fetch(url, { redirect: "follow", cache: "no-store" });
-  if (!retry.ok || !retry.body) return null;
-  return imageResponse(retry);
-}
-
 export async function GET(req: NextRequest) {
   // Abuse guard: this route hits Google Places API on every miss. A
   // foreign Referer / Origin almost certainly means scraping or
@@ -253,16 +206,10 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
     if (!upstream.ok || !upstream.body) {
-      // A 4xx usually means Google ROTATED the photo name out from under the
-      // dataset — try the self-heal before conceding a placeholder.
-      if (upstream.status >= 400 && upstream.status < 500) {
-        try {
-          const healed = await healAndFetch(name, w);
-          if (healed) return healed;
-        } catch {
-          /* fall through to the placeholder */
-        }
-      }
+      // Do not substitute a different current Google photo here. The page's
+      // visible author/source credit belongs to this exact resource name; a
+      // silent replacement could put a new photo under the old author's name.
+      // The scheduled place refresh updates photo and attribution together.
       return placeholderResponse(name, w, `upstream-${upstream.status}`, slug, signalFallback);
     }
     return imageResponse(upstream);

@@ -10,6 +10,9 @@
  *   npm run perf -- --label=after-a1
  *     same default base, named snapshot for before/after comparison
  *
+ *   npm run perf -- --label=release --enforce
+ *     exits non-zero when a key route breaches the release budgets
+ *
  * Assumes a server is already running at the base URL. The script
  * does not start npm start itself because that is flaky to manage
  * from a child process. Run the build + start in another shell,
@@ -36,7 +39,12 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-type Args = { base: string; urls: string[]; label: string };
+type Args = {
+  base: string;
+  urls: string[];
+  label: string;
+  enforce: boolean;
+};
 
 function parseArgs(): Args {
   const argv = process.argv.slice(2);
@@ -46,10 +54,12 @@ function parseArgs(): Args {
     : "http://localhost:3000";
   const labelFlag = argv.find((a) => a.startsWith("--label="));
   const label = labelFlag ? labelFlag.slice("--label=".length) : "snapshot";
+  const enforce =
+    argv.includes("--enforce") || process.env.PERF_ENFORCE === "1";
 
-  // The set is intentionally narrow. Five routes that span the visual
-  // and computational range of the app. Keeping it small means a full
-  // pass is under 4 minutes. Add more URLs sparingly.
+  // The set is intentionally narrow: the primary decision surfaces, the
+  // computationally distinct transit and Ask experiences, and one dynamic
+  // place route. Add more URLs sparingly so the weekly pass stays useful.
   //
   // Canonical routes only. Measuring redirects hides the destination's
   // real navigation cost and can make a retired alias look like a supported
@@ -58,10 +68,11 @@ function parseArgs(): Args {
     "/today",
     "/map",
     "/events",
+    "/ask",
     "/transit",
     "/places/carroll-creek-linear-park-frederick",
   ];
-  return { base, urls, label };
+  return { base, urls, label, enforce };
 }
 
 type Score = {
@@ -78,6 +89,22 @@ type Score = {
   ttfb_ms: number | null;
   error?: string;
 };
+
+// These are release guardrails, not the finish line. They intentionally flag
+// a plainly degraded mobile experience without turning normal Lighthouse
+// variance into permanent CI noise. The summary also prints the stronger
+// product targets so optimization work keeps moving in the right direction.
+const RELEASE_BUDGETS = {
+  perf: 0.75,
+  a11y: 0.95,
+  bp: 0.9,
+  seo: 0.9,
+  fcp_ms: 3_000,
+  lcp_ms: 4_000,
+  cls: 0.1,
+  tbt_ms: 600,
+  ttfb_ms: 800,
+} as const;
 
 function pct(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -156,7 +183,51 @@ function runOne(base: string, path: string, outDir: string): Score {
   }
 }
 
-function summarize(scores: Score[], label: string, base: string): string {
+function budgetFailures(scores: Score[]): string[] {
+  const failures: string[] = [];
+  for (const score of scores) {
+    const route = score.url.replace(/^https?:\/\/[^/]+/, "");
+    if (score.error) {
+      failures.push(`${route}: Lighthouse failed`);
+      continue;
+    }
+    const minimums = [
+      ["performance", score.perf, RELEASE_BUDGETS.perf],
+      ["accessibility", score.a11y, RELEASE_BUDGETS.a11y],
+      ["best practices", score.bp, RELEASE_BUDGETS.bp],
+      ["SEO", score.seo, RELEASE_BUDGETS.seo],
+    ] as const;
+    for (const [label, value, threshold] of minimums) {
+      if (value == null || value < threshold) {
+        failures.push(
+          `${route}: ${label} ${pct(value)} < ${Math.round(threshold * 100)}`,
+        );
+      }
+    }
+    const maximums = [
+      ["FCP", score.fcp_ms, RELEASE_BUDGETS.fcp_ms, "ms"],
+      ["LCP", score.lcp_ms, RELEASE_BUDGETS.lcp_ms, "ms"],
+      ["CLS", score.cls, RELEASE_BUDGETS.cls, ""],
+      ["TBT", score.tbt_ms, RELEASE_BUDGETS.tbt_ms, "ms"],
+      ["TTFB", score.ttfb_ms, RELEASE_BUDGETS.ttfb_ms, "ms"],
+    ] as const;
+    for (const [label, value, threshold, unit] of maximums) {
+      if (value == null || value > threshold) {
+        failures.push(
+          `${route}: ${label} ${value == null ? "missing" : `${value.toFixed(unit ? 0 : 3)}${unit}`} > ${threshold}${unit}`,
+        );
+      }
+    }
+  }
+  return failures;
+}
+
+function summarize(
+  scores: Score[],
+  label: string,
+  base: string,
+  violations: string[],
+): string {
   const lines: string[] = [];
   lines.push(`# Lighthouse audit: ${label}`);
   lines.push("");
@@ -176,8 +247,12 @@ function summarize(scores: Score[], label: string, base: string): string {
     );
   }
   lines.push("");
-  lines.push("Targets: Perf >= 90, A11y >= 95, BP >= 95, SEO >= 95.");
-  lines.push("LCP < 2.5s, CLS < 0.1, TBT < 200ms, TTFB < 200ms.");
+  lines.push(
+    "Release budgets: Perf >= 75, A11y >= 95, BP >= 90, SEO >= 90; FCP <= 3s, LCP <= 4s, CLS <= 0.1, TBT <= 600ms, TTFB <= 800ms.",
+  );
+  lines.push(
+    "Product targets: Perf >= 90; LCP < 2.5s, CLS < 0.1, TBT < 200ms, TTFB < 200ms.",
+  );
   lines.push("");
   const errors = scores.filter((s) => s.error);
   if (errors.length > 0) {
@@ -192,10 +267,18 @@ function summarize(scores: Score[], label: string, base: string): string {
       lines.push("");
     }
   }
+  if (violations.length > 0) {
+    lines.push("## Budget violations");
+    lines.push("");
+    for (const violation of violations) {
+      lines.push(`- ${violation}`);
+    }
+    lines.push("");
+  }
   return lines.join("\n");
 }
 
-const { base, urls, label } = parseArgs();
+const { base, urls, label, enforce } = parseArgs();
 // Snapshots write to .perf/<isoDate>-<label>/ at the repo root so
 // before/after runs do not overwrite each other and so the script
 // agrees with the gitignore entry in repo root (`.perf/`).
@@ -210,9 +293,22 @@ for (const path of urls) {
   scores.push(runOne(base, path, outDir));
 }
 
-const md = summarize(scores, label, base);
+const violations = budgetFailures(scores);
+const md = summarize(scores, label, base, violations);
 const summaryPath = join(outDir, "summary.md");
 writeFileSync(summaryPath, md);
 
 console.log(`\n${md}`);
 console.log(`\nSaved -> ${summaryPath}`);
+if (enforce && violations.length > 0) {
+  console.error(
+    `\nPerformance gate failed: ${violations.length} budget violation(s).\n`,
+  );
+  process.exitCode = 1;
+} else if (enforce) {
+  console.log("\nPerformance gate passed.\n");
+} else if (violations.length > 0) {
+  console.log(
+    `\nObserved ${violations.length} budget violation(s); rerun with --enforce to gate the result.\n`,
+  );
+}

@@ -12,7 +12,6 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 type Enriched = {
@@ -53,12 +52,13 @@ function stateFromAddress(addr?: string): string | null {
 }
 const SEARCH_CAT: Record<string, string> = {
   "coffee shop": "coffee", cafe: "coffee", restaurant: "restaurant",
-  brewery: "brewery", distillery: "brewery", winery: "brewery", bar: "bar",
-  bakery: "bakery", "ice cream shop": "restaurant", "farmers market": "market",
+  brewery: "brewery", distillery: "distillery", winery: "winery",
+  cidery: "winery", meadery: "winery", bar: "bar",
+  bakery: "bakery", "ice cream shop": "ice-cream", "farmers market": "market",
   museum: "museum", "art gallery": "gallery", "live music venue": "music",
   theater: "theater", park: "park", trail: "trail", playground: "playground",
   library: "library", bookstore: "book-store", "antique store": "antiques",
-  "yoga studio": "yoga", gym: "wellness", hotel: "lodging", garden: "park",
+  "yoga studio": "yoga", gym: "yoga", hotel: "lodging", garden: "park",
   "place of worship": "worship",
 };
 function categoryOf(e: Enriched): string {
@@ -100,12 +100,13 @@ function main() {
     taken.add(slug);
 
     const category = categoryOf(e);
-    const catName = CATEGORY_BY_SLUG[category]?.name ?? "Local spot";
     discovered.push({
       slug,
       name: e.name,
       category,
-      short_blurb: e.editorial_summary?.trim() || `${catName} in ${muniName}.`,
+      // Provider-written editorial summaries remain in the enrichment artifact,
+      // where the UI can display them with attribution. They are not Radius copy.
+      short_blurb: "",
       address: (e.address ?? "").replace(/, USA$/, ""),
       city: muniName,
       state: addrState ?? "MD",

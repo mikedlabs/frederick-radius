@@ -36,8 +36,8 @@
  */
 
 import { getDb, getSql } from "@/lib/db/client";
-import { feed_snapshots } from "@/lib/db/schema";
-import { asc, desc, inArray, lt } from "drizzle-orm";
+import { feed_snapshots, feed_source_health } from "@/lib/db/schema";
+import { asc, desc, inArray, lt, sql as drizzleSql } from "drizzle-orm";
 import { withStatementTimeout } from "@/lib/db/statement-timeout";
 
 type Snapshot = {
@@ -153,7 +153,66 @@ async function persistCurrentSnapshotRows(
     .filter((value): value is NonNullable<typeof value> => value !== null);
   if (values.length === 0) return 0;
 
-  await db.insert(feed_snapshots).values(values);
+  const observedAt = new Date();
+  await db.transaction(async (tx) => {
+    await tx.insert(feed_snapshots).values(values);
+    await tx
+      .insert(feed_source_health)
+      .values(
+        values.map((value) => ({
+          ...value,
+          prior_snapshot: null,
+          recent_mean_count: value.count,
+          recent_observations: 1,
+          updated_at: observedAt,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: feed_source_health.source,
+        // Two cron invocations can overlap during a redeploy. Never allow the
+        // slower, older observation to roll the current projection backward.
+        setWhere: drizzleSql`
+          excluded.taken_at > ${feed_source_health.taken_at}
+        `,
+        set: {
+          // Preserve the prior complete observation before replacing the
+          // current row. Two observations are sufficient for the anomaly
+          // comparisons; the historical table remains available for audits.
+          prior_snapshot: drizzleSql`jsonb_build_object(
+            'taken_at', ${feed_source_health.taken_at},
+            'count', ${feed_source_health.count},
+            'free_ratio', ${feed_source_health.free_ratio},
+            'empty_desc_ratio', ${feed_source_health.empty_desc_ratio},
+            'top_venue', ${feed_source_health.top_venue},
+            'top_category', ${feed_source_health.top_category},
+            'earliest', ${feed_source_health.earliest},
+            'latest', ${feed_source_health.latest}
+          )`,
+          taken_at: drizzleSql`excluded.taken_at`,
+          count: drizzleSql`excluded.count`,
+          free_ratio: drizzleSql`excluded.free_ratio`,
+          empty_desc_ratio: drizzleSql`excluded.empty_desc_ratio`,
+          top_venue: drizzleSql`excluded.top_venue`,
+          top_category: drizzleSql`excluded.top_category`,
+          earliest: drizzleSql`excluded.earliest`,
+          latest: drizzleSql`excluded.latest`,
+          // Keep a bounded 84-observation mean (roughly seven days at the
+          // intended two-hour cadence) without querying historical rows.
+          recent_mean_count: drizzleSql`
+            (
+              ${feed_source_health.recent_mean_count}
+              * least(${feed_source_health.recent_observations}, 83)
+              + excluded.count
+            )
+            / least(${feed_source_health.recent_observations} + 1, 84)
+          `,
+          recent_observations: drizzleSql`
+            least(${feed_source_health.recent_observations} + 1, 84)
+          `,
+          updated_at: observedAt,
+        },
+      });
+  });
   return values.length;
 }
 
@@ -186,19 +245,17 @@ export function persistCurrentSnapshotsStrict(
 }
 
 /**
- * Loads the most recent N snapshots per source from the database into
- * the in-memory rolling buffer. Idempotent and safe to call multiple
- * times — repeats overwrite the buffer for each source with the latest
- * DB state, preserving the window ordering (oldest → newest).
+ * Loads the current and immediately prior snapshot per source from the compact
+ * database projection into the in-memory rolling buffer. Idempotent and safe
+ * to call multiple times.
  *
  * Called by `/admin/data-health` so the dashboard reflects history
  * across deploys / cold starts, not just fetches that happened in this
  * worker process. When the DB is unset (dev/local without DATABASE_URL),
  * this is a no-op and the in-memory buffer is the source of truth.
  *
- * If we already have an N-deep buffer for a source in this process,
- * we skip the load — the in-memory write path is more recent than any
- * read. This makes the call cheap on warm dashboards.
+ * If this process already holds a more recent observation, the database load
+ * does not replace it. This makes the call cheap and safe on warm dashboards.
  */
 let hydratedAt: number = 0;
 const HYDRATE_TTL_MS = 60_000;
@@ -210,19 +267,15 @@ async function hydrateSnapshotRows(): Promise<void> {
   // operator-facing, so a minute of staleness is fine and we avoid
   // hammering the DB on every render.
   if (Date.now() - hydratedAt < HYDRATE_TTL_MS) return;
-  // Pull the most recent N snapshots across all sources in one query,
-  // then partition client-side. Cheap because the index covers it
-  // and N is small (WINDOW * sources ≈ 50 rows max).
+  // Read the one-row-per-source projection. This path stays constant-size even
+  // when the historical audit table contains hundreds of thousands of rows.
   const rows = await db
     .select()
-    .from(feed_snapshots)
-    .orderBy(desc(feed_snapshots.taken_at))
-    .limit(WINDOW * 20);
+    .from(feed_source_health)
+    .orderBy(desc(feed_source_health.taken_at));
   const bySource = new Map<string, Snapshot[]>();
   for (const r of rows) {
-    const buf = bySource.get(r.source) ?? [];
-    if (buf.length >= WINDOW) continue;
-    buf.push({
+    const current: Snapshot = {
       taken_at: r.taken_at.toISOString(),
       count: r.count,
       free_ratio: r.free_ratio,
@@ -231,13 +284,23 @@ async function hydrateSnapshotRows(): Promise<void> {
       top_category: r.top_category ?? null,
       earliest: r.earliest ? r.earliest.toISOString() : null,
       latest: r.latest ? r.latest.toISOString() : null,
-    });
+    };
+    const prior = r.prior_snapshot;
+    const buf: Snapshot[] = [];
+    if (
+      prior
+      && typeof prior.taken_at === "string"
+      && Number.isFinite(Date.parse(prior.taken_at))
+      && Number.isFinite(prior.count)
+      && Number.isFinite(prior.free_ratio)
+      && Number.isFinite(prior.empty_desc_ratio)
+    ) {
+      buf.push(prior);
+    }
+    buf.push(current);
     bySource.set(r.source, buf);
   }
-  // The query returned newest-first; reverse so the buffer is
-  // oldest → newest, matching the in-memory append order.
   for (const [source, buf] of bySource) {
-    buf.reverse();
     // Only seed the in-memory buffer if the current process hasn't
     // already written a more-recent snapshot. Compare by timestamp:
     // if our newest in-memory entry is at least as fresh as the DB

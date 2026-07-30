@@ -102,4 +102,35 @@ describe("place blurb boundary", () => {
     expect(rendered.description_source).toBe("business_website");
     expect(rendered.description_reviewed).toBe(true);
   });
+
+  it("does not publish a persisted Google summary as Radius copy", () => {
+    const ledo = publicPlaceBySlug("ledo-pizza-ijamsville");
+    expect(ledo).toBeDefined();
+
+    const rendered = decoratePlace(ledo!);
+    expect(rendered.short_blurb).toBe("");
+    expect(rendered.description_source).toBeUndefined();
+  });
+
+  it("does not publish unreviewed partner-directory copy", () => {
+    const tenClarke = publicPlaceBySlug("10-clarke");
+    expect(tenClarke).toBeDefined();
+
+    const rendered = decoratePlace(tenClarke!);
+    expect(rendered.short_blurb).toBe("");
+    expect(rendered.description_source).toBeUndefined();
+  });
+
+  it("publishes a source-backed replacement for a former manual override", () => {
+    const jkwBeauty = publicPlaceBySlug("jkw-beauty");
+    expect(jkwBeauty).toBeDefined();
+
+    const rendered = decoratePlace(jkwBeauty!);
+    expect(rendered.short_blurb).toBe(
+      "JKW Beauty is an appointment-based studio offering event hair and makeup, beauty lessons, and airbrush spray tans.",
+    );
+    expect(rendered.description_source).toBe("business_website");
+    expect(rendered.description_reviewed).toBe(true);
+    expect(rendered.description_source_url).toBe("https://jkwbeauty.com/");
+  });
 });

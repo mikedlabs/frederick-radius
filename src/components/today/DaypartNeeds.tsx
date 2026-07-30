@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -16,6 +16,8 @@ import {
   type Scope,
 } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
+import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
+import { easternDayKey } from "@/lib/tz";
 
 type WantRow = {
   slug: string;
@@ -153,6 +155,39 @@ export function isDaypartCountywideContext(
   return source !== "town";
 }
 
+/** The shelf's small scope line describes how its picks were ranked. An IP
+ * estimate is not permission to say "nearby"; only an explicit device/home
+ * origin gets that language. A town scope names the town, while the initial
+ * server shelf and unscoped live answers stay plainly countywide. */
+export function daypartPickScopeLabel(
+  source: NonNullable<WantAnswer["contextSource"]>,
+  contextLabel: string,
+): string {
+  if (source === "device" || source === "home") return "Nearby picks";
+  if (source === "town") {
+    const town = contextLabel.trim();
+    return town ? `${town} picks` : "Town picks";
+  }
+  return "Countywide picks";
+}
+
+/** Ask the photo proxy for its 1x1 failure signal. This particular shelf can
+ * replace a failed photograph with a much better compact category card, so it
+ * should never render the proxy's large decorative placeholder as content. */
+export function daypartPhotoSrc(src: string): string {
+  if (!src.startsWith("/api/place-photo")) return src;
+  const url = new URL(src, "https://frederickradius.local");
+  url.searchParams.set("fallback", "signal");
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+export function isPhotoFailureSignal(image: {
+  naturalWidth: number;
+  naturalHeight: number;
+}): boolean {
+  return image.naturalWidth === 1 && image.naturalHeight === 1;
+}
+
 /** The live ranker can honestly return no open places. Keep that answer in the
  * existing shelf instead of turning it into another full-size card. */
 export function DaypartEmptyState({
@@ -195,6 +230,130 @@ export function DaypartEmptyState({
         </p>
       </div>
     </section>
+  );
+}
+
+function DaypartPickCard({
+  place,
+  category,
+}: {
+  place: DaypartPick;
+  category: string;
+}) {
+  const signaledPhoto = place.photo ? daypartPhotoSrc(place.photo) : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
+  const ariaLabel = `${place.name}, ${place.confidence === "likely" ? "likely open" : "open now"}`;
+  const detail =
+    place.fact ||
+    (place.confidence === "likely" ? "Likely open" : "Open now");
+  const placeContext = place.distance
+    ? ` · ${place.distance}`
+    : place.where
+      ? ` · ${place.where}`
+      : "";
+
+  if (showPhoto && signaledPhoto) {
+    return (
+      <Link
+        href={`/places/${place.slug}`}
+        prefetch={false}
+        aria-label={ariaLabel}
+        className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
+        style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+      >
+        <Image
+          src={signaledPhoto}
+          alt=""
+          fill
+          unoptimized={signaledPhoto.startsWith("/api/place-photo")}
+          sizes="168px"
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
+          onLoad={(event) => {
+            if (isPhotoFailureSignal(event.currentTarget)) {
+              setFailedSrc(signaledPhoto);
+            }
+          }}
+          onError={() => setFailedSrc(signaledPhoto)}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+          style={{
+            background:
+              "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
+          }}
+        />
+        <span className="relative z-10 min-w-0 px-2.5 pb-2">
+          <span
+            className="block truncate font-sans text-[14.5px] font-semibold leading-tight"
+            style={{ color: "var(--app-on-brand)" }}
+          >
+            {place.name}
+          </span>
+          <span
+            className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
+            style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
+          >
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background:
+                  place.confidence === "likely"
+                    ? "var(--app-warning)"
+                    : "var(--app-positive)",
+              }}
+            />
+            {detail}
+            {place.distance ? <span>· {place.distance}</span> : null}
+            {!place.distance && place.where ? <span>· {place.where}</span> : null}
+            {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={`/places/${place.slug}`}
+      prefetch={false}
+      aria-label={ariaLabel}
+      className="group flex min-h-[76px] w-[15rem] items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition active:scale-[0.985]"
+      style={{
+        borderColor: "var(--app-border)",
+        boxShadow: "var(--app-edge), var(--app-hi)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+        style={{
+          color: "var(--app-brand-press)",
+          background: "var(--app-brand-tint-6)",
+        }}
+      >
+        <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className="block truncate text-[14px] font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {place.name}
+        </span>
+        <span
+          className="mt-1 block truncate text-[11.5px]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {detail}
+          {placeContext}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -285,6 +444,24 @@ export default function DaypartNeeds({
     };
   }, []);
 
+  // Keep one public, actionable place as the offline Today handoff. This never
+  // stores the user's coordinates or distance; the offline page labels the
+  // entire read as a saved, potentially changed snapshot.
+  useEffect(() => {
+    if (navigator.onLine === false) return;
+    const first = active?.picks[0];
+    if (!first) return;
+    void persistOfflineTodaySnapshot({
+      dayKey: easternDayKey(new Date()),
+      lead: {
+        kind: "place",
+        title: first.name,
+        detail: first.fact || first.where || undefined,
+        href: `/places/${first.slug}`,
+      },
+    }).catch(() => {});
+  }, [active]);
+
   if (!active) return null;
 
   // Once the location-aware ranker has answered, a zero-result shelf should
@@ -307,9 +484,7 @@ export default function DaypartNeeds({
 
   const likely = active.picks.length > 0 &&
     active.picks.every((place) => place.confidence === "likely");
-  const countywide =
-    contextLabel === "Across Frederick County" ||
-    contextLabel === "Whole county";
+  const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
 
   return (
     <section
@@ -395,10 +570,8 @@ export default function DaypartNeeds({
             {awaitingLive
               ? "Checking nearby"
               : likely
-                ? "Posted hours · check before going"
-                : countywide
-                  ? "Countywide picks"
-                  : "Nearby picks"}
+                ? `${pickScopeLabel} · Posted hours; check before going`
+                : pickScopeLabel}
           </p>
         </div>
 
@@ -422,64 +595,7 @@ export default function DaypartNeeds({
           <ul className="shelf-rail mt-2 gap-2.5 pb-1">
             {active.picks.map((place) => (
               <li key={place.slug} className="shrink-0">
-                <Link
-                  href={`/places/${place.slug}`}
-                  prefetch={false}
-                  aria-label={`${place.name}, ${place.confidence === "likely" ? "likely open" : "open now"}`}
-                  className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
-                  style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-                >
-                  {place.photo ? (
-                    <Image
-                      src={place.photo}
-                      alt=""
-                      fill
-                      unoptimized={place.photo.startsWith("/api/place-photo")}
-                      sizes="168px"
-                      placeholder="blur"
-                      blurDataURL={PAPER_CREAM_BLUR}
-                      className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
-                    />
-                  ) : (
-                    <CategoryGraphic category={active.category} seed={place.slug} />
-                  )}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
-                    }}
-                  />
-                  <span className="relative z-10 min-w-0 px-2.5 pb-2">
-                    <span
-                      className="block truncate font-sans text-[14.5px] font-semibold leading-tight"
-                      style={{ color: "var(--app-on-brand)" }}
-                    >
-                      {place.name}
-                    </span>
-                    <span
-                      className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
-                      style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
-                    >
-                      <span
-                        aria-hidden
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{
-                          background:
-                            place.confidence === "likely"
-                              ? "var(--app-warning)"
-                              : "var(--app-positive)",
-                        }}
-                      />
-                      {place.fact ||
-                        (place.confidence === "likely" ? "Likely open" : "Open now")}
-                      {place.distance ? <span>· {place.distance}</span> : null}
-                      {!place.distance && place.where ? <span>· {place.where}</span> : null}
-                      {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
-                    </span>
-                  </span>
-                </Link>
+                <DaypartPickCard place={place} category={active.category} />
               </li>
             ))}
           </ul>

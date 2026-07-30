@@ -4,11 +4,52 @@ import {
   assessHoursRefreshRun,
   HOURS_REFRESH_CYCLE_DAYS,
   hoursRefreshCycleDay,
+  resolveHoursRefreshCycleSelection,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
+import { HOURS_MAX_AGE_DAYS } from "@/lib/hours-freshness";
 import { isGooglePlaceId } from "@/lib/provenance";
 
 describe("hours refresh target selection", () => {
+  it("uses the scheduled bucket unless an explicit backfill bucket is requested", () => {
+    const now = new Date("2026-07-26T08:00:00.000Z").getTime();
+    const scheduled = Math.floor(now / 86_400_000) % HOURS_REFRESH_CYCLE_DAYS;
+
+    expect(
+      resolveHoursRefreshCycleSelection(
+        "https://frederickradius.app/api/cron/hours-refresh",
+        now,
+      ),
+    ).toEqual({ cycleDay: scheduled, mode: "scheduled" });
+    expect(
+      resolveHoursRefreshCycleSelection(
+        "https://frederickradius.app/api/cron/hours-refresh?cycleDay=3",
+        now,
+      ),
+    ).toEqual({ cycleDay: 3, mode: "backfill" });
+  });
+
+  it("refreshes every bucket before the publication freshness window expires", () => {
+    expect(HOURS_REFRESH_CYCLE_DAYS).toBeLessThan(HOURS_MAX_AGE_DAYS);
+  });
+
+  it("rejects malformed or repeated backfill buckets", () => {
+    expect(() =>
+      resolveHoursRefreshCycleSelection(
+        `https://frederickradius.app/api/cron/hours-refresh?cycleDay=${HOURS_REFRESH_CYCLE_DAYS}`,
+      ),
+    ).toThrow(
+      `cycleDay must be one integer from 0 to ${HOURS_REFRESH_CYCLE_DAYS - 1}`,
+    );
+    expect(() =>
+      resolveHoursRefreshCycleSelection(
+        "https://frederickradius.app/api/cron/hours-refresh?cycleDay=1&cycleDay=2",
+      ),
+    ).toThrow(
+      `cycleDay must be one integer from 0 to ${HOURS_REFRESH_CYCLE_DAYS - 1}`,
+    );
+  });
+
   it("includes Google-backed discovered records instead of filtering by source", () => {
     const slug = "discovered-cafe";
     const day = hoursRefreshCycleDay(slug);
@@ -136,8 +177,8 @@ describe("hours refresh target selection", () => {
     expect(
       assessHoursRefreshRun({
         targeted: 100,
-        written: 25,
-        withHours: 20,
+        written: 89,
+        withHours: 80,
         deferred: 0,
       }).status,
     ).toBe(502);
@@ -152,7 +193,7 @@ describe("hours refresh target selection", () => {
     expect(
       assessHoursRefreshRun({
         targeted: 100,
-        written: 95,
+        written: 90,
         withHours: 80,
         deferred: 0,
       }),

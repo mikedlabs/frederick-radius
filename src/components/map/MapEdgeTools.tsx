@@ -3,22 +3,19 @@
 import {
   BusFront,
   Camera,
-  ChevronRight,
   CircleParking,
   CloudRain,
   Footprints,
   Helicopter,
   Images,
-  Layers3,
   LoaderCircle,
   LocateFixed,
   Siren,
-  TimerReset,
+  Toilet,
   TrafficCone,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import type { RotorcraftLayerStatus } from "./LiveRotorcraft";
 import {
@@ -35,20 +32,6 @@ type IncidentSummary = {
   sourceLabel: string;
   ageLabel: string;
 };
-
-function scannerSummary(health: LiveLayerHealth): string {
-  if (health.status === "unavailable") return "Source unavailable";
-  if (health.status === "disabled") return "Checking FrederickScanner…";
-  if (health.status === "stale") {
-    return health.count > 0
-      ? `${health.count} cached public report${health.count === 1 ? "" : "s"} · source stale`
-      : "The last source update is stale";
-  }
-  if (health.count > 0) {
-    return `${health.count} current public report${health.count === 1 ? "" : "s"}`;
-  }
-  return "No public reports in the latest response";
-}
 
 function rotorcraftSummary(status: RotorcraftLayerStatus | null): string {
   if (!status) return "Checking public ADS-B coverage…";
@@ -77,7 +60,6 @@ export type MapEdgeToolsProps = {
   located: boolean;
   onLocate: () => void;
   overlays: MapEdgeOverlayState;
-  unavailable?: Partial<Record<MapEdgeOverlayId, boolean>>;
   onToggle: (id: MapEdgeOverlayId, next: boolean) => void;
   incidentHealth: LiveLayerHealth;
   recentIncidentCount: number;
@@ -114,14 +96,15 @@ const TOOL_META: Record<
   traffic: {
     label: "Traffic flow",
     shortLabel: "Traffic",
-    title: "Mapbox congestion and road closures",
+    title: "Mapbox congestion with official Maryland WZDx work zones",
     color: "#D35F2D",
     icon: TrafficCone,
   },
   radar: {
     label: "Weather radar",
     shortLabel: "Radar",
-    title: "Animated precipitation radar from RainViewer",
+    title:
+      "RainViewer precipitation radar with NOAA lightning density when current",
     color: "var(--app-cool)",
     icon: CloudRain,
   },
@@ -169,7 +152,6 @@ export default function MapEdgeTools({
   located,
   onLocate,
   overlays,
-  unavailable = {},
   onToggle,
   incidentHealth,
   recentIncidentCount,
@@ -177,191 +159,22 @@ export default function MapEdgeTools({
   onFocusIncident,
   rotorcraftStatus,
 }: MapEdgeToolsProps) {
-  const [open, setOpen] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const flyoutRef = useRef<HTMLDivElement>(null);
   const activeCount = activeMapEdgeOverlayCount(overlays);
-
-  useEffect(() => {
-    const closeForMapGesture = () => setOpen(false);
-    window.addEventListener("fr:map-edge-gesture", closeForMapGesture);
-    return () =>
-      window.removeEventListener("fr:map-edge-gesture", closeForMapGesture);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(() => {
-      flyoutRef.current
-        ?.querySelector<HTMLButtonElement>(
-          ".map-edge-tool-choice:not(:disabled)",
-        )
-        ?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [open]);
-
-  const close = () => {
-    setOpen(false);
-    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
-  };
 
   return (
     <aside
       className="map-edge-tools"
-      data-awake={awake || open ? "true" : "false"}
-      data-open={open || undefined}
+      data-awake={awake ? "true" : "false"}
       data-has-active={activeCount > 0 || undefined}
-      aria-label="Quick map tools"
+      aria-label="Quick map actions"
       onPointerEnter={onWake}
       onFocusCapture={onWake}
-      onKeyDownCapture={(event) => {
-        onWake();
-        if (event.key === "Escape" && open) {
-          event.stopPropagation();
-          event.preventDefault();
-          close();
-        }
-      }}
+      onKeyDownCapture={onWake}
     >
-      {open && (
-        <div
-          ref={flyoutRef}
-          className="map-edge-tools-flyout"
-          aria-label="Map layer tools"
-        >
-          <div className="map-edge-tools-flyout-head">
-            <span>Live map tools</span>
-            <button type="button" onClick={close} aria-label="Close map tools">
-              Close
-            </button>
-          </div>
-          <div className="map-edge-tools-grid">
-            {MAP_EDGE_OVERLAY_IDS.map((id) => {
-              const meta = TOOL_META[id];
-              const Icon = meta.icon;
-              const disabled = unavailable[id] ?? false;
-              const isScanner = id === "incidents";
-              const isAviation = id === "aviation";
-              const count = isScanner
-                ? incidentHealth.count
-                : isAviation
-                  ? rotorcraftStatus?.count ?? null
-                  : null;
-              const aviationAttention =
-                isAviation &&
-                Boolean(
-                  rotorcraftStatus &&
-                    rotorcraftStatus.available &&
-                    !rotorcraftStatus.stale &&
-                    (rotorcraftStatus.fmhCount > 0 ||
-                      rotorcraftStatus.trooperCount > 0),
-                );
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className="map-edge-tool-choice"
-                  data-on={overlays[id] || undefined}
-                  data-attention={
-                    (isScanner &&
-                      recentIncidentCount > 0 &&
-                      incidentHealth.status === "ready") ||
-                    aviationAttention
-                      ? "true"
-                      : undefined
-                  }
-                  aria-pressed={overlays[id]}
-                  disabled={disabled}
-                  title={disabled ? `${meta.label} is unavailable` : meta.title}
-                  onClick={() => onToggle(id, !overlays[id])}
-                  style={{ "--tool-color": meta.color } as React.CSSProperties}
-                >
-                  <span className="map-edge-tool-choice-icon" aria-hidden>
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={2.15} />
-                  </span>
-                  <span>
-                    <strong>{meta.label}</strong>
-                    <small>
-                      {isScanner
-                        ? scannerSummary(incidentHealth)
-                        : isAviation
-                          ? rotorcraftSummary(rotorcraftStatus)
-                          : meta.title}
-                    </small>
-                  </span>
-                  {(isScanner || isAviation) &&
-                    count !== null &&
-                    count > 0 && (
-                    <span
-                      className="map-edge-tool-count"
-                      aria-label={`${count} ${
-                        isScanner ? "reports" : "observations"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {latestIncident && (
-            <button
-              type="button"
-              className="map-edge-incident-jump"
-              onClick={() => {
-                onFocusIncident(latestIncident.id);
-                close();
-              }}
-            >
-              <span className="map-edge-incident-kicker">Newest public report</span>
-              <strong>
-                {latestIncident.kind} · {latestIncident.location}
-              </strong>
-              <small>
-                {latestIncident.sourceLabel} · {latestIncident.ageLabel}
-              </small>
-              <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-            </button>
-          )}
-
-          {overlays.traffic && (
-            <p className="map-edge-traffic-key">
-              <strong>Traffic key</strong> · Amber is moderate, orange is heavy,
-              red is severe, and dashed red marks closures.
-            </p>
-          )}
-
-          {overlays.aviation && (
-            <p className="map-edge-traffic-key">
-              <strong>Aircraft coverage</strong> · Public ADS-B can miss
-              helicopters. FMH movement labels are possible trajectories, not
-              confirmed landings or departures.
-            </p>
-          )}
-        </div>
-      )}
-
       <div className="map-edge-tools-rail">
-        <Link
-          href="/map?mode=radius"
-          className="map-edge-tool map-edge-tool-primary"
-          title="Choose a start point and see what is within walking, biking, or driving time"
-          aria-label="What can I reach?"
-          onClick={onWake}
-        >
-          <TimerReset className="h-5 w-5" strokeWidth={2.15} aria-hidden />
-          <span className="map-edge-tool-label">
-            <span className="map-edge-tool-label-long">What can I reach?</span>
-            <span className="map-edge-tool-label-short">Reach</span>
-          </span>
-        </Link>
-
         <button
           type="button"
-          className="map-edge-tool map-edge-tool-primary"
+          className="map-edge-tool map-edge-tool-primary map-edge-tool-locate"
           data-on={located || undefined}
           onClick={onLocate}
           aria-label="Find me"
@@ -387,38 +200,22 @@ export default function MapEdgeTools({
           </span>
         </button>
 
-        <button
-          ref={menuButtonRef}
-          type="button"
-          className="map-edge-tool map-edge-tool-primary"
-          data-on={open || undefined}
-          onClick={() => {
-            onWake();
-            setOpen((current) => !current);
-          }}
-          aria-expanded={open}
-          aria-haspopup="true"
-          aria-label={
-            activeCount > 0
-              ? `Map tools, ${activeCount} active`
-              : "Open map tools"
-          }
-          title="Open live and local map tools"
+        <Link
+          href="/amenities"
+          prefetch={false}
+          className="map-edge-tool map-edge-tool-primary map-edge-tool-essential"
+          title="Find the closest mapped restroom, water, trash, dog needs, seating, or outlet"
+          aria-label="Find a nearby essential"
+          onClick={onWake}
         >
-          <Layers3 className="h-5 w-5" strokeWidth={2.15} aria-hidden />
+          <Toilet className="h-5 w-5" strokeWidth={2.15} aria-hidden />
           <span className="map-edge-tool-label">
-            <span className="map-edge-tool-label-long">Map tools</span>
-            <span className="map-edge-tool-label-short">Tools</span>
+            <span className="map-edge-tool-label-long">Nearby essentials</span>
+            <span className="map-edge-tool-label-short">Essentials</span>
           </span>
-          {activeCount > 0 && (
-            <span className="map-edge-tool-badge" aria-hidden>
-              {activeCount}
-            </span>
-          )}
-        </button>
+        </Link>
 
-        {!open &&
-          !overlays.incidents &&
+        {!overlays.incidents &&
           recentIncidentCount > 0 &&
           incidentHealth.status === "ready" && (
             <button
@@ -449,8 +246,7 @@ export default function MapEdgeTools({
             </button>
           )}
 
-        {!open &&
-          !overlays.aviation &&
+        {!overlays.aviation &&
           rotorcraftStatus?.available &&
           !rotorcraftStatus.stale &&
           (rotorcraftStatus.fmhCount > 0 ||
@@ -496,8 +292,7 @@ export default function MapEdgeTools({
             </button>
           )}
 
-        {!open &&
-          MAP_EDGE_OVERLAY_IDS.filter((id) => overlays[id]).map((id) => {
+        {MAP_EDGE_OVERLAY_IDS.filter((id) => overlays[id]).map((id) => {
             const meta = TOOL_META[id];
             const Icon = meta.icon;
             const isScanner = id === "incidents";

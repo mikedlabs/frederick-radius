@@ -26,6 +26,73 @@ import { mergeClientCommerceLinks } from "./lib/client-commerce-links";
 
 const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
 const HOURS_OUT = new URL("../src/data/places-client-hours.json", import.meta.url).pathname;
+const EVENT_VENUE_PHOTO_CREDITS_OUT = new URL(
+  "../src/data/event-venue-photo-credits.json",
+  import.meta.url,
+).pathname;
+
+type CompactPhotoCredit = {
+  google_maps_uri: string;
+  flag_content_uri?: string;
+  authors: Array<{
+    display_name?: string;
+    uri?: string;
+    photo_uri?: string;
+  }>;
+};
+
+function compactPhotoCredit(value: unknown): CompactPhotoCredit | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as {
+    google_maps_uri?: unknown;
+    flag_content_uri?: unknown;
+    authors?: unknown;
+  };
+  if (
+    typeof row.google_maps_uri !== "string" ||
+    !row.google_maps_uri.startsWith("https://")
+  ) {
+    return null;
+  }
+  const authors = Array.isArray(row.authors)
+    ? row.authors.flatMap((author) => {
+        if (!author || typeof author !== "object") return [];
+        const candidate = author as {
+          display_name?: unknown;
+          uri?: unknown;
+          photo_uri?: unknown;
+        };
+        const display_name =
+          typeof candidate.display_name === "string"
+            ? candidate.display_name.trim()
+            : "";
+        const uri =
+          typeof candidate.uri === "string" &&
+          candidate.uri.startsWith("https://")
+            ? candidate.uri
+            : undefined;
+        const photo_uri =
+          typeof candidate.photo_uri === "string" &&
+          candidate.photo_uri.startsWith("https://")
+            ? candidate.photo_uri
+            : undefined;
+        if (!display_name && !uri && !photo_uri) return [];
+        return [{ display_name: display_name || undefined, uri, photo_uri }];
+      })
+    : [];
+
+  return {
+    google_maps_uri: row.google_maps_uri,
+    flag_content_uri:
+      typeof row.flag_content_uri === "string" &&
+      row.flag_content_uri.startsWith("https://")
+        ? row.flag_content_uri
+        : undefined,
+    authors,
+  };
+}
+
+const eventVenuePhotoCredits: Record<string, CompactPhotoCredit> = {};
 
 const slim = publicPlaces().map((p) => {
   const d = decoratePlace(p) as PlaceCardData & {
@@ -52,6 +119,12 @@ const slim = publicPlaces().map((p) => {
     d.commerce_links,
     businessInfoCommerceLinks(d.slug),
   );
+  const eventVenuePhotoCredit = compactPhotoCredit(
+    d.google_photo_attribution,
+  );
+  if (d.google_photo_url && eventVenuePhotoCredit) {
+    eventVenuePhotoCredits[d.slug] = eventVenuePhotoCredit;
+  }
   // Keep google_photo_url (the single hero); drop the heavy arrays /
   // detail-only text the Search & Saved cards never render.
   //
@@ -141,6 +214,14 @@ const clientJson = JSON.stringify(slim);
 writeFileSync(OUT, clientJson);
 const bytes = Buffer.byteLength(clientJson);
 console.log(`wrote ${OUT} — ${slim.length} places, ${(bytes / 1_000_000).toFixed(2)} MB`);
+
+const eventVenuePhotoCreditsJson = JSON.stringify(eventVenuePhotoCredits);
+writeFileSync(EVENT_VENUE_PHOTO_CREDITS_OUT, eventVenuePhotoCreditsJson);
+console.log(
+  `wrote ${EVENT_VENUE_PHOTO_CREDITS_OUT} — ${
+    Object.keys(eventVenuePhotoCredits).length
+  } attributed venue photos`,
+);
 
 // AppMap's time scrubber needs only schedules. Keep those records in a
 // separate generated artifact so the first scrub does not download the full

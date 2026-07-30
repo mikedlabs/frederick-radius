@@ -123,6 +123,7 @@ const AMENITY_LABEL: Partial<Record<Amenity["kind"], string>> = {
   recycling: "recycling point",
   bench: "bench",
   dog_waste: "dog-waste station",
+  dog_park: "dog park",
   dog_water: "dog-water point",
   outlet: "power outlet",
   bike_parking: "bike parking",
@@ -131,6 +132,7 @@ const AMENITY_LABEL: Partial<Record<Amenity["kind"], string>> = {
   playground: "playground",
   wifi: "public Wi-Fi",
   ev_charging: "EV charger",
+  water_access: "water access",
 };
 
 const AMENITY_GROUP: Partial<Record<Amenity["kind"], string>> = {
@@ -141,6 +143,7 @@ const AMENITY_GROUP: Partial<Record<Amenity["kind"], string>> = {
   bench: "seating",
   picnic: "seating",
   dog_waste: "dog",
+  dog_park: "dog",
   dog_water: "dog",
   outlet: "outlet",
   bike_parking: "bike",
@@ -148,6 +151,7 @@ const AMENITY_GROUP: Partial<Record<Amenity["kind"], string>> = {
   playground: "play",
   wifi: "wifi",
   ev_charging: "ev",
+  water_access: "water_access",
 };
 
 function dist(a: Coord, b: Coord): number {
@@ -206,6 +210,13 @@ function sourceForAmenity(amenity: Amenity): EvidenceSource {
   }
   if (amenity.id.startsWith("mdev:")) return { source: "Maryland iMAP", sourceUrl: "https://data.imap.maryland.gov/" };
   if (amenity.id.startsWith("field:") || amenity.photo) return { source: "Frederick Radius field map" };
+  if (amenity.id.startsWith("fc-park-")) {
+    return {
+      source: "Frederick County park map",
+      sourceUrl:
+        "https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer",
+    };
+  }
   return { source: "OpenStreetMap contributors", sourceUrl: osmAmenityUrl(amenity.id) };
 }
 

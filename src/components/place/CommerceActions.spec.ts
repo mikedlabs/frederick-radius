@@ -36,4 +36,24 @@ describe("CommerceActions hierarchy", () => {
     expect(html).toContain("Owner-provided");
     expect(html).toContain("Report a broken link");
   });
+
+  it("describes a Toast URL as a handoff, not a live integration", () => {
+    const html = renderToStaticMarkup(
+      createElement(CommerceActions, {
+        links: [
+          {
+            type: "order",
+            provider: "toast",
+            url: "https://order.toasttab.com/online/example",
+            source: "imported",
+          },
+        ],
+        placeSlug: "example",
+        placeName: "Example Cafe",
+      }),
+    );
+
+    expect(html).toContain("Ordering via Toast");
+    expect(html).not.toContain("Toast-connected");
+  });
 });

@@ -8,6 +8,8 @@ import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
+import { eventCardVisual } from "@/components/event/eventVisuals";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
@@ -40,6 +42,7 @@ type Props = {
   pending?: boolean;
   onClose: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  historyLayerId: string;
 };
 
 export default function EventSheet({
@@ -47,12 +50,14 @@ export default function EventSheet({
   pending = false,
   onClose,
   returnFocusRef,
+  historyLayerId,
 }: Props) {
   return (
     <BottomSheet
       present={Boolean(event) || pending}
       onClose={onClose}
       ariaLabel={event?.title ?? "Event details"}
+      historyLayerId={historyLayerId}
       returnFocusRef={returnFocusRef}
     >
       {(dismiss) =>
@@ -119,6 +124,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const preciseGeo =
     physicalAttendance &&
     (event.geo_confidence === "venue_match" || event.geo_confidence === "exact_address");
+  const eventVisual = eventCardVisual(event);
 
   return (
     <>
@@ -132,13 +138,13 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events get a category-tinted
          *  plate so the sheet always opens with an identity. */}
-        {event.hero_image ? (
+        {eventVisual ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden">
             <Image
-              src={event.hero_image}
+              src={eventVisual.src}
               alt=""
               fill
-              unoptimized={event.hero_image.startsWith("/api/place-photo")}
+              unoptimized={eventVisual.src.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -175,11 +181,17 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </div>
           </div>
         ) : null}
+        {eventVisual ? (
+          <EventVisualCredit
+            visual={eventVisual}
+            className="border-b px-5 py-2"
+          />
+        ) : null}
 
         {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
          *  the one cascade grammar every surface shares. */}
         <div className="reveal-up px-5 pt-4">
-          {!event.hero_image && (
+          {!eventVisual && (
             <header className="flex items-start gap-3">
               <span
                 aria-hidden

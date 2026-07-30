@@ -10,6 +10,7 @@ const SURFACES = [
   "/map",
   "/events",
   "/ask",
+  "/access",
   "/pulse",
   "/compass",
   "/my-radius",
@@ -40,7 +41,9 @@ function readCandidate(element: HTMLElement, index: number): IndexedCandidate {
     download: Boolean(anchor?.hasAttribute("download")),
     buttonType: button?.type ?? null,
     disabled: Boolean(
-      button?.disabled || element.getAttribute("aria-disabled") === "true",
+      button?.disabled ||
+        element.getAttribute("aria-disabled") === "true" ||
+        element.closest("[inert], [aria-hidden='true']"),
     ),
     role: element.getAttribute("role"),
     ariaExpanded: element.getAttribute("aria-expanded"),
@@ -171,6 +174,17 @@ test.describe("safe interaction crawler", () => {
         if (!selected) continue;
 
         if (!(await selected.handle.isVisible())) continue;
+        // Sticky page controls can cover the browser's minimal automatic
+        // scroll target even though the candidate is valid. Center the exact
+        // inspected handle, then retain Playwright's normal hit-target check.
+        await selected.handle.evaluate((element) => {
+          (element as Element).scrollIntoView({
+            block: "center",
+            inline: "center",
+            behavior: "instant",
+          });
+        });
+        await page.waitForTimeout(100);
         await selected.handle.click({ timeout: 15_000 });
         await page.waitForTimeout(350);
 

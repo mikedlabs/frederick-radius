@@ -34,10 +34,10 @@ describe("deterministic map search actions", () => {
     expect([...parking, ...parkingVerb].some((result) => result.id === "layer:parks")).toBe(false);
   });
 
-  it("still offers parks for a parks request", () => {
+  it("offers the reviewed park-place map for a parks request", () => {
     expect(searchIndex("parks", 8, [])[0]).toMatchObject({
-      id: "layer:parks",
-      href: "/map?mode=browse&layers=parks",
+      id: "action:map-parks",
+      href: "/map?intent=outdoor&sub=parks",
     });
   });
 

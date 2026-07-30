@@ -94,6 +94,7 @@ function vmRow(over: {
   title?: string;
   meta?: Record<string, unknown>;
   excerpt?: string;
+  yoastImage?: string;
 }): VibemapRow {
   return {
     title: { rendered: over.title ?? "Open Mic Night" },
@@ -112,6 +113,9 @@ function vmRow(over: {
       vibemap_event_venue_longitude: -77.4105,
       ...over.meta,
     },
+    yoast_head_json: over.yoastImage
+      ? { twitter_image: over.yoastImage }
+      : undefined,
   };
 }
 
@@ -126,6 +130,39 @@ describe("parseVibemapEvents", () => {
     expect(e.geom).toEqual({ lat: 39.4141, lng: -77.4105 });
     expect(e.url).toBe("https://www.visitfrederick.org/event/open-mic/1/");
     expect(e.source).toBe("dfp");
+  });
+
+  it("keeps only first-party Vibemap event art from the ImageKit account", () => {
+    const image =
+      "https://ik.imagekit.io/vibemap/original_images_image_event.jpeg?updatedAt=1";
+    const [fromMeta] = parseVibemapEvents(
+      [vmRow({ meta: { vibemap_event_images: JSON.stringify([image]) } })],
+      DFP_FEED,
+      NOW,
+      HORIZON,
+      FETCHED,
+    );
+    expect(fromMeta.hero_image).toBe(image);
+
+    const socialImage =
+      "https://ik.imagekit.io/vibemap/tr:w-1200,h-675,fo-auto/event.jpeg";
+    const [fromYoast] = parseVibemapEvents(
+      [vmRow({ meta: { vibemap_event_images: "" }, yoastImage: socialImage })],
+      DFP_FEED,
+      NOW,
+      HORIZON,
+      FETCHED,
+    );
+    expect(fromYoast.hero_image).toBe(socialImage);
+
+    const [wrongHost] = parseVibemapEvents(
+      [vmRow({ meta: { vibemap_event_images: '["https://images.example.com/untrusted.jpg"]' } })],
+      DFP_FEED,
+      NOW,
+      HORIZON,
+      FETCHED,
+    );
+    expect(wrongHost.hero_image).toBeUndefined();
   });
 
   it("drops predicted instances that lost their clock (midnight, not all-day)", () => {

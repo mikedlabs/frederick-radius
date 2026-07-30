@@ -12,17 +12,24 @@ async function expectTopBefore(
   expect(box!.y).toBeLessThan(top);
 }
 
-test("Events keeps discovery controls visible and nests display choices", async ({ page }) => {
+test("Events keeps one discovery doorway visible and nests filter and display choices", async ({ page }) => {
   await page.goto("/events");
 
   await expect(page.getByRole("group", { name: "When" })).toBeVisible();
-  const filters = page.getByRole("group", { name: "Filter events" });
-  await expect(filters.getByText("What", { exact: true })).toBeVisible();
-  await expect(filters.getByText("When", { exact: true })).toBeVisible();
-  await expect(filters.getByText("Where", { exact: true })).toBeVisible();
+  const filters = page.getByRole("button", { name: /^Filters:/ });
+  await expect(filters).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Event filters" })).toBeHidden();
   const dockBox = await page.locator(".eb-dock").boundingBox();
   expect(dockBox, "expected the compact event controls to have a layout box").not.toBeNull();
-  expect(dockBox!.height).toBeLessThan(210);
+  expect(dockBox!.height).toBeLessThan(195);
+
+  await filters.click();
+  const dialog = page.getByRole("dialog", { name: "Event filters" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("tab", { name: "What" })).toBeVisible();
+  await expect(dialog.getByRole("tab", { name: "When" })).toBeVisible();
+  await expect(dialog.getByRole("tab", { name: "Where" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Done" }).click();
 
   await expect(page.getByRole("button", { name: "List view" })).toBeHidden();
   await page.locator("summary").filter({ hasText: "Display" }).click();
@@ -61,8 +68,15 @@ test("Events calendar overflow link navigates instead of opening a detail sheet"
   await page.setViewportSize({ width: 1024, height: 800 });
   await page.goto("/events");
 
-  await page.getByRole("button", { name: /Show \d+ more/ }).first().click();
-  const calendarLink = page.getByRole("link", { name: /more on the calendar/ }).first();
+  // Immediate groups can contain fewer than the 40-row inline cap. Exercise
+  // the long-tail group whose overflow owns the calendar route.
+  const comingUp = page.locator("section").filter({
+    has: page.getByRole("heading", { name: /Coming up/ }),
+  }).first();
+  await comingUp.getByRole("button", { name: "Show more" }).click();
+  const calendarLink = comingUp.getByRole("link", {
+    name: /more on the calendar/,
+  });
   await expect(calendarLink).toBeVisible({ timeout: 20_000 });
   await calendarLink.click();
 
@@ -124,7 +138,7 @@ test.describe("compact page entrances", () => {
 
     const search = page.getByRole("button", { name: "Ask or find across Frederick County" });
     const scope = page.getByRole("button", { name: /Change town or location scope/ });
-    const alerts = page.getByRole("link", { name: /County alerts: 2 active items/ });
+    const alerts = page.getByRole("link", { name: /Pulse: 2 active alerts/ });
     await expect(search).toBeVisible();
     await expect(scope).toBeVisible();
     await expect(alerts).toBeVisible();
@@ -173,16 +187,13 @@ test.describe("compact page entrances", () => {
       }),
     ).toBe(true);
 
-    const values = page.locator(".eb-capbar .eb-seg-v");
-    await expect(values.nth(1)).toHaveText("This weekend");
-    await expect(values.nth(2)).toHaveText("Whole county");
-    for (const value of [values.nth(1), values.nth(2)]) {
-      expect(
-        await value.evaluate((node) =>
-          node.scrollWidth <= node.clientWidth + 1 &&
-          node.scrollHeight <= node.clientHeight + 1
-        ),
-      ).toBe(true);
-    }
+    const filters = page.getByRole("button", { name: /Filters:.*This weekend/ });
+    await expect(filters).toBeVisible();
+    expect(
+      await filters.evaluate((node) =>
+        node.scrollWidth <= node.clientWidth + 1 &&
+        node.scrollHeight <= node.clientHeight + 1
+      ),
+    ).toBe(true);
   });
 });

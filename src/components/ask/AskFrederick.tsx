@@ -6,10 +6,11 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  ChevronDown,
   Clock3,
   ExternalLink,
-  LayoutGrid,
   LocateFixed,
+  Mail,
   MapPin,
   MessageCircleQuestion,
   Navigation,
@@ -44,6 +45,11 @@ import {
 import type { TodayPrompt } from "@/lib/today-prompts";
 import { track } from "@/lib/track";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import {
+  askResponsePresentation,
+  askResponseSectionOrder,
+  type AskResponseSection,
+} from "@/lib/ask/presentation";
 import SaveButton from "@/components/saved/SaveButton";
 import {
   createAskReturnId,
@@ -86,10 +92,6 @@ const WORKSPACE_ASKS = [
   {
     label: "What is on tonight?",
     query: "What is worth doing in Frederick County today?",
-  },
-  {
-    label: "Plan an afternoon",
-    query: "Plan a relaxed afternoon in Frederick County.",
   },
   {
     label: "Find a restroom",
@@ -524,6 +526,18 @@ function AskSourceCard({
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           )}
         </Link>
+        {source.email ? (
+          <a
+            href={`mailto:${source.email}`}
+            onClick={() => haptic("light")}
+            aria-label={`Email ${source.name}`}
+            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            <Mail className="h-3.5 w-3.5" aria-hidden />
+            Email
+          </a>
+        ) : null}
         {phone ? (
           <a
             href={`tel:${phone}`}
@@ -697,6 +711,87 @@ function AskPlanCard({
   );
 }
 
+function AskActionList({
+  actions,
+  label,
+  emphasizeFirst = true,
+  onRefine,
+  onInternalOpen,
+}: {
+  actions: AskAction[];
+  label: string;
+  emphasizeFirst?: boolean;
+  onRefine: (action: AskAction) => void;
+  onInternalOpen: () => void;
+}) {
+  if (actions.length === 0) return null;
+  return (
+    <nav aria-label={label} className="mt-4">
+      <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {actions.map((action, index) =>
+          action.href ? (
+            <Link
+              key={`${action.label}-${action.href}`}
+              href={action.href}
+              target={action.href.startsWith("http") ? "_blank" : undefined}
+              rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
+              onClick={() => {
+                if (!action.href?.startsWith("http")) onInternalOpen();
+              }}
+              className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
+              style={
+                emphasizeFirst && index === 0
+                  ? {
+                      borderColor: "var(--app-brand-press)",
+                      color: "var(--app-on-brand)",
+                      background: "var(--app-brand-press)",
+                    }
+                  : {
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-ink-2)",
+                      background: "var(--app-bg-elevated-solid)",
+                    }
+              }
+            >
+              {action.label}
+              {action.href.startsWith("http") ? (
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </Link>
+          ) : (
+            <button
+              key={`${action.label}-${action.query}`}
+              type="button"
+              onClick={() => onRefine(action)}
+              className="tap-44 min-h-11 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
+              style={
+                emphasizeFirst && index === 0
+                  ? {
+                      borderColor: "var(--app-brand-press)",
+                      color: "var(--app-on-brand)",
+                      background: "var(--app-brand-press)",
+                    }
+                  : {
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-ink-2)",
+                      background: "var(--app-bg-elevated-solid)",
+                    }
+              }
+            >
+              {action.label}
+            </button>
+          ),
+        )}
+      </div>
+    </nav>
+  );
+}
+
 type AreaChooserProps = {
   containerRef: RefObject<HTMLDivElement | null>;
   currentScope: Scope | null;
@@ -858,6 +953,7 @@ export default function AskFrederick({
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
   const [currentScope, setCurrentScope] = useState<Scope | null>(null);
+  const [answeredScope, setAnsweredScope] = useState<Scope | null>(null);
   const [hasCachedPosition, setHasCachedPosition] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const areaChooserRef = useRef<HTMLDivElement | null>(null);
@@ -866,6 +962,7 @@ export default function AskFrederick({
   const requestIdRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
   const visibleResultRef = useRef<AskResult | null>(null);
+  const submittedQueryRef = useRef("");
   const pendingNearbyQueryRef = useRef<string | null>(null);
   const urlQueryRef = useRef<string | null>(null);
   const skipNextAnswerScrollRef = useRef(false);
@@ -883,6 +980,7 @@ export default function AskFrederick({
     geolocation.state.status === "granted" || hasCachedPosition;
   const contextLabel = activeContextLabel(currentScope, hasDevicePosition);
   visibleResultRef.current = res;
+  submittedQueryRef.current = submittedQuery;
 
   useEffect(() => {
     setCurrentScope(getScope());
@@ -891,11 +989,8 @@ export default function AskFrederick({
       requestIdRef.current += 1;
       abortRef.current?.abort();
       abortRef.current = null;
-      lastQueryRef.current = null;
       setLoading(false);
-      setRes(null);
       setRequestFailure(null);
-      setSubmittedQuery("");
       setCurrentScope(scope);
     });
     return () => {
@@ -1021,7 +1116,9 @@ export default function AskFrederick({
       setShowAllSources(restored.showAllSources);
       setShowAreaChooser(false);
       setNearbyGateQuery(null);
-      setCurrentScope(parseScope(restored.scope) ?? "county");
+      const restoredScope = parseScope(restored.scope) ?? "county";
+      setCurrentScope(restoredScope);
+      setAnsweredScope(restoredScope);
       setShareStatus("idle");
       setRes(restored.result);
       return;
@@ -1102,6 +1199,7 @@ export default function AskFrederick({
       setRequestFailure(null);
       setSubmittedQuery(text);
       setShowAllSources(false);
+      setAnsweredScope(resolvedScope);
       setRes(cached.result);
       if (cached.result.status !== "empty") {
         track("ask_answer");
@@ -1149,6 +1247,7 @@ export default function AskFrederick({
         setRequestFailure(failure);
         setSubmittedQuery(text);
         setShowAllSources(false);
+        setAnsweredScope(resolvedScope);
         setRes(next);
         if (next.status !== "empty") {
           track("ask_answer");
@@ -1169,6 +1268,7 @@ export default function AskFrederick({
         setRequestFailure(abortFailure);
         setSubmittedQuery(text);
         setShowAllSources(false);
+        setAnsweredScope(resolvedScope);
         setRes(
           errorResult(
             abortFailure === "timeout"
@@ -1184,6 +1284,7 @@ export default function AskFrederick({
         setRequestFailure("network");
         setSubmittedQuery(text);
         setShowAllSources(false);
+        setAnsweredScope(resolvedScope);
         setRes(
           errorResult(
             "Radius could not reach the answer service. Check your connection and try again.",
@@ -1363,10 +1464,16 @@ export default function AskFrederick({
     }
   }
 
+  const responsePresentation = res
+    ? res.presentation ?? askResponsePresentation(res)
+    : null;
+  const responseSections: AskResponseSection[] = responsePresentation
+    ? askResponseSectionOrder(responsePresentation)
+    : [];
   const leadSource = res?.sources[0] ?? null;
   const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
   const supportingSources = res?.sources.slice(1) ?? [];
-  const collapsedSourceCount = 2;
+  const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
   const collapsedSupportingCount = Math.max(
     0,
     collapsedSourceCount - (leadSource ? 1 : 0),
@@ -1378,6 +1485,8 @@ export default function AskFrederick({
   const resultActions = (res?.actions ?? []).filter(
     (action) => !res?.plan || action.href !== res.plan.href,
   );
+  const primaryAction = resultActions.slice(0, 1);
+  const secondaryActions = resultActions.slice(1);
   // Offer to localize a county-wide place answer: the answer named real places
   // but Radius has no location and no town is set, so the closest option can't
   // lead. A one-tap prompt re-ranks by proximity (the bike-rental miss fix).
@@ -1389,6 +1498,14 @@ export default function AskFrederick({
     townScoped: Boolean(scopeTownSlug(currentScope)),
     hasQuery: Boolean(submittedQuery),
   });
+  const answerNeedsAreaRefresh = Boolean(
+    res &&
+      submittedQueryRef.current &&
+      !explicitAreaInQuery(submittedQueryRef.current) &&
+      answeredScope &&
+      currentScope &&
+      answeredScope !== currentScope,
+  );
 
   return (
     <section
@@ -1396,25 +1513,14 @@ export default function AskFrederick({
       className={workspace ? "mx-auto max-w-[760px]" : undefined}
     >
       {workspace ? (
-        <header className={`${res ? "mb-3" : "mb-3.5"} max-w-[660px]`}>
-          <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
-            Ask Radius
-          </p>
+        <header className="mb-3 max-w-[660px]">
           <h1
             id="ask-radius-heading"
-            className={`${res ? "mt-1 text-[28px] sm:text-[34px]" : "mt-1.5 text-[30px] sm:text-[40px]"} font-serif font-semibold leading-[1.01] tracking-[-0.03em]`}
+            className={`${res ? "text-[25px] sm:text-[28px]" : "text-[28px] sm:text-[32px]"} font-editorial leading-none tracking-[-0.025em]`}
             style={{ color: "var(--app-ink)" }}
           >
-            Tell Radius what you need.
+            Ask Radius.
           </h1>
-          {!res ? (
-            <p
-              className="mt-2 max-w-[560px] text-[13px] leading-[1.55] sm:text-[14px]"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              Find a place or get a source-backed answer about Frederick County.
-            </p>
-          ) : null}
         </header>
       ) : !hideLabel ? (
         <div className="mb-2.5 flex items-center justify-between gap-3">
@@ -1617,20 +1723,34 @@ export default function AskFrederick({
 
       {workspace && !res && !loading && !nearbyGateQuery ? (
         <section aria-labelledby="ask-start-heading" className="mt-3">
-          <h2
-            id="ask-start-heading"
-            className="px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Try a question
-          </h2>
+          <div className="flex min-h-9 items-center justify-between gap-3 px-1">
+            <h2
+              id="ask-start-heading"
+              className="text-[10px] font-bold uppercase tracking-[0.11em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Try a question
+            </h2>
+            <Link
+              href="/compass"
+              className="tap-44 inline-flex items-center gap-1 text-[10.5px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Browse tools
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          </div>
           <div className="mt-1.5 grid grid-cols-2 border-t" style={{ borderColor: "var(--app-border)" }}>
-            {WORKSPACE_ASKS.map((prompt) => (
+            {WORKSPACE_ASKS.map((prompt, index) => (
               <button
                 key={prompt.label}
                 type="button"
                 onClick={() => runIntent(prompt.query)}
-                className="tap-44 grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_16px] items-center gap-2 border-b px-2 text-left text-[11.5px] font-semibold leading-snug transition odd:border-r hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+                className={`tap-44 grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_16px] items-center gap-2 border-b px-2 text-left text-[11.5px] font-semibold leading-snug transition hover:bg-[var(--app-bg-sunken)] active:opacity-70 ${
+                  index === WORKSPACE_ASKS.length - 1 && WORKSPACE_ASKS.length % 2 === 1
+                    ? "col-span-2"
+                    : "odd:border-r"
+                }`}
                 style={{
                   borderColor: "var(--app-border)",
                   color: "var(--app-ink-2)",
@@ -1683,303 +1803,422 @@ export default function AskFrederick({
         ) : null}
       </div>
 
-      {res ? (
-          <div
-            inert={loading ? true : undefined}
-            className={`${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-55" : ""}`}
-            style={!workspace ? { borderColor: "var(--app-border)" } : undefined}
+      {res && responsePresentation ? (
+        <div
+          inert={loading ? true : undefined}
+          className={`${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-55" : ""}`}
+          style={!workspace ? { borderColor: "var(--app-border)" } : undefined}
+        >
+          <section
+            aria-labelledby="ask-answer-heading"
+            className={workspace ? "border-y px-1 py-4 sm:py-5" : undefined}
+            style={
+              workspace
+                ? {
+                    borderColor: "var(--app-border)",
+                    background:
+                      "color-mix(in srgb, var(--app-bg-elevated-solid) 52%, transparent)",
+                  }
+                : undefined
+            }
           >
-            <section
-              aria-labelledby="ask-answer-heading"
-              className={workspace ? "border-y px-1 py-4 sm:py-5" : undefined}
-              style={
-                workspace
-                  ? {
-                      borderColor: "var(--app-border)",
-                      background: "color-mix(in srgb, var(--app-bg-elevated-solid) 52%, transparent)",
-                    }
-                  : undefined
-              }
-            >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2
-                  ref={answerHeadingRef}
-                  id="ask-answer-heading"
-                  tabIndex={-1}
-                  className={workspace ? "font-serif text-[20px] font-semibold tracking-tight" : "text-[12px] font-semibold"}
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {askResultHeading(res, requestFailure)}
-                </h2>
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  {res.context ? (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold"
-                      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-                    >
-                      <MapPin className="h-3 w-3" aria-hidden />
-                      {res.context}
-                    </span>
-                  ) : null}
-                  {workspace && permalinkQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => void shareQuestion()}
-                      className="tap-44 inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      {shareStatus === "copied" || shareStatus === "shared" ? (
-                        <Check className="h-3.5 w-3.5" aria-hidden />
-                      ) : (
-                        <Share2 className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      {shareStatus === "copied"
-                        ? "Link copied"
-                        : shareStatus === "shared"
-                          ? "Shared"
-                          : shareStatus === "error"
-                            ? "Try sharing again"
-                            : "Share question"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <p className="sr-only" role="status" aria-live="polite">
-                {shareStatus === "copied"
-                  ? "The question link is ready to paste."
-                  : shareStatus === "shared"
-                    ? "The question was sent."
-                    : shareStatus === "error"
-                      ? "Radius could not copy the question link."
-                      : ""}
-              </p>
-              {workspace && submittedQuery ? (
-                <p
-                  className="mb-3 line-clamp-2 text-[11px] leading-relaxed"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Answering: {submittedQuery}
-                </p>
-              ) : null}
-              {canLocalizeAnswer ? (
-                <button
-                  type="button"
-                  onClick={localizeAnswer}
-                  disabled={geolocation.state.status === "loading"}
-                  className="mb-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-60"
-                  style={{
-                    borderColor: "var(--app-brand)",
-                    background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid))",
-                  }}
-                >
-                  <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                      {geolocation.state.status === "loading" ? "Finding you…" : "These are county-wide picks."}
-                    </span>
-                    <span className="block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                      Share your location to put the closest ones first.
-                    </span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-                </button>
-              ) : null}
-              {leadSource ? (
-                <div className="mt-3">
-                  <p
-                    className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    {evidenceLabels?.sourceLabel}
-                  </p>
-                  <AskSourceCard
-                    source={leadSource}
-                    index={0}
-                    onInternalOpen={rememberAskReturn}
-                  />
-                </div>
-              ) : null}
-              {res.answer ? (
-                <div
-                  className={leadSource ? "mt-3 border-t px-1 pt-3" : undefined}
-                  style={leadSource ? { borderColor: "var(--app-border)" } : undefined}
-                >
-                  {leadSource ? (
-                    <p
-                      className="mb-1 text-[10px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {evidenceLabels?.explanationLabel}
-                    </p>
-                  ) : null}
-                  <p
-                    className="whitespace-pre-wrap text-[15px] leading-[1.62] sm:text-[16px]"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {res.answer}
-                  </p>
-                </div>
-              ) : null}
-              {requestFailure ? (
-                <button
-                  type="button"
-                  onClick={retryLastQuestion}
-                  className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
-                  style={{
-                    borderColor: "var(--app-brand-press)",
-                    color: "var(--app-brand-press)",
-                  }}
-                >
-                  Try again
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              ) : null}
-            </section>
-
-            {res.plan ? (
-              <AskPlanCard
-                plan={res.plan}
-                onInternalOpen={() => rememberAskReturn(null)}
-              />
-            ) : null}
-
-            {resultActions.length > 0 ? (
-              <nav aria-label="Next steps" className="mt-4">
-                <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>
-                  Next step
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {resultActions.map((action, index) =>
-                    action.href ? (
-                      <Link
-                        key={`${action.label}-${action.href}`}
-                        href={action.href}
-                        target={action.href.startsWith("http") ? "_blank" : undefined}
-                        rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        onClick={() => {
-                          if (!action.href?.startsWith("http")) {
-                            rememberAskReturn(null);
-                          }
-                        }}
-                        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
-                        style={
-                          index === 0
-                            ? {
-                                borderColor: "var(--app-brand-press)",
-                                color: "var(--app-on-brand)",
-                                background: "var(--app-brand-press)",
-                              }
-                            : {
-                                borderColor: "var(--app-border)",
-                                color: "var(--app-ink-2)",
-                                background: "var(--app-bg-elevated-solid)",
-                              }
-                        }
-                      >
-                        {action.label}
-                        {action.href.startsWith("http") ? (
-                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                        ) : (
-                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                        )}
-                      </Link>
-                    ) : (
-                      <button
-                        key={`${action.label}-${action.query}`}
-                        type="button"
-                        onClick={() => runAction(action)}
-                        className="tap-44 min-h-11 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
-                        style={
-                          index === 0
-                            ? {
-                                borderColor: "var(--app-brand-press)",
-                                color: "var(--app-on-brand)",
-                                background: "var(--app-brand-press)",
-                              }
-                            : {
-                                borderColor: "var(--app-border)",
-                                color: "var(--app-ink-2)",
-                                background: "var(--app-bg-elevated-solid)",
-                              }
-                        }
-                      >
-                        {action.label}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </nav>
-            ) : null}
-
-            {supportingSources.length > 0 ? (
-              <section aria-labelledby="ask-sources-heading" className="mt-5">
-                <div className="mb-2.5 flex items-end justify-between gap-3 px-1">
-                  <div>
-                    <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                      More sources
-                    </p>
-                    <h2
-                      id="ask-sources-heading"
-                      className="mt-1 font-serif text-[19px] font-semibold tracking-tight"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      Sources behind this answer
-                    </h2>
-                  </div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2
+                ref={answerHeadingRef}
+                id="ask-answer-heading"
+                tabIndex={-1}
+                className={
+                  workspace
+                    ? "font-serif text-[20px] font-semibold tracking-tight"
+                    : "text-[12px] font-semibold"
+                }
+                style={{ color: "var(--app-ink)" }}
+              >
+                {askResultHeading(res, requestFailure)}
+              </h2>
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {res.context ? (
                   <span
-                    className="font-mono text-[10px]"
-                    style={{ color: "var(--app-ink-3)" }}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-ink-3)",
+                    }}
                   >
-                    {supportingSources.length}{" "}
-                    {supportingSources.length === 1 ? "match" : "matches"}
+                    <MapPin className="h-3 w-3" aria-hidden />
+                    {res.context}
                   </span>
-                </div>
-                <div className="grid gap-2.5">
-                  {visibleSources.map((source, index) => (
-                    <AskSourceCard
-                      key={`${source.category}-${source.slug}-${source.href}`}
-                      source={source}
-                      index={index + 1}
-                      onInternalOpen={rememberAskReturn}
-                    />
-                  ))}
-                </div>
-                {(res?.sources.length ?? 0) > collapsedSourceCount ? (
+                ) : null}
+                {workspace && permalinkQuery ? (
                   <button
                     type="button"
-                    onClick={() => setShowAllSources((value) => !value)}
-                    className="tap-44 mt-2 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
-                    style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                    onClick={() => void shareQuestion()}
+                    className="tap-44 inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+                    style={{ color: "var(--app-brand-press)" }}
                   >
-                    {showAllSources
-                      ? "Show fewer matches"
-                      : `Show all ${res?.sources.length ?? 0} matches`}
+                    {shareStatus === "copied" || shareStatus === "shared" ? (
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Share2 className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    {shareStatus === "copied"
+                      ? "Link copied"
+                      : shareStatus === "shared"
+                        ? "Shared"
+                        : shareStatus === "error"
+                          ? "Try sharing again"
+                          : "Share question"}
                   </button>
                 ) : null}
-              </section>
+              </div>
+            </div>
+            <p className="sr-only" role="status" aria-live="polite">
+              {shareStatus === "copied"
+                ? "The question link is ready to paste."
+                : shareStatus === "shared"
+                  ? "The question was sent."
+                  : shareStatus === "error"
+                    ? "Radius could not copy the question link."
+                    : ""}
+            </p>
+            {workspace && submittedQuery ? (
+              <p
+                className="mb-3 line-clamp-2 text-[11px] leading-relaxed"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Answering: {submittedQuery}
+              </p>
             ) : null}
 
+            {responseSections.map((section) => {
+              if (section === "summary") {
+                return responsePresentation.summary ? (
+                  <p
+                    key={section}
+                    data-ask-section={section}
+                    className="whitespace-pre-wrap px-1 text-[15px] leading-[1.58] sm:text-[16px]"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {responsePresentation.summary}
+                  </p>
+                ) : null;
+              }
+
+              if (section === "context-controls") {
+                if (!answerNeedsAreaRefresh && !canLocalizeAnswer) return null;
+                return (
+                  <div key={section} data-ask-section={section}>
+                    {answerNeedsAreaRefresh ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void ask(submittedQueryRef.current, {
+                            scope: currentScope ?? undefined,
+                            skipNearbyGate: true,
+                            selfContained: true,
+                          });
+                        }}
+                        className="mt-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99]"
+                        style={{
+                          borderColor: "var(--app-border-strong)",
+                          background: "var(--app-bg-sunken)",
+                        }}
+                      >
+                        <MapPin
+                          className="h-4 w-4 shrink-0"
+                          strokeWidth={2.2}
+                          style={{ color: "var(--app-brand-press)" }}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block text-[12.5px] font-semibold"
+                            style={{ color: "var(--app-ink)" }}
+                          >
+                            Your answer is still here.
+                          </span>
+                          <span
+                            className="block text-[11.5px] leading-snug"
+                            style={{ color: "var(--app-ink-2)" }}
+                          >
+                            Update it for {contextLabel}.
+                          </span>
+                        </span>
+                        <ArrowRight
+                          className="h-4 w-4 shrink-0"
+                          strokeWidth={2.2}
+                          style={{ color: "var(--app-brand-press)" }}
+                          aria-hidden
+                        />
+                      </button>
+                    ) : null}
+                    {canLocalizeAnswer ? (
+                      <button
+                        type="button"
+                        onClick={localizeAnswer}
+                        disabled={geolocation.state.status === "loading"}
+                        className="mt-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-60"
+                        style={{
+                          borderColor: "var(--app-brand)",
+                          background:
+                            "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid))",
+                        }}
+                      >
+                        <LocateFixed
+                          className="h-4 w-4 shrink-0"
+                          strokeWidth={2.2}
+                          style={{ color: "var(--app-brand-press)" }}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block text-[12.5px] font-semibold"
+                            style={{ color: "var(--app-ink)" }}
+                          >
+                            {geolocation.state.status === "loading"
+                              ? "Finding you…"
+                              : "These are county-wide picks."}
+                          </span>
+                          <span
+                            className="block text-[11.5px] leading-snug"
+                            style={{ color: "var(--app-ink-2)" }}
+                          >
+                            Share your location to put the closest ones first.
+                          </span>
+                        </span>
+                        <ArrowRight
+                          className="h-4 w-4 shrink-0"
+                          strokeWidth={2.2}
+                          style={{ color: "var(--app-brand-press)" }}
+                          aria-hidden
+                        />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }
+
+              if (section === "plan") {
+                return res.plan ? (
+                  <div key={section} data-ask-section={section}>
+                    <AskPlanCard
+                      plan={res.plan}
+                      onInternalOpen={() => rememberAskReturn(null)}
+                    />
+                  </div>
+                ) : null;
+              }
+
+              if (section === "primary-source") {
+                return leadSource ? (
+                  <div
+                    key={section}
+                    data-ask-section={section}
+                    className="mt-4 border-t pt-3"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <p
+                      className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      {responsePresentation.layout === "civic"
+                        ? "Official source"
+                        : evidenceLabels?.sourceLabel}
+                    </p>
+                    <AskSourceCard
+                      source={leadSource}
+                      index={0}
+                      onInternalOpen={rememberAskReturn}
+                    />
+                  </div>
+                ) : null;
+              }
+
+              if (section === "primary-action") {
+                if (requestFailure) {
+                  return (
+                    <button
+                      key={section}
+                      data-ask-section={section}
+                      type="button"
+                      onClick={retryLastQuestion}
+                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                      style={{
+                        borderColor: "var(--app-brand-press)",
+                        color: "var(--app-brand-press)",
+                      }}
+                    >
+                      Try again
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  );
+                }
+                if (
+                  responsePresentation.layout === "recovery" &&
+                  primaryAction.length === 0
+                ) {
+                  return (
+                    <button
+                      key={section}
+                      data-ask-section={section}
+                      type="button"
+                      onClick={() => inputRef.current?.focus()}
+                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                      style={{
+                        borderColor: "var(--app-brand-press)",
+                        color: "var(--app-brand-press)",
+                      }}
+                    >
+                      Change the question
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  );
+                }
+                return (
+                  <div key={section} data-ask-section={section}>
+                    <AskActionList
+                      actions={primaryAction}
+                      label={
+                        responsePresentation.layout === "civic"
+                          ? "Do this now"
+                          : "Next step"
+                      }
+                      onRefine={runAction}
+                      onInternalOpen={() => rememberAskReturn(null)}
+                    />
+                  </div>
+                );
+              }
+
+              if (section === "supporting-sources") {
+                return supportingSources.length > 0 ? (
+                  <details
+                    key={section}
+                    data-ask-section={section}
+                    open={
+                      responsePresentation.layout === "place"
+                        ? true
+                        : undefined
+                    }
+                    className="group mt-5 overflow-hidden rounded-[var(--app-radius-md)] border"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      background: "var(--app-bg-elevated)",
+                    }}
+                  >
+                    <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
+                      <span
+                        className="text-[13px] font-semibold"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {responsePresentation.layout === "place"
+                          ? "Other options and sources"
+                          : responsePresentation.layout === "civic"
+                            ? "More official sources"
+                            : "Sources behind this answer"}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-2 font-mono text-[10px]"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {supportingSources.length}{" "}
+                        {supportingSources.length === 1 ? "source" : "sources"}
+                        <ChevronDown
+                          className="h-4 w-4 transition-transform group-open:rotate-180"
+                          strokeWidth={2.2}
+                          aria-hidden
+                        />
+                      </span>
+                    </summary>
+                    <div
+                      className="grid gap-2.5 border-t p-3"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <div className="grid gap-2.5">
+                        {visibleSources.map((source, index) => (
+                          <AskSourceCard
+                            key={`${source.category}-${source.slug}-${source.href}`}
+                            source={source}
+                            index={index + 1}
+                            onInternalOpen={rememberAskReturn}
+                          />
+                        ))}
+                      </div>
+                      {supportingSources.length > collapsedSupportingCount ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllSources((value) => !value)}
+                          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
+                          style={{
+                            borderColor: "var(--app-border)",
+                            color: "var(--app-brand-press)",
+                          }}
+                        >
+                          {showAllSources
+                            ? "Show fewer sources"
+                            : `Show all ${supportingSources.length} sources`}
+                        </button>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null;
+              }
+
+              if (section === "secondary-actions") {
+                return (
+                  <div key={section} data-ask-section={section}>
+                    <AskActionList
+                      actions={secondaryActions}
+                      label="Other next steps"
+                      emphasizeFirst={false}
+                      onRefine={runAction}
+                      onInternalOpen={() => rememberAskReturn(null)}
+                    />
+                  </div>
+                );
+              }
+
+              if (section === "detail") {
+                return responsePresentation.detail ? (
+                  <div
+                    key={section}
+                    data-ask-section={section}
+                    className="mt-4 border-t px-1 pt-3"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <p
+                      className="text-[10px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      More context
+                    </p>
+                    <p
+                      className="mt-1 whitespace-pre-wrap text-[13px] leading-[1.58]"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
+                      {responsePresentation.detail}
+                    </p>
+                  </div>
+                ) : null;
+              }
+
+              return null;
+            })}
+          </section>
+
+          <div className="mt-3 flex justify-end">
+            <Link
+              href="/compass"
+              className="tap-44 inline-flex items-center gap-1 px-1 text-[10.5px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Browse tools
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
           </div>
+        </div>
       ) : null}
 
-      {workspace ? (
-        <Link
-          href="/compass"
-          prefetch={false}
-          className="tap-44-y mt-5 flex min-h-11 items-center justify-between gap-3 border-t px-1 py-2.5 text-[12px] font-semibold transition active:opacity-70"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
-            Need a specific tool? Browse all Radius tools.
-          </span>
-          <ArrowRight
-            className="h-4 w-4 shrink-0"
-            style={{ color: "var(--app-brand-press)" }}
-            aria-hidden
-          />
-        </Link>
-      ) : null}
     </section>
   );
 }

@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { hoursRefreshCycleDay } from "@/lib/hours-refresh-targets";
+import {
+  HOURS_REFRESH_CYCLE_DAYS,
+  hoursRefreshCycleDay,
+} from "@/lib/hours-refresh-targets";
 
 const mocks = vi.hoisted(() => ({
   placeRefreshIdentities: vi.fn(),
@@ -22,18 +25,19 @@ vi.mock("@/lib/integrations/google-places", () => ({
 import { GET } from "./route";
 
 const NOW = new Date("2026-07-26T08:00:00.000Z");
-const cycleDay = Math.floor(NOW.getTime() / 86_400_000) % 7;
+const cycleDay =
+  Math.floor(NOW.getTime() / 86_400_000) % HOURS_REFRESH_CYCLE_DAYS;
 
-function slugForCycle() {
+function slugForCycle(day = cycleDay) {
   for (let index = 0; index < 100; index++) {
     const slug = `hours-route-place-${index}`;
-    if (hoursRefreshCycleDay(slug) === cycleDay) return slug;
+    if (hoursRefreshCycleDay(slug) === day) return slug;
   }
   throw new Error("Unable to build a deterministic hours test slug.");
 }
 
-function request() {
-  return new Request("https://frederickradius.app/api/cron/hours-refresh", {
+function request(query = "") {
+  return new Request(`https://frederickradius.app/api/cron/hours-refresh${query}`, {
     headers: { authorization: "Bearer test-cron-secret" },
   });
 }
@@ -93,6 +97,20 @@ describe("GET /api/cron/hours-refresh", () => {
 
     expect(response.status).toBe(503);
     expect(body.error).toContain("0024_place_hours_refresh.sql");
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid backfill bucket before touching storage or Google", async () => {
+    const response = await GET(
+      request(`?cycleDay=${HOURS_REFRESH_CYCLE_DAYS}`),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain(
+      `cycleDay must be one integer from 0 to ${HOURS_REFRESH_CYCLE_DAYS - 1}`,
+    );
+    expect(mocks.getDb).not.toHaveBeenCalled();
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 
@@ -178,6 +196,39 @@ describe("GET /api/cron/hours-refresh", () => {
           placeId: "ChIJ-hours-route-test",
         }),
       }),
+    );
+  });
+
+  it("can recover one missed cycle bucket through an authenticated backfill", async () => {
+    const backfillDay = (cycleDay + 1) % HOURS_REFRESH_CYCLE_DAYS;
+    const backfillSlug = slugForCycle(backfillDay);
+    const storage = db();
+    mocks.getDb.mockReturnValue(storage);
+    mocks.placeRefreshIdentities.mockReturnValue([
+      {
+        slug: backfillSlug,
+        google_place_id: "ChIJ-hours-backfill-test",
+      },
+    ]);
+    mocks.getPlaceDetails.mockResolvedValue({
+      weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+      business_status: "OPERATIONAL",
+    });
+
+    const response = await GET(request(`?cycleDay=${backfillDay}`));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      healthy: true,
+      cycleDay: backfillDay,
+      cycleMode: "backfill",
+      targeted: 1,
+      written: 1,
+    });
+    expect(mocks.getPlaceDetails).toHaveBeenCalledWith(
+      "ChIJ-hours-backfill-test",
+      "hours",
     );
   });
 });

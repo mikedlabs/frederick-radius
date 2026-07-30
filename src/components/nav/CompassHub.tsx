@@ -144,7 +144,7 @@ const TIME_MACHINE: DirectoryItem = {
 /**
  * The Tool Deck has one resident-facing organization. It resolves every row
  * from the shared registry, then places Ask Radius at the decision front door.
- * A home shortcut is deliberately kept outside this 60-tool count.
+ * A home shortcut is deliberately kept outside the registry count.
  */
 export function buildToolDeckGroups(homeSlug: string | null): ToolDeckGroup[] {
   const itemById = new globalThis.Map(
@@ -163,7 +163,7 @@ export function buildToolDeckGroups(homeSlug: string | null): ToolDeckGroup[] {
     }
   }
 
-  return TOOL_DECK_GROUP_DEFINITIONS.map((definition) => {
+  const groups = TOOL_DECK_GROUP_DEFINITIONS.map((definition) => {
     const items = definition.toolIds.flatMap((id) => {
       const item = itemById.get(id);
       return item ? [item] : [];
@@ -181,6 +181,27 @@ export function buildToolDeckGroups(homeSlug: string | null): ToolDeckGroup[] {
       items,
     };
   });
+
+  // The group model is intentionally curated, but a newly registered tool
+  // must never disappear while that model catches up. Keep unassigned tools
+  // reachable in Community & services; this currently preserves the
+  // communication-access guide and also makes future registry additions
+  // fail safe instead of becoming search dead ends.
+  const assignedIds = new Set(
+    groups.flatMap((group) => group.items.map((item) => item.id)),
+  );
+  const unassigned = RADIUS_TOOLS.flatMap((tool) => {
+    if (assignedIds.has(tool.id)) return [];
+    const item = itemById.get(tool.id);
+    return item ? [item] : [];
+  });
+  if (unassigned.length === 0) return groups;
+
+  return groups.map((group) =>
+    group.id === "community"
+      ? { ...group, items: [...group.items, ...unassigned] }
+      : group,
+  );
 }
 
 export function buildToolDeckDirectory(

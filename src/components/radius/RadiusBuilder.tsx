@@ -165,6 +165,8 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
   { kind: "recycling", label: "Recycling", glyph: "\u{267B}\u{FE0F}" },
   { kind: "bench", label: "Benches", glyph: "\u{1FA91}" },
   { kind: "dog_waste", label: "Dog stations", glyph: "\u{1F43E}" },
+  { kind: "dog_park", label: "Dog parks", glyph: "\u{1F43E}" },
+  { kind: "water_access", label: "Water access", glyph: "\u{1F6F6}" },
   { kind: "bike_repair", label: "Bike repair", glyph: "\u{1F6E0}\u{FE0F}" },
 ];
 

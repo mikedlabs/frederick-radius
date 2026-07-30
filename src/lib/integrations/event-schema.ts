@@ -81,6 +81,10 @@ export const liveEventSchema = z
     placement: z.enum(["geocoded", "venue"]).optional(),
     attendance_mode: z.enum(["physical", "online", "mixed"]).optional(),
     online_url: z.string().url().optional(),
+    /** Optional publisher-supplied ticket floor and event art. Keep these in
+     *  the runtime schema or Zod strips them after a feed parser maps them. */
+    price_text: z.string().max(120).optional(),
+    hero_image: z.string().url().optional(),
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),
@@ -109,6 +113,7 @@ export const liveEventSchema = z
       "heritage-frederick",
       "monocacy",
       "msd",
+      "mdcc",
       "mount-st-marys",
       "isf",
       "elc",

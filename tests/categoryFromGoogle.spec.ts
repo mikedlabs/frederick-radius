@@ -45,13 +45,20 @@ describe("categoryFromPrimaryType", () => {
     // Community → civic
     expect(categoryFromPrimaryType("non_profit_organization")).toBe("civic");
     expect(categoryFromPrimaryType("association_or_organization")).toBe("civic");
-    // Practical → services
+    // Practical services with dedicated discovery categories
     expect(categoryFromPrimaryType("bank")).toBe("services");
-    expect(categoryFromPrimaryType("car_repair")).toBe("services");
+    expect(categoryFromPrimaryType("car_repair")).toBe("auto-care");
     // Retail → shopping
     expect(categoryFromPrimaryType("liquor_store")).toBe("shopping");
     expect(categoryFromPrimaryType("convenience_store")).toBe("shopping");
     expect(categoryFromPrimaryType("parking_garage")).toBe("parking");
+  });
+
+  it("keeps wine and spirits out of the brewery category", () => {
+    expect(categoryFromPrimaryType("winery")).toBe("winery");
+    expect(categoryFromPrimaryType("cidery")).toBe("winery");
+    expect(categoryFromPrimaryType("meadery")).toBe("winery");
+    expect(categoryFromPrimaryType("distillery")).toBe("distillery");
   });
 
   it("returns null for vague/unknown types so curated stays put", () => {

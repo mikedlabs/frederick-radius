@@ -21,10 +21,11 @@
  * users only ever read a warm cache. It calls the SAME functions the
  * pages call, so it populates the SAME cache keys.
  *
- * It only READS through the existing cache functions — no DB writes, no
- * new data path, no change to the unified assembly — so it is purely
- * additive and fail-soft: a warm miss just means the next user
- * repopulates as before, never worse than today.
+ * It reads through the existing cache functions, then writes the already
+ * assembled public cards to the server-only durable event archive. That
+ * bounded post-warm write gives shared/saved links a stable source identity
+ * without adding work to a visitor request. It never guesses removals from a
+ * partial feed result.
  *
  * Map-layer caches are warmed by /api/cron/warm-map on a staggered schedule.
  * Keeping that independent fanout out of this route leaves enough runtime
@@ -40,6 +41,7 @@ import {
 } from "@/lib/integrations/ical-live";
 import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
 import { withDeadlineOutcome } from "@/lib/promise-deadline";
+import { syncEventArchiveBatch } from "@/lib/events/event-archive-batch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +49,7 @@ export const dynamic = "force-dynamic";
 // capped at the 8s per-feed timeout) so users never have to.
 export const maxDuration = 90;
 export const EVENT_WARM_BUDGET_MS = 72_000;
+export const EVENT_ARCHIVE_WARM_BUDGET_MS = 7_000;
 const ALERT_DEADLINE_MS = 8_000;
 
 function errMsg(reason: unknown): string {
@@ -176,10 +179,86 @@ export async function GET(request: Request) {
     ),
   };
 
+  // Populate durable event routes from the cards this cron already paid to
+  // assemble. This runs after the user-facing caches are warm and under its own
+  // small budget. The 90-day source cache returns both the exact publishers
+  // that completed and their raw publisher identities. Use that complete
+  // inventory for conservative removal checks instead of the filtered public
+  // cards, where deduplication can legitimately hide a still-live source row.
+  // Ticketmaster is excluded until its music and sports adapters share one
+  // complete source inventory; treating the music-only read as the whole
+  // publisher could tombstone a valid sports link.
+  const archiveSuccessfulSources =
+    live90.status === "fulfilled"
+      ? live90.value.sources_succeeded.filter(
+          (source) => source !== "ticketmaster",
+        )
+      : [];
+  const archiveSuccessfulSourceSet = new Set(archiveSuccessfulSources);
+  const archiveSeenSourceIdentities =
+    live90.status === "fulfilled"
+      ? live90.value.events
+          .filter(
+            (event) =>
+              archiveSuccessfulSourceSet.has(event.source) &&
+              Boolean(event.id?.trim()),
+          )
+          .map((event) => ({
+            source: event.source,
+            source_uid: event.id,
+          }))
+      : [];
+  const archiveOutcome =
+    unified.status === "fulfilled"
+      ? await withDeadlineOutcome(
+          syncEventArchiveBatch(unified.value.publicEvents, {
+            deadlineMs: EVENT_ARCHIVE_WARM_BUDGET_MS - 500,
+            successfulSources: archiveSuccessfulSources,
+            seenSourceIdentities: archiveSeenSourceIdentities,
+          }),
+          EVENT_ARCHIVE_WARM_BUDGET_MS,
+        )
+      : { status: "skipped" as const };
+  const archive =
+    archiveOutcome.status === "fulfilled"
+      ? {
+          // A deliberate hard cap is not a failed warm. Every accepted row
+          // still received a durable identity; `truncated` remains visible
+          // and disables tombstoning, while a timeout or partial write stays
+          // operationally red.
+          ok:
+            !archiveOutcome.value.timedOut &&
+            archiveOutcome.value.upserted === archiveOutcome.value.accepted,
+          ...archiveOutcome.value,
+        }
+      : archiveOutcome.status === "skipped"
+        ? { ok: false, skipped: true }
+        : {
+            ok: false,
+            error:
+              archiveOutcome.status === "timed_out"
+                ? "archive deadline exceeded"
+                : "archive sync failed",
+          };
+  if (!archive.ok && !("skipped" in archive)) {
+    const error =
+      "error" in archive
+        ? archive.error ?? "archive sync failed"
+        : archive.timedOut
+          ? "archive deadline exceeded"
+          : "archive sync incomplete";
+    failures.push({ cache: "event archive", error });
+    Sentry.captureMessage("warm-events: durable event archive did not complete", {
+      level: "warning",
+      extra: { archive },
+    });
+  }
+
   const body = {
     ok: failures.length === 0,
     duration_ms: Date.now() - t0,
     warmed,
+    archive,
   };
 
   if (failures.length > 0) {

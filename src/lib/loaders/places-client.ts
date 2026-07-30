@@ -107,11 +107,21 @@ export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {
 export function clientPlacesWithinRadius(
   origin: LngLat,
   meters: number,
+  spatialDistances?: ReadonlyMap<string, number>,
 ): PlaceCardData[] {
-  return CLIENT_PLACES.map((p) => ({
-    ...withLiveStatus(p),
-    distance_m: haversineMeters(origin, p.geom),
-  }))
-    .filter((p) => (p.distance_m ?? Infinity) <= meters)
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+  return CLIENT_PLACES.flatMap((p) => {
+    const distance = spatialDistances
+      ? spatialDistances.get(p.slug)
+      : haversineMeters(origin, p.geom);
+    // A trusted PostGIS map contains only rows inside the requested radius.
+    // Missing slugs are therefore outside the result, not an unknown distance.
+    if (distance === undefined || !Number.isFinite(distance) || distance > meters) {
+      return [];
+    }
+    return [{ ...withLiveStatus(p), distance_m: distance }];
+  }).sort(
+    (a, b) =>
+      (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity) ||
+      a.slug.localeCompare(b.slug),
+  );
 }

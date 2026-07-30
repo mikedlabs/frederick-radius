@@ -181,6 +181,7 @@ const ROUTES: AuditRoute[] = [
   { id: "check-a-date", path: "/check-a-date", group: "guide", description: "Date-aware planning tool" },
   { id: "rhythm", path: "/rhythm", group: "guide", description: "Stored schedule patterns" },
   { id: "contacts", path: "/contacts", group: "guide", description: "Local contacts directory" },
+  { id: "communication-access", path: "/access", group: "guide", description: "Communication access and Deaf-community resources" },
   { id: "collections", path: "/collections", group: "guide", description: "Editorial guide index" },
   { id: "nonprofits", path: "/nonprofits", group: "guide", description: "Local nonprofit browser" },
   { id: "sports", path: "/sports", group: "guide", description: "Local sports guide" },

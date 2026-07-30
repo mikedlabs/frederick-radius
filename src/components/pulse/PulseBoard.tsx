@@ -216,6 +216,38 @@ export function pulseTileBanks(tiles: PulseTile[]): PulseTileBank[] {
   return banks;
 }
 
+/**
+ * Do not describe a previously active item as cleared when its source simply
+ * stopped answering. A clear message is only earned by a current, quiet
+ * reading.
+ */
+export function pulseClearedKeys(
+  previousActive: Record<string, string>,
+  tiles: PulseTile[],
+): string[] {
+  const currentActiveKeys = new Set(
+    tiles
+      .filter(
+        (tile) =>
+          tile.attention &&
+          pulseTileState(tile) !== "Feed unavailable" &&
+          pulseTileState(tile) !== "Not connected",
+      )
+      .map((tile) => tile.key),
+  );
+  const unknownKeys = new Set(
+    tiles
+      .filter((tile) => {
+        const state = pulseTileState(tile);
+        return state === "Feed unavailable" || state === "Not connected";
+      })
+      .map((tile) => tile.key),
+  );
+  return Object.keys(previousActive).filter(
+    (key) => !currentActiveKeys.has(key) && !unknownKeys.has(key),
+  );
+}
+
 type Snapshot = {
   at: number;
   active: Record<string, string>;
@@ -321,7 +353,7 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
   );
 }
 
-function AlertDataPanel({
+export function AlertDataPanel({
   facts,
   lead,
   meta,
@@ -361,7 +393,7 @@ function AlertDataPanel({
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
           {lead.label}
         </span>
-        <span className="max-w-[44%] text-right text-[9.5px] font-medium leading-tight" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-caption max-w-[44%] text-right font-medium" style={{ color: "var(--app-ink-3)" }}>
           {lead.sourceLabel}
         </span>
       </div>
@@ -373,7 +405,7 @@ function AlertDataPanel({
             className="min-w-0 border-b px-3 py-2 odd:border-r"
             style={{ borderColor: `color-mix(in srgb, ${color} 20%, var(--app-border))` }}
           >
-            <dt className="text-[8.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            <dt className="text-caption font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
               {fact.label}
             </dt>
             <dd
@@ -383,7 +415,7 @@ function AlertDataPanel({
               {fact.value}
             </dd>
             {fact.detail ? (
-              <dd className="mt-0.5 break-words text-[9.5px] leading-tight" style={{ color: "var(--app-ink-3)" }}>
+              <dd className="text-caption mt-0.5 break-words" style={{ color: "var(--app-ink-3)" }}>
                 {fact.detail}
               </dd>
             ) : null}
@@ -393,7 +425,7 @@ function AlertDataPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
         {meta ? (
-          <p className="flex min-w-0 items-center gap-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-caption flex min-w-0 items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
             <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
             {meta}
           </p>
@@ -422,7 +454,9 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
     // deterministic and the first briefing render is never delayed by it.
     const timer = window.setTimeout(() => {
       const current = Object.fromEntries(
-        tiles.filter((tile) => tile.attention).map((tile) => [tile.key, tile.countLabel]),
+        tiles
+          .filter((tile) => tile.attention && !tile.degraded)
+          .map((tile) => [tile.key, tile.countLabel]),
       );
       let previous: Snapshot | null = null;
       try {
@@ -433,7 +467,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
 
       if (previous?.at) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
-        const cleared = Object.keys(previous.active).filter((key) => !(key in current));
+        const cleared = pulseClearedKeys(previous.active, tiles);
         if (added.length > 0) {
           const labels = added
             .map((key) => tiles.find((tile) => tile.key === key)?.label)
@@ -923,7 +957,19 @@ export default function PulseBoard({
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
   const heroColor = CHIP_TONE[heroTone];
   const heroFacts = hero.facts?.filter((fact) => fact.value.trim().length > 0).slice(0, 4) ?? [];
-  const showAlertData = !hero.allClear && Boolean(lead) && heroFacts.length > 0;
+  // Structured metric panels help for weather, air, traffic, and similar
+  // readings. Official-alert and police leads already carry their essential
+  // facts in the alert ledger, so repeating them here creates two competing
+  // explanations for the same situation.
+  const leadUsesMetricPanel = Boolean(
+    lead &&
+    lead.key !== "alerts" &&
+    lead.key !== "police",
+  );
+  const showAlertData =
+    !hero.allClear &&
+    leadUsesMetricPanel &&
+    heroFacts.length > 0;
   const attentionChips = chips.filter(
     (chip) => chip.tone !== "positive" && (!showAlertData || chip.key !== hero.leadKey),
   );

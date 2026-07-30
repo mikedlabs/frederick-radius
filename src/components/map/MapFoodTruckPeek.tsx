@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { CornerUpRight, Radio, Truck, X } from "lucide-react";
+import { CornerUpRight, Radio, Truck } from "lucide-react";
 import type { FoodTruckMapPin } from "./types";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import MapResultSurface from "./MapResultSurface";
 
 function remainingLabel(expiresAt: string): string {
   const minutes = Math.max(1, Math.round((Date.parse(expiresAt) - Date.now()) / 60_000));
@@ -16,11 +17,12 @@ function remainingLabel(expiresAt: string): string {
 /** High-priority answer card for an operator-confirmed live truck pin. */
 export default function MapFoodTruckPeek({ pin, onClose }: { pin: FoodTruckMapPin; onClose: () => void }) {
   return (
-    <div className="map-peek" role="dialog" aria-label={`${pin.name} live location`}>
-      <button type="button" className="map-peek-close tap-44" onClick={onClose} aria-label="Close">
-        <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-      </button>
-
+    <MapResultSurface
+      className="map-peek"
+      ariaLabel={`${pin.name} live location`}
+      closeLabel={`Close ${pin.name}`}
+      onClose={onClose}
+    >
       <div className="map-peek-body" style={{ cursor: "default" }}>
         <span className="map-peek-thumb" style={{ background: "var(--app-brand)", display: "grid", placeItems: "center", color: "var(--app-on-brand)" }}>
           <Truck className="h-7 w-7" strokeWidth={2} aria-hidden />
@@ -59,6 +61,6 @@ export default function MapFoodTruckPeek({ pin, onClose }: { pin: FoodTruckMapPi
           Truck details
         </Link>
       </div>
-    </div>
+    </MapResultSurface>
   );
 }

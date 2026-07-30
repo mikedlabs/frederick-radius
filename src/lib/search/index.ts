@@ -19,7 +19,6 @@ import {
 } from "@/lib/search";
 import type { Event } from "@/data/events";
 import { OVERLAYS } from "@/lib/overlays";
-import { matchCivicPlaces } from "./civicPlaces";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
@@ -422,6 +421,27 @@ const MAP_ACTIONS: readonly MapAction[] = [
       ]),
   },
   {
+    id: "action:map-parks",
+    title: "Show parks on the map",
+    subtitle: "See park places from Radius's reviewed place index.",
+    href: "/map?intent=outdoor&sub=parks",
+    matches: (query) =>
+      !isParkingMapQuery(query) &&
+      (
+        query === "park" ||
+        query === "parks" ||
+        containsAnyPhrase(query, [
+          "public park",
+          "public parks",
+          "county park",
+          "county parks",
+          "dog park",
+          "playground",
+          "playgrounds",
+        ])
+      ),
+  },
+  {
     id: "action:map-trails",
     title: "Show trails on the map",
     subtitle: "See mapped trail lines across Frederick County.",
@@ -660,11 +680,7 @@ export function searchIndex(
   // Map layers ride after quick actions: "farmers market" should offer
   // the overlay alongside the market places themselves.
   const layers = matchLayers(query).slice(0, 1);
-  // Fire companies ride the head: they have no place records behind them, so a
-  // "fire station" / company-name search should surface them, not lose to a
-  // fuzzy place match. Capped tight.
-  const civic = matchCivicPlaces(query).slice(0, 2);
-  const head = [...mapActions, ...actions, ...layers, ...civic];
+  const head = [...mapActions, ...actions, ...layers];
   const headHrefs = new Set(head.map((a) => a.href));
   // Registry pages and quick actions overlap on purpose (both are doors);
   // never render the same door twice.
@@ -679,7 +695,6 @@ function searchHead(query: string): SearchResult[] {
     ...matchMapActions(query).slice(0, 2),
     ...matchQuickActions(query).slice(0, 2),
     ...matchLayers(query).slice(0, 1),
-    ...matchCivicPlaces(query).slice(0, 2),
   ];
 }
 

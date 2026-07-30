@@ -101,6 +101,7 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
     toolIds: [
       "shipping",
       "contacts",
+      "communication-access",
       "nonprofits",
       "places",
       "towns",

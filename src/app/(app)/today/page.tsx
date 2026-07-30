@@ -26,14 +26,8 @@ import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
-import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
-import EmergencyPrompt from "@/components/today/EmergencyPrompt";
-import WorthALook from "@/components/today/WorthALook";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
-import TasteNudge from "@/components/today/TasteNudge";
-import CuratedPicks from "@/components/today/CuratedPicks";
-import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
@@ -62,25 +56,24 @@ import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
 import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
-import ToolboxTeaser from "@/components/nav/ToolboxTeaser";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import PageChapter from "@/components/ui/PageChapter";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
+import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 
 /**
  * Now — the daily briefing.
  *
- * Spine (one-hero pass, top to bottom — matches the render below; the
- * evening gear reorders 2-4, see the EVENING GEAR note in HomePage):
+ * Spine (top to bottom — matches the render below):
  *
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
- *   2. OnNowBand      → current utility followed by clearly timed later items
- *   3. Headliner      → THE headline of the page when a real draw is on
- *                       (TonightHeadline); nothing renders on a quiet day
+ *   2. Decision lead  → one answer: a qualified event, otherwise the existing
+ *                       location-aware open-place shelf
+ *   3. Ask / Browse   → secondary routes for a more specific need
  *   4. What's on      → the rest of today's public program
- *   5. Discovery      → one focused open-now shelf, ideas, and saved places
- *   6. Essentials     → standing utilities collapsed behind one clear row
+ *   5. Available      → scheduled local utilities and tomorrow's next move
+ *   6. More           → secondary local guides and saved places, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -179,30 +172,37 @@ export default async function HomePage() {
   ]);
   const lean = leanFromForecast(forecastForLean, now);
 
-  // The one headliner (splitTonightFeature's pick, drawn from the same shared
-  // promise). Reserve its compact text treatment while the feed resolves so
-  // the Ask/Browse decision surface does not appear and then jump downward on
-  // a cold render. The resolved component still returns nothing on a quiet day.
-  const headliner = (
+  const daypartRows = buildDaypartRows(now, lean);
+  const daypartNote =
+    lean === "wet"
+      ? "Storms are close by, so indoor picks lead."
+      : lean === "hot"
+        ? "It is a hot one, so cool-down picks lead."
+        : null;
+
+  // Exactly one decision lead sits below the weather. The useful place answer
+  // paints immediately while the shared event promise resolves; if a sourced
+  // draw is live, all-day, or close enough to act on, the streamed result
+  // promotes that event into the same slot. A quiet or far-ahead program keeps
+  // the location-aware place answer, so external calendars never block the
+  // shell or leave a blank first move.
+  const decisionLead = (
     <Suspense
-      fallback={
-        <section className="mt-6 space-y-2" aria-label="Loading today's pick" aria-busy="true">
-          <span className="sr-only" role="status">Loading today&rsquo;s pick.</span>
-          <Skeleton.Block height={12} width={92} round="var(--app-radius-sm)" />
-          <Skeleton.Block height={54} width="72%" round="var(--app-radius-sm)" />
-          <Skeleton.Block height={16} width="46%" round="var(--app-radius-sm)" />
-        </section>
-      }
+      fallback={<OpenPlaceLead rows={daypartRows} note={daypartNote} />}
     >
-      <TonightHeadliner eventsPromise={eventsPromise} now={now} />
+      <TodayDecisionLead
+        eventsPromise={eventsPromise}
+        now={now}
+        rows={daypartRows}
+        note={daypartNote}
+      />
     </Suspense>
   );
 
-  // Current utility belongs beside the calendar. Every live claim uses a
-  // clock-checked window, while parking and later markets keep their
-  // published timing. The shared event promise prevents duplicate feed
-  // work across this band and the event program.
-  const availableNow = (
+  // These are useful today, but not all of them are live: a first pitch,
+  // published special, market, or parking plan may still be hours away. Keep
+  // them out of the first decision slot so it remains one honest answer.
+  const availableToday = (
     <>
       <div className="today-sports-stack">
         <h2 className="today-sports-stack__heading">Local sports</h2>
@@ -325,7 +325,7 @@ export default async function HomePage() {
       {/* The whole weather plate is a door to the full forecast (July 2026
           Reddit review: it looked tappable and wasn't — now it is, with the
           standard right-edge disclosure chevron). */}
-      <SkyHero className="shader-rim relative z-10">
+      <SkyHero className="relative z-10">
         <Link
           href="/pulse?open=weather"
           prefetch={false}
@@ -343,10 +343,9 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
-      {/* The strongest verified draw today belongs immediately under current
-          conditions. It no longer waits behind generic discovery tools or
-          specialty-guide promotions. On a quiet day this renders nothing. */}
-      {headliner}
+      {/* One evidence-backed first move: a qualified event when it earns the
+          headliner, otherwise the location-aware open-place answer. */}
+      {decisionLead}
 
       {/* One decision index: ask a specific question or open the category
           browse. The rows share a surface so they read as two routes through
@@ -367,57 +366,27 @@ export default async function HomePage() {
         </BrowsePlacesDisclosure>
       </div>
 
-      {/* The immediate decision layer reads as one quiet chapter rather than a
-          stack of unrelated modules. The band adds hierarchy without another
-          visible label: Open now, live scores, and available offers retain
-          their own headings inside one shared "right now" surface. */}
+      {/* The day's chronological program belongs before sports and specials.
+          This is the first substantive briefing after the one decision lead
+          and the two direct find routes. WhatsOn already owns its visible
+          heading, so an extra chapter label would spend another row on a
+          phone. */}
+      {whatsOn}
+
+      {/* Scheduled utilities stay useful without pretending to be live. */}
       <PageChapter
-        label="Right now"
-        index="01"
-        tone="brand"
+        label="Available today"
+        tone="civic"
+        variant="plain"
         className="mt-5"
       >
-        {/* The first place answer is visual and context-aware. Attributed
-            business photos render when the media record permits them; the
-            source-aware event headliner still owns the top of the page. */}
-        <DaypartNeeds
-          rows={buildDaypartRows(now, lean)}
-          note={
-            lean === "wet"
-              ? "Storms are close by, so indoor picks lead."
-              : lean === "hot"
-                ? "It is a hot one, so cool-down picks lead."
-                : null
-          }
-        />
+        {availableToday}
 
-        {/* ── LENS PICKER removed (2026-07-01, owner call) ─────────────────
-            The visible Resident/Visitor toggle asked strangers to classify
-            themselves before seeing any value, and most people never touch a
-            toggle. /today now serves ONE unified view for everyone. */}
-
-        {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
-            the day; once it's past ~9 PM it leads with tomorrow's top draw and
-            weather look, so a spent day is not a dead end. */}
+        {/* A forward answer for the night owl. Self-hides during the day; once
+            the current day is nearly spent it offers one tomorrow move. */}
         <Suspense fallback={null}>
           <TomorrowPreview now={now} eventsPromise={eventsPromise} />
         </Suspense>
-
-        {/* Live utilities follow the day's lead. The order stays stable across
-            dayparts so returning users do not have to relearn the page. */}
-        {availableNow}
-      </PageChapter>
-
-      {/* The calendar gets its own cooler chapter band. This makes the switch
-          from "what can I use now?" to "what is scheduled?" legible at a
-          glance, especially on a narrow phone. */}
-      <PageChapter
-        label="On the calendar"
-        index="02"
-        tone="civic"
-        className="mt-5"
-      >
-        {whatsOn}
       </PageChapter>
 
       {lean !== "wet" && (
@@ -426,91 +395,31 @@ export default async function HomePage() {
         </Suspense>
       )}
 
-      {/* Specialty guides and personal shortcuts share a local-discovery
-          chapter. The forest register is deliberately restrained: it separates
-          the zone from live information without turning the page multicolor. */}
-      <PageChapter
-        label="Around town"
-        index="03"
-        tone="forest"
-        className="mt-6"
-      >
-        {/* Specialty guides are useful secondary doors, presented as one compact
-            shelf with real local marks instead of competing promo cards. */}
-        <Suspense fallback={<TodayLocalGuides />}>
-          <TodayLocalGuidesWithSchedule now={now} />
-        </Suspense>
-
-        {/* FROM YOUR SAVED + the save-derived shortcut stay together. Each
-            self-hides independently, so an honest empty state never shows an
-            empty box. */}
-        <FromYourSaved />
-        <TasteNudge />
-      </PageChapter>
-
-      {/* Discovery is useful, but it is not part of the immediate briefing.
-          Keep it one deliberate reveal instead of two more full-page zones. */}
+      {/* Secondary doors share one deliberate reveal. The old lower page also
+          repeated generated collections, a rotating place list, and a taste
+          nudge; those made the briefing feel endless without improving the
+          immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
-        title="More ideas for today"
+        title="More for today"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         headingLevel={2}
         className="today-disclosure mt-6 border-t pt-2"
       >
         <div className="space-y-5">
-          <Suspense
-            fallback={
-              <section aria-label="Loading local ideas">
-                <Skeleton.Block height={120} round="var(--app-radius-lg)" />
-              </section>
-            }
-          >
-            <CuratedPicks />
+          <Suspense fallback={<TodayLocalGuides />}>
+            <TodayLocalGuidesWithSchedule now={now} />
           </Suspense>
-          <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
-            <WorthALook />
+          <FromYourSaved />
+          <Suspense fallback={null}>
+            <WeekendPreview now={now} eventsPromise={eventsPromise} />
           </Suspense>
+          <Suspense fallback={null}>
+            <PoolsToday now={now} />
+          </Suspense>
+          <MastheadNotes now={now} />
         </div>
       </CollapsibleSection>
-
-      {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
-          "here sometimes" context sits together instead of interrupting the core
-          sections. Each self-hides out of its window. */}
-      {/* LOOKING AHEAD — the weekend teaser on Thu/Fri mornings. */}
-      <Suspense fallback={null}>
-        <WeekendPreview now={now} eventsPromise={eventsPromise} />
-      </Suspense>
-      {/* Seasonal pools (summer only; self-hides out of season). */}
-      <Suspense fallback={null}>
-        <PoolsToday now={now} />
-      </Suspense>
-      {/* Rare dated context: holiday, school, creek, and community notes. */}
-      <MastheadNotes now={now} />
-
-      {/* "What's happening around you" (NearbyNow) was removed from /today
-          (owner call): the craving grid + Today's Deals already answer "near
-          me now," and the around-you geo surface duplicated that. It still
-          lives on the map. */}
-
-      {/* Standing utilities remain available without making every visit scroll
-          through a second directory. Active safety information still leads the
-          page above; this quieter shelf is for reference and trip planning. */}
-      <CollapsibleSection
-        title="Essentials"
-        storageKey="fr.today.essentials"
-        defaultOpen={false}
-        headingLevel={2}
-        className="today-disclosure mt-6 border-t pt-2"
-      >
-        <div className="mt-2 space-y-3">
-          <EmergencyPrompt />
-          <VisitorStayPrompt />
-          <PartnerAppsRow />
-        </div>
-      </CollapsibleSection>
-
-      {/* A few high-use shortcuts stay visible. Compass owns the full directory. */}
-      <ToolboxTeaser />
     </EventSheetBoundary>
   );
 }
@@ -519,10 +428,23 @@ export default async function HomePage() {
 // Thin async server components that each await the ONE shared events promise
 // and render an existing leaf component with its existing props. Moving the
 // await + derivation off HomePage into these <Suspense>-bounded children is
-// what lets the static chrome paint before the feeds resolve; the leaf
-// components (TodayCard / TodayContext / RightNowBand) are unchanged.
+// what lets the static chrome paint before the feeds resolve.
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+type DaypartRows = ReturnType<typeof buildDaypartRows>;
+
+/** The non-event first move is already a live, location-aware answer. Keeping
+ * it in one helper means the Suspense fallback and the quiet-day result use the
+ * exact same component, rows, weather lean, ranking, and trust language. */
+function OpenPlaceLead({
+  rows,
+  note,
+}: {
+  rows: DaypartRows;
+  note: string | null;
+}) {
+  return <DaypartNeeds rows={rows} note={note} />;
+}
 
 /** Keep the external food-truck feeds off Today's critical rendering path.
  * The generic guide row paints immediately; a stored or freshly assembled
@@ -615,16 +537,34 @@ function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"]
   };
 }
 
-/** ONE-HERO composition, part 1: the page headliner. When today has a real
- *  draw (splitTonightFeature's pick — utility and routine programming never
- *  qualify), it renders as THE headline of the page via TonightHeadline. On a
- *  quiet day this renders nothing at all — no faked hero — and WhatsOn says
- *  the quiet truth in its place. */
-async function TonightHeadliner({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const { feature } = deriveTodayProgram(publicEvents, now);
-  if (!feature) return null;
-  return <TonightHeadline event={feature} now={now} />;
+/** The one decision slot below weather. A real draw can replace the immediate
+ *  open-place fallback only when it passes both the existing editorial filter
+ *  and the actionability window. Routine programming, utility events, quiet
+ *  days, far-ahead evening listings, and failed/empty feeds all leave the
+ *  useful place answer in this slot. */
+async function TodayDecisionLead({
+  eventsPromise,
+  now,
+  rows,
+  note,
+}: {
+  eventsPromise: EventsPromise;
+  now: Date;
+  rows: DaypartRows;
+  note: string | null;
+}) {
+  let feature: ReturnType<typeof deriveTodayProgram>["feature"] = null;
+  try {
+    const { publicEvents } = await eventsPromise;
+    feature = deriveTodayProgram(publicEvents, now).feature;
+  } catch {
+    // The place answer is already independently useful. A failed event fanout
+    // must not turn the first decision into an error boundary.
+  }
+  if (feature && shouldPromoteTodayHeadliner(feature, now)) {
+    return <TonightHeadline event={feature} now={now} />;
+  }
+  return <OpenPlaceLead rows={rows} note={note} />;
 }
 
 /** One line of the day program: mono time column (the visible sort key),
@@ -706,10 +646,13 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // (The overnight "First thing tomorrow" strip that used to live here grew into
   // its own composed TomorrowPreview beat above — top draw + weather look, gated
   // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
-  // The headliner itself renders ONCE, at page level (TonightHeadliner); this
-  // section carries the rest of the program. Same derivation, same promise.
+  // The headliner itself renders ONCE in TodayDecisionLead; this section
+  // carries the rest of the program. Same derivation, same promise.
   const { ahead, feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
     deriveTodayProgram(publicEvents, now);
+  const featureIsPromoted = feature
+    ? shouldPromoteTodayHeadliner(feature, now)
+    : false;
   // "N events today" counts only what is still AHEAD (the headliner plus the
   // forward program), never the draws that already wrapped up — those live in
   // the collapsed "Earlier today" list and must not inflate the header count
@@ -728,6 +671,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // mystery list. A vertical column also shows the whole evening at a
   // glance where the rail hid all but two tiles.
   const program = [
+    ...(!featureIsPromoted && feature ? [{ e: feature, quiet: false }] : []),
     ...upcomingRest.map((e) => ({ e, quiet: false })),
     ...remainingAlsoToday.map((e) => ({ e, quiet: true })),
   ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
@@ -766,7 +710,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         flat
         meta={
           visibleTodayCount > 0
-            ? `${visibleTodayCount} ${visibleTodayCount === 1 ? "event" : "events"} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""}`
+            ? `${visibleTodayCount} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""} · Countywide`
             : undefined
         }
       >
@@ -788,7 +732,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             Some live calendars didn&rsquo;t answer, so today&rsquo;s list may be incomplete.
           </p>
         )}
-        {upcomingRest.length > 0 || remainingAlsoToday.length > 0 || remainingEarlierToday.length > 0 ? (
+        {program.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
             {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
                 draw earned the page headline, say so plainly instead of
@@ -851,7 +795,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               </details>
             )}
           </div>
-        ) : feature ? (
+        ) : featureIsPromoted ? (
           /* The headliner above is the whole calendar — an honest one-liner,
              not an "empty" claim the hero itself contradicts. */
           <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>

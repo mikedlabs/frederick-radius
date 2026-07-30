@@ -36,6 +36,10 @@ import { loadAskWeather } from "@/lib/ask/weather";
 import { safeAskDescription } from "@/lib/ask/source-copy";
 import { placeDietaryEvidence, placeMatchesDietary } from "@/lib/ask/dietary";
 import { eventFitsAskIntent } from "@/lib/ask/event-filter";
+import {
+  communicationAccessLabels,
+  hasDeafCommunityOrCommunicationAccess,
+} from "@/lib/events/communication-access";
 
 const AGENT_MODEL = process.env.ASK_RADIUS_AGENT_MODEL || "openai/gpt-5.4-mini";
 // This is an enhancement path, never the only path to an answer. Keep one
@@ -43,7 +47,7 @@ const AGENT_MODEL = process.env.ASK_RADIUS_AGENT_MODEL || "openai/gpt-5.4-mini";
 // cannot hold the decision UI behind the function's 30-second ceiling.
 const AGENT_TOTAL_TIMEOUT_MS = 7_000;
 const AGENT_STEP_TIMEOUT_MS = 3_500;
-const COMPLEX_RE = /\b(?:parents?|visitors?|wheelchair|accessible|mobility|can(?:not|'t) walk|less walking|parking|rain|weather|before|after|then|plus|followed by|combine|itinerary|plan|date night|afternoon|evening|morning|budget|under \$?\d+)\b/i;
+const COMPLEX_RE = /\b(?:parents?|visitors?|wheelchair|accessible|mobility|deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|captions?|assistive[-\s]listening|interpreter|can(?:not|'t) walk|less walking|parking|rain|weather|before|after|then|plus|followed by|combine|itinerary|plan|date night|afternoon|evening|morning|budget|under \$?\d+)\b/i;
 
 export type RadiusAgentAnswer = {
   answer: string;
@@ -92,6 +96,7 @@ function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
     distance: showDistance && place.distance_m != null ? formatDistance(place.distance_m) : undefined,
     status: formatHoursLine(place.open_status),
     phone: place.phone || undefined,
+    email: place.email || undefined,
     confidence: place.is_verified && (place.hours_verified || place.open_status.state === "unknown") ? "high" : "medium",
     photo_url: place.google_photo_url || place.hero_image,
     rating: typeof place.google_rating === "number" ? place.google_rating : undefined,
@@ -110,7 +115,8 @@ function eventSource(event: Event): AskSource {
     city: event.municipality,
     href: `/events/${event.slug}`,
     eyebrow: `${when} · ${time}`,
-    reason: event.venue_name ? `At ${event.venue_name}` : "Current Radius calendar match",
+    reason: communicationAccessLabels(event)[0]
+      ?? (event.venue_name ? `At ${event.venue_name}` : "Current Radius calendar match"),
     detail: safeAskDescription(event.title, event.description)?.slice(0, 160),
     confidence: "high",
     photo_url: event.hero_image,
@@ -213,6 +219,13 @@ export async function runRadiusAgent(
       const semantic = await hybridPlaceSearch(toolQuery, 16);
       usedHybrid ||= semantic.length > 0;
       let hits = mergePlaceHits(lexical, semantic.map((row) => row.sourceId), toolQuery, context);
+      if (
+        /\b(?:(?:cannot|can['’]?t|unable to|don['’]?t want to)\s+call|without calling|written contact|contact by (?:email|text)|email (?:them|the place|the business)|text[-\s]based contact)\b/i.test(toolQuery)
+      ) {
+        hits = hits.filter(
+          (hit) => hit.type === "place" && Boolean(hit.place.email),
+        );
+      }
       hits = rerankWithTaste(hits, taste).slice(0, limit);
       return hits.flatMap((hit) => {
         if (hit.type !== "place") return [];
@@ -225,6 +238,7 @@ export async function runRadiusAgent(
           distance: hit.place.distance_m != null ? formatDistance(hit.place.distance_m) : null,
           hours: formatHoursLine(hit.place.open_status),
           phone: hit.place.phone ?? null,
+          email: hit.place.email ?? null,
           priceBand: hit.place.price_band ?? null,
           knownFor: hit.place.known_for?.slice(0, 3) ?? [],
           fieldNote: hit.place.field_note_tip ?? null,
@@ -245,8 +259,14 @@ export async function runRadiusAgent(
         new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 1_500)),
       ]);
       const eventIntent = parseAskIntent(toolQuery, now);
+      const asksCommunicationAccess =
+        /\b(?:deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|American Sign Language|sign language|captioned|captions?|CART|assistive[-\s]listening|interpreter)\b/i.test(toolQuery);
       const scopedPool = scopeAskEvents(pool, context.municipality)
-        .filter((event) => eventFitsAskIntent(event, eventIntent, now, toolQuery));
+        .filter((event) =>
+          eventFitsAskIntent(event, eventIntent, now, toolQuery) &&
+          (!asksCommunicationAccess ||
+            hasDeafCommunityOrCommunicationAccess(event)),
+        );
       const hits = qualifiedSearch(toolQuery, 20, scopedPool, context).hits
         .filter((hit): hit is Extract<SearchHit, { type: "event" }> => hit.type === "event")
         .slice(0, limit);
@@ -260,6 +280,7 @@ export async function runRadiusAgent(
           town: hit.event.municipality,
           free: hit.event.is_free,
           description: hit.event.description?.slice(0, 180) || null,
+          communicationAccess: communicationAccessLabels(hit.event),
         };
       });
     },

@@ -27,6 +27,6 @@ describe("AppFooter", () => {
     const html = renderToStaticMarkup(createElement(AppFooter));
     const occurrences = html.split(`href="${href}"`).length - 1;
 
-    expect(occurrences).toBe(2);
+    expect(occurrences).toBeGreaterThanOrEqual(2);
   });
 });

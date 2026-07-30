@@ -3,13 +3,12 @@
  *
  * A physical card carries https://frederickradius.app/j/<code>. Tapping it opens
  * this URL. We validate the card, assign the tapping DEVICE an anonymous member
- * id attributed to that card, unlock the device past the beta wall the SAME
- * signed way a redeemed per-user code does (a signed fr_beta cookie the edge
- * middleware verifies with pure crypto, no DB hit), and drop them at /today.
+ * id attributed to that card, preserve the signed legacy beta/member markers
+ * used by existing cards, and drop them at /today. Public app routes no longer
+ * require either marker.
  *
  * Security posture (mirrors the public write routes):
- *  - The path is exempt from the beta wall in middleware (isBetaExempt), so the
- *    handler runs while the wall is up and sets the unlock cookie itself.
+ *  - The path is public, so the handler can validate a card without a session.
  *  - The code is validated against the card regex; an unknown, inactive, or
  *    malformed code redirects to /beta with the SAME response as a valid-but-
  *    locked visit, so the endpoint never enumerates which codes exist.
@@ -17,8 +16,7 @@
  *  - FAIL CLOSED: any missing config (no DB, no signing secret) or DB error
  *    redirects to /beta. It never 500s and never silently grants access.
  *  - The member cookie is signed (unforgeable) and httpOnly. The unlock cookie
- *    is set exactly as the existing /api/beta redemption sets it, so the gate is
- *    not weakened: a tapped device passes the wall the same way a code does.
+ *    remains compatible with existing beta-era member attribution.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";

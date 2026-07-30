@@ -100,6 +100,12 @@ export default function SaveButton({
   const legacyIsSaved = useIsSaved(refType, refId);
   const legacyToggle = useToggleSave(refType, refId);
   const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
+  // The auth-aware place toggle may need one lightweight session lookup before
+  // it knows whether to write locally or remotely. Reflect the tap in this
+  // button immediately rather than leaving the bookmark visually unchanged
+  // during that lookup; the shared store remains the durable source of truth.
+  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null);
+  const renderedSaved = optimisticSaved ?? isSaved;
   const toggle =
     refType === "place" ? () => void togglePlace() : legacyToggle;
   // Pre-toggle total. Used to detect the user's first save ever —
@@ -123,11 +129,17 @@ export default function SaveButton({
     const t = window.setTimeout(() => setCelebrate(false), 520);
     return () => window.clearTimeout(t);
   }, [celebrate]);
+  useEffect(() => {
+    if (optimisticSaved === null || optimisticSaved !== isSaved) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the one-tap visual bridge once the shared save store has caught up
+    setOptimisticSaved(null);
+  }, [isSaved, optimisticSaved]);
 
   if (!mounted) {
     return (
       <button
         type="button"
+        data-save-ref={`${refType}:${refId}`}
         aria-hidden
         tabIndex={-1}
         className={barLabel
@@ -144,23 +156,26 @@ export default function SaveButton({
   return (
     <button
       type="button"
+      data-save-ref={`${refType}:${refId}`}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        haptic(isSaved ? "light" : "medium");
+        const wasSaved = renderedSaved;
+        setOptimisticSaved(!wasSaved);
+        haptic(wasSaved ? "light" : "medium");
         toggle();
-        if (refType === "event") track("save_event", { on: !isSaved });
+        if (refType === "event") track("save_event", { on: !wasSaved });
         // Event saves also register a device-scoped reminder (critic-1).
         // isSaved is the PRE-toggle state, so the new state is !isSaved.
-        if (refType === "event") void syncSavedEventReminder(refId, !isSaved);
+        if (refType === "event") void syncSavedEventReminder(refId, !wasSaved);
         // First event save on a device with undecided notification permission:
         // offer the reminder loop right where it pays off (one-shot ever).
-        if (refType === "event" && !isSaved) void maybeOfferEventReminders(refId);
+        if (refType === "event" && !wasSaved) void maybeOfferEventReminders(refId);
         // Sonner toast — quiet, brand-aligned acknowledgement so the
         // user sees something happen even if the bookmark animation
         // is missed at a glance. Undo action mirrors the toggle so
         // a mistaken save is one tap to reverse.
-        if (isSaved) {
+        if (wasSaved) {
           toast(`Removed from Saved`, {
             action: { label: "Undo", onClick: () => toggle() },
           });
@@ -179,21 +194,21 @@ export default function SaveButton({
           });
         }
       }}
-      aria-pressed={isSaved}
+      aria-pressed={renderedSaved}
       // `label` arrives as "Save {name}"; strip the verb so the aria reads
       // cleanly ("Save {name}" / "Remove {name} from Saved") instead of the
       // doubled "Add Save {name} to Saved".
       aria-label={
-        isSaved
+        renderedSaved
           ? `Remove ${label.replace(/^Save\s+/, "")} from Saved`
           : `Save ${label.replace(/^Save\s+/, "")}`
       }
-      title={isSaved ? "Saved" : "Save"}
+      title={renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
         : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
       style={{
-        color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)",
+        color: renderedSaved ? "var(--app-cool)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",
       }}
     >
@@ -201,11 +216,11 @@ export default function SaveButton({
         className={`h-4 w-4 transition-transform ${
           celebrate ? "save-pop" : ""
         }`}
-        strokeWidth={isSaved ? 0 : 1.75}
-        fill={isSaved ? "currentColor" : "none"}
+        strokeWidth={renderedSaved ? 0 : 1.75}
+        fill={renderedSaved ? "currentColor" : "none"}
         style={{ transitionTimingFunction: "var(--app-ease-spring)" }}
       />
-      {barLabel ? <span>{isSaved ? "Saved" : barLabel}</span> : null}
+      {barLabel ? <span>{renderedSaved ? "Saved" : barLabel}</span> : null}
       {celebrate && (
         <span
           aria-hidden

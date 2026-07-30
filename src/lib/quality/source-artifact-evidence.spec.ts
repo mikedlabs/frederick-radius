@@ -74,11 +74,17 @@ describe("bundled source artifact evidence", () => {
     const evidence = bundledSourceArtifactEvidence();
 
     expect(evidence.map((item) => item.sourceKey).sort()).toEqual([
-      "business_info_extraction",
       "municipal_civic_extraction",
       "transit_gtfs",
       "venue_event_extraction",
     ]);
+    // The business-info artifact currently mixes timestamped editorial rows
+    // with commerce-only rows that have no editorial fetchedAt. Do not present
+    // the whole artifact as freshly verified until every published row carries
+    // valid source evidence.
+    expect(
+      evidence.some((item) => item.sourceKey === "business_info_extraction"),
+    ).toBe(false);
     expect(
       evidence.every(
         (item) =>

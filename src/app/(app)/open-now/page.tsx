@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, MapIcon, ArrowRight } from "lucide-react";
-import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
-import { isOpenNow, formatTime } from "@/lib/hours";
-import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
+import {
+  getOpenNowSnapshot,
+  likelyOpenPlaces,
+  openNowProofModule,
+  type PlaceCardData,
+} from "@/lib/loaders/places";
+import { formatTime } from "@/lib/hours";
+import { isRecommendable } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG, MUNICIPALITIES } from "@/data/municipalities";
 import ScopeBar from "@/components/nav/ScopeBar";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -70,26 +75,21 @@ export default async function OpenNowPage() {
   // page's headline and /today's briefing read the same number from
   // the same rule. A place closing in 40 minutes IS open right now;
   // its card already says "closing soon" (2026-06 audit, offender 2).
-  const verified = rankPlaces({ origin, now, preferOpen: true, limit: 500 })
-    .filter((p) => isOpenNow(p.open_status))
-    .filter(isRecommendable)
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => {
-      const da = isDestinationCategory(a.p.category) ? 0 : 1;
-      const db = isDestinationCategory(b.p.category) ? 0 : 1;
-      return da - db || a.i - b.i;
-    })
-    .map((x) => x.p);
+  const snapshot = getOpenNowSnapshot(now, origin, 0);
+  const verified = snapshot.places;
   const verifiedSlugs = new Set(verified.map((p) => p.slug));
   const likely = likelyOpenPlaces(origin, now).filter(
-    (p) => isRecommendable(p) && !verifiedSlugs.has(p.slug),
+    (p) =>
+      isRecommendable(p) &&
+      openNowProofModule(p) !== null &&
+      !verifiedSlugs.has(p.slug),
   );
 
   const asOf = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     hour: "numeric",
     minute: "2-digit",
-  }).format(now);
+  }).format(new Date(snapshot.asOf));
   const dateline = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
@@ -163,30 +163,22 @@ export default async function OpenNowPage() {
 
   // Three honest sections: what you'd cross town for, split eat-and-drink
   // first (the most common "open now" intent), everything everyday last.
-  const EAT = new Set([
-    "restaurant",
-    "pizza",
-    "food-truck",
-    "bakery",
-    "coffee",
-    "ice-cream",
-    "brewery",
-    "winery",
-    "distillery",
-    "bar",
-  ]);
   const eat: IndexRow[] = [];
   const todo: IndexRow[] = [];
+  const shop: IndexRow[] = [];
   const everyday: IndexRow[] = [];
   for (const p of verified) {
     const row = toRow(p, true);
-    if (EAT.has(p.category)) eat.push(row);
-    else if (isDestinationCategory(p.category)) todo.push(row);
+    const proofModule = openNowProofModule(p);
+    if (proofModule === "eat-drink") eat.push(row);
+    else if (proofModule === "things-to-do") todo.push(row);
+    else if (proofModule === "shop-local") shop.push(row);
     else everyday.push(row);
   }
   const sections: IndexSection[] = [
     { key: "eat", label: "Eat & drink", rows: eat },
     { key: "todo", label: "Things to do", rows: todo },
+    { key: "shop", label: "Shops & markets", rows: shop },
     { key: "everyday", label: "Everyday & services", rows: everyday },
   ];
   const likelySections: IndexSection[] = [
@@ -230,11 +222,11 @@ export default async function OpenNowPage() {
           Open now
         </h1>
         <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          {verified.length > 0
-            ? `${verified.length} ${verified.length === 1 ? "place is" : "places are"} confirmed open`
+          {snapshot.count > 0
+            ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open`
             : likely.length > 0
-              ? "Posted schedules are available, but live verification is not."
-              : "Live hours are unavailable right now."}
+              ? "Some places are usually open at this hour, but their hours are not recently confirmed."
+              : "No county listings have recently checked hours confirming they are open."}
         </p>
       </header>
 
@@ -248,7 +240,7 @@ export default async function OpenNowPage() {
       />
 
       {verified.length > 0 ? (
-        <PlaceIndex sections={sections} />
+        <PlaceIndex sections={sections} prioritizeFirstPhoto />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           {/* Only promise the "below" list when it actually renders (likely

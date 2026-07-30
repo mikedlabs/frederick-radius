@@ -43,6 +43,8 @@ jobs:
       - name: Extract civic data
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
         run: npm run ingest:civic
       - name: Open review PR
         uses: peter-evans/create-pull-request@v6

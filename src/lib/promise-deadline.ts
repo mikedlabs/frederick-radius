@@ -21,6 +21,48 @@ export type DeadlineOutcome<T> =
   | { status: "rejected" }
   | { status: "timed_out" };
 
+export type AbortDeadline = {
+  signal: AbortSignal;
+  dispose: () => void;
+};
+
+/**
+ * Create a disposable AbortSignal that fires at the earlier of a parent abort
+ * or a local deadline. Callers must dispose it when their work settles so the
+ * timer and parent listener do not outlive a fast request.
+ *
+ * This is deliberately not a shared signal: every operation gets its own
+ * controller, so one caller cannot cancel another caller's cached or
+ * single-flight work.
+ */
+export function createAbortDeadline(
+  deadlineMs: number,
+  parentSignal?: AbortSignal,
+): AbortDeadline {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const abort = () => {
+    if (!controller.signal.aborted) controller.abort();
+  };
+  const onParentAbort = () => abort();
+
+  if (parentSignal?.aborted) {
+    abort();
+  } else {
+    parentSignal?.addEventListener("abort", onParentAbort, { once: true });
+    timer = setTimeout(abort, deadlineMs);
+  }
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      if (timer) clearTimeout(timer);
+      parentSignal?.removeEventListener("abort", onParentAbort);
+    },
+  };
+}
+
 /**
  * Bound an operational phase without leaking its exception into a public
  * response. Unlike a fallback value, the tagged result lets cron routes turn a

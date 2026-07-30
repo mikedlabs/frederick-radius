@@ -12,6 +12,10 @@ import { isNonDiscoverable } from "@/lib/relevance";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { haversineMeters, isValidCoord } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  decisionCopyCounts,
+  hasUsefulDecisionCopy,
+} from "@/lib/quality/coverage";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
 import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 
@@ -118,11 +122,23 @@ function main() {
     (p) => p.is_operational === "closed_permanently" || p.is_operational === "closed_temporarily",
   );
 
-  // 6. REQUIRED FIELDS
-  const missing = pub.filter((p) => !p.name?.trim() || !p.short_blurb?.trim() || !p.category);
+  // 6. REQUIRED FIELDS. A permanent Radius description is valuable, but it is
+  // not a structural requirement: honest silence is better than unattributed
+  // provider prose. Report those two states separately.
+  const missingStructural = dec.filter(
+    (p) => !p.slug?.trim() || !p.name?.trim() || !p.category,
+  );
 
-  // 7. BLURBS — placeholder "<Cat> in <Town>." vs real
+  // 7. PUBLIC COPY
   const placeholder = dec.filter((p) => /^[\w &/'-]+ in [\w .'-]+\.$/.test(p.short_blurb || "")).length;
+  const blurbCounts = decisionCopyCounts(dec);
+  const usefulDescriptions = dec.filter((place) =>
+    hasUsefulDecisionCopy(place, blurbCounts),
+  );
+  const missingOrUnusableDescriptions = dec.length - usefulDescriptions.length;
+  const unprovenancedDescriptions = usefulDescriptions.filter(
+    (place) => !place.description_source,
+  );
 
   // 8. ENRICHMENT integrity
   const slugs = new Set(PLACES.map((p) => p.slug));
@@ -145,11 +161,24 @@ function main() {
   F("Category disagrees w/ Google type", catDisagree.length, catDisagree.length > 100 ? "🟠" : "🟢");
   F("Unknown municipality", badMuni.length, badMuni.length ? "🔴" : "🟢");
   F("Closed place leaked into public", closedLeak.length, closedLeak.length ? "🔴" : "🟢");
-  F("Missing name/blurb/category", missing.length, missing.length ? "🔴" : "🟢");
+  F("Missing structural place fields", missingStructural.length, missingStructural.length ? "🔴" : "🟢");
+  F(
+    "Missing or unusable Radius description",
+    missingOrUnusableDescriptions,
+    missingOrUnusableDescriptions > pub.length / 2 ? "🟠" : "🟢",
+  );
+  F(
+    "Useful copy without provenance",
+    unprovenancedDescriptions.length,
+    unprovenancedDescriptions.length ? "🔴" : "🟢",
+  );
   F("Placeholder blurbs", placeholder, placeholder > 800 ? "🟠" : "🟢");
   F("Orphan enrichment rows (no place)", orphanEnr.length, orphanEnr.length > 200 ? "🟠" : "🟢");
   F("Duplicate raw slugs", dupSlugs.length, dupSlugs.length ? "🔴" : "🟢");
-  console.log(`(context: ${withEditorial} real Google blurbs; ${pub.length - placeholder} non-placeholder)`);
+  console.log(
+    `(context: ${usefulDescriptions.length} useful permanent descriptions; ` +
+    `${withEditorial} attributed Google summaries remain available as provider context)`,
+  );
 
   console.log(`\n--- EXAMPLES ---`);
   if (dupPairs.length) console.log(`dupes: ${ex(dupPairs, 12)}`);
@@ -158,7 +187,7 @@ function main() {
   if (stackedCoords.length) console.log(`coord-clumps: ${ex(stackedCoords.map(([c, v]) => `${c}×${v.length}`))}`);
   if (relevanceLeak.length) console.log(`B2B-leak: ${ex(relevanceLeak.map((p) => `${p.name}[${enr[p.slug]?.primary_type}]`))}`);
   if (badMuni.length) console.log(`bad-muni: ${ex(badMuni.map((p) => `${p.name}=${p.municipality}`))}`);
-  if (catDisagree.length) console.log(`cat≠Google: ${ex(catDisagree.slice(0, 8).map((p) => `${p.name} ${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`))}`);
+  if (catDisagree.length) console.log(`cat≠Google: ${ex(catDisagree.map((p) => `${p.name} ${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`), 8)}`);
   console.log("");
 }
 

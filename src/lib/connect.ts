@@ -109,6 +109,11 @@ export type NearbyOptions = {
   radiusM?: number;
   /** Cap per list (places / upcoming). Live events are never capped out. */
   limit?: number;
+  /**
+   * Optional, checksum-verified PostGIS distances for places inside radiusM.
+   * When absent, the existing in-memory Haversine path remains authoritative.
+   */
+  placeDistances?: ReadonlyMap<string, number>;
 };
 
 /**
@@ -148,7 +153,7 @@ export type NearbyContext = {
   };
 };
 
-const DEFAULT_RADIUS_M = 19_312; // ~12 miles
+export const DEFAULT_NEARBY_RADIUS_M = 19_312; // ~12 miles
 
 function withinRadius<T extends { distance_m?: number }>(
   rows: T[],
@@ -169,14 +174,18 @@ function withinRadius<T extends { distance_m?: number }>(
  * honest as the rest of the app. Pure given `opts.now`.
  */
 export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
-  const radiusM = opts.radiusM ?? DEFAULT_RADIUS_M;
+  const radiusM = opts.radiusM ?? DEFAULT_NEARBY_RADIUS_M;
   const limit = opts.limit ?? 8;
   const now = opts.now;
 
   const hit = resolveMunicipality(origin);
 
   // placesWithinRadius already: dedupes, drops closed, stamps distance.
-  const openPlaces = clientPlacesWithinRadius(origin, radiusM)
+  const openPlaces = clientPlacesWithinRadius(
+    origin,
+    radiusM,
+    opts.placeDistances,
+  )
     .filter((p) => p.open_status.state !== "closed")
     .slice(0, limit);
 

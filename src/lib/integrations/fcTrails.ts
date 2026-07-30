@@ -5,10 +5,11 @@
  * accidentally queried Frederick, Colorado, then discarded every result at the
  * Maryland bounding box. Keeping that dead request made a curated list look
  * "live" and added a needless network failure to every cold render. The list
- * now says what it is. The separate line-geometry accessor below still reads
- * the correct Frederick County, Maryland GIS layer for the native map.
+ * now says what it is. The separate line-geometry accessor below reads the
+ * correct public Maryland layer at runtime without committing a mirrored copy.
  */
 import { resolveMunicipality } from "@/lib/connect";
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 
 // MAP-OVERLAY source. The map needs trail
 // GEOMETRY, and the correct MD host carries it: ParksAndRecreation/Assets layer
@@ -198,6 +199,9 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
 }
 
 export async function getFrederickTrailShapes(): Promise<TrailLineFC> {
+  if (!frederickCountySourceEnabled("fc_park_trails")) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {

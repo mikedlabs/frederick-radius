@@ -28,16 +28,24 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 }
 
 describe("eventCardVisual", () => {
-  it("uses an exact Carroll Creek venue match and labels it as venue photography", () => {
+  it("uses an exact Carroll Creek Linear Park match and labels it as venue photography", () => {
+    expect(
+      eventCardVisual(
+        event({ venue_place_slug: "carroll-creek-linear-park-frederick" }),
+      ),
+    ).toEqual({
+      src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+      caption: "Venue · Carroll Creek Linear Park · Radius photo",
+      key: "radius-carroll-creek-summer",
+    });
+  });
+
+  it("does not use a broad Carroll Creek aerial as an exact amphitheater image", () => {
     expect(
       eventCardVisual(
         event({ venue_place_slug: "carroll-creek-outdoor-amphitheater" }),
       ),
-    ).toEqual({
-      src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
-      caption: "Carroll Creek · Radius photo",
-      key: "radius-carroll-creek-summer",
-    });
+    ).toBeNull();
   });
 
   it("does not guess from a venue name or a nearby coordinate", () => {
@@ -59,7 +67,7 @@ describe("eventCardVisual", () => {
           hero_image: "https://s1.ticketm.net/dam/a/example.jpg",
         }),
       ),
-    ).toMatchObject({ caption: "Image via Ticketmaster" });
+    ).toMatchObject({ caption: "Event image · Ticketmaster" });
 
     expect(
       eventCardVisual(
@@ -68,7 +76,73 @@ describe("eventCardVisual", () => {
           hero_image: "https://seatgeek.com/images/example.jpg",
         }),
       ),
-    ).toMatchObject({ caption: "Image via SeatGeek" });
+    ).toMatchObject({ caption: "Event image · SeatGeek" });
+  });
+
+  it.each([
+    [
+      "dfp",
+      "https://ik.imagekit.io/vibemap/events/example.jpg",
+      "Event image · Downtown Frederick Partnership",
+    ],
+    [
+      "visit-frederick",
+      "https://assets.simpleviewinc.com/sv-frederick-county/image/fetch/example.jpg",
+      "Event image · Visit Frederick",
+    ],
+    [
+      "fcpl",
+      "https://frederick.librarycalendar.com/sites/default/files/example.jpg",
+      "Event image · Frederick County Public Libraries",
+    ],
+    [
+      "mdcc",
+      "https://static.wixstatic.com/media/6bde7e_opening.jpg",
+      "Event image · Maryland Deaf Community Center",
+    ],
+  ] as const)(
+    "accepts publisher event art from %s only on its exact host",
+    (source, hero_image, caption) => {
+      expect(
+        eventCardVisual(
+          event({
+            source,
+            source_url: "https://publisher.example/event",
+            hero_image,
+          }),
+        ),
+      ).toMatchObject({
+        caption,
+        sourceHref: "https://publisher.example/event",
+      });
+    },
+  );
+
+  it("rejects a source-approved event with an image on the wrong host", () => {
+    expect(
+      eventCardVisual(
+        event({
+          source: "ticketmaster",
+          hero_image: "https://example.com/not-ticketmaster.jpg",
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it.each([
+    "http://static.wixstatic.com/media/6bde7e_opening.jpg",
+    "https://static.wixstatic.com:444/media/6bde7e_opening.jpg",
+    "https://static.wixstatic.com/not-media/6bde7e_opening.jpg",
+    "https://images.wixstatic.com/media/6bde7e_opening.jpg",
+  ])("rejects an MDCC image outside its exact Wix HTTPS media policy", (hero_image) => {
+    expect(
+      eventCardVisual(
+        event({
+          source: "mdcc",
+          hero_image,
+        }),
+      ),
+    ).toBeNull();
   });
 
   it("does not promote an unattributed place-photo proxy", () => {
@@ -81,13 +155,41 @@ describe("eventCardVisual", () => {
       ),
     ).toBeNull();
   });
+
+  it("promotes a venue photo only when it carries its direct source credit", () => {
+    const attribution = {
+      kind: "venue" as const,
+      venue_name: "Test Venue",
+      provider: "google_maps" as const,
+      source_uri: "https://www.google.com/maps/place/example-photo",
+      authors: [
+        {
+          display_name: "Local photographer",
+          uri: "https://maps.google.com/maps/contrib/123",
+        },
+      ],
+    };
+    expect(
+      eventCardVisual(
+        event({
+          hero_image: "/api/place-photo?name=credited",
+          hero_image_attribution: attribution,
+        }),
+      ),
+    ).toEqual({
+      src: "/api/place-photo?name=credited",
+      caption: "Venue · Test Venue",
+      key: "venue:/api/place-photo?name=credited",
+      attribution,
+    });
+  });
 });
 
 describe("planHorizonVisual", () => {
   it("keeps a visual lead and does not promote a second image", () => {
     const lead = event({
       slug: "lead",
-      venue_place_slug: "carroll-creek-outdoor-amphitheater",
+      venue_place_slug: "carroll-creek-linear-park-frederick",
     });
     const rest = [
       event({ slug: "second", venue_place_slug: "baker-park-frederick" }),
@@ -106,7 +208,7 @@ describe("planHorizonVisual", () => {
       event({ slug: "third", venue_place_slug: "baker-park-frederick" }),
       event({
         slug: "fourth",
-        venue_place_slug: "carroll-creek-outdoor-amphitheater",
+        venue_place_slug: "carroll-creek-linear-park-frederick",
       }),
     ];
 

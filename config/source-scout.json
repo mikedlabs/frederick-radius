@@ -1,0 +1,249 @@
+{
+  "_doc": "Review-only Tavily source discovery. This file controls a small, capped search sweep for first-party evidence. Results are candidates, never published facts. Most queries are host-allowlisted. The two unresolved-source queries are deliberately marked openDiscovery and still pass through the global blocklist.",
+  "version": 1,
+  "limits": {
+    "maxRequestsPerRun": 12,
+    "maxCreditsPerRun": 12,
+    "maxAttemptedCreditsPerDay": 24,
+    "maxAttemptedCreditsPerMonth": 300,
+    "lockStaleMinutes": 30,
+    "requestTimeoutMs": 12000,
+    "maxResultsPerQuery": 5,
+    "defaultCacheTtlHours": 24
+  },
+  "blockedDomains": [
+    "facebook.com",
+    "instagram.com",
+    "threads.net",
+    "twitter.com",
+    "x.com",
+    "reddit.com",
+    "nextdoor.com",
+    "yelp.com",
+    "tripadvisor.com",
+    "mapquest.com",
+    "yellowpages.com",
+    "chamberofcommerce.com",
+    "restaurantguru.com",
+    "allmenus.com",
+    "menupix.com",
+    "doordash.com",
+    "ubereats.com",
+    "grubhub.com"
+  ],
+  "profiles": [
+    {
+      "id": "official-civic-mdot",
+      "label": "Official civic and travel changes",
+      "purpose": "Find first-party notices that may change a user's plan. A candidate still requires source verification before Radius can label it current.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 3,
+      "cacheTtlHours": 6,
+      "queries": [
+        {
+          "id": "city-service-changes",
+          "text": "Frederick Maryland city road closure detour parking transit service interruption public notice {month} {year}",
+          "allowedDomains": [
+            "cityoffrederickmd.gov"
+          ],
+          "reviewFor": [
+            "road or sidewalk closures",
+            "parking and city service changes",
+            "time-sensitive public notices"
+          ]
+        },
+        {
+          "id": "county-service-changes",
+          "text": "Frederick County Maryland service alert transit schedule park closure public notice {month} {year}",
+          "allowedDomains": [
+            "frederickcountymd.gov"
+          ],
+          "reviewFor": [
+            "county service changes",
+            "Transit Services notices",
+            "park or facility closures"
+          ]
+        },
+        {
+          "id": "mdot-travel-changes",
+          "text": "Frederick County Maryland road closure traffic detour construction commuter bus MARC alert {month} {year}",
+          "allowedDomains": [
+            "roads.maryland.gov",
+            "mdot.maryland.gov",
+            "chart.maryland.gov",
+            "mta.maryland.gov"
+          ],
+          "reviewFor": [
+            "state road work",
+            "traffic incidents and detours",
+            "commuter bus or MARC changes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "official-new-events",
+      "label": "New and changed events",
+      "purpose": "Surface newly posted or changed events from local publishers without treating every indexed page as a recommendation.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 2,
+      "cacheTtlHours": 8,
+      "queries": [
+        {
+          "id": "city-county-destination-events",
+          "text": "Frederick Maryland new event schedule cancellation postponement venue change {month} {year}",
+          "allowedDomains": [
+            "cityoffrederickmd.gov",
+            "frederickcountymd.gov",
+            "visitfrederick.org",
+            "downtownfrederick.org"
+          ],
+          "reviewFor": [
+            "newly published events",
+            "cancellations or postponements",
+            "time or location changes"
+          ]
+        },
+        {
+          "id": "venue-programming",
+          "text": "Frederick Maryland performance live music community event schedule {month} {year}",
+          "allowedDomains": [
+            "weinbergcenter.org",
+            "thebanyanmd.com",
+            "skystagefrederick.com",
+            "thefrederickcenter.org",
+            "jojosrestauranttaphouse.com"
+          ],
+          "reviewFor": [
+            "venue programming",
+            "ticket or registration pages",
+            "schedule changes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "menus-reservations-accessibility",
+      "label": "Menus, reservations, and accessibility",
+      "purpose": "Find exact first-party utility pages for high-intent place questions. The scout records links only; it does not copy menus or infer accessibility.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 2,
+      "cacheTtlHours": 168,
+      "queries": [
+        {
+          "id": "downtown-dining-utility-pages",
+          "text": "Frederick Maryland menu reservations accessibility parking Cafe Nola JoJo's Hootch and Banter Wine Kitchen",
+          "allowedDomains": [
+            "cafe-nola.com",
+            "jojosrestauranttaphouse.com",
+            "hootchandbanter.com",
+            "thewinekitchen.com"
+          ],
+          "reviewFor": [
+            "native menu pages",
+            "official reservation links",
+            "first-party accessibility details"
+          ]
+        },
+        {
+          "id": "arts-accessibility-ticketing",
+          "text": "Frederick Maryland Weinberg Center New Spire accessibility seating parking tickets",
+          "allowedDomains": [
+            "weinbergcenter.org"
+          ],
+          "reviewFor": [
+            "accessible seating and entrances",
+            "parking and arrival guidance",
+            "official ticket pages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "food-truck-schedules",
+      "label": "Food-truck schedules",
+      "purpose": "Find dated schedule or location pages on vendor-owned sites. A page must contain a real date and place before it can support a live beacon.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 3,
+      "cacheTtlHours": 8,
+      "queries": [
+        {
+          "id": "vendor-schedules-a",
+          "text": "Frederick Maryland food truck schedule location this week Blendabowl Gravel and Grind Grilled Cheese Please",
+          "allowedDomains": [
+            "blendabowlfrederickft.com",
+            "gravelandgrind.com",
+            "grilledcheeseplease.online"
+          ],
+          "reviewFor": [
+            "dated vendor stops",
+            "schedule pages",
+            "location changes"
+          ]
+        },
+        {
+          "id": "vendor-schedules-b",
+          "text": "Frederick Maryland food truck schedule location this week Blues BBQ In10se BBQ M and L Ragin Cajun Whistle Punk",
+          "allowedDomains": [
+            "bluesbbqco.com",
+            "in10sebbq.com",
+            "mlsragincajun.com",
+            "whistlepunkfarm.com"
+          ],
+          "reviewFor": [
+            "dated vendor stops",
+            "schedule pages",
+            "catering-only versus public service"
+          ]
+        },
+        {
+          "id": "county-roster-changes",
+          "text": "Frederick Maryland food trucks mobile vendors new closed directory {year}",
+          "allowedDomains": [
+            "visitfrederick.org"
+          ],
+          "reviewFor": [
+            "roster additions",
+            "possible closures",
+            "links to vendor-owned sources"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unresolved-source-recovery",
+      "label": "Unresolved first-party sources",
+      "purpose": "Recover a likely first-party source for known gaps. Open discovery is explicit and all results remain review-only.",
+      "enabled": true,
+      "searchDepth": "basic",
+      "maxQueriesPerRun": 2,
+      "cacheTtlHours": 168,
+      "queries": [
+        {
+          "id": "derby-new-market-events",
+          "text": "\"The Derby\" \"New Market\" Maryland official live music events schedule",
+          "allowedDomains": [],
+          "openDiscovery": true,
+          "reviewFor": [
+            "a vendor-owned website",
+            "a stable non-social event page"
+          ]
+        },
+        {
+          "id": "bub-b-que-source",
+          "text": "\"Bub-B-Que\" Frederick Maryland official website schedule catering",
+          "allowedDomains": [],
+          "openDiscovery": true,
+          "reviewFor": [
+            "a vendor-owned website",
+            "a public schedule or booking page"
+          ]
+        }
+      ]
+    }
+  ]
+}

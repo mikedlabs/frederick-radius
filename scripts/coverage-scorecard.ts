@@ -206,6 +206,8 @@ const amenityLabels: Record<AmenityKind, string> = {
   bench: "Bench",
   dog_waste: "Dog bags",
   dog_water: "Dog water",
+  dog_park: "Dog park",
+  water_access: "Water access",
   outlet: "Power",
   bike_repair: "Bike repair",
   other: "Other",
@@ -243,13 +245,13 @@ const md = [
   "",
   "| Check | Count |",
   "| --- | ---: |",
-  `| Public Google-backed places expected in the seven-day cycle | ${hoursArtifact.expectedGoogleBackedPlaces} |`,
+  `| Public Google-backed places expected in the ${hoursArtifact.cycle.days}-day cycle | ${hoursArtifact.expectedGoogleBackedPlaces} |`,
   `| Snapshot rows | ${hoursArtifact.rows} |`,
   `| Rows matched to the public set | ${hoursArtifact.matchedRows} |`,
   `| Rows carrying a schedule | ${hoursArtifact.withSchedule} |`,
   `| Rows refreshed within policy, including status-only results | ${hoursArtifact.freshRefreshRows} (${hoursArtifact.cycle.refreshCoveragePct}%) |`,
   `| Rows fresh within policy | ${hoursArtifact.freshRows} (${hoursArtifact.coveragePct}%) |`,
-  `| Seven-day cycle state | ${hoursArtifact.cycle.state} |`,
+  `| ${hoursArtifact.cycle.days}-day cycle state | ${hoursArtifact.cycle.state} |`,
   `| Cycle buckets meeting the minimum write ratio | ${hoursArtifact.cycle.completedDays} / ${hoursArtifact.cycle.days} |`,
   `| Stale rows | ${hoursArtifact.staleRows} |`,
   `| Invalid verification timestamps | ${hoursArtifact.invalidTimestamps} |`,
@@ -267,7 +269,7 @@ const md = [
   ),
   "",
   hoursArtifact.cycle.state === "warming"
-    ? "The first complete seven-day pass is still warming up. Missing buckets are visible, but they are not called failed until the cycle window has elapsed."
+    ? `The first complete ${hoursArtifact.cycle.days}-day pass is still warming up. Missing buckets are visible, but they are not called failed until the cycle window has elapsed.`
     : hoursArtifact.cycle.state === "stalled"
       ? `**Stalled:** missing cycle days ${hoursArtifact.cycle.missingDays.join(", ") || "none"}; underfilled cycle days ${hoursArtifact.cycle.underfilledDays.join(", ") || "none"}. Check the Vercel writer before the next pull.`
       : hoursArtifact.cycle.state === "healthy"

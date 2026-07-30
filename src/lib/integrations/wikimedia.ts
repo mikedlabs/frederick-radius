@@ -60,7 +60,7 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     source_url: "https://commons.wikimedia.org/wiki/File:Francis_Scott_Key_Monument_(March_2024).jpg",
     verified: true,
   },
-  "roddy-road-park-thurmont": {
+  "historic-roddy-road-covered-bridge-thurmont": {
     file: "Roddy Road covered bridge near Thurmont in Frederick County, Maryland, built about 1850.jpg",
     alt: "The 1850 Roddy Road Covered Bridge at Roddy Road Park near Thurmont.",
     author: "Carol M. Highsmith",

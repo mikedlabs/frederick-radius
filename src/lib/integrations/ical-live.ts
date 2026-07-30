@@ -19,10 +19,19 @@ import {
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
 import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events/normalize";
 import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
-import { eventAdapterIsDegraded } from "@/lib/integrations/event-adapter-result";
+import {
+  eventAdapterFailed,
+  eventAdapterIsDegraded,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 import { createSingleFlight } from "@/lib/single-flight";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 import { AsyncLocalStorage } from "node:async_hooks";
+import {
+  mapEventSourcesWithConcurrency,
+  publicEventSourceCircuits,
+} from "@/lib/integrations/event-source-circuit";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -50,6 +59,16 @@ const FEED_FETCH_TIMEOUT_MS = 8_000;
 // bodies must never be stored there. Five MB leaves real headroom for that
 // feed while placing a hard ceiling on an upstream response before parsing.
 const MAX_ICAL_SOURCE_BYTES = 5_000_000;
+// MDCC's first-party Wix page currently weighs about 1.4 MB. Bound the HTML
+// independently so an upstream template regression cannot make an event
+// request read an arbitrarily large document into memory.
+const MAX_WIX_HTML_SOURCE_BYTES = 3_000_000;
+// Event providers are external, burst-sensitive services. Four concurrent
+// source pulls keeps a cold board quick without opening twenty-plus sockets at
+// once. Abortable data-health probes retain their direct fanout below so their
+// cancellation and recovery semantics do not inherit public circuit state.
+const PUBLIC_EVENT_SOURCE_CONCURRENCY = 4;
+const PUBLIC_EVENT_FETCH_HORIZON_DAYS = 90;
 
 export type LiveEvent = {
   id: string;
@@ -73,7 +92,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mdcc" | "mount-st-marys" | "frederick-keys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -110,7 +129,14 @@ type Feed = {
   default_category: string;
 };
 
-type FeedFormat = "ical" | "rss" | "tribe" | "moderncampus" | "presence" | "vibemap";
+type FeedFormat =
+  | "ical"
+  | "rss"
+  | "tribe"
+  | "moderncampus"
+  | "presence"
+  | "vibemap"
+  | "wix-html";
 
 export type FeedSpec = Feed & {
   format: FeedFormat;
@@ -278,6 +304,21 @@ const FEEDS: FeedSpec[] = [
     format: "ical",
     default_venue: "Maryland School for the Deaf",
     default_geom: { lng: -77.4180, lat: 39.4084 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Maryland Deaf Community Center — first-party Wix Events calendar.
+    // Wix does not expose a stable public iCal/JSON endpoint here, but its
+    // server-rendered events page includes the organizer-published event
+    // records in wix-warmup-data. The parser retains the first-party event
+    // links and media, and never infers a specific accessibility service.
+    source: "mdcc",
+    source_label: "Maryland Deaf Community Center",
+    url: "https://www.deafmdcc.org/events",
+    format: "wix-html",
+    default_venue: "Maryland Deaf Community Center",
+    default_geom: { lng: -77.4025511, lat: 39.4238076 },
     default_municipality: "frederick",
     default_category: "community",
   },
@@ -901,41 +942,61 @@ async function readBoundedText(response: Response, maxBytes: number): Promise<st
 // unstable_cache wrappers.
 const fetchRawIcalOnce = createSingleFlight<string, RawIcalResponse>();
 
-async function fetchRawIcal(feed: FeedSpec): Promise<RawIcalResponse> {
-  return fetchRawIcalOnce(feed.url, async () => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
-    try {
-      const response = await fetch(feed.url, {
-        signal: ctrl.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
-          Accept: "text/calendar, text/plain",
-        },
-        // Raw public calendars can exceed Vercel/Next's 2 MB Data Cache item
-        // ceiling. Cache the parsed, windowed result instead of this body.
-        cache: "no-store",
-      });
-      return {
-        ok: response.ok,
-        status: response.status,
-        text: response.ok
-          ? await readBoundedText(response, MAX_ICAL_SOURCE_BYTES)
-          : "",
-      };
-    } finally {
-      clearTimeout(timer);
-    }
-  });
+async function fetchRawIcalWork(
+  feed: FeedSpec,
+  parentSignal?: AbortSignal,
+): Promise<RawIcalResponse> {
+  const deadline = createAbortDeadline(
+    FEED_FETCH_TIMEOUT_MS,
+    parentSignal,
+  );
+  try {
+    const response = await fetch(feed.url, {
+      signal: deadline.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "text/calendar, text/plain",
+      },
+      // Raw public calendars can exceed Vercel/Next's 2 MB Data Cache item
+      // ceiling. Cache the parsed, windowed result instead of this body.
+      cache: "no-store",
+    });
+    return {
+      ok: response.ok,
+      status: response.status,
+      text: response.ok
+        ? await readBoundedText(response, MAX_ICAL_SOURCE_BYTES)
+        : "",
+    };
+  } finally {
+    deadline.dispose();
+  }
 }
 
-async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchRawIcal(
+  feed: FeedSpec,
+  parentSignal?: AbortSignal,
+): Promise<RawIcalResponse> {
+  // An abortable operational probe must own its request. Sharing it with a
+  // public/cache fill would let the health route cancel an unrelated caller.
+  // Ordinary non-abortable callers retain the cold-fill single-flight.
+  if (parentSignal) {
+    return fetchRawIcalWork(feed, parentSignal);
+  }
+  return fetchRawIcalOnce(feed.url, () => fetchRawIcalWork(feed));
+}
+
+async function fetchIcalFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
   // Reset per-source counts at the start of every pull so the admin
   // dashboard reflects the current fetch, not lifetime aggregates.
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   try {
-    const raw = await fetchRawIcal(feed);
+    const raw = await fetchRawIcal(feed, parentSignal);
     if (!raw.ok) {
       // 410 (Gone) and 404 (Not Found) signal the calendar was
       // retired upstream — not an app error. Log as info so the
@@ -1035,18 +1096,21 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFe
   }
 }
 
-async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchRssFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   // CivicPlus' county host has produced 10-second connect timeouts in
   // production. Stop before the platform socket timeout so the caught,
   // health-aware fallback wins and no RSC request inherits a runtime error.
   const timeoutMs = feed.source === "county" ? 5_000 : FEED_FETCH_TIMEOUT_MS;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const deadline = createAbortDeadline(timeoutMs, parentSignal);
   try {
     const res = await fetch(feed.url, {
-      signal: ctrl.signal,
+      signal: deadline.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
       next: { revalidate: 3600 },
     });
@@ -1146,7 +1210,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFet
     );
     return { events: [], ok: false };
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
   }
 }
 
@@ -1211,11 +1275,17 @@ function jsonEventDateToISO(utc?: string, local?: string): string | null {
  * museum / theater / land-trust nonprofits whose sites run the plugin
  * (civilwarmed.org, marylandensemble.org, catoctinlandtrust.org).
  */
-async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchTribeFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  const deadline = createAbortDeadline(
+    FEED_FETCH_TIMEOUT_MS,
+    parentSignal,
+  );
   try {
     const now = new Date();
     const horizon = new Date(now);
@@ -1223,7 +1293,7 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<FeedF
     const sep = feed.url.includes("?") ? "&" : "?";
     const url = `${feed.url}${sep}per_page=50&start_date=${now.toISOString().slice(0, 10)}`;
     const res = await fetch(url, {
-      signal: ctrl.signal,
+      signal: deadline.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "application/json",
@@ -1299,7 +1369,320 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<FeedF
     );
     return { events: [], ok: false };
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
+  }
+}
+
+type WixEventRow = {
+  id?: unknown;
+  title?: unknown;
+  description?: unknown;
+  slug?: unknown;
+  status?: unknown;
+  scheduling?: unknown;
+  location?: unknown;
+  mainImage?: unknown;
+  registration?: unknown;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function recordString(
+  record: Record<string, unknown> | null,
+  key: string,
+): string {
+  const value = record?.[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function wixWarmupJson(html: string): unknown {
+  // Attribute order is not stable on Wix deploys. The lookahead finds the
+  // id regardless of whether type or id is emitted first.
+  const match = html.match(
+    /<script\b(?=[^>]*\bid=["']wix-warmup-data["'])[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (!match?.[1]) {
+    throw new Error("wix-warmup-data script missing");
+  }
+  try {
+    return JSON.parse(match[1]) as unknown;
+  } catch {
+    throw new Error("wix-warmup-data script contained invalid JSON");
+  }
+}
+
+/**
+ * Wix places event arrays at `object.events.events` in more than one widget
+ * payload (the current list and calendar/history views). Walk the warmup tree
+ * rather than depending on generated component ids, then dedupe the overlap by
+ * the publisher's stable event id.
+ */
+export function collectWixEventRows(warmupData: unknown): WixEventRow[] {
+  const byId = new Map<string, WixEventRow>();
+
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const child of value) visit(child);
+      return;
+    }
+    const object = asRecord(value);
+    if (!object) return;
+
+    const eventsContainer = asRecord(object.events);
+    const rows = eventsContainer?.events;
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        const event = asRecord(row) as WixEventRow | null;
+        if (!event) continue;
+        const id = typeof event.id === "string" ? event.id.trim() : "";
+        if (id && !byId.has(id)) byId.set(id, event);
+      }
+    }
+
+    for (const child of Object.values(object)) visit(child);
+  };
+
+  visit(warmupData);
+  return [...byId.values()];
+}
+
+function wixEventPrice(registrationValue: unknown): string | undefined {
+  const registration = asRecord(registrationValue);
+  const ticketing = asRecord(registration?.ticketing);
+  const direct = recordString(ticketing, "lowestPrice");
+  if (direct) return direct;
+  const formatted = recordString(ticketing, "lowestTicketPriceFormatted");
+  if (formatted) return formatted;
+  const structured = asRecord(ticketing?.lowestTicketPrice);
+  const amount = recordString(structured, "amount") || recordString(structured, "value");
+  if (!amount) return undefined;
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) return undefined;
+  return `$${numeric.toFixed(numeric % 1 === 0 ? 0 : 2)}`;
+}
+
+function isZeroPrice(price: string | undefined): boolean {
+  if (!price || !/\d/.test(price)) return false;
+  const numeric = Number(price.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(numeric) && numeric === 0;
+}
+
+function approvedWixEventImage(value: string): string | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.hostname !== "static.wixstatic.com" ||
+      parsed.port !== "" ||
+      parsed.username !== "" ||
+      parsed.password !== "" ||
+      !parsed.pathname.startsWith("/media/")
+    ) {
+      return undefined;
+    }
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function wixLifecycleStatus(value: unknown): "active" | "ended" | "cancelled" {
+  const normalized =
+    typeof value === "string" ? value.trim().toUpperCase() : value;
+  if (normalized === 2 || normalized === "2" || normalized === "ENDED") {
+    return "ended";
+  }
+  if (
+    normalized === 3
+    || normalized === "3"
+    || normalized === "CANCELED"
+    || normalized === "CANCELLED"
+  ) {
+    return "cancelled";
+  }
+  return "active";
+}
+
+/**
+ * Parse the Maryland Deaf Community Center's first-party Wix Events page.
+ *
+ * Wix `status` is a lifecycle enum (0 upcoming, 1 started, 2 ended,
+ * 3 cancelled). Ended rows are rejected; cancellation maps to the shared
+ * LiveEvent status. A postponed state still requires an explicit publisher
+ * marker in the title because Wix does not publish one in this payload.
+ */
+export function parseWixEventsHtml(
+  html: string,
+  feed: FeedSpec,
+  now: Date,
+  horizon: Date,
+  fetchedAt: string,
+): LiveEvent[] {
+  const rows = collectWixEventRows(wixWarmupJson(html));
+  const events: LiveEvent[] = [];
+
+  for (const row of rows) {
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const rawTitle = typeof row.title === "string" ? cleanFeedText(row.title).trim() : "";
+    if (!id || !rawTitle) continue;
+
+    const scheduling = asRecord(row.scheduling);
+    const config = asRecord(scheduling?.config);
+    const startValue = recordString(config, "startDate");
+    const endValue = recordString(config, "endDate");
+    const startMs = Date.parse(startValue);
+    if (!Number.isFinite(startMs)) continue;
+    const start = new Date(startMs);
+    const parsedEndMs = Date.parse(endValue);
+    const end = Number.isFinite(parsedEndMs)
+      ? new Date(parsedEndMs)
+      : new Date(startMs + 2 * 60 * 60 * 1000);
+    if (end < start) continue;
+
+    // Keep a multi-day/current series while its publisher-supplied end is in
+    // the future, plus ordinary future events inside the requested horizon.
+    const wixStatus = wixLifecycleStatus(row.status);
+    if (wixStatus === "ended" || end < now || start > horizon) continue;
+
+    const location = asRecord(row.location);
+    const coordinates = asRecord(location?.coordinates);
+    const lat = coordinates?.lat;
+    const lng = coordinates?.lng;
+    const hasCoordinates =
+      typeof lat === "number"
+      && Number.isFinite(lat)
+      && typeof lng === "number"
+      && Number.isFinite(lng);
+    const geom = hasCoordinates ? { lat, lng } : feed.default_geom;
+    const fullAddress = asRecord(location?.fullAddress);
+    const address =
+      recordString(location, "address")
+      || recordString(fullAddress, "formattedAddress");
+    const venue = recordString(location, "name") || feed.default_venue;
+
+    const rawDescription =
+      typeof row.description === "string"
+        ? row.description.replace(/<[^>]+>/g, " ")
+        : "";
+    const description = clampDescription(
+      cleanDescription(rawDescription),
+      300,
+    );
+    const rawStatus = deriveEventStatus(
+      rawTitle,
+      wixStatus === "cancelled" ? "CANCELLED" : undefined,
+    );
+    const title =
+      rawStatus === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
+    const slug = typeof row.slug === "string" ? row.slug.trim() : "";
+    const detailUrl = slug
+      ? new URL(
+          `/event-details-registration/${encodeURIComponent(slug)}`,
+          feed.url,
+        ).toString()
+      : feed.url;
+    const image = asRecord(row.mainImage);
+    const heroImage = approvedWixEventImage(recordString(image, "url"));
+    const priceText = wixEventPrice(row.registration);
+
+    const candidate = {
+      id: `${feed.source}:${id}`,
+      title,
+      status: rawStatus,
+      description,
+      starts_at: start.toISOString(),
+      ends_at: end.toISOString(),
+      is_all_day: false,
+      venue_name: venue,
+      address,
+      geom,
+      placement: hasCoordinates ? ("geocoded" as const) : undefined,
+      municipality: inferMunicipality(address, feed.default_municipality),
+      category: feedCategory(feed, title, description),
+      organizer: feed.source_label,
+      source: feed.source,
+      source_label: feed.source_label,
+      url: detailUrl,
+      is_free:
+        isZeroPrice(priceText)
+        || isExplicitlyFree(`${title} ${description}`),
+      price_text: priceText,
+      hero_image: heroImage,
+      last_verified_at: fetchedAt,
+    };
+    const validated = validateLiveEvent(candidate, feed.source);
+    if (validated) events.push(validated);
+  }
+
+  return events.sort(
+    (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
+  );
+}
+
+async function fetchWixHtmlFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
+  const deadline = createAbortDeadline(
+    FEED_FETCH_TIMEOUT_MS,
+    parentSignal,
+  );
+  try {
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + windowDays);
+    const response = await fetch(feed.url, {
+      signal: deadline.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!response.ok) {
+      console.warn(
+        `[ical-live] ${feed.source}: HTTP ${response.status} (fail-soft, skipped)`,
+      );
+      return { events: [], ok: false };
+    }
+    const html = await readBoundedText(
+      response,
+      MAX_WIX_HTML_SOURCE_BYTES,
+    );
+    const events = parseWixEventsHtml(
+      html,
+      feed,
+      now,
+      horizon,
+      fetchedAt,
+    );
+    console.log(
+      `[ical-live] ${feed.source}: parsed ${events.length} Wix events in window`,
+    );
+    recordSnapshot(feed.source, events);
+    return { events, ok: true };
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.warn(
+      `[ical-live] ${feed.source} ${
+        aborted
+          ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)`
+          : "failed"
+      } (fail-soft, skipped):`,
+      err instanceof Error ? err.message : err,
+    );
+    return { events: [], ok: false };
+  } finally {
+    deadline.dispose();
   }
 }
 
@@ -1312,11 +1695,17 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<FeedF
  *     (startDateTimeUtc is absolute UTC).
  * Same window + fail-soft + validate contract as the iCal/tribe paths.
  */
-async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchJsonArrayFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  const deadline = createAbortDeadline(
+    FEED_FETCH_TIMEOUT_MS,
+    parentSignal,
+  );
   try {
     const now = new Date();
     const horizon = new Date(now);
@@ -1330,7 +1719,7 @@ async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<F
       url = `${feed.url}${sep}start=${now.toISOString().slice(0, 10)}&end=${end.toISOString().slice(0, 10)}`;
     }
     const res = await fetch(url, {
-      signal: ctrl.signal,
+      signal: deadline.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "application/json",
@@ -1416,7 +1805,7 @@ async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<F
     );
     return { events: [], ok: false };
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
   }
 }
 
@@ -1427,7 +1816,56 @@ export type VibemapRow = {
   link?: string;
   excerpt?: { rendered?: string };
   meta?: Record<string, unknown>;
+  /** WordPress/Yoast exposes the event's own social image when the Vibemap
+   *  image array is empty. It is still publisher-provided event art. */
+  yoast_head_json?: { twitter_image?: unknown };
 };
+
+const VIBEMAP_IMAGE_HOST = "ik.imagekit.io";
+const VIBEMAP_IMAGE_PATH_PREFIX = "/vibemap/";
+
+function approvedVibemapImage(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const image = approvedVibemapImage(item);
+      if (image) return image;
+    }
+    return undefined;
+  }
+  if (typeof value !== "string" || !value.trim()) return undefined;
+
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      return approvedVibemapImage(JSON.parse(trimmed) as unknown);
+    } catch {
+      return undefined;
+    }
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== VIBEMAP_IMAGE_HOST ||
+      !url.pathname.startsWith(VIBEMAP_IMAGE_PATH_PREFIX)
+    ) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function vibemapEventImage(row: VibemapRow): string | undefined {
+  const meta = row.meta ?? {};
+  return (
+    approvedVibemapImage(meta["vibemap_event_images"]) ??
+    approvedVibemapImage(meta["vibemap_event_original_images"]) ??
+    approvedVibemapImage(row.yoast_head_json?.twitter_image)
+  );
+}
 
 /**
  * Map raw vibemap_event rows to validated LiveEvents. Pure — exported for
@@ -1510,6 +1948,7 @@ export function parseVibemapEvents(
       source_label: feed.source_label,
       url: /^https?:\/\//i.test(metaUrl) ? metaUrl : row.link || feed.url,
       is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+      hero_image: vibemapEventImage(row),
       last_verified_at: fetchedAt,
     };
     const validated = validateLiveEvent(candidate, feed.source);
@@ -1531,15 +1970,23 @@ const VIBEMAP_FIELDS = [
   "meta.vibemap_event_url", "meta.vibemap_event_venue_name",
   "meta.vibemap_event_venue_address", "meta.vibemap_event_venue_latitude",
   "meta.vibemap_event_venue_longitude",
+  "meta.vibemap_event_images", "meta.vibemap_event_original_images",
+  "yoast_head_json.twitter_image",
 ].join(",");
 
 /** Fetch a Vibemap-for-WordPress events registry (wp/v2/vibemap_event).
  *  Same window + fail-soft + validate contract as the other paths. */
-async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+async function fetchVibemapFeed(
+  feed: FeedSpec,
+  windowDays: number,
+  parentSignal?: AbortSignal,
+): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  const deadline = createAbortDeadline(
+    FEED_FETCH_TIMEOUT_MS,
+    parentSignal,
+  );
   try {
     const now = new Date();
     const horizon = new Date(now);
@@ -1551,7 +1998,7 @@ async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<Fee
       "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
       Accept: "application/json",
     };
-    const first = await fetch(pageUrl(1), { signal: ctrl.signal, headers, next: { revalidate: 3600 } });
+    const first = await fetch(pageUrl(1), { signal: deadline.signal, headers, next: { revalidate: 3600 } });
     if (!first.ok) {
       if (first.status === 410 || first.status === 404) {
         console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${first.status})`);
@@ -1568,9 +2015,20 @@ async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<Fee
     const restPages = Math.min(totalPages, VIBEMAP_MAX_PAGES);
     const rest = await Promise.all(
       Array.from({ length: Math.max(0, restPages - 1) }, (_, i) =>
-        fetch(pageUrl(i + 2), { signal: ctrl.signal, headers, next: { revalidate: 3600 } })
+        fetch(pageUrl(i + 2), { signal: deadline.signal, headers, next: { revalidate: 3600 } })
           .then((r) => (r.ok ? (r.json() as Promise<VibemapRow[]>) : []))
-          .catch(() => [] as VibemapRow[]),
+          .catch((error) => {
+            // A single later page may fail soft, but a parent/deadline abort
+            // must reach the adapter catch so this source is not reported
+            // healthy with a silently truncated payload.
+            if (
+              deadline.signal.aborted
+              || (error instanceof Error && error.name === "AbortError")
+            ) {
+              throw error;
+            }
+            return [] as VibemapRow[];
+          }),
       ),
     );
     const rows = [firstRows, ...rest].flat().filter((r) => r && typeof r === "object");
@@ -1586,15 +2044,22 @@ async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<Fee
     );
     return { events: [], ok: false };
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
   }
 }
 
 async function fetchFeedOnce(
   feed: FeedSpec,
   windowDays: number,
+  parentSignal?: AbortSignal,
 ): Promise<FeedFetchResult> {
   if (feed.source === "county") {
+    // Abortable health probes are intentionally isolated from the cached
+    // county result. Otherwise a route deadline could cancel a shared fill
+    // being awaited by a public event page.
+    if (parentSignal) {
+      return fetchRssFeed(feed, windowDays, parentSignal);
+    }
     // Vitest calls the raw integration outside Next's request/cache context.
     // Keep that diagnostic path real rather than throwing Next's
     // "incrementalCache missing" invariant before the mocked fetch runs.
@@ -1606,11 +2071,22 @@ async function fetchFeedOnce(
     }
     return fetchCountyRssCached(windowDays);
   }
-  if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
-  if (feed.format === "moderncampus" || feed.format === "presence") return fetchJsonArrayFeed(feed, windowDays);
-  if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
-  if (feed.format === "vibemap") return fetchVibemapFeed(feed, windowDays);
-  return fetchIcalFeed(feed, windowDays);
+  if (feed.format === "tribe") {
+    return fetchTribeFeed(feed, windowDays, parentSignal);
+  }
+  if (feed.format === "wix-html") {
+    return fetchWixHtmlFeed(feed, windowDays, parentSignal);
+  }
+  if (feed.format === "moderncampus" || feed.format === "presence") {
+    return fetchJsonArrayFeed(feed, windowDays, parentSignal);
+  }
+  if (feed.format === "rss") {
+    return fetchRssFeed(feed, windowDays, parentSignal);
+  }
+  if (feed.format === "vibemap") {
+    return fetchVibemapFeed(feed, windowDays, parentSignal);
+  }
+  return fetchIcalFeed(feed, windowDays, parentSignal);
 }
 
 type LiveEventFetchSession = {
@@ -1664,6 +2140,35 @@ export function fetchLiveTicketmasterMusicResult(): ReturnType<
   return session.ticketmasterMusic;
 }
 
+/**
+ * Public event adapters share the same in-process failure contract as the
+ * municipal feeds. Disabled integrations are neutral; failed/partial
+ * integrations open the circuit. When a previous successful value exists, a
+ * failed refresh returns those rows as partial so the board can use them while
+ * still reporting degraded source coverage.
+ */
+export async function runPublicEventAdapter<T>(
+  source: string,
+  work: () => Promise<EventAdapterResult<T>>,
+): Promise<EventAdapterResult<T>> {
+  const outcome = await publicEventSourceCircuits.run(
+    `adapter:${source}`,
+    work,
+    {
+      classify: (result) =>
+        result.state === "disabled"
+          ? "neutral"
+          : eventAdapterIsDegraded(result)
+            ? "failure"
+            : "success",
+      fallback: () => eventAdapterFailed<T>(),
+    },
+  );
+  return outcome.degraded
+    ? eventAdapterFailed(outcome.value.items)
+    : outcome.value;
+}
+
 function trimFeedResultToWindow(
   result: FeedFetchResult,
   startedAtMs: number,
@@ -1686,9 +2191,46 @@ function trimFeedResultToWindow(
 async function fetchFeed(
   feed: FeedSpec,
   windowDays: number,
+  parentSignal?: AbortSignal,
 ): Promise<FeedFetchResult> {
+  // A cancellable operational caller owns its work. Do not place it into the
+  // request-scoped session map, where aborting it could poison another
+  // consumer sharing that session.
+  if (parentSignal) {
+    return fetchFeedOnce(feed, windowDays, parentSignal);
+  }
+
+  const publicFetch = async (sharedWindowDays: number) => {
+    const circuitKey =
+      sharedWindowDays <= PUBLIC_EVENT_FETCH_HORIZON_DAYS
+        ? `feed:${feed.source}`
+        : `feed:${feed.source}:h${sharedWindowDays}`;
+    const outcome = await publicEventSourceCircuits.run(
+      circuitKey,
+      () => fetchFeedOnce(feed, sharedWindowDays),
+      {
+        classify: (result) => result.ok ? "success" : "failure",
+        fallback: (): FeedFetchResult => ({ events: [], ok: false }),
+      },
+    );
+    // A stale-good value remains useful, but it must never make the source look
+    // freshly healthy to the coverage ledger.
+    return outcome.degraded
+      ? { ...outcome.value, ok: false }
+      : outcome.value;
+  };
+
+  const publicWindowDays = Math.max(
+    PUBLIC_EVENT_FETCH_HORIZON_DAYS,
+    windowDays,
+  );
   const session = liveEventFetchSession.getStore();
-  if (!session) return fetchFeedOnce(feed, windowDays);
+  if (!session) {
+    const result = await publicFetch(publicWindowDays);
+    return windowDays >= publicWindowDays
+      ? result
+      : trimFeedResultToWindow(result, Date.now(), windowDays);
+  }
 
   const sharedWindowDays = Math.max(
     WARM_EVENT_FETCH_HORIZON_DAYS,
@@ -1697,7 +2239,7 @@ async function fetchFeed(
   const key = `${feed.source}:${sharedWindowDays}`;
   let shared = session.feeds.get(key);
   if (!shared) {
-    shared = fetchFeedOnce(feed, sharedWindowDays);
+    shared = publicFetch(sharedWindowDays);
     session.feeds.set(key, shared);
   }
 
@@ -1712,21 +2254,29 @@ async function fetchFeed(
 export async function getLiveEventsForSources(
   sources: readonly LiveEvent["source"][],
   windowDays = 60,
+  options: { signal?: AbortSignal } = {},
 ): Promise<{
   events: LiveEvent[];
   sources_succeeded: string[];
   sources_failed: string[];
 }> {
   const wanted = new Set(sources);
-  const results = await Promise.all(
-    FEEDS.filter((feed) => feed.url && wanted.has(feed.source)).map((feed) =>
-      fetchFeed(feed, windowDays).then((result) => ({
-        source: feed.source,
-        evts: result.events,
-        ok: result.ok,
-      })),
-    ),
+  const feeds = FEEDS.filter(
+    (feed) => feed.url && wanted.has(feed.source),
   );
+  const read = (feed: FeedSpec) =>
+    fetchFeed(feed, windowDays, options.signal).then((result) => ({
+      source: feed.source,
+      evts: result.events,
+      ok: result.ok,
+    }));
+  const results = options.signal
+    ? await Promise.all(feeds.map(read))
+    : await mapEventSourcesWithConcurrency(
+        feeds,
+        PUBLIC_EVENT_SOURCE_CONCURRENCY,
+        read,
+      );
 
   const seen = new Map<string, LiveEvent>();
   for (const { evts } of results) {
@@ -1763,7 +2313,10 @@ export function getCachedLiveEventsForSources(
 
 export async function getLiveEvents(
   windowDays = 60,
-  options: { includeTicketmaster?: boolean } = {},
+  options: {
+    includeTicketmaster?: boolean;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<{
   events: LiveEvent[];
   sources_succeeded: string[];
@@ -1774,20 +2327,31 @@ export async function getLiveEvents(
   // so this path is unchanged until that key is set. Both yield the
   // same LiveEvent shape, so they share the dedupe/filter/sort below.
   const includeTicketmaster = options.includeTicketmaster !== false;
+  const feeds = FEEDS.filter((feed) => feed.url);
+  const read = (feed: FeedSpec) =>
+    fetchFeed(feed, windowDays, options.signal).then((result) => ({
+      source: feed.source,
+      evts: result.events,
+      ok: result.ok,
+    }));
   const [feedResults, ticketmasterResult] = await Promise.all([
-    Promise.all(
-      // Skip env-gated feeds whose URL is unset (DFP, Hood) so a dead
-      // or unconfigured source costs zero network and zero log noise.
-      FEEDS.filter((f) => f.url).map((f) =>
-        fetchFeed(f, windowDays).then((result) => ({
-          source: f.source,
-          evts: result.events,
-          ok: result.ok,
-        })),
-      ),
-    ),
+    // Operational callers pass a signal and retain the old direct fanout: the
+    // route-owned signal can cancel every request immediately, and those
+    // probes never read or mutate public circuit state.
+    options.signal
+      ? Promise.all(feeds.map(read))
+      : mapEventSourcesWithConcurrency(
+          feeds,
+          PUBLIC_EVENT_SOURCE_CONCURRENCY,
+          read,
+        ),
     includeTicketmaster
-      ? fetchLiveTicketmasterMusicResult()
+      ? options.signal
+        ? fetchLiveTicketmasterMusicResult()
+        : runPublicEventAdapter(
+            "ticketmaster-music",
+            fetchLiveTicketmasterMusicResult,
+          )
       : Promise.resolve({ items: [], state: "disabled" as const }),
   ]);
 
@@ -1882,7 +2446,10 @@ async function fetchEventSourceForCache(
 
   const promise = (async (): Promise<CachedEventSourceResult> => {
     if (source === "ticketmaster") {
-      const result = await fetchLiveTicketmasterMusicResult();
+      const result = await runPublicEventAdapter(
+        "ticketmaster-music",
+        fetchLiveTicketmasterMusicResult,
+      );
       const horizonMs = Date.now() + windowDays * 86_400_000;
       return {
         events: result.items.filter(
@@ -1989,8 +2556,10 @@ async function readCachedEventSources(
   sources: readonly LiveEvent["source"][],
   windowDays: number,
 ): ReturnType<typeof getLiveEvents> {
-  const results = await Promise.all(
-    sources.map(async (source) => {
+  const results = await mapEventSourcesWithConcurrency(
+    sources,
+    PUBLIC_EVENT_SOURCE_CONCURRENCY,
+    async (source) => {
       try {
         return {
           source,
@@ -2007,7 +2576,7 @@ async function readCachedEventSources(
           state: "failed" as const,
         };
       }
-    }),
+    },
   );
 
   const seen = new Map<string, LiveEvent>();

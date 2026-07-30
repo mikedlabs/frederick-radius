@@ -93,9 +93,8 @@ export function isInsideFrederickCounty(lat: number, lng: number): boolean {
 }
 
 /**
- * The real county outline, down-sampled to 716 vertices (every 8th
- * point of the county GIS boundary in public/overlays/, ~400m vertex
- * spacing). The bbox test above passes places in Washington and
+ * The real county outline, simplified from the public-domain U.S. Census
+ * TIGERweb boundary. The bbox test above passes places in Washington and
  * Carroll County (Smithsburg sits inside the box but 8km outside the
  * county), which let 79 out-of-county records survive into discovery
  * surfaces. The 2026-06 redesign audit caught a Smithsburg bar served
@@ -117,9 +116,8 @@ function pointInCountyRing(lng: number, lat: number): boolean {
   return inside;
 }
 
-/** Distance in meters from a point to the nearest ring vertex. With
- *  ~400m vertex spacing this overestimates the true distance to the
- *  boundary line by at most ~200m, which the buffer absorbs. */
+/** Distance in meters from a point to the nearest simplified-ring vertex.
+ *  The boundary buffer absorbs the small simplification error. */
 function metersToRing(lng: number, lat: number): number {
   let best = Infinity;
   const mLat = 111320;

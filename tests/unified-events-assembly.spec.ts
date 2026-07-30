@@ -16,6 +16,9 @@ vi.mock("@/lib/integrations/ical-live", () => ({
     items: [],
     state: "ok",
   })),
+  runPublicEventAdapter: vi.fn(
+    async (_source: string, work: () => Promise<unknown>) => work(),
+  ),
 }));
 vi.mock("@/lib/integrations/ticketmaster", () => ({
   fetchTicketmasterSportsResult: vi.fn(async () => ({ items: [], state: "disabled" })),

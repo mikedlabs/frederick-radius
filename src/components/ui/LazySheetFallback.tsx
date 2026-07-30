@@ -2,16 +2,18 @@
 
 import {
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useRef,
   type RefObject,
 } from "react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 type Props = {
   label: string;
   onClose: () => void;
   returnFocusRef: RefObject<HTMLElement | null>;
+  historyLayerId?: string;
 };
 
 /**
@@ -26,17 +28,24 @@ export default function LazySheetFallback({
   label,
   onClose,
   returnFocusRef,
+  historyLayerId,
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useFocusTrap(dialogRef, true);
 
-  const dismiss = useCallback(() => {
+  const finishDismiss = useCallback(() => {
     onClose();
     window.requestAnimationFrame(() => returnFocusRef.current?.focus?.());
   }, [onClose, returnFocusRef]);
+  const historyLayer = useReversibleHistoryLayer({
+    active: Boolean(historyLayerId),
+    id: historyLayerId ?? "",
+    onDismiss: finishDismiss,
+  });
+  const dismiss = historyLayer.dismiss;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
@@ -61,6 +70,12 @@ export default function LazySheetFallback({
       role="dialog"
       aria-modal="true"
       aria-label={label}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        dismiss();
+      }}
     >
       <button
         type="button"

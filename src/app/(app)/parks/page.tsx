@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   // so the orphan-era noindex is lifted per its own reversal note.
   title: "Parks",
   description:
-    "Browse park and open-space records returned by Frederick County GIS, with available location and maintenance details.",
+    "Browse Radius's reviewed park and open-space guide for Frederick County.",
 };
 
 // Parks change rarely; the integration revalidates weekly.
@@ -46,10 +46,9 @@ function ParkRow({ p }: { p: Park }) {
 }
 
 export default async function ParksPage() {
-  // Two county layers: POS_Areas (acreage / planning types, the spine)
-  // and the cleaner official Park_Locations points (address + detail
-  // link). Joined by EXACT normalized name only — never fuzzy, so a
-  // wrong address can't land on the wrong park. Both degrade to [].
+  // The reviewed list remains the editorial spine. Official County park
+  // points enrich exact name matches with current map locations and addresses;
+  // a failed feed never erases the reviewed entries.
   const [parksRaw, parkLocs] = await Promise.all([
     getFrederickParks().catch(() => []),
     getFrederickParkLocations().catch(() => []),
@@ -74,14 +73,14 @@ export default async function ParksPage() {
     <div className="space-y-6">
       <header className="space-y-1.5">
         <p className="eyebrow">
-          Frederick County GIS
+          Parks &amp; open space
         </p>
         <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Parks
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Browse the park and open-space records returned by the county GIS.
-          Tap a record to see its mapped location.
+          Browse reviewed local, state, and national park records. Tap a place
+          to see its mapped location.
         </p>
         <p className="text-[13px]">
           <Link
@@ -100,9 +99,8 @@ export default async function ParksPage() {
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
           <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            We&rsquo;re rebuilding our connection to the county parks
-            layer. Use these official park directories while the feed is
-            unavailable:
+            The reviewed park index is unavailable. Use these official park
+            directories:
           </p>
           <ul className="space-y-2">
             {[
@@ -161,7 +159,7 @@ export default async function ParksPage() {
             ))}
           </ul>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            The searchable list will return when the feed reconnects.
+            The searchable list will return when its reviewed data is ready.
           </p>
         </section>
       ) : (
@@ -194,8 +192,10 @@ export default async function ParksPage() {
             </CollapsibleSection>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data comes from Frederick County GIS open-data layers for parks
-            and official park locations. Radius refreshes the records weekly.
+            Radius maintains this list from National Park Service, Maryland
+            DNR, municipal park pages, and Frederick County GIS park points.
+            Follow each park&rsquo;s official link for current rules, hours,
+            and closures.
           </p>
         </>
       )}

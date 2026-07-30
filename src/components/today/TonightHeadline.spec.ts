@@ -86,8 +86,39 @@ describe("TonightHeadline", () => {
 
     expect(html).toContain("<img");
     expect(html).toContain("approved-event.jpg");
-    expect(html).toContain("Image via Ticketmaster");
+    expect(html).toContain("Event image · Ticketmaster");
     expect(html).not.toContain(">View event<");
+  });
+
+  it("keeps the full venue-photo credit outside the event link", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({
+          hero_image: "/api/place-photo?name=places%2Fvenue-photo",
+          hero_image_attribution: {
+            kind: "venue",
+            venue_name: "Test venue",
+            provider: "google_maps",
+            source_uri: "https://maps.google.com/?cid=123",
+            flag_content_uri: "https://support.google.com/legal/troubleshooter/1114905",
+            authors: [
+              {
+                display_name: "Test photographer",
+                uri: "https://maps.google.com/contrib/123",
+              },
+            ],
+          },
+        }),
+        now,
+      }),
+    );
+
+    expect(html).toContain("Venue · Test venue");
+    expect(html).toContain("Test photographer");
+    expect(html).toContain("Report photo");
+    expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Venue · Test venue"));
+    expect(html).toContain('src="/api/place-photo?name=places%2Fvenue-photo"');
+    expect(html).not.toContain("/_next/image");
   });
 
   it("keeps optional hover motion behind the reduced-motion preference", () => {

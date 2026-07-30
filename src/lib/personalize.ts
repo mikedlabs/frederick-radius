@@ -27,6 +27,18 @@ const HOME_MUNI_KEY = "fr:home-muni:v1";
 const INTERESTS_KEY = "fr:interests:v1";
 const COMMUNITY_NOTES_KEY = "fr:community-notes:v1";
 const EVENTS_TOWN_KEY = "fr:events-town:v1";
+const OFFLINE_PREFERENCES_CHANGE_EVENT = "fr:offline-preferences-change";
+
+function signalOfflinePreferenceChange(): void {
+  if (
+    typeof window === "undefined"
+    || typeof window.dispatchEvent !== "function"
+    || typeof Event !== "function"
+  ) {
+    return;
+  }
+  window.dispatchEvent(new Event(OFFLINE_PREFERENCES_CHANGE_EVENT));
+}
 
 function safeStorage(): Storage | null {
   try {
@@ -70,6 +82,7 @@ export function setHomeMuni(slug: string | null): void {
   } catch {
     // document.cookie can throw on locked-down setups. Fail silent.
   }
+  signalOfflinePreferenceChange();
 }
 
 /**
@@ -171,6 +184,7 @@ export function setInterests(slugs: string[]): void {
   } catch {
     // ignore
   }
+  signalOfflinePreferenceChange();
 }
 
 export function hasOnboardingPrefs(): boolean {

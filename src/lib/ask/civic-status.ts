@@ -18,6 +18,20 @@ import {
   type CivicPressItem,
   type CivicPressResult,
 } from "@/lib/integrations/civic-press";
+import type {
+  MdotWorkZone,
+} from "@/lib/integrations/mdot-wzdx";
+import {
+  selectRoadTravelSummary,
+  type RoadAttentionSignal,
+  type RoadIntelligenceSnapshot,
+} from "@/lib/live/roadIntelligenceModel";
+import type {
+  CountySnowRoute,
+} from "@/lib/integrations/fcSnowCommand";
+import type {
+  CountyDataSnapshot,
+} from "@/lib/integrations/fcCountySource";
 
 export const MDOT_CHART_URL = "https://chart.maryland.gov/";
 export const FCPS_STATUS_URL = "https://www.fcps.org/";
@@ -38,7 +52,9 @@ type CivicAskContext = {
 const ROAD_NOUN_RE =
   /\b(?:road|roads|roadway|traffic|highway|highways|interstate|route|routes|i-?\s?\d+|us\s?\d+|md\s?\d+)\b/i;
 const ROAD_STATUS_RE =
-  /\b(?:closed|closure|closures|open|condition|conditions|incident|incidents|crash|crashes|collision|blocked|blocking|detour|detours|delay|delays|backup|backed up|clear|hazard|hazards|how (?:are|is)|what(?:'s| is) happening)\b/i;
+  /\b(?:closed|closure|closures|open|condition|conditions|incident|incidents|crash|crashes|collision|blocked|blocking|detour|detours|delay|delays|backup|backed up|clear|hazard|hazards|ice|icy|slick|slippery|snowy|snow-covered|plowed|plowing|how (?:are|is)|what(?:'s| is) happening)\b/i;
+const PLOW_STATUS_RE =
+  /\b(?:where (?:are|is) (?:the )?|track(?:ing)? (?:the )?|county )?plows?\b|\bplow(?:ed|ing)\b/i;
 const SCHOOL_DISTRICT_RE =
   /\b(?:fcps|frederick county public schools?|frederick county schools?|school district)\b/i;
 const SCHOOL_NOUN_RE = /\bschools?\b/i;
@@ -59,7 +75,21 @@ const WATER_NOTICE_TITLE_RE =
   /\b(?:boil[\s-]?water|drinking water|public water|water advisory|water main|water service|water outage|water quality)\b/i;
 
 export function wantsRoadStatus(query: string): boolean {
-  return ROAD_NOUN_RE.test(query) && ROAD_STATUS_RE.test(query);
+  return (
+    (ROAD_NOUN_RE.test(query) && ROAD_STATUS_RE.test(query)) ||
+    PLOW_STATUS_RE.test(query)
+  );
+}
+
+export function wantsCountySnowOperations(
+  query: string,
+  now = new Date(),
+): boolean {
+  if (/\b(?:snow|snowy|plow(?:ed|ing|s)?|ice|icy|slick|salt(?:ed|ing)?)\b/i.test(query)) {
+    return true;
+  }
+  const month = now.getMonth();
+  return wantsRoadStatus(query) && (month <= 2 || month >= 10);
 }
 
 export function wantsSchoolStatus(query: string): boolean {
@@ -146,6 +176,30 @@ function incidentRoadKey(incident: ChartIncident): {
   };
 }
 
+function textRoadKey(value: string): {
+  prefix: "I" | "US" | "MD";
+  number: string;
+} | null {
+  const match = value.match(/\b(I|US|MD)\s*-?\s*(\d{1,3})\b/i);
+  if (!match?.[1] || !match[2]) return null;
+  return {
+    prefix: match[1].toUpperCase() as "I" | "US" | "MD",
+    number: match[2],
+  };
+}
+
+function signalMatchesRoad(
+  signal: RoadAttentionSignal,
+  requestedRoad: RequestedRoad,
+): boolean {
+  if (signal.kind === "snow-emergency") return true;
+  const actual = textRoadKey(
+    `${signal.title} ${signal.detail} ${signal.scope}`,
+  );
+  if (!actual || actual.number !== requestedRoad.number) return false;
+  return requestedRoad.prefix === null || actual.prefix === requestedRoad.prefix;
+}
+
 function incidentMatchesRoad(
   incident: ChartIncident,
   requestedRoad: RequestedRoad,
@@ -227,10 +281,63 @@ function chartSource(
   };
 }
 
+function workZoneMatchesRoad(
+  zone: MdotWorkZone,
+  requestedRoad: RequestedRoad,
+): boolean {
+  const expected = `${requestedRoad.prefix ?? ""}${requestedRoad.number}`
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+  return zone.roadNames.some(
+    (road) =>
+      road.replace(/[^a-z0-9]/gi, "").toUpperCase() === expected ||
+      (requestedRoad.prefix === null &&
+        road.replace(/\D/g, "") === requestedRoad.number),
+  );
+}
+
+function signalSource(signal: RoadAttentionSignal): AskSource {
+  return {
+    slug: `road-signal-${signal.id}`,
+    name: signal.title,
+    category: "traffic",
+    city: "Frederick County",
+    href: signal.sourceUrl,
+    eyebrow: signal.sourceLabel,
+    reason: signal.detail,
+    status: signal.scope,
+    confidence: "high",
+  };
+}
+
+function workZoneSource(zone: MdotWorkZone): AskSource {
+  const laneImpact =
+    zone.lanes.summary === "all-lanes-closed"
+      ? "All lanes closed"
+      : zone.lanes.summary === "some-lanes-closed"
+        ? zone.lanes.closed > 0
+          ? `${zone.lanes.closed} ${zone.lanes.closed === 1 ? "lane" : "lanes"} closed`
+          : "Lane closure"
+        : "Road work";
+  return {
+    slug: `mdot-wzdx-${zone.id}`,
+    name: `${zone.road} · ${laneImpact}`,
+    category: "traffic",
+    city: "Frederick County",
+    href: zone.sourceUrl,
+    eyebrow: "Maryland WZDx · Official road work",
+    reason: zone.description,
+    status: zone.status === "active" ? "Active" : "Scheduled",
+    confidence: zone.positionConfidence === "verified" ? "high" : "medium",
+  };
+}
+
 export function roadStatusAskResult(
   result: ChartIncidentsResult,
   context: CivicAskContext = {},
   now = new Date(),
+  roadIntelligence: RoadIntelligenceSnapshot | null = null,
+  countySnow: CountyDataSnapshot<CountySnowRoute> | null = null,
 ): AskResult {
   const requestedRoad = requestedRoadOf(context.query);
   const relevantIncidents = requestedRoad
@@ -239,9 +346,39 @@ export function roadStatusAskResult(
       )
     : result.data;
   const incidents = sortedIncidents(relevantIncidents, context);
-  const sources: AskSource[] = incidents.length > 0
-    ? incidents.slice(0, 4).map((incident) => chartSource(incident, context, now))
-    : [{
+  const roadTravel = roadIntelligence
+    ? selectRoadTravelSummary(roadIntelligence)
+    : null;
+  const relevantWorkZones = (roadTravel?.workZones ?? []).filter(
+    (zone) =>
+      zone.status === "active" &&
+      (!requestedRoad || workZoneMatchesRoad(zone, requestedRoad)),
+  );
+  const relevantSignals = (roadIntelligence?.attention ?? []).filter(
+    (signal) =>
+      !requestedRoad ||
+      signalMatchesRoad(signal, requestedRoad),
+  );
+  const selectedSignals = relevantSignals.slice(0, 2);
+  const signaledWorkZoneIds = new Set(
+    selectedSignals
+      .filter((signal) => signal.kind === "work-zone-closure")
+      .map((signal) => signal.id.replace(/^work-zone:/, "")),
+  );
+  const newSources: AskSource[] = [
+    ...selectedSignals.map(signalSource),
+    ...relevantWorkZones
+      .filter((zone) => !signaledWorkZoneIds.has(zone.id))
+      .slice(0, 2)
+      .map(workZoneSource),
+  ];
+  const incidentSources = incidents
+    .slice(0, Math.max(0, 5 - newSources.length))
+    .map((incident) => chartSource(incident, context, now));
+  let sources: AskSource[] =
+    newSources.length > 0 || incidentSources.length > 0
+      ? [...newSources, ...incidentSources].slice(0, 5)
+      : [{
         slug: "mdot-chart",
         name: "MDOT CHART",
         category: "traffic",
@@ -256,20 +393,137 @@ export function roadStatusAskResult(
         confidence: result.available ? "high" : "medium",
       }];
 
+  const currentSnowRoutes =
+    !requestedRoad && countySnow?.availability === "available"
+      ? countySnow.records.filter((route) => route.freshness === "current")
+      : [];
+  const snowCounts = currentSnowRoutes.reduce(
+    (counts, route) => {
+      counts[route.reportedStatus] += 1;
+      return counts;
+    },
+    {
+      clear: 0,
+      narrow_clear: 0,
+      emergency_access: 0,
+      closed: 0,
+      unknown: 0,
+    } satisfies Record<CountySnowRoute["reportedStatus"], number>,
+  );
+  const snowAttention =
+    snowCounts.closed + snowCounts.emergency_access + snowCounts.narrow_clear;
+  const latestSnowObservedAt = currentSnowRoutes
+    .map((route) => route.observedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
+  const countySnowSource: AskSource | null =
+    currentSnowRoutes.length > 0 && countySnow
+      ? {
+          slug: "frederick-county-snow-operations",
+          name: "County snow-route operations",
+          category: "traffic",
+          city: "Frederick County",
+          href: countySnow.provenance.sourceUrl,
+          eyebrow: "Frederick County operational report",
+          reason:
+            snowAttention > 0
+              ? `${snowAttention} current route status${snowAttention === 1 ? "" : "es"} need attention`
+              : `${currentSnowRoutes.length} current route-operation record${currentSnowRoutes.length === 1 ? "" : "s"}`,
+          detail:
+            "Provider-reported route operations are not proof that a road is safe or passable.",
+          status: latestSnowObservedAt
+            ? `Latest observation ${new Intl.DateTimeFormat("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "America/New_York",
+              }).format(new Date(latestSnowObservedAt))}`
+            : "Current reporting window",
+          confidence: "medium",
+        }
+      : null;
+  if (countySnowSource) {
+    sources = snowAttention > 0
+      ? [countySnowSource, ...sources].slice(0, 5)
+      : [...sources.slice(0, 4), countySnowSource];
+  }
+
   let answer: string;
-  if (!result.available) {
+  const leadSignal = relevantSignals[0] ?? null;
+  if (leadSignal) {
+    const incidentTail =
+      incidents.length > 0
+        ? ` CHART also lists ${incidents.length} active ${incidents.length === 1 ? "incident" : "incidents"}${requestedRoad ? ` for ${requestedRoad.label}` : ""}.`
+        : "";
+    answer =
+      `${leadSignal.title}. ${leadSignal.detail}${incidentTail} Open the road details before choosing your route.`;
+  } else if (relevantWorkZones.length > 0) {
+    const top = relevantWorkZones[0];
+    const impact =
+      top.lanes.summary === "all-lanes-closed"
+        ? "all lanes reported closed"
+        : top.lanes.summary === "some-lanes-closed"
+          ? top.lanes.closed > 0
+            ? `${top.lanes.closed} ${top.lanes.closed === 1 ? "lane" : "lanes"} closed`
+            : "a lane closure reported"
+          : "active work reported";
+    answer =
+      `Maryland WZDx lists ${relevantWorkZones.length} active ${relevantWorkZones.length === 1 ? "work zone" : "work zones"}${requestedRoad ? ` for ${requestedRoad.label}` : " in Frederick County"}. The first is on ${top.road}, with ${impact}. ${incidents.length > 0 ? `CHART also lists ${incidents.length} active ${incidents.length === 1 ? "incident" : "incidents"}. ` : ""}Open the map for the exact segment.`;
+  } else if (!result.available && !roadIntelligence) {
     answer =
       "I couldn’t load MDOT CHART’s live incident feed. Check the official CHART map for current road closures and traffic incidents.";
   } else if (incidents.length === 0 && requestedRoad) {
+    if (!roadIntelligence) {
+      answer =
+        `MDOT CHART currently lists no active traffic incident for ${requestedRoad.label} in Frederick County. That does not prove every segment is clear, so check CHART before you travel.`;
+    } else {
+    const checksIncomplete =
+      !result.available ||
+      roadIntelligence?.summary.coverage === "partial";
     answer =
-      `MDOT CHART currently lists no active traffic incident for ${requestedRoad.label} in Frederick County. That does not prove every segment is clear, so check CHART before you travel.`;
+      checksIncomplete
+        ? `I did not find an active ${requestedRoad.label} incident in the road data that loaded, but at least one official check was unavailable. Open CHART before you travel.`
+        : `The checked MDOT feeds currently list no active incident or work-zone closure for ${requestedRoad.label} in Frederick County. That does not prove every segment is clear, so check CHART before you travel.`;
+    }
   } else if (incidents.length === 0) {
+    if (!roadIntelligence) {
+      answer =
+        "MDOT CHART currently lists no active traffic incidents in Frederick County. The feed does not cover every neighborhood street or show general pavement conditions, so check CHART before you travel.";
+    } else {
+    const checksIncomplete =
+      !result.available ||
+      roadIntelligence?.summary.coverage === "partial";
     answer =
-      "MDOT CHART currently lists no active traffic incidents in Frederick County. The feed does not cover every neighborhood street or show general pavement conditions, so check CHART before you travel.";
+      checksIncomplete
+        ? "The road data that loaded shows no major active issue, but at least one official check was unavailable. Open CHART before relying on this result."
+        : "The checked MDOT feeds currently list no major incident, severe road condition, snow emergency, or active work-zone closure in Frederick County. That does not prove every neighborhood street is clear.";
+    }
   } else {
     const count = incidents.length;
     answer =
       `MDOT CHART currently lists ${count} active ${count === 1 ? "traffic incident" : "traffic incidents"}${requestedRoad ? ` for ${requestedRoad.label}` : ""} in Frederick County. ${chartHeroSentence(incidents[0])} Open CHART for the latest lane and location details.`;
+  }
+
+  if (countySnowSource) {
+    const statusParts = [
+      snowCounts.closed > 0 ? `${snowCounts.closed} closed` : null,
+      snowCounts.emergency_access > 0
+        ? `${snowCounts.emergency_access} emergency-access`
+        : null,
+      snowCounts.narrow_clear > 0
+        ? `${snowCounts.narrow_clear} narrow-clear`
+        : null,
+      snowCounts.clear > 0 ? `${snowCounts.clear} clear` : null,
+    ].filter(Boolean);
+    const plowLimit = /\bplows?\b/i.test(context.query ?? "")
+      ? " It reports route operations, not individual plow locations."
+      : "";
+    answer += ` County SnowCommand has ${currentSnowRoutes.length} current route-operation record${currentSnowRoutes.length === 1 ? "" : "s"}${statusParts.length > 0 ? `: ${statusParts.join(", ")}` : ""}.${plowLimit} These provider statuses do not prove that a road is safe or passable.`;
+  } else if (/\bplows?\b/i.test(context.query ?? "")) {
+    answer +=
+      " County SnowCommand does not provide individual plow locations, and no current route-operation record was available.";
   }
 
   return {
@@ -282,10 +536,18 @@ export function roadStatusAskResult(
     actions: [
       { label: "Open MDOT CHART", kind: "open", href: MDOT_CHART_URL },
       { label: "See Radius traffic", kind: "open", href: "/pulse?open=traffic" },
+      { label: "See roads on the map", kind: "open", href: "/map?show=roads" },
     ],
     intelligence: {
-      tools: ["traffic"],
-      confidence: result.available ? "high" : "medium",
+      tools: countySnowSource
+        ? ["traffic", "county-snow-operations"]
+        : ["traffic"],
+      confidence:
+        result.available &&
+        (!roadIntelligence || roadIntelligence.summary.coverage === "complete") &&
+        !countySnowSource
+          ? "high"
+          : "medium",
       retrieval: "keyword",
     },
   };

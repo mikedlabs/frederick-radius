@@ -39,6 +39,7 @@ import {
   MANUAL_PLACE_STATUS_OVERRIDES,
 } from "@/lib/place-status-overrides";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { HOURS_REFRESH_CYCLE_DAYS } from "@/lib/hours-refresh-targets";
 import { classifyDescription } from "@/lib/copy-quality";
 import {
   decisionCopyCounts,
@@ -52,6 +53,7 @@ const ENRICH = ENRICH_RAW as Record<
     google_place_id?: string;
     has_hours?: boolean;
     weekday_hours?: string[];
+    editorial_summary?: string;
   }
 >;
 const DESCRIPTIONS = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
@@ -95,6 +97,8 @@ function isHttpsUrl(value: string | undefined): boolean {
 
 const pct = (n: number, d: number) => (d === 0 ? 0 : n / d);
 const fmtPct = (r: number) => `${(r * 100).toFixed(1)}%`;
+const normalizedCopy = (value: string | undefined) =>
+  (value ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
 
 /** Stored schedule coverage is deliberately distinct from published freshness.
  * Strict builds withhold stale schedules from places-client.json, so counting
@@ -158,7 +162,7 @@ const GATES: Gate[] = [
       const r = pct(refreshable, PLACES.length);
       return {
         pass: r >= 0.6,
-        observed: `${fmtPct(r)} (${refreshable} of ${PLACES.length}) can enter the seven-day Google refresh cycle`,
+        observed: `${fmtPct(r)} (${refreshable} of ${PLACES.length}) can enter the ${HOURS_REFRESH_CYCLE_DAYS}-day Google refresh cycle`,
         expect: ">= 60% so the refresh pipeline can satisfy the strict hours gate",
       };
     },
@@ -353,6 +357,34 @@ const GATES: Gate[] = [
           `${fmtPct(r)} (${owned} of ${PLACES.length}) have Radius-owned or approved decision copy ` +
           `(${legacyRadiusAuthored} legacy Radius-authored; ${explicitlyApproved} explicitly approved)`,
         expect: ">= 50% (Google runtime context reported separately)",
+      };
+    },
+  },
+  {
+    id: "provider_copy_provenance",
+    severity: "critical",
+    audit: "editorial trust boundary",
+    run: () => {
+      const unprovenanced = PLACES.filter(
+        (place) =>
+          Boolean(normalizedCopy(place.short_blurb)) &&
+          !place.description_source,
+      );
+      const providerSummaries = new Set(
+        Object.values(ENRICH)
+          .map((entry) => normalizedCopy(entry.editorial_summary))
+          .filter(Boolean),
+      );
+      const providerMatches = PLACES.filter((place) =>
+        providerSummaries.has(normalizedCopy(place.short_blurb)),
+      );
+      return {
+        pass: unprovenanced.length === 0 && providerMatches.length === 0,
+        observed:
+          `${unprovenanced.length} nonempty blurbs lack provenance; ` +
+          `${providerMatches.length} public blurbs duplicate Google editorial summaries`,
+        expect:
+          "0; permanent copy must be Radius-owned or approved, and provider context must remain attributed",
       };
     },
   },

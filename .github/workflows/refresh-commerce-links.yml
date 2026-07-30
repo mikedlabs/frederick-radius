@@ -1,0 +1,103 @@
+name: Refresh official commerce links
+
+# Deterministic, no-LLM discovery of menu, order, reservation, catering, and
+# gift-card anchors published by each public food/drink place's official site.
+# It never crawls directories and does not ingest menu items, prices, or POS
+# data. Changes open as a review PR before they can affect the app.
+
+on:
+  schedule:
+    - cron: "17 9 * * 1" # Monday 09:17 UTC; 80/week covers the catalog monthly
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum official websites to check"
+        required: false
+        default: "80"
+      slug:
+        description: "Optional exact place slug for a focused refresh"
+        required: false
+      force:
+        description: "Recheck even when commerce links were checked recently"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-official-commerce-links
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium for JS-only official sites
+        run: npx playwright install --with-deps chromium
+      - name: Verify deterministic commerce-link logic
+        run: >-
+          npx vitest run
+          tests/official-commerce-links.spec.ts
+          tests/official-commerce-refresh.spec.ts
+          tests/business-info-source.spec.ts
+          src/lib/loaders/businessInfo.spec.ts
+      - name: Refresh links from official sites
+        env:
+          REFRESH_LIMIT: ${{ github.event.inputs.limit || '80' }}
+          REFRESH_SLUG: ${{ github.event.inputs.slug }}
+          REFRESH_FORCE: ${{ github.event.inputs.force }}
+        run: |
+          case "$REFRESH_LIMIT" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid refresh limit::The limit must be a positive whole number."
+              exit 1
+              ;;
+          esac
+          if [ "$REFRESH_LIMIT" -lt 1 ]; then
+            echo "::error title=Invalid refresh limit::The limit must be at least one."
+            exit 1
+          fi
+          args=(--limit="$REFRESH_LIMIT" --concurrency=2)
+          if [ -n "$REFRESH_SLUG" ]; then
+            case "$REFRESH_SLUG" in
+              *[!a-z0-9-]*)
+                echo "::error title=Invalid place slug::Use only lowercase letters, numbers, and hyphens."
+                exit 1
+                ;;
+            esac
+            args+=(--slug="$REFRESH_SLUG")
+          fi
+          if [ "$REFRESH_FORCE" = "true" ]; then
+            args+=(--force)
+          fi
+          npm run refresh:commerce-links -- "${args[@]}"
+      - name: Open review PR when links changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/official-commerce-link-refresh
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh official commerce links"
+          title: "data: refresh official restaurant links"
+          body: |
+            Deterministic refresh of menu, ordering, reservation, catering, and
+            gift-card links found as exact anchors on official business sites.
+
+            No AI extraction, third-party directory crawl, menu-item scraping,
+            price ingestion, or POS sync was used. Review the source URLs and
+            direct actions before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

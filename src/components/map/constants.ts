@@ -66,6 +66,8 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   playground: "playground",
   pool: "pool",
   river_gauge: "river-gauge",
+  dog_park: "dog-park",
+  water_access: "water-access",
   // Field-collected kinds → existing/new marker slugs. trash, recycling,
   // water, bench, dog-waste already have buckets + icons; dog-water and
   // outlet are the two genuinely new marks (see categoryMarkers.ts).
@@ -102,7 +104,7 @@ export const AMENITY_GROUPS: {
   { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
   // Dog stations — bag dispensers (dog-waste) + dog water (dog-water).
   // No longer "coming soon": the /collect field tool populates these.
-  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste", "dog-water"] },
+  { key: "dog", label: "Dog needs", glyph: "\u{1F43E}", cats: ["dog-waste", "dog-water", "dog-park"] },
   { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
   // Power outlets — outdoor/public AC outlets people can charge at.
@@ -111,6 +113,7 @@ export const AMENITY_GROUPS: {
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
   { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
+  { key: "water_access", label: "Water access", glyph: "\u{1F6F6}", cats: ["water-access"] },
   // River gauges — USGS sites surfaced as a map layer so the
   // "Rivers & creeks" data isn't trapped on /rivers alone. Tap a
   // gauge pin to jump to /rivers for live readings + trend.

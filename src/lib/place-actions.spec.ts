@@ -114,4 +114,28 @@ describe("place commerce actions", () => {
       ]),
     );
   });
+
+  it("keeps a verified written contact ahead of a phone call", () => {
+    const actions = placeActions(
+      restaurant({
+        email: "hello@example.org",
+        phone: "301-555-0100",
+      }),
+    );
+
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "email",
+          label: "Email",
+          href: "mailto:hello@example.org",
+        }),
+      ]),
+    );
+    const grouped = groupPlaceActions(actions, "restaurant");
+    expect(grouped.secondary.map(({ key }) => key)).toEqual([
+      "email",
+      "call",
+    ]);
+  });
 });

@@ -12,10 +12,12 @@
  * push_subscriptions row. Fail-soft: any DB issue returns a benign response so a
  * save is never blocked.
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, saved_events } from "@/lib/db/schema";
+import { resolveEventPageBySlug } from "@/lib/loaders/eventResolver";
+import { persistEventIdentity } from "@/lib/events/event-identity";
 import { parseSavedRegistryInput } from "@/lib/saved-security";
 import {
   isRateLimited,
@@ -72,6 +74,38 @@ async function subscriptionExists(
   return row.length === 1;
 }
 
+async function retainSavedEventSnapshot(
+  endpoint: string,
+  requestedSlug: string,
+): Promise<void> {
+  const resolution = await resolveEventPageBySlug(requestedSlug).catch(
+    () => null,
+  );
+  if (!resolution) return;
+  const identity = await persistEventIdentity(
+    resolution.event,
+    [requestedSlug],
+  ).catch(() => null);
+  if (!identity) return;
+  const db = getDb();
+  if (!db) return;
+  await db
+    .update(saved_events)
+    .set({
+      canonical_event_id: identity.id,
+      canonical_event_slug: identity.canonicalSlug,
+      event_snapshot: identity.snapshot as unknown as Record<string, unknown>,
+      snapshot_at: new Date(),
+    })
+    .where(
+      and(
+        eq(saved_events.endpoint, endpoint),
+        eq(saved_events.event_slug, requestedSlug),
+      ),
+    )
+    .catch(() => undefined);
+}
+
 export async function POST(req: NextRequest) {
   const parsed = await readInput(req);
   if ("response" in parsed) return parsed.response;
@@ -87,6 +121,10 @@ export async function POST(req: NextRequest) {
       .insert(saved_events)
       .values({ endpoint, event_slug: slug })
       .onConflictDoNothing({ target: [saved_events.endpoint, saved_events.event_slug] });
+    // The local save and API response stay immediate. Once the response is
+    // committed, retain the canonical identity + last renderable snapshot so a
+    // feed rotation or title change cannot strand this device's saved plan.
+    after(() => retainSavedEventSnapshot(endpoint, slug));
     return NextResponse.json({ ok: true }, { headers: noStore });
   } catch {
     // Fail-soft: the localStorage save already succeeded client-side; the

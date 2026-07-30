@@ -4,21 +4,17 @@ import { qualifiedSearch } from "@/lib/search";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
- * One-search: typing what a map LAYER shows offers the layer itself, so
- * "farmers market" surfaces the overlay alongside the market places.
- * This is what lets the single map search answer layers, not just text.
+ * One-search exposes only reviewed, licensed map layers. Former transformed
+ * County GIS copies stay out of search until their exact reuse scope is clear.
  */
 describe("searchIndex map-layer results", () => {
-  it("offers the markets overlay for a farmers-market query", () => {
+  it("does not offer the retired markets overlay for a farmers-market query", () => {
     const results = searchIndex("farmers market", 8);
-    const layer = results.find((r) => r.id === "layer:markets");
-    expect(layer, "expected a layer:markets result").toBeTruthy();
-    expect(layer!.href).toBe("/map?mode=browse&layers=markets");
-    expect(layer!.type).toBe("action");
+    expect(results.some((result) => result.id === "layer:markets")).toBe(false);
   });
 
-  it("offers covered bridges without reviving the duplicate historic overlay", () => {
-    expect(searchIndex("covered bridge", 8).some((r) => r.id === "layer:bridges")).toBe(true);
+  it("does not revive retired bridges or historic overlays", () => {
+    expect(searchIndex("covered bridge", 8).some((r) => r.id === "layer:bridges")).toBe(false);
     expect(searchIndex("local history", 8).some((r) => r.id === "layer:historic")).toBe(false);
     expect(searchIndex("cemeteries", 8).some((r) => r.id === "layer:historic")).toBe(false);
   });
@@ -35,9 +31,12 @@ describe("searchIndex map-layer results", () => {
     expect(results.some((r) => r.id === "layer:art")).toBe(false);
   });
 
-  it("keeps ready layer doors when the qualified adapter is used", () => {
+  it("routes parks through the reviewed place index", () => {
     expect(qualifiedSearchIndex("local history", 8).results.some((r) => r.id === "layer:historic")).toBe(false);
-    expect(qualifiedSearchIndex("parks", 8).results.some((r) => r.id === "layer:parks")).toBe(true);
+    expect(qualifiedSearchIndex("parks", 8).results[0]).toMatchObject({
+      id: "action:map-parks",
+      href: "/map?intent=outdoor&sub=parks",
+    });
   });
 
   it("preserves location-aware ranking for an ordinary query", () => {

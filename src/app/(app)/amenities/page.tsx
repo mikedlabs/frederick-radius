@@ -66,6 +66,8 @@ const KIND_META: Partial<
   playground: { label: "Playgrounds", icon: Baby },
   pool: { label: "Public pools", icon: Waves },
   river_gauge: { label: "River gauges", icon: Waves },
+  dog_park: { label: "Dog parks", icon: PawPrint },
+  water_access: { label: "Water access", icon: Waves },
   recycling: { label: "Recycling", icon: Recycle },
   dog_water: { label: "Dog water", icon: PawPrint },
   bike_repair: { label: "Bike repair", icon: Wrench },

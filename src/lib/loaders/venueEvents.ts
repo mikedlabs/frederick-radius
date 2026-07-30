@@ -40,7 +40,14 @@ export type VenueEvent = {
   venue_slug: string;
   venue_name: string;
   category?: string;
-  source: { url: string; fetchedAt: string };
+  source: {
+    url: string;
+    fetchedAt: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    requestedUrl?: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    finalUrl?: string;
+  };
 };
 
 const DATA = RAW as unknown as VenueEvent[];

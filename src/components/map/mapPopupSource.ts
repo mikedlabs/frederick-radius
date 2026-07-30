@@ -3,7 +3,13 @@ const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
 export type MapPopupSource = {
   label: string;
   href: string;
-  kind: "field" | "mapillary" | "maryland-imap" | "openstreetmap" | "usgs";
+  kind:
+    | "field"
+    | "frederick-county-gis"
+    | "mapillary"
+    | "maryland-imap"
+    | "openstreetmap"
+    | "usgs";
 };
 
 function osmObjectUrl(id: string): string {
@@ -31,6 +37,14 @@ function osmObjectUrl(id: string): string {
 }
 
 export function mapPopupSource(id: string): MapPopupSource {
+  if (id.startsWith("fc-park-")) {
+    return {
+      kind: "frederick-county-gis",
+      label: "Frederick County GIS",
+      href: "https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer",
+    };
+  }
+
   if (id.startsWith("usgs:")) {
     const site = id.slice("usgs:".length);
     return {

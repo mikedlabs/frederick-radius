@@ -255,6 +255,45 @@ describe("askFrederick structured answers", () => {
     const human = await askFrederick("Who do I call for a possible poisoning?", downtown);
     expect(human.answer).toContain("1-800-222-1222");
     expect(human.actions?.some((action) => action.href === "tel:+18002221222")).toBe(true);
+    expect(human.actions?.some((action) => action.href === "sms:911")).toBe(true);
+  });
+
+  it("offers Frederick County Text-to-911 for a human emergency", async () => {
+    const result = await askFrederick(
+      "Where is the nearest emergency room for a medical emergency?",
+      downtown,
+    );
+    expect(result.answer).toContain(
+      "text 911 if a voice call is not possible",
+    );
+    expect(
+      result.actions?.some((action) => action.href === "sms:911"),
+    ).toBe(true);
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        slug: "frederick-text-911",
+        href: "https://frederickcountymd.gov/8480/Texting-9-1-1-What-to-Expect",
+      }),
+    );
+  });
+
+  it("keeps a written-contact request to a published email source", async () => {
+    const result = await askFrederick(
+      "How can I contact the Maryland Deaf Community Center without calling?",
+      downtown,
+    );
+
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        slug: "maryland-deaf-center",
+        email: "info@deafmdcc.org",
+      }),
+    );
+    expect(
+      result.sources
+        .filter((source) => source.href.startsWith("/places/"))
+        .every((source) => Boolean(source.email)),
+    ).toBe(true);
   });
 
   it("keeps City of Frederick trash information out of the county flow", async () => {
@@ -392,6 +431,8 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.every((source) => source.href.startsWith("/map?amenity="))).toBe(true);
     expect(result.sources.some((source) => /bus|connector/i.test(source.name))).toBe(false);
     expect(result.actions?.some((action) => action.href === "/map?amenity=trash")).toBe(true);
+    expect(result.answer).not.toContain("verified trash");
+    expect(result.sources.every((source) => !source.reason?.includes("Verified mapped"))).toBe(true);
   });
 
   it("finds a public bike-repair station without treating a bike shop as the answer", async () => {

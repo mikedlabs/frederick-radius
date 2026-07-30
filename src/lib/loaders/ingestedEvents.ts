@@ -107,11 +107,17 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
     is_free: false,
     attendance_mode,
     online_url,
+    hero_image: s.heroImage ?? undefined,
     organizer: s.presenter,
     status: "scheduled",
     source,
     is_verified: false,
-    ...stampEventProvenance({ slug, source, source_url: occ.sourceUrl }),
+    ...stampEventProvenance({
+      slug,
+      source,
+      source_id: occ.sourceUid,
+      source_url: occ.sourceUrl,
+    }),
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: muni?.name ?? s.municipality,
     distance_m: undefined,
@@ -155,9 +161,24 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
 
 /** Detail-route resolver: expand ALL occurrences of every lifted series so any
  *  shown card's slug resolves to a renderable event. Cached upstream. */
-export async function getIngestedCardBySlug(slug: string): Promise<EventWithMeta | null> {
+export async function getIngestedCardBySlug(
+  slug: string,
+  options: { signal?: AbortSignal; deadline?: number } = {},
+): Promise<EventWithMeta | null> {
+  if (
+    options.signal?.aborted ||
+    (options.deadline != null && Date.now() >= options.deadline)
+  ) {
+    return null;
+  }
   const series = await getIngestedSeries().catch(() => []);
   for (const s of series) {
+    if (
+      options.signal?.aborted ||
+      (options.deadline != null && Date.now() >= options.deadline)
+    ) {
+      return null;
+    }
     if (!LIFTED_INGEST_SOURCES.has(s.sourceDomain)) continue;
     if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
     for (const occ of s.occurrences) {
@@ -165,7 +186,10 @@ export async function getIngestedCardBySlug(slug: string): Promise<EventWithMeta
       // Centroid-geom upgrade first (matches the unified assembly, so the
       // detail pin agrees with the list card; normally a geocode-cache hit),
       // then the venue-thumb borrow (see liveEvents.ts note).
-      if (card?.slug === slug) return withVenueThumb(await upgradeEventGeom(card));
+      if (card?.slug === slug) {
+        if (options.signal?.aborted) return null;
+        return withVenueThumb(await upgradeEventGeom(card));
+      }
     }
   }
   return null;

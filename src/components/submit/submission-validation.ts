@@ -158,6 +158,8 @@ const eventSchema = z
     price_text: text("Price", 80),
     ticket_url: optionalHttpUrl("Ticket link"),
     organizer: text("Organizer", 160),
+    photo_url: optionalHttpUrl("Photo link"),
+    photo_permission: z.boolean(),
     submitter_email: email(),
     submitter_name: text("Your name", 120),
     ...publicProofSchema.shape,
@@ -171,6 +173,14 @@ const eventSchema = z
         code: "custom",
         path: ["ends_at"],
         message: "End time must be after the start time.",
+      });
+    }
+    if (value.photo_url && !value.photo_permission) {
+      context.addIssue({
+        code: "custom",
+        path: ["photo_permission"],
+        message:
+          "Confirm that Frederick Radius has permission to display the submitted photo.",
       });
     }
   });

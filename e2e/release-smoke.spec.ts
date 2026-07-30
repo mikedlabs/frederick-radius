@@ -163,9 +163,17 @@ for (const viewport of VIEWPORTS) {
           await expect(
             header.getByRole("link", { name: /^Pulse:/ }),
           ).toBeVisible();
-          await expect(
-            header.getByRole("link", { name: "Open Compass" }),
-          ).toBeVisible();
+          if (viewport.width >= 640) {
+            await expect(
+              header.getByRole("link", { name: "Open Compass" }),
+            ).toBeVisible();
+          } else {
+            await expect(
+              header.getByRole("button", {
+                name: "Ask or find across Frederick County",
+              }),
+            ).toBeVisible();
+          }
         }
 
         if (route === "/events") {
@@ -202,7 +210,7 @@ test("map search keeps its exact state through place details and Back", async ({
   );
 
   await page
-    .getByRole("searchbox", { name: "Search this map" })
+    .getByRole("combobox", { name: "Search this map" })
     .fill("Gravel and Grind");
   const result = page.locator(
     '[data-map-search-result="place:gravel-and-grind-frederick"]',
@@ -244,8 +252,14 @@ test("map search keeps its exact state through place details and Back", async ({
       return `${url.pathname}${url.search}${url.hash}`;
     })
     .toBe(returnTo);
+  // The returned place remains open on a phone, so the dock is intentionally
+  // inert behind its peek. Close that foreground result before checking the
+  // restored search field a person can actually interact with.
+  await page
+    .getByRole("button", { name: "Close Gravel & Grind" })
+    .click();
   await expect(
-    page.getByRole("searchbox", { name: "Search this map" }),
+    page.getByRole("combobox", { name: "Search this map" }),
   ).toHaveValue("Gravel and Grind");
   expect(issues, "map → place → map runtime failures").toEqual([]);
 });

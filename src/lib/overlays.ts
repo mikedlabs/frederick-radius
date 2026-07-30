@@ -42,13 +42,6 @@ export type OverlayDef = {
 
 export const OVERLAYS: OverlayDef[] = [
   {
-    key: "parks",
-    label: "Parks",
-    sources: "County parks, from Frederick County GIS",
-    endpoint: "/api/overlays/parks",
-    ready: true,
-  },
-  {
     key: "art",
     label: "Public art",
     sources: "The curated Frederick public art trail, with photos and artists",
@@ -57,20 +50,6 @@ export const OVERLAYS: OverlayDef[] = [
     // advertise a working layer that opens onto an empty map; the control will
     // light up automatically when the human-reviewed catalog is populated.
     ready: false,
-  },
-  {
-    key: "markets",
-    label: "Farmers markets",
-    sources: "Farmers markets across the Frederick region, from county GIS",
-    endpoint: "/api/overlays/markets",
-    ready: true,
-  },
-  {
-    key: "bridges",
-    label: "Covered bridges",
-    sources: "Utica Mills, Loy's Station, and Roddy Road covered bridges, from county GIS",
-    endpoint: "/api/overlays/bridges",
-    ready: true,
   },
 ];
 

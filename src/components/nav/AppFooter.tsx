@@ -47,11 +47,18 @@ export default function AppFooter() {
       {/* Independence + reliance disclaimer (civic-facing app): keeps the
           product honest and prevents anyone mistaking it for an official
           government service or relying on it for emergencies. */}
-      <p className="max-w-[68ch] text-[11px] leading-relaxed sm:mt-3" style={{ color: "var(--app-ink-3)" }}>
+      <p className="hidden max-w-[68ch] text-[11px] leading-relaxed sm:mt-3 sm:block" style={{ color: "var(--app-ink-3)" }}>
         Frederick Radius is an independent local guide. It is not affiliated with
         or endorsed by the City of Frederick, Frederick County Government, or any
         municipality. Information can change; call 911 for emergencies and use
         official sources for public-safety decisions.
+      </p>
+      <p className="text-[11.5px] sm:hidden" style={{ color: "var(--app-ink-3)" }}>
+        Independent local guide{" "}
+        <span aria-hidden>·</span>{" "}
+        <Link href="/trust" prefetch={false} className="font-semibold underline">
+          Trust &amp; sources
+        </Link>
       </p>
 
       <details className="group mt-2 sm:hidden">

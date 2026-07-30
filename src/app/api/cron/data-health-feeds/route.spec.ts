@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
@@ -44,6 +51,10 @@ const request = () =>
   new Request("https://frederickradius.app/api/cron/data-health-feeds");
 
 describe("GET /api/cron/data-health-feeds", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyCronAuth.mockReturnValue(null);
@@ -70,7 +81,12 @@ describe("GET /api/cron/data-health-feeds", () => {
     expect(response.status).toBe(200);
     expect(mocks.getLiveEvents).toHaveBeenCalledWith(60, {
       includeTicketmaster: false,
+      signal: expect.anything(),
     });
+    const signal = mocks.getLiveEvents.mock.calls[0]?.[1]?.signal as
+      | AbortSignal
+      | undefined;
+    expect(signal?.aborted).toBe(false);
     expect(mocks.persistCurrentSnapshotsStrict).toHaveBeenCalledWith([
       "county",
       "city-frederick",
@@ -193,6 +209,53 @@ describe("GET /api/cron/data-health-feeds", () => {
         records_failed: 1,
         error: expect.stringContaining("no-live-sources"),
       }),
+    );
+  });
+
+  it("aborts live provider work at the route deadline and keeps named failures", async () => {
+    vi.useFakeTimers();
+    mocks.persistCurrentSnapshotsStrict.mockResolvedValue(0);
+    mocks.recordSourceProbeFailuresStrict.mockResolvedValue(1);
+    mocks.getLiveEvents.mockImplementation(
+      (
+        _windowDays: number,
+        options: { signal?: AbortSignal },
+      ) =>
+        new Promise((resolve) => {
+          const finish = () =>
+            resolve({
+              events: [],
+              sources_succeeded: [],
+              sources_failed: ["county"],
+            });
+          if (options.signal?.aborted) {
+            finish();
+          } else {
+            options.signal?.addEventListener("abort", finish, {
+              once: true,
+            });
+          }
+        }),
+    );
+
+    const pending = GET(request());
+    await vi.advanceTimersByTimeAsync(15_000);
+    const response = await pending;
+    const body = await response.json();
+    const signal = mocks.getLiveEvents.mock.calls[0]?.[1]?.signal as
+      | AbortSignal
+      | undefined;
+
+    expect(signal?.aborted).toBe(true);
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      status: "partial",
+      sources: { succeeded: 0, failed: ["county"] },
+      source_failure_evidence: { expected: 1, persisted: 1 },
+    });
+    expect(mocks.recordSourceProbeFailuresStrict).toHaveBeenCalledWith(
+      ["county"],
+      expect.any(String),
     );
   });
 });

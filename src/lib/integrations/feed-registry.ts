@@ -23,6 +23,11 @@ export type FeedDef = {
   additionalEnvs?: readonly string[];
   /** What this feed powers in the product. */
   powers: string;
+  /**
+   * Exact County ledger id that must appear in the per-source permission
+   * allowlist. Used only with FREDERICK_COUNTY_GIS_REUSE_APPROVED.
+   */
+  approvedCountySourceId?: string;
 };
 
 // KEYED — dark until the env var exists in the deployment.
@@ -42,18 +47,90 @@ export const KEYED_FEEDS: FeedDef[] = [
     additionalEnvs: ["PULSEPOINT_AGENCY_ID"],
     powers: "Policy-approved, non-medical fire, rescue, and traffic incidents",
   },
+  {
+    name: "Frederick County food-truck roster",
+    sourceIds: ["fc_food_truck_roster"],
+    env: "FREDERICK_COUNTY_GIS_REUSE_APPROVED",
+    additionalEnvs: ["FREDERICK_COUNTY_GIS_APPROVED_SOURCES"],
+    approvedCountySourceId: "fc_food_truck_roster",
+    powers: "Official licensed-mobile-unit document discovery",
+  },
+  {
+    name: "Frederick County recreation locations",
+    sourceIds: ["fc_recreation_locations"],
+    env: "FREDERICK_COUNTY_GIS_REUSE_APPROVED",
+    additionalEnvs: ["FREDERICK_COUNTY_GIS_APPROVED_SOURCES"],
+    approvedCountySourceId: "fc_recreation_locations",
+    powers: "Park, playground, shelter, and recreation-location context",
+  },
+  {
+    name: "Frederick County facilities ingest",
+    sourceIds: ["fc_county_facilities"],
+    env: "FREDERICK_COUNTY_GIS_REUSE_APPROVED",
+    additionalEnvs: ["FREDERICK_COUNTY_GIS_APPROVED_SOURCES"],
+    approvedCountySourceId: "fc_county_facilities",
+    powers: "Legacy County parks, libraries, and fire-station ingest",
+  },
   { name: "Parking occupancy", sourceIds: ["cof_parking_occupancy"], env: "PARKING_OCCUPANCY_URL", powers: "Live garage space counts on /parking and map peeks (PARKING_OCCUPANCY_KEY is optional when the owner feed requires it)" },
 ];
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.
 export const KEYLESS_FEEDS: FeedDef[] = [
-  { name: "Frederick County GIS", sourceIds: ["frederick_county_arcgis"], powers: "County boundary, parks, trails, public art" },
   { name: "USGS Water", sourceIds: ["usgs_water"], powers: "River + creek gauge levels" },
   { name: "National Weather Service", sourceIds: ["nws_forecast", "nws_alerts"], powers: "Forecast + weather alerts" },
+  {
+    name: "Frederick County public GIS",
+    sourceIds: [
+      "fc_planning_projects",
+      "fc_snow_command",
+      "fc_parks_assets",
+      "fc_high_water",
+      "fc_municipal_boundaries",
+      "fc_county_parks",
+      "fc_park_trails",
+      "fc_historic_cemeteries",
+    ],
+    powers:
+      "Municipality outlines, trails, park assets, flood context, planning applications, snow operations, and historic-cemetery discovery",
+  },
   { name: "Hood College", sourceIds: ["hood_college"], powers: "Hood events calendar (HOOD_CALENDAR_URL is an optional override)" },
   { name: "FCPS", sourceIds: ["fcps_news"], powers: "School closures and delays (FCPS_FEED_URL is an optional override)" },
   { name: "Overpass / OpenStreetMap", sourceIds: ["osm_overpass"], powers: "Public amenities (restrooms, water, bike parking)" },
   { name: "MDOT CHART", sourceIds: ["mdot_chart"], powers: "Live traffic incidents" },
+  {
+    name: "Maryland WZDx",
+    sourceIds: ["md_wzdx"],
+    powers: "Lane-level roadwork and closure geometry under the map's Traffic view",
+  },
+  {
+    name: "MDOT CHART road intelligence",
+    sourceIds: [
+      "mdot_chart_tss",
+      "mdot_chart_travel",
+      "mdot_chart_dms",
+      "mdot_chart_rwis",
+      "mdot_chart_ips",
+      "mdot_chart_sep",
+    ],
+    powers:
+      "Travel times, roadway speeds, message signs, pavement weather, road conditions, and snow-emergency status",
+  },
+  {
+    name: "City and County official alerts",
+    sourceIds: ["city_emergency_rss", "county_health_alerts"],
+    powers: "Consequence-bearing City emergency and County public-health notices",
+  },
+  {
+    name: "NWS local storm reports",
+    sourceIds: ["nws_lsr"],
+    powers: "Recent verified hail, wind, flood, snow, and storm-damage reports",
+  },
+  {
+    name: "NOAA nowCOAST lightning density",
+    sourceIds: ["nowcoast_lightning"],
+    powers:
+      "Current 15-minute lightning-density context under the map's existing Weather view",
+  },
   { name: "SeeClickFix", sourceIds: ["seeclickfix"], powers: "311 reported issues" },
   { name: "Local news RSS", sourceIds: ["google_news_rss"], powers: "Headlines (Patch, FNP, MD Matters)" },
   { name: "MD Farmers Markets", sourceIds: ["md_farmers_markets"], powers: "Seasonal market listings" },
@@ -73,6 +150,12 @@ export type FeedStatus = FeedDef & {
 };
 
 export function feedStatuses(): { keyed: FeedStatus[]; keyless: FeedStatus[] } {
+  const approvedCountySources = new Set(
+    (process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
   return {
     keyed: KEYED_FEEDS.map((f) => {
       const required = [f.env, ...(f.additionalEnvs ?? [])].filter(
@@ -80,7 +163,15 @@ export function feedStatuses(): { keyed: FeedStatus[]; keyless: FeedStatus[] } {
       );
       const missingEnvs = required.filter((name) => {
         const value = process.env[name];
-        return name.endsWith("_ENABLED") ? value !== "1" : !value;
+        if (
+          name === "FREDERICK_COUNTY_GIS_APPROVED_SOURCES"
+          && f.approvedCountySourceId
+        ) {
+          return !approvedCountySources.has(f.approvedCountySourceId);
+        }
+        return name.endsWith("_ENABLED") || name.endsWith("_APPROVED")
+          ? value !== "1"
+          : !value;
       });
       return {
         ...f,

@@ -55,6 +55,33 @@ describe("patchRecord", () => {
     });
   });
 
+  it("can add verified communication access and written contact", () => {
+    const p = { slug: "x", name: "Community center", tags: ["community"] };
+    const accessibility = {
+      communication: {
+        deaf_community: true,
+        written_contact: true,
+        source_url: "https://example.org/access",
+        verified_at: "2026-07-28",
+      },
+    };
+
+    expect(
+      patchRecord(p, {
+        x: {
+          email: "hello@example.org",
+          tags: ["community", "deaf-community"],
+          accessibility,
+        },
+      }),
+    ).toEqual({
+      ...p,
+      email: "hello@example.org",
+      tags: ["community", "deaf-community"],
+      accessibility,
+    });
+  });
+
   it("only verifies a manual hours patch when it carries field-specific evidence", () => {
     const p = {
       slug: "x",

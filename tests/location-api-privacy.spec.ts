@@ -6,12 +6,21 @@ const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
   isRateLimited: vi.fn(),
   meterUsage: vi.fn(),
+  postgisNearbyMode: vi.fn(),
+  postgisNearbyPlaceDistances: vi.fn(),
 }));
 
-vi.mock("@/lib/connect", () => ({ nearbyNow: mocks.nearbyNow }));
+vi.mock("@/lib/connect", () => ({
+  DEFAULT_NEARBY_RADIUS_M: 19_312,
+  nearbyNow: mocks.nearbyNow,
+}));
 vi.mock("@/lib/origin-check", () => ({
   isSameOriginRequest: mocks.isSameOriginRequest,
   isRateLimited: mocks.isRateLimited,
+}));
+vi.mock("@/lib/spatial/place-spatial-index", () => ({
+  postgisNearbyMode: mocks.postgisNearbyMode,
+  postgisNearbyPlaceDistances: mocks.postgisNearbyPlaceDistances,
 }));
 vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
 vi.mock("@/lib/mapbox", () => ({
@@ -28,6 +37,8 @@ describe("location API privacy grid", () => {
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.nearbyNow.mockReturnValue({ origin: { lng: -77.411, lat: 39.414 } });
+    mocks.postgisNearbyMode.mockReturnValue("off");
+    mocks.postgisNearbyPlaceDistances.mockResolvedValue(null);
   });
 
   it("canonicalizes an exact nearby fix before computing or publicly caching it", async () => {
@@ -58,6 +69,31 @@ describe("location API privacy grid", () => {
     expect(mocks.nearbyNow).toHaveBeenCalledWith(
       { lng: -77.411, lat: 39.414 },
       expect.objectContaining({ limit: 6 }),
+    );
+  });
+
+  it("passes only the rounded origin to an enabled PostGIS read", async () => {
+    const distances = new Map([["alpha", 42]]);
+    mocks.postgisNearbyMode.mockReturnValue("on");
+    mocks.postgisNearbyPlaceDistances.mockResolvedValue(distances);
+    const request = new Request(
+      "https://frederickradius.app/api/nearby?lng=-77.411&lat=39.414&limit=6",
+      { headers: { Referer: "https://frederickradius.app/today" } },
+    );
+
+    const response = await nearby(request);
+
+    expect(response.status).toBe(200);
+    expect(mocks.postgisNearbyPlaceDistances).toHaveBeenCalledWith(
+      { lng: -77.411, lat: 39.414 },
+      19_312,
+    );
+    expect(mocks.nearbyNow).toHaveBeenLastCalledWith(
+      { lng: -77.411, lat: 39.414 },
+      expect.objectContaining({
+        limit: 6,
+        placeDistances: distances,
+      }),
     );
   });
 

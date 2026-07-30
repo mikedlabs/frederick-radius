@@ -1,0 +1,92 @@
+name: Production apex canary
+
+# Vercel's Git integration reports successful deployments through GitHub's
+# deployment_status event. Only production promotions reach this job. The
+# canary then checks the public apex alias, not the deployment preview URL.
+#
+# The public check retries before recovery so a brief alias/CDN propagation
+# delay cannot roll back a healthy release. If all attempts fail after a real
+# production promotion, the workflow validates the immediately preceding
+# production deployment and asks Vercel to restore it. That recovery step needs
+# the repository secret VERCEL_TOKEN; read-only canary runs do not.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Public production origin
+        required: false
+        default: https://frederickradius.app
+      expected_sha:
+        description: Commit the apex alias must be serving
+        required: false
+
+concurrency:
+  group: production-apex-canary
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apex:
+    name: Apex matches promoted commit
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.deployment_status.state == 'success' &&
+        (
+          contains(github.event.deployment.environment, 'Production') ||
+          contains(github.event.deployment.environment, 'production')
+        )
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Verify the real production alias
+        shell: bash
+        run: |
+          set +e
+          status=1
+          for attempt in 1 2 3; do
+            echo "Production canary attempt ${attempt} of 3"
+            node scripts/prod-audit.mjs
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+          exit "$status"
+        env:
+          BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+          EXPECTED_SHA: ${{ inputs.expected_sha || github.event.deployment.sha || github.sha }}
+          REQUIRE_EXPECTED_SHA: "1"
+          CANARY_TIMEOUT_MS: "25000"
+
+      - name: Install Vercel recovery client
+        if: >-
+          failure() &&
+          github.event_name == 'deployment_status'
+        run: npm install --global vercel@54.0.0
+
+      - name: Restore the last healthy production deployment
+        if: >-
+          failure() &&
+          github.event_name == 'deployment_status'
+        run: node scripts/rollback-production.mjs
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+          EXPECTED_SHA: ${{ github.event.deployment.sha }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE || 'mikedlab' }}
+          VERCEL_PROJECT: ${{ vars.VERCEL_PROJECT || 'frederick-radius' }}
+          CANARY_TIMEOUT_MS: "25000"

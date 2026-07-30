@@ -8,7 +8,12 @@ function queryText(strings: TemplateStringsArray): string {
 
 type State = {
   raw?: { id: string; dtstamp: string; sourceUrl?: string | null };
-  normalized?: { category: string | null; sourceUrl?: string | null };
+  normalized?: {
+    category: string | null;
+    sourceUrl?: string | null;
+    heroImage?: string | null;
+    heroImageAlt?: string | null;
+  };
 };
 
 function transactionalSql({
@@ -46,6 +51,10 @@ function transactionalSql({
                 category: target.normalized?.category ?? null,
                 normalized_source_url:
                   target.normalized?.sourceUrl ?? null,
+                normalized_hero_image:
+                  target.normalized?.heroImage ?? null,
+                normalized_hero_image_alt:
+                  target.normalized?.heroImageAlt ?? null,
               },
             ]
           : [],
@@ -78,6 +87,10 @@ function transactionalSql({
       const sourceUrl = (parameters[1] as string | null) ?? null;
       const healCategory = parameters[2] === true;
       const category = (parameters[3] as string | null) ?? null;
+      const healHeroImage = parameters[4] === true;
+      const heroImage = (parameters[5] as string | null) ?? null;
+      const healHeroImageAlt = parameters[6] === true;
+      const heroImageAlt = (parameters[7] as string | null) ?? null;
       target.normalized = {
         sourceUrl: healSourceUrl
           ? sourceUrl
@@ -85,18 +98,40 @@ function transactionalSql({
         category: healCategory
           ? category
           : target.normalized.category,
+        heroImage: healHeroImage
+          ? heroImage
+          : target.normalized.heroImage,
+        heroImageAlt: healHeroImageAlt
+          ? heroImageAlt
+          : target.normalized.heroImageAlt,
       };
       return Promise.resolve([{ id: "normalized-event-1" }]);
     }
     if (
       text.includes("update ingested_events") &&
-      text.includes("set category =")
+      text.includes("set category = case")
     ) {
-      const category = (parameters[0] as string | null) ?? null;
-      if (!target.normalized || target.normalized.category === category) {
+      if (!target.normalized) {
         return Promise.resolve([]);
       }
-      target.normalized = { category };
+      const categoryCoverageComplete = parameters[0] === true;
+      const category = (parameters[1] as string | null) ?? null;
+      const heroImage = (parameters[2] as string | null) ?? null;
+      const heroImageAlt = (parameters[3] as string | null) ?? null;
+      const changed =
+        (categoryCoverageComplete &&
+          target.normalized.category !== category) ||
+        (target.normalized.heroImage ?? null) !== heroImage ||
+        (target.normalized.heroImageAlt ?? null) !== heroImageAlt;
+      if (!changed) return Promise.resolve([]);
+      target.normalized = {
+        ...target.normalized,
+        category: categoryCoverageComplete
+          ? category
+          : target.normalized.category,
+        heroImage,
+        heroImageAlt,
+      };
       return Promise.resolve([{ id: "normalized-event-1" }]);
     }
     if (text.includes("insert into ingested_events")) {
@@ -106,13 +141,19 @@ function transactionalSql({
       }
       const incomingCategory =
         (parameters[13] as string | null) ?? null;
-      const coverageComplete = parameters[14] !== false;
+      const incomingHeroImage =
+        (parameters[14] as string | null) ?? null;
+      const incomingHeroImageAlt =
+        (parameters[15] as string | null) ?? null;
+      const coverageComplete = parameters[16] !== false;
       target.normalized = {
         sourceUrl: (parameters[3] as string | null) ?? null,
         category:
           target.normalized && !coverageComplete
             ? target.normalized.category
             : incomingCategory,
+        heroImage: incomingHeroImage,
+        heroImageAlt: incomingHeroImageAlt,
       };
       return Promise.resolve([]);
     }
@@ -364,6 +405,55 @@ describe("upsertEvent transaction and reconciliation", () => {
     expect(stats).toMatchObject({
       rawUpdated: 1,
       rawUnchanged: 0,
+      normUpserted: 1,
+    });
+  });
+
+  it("heals newly available publisher event art without requiring a DTSTAMP change", async () => {
+    const sourceUrl = "https://frederick.librarycalendar.com/event/art-class";
+    const db = transactionalSql({
+      initial: {
+        raw: {
+          id: "raw-event-1",
+          dtstamp: "2026-07-02T12:00:00.000Z",
+          sourceUrl,
+        },
+        normalized: {
+          category: "community",
+          sourceUrl,
+          heroImage: null,
+          heroImageAlt: null,
+        },
+      },
+    });
+    const stats = emptyStats();
+    const heroImage =
+      "https://frederick.librarycalendar.com/sites/default/files/2026-07/art-class.jpg";
+
+    await upsertEvent(
+      db.sql,
+      {
+        sourceDomain: "frederick.librarycalendar.com",
+        municipality: "frederick",
+        category: "community",
+      },
+      event({
+        sourceUrl,
+        heroImage,
+        heroImageAlt: "Paint and brushes on a table",
+      }),
+      stats,
+    );
+
+    expect(db.begin).not.toHaveBeenCalled();
+    expect(db.state().normalized).toMatchObject({
+      category: "community",
+      sourceUrl,
+      heroImage,
+      heroImageAlt: "Paint and brushes on a table",
+    });
+    expect(stats).toMatchObject({
+      rawUnchanged: 1,
       normUpserted: 1,
     });
   });

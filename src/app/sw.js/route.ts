@@ -89,7 +89,48 @@ async function cacheOfflineFallback() {
   if (finalUrl.origin !== self.location.origin || finalUrl.pathname !== OFFLINE_URL) return;
 
   const cache = await caches.open(STATIC_CACHE);
+  const assetSource = response.clone();
   await cache.put(OFFLINE_URL, response);
+
+  // The cached HTML is useful by itself, but the IndexedDB handoff and Retry
+  // button need the offline route's content-hashed JS/CSS. Cache only the
+  // same-origin immutable assets named by this generic page, with a hard cap.
+  // This does not cache another navigation or any personalized response.
+  if (typeof assetSource.text !== "function") return;
+  let html = "";
+  try {
+    html = await assetSource.text();
+  } catch {
+    return;
+  }
+  const paths = [];
+  const seen = new Set();
+  const pattern = /(?:src|href)=["']([^"']*\\/_next\\/static\\/[^"']+)["']/g;
+  let match;
+  while ((match = pattern.exec(html)) && paths.length < 40) {
+    try {
+      const assetUrl = new URL(match[1], self.location.origin);
+      if (
+        assetUrl.origin === self.location.origin &&
+        assetUrl.pathname.startsWith("/_next/static/") &&
+        !seen.has(assetUrl.href)
+      ) {
+        seen.add(assetUrl.href);
+        paths.push(assetUrl.href);
+      }
+    } catch {}
+  }
+  await Promise.all(
+    paths.map(async (assetUrl) => {
+      try {
+        const asset = await fetch(assetUrl, {
+          cache: "reload",
+          credentials: "same-origin",
+        });
+        if (isCacheableResponse(asset)) await cache.put(assetUrl, asset);
+      } catch {}
+    }),
+  );
 }
 
 self.addEventListener("install", (event) => {

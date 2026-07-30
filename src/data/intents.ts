@@ -25,7 +25,7 @@ export type IntentMatchable = Pick<
   "slug" | "name" | "category" | "subcategories" | "short_blurb" | "primary_type"
 >;
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
-import { isPizzaPlace } from "@/data/cravings";
+import { isPizzaPlace, isPlaygroundPlace } from "@/data/cravings";
 import { cuisinesOf } from "@/lib/cuisine";
 import { ACCENTS } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
@@ -201,7 +201,6 @@ const TRAIL_NAME_RE = /\b(trail|towpath|greenway|canal|path)\b/i;
 const GARDEN_NAME_RE = /\b(garden|arboretum|botanic)\b/i;
 const WATER_NAME_RE =
   /\b(creek|lake|river|pond|falls?|reservoir|stream|run|branch|water)\b/i;
-const PLAYGROUND_NAME_RE = /\bplayground|tot.?lot\b/i;
 const FAMILY_CATS = new Set([
   "playground",
   "family",
@@ -217,10 +216,6 @@ const FAMILY_ATTRACTION_RE =
   /\b(arcade|escape room|escape this|bowling|adventure|wildlife|preserve|skate|laser|trampoline|mini.?golf|pinball|clay studio|gymnastics|climbing|aquarium|zoo|farm)\b/i;
 const isFamilyAttraction = (p: IntentMatchable): boolean =>
   p.category === "family" && FAMILY_ATTRACTION_RE.test(p.name);
-const isPlaygroundLike = (p: IntentMatchable): boolean =>
-  p.category === "playground" ||
-  (p.subcategories ?? []).includes("playground") ||
-  PLAYGROUND_NAME_RE.test(p.name);
 const ARTS = new Set([
   "arts",
   "gallery",
@@ -238,6 +233,7 @@ const CIVIC = new Set([
   "transit",
   "civic",
   "pharmacy",
+  "auto-care",
 ]);
 // Civic sub signals. The `civic` catch-all category (80 rows) is mostly
 // community orgs, nonprofits, and historic sites — a big bucket that had no
@@ -462,7 +458,7 @@ export const INTENTS: Intent[] = [
     subIntents: [
       { key: "parks",       type: "category", label: "Parks",         icon: "Trees",    match: (p) => p.category === "park" },
       { key: "trails",      type: "category", label: "Trails",        icon: "Mountain", match: (p) => p.category === "trail" || TRAIL_NAME_RE.test(p.name) },
-      { key: "playgrounds", type: "category", label: "Playgrounds",   icon: "ToyBrick", match: isPlaygroundLike },
+      { key: "playgrounds", type: "category", label: "Playgrounds",   icon: "ToyBrick", match: isPlaygroundPlace },
       { key: "golf",        type: "category", label: "Golf",          icon: "Flag",     match: (p) => p.category === "golf" },
       { key: "farms",       type: "category", label: "Farms & PYO",   icon: "Tractor",  match: (p) => p.category === "agritourism" },
       { key: "gardens",     type: "category", label: "Gardens",       icon: "Flower2",  match: (p) => GARDEN_NAME_RE.test(p.name) },
@@ -479,7 +475,7 @@ export const INTENTS: Intent[] = [
     preferOpen: false,
     subIntents: [
       { key: "things",      type: "category", label: "Things to do", icon: "FerrisWheel", match: isFamilyAttraction },
-      { key: "playgrounds", type: "category", label: "Playgrounds",  icon: "ToyBrick",    match: isPlaygroundLike },
+      { key: "playgrounds", type: "category", label: "Playgrounds",  icon: "ToyBrick",    match: isPlaygroundPlace },
       { key: "libraries",   type: "category", label: "Libraries",    icon: "Library",     match: (p) => p.category === "library" },
       { key: "museums",     type: "category", label: "Museums",      icon: "Palette",     match: (p) => p.category === "museum" },
       { key: "parks",       type: "category", label: "Parks",        icon: "Trees",       match: (p) => p.category === "park" },
@@ -541,6 +537,7 @@ export const INTENTS: Intent[] = [
       { key: "government",    type: "category", label: "Government",    icon: "Building",    match: (p) => p.category === "government" },
       { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
       { key: "pharmacies",    type: "category", label: "Pharmacies",    icon: "Pill",        match: (p) => p.category === "pharmacy" },
+      { key: "auto-care",     type: "category", label: "Auto care",     match: (p) => p.category === "auto-care" },
       { key: "community",     type: "category", label: "Community",     icon: "Users",       match: isCivicCommunity },
       { key: "historic",      type: "category", label: "Historic sites", icon: "Landmark",   match: isCivicHistoric },
       // "Voting" and "Post & shipping" dropped: both categories are empty in

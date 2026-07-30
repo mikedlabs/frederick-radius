@@ -40,6 +40,7 @@ const ROUTES = [
   "/search?q=animal+control",
   "/nearby",
   "/contacts",
+  "/access",
   "/pulse",
   "/compass",
   "/places/brewers-alley-frederick",
@@ -66,6 +67,9 @@ const ROUTES = [
   "/scanner",
   "/numbers",
   "/reserve",
+  // CEO-ready partner concepts still ship on the public runtime. Keep the
+  // standalone presentation surface at the same render/accessibility bar.
+  "/concept/wlr",
   // The front door. Every visitor sees it before anything else, and it
   // drifted through three rejected design drafts while ungated (owner
   // review, 2026-07-19) — it holds to the same bar as what it gates.

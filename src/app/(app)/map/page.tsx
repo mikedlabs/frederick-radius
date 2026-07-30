@@ -6,7 +6,11 @@ import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
-import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
+import {
+  allAmenities,
+  dedupeAmenities,
+  type Amenity,
+} from "@/lib/loaders/amenities";
 import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
 import { getCommunityReports } from "@/lib/loaders/communityReports";
 import { REPORT_CATEGORY_BY_KEY } from "@/lib/reports/categories";
@@ -22,7 +26,12 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
 import type { ParkingPin } from "@/lib/map/parking";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import type { CivicPin, EventPin } from "@/components/map/AppMapClient";
+import type {
+  CivicPin,
+  EventPin,
+  FloodContextFC,
+  SnowRouteFC,
+} from "@/components/map/AppMapClient";
 import type { MapPinPlace } from "@/components/map/types";
 import BrowseMapClient from "@/components/map/BrowseMapClient";
 import MapModeGate from "@/components/map/MapModeGate";
@@ -51,6 +60,20 @@ import {
   selectMapRoadPins,
   type CurrentSituationSnapshot,
 } from "@/lib/live/currentSituationModel";
+import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import {
+  selectRoadWorkZoneFeatureCollection,
+  type RoadIntelligenceSnapshot,
+} from "@/lib/live/roadIntelligenceModel";
+import {
+  getPublicCountyParkAssets,
+} from "@/lib/integrations/fcParkAssetsPublic";
+import { countyParkAssetAmenity } from "@/lib/loaders/countyParkAmenities";
+import { getCountyFloodContext } from "@/lib/integrations/fcFloodRisk";
+import {
+  FC_SNOW_COMMAND_SOURCE,
+  getCountySnowRoutes,
+} from "@/lib/integrations/fcSnowCommand";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -231,7 +254,9 @@ function upcomingEventsBucket(now: Date): number {
 // Slim places projection used to de-dupe amenities (same shape the
 // /radius route used to derive). Inlined here so the radius branch
 // can compute its amenity set without dragging the full Place loader
-// into the SSR payload — we only need name/category/geom for dedup.
+// into the SSR payload. Playground overlap needs the same narrow evidence
+// used by the shared classifier; otherwise a parent park with a sourced
+// playground blurb and its mapped playground point render as duplicates.
 //
 // Loaded + projected lazily via dynamic import, then memoized.
 // places-client.json is ~1.8MB. A static top-level import forced that
@@ -241,7 +266,14 @@ function upcomingEventsBucket(now: Date): number {
 // defer the whole file behind first use: cold browse instances skip the
 // parse + array allocation entirely.
 let _clientDedupeProjection:
-  | Array<{ name: string; category: string; geom: { lng: number; lat: number } }>
+  | Array<{
+      name: string;
+      category: string;
+      geom: { lng: number; lat: number };
+      subcategories?: string[];
+      primary_type?: string;
+      short_blurb?: string;
+    }>
   | null = null;
 async function clientDedupeProjection() {
   if (_clientDedupeProjection === null) {
@@ -251,8 +283,18 @@ async function clientDedupeProjection() {
         name: string;
         category: string;
         geom: { lng: number; lat: number };
+        subcategories?: string[];
+        primary_type?: string;
+        short_blurb?: string;
       }>
-    ).map((p) => ({ name: p.name, category: p.category, geom: p.geom }));
+    ).map((p) => ({
+      name: p.name,
+      category: p.category,
+      geom: p.geom,
+      subcategories: p.subcategories,
+      primary_type: p.primary_type,
+      short_blurb: p.short_blurb,
+    }));
   }
   return _clientDedupeProjection;
 }
@@ -431,6 +473,10 @@ async function BrowseMapArea() {
   const allPlaces = openPlaces(now);
   const [
     situationSnapshot,
+    roadIntelligence,
+    countyParkAssets,
+    countyFloodContext,
+    countySnowRoutes,
     fixit,
     mapillaryTrash,
     trailLines,
@@ -459,6 +505,14 @@ async function BrowseMapArea() {
       4500,
       null,
     ),
+    withTimeout<RoadIntelligenceSnapshot | null>(
+      getRoadIntelligenceSnapshot(),
+      4500,
+      null,
+    ),
+    withTimeout(getPublicCountyParkAssets(), 4500, null),
+    withTimeout(getCountyFloodContext(), 4500, null),
+    withTimeout(getCountySnowRoutes(now), 4500, null),
     withTimeout(getFixItIssues(30), 4500, []),
     withTimeout(fetchMapillaryTrash(), 3000, []),
     withTimeout(getFrederickTrailShapes(), 4000, EMPTY_FC),
@@ -571,10 +625,77 @@ async function BrowseMapArea() {
     ? allAmenities().filter((a) => a.kind !== "ev_charging")
     : allAmenities();
 
+  const countyAmenities =
+    countyParkAssets?.availability === "available"
+      ? countyParkAssets.records
+          .map(countyParkAssetAmenity)
+          .filter((asset): asset is Amenity => asset !== null)
+      : [];
+
   const amenities = dedupeAmenities(
-    [...baseAmenities, ...evChargingAmenities, ...riverGaugeAmenities, ...fieldAmenities],
-    allPlaces.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
+    [
+      ...baseAmenities,
+      ...countyAmenities,
+      ...evChargingAmenities,
+      ...riverGaugeAmenities,
+      ...fieldAmenities,
+    ],
+    allPlaces.map((p) => ({
+      name: p.name,
+      category: p.category,
+      geom: p.geom,
+      subcategories: p.subcategories,
+      primary_type: p.primary_type,
+      short_blurb: p.short_blurb,
+    })),
   );
+
+  const floodContext: FloodContextFC =
+    countyFloodContext?.availability === "available"
+      ? {
+          type: "FeatureCollection",
+          features: countyFloodContext.records.map((record) => ({
+            type: "Feature" as const,
+            id: record.id,
+            geometry: record.geometry,
+            properties: {
+              id: record.id,
+              kind: record.kind,
+              title:
+                record.kind === "mapped_high_water_area"
+                  ? "Known high-water area"
+                  : record.kind === "warning_sign"
+                    ? "Flood warning sign"
+                    : "Past water-rescue location",
+              creek: record.creek,
+              currentStatus: "Not a live flooding report" as const,
+              sourceUrl: record.sourceUrl,
+            },
+          })),
+        }
+      : { type: "FeatureCollection", features: [] };
+
+  const snowRoutes: SnowRouteFC =
+    countySnowRoutes?.availability === "available"
+      ? {
+          type: "FeatureCollection",
+          features: countySnowRoutes.records
+            .filter((record) => record.freshness === "current")
+            .map((record) => ({
+              type: "Feature" as const,
+              id: record.id,
+              geometry: record.geometry,
+              properties: {
+                id: record.id,
+                district: record.district,
+                reportedStatus: record.reportedStatus,
+                observedAt: record.observedAt,
+                roadSafety: record.roadSafety,
+                sourceUrl: FC_SNOW_COMMAND_SOURCE.sourceUrl,
+              },
+            })),
+        }
+      : { type: "FeatureCollection", features: [] };
 
   // Community reports ride the amenity layer as OsmPlace-shaped points under
   // the "Community" tray group (category slug report-<category> → caution
@@ -625,7 +746,6 @@ async function BrowseMapArea() {
       lat: e.geom.lat,
       category: e.category,
       category_color: CATEGORY_BY_SLUG[e.category]?.color,
-      hero_image: e.hero_image,
     });
     if (weekEvents.length >= 400) break;
   }
@@ -707,6 +827,13 @@ async function BrowseMapArea() {
         transitStops={transitStops}
         marcStations={marcStations}
         foodTruckPins={foodTruckPins}
+        roadWorkZones={
+          roadIntelligence
+            ? selectRoadWorkZoneFeatureCollection(roadIntelligence)
+            : { type: "FeatureCollection", features: [] }
+        }
+        floodContext={floodContext}
+        snowRoutes={snowRoutes}
       />
     </div>
   );

@@ -28,6 +28,9 @@ import { COUNTY_REGION_LABELS, regionForMunicipality, type CountyRegion } from "
 import { cleanReservationSearchQuery, openTableSearchUrl } from "@/lib/ask/reservations";
 import { allAmenities, dedupeAmenities, type Amenity, type AmenityKind } from "@/lib/loaders/amenities";
 import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
+import { countyParkAssetAmenity } from "@/lib/loaders/countyParkAmenities";
+import { getPublicCountyParkAssets } from "@/lib/integrations/fcParkAssetsPublic";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
 import { allShipping, type ShipCarrier, type ShipKind, type ShipPoint } from "@/lib/loaders/shipping";
 import { brunchSpots, type BrunchSpot } from "@/lib/loaders/brunch";
 import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
@@ -51,6 +54,10 @@ import { eventFitsAskIntent } from "@/lib/ask/event-filter";
 import { placeMatchesDietary } from "@/lib/ask/dietary";
 import { parseAskDateTime } from "@/lib/ask/time";
 import { formatEventWhen } from "@/lib/events/format";
+import {
+  communicationAccessLabels,
+  hasDeafCommunityOrCommunicationAccess,
+} from "@/lib/events/communication-access";
 import TRANSIT from "@/data/transit.json" with { type: "json" };
 
 /**
@@ -119,6 +126,7 @@ function placeSource(
     distance: showDistance && p.distance_m != null ? formatDistance(p.distance_m) : undefined,
     status: formatHoursLine(p.open_status),
     phone: p.phone || undefined,
+    email: p.email || undefined,
     region: region ?? undefined,
     confidence: p.is_verified && (p.hours_verified || p.open_status.state === "unknown") ? "high" : "medium",
     photo_url: p.google_photo_url || p.hero_image,
@@ -130,6 +138,9 @@ function placeSource(
 function telHref(phone: string): string {
   return `tel:+1${phone.replace(/\D/g, "")}`;
 }
+
+const FREDERICK_TEXT_911_INFO =
+  "https://frederickcountymd.gov/8480/Texting-9-1-1-What-to-Expect";
 
 function answerEmergencyRequest(
   kind: EmergencyRequestKind,
@@ -184,16 +195,18 @@ function answerEmergencyRequest(
       status: "matches",
       configured: hasKey(),
       usedModel: false,
-      answer: "Call Poison Control now at 1-800-222-1222 or use its official online tool. Help is free, confidential, and available 24/7. If the person has collapsed, is having a seizure, has trouble breathing, or cannot be awakened, call 911 immediately.",
+      answer: "Call Poison Control now at 1-800-222-1222 or use its official online tool. Help is free, confidential, and available 24/7. If the person has collapsed, is having a seizure, has trouble breathing, or cannot be awakened, call 911 immediately. In Frederick County, text 911 if a voice call is not possible.",
       sources: [
         { slug: "poison-control", name: "Poison Control", category: "emergency", href: "https://www.poison.org/", eyebrow: "Official 24/7 help", reason: "1-800-222-1222", phone: "1-800-222-1222", confidence: "high" },
         { slug: "national-911", name: "Call 911", category: "emergency", href: "https://www.911.gov/calling-911/", eyebrow: "Immediate emergency help", reason: "For severe or life-threatening symptoms", phone: "911", confidence: "high" },
+        { slug: "frederick-text-911", name: "Frederick County Text-to-911", category: "emergency", href: FREDERICK_TEXT_911_INFO, eyebrow: "Official County guidance", reason: "Use if a voice call is not possible", confidence: "high" },
       ],
       context: "Official emergency help",
       intent,
       actions: [
         { label: "Call Poison Control", kind: "open", href: "tel:+18002221222" },
         { label: "Call 911", kind: "open", href: "tel:911" },
+        { label: "Text 911", kind: "open", href: "sms:911" },
       ],
       intelligence: { tools: ["emergency"], confidence: "high", retrieval: "keyword" },
     };
@@ -205,16 +218,23 @@ function answerEmergencyRequest(
     configured: hasKey(),
     usedModel: false,
     answer: emergency
-      ? "If this may be life-threatening, call 911 now. Radius cannot assess symptoms or show live wait times. Frederick Health Hospital’s emergency department is open 24/7 at 400 West 7th Street in Frederick."
+      ? "If this may be life-threatening, call 911 now. In Frederick County, text 911 if a voice call is not possible. Radius cannot assess symptoms or show live wait times. Frederick Health Hospital’s emergency department is open 24/7 at 400 West 7th Street in Frederick."
       : "Urgent care is for problems that need prompt attention but are not life-threatening. Use Frederick Health’s official care page for locations and current hours. If symptoms are severe or this may be an emergency, call 911 instead.",
     sources: [
-      ...(emergency ? [{ slug: "national-911", name: "Call 911", category: "emergency", href: "https://www.911.gov/calling-911/", eyebrow: "Immediate emergency help", reason: "Call for a life-threatening emergency", phone: "911", confidence: "high" as const }] : []),
+      ...(emergency ? [
+        { slug: "national-911", name: "Call 911", category: "emergency", href: "https://www.911.gov/calling-911/", eyebrow: "Immediate emergency help", reason: "Call for a life-threatening emergency", phone: "911", confidence: "high" as const },
+        { slug: "frederick-text-911", name: "Frederick County Text-to-911", category: "emergency", href: FREDERICK_TEXT_911_INFO, eyebrow: "Official County guidance", reason: "Use if a voice call is not possible", confidence: "high" as const },
+      ] : []),
       { slug: emergency ? "frederick-health-er" : "frederick-health-urgent-care", name: emergency ? "Frederick Health Hospital Emergency Department" : "Frederick Health urgent care", category: "health", city: "Frederick County", href: emergency ? "https://www.frederickhealth.org/services/emergency-care/" : "https://www.frederickhealth.org/medical-group/get-care/", eyebrow: emergency ? "Hospital emergency department · Open 24/7" : "Official locations and hours", reason: emergency ? "400 West 7th Street · 240-566-3300" : "Use for non-life-threatening care", phone: emergency ? "240-566-3300" : undefined, confidence: "high" },
     ],
     context: "Official health care guidance",
     intent,
     actions: emergency
-      ? [{ label: "Call 911", kind: "open", href: "tel:911" }, { label: "Open emergency department", kind: "open", href: "https://www.frederickhealth.org/services/emergency-care/" }]
+      ? [
+          { label: "Call 911", kind: "open", href: "tel:911" },
+          { label: "Text 911", kind: "open", href: "sms:911" },
+          { label: "Open emergency department", kind: "open", href: "https://www.frederickhealth.org/services/emergency-care/" },
+        ]
       : [{ label: "Find urgent care", kind: "open", href: "https://www.frederickhealth.org/medical-group/get-care/" }],
     intelligence: { tools: ["emergency"], confidence: "high", retrieval: "keyword" },
   };
@@ -244,6 +264,7 @@ const AMENITY_REQUESTS: Array<{
   { kind: "restroom", pattern: /\b(?:public )?(?:restroom|bathroom|toilet)s?\b/i, singular: "public restroom", plural: "public restrooms", group: "restroom", category: "restroom" },
   { kind: "bench", pattern: /\b(?:public )?(?:bench|seating|place to sit)s?\b/i, singular: "bench", plural: "benches", group: "seating", category: "bench" },
   { kind: "dog_waste", pattern: /\b(?:dog (?:bag|waste)(?: station| dispenser)?|poop bag station)s?\b/i, singular: "dog-bag station", plural: "dog-bag stations", group: "dog", category: "dog-waste" },
+  { kind: "dog_park", pattern: /\bdog parks?\b/i, singular: "dog park", plural: "dog parks", group: "dog", category: "dog-park" },
   { kind: "dog_water", pattern: /\b(?:dog water|pet water)(?: station| fountain)?s?\b/i, singular: "dog-water point", plural: "dog-water points", group: "dog", category: "dog-water" },
   { kind: "outlet", pattern: /\b(?:(?:public )?(?:power|electrical) outlets?|(?:place to |where (?:can )?i )?charge (?:my|a|your) phone)\b/i, singular: "public power outlet", plural: "public power outlets", group: "outlet", category: "outlet" },
   { kind: "ev_charging", pattern: /\b(?:ev|electric vehicle) charg(?:er|ing|ing station)s?\b/i, singular: "EV charger", plural: "EV chargers", group: "ev", category: "ev-charging" },
@@ -251,6 +272,7 @@ const AMENITY_REQUESTS: Array<{
   { kind: "bike_parking", pattern: /\b(?:bike|bicycle) (?:rack|parking)s?\b/i, singular: "bike-parking point", plural: "bike-parking points", group: "bike", category: "bike-parking" },
   { kind: "bike_repair", pattern: /\b(?:bike|bicycle) (?:repair|fix(?:-?it)?|pump) stations?\b/i, singular: "bike-repair station", plural: "bike-repair stations", group: "bike", category: "bike-repair" },
   { kind: "playground", pattern: /\bplaygrounds?\b/i, singular: "playground", plural: "playgrounds", group: "play", category: "playground" },
+  { kind: "water_access", pattern: /\b(?:boat ramps?|paddle launches?|kayak launches?|canoe launches?|water access)\b/i, singular: "water-access point", plural: "water-access points", group: "water_access", category: "water-access" },
 ];
 
 function requestedAmenities(query: string) {
@@ -815,11 +837,29 @@ async function answerAmenityRequest(
   intent: AskIntent,
   context: QualifiedSearchContext,
 ): Promise<AskResult> {
-  const field = await getFieldAmenities();
+  const [field, countyParkAssets] = await Promise.all([
+    getFieldAmenities(),
+    withDeadlineFallback(getPublicCountyParkAssets(), 1_500, null),
+  ]);
+  const countyAmenities =
+    countyParkAssets?.availability === "available"
+      ? countyParkAssets.records
+          .map(countyParkAssetAmenity)
+          .filter((asset): asset is Amenity => asset !== null)
+      : [];
   const showDistance = canExposeDistance(context);
-  const candidates = dedupeAmenities([...field, ...allAmenities()], [])
+  const candidates = dedupeAmenities(
+    [...field, ...countyAmenities, ...allAmenities()],
+    [],
+  )
     .filter((amenity) => requested.some((request) => request.kind === amenity.kind))
-    .filter((amenity) => !context.municipality || amenity.municipality === context.municipality)
+    .filter((amenity) => (
+      !context.municipality
+      || amenity.municipality === context.municipality
+      // A precise origin can still rank a nearby County asset at the edge of a
+      // municipality honestly; the result's own municipality remains intact.
+      || (context.origin && amenity.id.startsWith("fc-park-"))
+    ))
     .map((amenity) => ({
       amenity,
       distance: context.origin
@@ -858,6 +898,8 @@ async function answerAmenityRequest(
   const sources = selected.map(({ amenity, distance }): AskSource => {
     const request = requested.find((item) => item.kind === amenity.kind)!;
     const at = `${amenity.lat.toFixed(6)},${amenity.lng.toFixed(6)}`;
+    const isFieldMapped = amenity.id.startsWith("field:");
+    const isCountyMapped = amenity.id.startsWith("fc-park-");
     return {
       slug: `amenity-${amenity.id}`,
       name: amenity.name,
@@ -868,11 +910,17 @@ async function answerAmenityRequest(
       reason: showDistance && distance != null
         ? `Mapped ${formatDistance(distance)} from ${rankingAnchor(context)}`
         : context.municipality
-          ? `Verified mapped point in ${MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality}`
-          : "Verified mapped point",
-      detail: amenity.detail || (amenity.id.startsWith("field:") ? "Mapped in person for Radius" : "Mapped from OpenStreetMap"),
+          ? `Mapped point in ${MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality}`
+          : "Mapped point",
+      detail:
+        amenity.detail
+        || (isFieldMapped
+          ? "Field-mapped for Radius"
+          : isCountyMapped
+            ? "Frederick County park map · Availability is not confirmed"
+            : "Mapped from OpenStreetMap · Not recently field-verified"),
       distance: showDistance && distance != null ? formatDistance(distance) : undefined,
-      confidence: amenity.id.startsWith("field:") ? "high" : "medium",
+      confidence: isFieldMapped ? "high" : "medium",
       photo_url: amenity.photo,
     };
   });
@@ -886,7 +934,7 @@ async function answerAmenityRequest(
   const missingText = missing.map((request) => request.plural).join(" or ");
   const answer = [
     foundText ? `I found ${foundText}${context.origin ? `, ranked from ${rankingAnchor(context)}` : " in Radius"}.` : null,
-    missingText ? `Radius does not have verified ${missingText} yet, so I won’t guess.` : null,
+    missingText ? `Radius does not have mapped ${missingText} yet, so I won’t guess.` : null,
     sources.length > 0 ? "Open any point below to see it on the map." : "The amenity guide shows what is mapped now and what still needs field work.",
   ].filter(Boolean).join(" ");
 
@@ -907,7 +955,11 @@ async function answerAmenityRequest(
     actions,
     intelligence: {
       tools: ["amenities"],
-      confidence: sources.length > 0 ? "high" : "medium",
+      confidence:
+        sources.length > 0
+        && sources.every((source) => source.confidence === "high")
+          ? "high"
+          : "medium",
       retrieval: "keyword",
     },
   };
@@ -948,6 +1000,13 @@ function followUps(query: string, intent: AskIntent, context: QualifiedSearchCon
     return actions;
   }
   if (intent.kind === "event") {
+    if (asksDeafCommunityOrCommunicationAccess(query)) {
+      return [
+        { label: "Browse confirmed access", kind: "open", href: "/events?access=true" },
+        { label: "This weekend", kind: "refine", query: "What Deaf-community or communication-access events are happening this weekend?" },
+        { label: "Free only", kind: "refine", query: `${query}, free only` },
+      ];
+    }
     return [
       { label: "Make it an evening", kind: "refine", query: `Plan a 3 hour evening around: ${query}` },
       { label: "Free only", kind: "refine", query: `${query}, free only` },
@@ -969,7 +1028,16 @@ function followUps(query: string, intent: AskIntent, context: QualifiedSearchCon
   return actions.slice(0, 3);
 }
 
-function eventMatchesTopic(event: Event, query: string): boolean {
+function asksDeafCommunityOrCommunicationAccess(query: string): boolean {
+  return /\b(?:deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|American Sign Language|sign language|captioned|captions?|CART|assistive[-\s]listening|interpreter)\b/i.test(query);
+}
+
+/** Exported so the deterministic event-topic safety gate can be tested
+ * without invoking the model or any live calendar feed. */
+export function eventMatchesTopic(event: Event, query: string): boolean {
+  if (asksDeafCommunityOrCommunicationAccess(query)) {
+    return hasDeafCommunityOrCommunicationAccess(event);
+  }
   const text = [event.title, event.description, event.category, event.venue_name]
     .filter(Boolean)
     .join(" ");
@@ -1684,6 +1752,8 @@ export async function askFrederick(
   );
   const tasteRankedHits = rerankWithTaste(retrieval.hits, tasteProfile);
   const asksPatio = /\b(?:patio|outdoor seating|terrace)\b/i.test(q);
+  const asksWrittenContact =
+    /\b(?:(?:cannot|can['’]?t|unable to|don['’]?t want to)\s+call|without calling|written contact|contact by (?:email|text)|email (?:them|the place|the business)|text[-\s]based contact)\b/i.test(q);
   const hasCompleteCompoundMatch = tasteRankedHits.some((hit) =>
     hit.type === "place" &&
     Boolean(hit.conceptCoverage && hit.conceptCoverage.total > 1 && hit.conceptCoverage.matched === hit.conceptCoverage.total),
@@ -1706,6 +1776,7 @@ export async function askFrederick(
     if (intent.travelMode === "walk" && context.origin && (p.distance_m ?? Infinity) > 2_400) return false;
     if (intent.budget === "free" && !(p.tags ?? []).includes("free")) return false;
     if (intent.budget === "value" && p.price_band != null && p.price_band > 2) return false;
+    if (asksWrittenContact && !p.email) return false;
     if (!placeMatchesDietary(p, intent.dietary)) return false;
     if (asksDateNightPlaces && !(p.tags ?? []).includes("date-night")) return false;
     if (asksIndoor) {
@@ -1887,9 +1958,15 @@ export async function askFrederick(
   // to keep, so a good answer rendered with ZERO source cards (measured
   // live: "what should i do tonight" named two real events, sources: 0).
   let eventCitationPool: AskSource[] = [];
-  if (anchor && scopedLoadedEventPool) {
+  const eventContextPool =
+    scopedLoadedEventPool && asksDeafCommunityOrCommunicationAccess(q)
+      ? scopedLoadedEventPool.filter((event) =>
+          hasDeafCommunityOrCommunicationAccess(event),
+        )
+      : scopedLoadedEventPool;
+  if (anchor && eventContextPool) {
     try {
-      const ctx = eventContextLines(scopedLoadedEventPool, anchor, now, q);
+      const ctx = eventContextLines(eventContextPool, anchor, now, q);
       eventsBlock = `${ctx.block}\n`;
       const toAskEventSource = (e: (typeof ctx.picked)[number]): AskSource => ({
         slug: e.slug,
@@ -1898,7 +1975,8 @@ export async function askFrederick(
         city: e.municipality_name ?? "",
         href: `/events/${e.slug}`,
         eyebrow: formatEventWhen(e as Event),
-        reason: e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match",
+        reason: communicationAccessLabels(e as Event)[0]
+          ?? (e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match"),
         distance: canExposeDistance(context) && context.origin && e.geom
           ? formatDistance(haversineMeters(context.origin, e.geom))
           : undefined,
@@ -2080,7 +2158,7 @@ export async function askFrederick(
       // detail beats ad copy.
       const note = localNoteFor(p.slug);
       lines.push(
-        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}`,
+        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.email ? `; Email: ${p.email}` : ""}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}`,
       );
       if (sources.length < answerSourceLimit) {
         const lead = sources.filter((source) => source.category !== "civic").length === 0;
@@ -2105,6 +2183,7 @@ export async function askFrederick(
       }
     } else if (h.type === "event") {
       const e = h.event;
+      const accessLabel = communicationAccessLabels(e)[0];
       const when = e.starts_at
         ? new Date(e.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" })
         : "";
@@ -2120,7 +2199,8 @@ export async function askFrederick(
           city: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
           href: `/events/${e.slug}`,
           eyebrow: `${intent.timeNeed === "tonight" ? "Tonight" : when || "Upcoming"}${clock ? ` · ${clock}` : ""}`,
-          reason: e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match",
+          reason: accessLabel
+            ?? (e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match"),
           detail: safeAskDescription(e.title, e.description)?.slice(0, 140),
           distance: canExposeDistance(context) && e.distance_m != null
             ? formatDistance(e.distance_m)
@@ -2230,12 +2310,14 @@ export async function askFrederick(
             : verifiedClosedSources
       : sources;
     const weatherDiscovery = wantsWeather(q) && !wantsWeatherAnswer(q);
-    const availableResponseSources = weatherDiscovery
-      ? [
-          ...baseResponseSources.filter((source) => !/^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
-          ...baseResponseSources.filter((source) => /^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
-        ]
-      : baseResponseSources;
+    const availableResponseSources = asksAirQuality
+      ? baseResponseSources.filter((source) => source.slug === "airnow-aqi")
+      : weatherDiscovery
+        ? [
+            ...baseResponseSources.filter((source) => !/^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
+            ...baseResponseSources.filter((source) => /^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
+          ]
+        : baseResponseSources;
     const responseSources = typeof requestedOptions === "number"
       ? availableResponseSources.slice(0, requestedOptions)
       : availableResponseSources;

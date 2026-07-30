@@ -11,11 +11,39 @@ export type RightNowCandidate = {
 
 export type RightNowSort = "smart" | "nearest" | "rated";
 
+/**
+ * How strongly current hours should affect a nearby answer.
+ *
+ * `required` is reserved for intents where being open is essential and the
+ * result set has enough current-hours coverage to support that claim.
+ * `bonus` treats confirmed-open as useful evidence without allowing a distant
+ * listing to jump a much closer place whose hours are simply unknown.
+ * `not-applicable` does not reward open status (parks and similar
+ * destinations), though a confirmed closure remains actionable.
+ */
+export type RightNowAvailabilityMode =
+  | "required"
+  | "bonus"
+  | "not-applicable";
+
 export type SmartNearbyContext = {
   hasOrigin: boolean;
   savedSlugs?: ReadonlySet<string>;
   visitedSlugs?: ReadonlySet<string>;
 };
+
+/**
+ * A required-hours intent may only use the hard open-first tier when Radius
+ * has enough decided statuses to support it. Sparse coverage downgrades hours
+ * to a bonus instead of turning "unknown" into "closed."
+ */
+export function resolveRightNowAvailabilityMode(
+  requested: RightNowAvailabilityMode,
+  hasSufficientHoursCoverage: boolean,
+): RightNowAvailabilityMode {
+  if (requested === "required" && !hasSufficientHoursCoverage) return "bonus";
+  return requested;
+}
 
 /** Device, chosen-town, and saved-home origins reflect user intent. A coarse
  * IP centroid is only regional context and must not drive nearest-first. */
@@ -77,10 +105,32 @@ export function compareRightNowCandidates(
   sort: RightNowSort,
   hasOrigin: boolean,
   personal: Omit<SmartNearbyContext, "hasOrigin"> = {},
+  availabilityMode: RightNowAvailabilityMode = "required",
 ): number {
-  // Availability is a hard tier. Quality and distance may reorder within a
-  // tier, never turn a closed/unknown listing into the lead over an open one.
-  if (a.open !== b.open) return a.open ? -1 : 1;
+  if (availabilityMode === "required") {
+    // Food and other truly time-sensitive intents keep the familiar open-first
+    // tier, but only after the caller has verified sufficient hours coverage.
+    if (a.open !== b.open) return a.open ? -1 : 1;
+  } else {
+    // A known closure is actionable evidence and belongs after usable choices.
+    // Unknown hours are not a closure and must stay eligible.
+    const aClosed = !a.open && a.p.open_status?.state === "closed";
+    const bClosed = !b.open && b.p.open_status?.state === "closed";
+    if (aClosed !== bClosed) return aClosed ? 1 : -1;
+
+    // With a deliberate origin, a large distance difference is decisive. This
+    // is the guardrail that prevents a confirmed-open place eleven miles away
+    // from beating an otherwise suitable place around the corner just because
+    // the local listing has not had its hours verified.
+    if (
+      hasOrigin &&
+      Number.isFinite(a.dist) &&
+      Number.isFinite(b.dist) &&
+      Math.abs(a.dist - b.dist) >= 2_500
+    ) {
+      return a.dist - b.dist;
+    }
+  }
 
   if (sort === "rated") {
     const aHasReviews = Number.isFinite(a.p.google_rating) && (a.p.google_rating_count ?? 0) > 0;
@@ -95,7 +145,12 @@ export function compareRightNowCandidates(
 
   if (sort === "smart") {
     const context = { hasOrigin, ...personal };
-    const smart = smartNearbyScore(b, context) - smartNearbyScore(a, context);
+    // In flexible mode, verified-open is a quiet nudge, not a gate. The bonus
+    // is deliberately smaller than the proximity guardrail above.
+    const openBonus = availabilityMode === "bonus" ? 0.07 : 0;
+    const aScore = smartNearbyScore(a, context) + (a.open ? openBonus : 0);
+    const bScore = smartNearbyScore(b, context) + (b.open ? openBonus : 0);
+    const smart = bScore - aScore;
     if (smart) return smart;
   }
 
@@ -111,11 +166,17 @@ export function compareRightNowCandidates(
     const distance = a.dist - b.dist;
     if (distance) return distance;
   }
+  if (
+    availabilityMode === "bonus" &&
+    a.open !== b.open
+  ) {
+    return a.open ? -1 : 1;
+  }
   return a.p.name.localeCompare(b.p.name);
 }
 
-/** Describe the actual ordering shown in Nearby. Availability is a hard tier
- * unless the user has already narrowed the list to Open now. */
+/** Describe the actual ordering shown in Nearby. The caller says whether this
+ * result set has an honest hard availability tier. */
 export function rightNowSortLabel(
   sort: RightNowSort,
   hasOrigin: boolean,

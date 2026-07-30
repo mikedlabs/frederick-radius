@@ -1,4 +1,88 @@
 {
+  "averys-maryland-grille-frederick": {
+    "blurb": "Avery's Maryland Grille is a casual seafood and steakhouse serving wood-grilled steaks, steamed crabs, and seafood.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://averysmarylandgrille.com/about-us",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Avery's current official About Us and menu pages on 2026-07-29; the business describes itself as a seafood and steakhouse, and the menu lists wood-grilled steak."
+  },
+  "middletown-park-middletown": {
+    "blurb": "Middletown Park has a playground, fishing pond, disc golf course, trails, athletic fields, picnic shelters, and a skate spot and pump track.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/240/Middletown-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Middletown Park page on 2026-07-29."
+  },
+  "pinecliff-park-frederick": {
+    "blurb": "Pinecliff Park has a barrier-free playground, river access, ball fields, picnic shelters, trails, and an amphitheater.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/255/Pinecliff-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Pinecliff Park page on 2026-07-29."
+  },
+  "riverwalk-park-frederick": {
+    "blurb": "Riverwalk Park has a playground, pavilion, ball fields, restrooms, a water fountain, and walking and biking paths.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/facilities/facility/details/Riverwalk-Park-134",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current Riverwalk Park facility page on 2026-07-29."
+  },
+  "urbana-district-park-new-market": {
+    "blurb": "Urbana District Park has a barrier-free playground, dog park, trails, ball fields, picnic shelters, and a veterans memorial.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/272/Urbana-District-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Urbana District Park page on 2026-07-29."
+  },
+  "utica-park-walkersville": {
+    "blurb": "Utica District Park has playgrounds, trails, picnic shelters, athletic fields, a bike workstation, and a five-kilometer course.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/276/Utica-District-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Utica District Park page on 2026-07-29."
+  },
+  "willowdale-park-frederick": {
+    "blurb": "Willowdale Park has a playground, pavilion, grills, picnic tables, and walking and biking paths.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/Willowdale-Park-156",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current Willowdale Park facility page on 2026-07-29."
+  },
   "7th-sister": {
     "blurb": "7th Sister serves Mid-Atlantic food, including oysters with blackberry mignonette and a house crab cake seared until golden with whole-grain mustard and herbs.",
     "status": "approved",
@@ -130,5 +214,209 @@
     "generated_at": "2026-05-31T18:18:38.663Z",
     "reviewed_at": "2026-07-22T00:00:00.000Z",
     "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "bjorlee-museum": {
+    "blurb": "Bjorlee Museum is the school museum on Maryland School for the Deaf's Frederick campus, preserving and showcasing MSD history.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.msd.edu/apps/pages/index.jsp?uREC_ID=1090021&type=d&pREC_ID=2690688",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Maryland School for the Deaf's current campus page on 2026-07-28; its Frederick-campus facilities include a school museum that preserves and showcases MSD history."
+  },
+  "jkw-beauty": {
+    "blurb": "JKW Beauty is an appointment-based studio offering event hair and makeup, beauty lessons, and airbrush spray tans.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://jkwbeauty.com/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against JKW Beauty's current home and services information on 2026-07-28; the site lists event hair and makeup, studio sessions, lessons, spray tans, and appointment-only access."
+  },
+  "maryland-deaf-center": {
+    "blurb": "Maryland Deaf Community Center hosts Deaf-community programs, ASL classes, events, and referral services in Frederick.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.deafmdcc.org/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Maryland Deaf Community Center's current site on 2026-07-28; it lists ASL classes and events and describes education, communication, social, and referral purposes."
+  },
+  "maryland-school-for-the-deaf": {
+    "blurb": "The Frederick campus serves Deaf and hard-of-hearing students in an ASL- and English-rich learning community.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.msd.edu/apps/pages/index.jsp?uREC_ID=1090021&type=d&pREC_ID=2690688",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Maryland School for the Deaf's current campus and school information on 2026-07-28; the official site identifies the Frederick campus and its bilingual ASL and English learning environment."
+  },
+  "memorial-grounds": {
+    "blurb": "Memorial Grounds is a city park at North Bentz and West Second streets with benches, electric service, and walking and biking paths.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/Memorial-Grounds-124",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current facility page on 2026-07-28; the page lists the address, hours, benches, electric service, and walking and biking paths. The prior unsupported World War I memorial claim was removed."
+  },
+  "panera-bread-urbana": {
+    "blurb": "The Urbana Panera is a bakery-cafe serving breakfast, soups, sandwiches, salads, and baked sweets.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked the official Urbana cafe page and Panera's current menu information on 2026-07-28; Panera describes its bakery-cafes as serving these menu categories."
+  },
+  "pumpernickel-rye-urbana": {
+    "blurb": "Pumpernickel + Rye is an Urbana deli and market serving sandwiches, house-smoked meats, cured fish, soups, smoothies, espresso, and coffee.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://pumpandrye.com/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Pumpernickel + Rye's current business website on 2026-07-28; the home page identifies its Urbana location and describes these food and drink offerings."
+  },
+  "quince-orchard-psychotherapy": {
+    "blurb": "Orchard Mental Health Group offers therapy, psychological testing, and medication management at its Frederick office.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://orchardmentalhealth.com/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Orchard Mental Health Group's current services and locations information on 2026-07-28; the site lists therapy, testing, medication management, and a Frederick office."
+  },
+  "rides-for-good": {
+    "blurb": "Rides for Good matches Frederick County residents who need transportation with volunteer drivers for essential appointments and services.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://ridesforgood.saferidefoundation.org/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Rides for Good's current site on 2026-07-28; it describes a Frederick County ride-matching network, volunteer drivers, and trips for medical appointments and other essential services."
+  },
+  "route-40-lube-center-frederick": {
+    "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/route-40-lube-center/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Route 40 Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
+  },
+  "route-85-lube-center-frederick": {
+    "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/route-85-lube-center/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Route 85 Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
+  },
+  "jefferson-street-lube-center-frederick": {
+    "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/jefferson-street-lube-center/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Jefferson Street Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
+  },
+  "frederick-auto-repair": {
+    "blurb": "This Route 40 shop provides major vehicle repairs and Maryland state inspections, with walk-in service and a night drop box.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-repair/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Repair page on 2026-07-29; it lists major repairs, a Maryland state inspector, walk-in service, a night drop box, the address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-route-40": {
+    "blurb": "This Route 40 Auto Spa offers express and full-service car washes, with a self-service detailing area.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-rt-40/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Route 40 page on 2026-07-29; it lists express and full-service washes, detailing amenities, the address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-express-route-85": {
+    "blurb": "This Route 85 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-85/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 85 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-express-route-26": {
+    "blurb": "This Route 26 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-26-2/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 26 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+  },
+  "visitation-hotel": {
+    "blurb": "Visitation Hotel is a boutique hotel in a restored downtown landmark that began as a monastery and later became a school; it also houses Wye Oak Tavern.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.visitationhotel.com/",
+      "fetched_at": "2026-07-29T02:14:12.000Z"
+    },
+    "generated_at": "2026-07-29T02:14:12.000Z",
+    "reviewed_at": "2026-07-29T02:14:12.000Z",
+    "reviewer_note": "Checked against Visitation Hotel's current site on 2026-07-28; it describes the building's monastery and school history, boutique hotel use, downtown address, and Wye Oak Tavern."
   }
 }

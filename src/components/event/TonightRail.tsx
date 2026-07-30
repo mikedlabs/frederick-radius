@@ -1,7 +1,10 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { ChevronRight, Clock } from "lucide-react";
+import Image from "next/image";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
+import { eventCardVisual } from "@/components/event/eventVisuals";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * "Happening soon" — the editorial marquee of what's starting in the
@@ -101,7 +104,12 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
           {visible.map((e) => {
             const cat = CATEGORY_BY_SLUG[e.category ?? ""];
             const accent = cat?.color ?? "var(--app-brand)";
-            const photo = e.hero_image ?? null;
+            const visual = eventCardVisual(e);
+            // A Google venue photo needs linked author/source/report credit.
+            // This rail is itself one event link, so those links cannot be
+            // nested legally. Keep approved publisher/Radius images and use
+            // category artwork for attributed Google venue photos.
+            const photo = visual && !visual.attribution ? visual.src : null;
             return (
               <a
                 key={`${e.slug}-${e.starts_at}`}
@@ -121,12 +129,22 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                     tiles reads as varied, not duplicated. */}
                 <div className="relative h-[140px] w-full overflow-hidden">
                   {photo ? (
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%), url(${photo}) center/cover no-repeat`,
-                      }}
-                    />
+                    <>
+                      <Image
+                        src={photo}
+                        alt=""
+                        fill
+                        unoptimized={photo.startsWith("/api/place-photo")}
+                        sizes="220px"
+                        placeholder="blur"
+                        blurDataURL={PAPER_CREAM_BLUR}
+                        className="object-cover"
+                      />
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/55"
+                      />
+                    </>
                   ) : (
                     <CategoryGraphic
                       category={e.category ?? ""}
@@ -158,6 +176,14 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                 </div>
 
                 <div className="space-y-0.5 px-3 py-2.5">
+                  {photo && visual ? (
+                    <p
+                      className="line-clamp-1 text-[9px] font-semibold leading-tight"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {visual.caption}
+                    </p>
+                  ) : null}
                   <p
                     className="line-clamp-2 font-serif text-[15px] font-semibold leading-tight tracking-tight"
                     style={{ color: "var(--app-ink)" }}

@@ -1,13 +1,7 @@
 import Link from "next/link";
-import {
-  Activity,
-  ArrowRight,
-  BusFront,
-  MapPin,
-  ParkingCircle,
-  type LucideIcon,
-} from "lucide-react";
-import { RADIUS_TOOLS, type RadiusTool, type RadiusToolTone } from "@/data/radius-tools";
+import { ArrowRight } from "lucide-react";
+import { RADIUS_TOOLS, type RadiusTool } from "@/data/radius-tools";
+import { TOOL_ICONS } from "@/components/tools/toolIcons";
 
 function registeredTool(id: string): RadiusTool {
   const tool = RADIUS_TOOLS.find((candidate) => candidate.id === id);
@@ -16,27 +10,14 @@ function registeredTool(id: string): RadiusTool {
 }
 
 const PRIMARY_TOOL = registeredTool("public-essentials");
-const SUPPORTING_TOOLS: readonly { tool: RadiusTool; icon: LucideIcon }[] = [
-  { tool: registeredTool("parking"), icon: ParkingCircle },
-  { tool: registeredTool("transit"), icon: BusFront },
-  { tool: registeredTool("county-pulse"), icon: Activity },
-];
-
-const TONE_COLOR: Record<RadiusToolTone, string> = {
-  accent: "var(--app-accent-press)",
-  brand: "var(--app-brand-press)",
-  civic: "var(--app-civic)",
-  cool: "var(--app-cool)",
-  positive: "var(--app-positive)",
-};
+const PrimaryToolIcon = TOOL_ICONS[PRIMARY_TOOL.icon];
 
 /**
  * Today keeps one job-led utility surface rather than repeating Compass.
  *
- * The urgent, location-aware action gets the strongest treatment. Three
- * supporting tools remain one tap away, and the complete directory has one
- * quiet exit. This is deliberate progressive disclosure: useful immediately,
- * comprehensive only when somebody asks for it.
+ * The urgent, location-aware action gets the strongest treatment. Everything
+ * else has one quiet doorway instead of recreating Compass at the bottom of
+ * the daily briefing.
  */
 export default function ToolboxTeaser() {
   return (
@@ -51,7 +32,7 @@ export default function ToolboxTeaser() {
           className="font-sans text-[17px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Quick tools
+          Need something practical?
         </h2>
         <span
           aria-hidden
@@ -89,7 +70,7 @@ export default function ToolboxTeaser() {
             color: "var(--app-civic)",
           }}
         >
-          <MapPin className="h-5 w-5" strokeWidth={2.1} />
+          <PrimaryToolIcon className="h-5 w-5" strokeWidth={2.1} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold leading-tight">
@@ -109,34 +90,6 @@ export default function ToolboxTeaser() {
         />
       </Link>
 
-      <ul className="mt-2 grid grid-cols-3 gap-2">
-        {SUPPORTING_TOOLS.map(({ tool, icon: Icon }) => (
-          <li key={tool.id}>
-            <Link
-              href={tool.href}
-              prefetch={false}
-              className="tactile-interactive flex min-h-[66px] flex-col items-start justify-between gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left text-[11.5px] font-semibold leading-tight outline-none transition hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] active:scale-[0.98]"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-elevated)",
-                color: "var(--app-ink)",
-              }}
-            >
-              <span
-                aria-hidden
-                className="grid h-7 w-7 place-items-center rounded-[6px]"
-                style={{
-                  color: TONE_COLOR[tool.tone],
-                  background: `color-mix(in srgb, ${TONE_COLOR[tool.tone]} 10%, transparent)`,
-                }}
-              >
-                <Icon className="h-4 w-4" strokeWidth={2} />
-              </span>
-              <span>{tool.label}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }
