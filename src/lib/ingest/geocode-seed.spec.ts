@@ -70,6 +70,7 @@ describe("seedVenueCache", () => {
     const [strings, ...values] = sql.mock.calls[1];
     const text = queryText(strings as TemplateStringsArray);
     expect(text).toContain("insert into venue_geocache");
+    expect(text).not.toContain("insert into venue_geocache (norm_address");
     expect(text).toContain("where venue_geocache.source <>");
     expect(values).toEqual([
       fragment,
