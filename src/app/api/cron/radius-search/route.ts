@@ -42,7 +42,12 @@ export async function GET(request: Request) {
         `[cron/radius-search] ${result.embeddingWarning.code}: ${result.embeddingWarning.message}`,
       );
     }
-    const note = !result.current
+    if (result.cleanupWarning) {
+      console.warn(
+        `[cron/radius-search] ${result.cleanupWarning.code}: ${result.cleanupWarning.message}`,
+      );
+    }
+    const baselineNote = !result.current
       ? `${result.remaining} full-text place documents will continue on the next run.`
       : result.embeddingWarning
         ? result.embeddingWarning.code === "invalid_configuration" ||
@@ -52,10 +57,13 @@ export async function GET(request: Request) {
         : !result.embeddingCurrent
           ? `The full-text place index is current. ${result.embeddingRemaining} optional semantic vectors remain.`
           : "The place search index is current.";
+    const note = result.cleanupWarning
+      ? `${baselineNote} Retired-document cleanup did not finish and will retry on the next run.`
+      : baselineNote;
     return NextResponse.json({
       enabled: true,
       healthy: true,
-      degraded: Boolean(result.embeddingWarning),
+      degraded: Boolean(result.embeddingWarning || result.cleanupWarning),
       batch_limit: batch,
       ...result,
       note,

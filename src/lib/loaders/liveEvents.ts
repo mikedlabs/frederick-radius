@@ -16,7 +16,11 @@ import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
-import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
+import {
+  venueEventsAsCards,
+  venueEventsToCards,
+  type VenueEvent,
+} from "@/lib/loaders/venueEvents";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import { upgradeEventGeom } from "@/lib/integrations/mapboxGeocode";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -42,43 +46,128 @@ export function liveCleanSlug(e: Pick<LiveEvent, "title" | "starts_at">): string
   return cleanEventSlug({ presenter, title, startsAt: e.starts_at });
 }
 
-/**
- * Bound a single source fetch so the /events/[slug] resolver can't hang
- * the page on a cold cache or a slow upstream. On timeout it resolves to
- * `fallback` (it never rejects), mirroring the guard the /map page uses.
- * The warm-events cron keeps these caches hot, so this only bites the
- * rare cold-window request (e.g. the first hit right after a deploy busts
- * the SHA-keyed cache); without it, that request awaited the slowest feed
- * up to the full 8s per-feed timeout. The per-source `.catch` below still
- * handles genuine rejections.
- */
-function withTimeout<T>(
-  p: Promise<T>,
-  ms: number,
-  fallback: T,
-  signal?: AbortSignal,
-): Promise<T> {
-  if (signal?.aborted || ms <= 0) return Promise.resolve(fallback);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let removeAbort: (() => void) | undefined;
-  const stopped = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
-    if (signal) {
-      const onAbort = () => resolve(fallback);
-      signal.addEventListener("abort", onAbort, { once: true });
-      removeAbort = () => signal.removeEventListener("abort", onAbort);
+/** Worst-case wall time the slug resolver may spend awaiting any one source.
+ * A timed-out source remains incomplete evidence; it is never converted into
+ * a definitive empty result. */
+const SLUG_SOURCE_TIMEOUT_MS = 6_000;
+
+type LiveSlugCandidate = {
+  event: EventWithMeta;
+  needsGeomUpgrade: boolean;
+};
+
+type LiveSlugProviderOutcome =
+  | {
+      source: string;
+      status: "hit";
+      candidate: LiveSlugCandidate;
     }
+  | {
+      source: string;
+      status: "miss" | "failed" | "timeout" | "aborted";
+    };
+
+/**
+ * A provider that never completed is not evidence that an event does not
+ * exist. The page-level resolver converts this to its unavailable/timeout
+ * state instead of rendering a false 404.
+ */
+export class LiveEventLookupIncompleteError extends Error {
+  constructor(public readonly sources: readonly string[]) {
+    super(`Live event lookup did not complete: ${sources.join(", ")}`);
+    this.name = "LiveEventLookupIncompleteError";
+  }
+}
+
+function matchingLiveEvent(
+  events: readonly LiveEvent[],
+  slug: string,
+): LiveEvent | undefined {
+  const cleanHit = events.find((event) => liveCleanSlug(event) === slug);
+  if (cleanHit || !slug.startsWith("live-")) return cleanHit;
+  return events.find((event) => liveEventSlug(event) === slug);
+}
+
+/**
+ * Resolve one provider independently. A settled miss is distinct from a
+ * timeout, failure, or abort so the caller only returns null when every source
+ * supplied a definitive answer. The `stopped` flag prevents a late losing
+ * promise from running its adapter after another provider has already won.
+ */
+function resolveLiveSlugProvider<T>({
+  source,
+  load,
+  match,
+  timeoutMs,
+  signal,
+}: {
+  source: string;
+  load: () => Promise<T>;
+  match: (value: T) => LiveSlugCandidate | null;
+  timeoutMs: number;
+  signal: AbortSignal;
+}): Promise<LiveSlugProviderOutcome> {
+  if (signal.aborted) {
+    return Promise.resolve({ source, status: "aborted" });
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let stopped = false;
+  let removeAbort: (() => void) | undefined;
+
+  const guarded = Promise.resolve()
+    .then(load)
+    .then(
+      (value): LiveSlugProviderOutcome => {
+        if (stopped || signal.aborted) {
+          return { source, status: "aborted" };
+        }
+        const candidate = match(value);
+        return candidate
+          ? { source, status: "hit", candidate }
+          : { source, status: "miss" };
+      },
+      (): LiveSlugProviderOutcome =>
+        stopped || signal.aborted
+          ? { source, status: "aborted" }
+          : { source, status: "failed" },
+    );
+
+  const interrupted = new Promise<LiveSlugProviderOutcome>((resolve) => {
+    timer = setTimeout(() => {
+      stopped = true;
+      resolve({ source, status: "timeout" });
+    }, timeoutMs);
+    const onAbort = () => {
+      stopped = true;
+      resolve({ source, status: "aborted" });
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    removeAbort = () => signal.removeEventListener("abort", onAbort);
   });
-  return Promise.race([p, stopped]).finally(() => {
+
+  return Promise.race([guarded, interrupted]).finally(() => {
     if (timer) clearTimeout(timer);
     removeAbort?.();
   });
 }
 
-/** Worst-case wall time the slug resolver may spend awaiting any one
- *  source before it degrades that source to empty. All sources run in
- *  parallel, so this also bounds the whole resolution. */
-const SLUG_SOURCE_TIMEOUT_MS = 6_000;
+async function finishLiveSlugCandidate(
+  candidate: LiveSlugCandidate,
+  source: string,
+  options: { signal?: AbortSignal; deadline?: number },
+): Promise<EventWithMeta> {
+  const event = candidate.needsGeomUpgrade
+    ? await upgradeEventGeom(candidate.event)
+    : candidate.event;
+  if (
+    options.signal?.aborted ||
+    (options.deadline != null && Date.now() >= options.deadline)
+  ) {
+    throw new LiveEventLookupIncompleteError([source]);
+  }
+  return withVenueThumb(event);
+}
 
 /**
  * Adapt one live feed event to the EventWithMeta shape the card and
@@ -189,71 +278,149 @@ export async function getLiveCardEventBySlug(
   windowDays = 90,
   options: { signal?: AbortSignal; deadline?: number } = {},
 ): Promise<EventWithMeta | null> {
-  if (options.signal?.aborted) return null;
+  if (
+    options.signal?.aborted ||
+    (options.deadline != null && Date.now() >= options.deadline)
+  ) {
+    throw new LiveEventLookupIncompleteError(["live"]);
+  }
+
+  // The committed venue snapshot is deterministic and already powers event
+  // cards. Resolve it before starting any provider work so its deep links stay
+  // instant even during a total upstream outage.
+  const committedVenueHit = venueEventsAsCards(new Date()).find(
+    (event) => event.slug === slug,
+  );
+  if (committedVenueHit) return withVenueThumb(committedVenueHit);
+
   const sourceBudget = Math.min(
     SLUG_SOURCE_TIMEOUT_MS,
     options.deadline == null
       ? SLUG_SOURCE_TIMEOUT_MS
       : Math.max(0, options.deadline - Date.now()),
   );
-  if (sourceBudget <= 0) return null;
+  if (sourceBudget <= 0) {
+    throw new LiveEventLookupIncompleteError(["live"]);
+  }
+
   // The SAME source union the /events index renders (iCal feeds +
   // Ticketmaster music/sports + Bandsintown). The resolver used to consult
   // only the iCal feeds, so every Ticketmaster/Bandsintown card on the
   // listing — the Weinberg cinema series, ABBAFAB, TED Democracy Live —
   // linked to a slug this function could never resolve: a guaranteed
   // "Event not found" on a primary surface (June-9 deep audit P0-1,
-  // 6 of 45 listing links dead). Same fail-soft pattern as the index:
-  // a hung provider degrades to [], never throws. All four fetches are
-  // HTTP-cached upstream, so this shares the index's cache entries.
-  // Each source is BOTH timeout-bounded (withTimeout → fallback, the cold-
-  // cache / slow-upstream guard) AND catch-guarded (→ fallback, genuine
-  // rejection). Without the timeout, a cold-window hit awaited the slowest
-  // feed up to the 8s per-feed ceiling on a primary surface; the per-source
-  // bound keeps the whole parallel resolution under ~6s.
-  const [ical, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
-    withTimeout(getCachedLiveEvents(windowDays).then((r) => r.events), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchTicketmasterSports(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchVisitFrederick(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchFrederickKeys(), sourceBudget, [] as LiveEvent[], options.signal).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchSquarespaceVenueEvents(windowDays), sourceBudget, [], options.signal).catch(() => []),
-  ]);
-  if (options.signal?.aborted || (options.deadline != null && Date.now() >= options.deadline)) {
-    return null;
+  // 6 of 45 listing links dead). Provider fetches are HTTP-cached upstream,
+  // so this shares the index's cache entries.
+  // Each source is independently bounded and settled. The old Promise.all
+  // shape waited for the slowest source before inspecting a fast hit, which
+  // made a valid event miss the page resolver's 2.5-second deadline. Racing
+  // outcomes lets the first exact slug match win while still waiting for every
+  // provider before declaring a definitive miss.
+  const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  options.signal?.addEventListener("abort", abortFromParent, { once: true });
+  // Close the tiny race between the entry check above and listener setup.
+  if (options.signal?.aborted) controller.abort();
+
+  const liveCandidate = (
+    events: readonly LiveEvent[],
+  ): LiveSlugCandidate | null => {
+    const event = matchingLiveEvent(events, slug);
+    return event
+      ? { event: liveToCardEvent(event), needsGeomUpgrade: true }
+      : null;
+  };
+  const venueCandidate = (
+    events: VenueEvent[],
+  ): LiveSlugCandidate | null => {
+    const event = venueEventsToCards(events).find(
+      (candidate) => candidate.slug === slug,
+    );
+    return event ? { event, needsGeomUpgrade: false } : null;
+  };
+
+  const providerPromises: Array<Promise<LiveSlugProviderOutcome>> = [
+    resolveLiveSlugProvider({
+      source: "ical",
+      load: () =>
+        getCachedLiveEvents(windowDays).then((result) => result.events),
+      match: liveCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+    // Ticketmaster music already arrives inside getCachedLiveEvents. Keep only
+    // the separate sports query here so a cold detail lookup does not issue the
+    // same Discovery request twice.
+    resolveLiveSlugProvider({
+      source: "ticketmaster-sports",
+      load: fetchTicketmasterSports,
+      match: liveCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+    resolveLiveSlugProvider({
+      source: "bandsintown",
+      load: () => fetchBandsintownForArtists(BANDSINTOWN_ARTISTS),
+      match: liveCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+    resolveLiveSlugProvider({
+      source: "visit-frederick",
+      load: fetchVisitFrederick,
+      match: liveCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+    resolveLiveSlugProvider({
+      source: "frederick-keys",
+      load: () => fetchFrederickKeys(),
+      match: liveCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+    resolveLiveSlugProvider({
+      source: "squarespace",
+      load: () => fetchSquarespaceVenueEvents(windowDays),
+      match: venueCandidate,
+      timeoutMs: sourceBudget,
+      signal: controller.signal,
+    }),
+  ];
+
+  const pending = new Map(
+    providerPromises.map((promise, index) => [index, promise]),
+  );
+  const incompleteSources: string[] = [];
+
+  try {
+    while (pending.size > 0) {
+      const settled = await Promise.race(
+        [...pending.entries()].map(([index, promise]) =>
+          promise.then((outcome) => ({ index, outcome })),
+        ),
+      );
+      pending.delete(settled.index);
+
+      if (settled.outcome.status === "hit") {
+        controller.abort();
+        return await finishLiveSlugCandidate(
+          settled.outcome.candidate,
+          settled.outcome.source,
+          options,
+        );
+      }
+      if (settled.outcome.status !== "miss") {
+        incompleteSources.push(settled.outcome.source);
+      }
+    }
+  } finally {
+    controller.abort();
+    options.signal?.removeEventListener("abort", abortFromParent);
   }
-  // Ticketmaster music already arrives inside getCachedLiveEvents. Keep only
-  // the separate sports query here so a cold event-detail lookup does not
-  // issue the same Discovery request twice.
-  const events = [...ical, ...tmSports, ...bit, ...vf, ...keys];
-  // Clean stored slug first (the canonical form a card links to).
-  let hit = events.find((e) => liveCleanSlug(e) === slug);
-  // Legacy fallback: an old "live-..." shared link still resolves so it
-  // never 404s. The detail route notices the slug mismatch and redirects
-  // the visitor to the clean URL.
-  if (!hit && slug.startsWith("live-")) {
-    hit = events.find((e) => liveEventSlug(e) === slug);
+
+  if (incompleteSources.length > 0) {
+    throw new LiveEventLookupIncompleteError(incompleteSources);
   }
-  // Centroid-geom upgrade FIRST (same pass the unified assembly runs, so the
-  // detail page's pin/mini-map agrees with the list card's — normally a 30-day
-  // geocode-cache hit, fail-soft), then the venue-thumb borrow (same trust
-  // gates as the list assembly): without it the DETAIL page rendered the
-  // gradient fallback for an event whose list card carried a real venue photo
-  // (image audit 2026-07-07). The thumb join runs AFTER the upgrade so its
-  // precise-geo containment gate sees the repaired coordinate.
-  if (hit) {
-    if (options.signal?.aborted) return null;
-    return withVenueThumb(await upgradeEventGeom(liveToCardEvent(hit)));
-  }
-  // FIFTH + SIXTH sources: extracted venue lineups — the committed
-  // venue-events.json snapshot (the Weinberg's cinema/talk slate) AND the
-  // runtime Squarespace `?format=json` lineups (The Banyan). The listing
-  // folds BOTH into the same unified set, so their slugs are first-class
-  // links and must resolve here too. Both are already EventWithMeta cards
-  // with their slug stamped — match directly.
-  const venueHit = [
-    ...venueEventsAsCards(new Date()),
-    ...venueEventsToCards(sqRaw),
-  ].find((c) => c.slug === slug);
-  return venueHit ? withVenueThumb(venueHit) : null;
+  return null;
 }

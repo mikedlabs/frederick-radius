@@ -125,6 +125,48 @@ describe("GET /api/cron/radius-search", () => {
     });
   });
 
+  it("reports retired-document cleanup as degraded without failing searchable text", async () => {
+    mocks.refreshRadiusSearchIndex.mockResolvedValue({
+      total: 1634,
+      changed: 1,
+      processed: 1,
+      remaining: 0,
+      embedded: 0,
+      tokenUsage: 0,
+      embeddingEnabled: false,
+      embeddingRemaining: 0,
+      embeddingCurrent: true,
+      current: true,
+      cleanupWarning: {
+        code: "retired_documents_cleanup_failed",
+        message:
+          "Full-text search was updated, but retired place documents could not be removed. Cleanup will retry on the next refresh.",
+      },
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      enabled: true,
+      healthy: true,
+      degraded: true,
+      processed: 1,
+      current: true,
+      cleanupWarning: {
+        code: "retired_documents_cleanup_failed",
+      },
+      note:
+        "The place search index is current. Retired-document cleanup did not finish and will retry on the next run.",
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[cron/radius-search] retired_documents_cleanup_failed: Full-text search was updated, but retired place documents could not be removed. Cleanup will retry on the next refresh.",
+    );
+    warn.mockRestore();
+  });
+
   it("reports a healthy semantic backfill without calling it current", async () => {
     mocks.refreshRadiusSearchIndex.mockResolvedValue({
       total: 1634,

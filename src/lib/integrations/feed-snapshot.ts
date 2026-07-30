@@ -63,6 +63,31 @@ type SnapshotRow = Pick<
 const WINDOW = 5;
 const SNAPSHOTS = new Map<string, Snapshot[]>();
 
+function isUndefinedTableError(error: unknown): boolean {
+  let candidate: unknown = error;
+  const seen = new Set<unknown>();
+
+  while (
+    candidate !== null
+    && typeof candidate === "object"
+    && !seen.has(candidate)
+  ) {
+    seen.add(candidate);
+    if (
+      "code" in candidate
+      && (candidate as { code?: unknown }).code === "42P01"
+    ) {
+      return true;
+    }
+    candidate =
+      "cause" in candidate
+        ? (candidate as { cause?: unknown }).cause
+        : null;
+  }
+
+  return false;
+}
+
 function topByShare(values: string[]): { name: string; share: number } | null {
   if (values.length === 0) return null;
   const counts = new Map<string, number>();
@@ -154,65 +179,74 @@ async function persistCurrentSnapshotRows(
   if (values.length === 0) return 0;
 
   const observedAt = new Date();
-  await db.transaction(async (tx) => {
-    await tx.insert(feed_snapshots).values(values);
-    await tx
-      .insert(feed_source_health)
-      .values(
-        values.map((value) => ({
-          ...value,
-          prior_snapshot: null,
-          recent_mean_count: value.count,
-          recent_observations: 1,
-          updated_at: observedAt,
-        })),
-      )
-      .onConflictDoUpdate({
-        target: feed_source_health.source,
-        // Two cron invocations can overlap during a redeploy. Never allow the
-        // slower, older observation to roll the current projection backward.
-        setWhere: drizzleSql`
-          excluded.taken_at > ${feed_source_health.taken_at}
-        `,
-        set: {
-          // Preserve the prior complete observation before replacing the
-          // current row. Two observations are sufficient for the anomaly
-          // comparisons; the historical table remains available for audits.
-          prior_snapshot: drizzleSql`jsonb_build_object(
-            'taken_at', ${feed_source_health.taken_at},
-            'count', ${feed_source_health.count},
-            'free_ratio', ${feed_source_health.free_ratio},
-            'empty_desc_ratio', ${feed_source_health.empty_desc_ratio},
-            'top_venue', ${feed_source_health.top_venue},
-            'top_category', ${feed_source_health.top_category},
-            'earliest', ${feed_source_health.earliest},
-            'latest', ${feed_source_health.latest}
-          )`,
-          taken_at: drizzleSql`excluded.taken_at`,
-          count: drizzleSql`excluded.count`,
-          free_ratio: drizzleSql`excluded.free_ratio`,
-          empty_desc_ratio: drizzleSql`excluded.empty_desc_ratio`,
-          top_venue: drizzleSql`excluded.top_venue`,
-          top_category: drizzleSql`excluded.top_category`,
-          earliest: drizzleSql`excluded.earliest`,
-          latest: drizzleSql`excluded.latest`,
-          // Keep a bounded 84-observation mean (roughly seven days at the
-          // intended two-hour cadence) without querying historical rows.
-          recent_mean_count: drizzleSql`
-            (
-              ${feed_source_health.recent_mean_count}
-              * least(${feed_source_health.recent_observations}, 83)
-              + excluded.count
-            )
-            / least(${feed_source_health.recent_observations} + 1, 84)
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(feed_snapshots).values(values);
+      await tx
+        .insert(feed_source_health)
+        .values(
+          values.map((value) => ({
+            ...value,
+            prior_snapshot: null,
+            recent_mean_count: value.count,
+            recent_observations: 1,
+            updated_at: observedAt,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: feed_source_health.source,
+          // Two cron invocations can overlap during a redeploy. Never allow the
+          // slower, older observation to roll the current projection backward.
+          setWhere: drizzleSql`
+            excluded.taken_at > ${feed_source_health.taken_at}
           `,
-          recent_observations: drizzleSql`
-            least(${feed_source_health.recent_observations} + 1, 84)
-          `,
-          updated_at: observedAt,
-        },
-      });
-  });
+          set: {
+            // Preserve the prior complete observation before replacing the
+            // current row. Two observations are sufficient for the anomaly
+            // comparisons; the historical table remains available for audits.
+            prior_snapshot: drizzleSql`jsonb_build_object(
+              'taken_at', ${feed_source_health.taken_at},
+              'count', ${feed_source_health.count},
+              'free_ratio', ${feed_source_health.free_ratio},
+              'empty_desc_ratio', ${feed_source_health.empty_desc_ratio},
+              'top_venue', ${feed_source_health.top_venue},
+              'top_category', ${feed_source_health.top_category},
+              'earliest', ${feed_source_health.earliest},
+              'latest', ${feed_source_health.latest}
+            )`,
+            taken_at: drizzleSql`excluded.taken_at`,
+            count: drizzleSql`excluded.count`,
+            free_ratio: drizzleSql`excluded.free_ratio`,
+            empty_desc_ratio: drizzleSql`excluded.empty_desc_ratio`,
+            top_venue: drizzleSql`excluded.top_venue`,
+            top_category: drizzleSql`excluded.top_category`,
+            earliest: drizzleSql`excluded.earliest`,
+            latest: drizzleSql`excluded.latest`,
+            // Keep a bounded 84-observation mean (roughly seven days at the
+            // intended two-hour cadence) without querying historical rows.
+            recent_mean_count: drizzleSql`
+              (
+                ${feed_source_health.recent_mean_count}
+                * least(${feed_source_health.recent_observations}, 83)
+                + excluded.count
+              )
+              / least(${feed_source_health.recent_observations} + 1, 84)
+            `,
+            recent_observations: drizzleSql`
+              least(${feed_source_health.recent_observations} + 1, 84)
+            `,
+            updated_at: observedAt,
+          },
+        });
+    });
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // The transaction above rolls its historical insert back when the
+    // projection relation is absent. Preserve the pre-0039 worker contract by
+    // writing the same bounded observation to feed_snapshots only.
+    await db.insert(feed_snapshots).values(values);
+  }
   return values.length;
 }
 
@@ -267,39 +301,73 @@ async function hydrateSnapshotRows(): Promise<void> {
   // operator-facing, so a minute of staleness is fine and we avoid
   // hammering the DB on every render.
   if (Date.now() - hydratedAt < HYDRATE_TTL_MS) return;
-  // Read the one-row-per-source projection. This path stays constant-size even
-  // when the historical audit table contains hundreds of thousands of rows.
-  const rows = await db
-    .select()
-    .from(feed_source_health)
-    .orderBy(desc(feed_source_health.taken_at));
   const bySource = new Map<string, Snapshot[]>();
-  for (const r of rows) {
-    const current: Snapshot = {
-      taken_at: r.taken_at.toISOString(),
-      count: r.count,
-      free_ratio: r.free_ratio,
-      empty_desc_ratio: r.empty_desc_ratio,
-      top_venue: r.top_venue ?? null,
-      top_category: r.top_category ?? null,
-      earliest: r.earliest ? r.earliest.toISOString() : null,
-      latest: r.latest ? r.latest.toISOString() : null,
-    };
-    const prior = r.prior_snapshot;
-    const buf: Snapshot[] = [];
-    if (
-      prior
-      && typeof prior.taken_at === "string"
-      && Number.isFinite(Date.parse(prior.taken_at))
-      && Number.isFinite(prior.count)
-      && Number.isFinite(prior.free_ratio)
-      && Number.isFinite(prior.empty_desc_ratio)
-    ) {
-      buf.push(prior);
+
+  try {
+    // Read the one-row-per-source projection. This path stays constant-size
+    // even when the historical audit table contains hundreds of thousands of
+    // rows.
+    const rows = await db
+      .select()
+      .from(feed_source_health)
+      .orderBy(desc(feed_source_health.taken_at));
+    for (const r of rows) {
+      const current: Snapshot = {
+        taken_at: r.taken_at.toISOString(),
+        count: r.count,
+        free_ratio: r.free_ratio,
+        empty_desc_ratio: r.empty_desc_ratio,
+        top_venue: r.top_venue ?? null,
+        top_category: r.top_category ?? null,
+        earliest: r.earliest ? r.earliest.toISOString() : null,
+        latest: r.latest ? r.latest.toISOString() : null,
+      };
+      const prior = r.prior_snapshot;
+      const buf: Snapshot[] = [];
+      if (
+        prior
+        && typeof prior.taken_at === "string"
+        && Number.isFinite(Date.parse(prior.taken_at))
+        && Number.isFinite(prior.count)
+        && Number.isFinite(prior.free_ratio)
+        && Number.isFinite(prior.empty_desc_ratio)
+      ) {
+        buf.push(prior);
+      }
+      buf.push(current);
+      bySource.set(r.source, buf);
     }
-    buf.push(current);
-    bySource.set(r.source, buf);
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // Migration 0039 is manual. Until it is installed, restore the bounded
+    // newest-first legacy hydrate instead of converting unrelated failures
+    // into an apparently healthy in-memory result.
+    const rows = await db
+      .select()
+      .from(feed_snapshots)
+      .orderBy(desc(feed_snapshots.taken_at))
+      .limit(WINDOW * 20);
+    for (const r of rows) {
+      const buf = bySource.get(r.source) ?? [];
+      if (buf.length >= WINDOW) continue;
+      buf.push({
+        taken_at: r.taken_at.toISOString(),
+        count: r.count,
+        free_ratio: r.free_ratio,
+        empty_desc_ratio: r.empty_desc_ratio,
+        top_venue: r.top_venue ?? null,
+        top_category: r.top_category ?? null,
+        earliest: r.earliest ? r.earliest.toISOString() : null,
+        latest: r.latest ? r.latest.toISOString() : null,
+      });
+      bySource.set(r.source, buf);
+    }
+    for (const buf of bySource.values()) {
+      buf.reverse();
+    }
   }
+
   for (const [source, buf] of bySource) {
     // Only seed the in-memory buffer if the current process hasn't
     // already written a more-recent snapshot. Compare by timestamp:

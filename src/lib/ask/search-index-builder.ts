@@ -51,6 +51,10 @@ export type RadiusSearchRefreshResult = {
       | "embedding_write_failed";
     message: string;
   };
+  cleanupWarning?: {
+    code: "retired_documents_cleanup_failed";
+    message: string;
+  };
   /** Whether the required full-text index is current. */
   current: boolean;
 };
@@ -128,6 +132,88 @@ function embeddingModelName(): string {
   // Keep deployments that still carry the old Gateway-style value working
   // after embeddings move to the direct OpenAI provider.
   return configured.replace(/^openai\//, "") || DEFAULT_MODEL;
+}
+
+type RootSql = NonNullable<ReturnType<typeof getSql>>;
+
+/**
+ * Keep cleanup diagnostics useful without logging query text, bound
+ * parameters, place content, or connection details. Postgres.js attaches
+ * these structural fields directly to database errors.
+ */
+function safeCleanupErrorMetadata(error: unknown): Record<string, string> {
+  if (!error || typeof error !== "object") {
+    return { errorType: typeof error };
+  }
+  const candidate = error as Record<string, unknown>;
+  const metadata: Record<string, string> = {};
+  const fields = [
+    ["name", "name"],
+    ["code", "code"],
+    ["severity", "severity"],
+    ["schema_name", "schema"],
+    ["table_name", "table"],
+    ["constraint_name", "constraint"],
+    ["routine", "routine"],
+  ] as const;
+  for (const [source, target] of fields) {
+    const value = candidate[source];
+    if (typeof value === "string" && value.length > 0) {
+      metadata[target] = value.slice(0, 120);
+    }
+  }
+  return Object.keys(metadata).length > 0
+    ? metadata
+    : { errorType: error instanceof Error ? error.name : "unknown" };
+}
+
+/**
+ * Retired rows are housekeeping, not a prerequisite for searchable text.
+ * Run cleanup only after the required index transaction has committed, in a
+ * second short transaction. A cleanup fault can then degrade the refresh
+ * without rolling a successful initial fill back to zero.
+ */
+async function cleanupRetiredPlaceDocuments({
+  rootSql,
+  liveIds,
+  refreshStartedAt,
+}: {
+  rootSql: RootSql;
+  liveIds: string[];
+  refreshStartedAt: Date;
+}): Promise<RadiusSearchRefreshResult["cleanupWarning"] | undefined> {
+  const removeRetired = async (sql: TransactionSql): Promise<void> => {
+    await sql`
+      delete from public.radius_search_documents
+      where kind = 'place'
+        and not (source_id = any(${liveIds}::text[]))
+        and updated_at < ${refreshStartedAt}
+    `;
+  };
+
+  try {
+    if (typeof rootSql.begin === "function") {
+      await rootSql.begin(async (sql) => {
+        await sql`set local statement_timeout = '5s'`;
+        await removeRetired(sql);
+      });
+    } else {
+      // Lightweight test doubles may not expose transactions. Real
+      // application connections always use the bounded transaction above.
+      await removeRetired(rootSql as unknown as TransactionSql);
+    }
+    return undefined;
+  } catch (error) {
+    console.warn(
+      "[radius-search] retired-document cleanup failed after the search baseline committed",
+      safeCleanupErrorMetadata(error),
+    );
+    return {
+      code: "retired_documents_cleanup_failed",
+      message:
+        "Full-text search was updated, but retired place documents could not be removed. Cleanup will retry on the next refresh.",
+    };
+  }
 }
 
 export async function refreshRadiusSearchIndex({
@@ -258,23 +344,6 @@ export async function refreshRadiusSearchIndex({
       );
     }
     processed += batch.length;
-  }
-
-  // Catalog removals are safe to apply even during a bounded initial fill:
-  // this only removes IDs that no longer exist in the canonical public set.
-  const liveIds = documents.map((document) => document.id);
-  try {
-    await sql`
-      delete from public.radius_search_documents
-      where kind = 'place'
-        and not (source_id = any(${liveIds}::text[]))
-        and updated_at < ${refreshStartedAt}
-    `;
-  } catch {
-    throw new RadiusSearchRefreshError(
-      "storage_write_failed",
-      "The Radius search index could not remove retired place documents.",
-    );
   }
 
   const selectedIds = new Set(selected.map((document) => document.id));
@@ -429,9 +498,10 @@ export async function refreshRadiusSearchIndex({
   // prevents overlapping cron, CLI, or rolling-deployment runs from buying
   // duplicate vectors or attaching an older vector to newer text. The local
   // statement timeout also bounds the post-provider vector write.
+  let result: RadiusSearchRefreshResult;
   if (typeof rootSql.begin === "function") {
     try {
-      return await rootSql.begin(async (sql) => {
+      result = await rootSql.begin(async (sql) => {
         await sql`set local statement_timeout = '15s'`;
         const lock = await sql<Array<{ acquired: boolean }>>`
           select pg_try_advisory_xact_lock(${SEARCH_REFRESH_LOCK_ID}) as acquired
@@ -451,9 +521,16 @@ export async function refreshRadiusSearchIndex({
         "Radius search storage could not start a protected refresh transaction.",
       );
     }
+  } else {
+    // Lightweight test doubles do not expose postgres-js transactions. Real
+    // application connections always take the protected path above.
+    result = await run(rootSql as unknown as TransactionSql);
   }
 
-  // Lightweight test doubles do not expose postgres-js transactions. Real
-  // application connections always take the protected path above.
-  return run(rootSql as unknown as TransactionSql);
+  const cleanupWarning = await cleanupRetiredPlaceDocuments({
+    rootSql,
+    liveIds: documents.map((document) => document.id),
+    refreshStartedAt,
+  });
+  return cleanupWarning ? { ...result, cleanupWarning } : result;
 }

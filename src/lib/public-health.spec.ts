@@ -136,6 +136,7 @@ describe("public health summary", () => {
 
   it("returns before a hung database and does not expose thrown details", async () => {
     const secret = "postgres://user:password@example.internal/database";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const result = await getPublicHealthSnapshot({
       now: () => new Date("2026-07-28T16:00:00.000Z"),
       environment: secret,
@@ -154,10 +155,19 @@ describe("public health summary", () => {
       data: { status: "unavailable", tracked: null },
     });
     expect(JSON.stringify(result)).not.toContain(secret);
+    expect(warn).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "public_health_dependency_failure",
+      dependency: "database",
+      outcome: "timeout",
+    }));
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    warn.mockRestore();
   });
 
   it("keeps internal database and source errors out of the response", async () => {
     const secret = "API_KEY=do-not-leak";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const databaseFailure = await getPublicHealthSnapshot({
       probeDatabase: async () => {
         throw new Error(secret);
@@ -175,6 +185,20 @@ describe("public health summary", () => {
     });
     expect(sourceFailure.data.status).toBe("unavailable");
     expect(JSON.stringify(sourceFailure)).not.toContain(secret);
+    expect(warn).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "public_health_dependency_failure",
+      dependency: "database",
+      outcome: "rejected",
+    }));
+    expect(warn).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "public_health_dependency_failure",
+      dependency: "source-ledger",
+      outcome: "rejected",
+    }));
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    warn.mockRestore();
   });
 
   it("coalesces concurrent checks and reuses the completed snapshot", async () => {
