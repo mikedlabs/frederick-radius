@@ -38,6 +38,7 @@ vi.mock("@sentry/nextjs", () => ({
 }));
 
 import {
+  EVENT_ARCHIVE_WARM_BUDGET_MS,
   EVENT_WARM_BUDGET_MS,
   GET,
   maxDuration,
@@ -95,7 +96,8 @@ describe("GET /api/cron/warm-events", () => {
     expect(mocks.getCachedLiveEvents).toHaveBeenCalledTimes(1);
     expect(mocks.getCachedLiveEvents).toHaveBeenCalledWith(90);
     expect(mocks.syncEventArchiveBatch).toHaveBeenCalledWith([], {
-      deadlineMs: 6_500,
+      batchSize: 250,
+      deadlineMs: 15_000,
       successfulSources: ["celebrate"],
       seenSourceIdentities: [
         { source: "celebrate", source_uid: "a" },
@@ -167,7 +169,8 @@ describe("GET /api/cron/warm-events", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.syncEventArchiveBatch).toHaveBeenCalledWith([card], {
-      deadlineMs: 6_500,
+      batchSize: 250,
+      deadlineMs: 15_000,
       successfulSources: ["celebrate"],
       seenSourceIdentities: [
         {
@@ -237,6 +240,7 @@ describe("GET /api/cron/warm-events", () => {
     const body = await response.json();
 
     expect(EVENT_WARM_BUDGET_MS).toBeLessThan(maxDuration * 1_000 - 10_000);
+    expect(EVENT_ARCHIVE_WARM_BUDGET_MS).toBe(17_000);
     expect(response.status).toBe(500);
     expect(body).toMatchObject({
       ok: false,

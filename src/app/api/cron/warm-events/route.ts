@@ -49,8 +49,14 @@ export const dynamic = "force-dynamic";
 // capped at the 8s per-feed timeout) so users never have to.
 export const maxDuration = 90;
 export const EVENT_WARM_BUDGET_MS = 72_000;
-export const EVENT_ARCHIVE_WARM_BUDGET_MS = 7_000;
+// The archive writes the full public board in a handful of bulk transactions.
+// Seven seconds proved too small in production once the board reached ~500
+// rows, so the caches warmed but their durable detail records repeatedly
+// timed out. Give the normal archive pass up to 17 seconds while deriving the
+// actual budget from the function's remaining lifetime below.
+export const EVENT_ARCHIVE_WARM_BUDGET_MS = 17_000;
 const ALERT_DEADLINE_MS = 8_000;
+const SHUTDOWN_MARGIN_MS = 2_000;
 
 function errMsg(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
@@ -208,15 +214,34 @@ export async function GET(request: Request) {
             source_uid: event.id,
           }))
       : [];
+  // Preserve time for the failure alert and a clean response even if the live
+  // source phase consumed most of its own ceiling. On the normal cached path
+  // this grants the archive its full budget; on a slow source run it contracts
+  // instead of letting the function hit Vercel's hard 90-second limit.
+  const archiveBudgetMs = Math.max(
+    100,
+    Math.min(
+      EVENT_ARCHIVE_WARM_BUDGET_MS,
+      maxDuration * 1_000 -
+        ALERT_DEADLINE_MS -
+        SHUTDOWN_MARGIN_MS -
+        (Date.now() - t0),
+    ),
+  );
+  const archiveWriteBudgetMs = Math.min(
+    15_000,
+    Math.max(100, archiveBudgetMs - 1_000),
+  );
   const archiveOutcome =
     unified.status === "fulfilled"
       ? await withDeadlineOutcome(
           syncEventArchiveBatch(unified.value.publicEvents, {
-            deadlineMs: EVENT_ARCHIVE_WARM_BUDGET_MS - 500,
+            batchSize: 250,
+            deadlineMs: archiveWriteBudgetMs,
             successfulSources: archiveSuccessfulSources,
             seenSourceIdentities: archiveSeenSourceIdentities,
           }),
-          EVENT_ARCHIVE_WARM_BUDGET_MS,
+          archiveBudgetMs,
         )
       : { status: "skipped" as const };
   const archive =
