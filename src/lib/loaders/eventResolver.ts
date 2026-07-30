@@ -3,6 +3,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { hasActionableAttendance } from "@/lib/events/attendance";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import {
@@ -12,7 +13,12 @@ import {
   type PersistedEventIdentity,
 } from "@/lib/events/event-identity";
 
-export type EventResolutionKind = "seed" | "archive" | "live" | "ingested";
+export type EventResolutionKind =
+  | "seed"
+  | "archive"
+  | "unified"
+  | "live"
+  | "ingested";
 
 export type ResolvedEventPage = {
   event: EventWithMeta;
@@ -32,6 +38,11 @@ type EventResolverSources = {
   ) => Promise<ArchivedEventIdentity | null>;
   live: (
     slug: string,
+    context: EventLookupContext,
+  ) => Promise<EventWithMeta | null>;
+  unified: (
+    slug: string,
+    now: Date,
     context: EventLookupContext,
   ) => Promise<EventWithMeta | null>;
   ingested: (
@@ -58,6 +69,12 @@ const DEFAULT_SOURCES: EventResolverSources = {
     context.signal.aborted
       ? Promise.resolve(null)
       : getLiveCardEventBySlug(slug, 90, context),
+  unified: async (slug, now, context) => {
+    if (context.signal.aborted) return null;
+    const result = await assembleUnifiedEvents(now);
+    if (context.signal.aborted) return null;
+    return result.publicEvents.find((event) => event.slug === slug) ?? null;
+  },
   ingested: (slug, context) =>
     context.signal.aborted
       ? Promise.resolve(null)
@@ -69,7 +86,10 @@ export const EVENT_DEEP_LINK_TIMEOUT_MS = 2_500;
 export const EVENT_ARCHIVE_HEAD_START_MS = 450;
 
 type AsyncEventSource = Exclude<EventResolutionKind, "seed">;
-type DirectEventSource = Extract<AsyncEventSource, "live" | "ingested">;
+type DirectEventSource = Extract<
+  AsyncEventSource,
+  "unified" | "live" | "ingested"
+>;
 
 type EventLookupOutcome =
   | { status: "hit"; event: EventWithMeta }
@@ -228,13 +248,21 @@ export async function resolveEventPageBySlugWithSources(
     Promise<{ source: DirectEventSource; outcome: EventLookupOutcome }>
   >();
 
-  // Both are independent, useful deep-link sources. They launch only after the
-  // archive index misses and only while budget remains.
-  for (const source of ["live", "ingested"] as const) {
+  // The unified snapshot is the exact source contract used by the browse
+  // board. Resolve it alongside the provider-specific readers so a card cannot
+  // be visible while its own detail URL returns a definitive 404 merely
+  // because the durable archive has not warmed yet. The shared snapshot is
+  // normally already hot after /events or /api/events/browse; the same hard
+  // page deadline still bounds a cold lookup.
+  for (const source of ["unified", "live", "ingested"] as const) {
     if (Date.now() >= deadline || controller.signal.aborted) break;
     pending.set(
       source,
-      eventLookup(() => sources[source](slug, context)).then((outcome) => ({
+      eventLookup(() =>
+        source === "unified"
+          ? sources.unified(slug, now, context)
+          : sources[source](slug, context),
+      ).then((outcome) => ({
         source,
         outcome,
       })),

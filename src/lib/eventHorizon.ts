@@ -53,6 +53,13 @@ type EventLike = { slug: string; starts_at: string; ends_at: string; is_all_day?
  * that runs past midnight) out of the range bucket.
  */
 export const RANGE_LISTING_MS = 36 * 3_600_000;
+/**
+ * A range that opened months ago and still claims to be "coming up" is almost
+ * always a recurring feed flattened into one first-occurrence → final-
+ * occurrence row. Keep real short courses and current exhibits, but retire
+ * stale ranges whose opening is more than four months behind the user.
+ */
+export const RANGE_LISTING_STALE_AFTER_MS = 120 * 24 * 3_600_000;
 
 /** True for a non-all-day row whose start→end window exceeds RANGE_LISTING_MS. */
 export function isRangeListing(e: {
@@ -98,6 +105,12 @@ export function horizonOf<E extends EventLike>(
     // OPENING today or later still earns its dated bucket — opening day is
     // a real date claim — via the fall-through below.
     if (end < b.now) return null;
+    if (
+      start <= b.now &&
+      b.now - start > RANGE_LISTING_STALE_AFTER_MS
+    ) {
+      return null;
+    }
     if (start <= b.now) return "later";
     // future range: fall through to the dated buckets on its opening day.
   } else {

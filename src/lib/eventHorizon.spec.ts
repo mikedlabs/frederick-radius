@@ -57,9 +57,14 @@ describe("horizonOf — date-range listings (isRangeListing)", () => {
     expect(horizonOf(exhibit, bounds())).toBe("later");
   });
 
-  it("even the curated live-set cannot force an in-progress range live", () => {
+  it("retires a years-old flattened series even when the curated live-set names it", () => {
     const series = ev("trivia", NOW - 500 * DAY, NOW + 180 * DAY);
-    expect(horizonOf(series, bounds(["trivia"]))).toBe("later");
+    expect(horizonOf(series, bounds(["trivia"]))).toBeNull();
+  });
+
+  it("retires an ongoing range after its opening is more than four months old", () => {
+    const stale = ev("old-series", NOW - 121 * DAY, NOW + 30 * DAY);
+    expect(horizonOf(stale, bounds())).toBeNull();
   });
 
   it("an ENDED range drops (null), like any past event", () => {
