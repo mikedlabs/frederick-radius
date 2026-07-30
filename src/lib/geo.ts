@@ -116,31 +116,35 @@ function pointInCountyRing(lng: number, lat: number): boolean {
   return inside;
 }
 
-/** Distance in meters from a point to the nearest simplified-ring vertex.
- *  The boundary buffer absorbs the small simplification error. */
-function metersToRing(lng: number, lat: number): number {
-  let best = Infinity;
-  const mLat = 111320;
-  const mLng = 111320 * Math.cos((lat * Math.PI) / 180);
-  for (const [vlng, vlat] of RING) {
-    const d = Math.hypot((vlat - lat) * mLat, (vlng - lng) * mLng);
-    if (d < best) best = d;
-  }
-  return best;
+// Mount Airy is the one reviewed municipality in this guide that intentionally
+// straddles the Frederick/Carroll line. Keep its published town extent as the
+// explicit exception instead of buffering every mile of the county border.
+const MOUNT_AIRY_TOWN_BBOX = {
+  west: -77.18,
+  south: 39.355,
+  east: -77.13,
+  north: 39.4,
+} as const;
+
+function isInMountAiryTownArea(lng: number, lat: number): boolean {
+  return (
+    lng >= MOUNT_AIRY_TOWN_BBOX.west &&
+    lng <= MOUNT_AIRY_TOWN_BBOX.east &&
+    lat >= MOUNT_AIRY_TOWN_BBOX.south &&
+    lat <= MOUNT_AIRY_TOWN_BBOX.north
+  );
 }
 
 /**
- * Polygon-accurate county membership with a 1.5km buffer. The buffer
- * exists because member municipalities straddle the line: Mount Airy's
- * Main Street is partly in Carroll County and belongs here; a Boonsboro
- * coffee shop 5km past the ridge does not. Buffer chosen so every
- * straddling Main Street survives and every true foreigner dies.
+ * Polygon-accurate county membership plus the reviewed Mount Airy town
+ * exception. A blanket border buffer is not safe: it admitted Boonsboro,
+ * Smithsburg, Fort Ritchie, Damascus, and other outside places as "in the
+ * county" merely because they sat near the line.
  */
 export function isInFrederickCountyArea(lng: number, lat: number): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-  // Fast-path rejector: the bbox padded by ~2km so the straddle buffer
-  // still works at the bbox edges (Mount Airy's Carroll-side block sits
-  // 200m past the unpadded eastern bound).
+  // Fast-path rejector: the bbox stays padded enough to reach the reviewed
+  // Carroll-side portion of Mount Airy.
   const PAD = 0.02;
   if (
     lat < FREDERICK_COUNTY_BBOX.south - PAD ||
@@ -151,13 +155,13 @@ export function isInFrederickCountyArea(lng: number, lat: number): boolean {
     return false;
   }
   if (pointInCountyRing(lng, lat)) return true;
-  return metersToRing(lng, lat) <= 1500;
+  return isInMountAiryTownArea(lng, lat);
 }
 
 /**
  * A coordinate is "valid" for the app when it has finite numbers AND
- * lands inside the county (real outline plus a 1.5km straddle buffer,
- * not just the bbox). (0, 0) or any default fallback fails by
+ * lands inside the county (real outline plus the reviewed Mount Airy
+ * town exception, not just the bbox). (0, 0) or any default fallback fails by
  * construction. Callers use this at loader boundaries to drop
  * mis-positioned rows from public surfaces.
  */

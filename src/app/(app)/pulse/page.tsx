@@ -43,6 +43,7 @@ import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import { selectRoadTravelSummary } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
+import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
@@ -430,11 +431,13 @@ export default async function PulsePage() {
   const activeAlerts = alertResult.alerts
     .filter((a) => !a.ends_at || Date.parse(a.ends_at) > nowMs)
     .sort(compareAlertPriority);
-  const officialCivicAlerts = [...officialSignals.civic.alerts].sort(
-    (left, right) =>
-      Number(right.kind === "city-emergency") -
-      Number(left.kind === "city-emergency"),
-  );
+  const officialCivicAlerts = officialSignals.civic.alerts
+    .filter(isLocallyRelevantCivicAlert)
+    .sort(
+      (left, right) =>
+        Number(right.kind === "city-emergency") -
+        Number(left.kind === "city-emergency"),
+    );
   const recentStormReports = officialSignals.stormReports.reports.filter(
     (report) => report.state === "recent",
   );

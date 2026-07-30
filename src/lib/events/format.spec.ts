@@ -56,6 +56,35 @@ describe("formatEventWhen", () => {
     expect(when).toBe("Tue, Jul 7 · 10:00 AM");
   });
 
+  it("does not present an end-of-day sentinel as a real end time", () => {
+    const when = formatEventWhen(
+      base({
+        starts_at: "2026-07-30T09:15:00-04:00",
+        ends_at: "2026-07-30T23:59:00-04:00",
+      }),
+    );
+    expect(when).toBe("Thu, Jul 30 · 9:15 AM");
+  });
+
+  it("treats a noon-to-end-of-day feed row as date-only", () => {
+    const event = base({
+      starts_at: "2026-07-30T12:00:00-04:00",
+      ends_at: "2026-07-30T23:59:59-04:00",
+    });
+    expect(formatEventWhen(event)).toBe("Thu, Jul 30");
+    expect(eventDateBlock(event).time).toBe("Time not listed");
+  });
+
+  it("keeps a plausible event range that ends before the sentinel", () => {
+    const when = formatEventWhen(
+      base({
+        starts_at: "2026-07-30T09:15:00-04:00",
+        ends_at: "2026-07-30T11:00:00-04:00",
+      }),
+    );
+    expect(when).toBe("Thu, Jul 30 · 9:15 AM–11:00 AM");
+  });
+
   it("keeps a real multi-day range as a date range", () => {
     const when = formatEventWhen(
       base({

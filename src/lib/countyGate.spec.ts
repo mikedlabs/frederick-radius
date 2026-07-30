@@ -4,8 +4,9 @@ import { isInFrederickCountyArea, isValidCoord } from "@/lib/geo";
 /**
  * County gate tests (2026-06 redesign audit, ranking-trust blocker).
  * The bbox test alone passed Washington and Carroll County records
- * that wore member-town labels; the polygon + 1.5km buffer must keep
- * every real member place and reject every audited foreigner.
+ * that wore member-town labels; the polygon plus explicit Mount Airy
+ * exception must keep every real member place and reject every audited
+ * foreigner.
  */
 describe("isInFrederickCountyArea", () => {
   it("keeps the county core and every member town center", () => {
@@ -28,8 +29,8 @@ describe("isInFrederickCountyArea", () => {
   });
 
   it("keeps Mount Airy even though its Main Street straddles the Carroll line", () => {
-    // Mount Airy center sits on the boundary; the Carroll-side block
-    // must survive through the 1.5km buffer.
+    // Mount Airy center sits on the boundary; the reviewed Carroll-side
+    // portion of the town remains part of Radius's county guide.
     expect(isInFrederickCountyArea(-77.1547, 39.3762)).toBe(true);
     // A point ~700m east of the line (Carroll side, still Mount Airy).
     expect(isInFrederickCountyArea(-77.148, 39.376)).toBe(true);
@@ -40,6 +41,9 @@ describe("isInFrederickCountyArea", () => {
     expect(isInFrederickCountyArea(-77.5728, 39.6556)).toBe(false);
     // Boonsboro, Washington County (coffee shops tagged myersville).
     expect(isInFrederickCountyArea(-77.6522, 39.5062)).toBe(false);
+    // The Lodge in Boonsboro was incorrectly labeled Myersville and counted
+    // among the county's drinks because the old blanket border buffer passed.
+    expect(isInFrederickCountyArea(-77.6159629, 39.553693)).toBe(false);
     // Rohrersville area, Washington County (winery tagged burkittsville).
     expect(isInFrederickCountyArea(-77.6592, 39.4304)).toBe(false);
   });

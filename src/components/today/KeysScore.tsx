@@ -211,7 +211,13 @@ export function KeysPregameMatchup({ score }: { score: Score }) {
   );
 }
 
-export default function KeysScore() {
+export default function KeysScore({
+  showMoreLink = true,
+}: {
+  /** Today needs a route into the full sports guide; the sports page itself
+   * must not render a self-link beneath the same score card. */
+  showMoreLink?: boolean;
+}) {
   const [score, setScore] = useState<Score | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tracked = useRef(false);
@@ -374,18 +380,20 @@ export default function KeysScore() {
         />
       </div>
 
-      <Link
-        href="/sports"
-        className="tap-44-y group mt-1.5 flex items-center justify-end gap-1 text-[12px] font-semibold"
-        style={{ color: "var(--app-brand-press)" }}
-      >
-        More Frederick sports
-        <ChevronRight
-          aria-hidden
-          className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-          strokeWidth={2.25}
-        />
-      </Link>
+      {showMoreLink && (
+        <Link
+          href="/sports"
+          className="tap-44-y group mt-1.5 flex items-center justify-end gap-1 text-[12px] font-semibold"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          More Frederick sports
+          <ChevronRight
+            aria-hidden
+            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+            strokeWidth={2.25}
+          />
+        </Link>
+      )}
     </div>
   );
 }

@@ -73,6 +73,25 @@ function normalize(s: string): string[] {
   return specificTerms.length > 0 ? specificTerms : terms;
 }
 
+function hasExplicitQueryEvidence(
+  place: PlaceCardData,
+  query: string,
+): boolean {
+  const terms = normalize(query);
+  if (terms.length === 0) return true;
+  const evidence = [
+    place.name,
+    place.short_blurb,
+    place.description ?? "",
+    place.category,
+    place.primary_type ?? "",
+    ...(place.subcategories ?? []),
+    ...(place.tags ?? []),
+    ...(place.search_aliases ?? []),
+  ].join(" ");
+  return terms.every((term) => fieldScore(evidence, [term]) > 0);
+}
+
 /** Small, deliberately conservative inflection normalizer. Search data uses
  * singular curated tags ("bike") while people naturally ask with plurals
  * ("bikes"). This is not meant to be a general stemmer: it only collapses
@@ -712,11 +731,29 @@ export function qualifiedSearch(
   );
   const includeMatchingPlaces = qualifiers.compoundIntent
     ? true
+    : qualifiers.strictPlaceKind
+      ? true
     : qualifiers.categoryKey
     ? qualifiers.includeAllCategoryMatches || regionalScope || effectiveQuery.length === 0
     : qualifiers.openNow ||
-      (qualifiers.nearMe && !preserveMixedEventResults) ||
+      // "Near me" ranks relevant records; it is not permission to fill the
+      // list with every nearby business. Utility queries such as "trash can
+      // near me" already have a deterministic map action, and arbitrary
+      // massage/jewelry/shop rows underneath make that correct action look
+      // untrustworthy. Only a location-only query may intentionally browse
+      // all nearby places.
+      (qualifiers.nearMe &&
+        !preserveMixedEventResults &&
+        effectiveQuery.length === 0) ||
       effectiveQuery.length === 0;
+  const requiresExplicitPlaceEvidence =
+    qualifiers.nearMe &&
+    !qualifiers.compoundIntent &&
+    !qualifiers.strictPlaceKind &&
+    !qualifiers.categoryKey &&
+    !qualifiers.openNow &&
+    effectiveQuery.length > 0 &&
+    !preserveMixedEventResults;
   // Pull a wider candidate set for multi-region requests, then interleave the
   // requested regions. Otherwise a data-rich town can consume the result cap
   // before a smaller town gets a fair chance to appear.
@@ -733,6 +770,8 @@ export function qualifiedSearch(
       : undefined,
     placeFilter: (place) =>
       matchesSearchQualifiers(place, qualifiers, municipality) &&
+      (!requiresExplicitPlaceEvidence ||
+        hasExplicitQueryEvidence(place, effectiveQuery)) &&
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
     now: context.now,
   });

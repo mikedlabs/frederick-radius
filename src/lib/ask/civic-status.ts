@@ -41,6 +41,10 @@ export const CITY_ALERTS_URL =
   "https://www.cityoffrederickmd.gov/CivicAlerts.aspx";
 export const COUNTY_ALERTS_URL =
   "https://www.frederickcountymd.gov/CivicAlerts.aspx";
+export const COUNTY_ROAD_CLOSURES_URL =
+  "https://www.frederickcountymd.gov/5052/Roads-Closed";
+export const CITY_ROAD_CLOSURES_MAP_URL =
+  "https://maryland.maps.arcgis.com/apps/webappviewer/index.html?id=dd8df89e5d604ea4a8f36cf20cd394ec";
 
 type CivicAskContext = {
   label?: string | null;
@@ -215,6 +219,108 @@ function isNearMeRoadQuery(query: string | null | undefined): boolean {
   );
 }
 
+function isFutureRoadQuery(query: string | null | undefined): boolean {
+  return /\b(?:tomorrow|this weekend|next weekend|next week|next (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|later (?:today|tonight|this week)|upcoming)\b/i.test(
+    query ?? "",
+  );
+}
+
+function isDowntownRoadQuery(query: string | null | undefined): boolean {
+  return /\b(?:downtown(?: frederick)?|carroll creek|market street|patrick street)\b/i.test(
+    query ?? "",
+  );
+}
+
+function scopedRoadCoverageResult(
+  context: CivicAskContext,
+  {
+    future,
+    downtown,
+  }: {
+    future: boolean;
+    downtown: boolean;
+  },
+): AskResult {
+  const answer =
+    future && downtown
+      ? "The road feeds Radius can check are current and countywide. They do not provide a verified forecast of downtown closures for the time you asked about, so I will not present today’s countywide incidents as a match. Check the City road-closure map and official notices before you travel."
+      : future
+        ? "The road feeds Radius can check are current and countywide. They do not forecast closures for the time you asked about, so I will not present today’s incidents as a future match. Check the official closure list before you travel."
+        : "The road feeds Radius can check are countywide and do not provide a complete view of downtown street closures. I will not present incidents elsewhere in the county as downtown matches. Check the City road-closure map and official notices before you travel.";
+  const sources: AskSource[] = downtown
+    ? [
+        {
+          slug: "city-frederick-road-closures",
+          name: "City of Frederick road closures",
+          category: "traffic",
+          city: "Frederick",
+          href: CITY_ROAD_CLOSURES_MAP_URL,
+          eyebrow: "Official City road-closure map",
+          reason: "Use the City map for downtown street closures",
+          confidence: "high",
+        },
+        {
+          slug: "city-frederick-alerts",
+          name: "City of Frederick alerts",
+          category: "traffic",
+          city: "Frederick",
+          href: CITY_ALERTS_URL,
+          eyebrow: "Official City notices",
+          reason: "Check for traffic advisories and scheduled changes",
+          confidence: "high",
+        },
+      ]
+    : [
+        {
+          slug: "frederick-county-road-closures",
+          name: "Frederick County road closures",
+          category: "traffic",
+          city: "Frederick County",
+          href: COUNTY_ROAD_CLOSURES_URL,
+          eyebrow: "Official County closure list",
+          reason: "Check published closures for the date you plan to travel",
+          confidence: "high",
+        },
+      ];
+
+  return {
+    status: "empty",
+    configured: true,
+    usedModel: false,
+    answer,
+    context: downtown
+      ? "Downtown Frederick"
+      : context.label ?? "Frederick County",
+    sources,
+    actions: downtown
+      ? [
+          {
+            label: "Check City road closures",
+            kind: "open",
+            href: CITY_ROAD_CLOSURES_MAP_URL,
+          },
+          {
+            label: "Check City alerts",
+            kind: "open",
+            href: CITY_ALERTS_URL,
+          },
+        ]
+      : [
+          {
+            label: "Check County road closures",
+            kind: "open",
+            href: COUNTY_ROAD_CLOSURES_URL,
+          },
+          { label: "Open MDOT CHART", kind: "open", href: MDOT_CHART_URL },
+        ],
+    intelligence: {
+      tools: ["traffic"],
+      confidence: "high",
+      retrieval: "keyword",
+    },
+  };
+}
+
 function incidentDistance(
   incident: ChartIncident,
   context: CivicAskContext,
@@ -339,6 +445,15 @@ export function roadStatusAskResult(
   roadIntelligence: RoadIntelligenceSnapshot | null = null,
   countySnow: CountyDataSnapshot<CountySnowRoute> | null = null,
 ): AskResult {
+  const futureQuery = isFutureRoadQuery(context.query);
+  const downtownQuery = isDowntownRoadQuery(context.query);
+  if (futureQuery || downtownQuery) {
+    return scopedRoadCoverageResult(context, {
+      future: futureQuery,
+      downtown: downtownQuery,
+    });
+  }
+
   const requestedRoad = requestedRoadOf(context.query);
   const relevantIncidents = requestedRoad
     ? result.data.filter((incident) =>

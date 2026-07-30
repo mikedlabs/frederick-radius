@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, reason: "bad-coords" }, { status: 400 });
   }
   // Both endpoints must live in Frederick County (real outline plus the
-  // 1.5km straddle buffer, not just the bbox). Anything else is not a
+  // reviewed Mount Airy town exception, not just the bbox). Anything else is not a
   // legitimate request from our app.
   if (
     !isValidCoord({ lng: olng, lat: olat }) ||

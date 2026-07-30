@@ -3,10 +3,20 @@ import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel"
 
 const mocks = vi.hoisted(() => ({
   getCurrentSituationSnapshot: vi.fn(),
+  getOfficialCivicAlertsSnapshot: vi.fn(),
+  getRoadIntelligenceSnapshot: vi.fn(),
 }));
 
 vi.mock("@/lib/live/currentSituation", () => ({
   getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
+}));
+
+vi.mock("@/lib/live/officialSignals", () => ({
+  getOfficialCivicAlertsSnapshot: mocks.getOfficialCivicAlertsSnapshot,
+}));
+
+vi.mock("@/lib/live/roadIntelligence", () => ({
+  getRoadIntelligenceSnapshot: mocks.getRoadIntelligenceSnapshot,
 }));
 
 import { GET } from "./route";
@@ -38,6 +48,18 @@ function snapshot(
 describe("GET /api/pulse/status", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
+      summary: {
+        activeCount: 0,
+        coverage: "complete",
+      },
+      attention: [],
+    });
+    mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
+      alerts: [],
+      available: true,
+      degraded: false,
+    });
   });
 
   it("preserves the legacy status response and cache contract", async () => {
@@ -75,6 +97,56 @@ describe("GET /api/pulse/status", () => {
       count: 2,
       tone: "alert",
       ok: false,
+      lastUpdated: "2026-07-28T16:00:00.000Z",
+    });
+  });
+
+  it("counts an urgent road closure shown on Pulse", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
+      summary: {
+        activeCount: 1,
+        coverage: "complete",
+      },
+      attention: [
+        {
+          severity: "warning",
+        },
+      ],
+    });
+
+    const response = await GET();
+
+    await expect(response.json()).resolves.toEqual({
+      active: true,
+      count: 1,
+      tone: "alert",
+      ok: true,
+      lastUpdated: "2026-07-28T16:00:00.000Z",
+    });
+  });
+
+  it("does not promote an unrelated statewide health notice as local", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
+    mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
+      alerts: [
+        {
+          kind: "health-notice",
+          title: "Measles exposure reported",
+          summary: "The exposure locations are in Southern Maryland.",
+        },
+      ],
+      available: true,
+      degraded: false,
+    });
+
+    const response = await GET();
+
+    await expect(response.json()).resolves.toEqual({
+      active: false,
+      count: 0,
+      tone: "quiet",
+      ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
   });

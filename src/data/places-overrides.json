@@ -219,6 +219,8 @@
       ]
     },
     "the-tasting-room-frederick": {
+      "short_blurb": "This North Market restaurant serves New American dishes and keeps an extensive wine list.",
+      "website": "https://www.trrestaurant.com/",
       "commerce_links": [
         {
           "provider": "opentable",
@@ -229,6 +231,18 @@
           "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 101 N Market St."
         }
       ]
+    },
+    "madrones": {
+      "address": "7810 Wormans Mill Rd",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "(240) 439-4010",
+      "website": "https://madrones.net/",
+      "geom": {
+        "lng": -77.397003,
+        "lat": 39.446694
+      },
+      "short_blurb": "This Wormans Mill restaurant serves burgers, steaks, seafood, Sunday brunch, and craft beer."
     },
     "monocacy-crossing-restaurant-frederick": {
       "commerce_links": [

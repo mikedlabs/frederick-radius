@@ -100,7 +100,10 @@ export function liveShelfFromWantAnswer(
   scope: Scope | null,
 ): LiveShelf {
   const picks = [answer.hero, ...answer.also]
-    .filter((candidate): candidate is WantRow => Boolean(candidate))
+    .filter(
+      (candidate): candidate is WantRow =>
+        Boolean(candidate?.confidence),
+    )
     .slice(0, 4)
     .map((candidate) => ({
       slug: candidate.slug,
@@ -111,7 +114,7 @@ export function liveShelfFromWantAnswer(
       where: candidate.where,
       distance: candidate.distance,
       fact: candidate.fact,
-      confidence: candidate.confidence ?? "confirmed",
+      confidence: candidate.confidence as "confirmed" | "likely",
     }));
 
   return {

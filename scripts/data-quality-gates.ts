@@ -136,7 +136,7 @@ const GATES: Gate[] = [
       const outside = PLACES.filter((p) => p.geom && !isInFrederickCountyArea(p.geom.lng, p.geom.lat));
       return {
         pass: outside.length === 0,
-        observed: `${outside.length} of ${PLACES.length} outside the county polygon (+1.5km buffer)`,
+        observed: `${outside.length} of ${PLACES.length} outside the county polygon and reviewed Mount Airy extent`,
         expect: "0 (or allow-listed nearby)",
       };
     },

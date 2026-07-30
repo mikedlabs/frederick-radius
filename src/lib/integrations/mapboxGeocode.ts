@@ -31,7 +31,8 @@
  * address/street/block feature types are accepted, meaning Mapbox can
  * never hand back a town/postcode centroid (which would swap one
  * centroid for another). The coordinate must also pass isValidCoord —
- * the real county polygon + straddle buffer — or it is rejected outright.
+ * the real county polygon or reviewed Mount Airy town extent, or it is
+ * rejected outright.
  */
 import { unstable_cache } from "next/cache";
 import { isValidCoord, type LngLat } from "@/lib/geo";

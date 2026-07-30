@@ -519,15 +519,36 @@ export function resolveWantAvailability(
 
   return {
     ...partitioned,
-    current: rankFlexibleBestFit(
-      candidates.filter(
-        (candidate) =>
-          isOpenNow(candidate.open_status) ||
-          hasUnknownAvailability(candidate),
-      ),
-      availability,
-      preciseOrigin,
-    ),
+    // Thin coverage does not justify hiding unknown-hour places, but a place
+    // we can prove is open must still lead a right-now answer. Rank each
+    // confidence lane on its own, then place unknown hours after confirmed
+    // open results instead of letting proximity promote uncertainty above
+    // evidence.
+    current:
+      availability === "required"
+        ? [
+            ...rankFlexibleBestFit(
+              candidates.filter((candidate) =>
+                isOpenNow(candidate.open_status),
+              ),
+              availability,
+              preciseOrigin,
+            ),
+            ...rankFlexibleBestFit(
+              candidates.filter(hasUnknownAvailability),
+              availability,
+              preciseOrigin,
+            ),
+          ]
+        : rankFlexibleBestFit(
+            candidates.filter(
+              (candidate) =>
+                isOpenNow(candidate.open_status) ||
+                hasUnknownAvailability(candidate),
+            ),
+            availability,
+            preciseOrigin,
+          ),
     hardAvailability: false,
     rankingMode: "best-fit",
     mayAssertNoneOpen: false,
@@ -558,12 +579,14 @@ export function buildWantAnswer(
     .filter((p) => !opts?.municipality || p.municipality === opts.municipality)
     .filter((p) =>
       want.match({
-        // The decorated category is the canonical corrected category. Include
-        // every secondary tag and primary type so Today and Nearby execute the
-        // same matcher instead of Today falling back to a raw legacy bucket.
-        category: p.category,
+        // The generated want taxonomy is the human-reviewed discovery role.
+        // Raw Google categories can describe a secondary service (a popcorn
+        // market tagged restaurant, or a tea retailer tagged coffee) and were
+        // leaking those businesses into Today despite corrected fields being
+        // present in this snapshot.
+        category: p.want_match_category,
         name: p.name,
-        subcategories: p.subcategories,
+        subcategories: p.want_match_subcategories,
         primary_type: p.primary_type,
         short_blurb: p.short_blurb,
       }),
@@ -573,7 +596,7 @@ export function buildWantAnswer(
         !opts?.refine ||
         opts.refine({
           name: p.name,
-          category: p.category,
+          category: p.want_match_category,
           municipality: p.municipality,
           geom: p.geom,
           short_blurb: p.short_blurb,

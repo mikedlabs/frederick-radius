@@ -178,6 +178,46 @@ describe("DaypartNeeds", () => {
     expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 
+  it("never turns an unknown-hours best-fit row into an open-now card", () => {
+    const shelf = liveShelfFromWantAnswer(
+      {
+        hero: {
+          slug: "unknown-hours",
+          name: "Unknown Hours",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Hours not posted",
+        },
+        also: [
+          {
+            slug: "confirmed-open",
+            name: "Confirmed Open",
+            photo: null,
+            where: "Frederick",
+            distance: null,
+            fact: "Open until 11pm",
+            confidence: "confirmed",
+          },
+        ],
+        browseHref: "/category/bar",
+        contextLabel: "Whole county",
+        contextSource: "county",
+        mayAssertNoneOpen: false,
+      },
+      {
+        category: "bar",
+        label: "Bars open late",
+        href: "/category/bar",
+        picks: [],
+      },
+      null,
+    );
+
+    expect(shelf.picks.map((pick) => pick.slug)).toEqual(["confirmed-open"]);
+    expect(shelf.picks[0].confidence).toBe("confirmed");
+  });
+
   it("labels curated fallback cards as likely instead of confirmed open", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {

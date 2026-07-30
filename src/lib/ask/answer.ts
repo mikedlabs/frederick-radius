@@ -34,17 +34,24 @@ import { withDeadlineFallback } from "@/lib/promise-deadline";
 import { allShipping, type ShipCarrier, type ShipKind, type ShipPoint } from "@/lib/loaders/shipping";
 import { brunchSpots, type BrunchSpot } from "@/lib/loaders/brunch";
 import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
-import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { clientPlaceBySlug, clientPlaces } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, scopeAskEventsByProximity, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
-import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
+import {
+  getOpenStatus,
+  isOpenNow,
+  type OpenStatus,
+} from "@/lib/hours";
 import { PARKING_OFFICE } from "@/data/parking-garages";
 import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
 import { enrichWantAnswerWithWalkingTimes } from "@/lib/want-travel";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import {
+  fieldNotesFor,
+  placesWithFieldHappyHour,
+} from "@/lib/loaders/fieldNotes";
 import { parseSearchQualifiers } from "@/lib/search/qualifiers";
 import { PET_CARE_FACILITIES, PET_POISON_LINES } from "@/data/pet-emergency";
 import { emergencyRequestKind, type EmergencyRequestKind } from "@/lib/ask/emergency";
@@ -54,6 +61,7 @@ import { eventFitsAskIntent } from "@/lib/ask/event-filter";
 import { placeMatchesDietary } from "@/lib/ask/dietary";
 import { parseAskDateTime } from "@/lib/ask/time";
 import { formatEventWhen } from "@/lib/events/format";
+import { parseHappyHour } from "@/lib/happyHour";
 import {
   communicationAccessLabels,
   hasDeafCommunityOrCommunicationAccess,
@@ -132,6 +140,184 @@ function placeSource(
     photo_url: p.google_photo_url || p.hero_image,
     rating: typeof p.google_rating === "number" ? p.google_rating : undefined,
     ratingCount: typeof p.google_rating_count === "number" ? p.google_rating_count : undefined,
+  };
+}
+
+function easternDayMinute(now: Date): { day: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const read = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  const weekdays: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return {
+    day: weekdays[read("weekday")] ?? 0,
+    minute: (Number(read("hour")) % 24) * 60 + Number(read("minute")),
+  };
+}
+
+function happyHourClock(minute: number): string {
+  if (minute >= 1440) return "close";
+  const hour24 = Math.floor(minute / 60);
+  const mins = minute % 60;
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const hour = hour24 % 12 || 12;
+  return mins === 0
+    ? `${hour} ${suffix}`
+    : `${hour}:${String(mins).padStart(2, "0")} ${suffix}`;
+}
+
+function answerHappyHourRequest(
+  query: string,
+  now: Date,
+  intent: AskIntent,
+  context: QualifiedSearchContext,
+): AskResult {
+  const { day, minute } = easternDayMinute(now);
+  const currentOnly = /\b(?:right now|now|currently|open now)\b/i.test(query);
+  const downtownOnly = /\bdowntown\b/i.test(query);
+  const nearbyOnly =
+    parseSearchQualifiers(query).nearMe &&
+    Boolean(context.origin && context.canShowDistance === true);
+  const candidates = placesWithFieldHappyHour()
+    .flatMap(({ slug, happy_hour: happyHour }) => {
+      const place = clientPlaceBySlug(slug);
+      if (!place) return [];
+      if (
+        context.municipality &&
+        place.municipality !== context.municipality
+      ) {
+        return [];
+      }
+      const distance = context.origin
+        ? haversineMeters(context.origin, place.geom)
+        : null;
+      if (downtownOnly && haversineMeters(FREDERICK_CENTER, place.geom) > DOWNTOWN_RADIUS_M) {
+        return [];
+      }
+      if (nearbyOnly && (distance ?? Infinity) > 5_000) return [];
+      const activeWindow = parseHappyHour(happyHour.schedule).find(
+        (window) =>
+          window.days.includes(day) &&
+          minute >= window.start &&
+          minute < window.end,
+      );
+      if (currentOnly && !activeWindow) return [];
+      if (
+        currentOnly &&
+        !isOpenNow(
+          getOpenStatus(
+            place.hours,
+            { verified: place.hours_verified ?? false },
+            now,
+          ),
+        )
+      ) {
+        return [];
+      }
+      return [{
+        place,
+        happyHour,
+        distance,
+        activeWindow,
+      }];
+    })
+    .sort((a, b) => {
+      if (nearbyOnly) {
+        return (a.distance ?? Infinity) - (b.distance ?? Infinity);
+      }
+      if (currentOnly) {
+        return (a.activeWindow?.end ?? Infinity) - (b.activeWindow?.end ?? Infinity);
+      }
+      return a.place.name.localeCompare(b.place.name);
+    });
+
+  const shown = candidates.slice(0, 4);
+  const sources = shown.map(({ place, happyHour, activeWindow }) => {
+    const source = placeSource(
+      place,
+      happyHour.details || happyHour.schedule,
+      null,
+      canExposeDistance(context),
+    );
+    source.eyebrow = currentOnly
+      ? "Verified happy hour · On now"
+      : "Verified happy-hour schedule";
+    source.status = activeWindow
+      ? `On now · until ${happyHourClock(activeWindow.end)}`
+      : happyHour.schedule;
+    source.confidence = happyHour.confidence === "low" ? "medium" : "high";
+    return source;
+  });
+  const scope = nearbyOnly
+    ? "within about three miles of your location"
+    : downtownOnly
+      ? "in downtown Frederick"
+      : context.municipality
+        ? `in ${MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality}`
+        : "around Frederick County";
+  const actions: AskAction[] = [
+    { label: "Open the happy-hour guide", kind: "open", href: "/happy-hour" },
+    { label: "See today’s deals on the map", kind: "open", href: "/map?deals=today" },
+  ];
+
+  if (sources.length === 0) {
+    return {
+      status: "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer: currentOnly
+        ? `I couldn’t confirm a happy hour running right now ${scope}. I won’t substitute a bar just because it stays open late.`
+        : `I don’t have a verified happy-hour schedule that fits ${scope}. The full guide shows the checked schedules Radius does have.`,
+      sources: [],
+      context: context.contextLabel ?? "Frederick County",
+      intent,
+      actions,
+      intelligence: {
+        tools: ["places"],
+        confidence: "high",
+        retrieval: "keyword",
+      },
+    };
+  }
+
+  const lead = shown[0];
+  const leadEnd = lead.activeWindow
+    ? ` until ${happyHourClock(lead.activeWindow.end)}`
+    : "";
+  const leadDeal = lead.happyHour.details
+    ? ` ${lead.happyHour.details.replace(/[.!?]+$/, "")}.`
+    : "";
+  const answer = currentOnly
+    ? `${lead.place.name} is ${nearbyOnly ? "the closest " : ""}confirmed happy hour I found ${scope}, running now${leadEnd}.${leadDeal}${candidates.length > 1 ? ` ${candidates.length - 1} more confirmed option${candidates.length === 2 ? "" : "s"} are below.` : ""}`
+    : `These are checked happy-hour schedules ${scope}. ${lead.place.name} is first${nearbyOnly ? " by distance" : ""}; its posted schedule is ${lead.happyHour.schedule}.`;
+
+  return {
+    status: "matches",
+    configured: hasKey(),
+    usedModel: false,
+    answer,
+    sources,
+    context: context.contextLabel ?? "Frederick County",
+    intent,
+    actions,
+    intelligence: {
+      tools: ["places"],
+      confidence: "high",
+      retrieval: "keyword",
+    },
   };
 }
 
@@ -248,6 +434,190 @@ export function sourceHasVerifiedOpenStatus(source: AskSource): boolean {
   return /^(?:At\b[^·]*·\s*)?(?:Open\b|Closing soon\b)/i.test(
     source.status ?? "",
   );
+}
+
+type StrictUtilityPlaceRequest = {
+  kind: "pharmacy" | "gas-station" | "atm";
+  singular: string;
+  plural: string;
+  mapQuery: string;
+};
+
+/**
+ * Daily-needs requests cannot use the general proximity fallback. A nearby
+ * restaurant is never an approximate answer to "nearest pharmacy," and a bank
+ * is not proof of a public ATM. Recognize only explicit utility language, then
+ * require exact catalog evidence below.
+ */
+function requestedStrictUtilityPlace(
+  query: string,
+): StrictUtilityPlaceRequest | null {
+  const q = query.trim();
+  const seeksPlace =
+    /\b(?:closest|nearest|near me|nearby|where|find|open(?:\s+right)?\s+now)\b/i.test(
+      q,
+    );
+  if (!seeksPlace && !/^(?:a |an |the )?(?:pharmacy|drugstore|gas station|fuel station|atm|cash machine)s?[?.!]*$/i.test(q)) {
+    return null;
+  }
+  if (/\b(?:pharmacy|pharmacies|drugstore|drug store)\b/i.test(q)) {
+    return {
+      kind: "pharmacy",
+      singular: "pharmacy",
+      plural: "pharmacies",
+      mapQuery: "pharmacy",
+    };
+  }
+  if (
+    /\b(?:gas stations?|fuel stations?)\b/i.test(q) ||
+    /\b(?:closest|nearest|find|where)\b[^?.!]{0,40}\b(?:gas|fuel)\b/i.test(q)
+  ) {
+    return {
+      kind: "gas-station",
+      singular: "gas station",
+      plural: "gas stations",
+      mapQuery: "gas station",
+    };
+  }
+  if (/\b(?:atm|atms|cash machine)s?\b/i.test(q)) {
+    return {
+      kind: "atm",
+      singular: "ATM",
+      plural: "ATMs",
+      mapQuery: "ATM",
+    };
+  }
+  return null;
+}
+
+function hasStrictUtilityEvidence(
+  place: PlaceCardData,
+  kind: StrictUtilityPlaceRequest["kind"],
+): boolean {
+  const exactFields = [
+    place.category,
+    place.primary_type,
+    ...(place.subcategories ?? []),
+    ...(place.tags ?? []),
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase().replace(/_/g, "-"));
+  if (kind === "pharmacy") {
+    return exactFields.includes("pharmacy") || exactFields.includes("drugstore");
+  }
+  if (kind === "gas-station") {
+    return exactFields.includes("gas-station") || exactFields.includes("fuel");
+  }
+  return exactFields.includes("atm");
+}
+
+function answerStrictUtilityPlaceRequest(
+  request: StrictUtilityPlaceRequest,
+  intent: AskIntent,
+  context: QualifiedSearchContext,
+  query: string,
+): AskResult {
+  const asksOpenNow =
+    intent.timeNeed === "now" ||
+    /\b(?:open now|open right now|currently open)\b/i.test(query);
+  const showDistance = canExposeDistance(context);
+  const ranked = clientPlaces()
+    .filter((place) => hasStrictUtilityEvidence(place, request.kind))
+    .filter(
+      (place) =>
+        !context.municipality ||
+        Boolean(context.origin) ||
+        place.municipality === context.municipality,
+    )
+    .map((place) => ({
+      place: context.origin
+        ? {
+            ...place,
+            distance_m: haversineMeters(context.origin, place.geom),
+          }
+        : place,
+    }))
+    .sort((a, b) => {
+      const distance =
+        (a.place.distance_m ?? Number.POSITIVE_INFINITY) -
+        (b.place.distance_m ?? Number.POSITIVE_INFINITY);
+      if (distance !== 0) return distance;
+      return a.place.name.localeCompare(b.place.name);
+    });
+  const matches = asksOpenNow
+    ? ranked.filter(({ place }) => isOpenNow(place.open_status))
+    : ranked;
+  const sources = matches.slice(0, 4).map(({ place }, index) =>
+    placeSource(
+      place,
+      index === 0 && context.origin
+        ? `Nearest cataloged ${request.singular}`
+        : `Cataloged as a ${request.singular}`,
+      null,
+      showDistance,
+    ),
+  );
+  const scope = context.origin
+    ? ` from ${rankingAnchor(context)}`
+    : context.municipality
+      ? ` in ${MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality}`
+      : " in Frederick County";
+
+  let answer: string;
+  if (sources.length > 0) {
+    const top = sources[0];
+    const distance = top.distance ? ` It is ${top.distance} away.` : "";
+    answer = asksOpenNow
+      ? `${top.name} is the closest ${request.singular} Radius can confirm open now${scope}.${distance}`
+      : `${top.name} is the nearest cataloged ${request.singular}${scope}.${distance} ${top.status === "Hours not posted" ? "Radius does not have fresh hours for it, so check before you go." : ""}`.trim();
+  } else if (asksOpenNow && ranked.length > 0) {
+    answer = `Radius has ${ranked.length} cataloged ${ranked.length === 1 ? request.singular : request.plural}${scope}, but none has fresh hours confirming it is open right now. I will not substitute an unrelated business.`;
+  } else {
+    const article = request.kind === "atm" ? "an" : "a";
+    answer = `Radius does not have ${article} ${request.singular} record with enough category evidence to answer this safely. I will not substitute a nearby ${request.kind === "atm" ? "bank" : "business"} or an unrelated place.`;
+  }
+
+  const mapHref = `/map?q=${encodeURIComponent(request.mapQuery)}`;
+  return {
+    status: sources.length > 0 ? "matches" : "empty",
+    configured: hasKey(),
+    usedModel: false,
+    answer,
+    sources,
+    context: context.origin
+      ? context.contextLabel ?? "your location"
+      : context.contextLabel ?? "Frederick County",
+    intent: {
+      ...intent,
+      kind: "place",
+      label: request.plural,
+    },
+    actions: request.kind === "pharmacy"
+      ? [
+          {
+            label: "Browse pharmacies",
+            kind: "open",
+            href: "/category/pharmacy",
+          },
+          {
+            label: "Search pharmacies on the map",
+            kind: "open",
+            href: mapHref,
+          },
+        ]
+      : [
+          {
+            label: `Search ${request.plural} on the map`,
+            kind: "open",
+            href: mapHref,
+          },
+        ],
+    intelligence: {
+      tools: ["places"],
+      confidence: "high",
+      retrieval: "keyword",
+    },
+  };
 }
 
 const AMENITY_REQUESTS: Array<{
@@ -692,6 +1062,13 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
 
 function parkingTarget(query: string): string | null {
   if (/\b(?:plan|itinerary)\b/i.test(query)) return null;
+  if (
+    /\bwhere (?:should|can) i park\s+(?:in\s+)?(?:downtown|the city)(?:\s|[?.!]|$)/i.test(
+      query,
+    )
+  ) {
+    return "";
+  }
   const direct = query.match(/\b(?:where (?:should|can) i park|parking)\s+(?:near|for|at)\s+(.+)/i)?.[1];
   if (direct) {
     const cleaned = direct.replace(/\b(?:tonight|today|tomorrow)\b.*$/i, "").replace(/[?.!]+$/, "").trim();
@@ -1002,9 +1379,9 @@ function followUps(query: string, intent: AskIntent, context: QualifiedSearchCon
   if (intent.kind === "event") {
     if (asksDeafCommunityOrCommunicationAccess(query)) {
       return [
-        { label: "Browse confirmed access", kind: "open", href: "/events?access=true" },
+        { label: "Open the access guide", kind: "open", href: "/access" },
+        { label: "Browse confirmed access", kind: "open", href: "/events?access=1" },
         { label: "This weekend", kind: "refine", query: "What Deaf-community or communication-access events are happening this weekend?" },
-        { label: "Free only", kind: "refine", query: `${query}, free only` },
       ];
     }
     return [
@@ -1030,6 +1407,35 @@ function followUps(query: string, intent: AskIntent, context: QualifiedSearchCon
 
 function asksDeafCommunityOrCommunicationAccess(query: string): boolean {
   return /\b(?:deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|American Sign Language|sign language|captioned|captions?|CART|assistive[-\s]listening|interpreter)\b/i.test(query);
+}
+
+function asksCommunicationAccessEventDiscovery(query: string): boolean {
+  return (
+    asksDeafCommunityOrCommunicationAccess(query) &&
+    /\b(?:events?|classes?|programs?|workshops?|calendar|happening|things?\s+to\s+do|today|tonight|tomorrow|this\s+week|weekend)\b/i.test(query)
+  );
+}
+
+/**
+ * A publisher sometimes represents a multi-week course as one event spanning
+ * its first and last class dates. That record is useful in the access guide,
+ * but it is not proof that someone can attend on any day inside the span.
+ * Keep it out of dated "what is happening?" answers unless individual
+ * sessions are supplied by the publisher.
+ */
+export function isLongRunningCommunicationAccessProgram(event: Event): boolean {
+  const startsAt = Date.parse(event.starts_at);
+  const endsAt = Date.parse(event.ends_at);
+  if (
+    !Number.isFinite(startsAt) ||
+    !Number.isFinite(endsAt) ||
+    endsAt - startsAt < 7 * 24 * 60 * 60 * 1_000
+  ) {
+    return false;
+  }
+  return /\b(?:class|classes|course|series|session|workshop|weeks?)\b/i.test(
+    [event.title, event.description].filter(Boolean).join(" "),
+  );
 }
 
 /** Exported so the deterministic event-topic safety gate can be tested
@@ -1507,10 +1913,22 @@ export async function askFrederick(
   const actions = followUps(q, intent, context);
   const emergency = emergencyRequestKind(q);
   if (emergency) return answerEmergencyRequest(emergency, intent, context);
+  const strictUtilityPlaceRequest = requestedStrictUtilityPlace(q);
+  if (strictUtilityPlaceRequest) {
+    return answerStrictUtilityPlaceRequest(
+      strictUtilityPlaceRequest,
+      intent,
+      context,
+      q,
+    );
+  }
   const tasteSignals = normalizeTasteSignals(options.taste);
   const parkingRequest = parkingTarget(q);
   if (parkingRequest !== null) {
     return answerParkingRequest(q, parkingRequest, intent, context);
+  }
+  if (/\bhappy hours?\b/i.test(q) && intent.kind !== "plan") {
+    return answerHappyHourRequest(q, now, intent, context);
   }
   if (/\bbrunch\b/i.test(q) && intent.kind !== "plan") {
     return answerBrunchRequest(q, intent, context);
@@ -1738,7 +2156,17 @@ export async function askFrederick(
         context.canShowDistance !== false,
       )
     : undefined;
-  const eventPool = scopedLoadedEventPool?.filter((event) => eventFitsAskIntent(event, intent, now, q) && eventMatchesTopic(event, q));
+  const communicationAccessEventDiscovery =
+    asksCommunicationAccessEventDiscovery(q);
+  const eventPool = scopedLoadedEventPool?.filter(
+    (event) =>
+      eventFitsAskIntent(event, intent, now, q) &&
+      eventMatchesTopic(event, q) &&
+      !(
+        communicationAccessEventDiscovery &&
+        isLongRunningCommunicationAccessProgram(event)
+      ),
+  );
   const retrieval = qualifiedSearch(q, 12, eventPool, context);
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
@@ -1958,8 +2386,9 @@ export async function askFrederick(
   // to keep, so a good answer rendered with ZERO source cards (measured
   // live: "what should i do tonight" named two real events, sources: 0).
   let eventCitationPool: AskSource[] = [];
-  const eventContextPool =
-    scopedLoadedEventPool && asksDeafCommunityOrCommunicationAccess(q)
+  const eventContextPool = communicationAccessEventDiscovery
+    ? eventPool
+    : scopedLoadedEventPool && asksDeafCommunityOrCommunicationAccess(q)
       ? scopedLoadedEventPool.filter((event) =>
           hasDeafCommunityOrCommunicationAccess(event),
         )
@@ -2333,7 +2762,11 @@ export async function askFrederick(
             : null,
         ].filter(Boolean).join(" ")
       : null;
-    const primaryAnswer = explicitWeatherAnswer || appointmentAnswer || deterministicAnswer({
+    const communicationAccessEmptyAnswer =
+      communicationAccessEventDiscovery && responseSources.length === 0
+        ? "I could not confirm a Deaf-community or communication-access event in that time window. Open the access guide or filtered calendar for current listings. Multi-week classes may require advance registration, so Radius does not treat them as drop-in events."
+        : null;
+    const primaryAnswer = explicitWeatherAnswer || appointmentAnswer || communicationAccessEmptyAnswer || deterministicAnswer({
         civic: civic?.label,
         department: dept?.name,
         municipal: useMunicipal
@@ -2367,7 +2800,12 @@ export async function askFrederick(
     ].filter(Boolean);
     const answer = [primaryAnswer, ...supplements].join(" ");
     const directActions = intent.kind === "event" && responseSources.length === 0
-      ? [
+      ? communicationAccessEventDiscovery
+        ? [
+            { label: "Open the access guide", kind: "open" as const, href: "/access" },
+            { label: "Browse confirmed access", kind: "open" as const, href: "/events?access=1" },
+          ]
+        : [
           { label: "Open the full calendar", kind: "open" as const, href: "/events" },
           { label: "Try this weekend", kind: "refine" as const, query: "What events are happening this weekend?" },
         ]

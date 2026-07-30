@@ -239,7 +239,7 @@ export function GuideContents({
 
         <Row
           title="The beer guide"
-          description="Every brewery is here, with its tap list and the day's hours."
+          description="The guide brings together Frederick County breweries, signature beers, posted hours, and source-backed taproom events."
           figures={<MonoFigure>{BREWERIES.length} BREWERIES</MonoFigure>}
         />
 

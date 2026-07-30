@@ -351,6 +351,9 @@ const nextConfig: NextConfig = {
       // workspace. Keep bookmarks and indexed links useful without restoring
       // a redundant fifth bottom-navigation tab.
       { source: "/guide", destination: "/ask", permanent: true },
+      // "Tools" is a natural typed/shared alias for the intent-led Compass
+      // workspace. Keep old links useful instead of dropping people at a 404.
+      { source: "/tools", destination: "/compass", permanent: true },
       // Submit/business hub paths 404'd (only the leaf routes existed),
       // which reads as broken to community submitters + business owners
       // (external audit ship-blocker #2). Point the bare paths at the

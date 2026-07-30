@@ -95,6 +95,7 @@ import StopArrivalsPopup, {
 // which is unique to Frederick Radius — no other map shows where
 // each photo was taken in the county.
 import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
+import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -773,6 +774,7 @@ export default function AppMap({
     return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
   });
   const [deepLinkedAerial] = useState<AerialPhoto | null>(() => {
+    if (compactSubjectMap) return null;
     if (typeof window === "undefined") return null;
     const src = new URLSearchParams(window.location.search).get("aerial");
     return src ? AERIAL_PHOTOS.find((photo) => photo.src === src) ?? null : null;
@@ -1047,38 +1049,63 @@ export default function AppMap({
   }, [sharedGeolocationState]);
   const [showCivic, setShowCivic] = useState(
     () =>
-      deepLinkLayers.has("roads") ||
-      deepLinkLayers.has("civic") ||
-      (layerPrefs.civic ?? false),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("roads") ||
+          deepLinkLayers.has("civic") ||
+          (layerPrefs.civic ?? false),
+      ),
   );
   const [showTrails, setShowTrails] = useState(
     () =>
-      deepLinkLayers.has("trails") ||
-      (layerPrefs.trails ?? trailsLayerDefault),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("trails") ||
+          (layerPrefs.trails ?? trailsLayerDefault),
+      ),
   );
   const [showTransit, setShowTransit] = useState(
     // Transit is a deliberate map layer, never cold-open furniture. Deep-link
     // mode defaults can still request it; ordinary county browse stays quiet.
     () =>
-      deepLinkLayers.has("transit") ||
-      (layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit")),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("transit") ||
+          (layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit")),
+      ),
   );
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
   // one opens a Popup with the photo thumbnail + season + date.
-  const [showAerial, setShowAerial] = useState(() => deepLinkLayers.has("aerial") || Boolean(deepLinkedAerial) || (layerPrefs.aerial ?? false));
+  const [showAerial, setShowAerial] = useState(() =>
+    shouldInitializeReferenceLayer(
+      compactSubjectMap,
+      deepLinkLayers.has("aerial") ||
+        Boolean(deepLinkedAerial) ||
+        (layerPrefs.aerial ?? false),
+    ),
+  );
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(deepLinkedAerial);
   // Historic cemeteries — opt-in heritage overlay (county GIS). OFF by
   // default: 250+ pins of local history is a deliberate interest, not
   // part of the clean cold open. Tapping one opens a small popup.
-  const [showCemeteries, setShowCemeteries] = useState(() => deepLinkLayers.has("cemeteries") || (layerPrefs.cemeteries ?? false));
+  const [showCemeteries, setShowCemeteries] = useState(() =>
+    shouldInitializeReferenceLayer(
+      compactSubjectMap,
+      deepLinkLayers.has("cemeteries") || (layerPrefs.cemeteries ?? false),
+    ),
+  );
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
   // Downtown parking garages — opt-in Parking layer, OFF by default (five
   // garage markers tinted by live availability). Tapping one raises the
   // parking peek; live numbers hydrate from the server-fetched snapshot when
   // the feed is configured, otherwise the markers stay neutral (no fake count).
   const [showParking, setShowParking] = useState(
-    () => deepLinkLayers.has("parking") || (layerPrefs.parking ?? false),
+    () =>
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("parking") || (layerPrefs.parking ?? false),
+      ),
   );
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
   const [foodTruckPeek, setFoodTruckPeek] = useState<FoodTruckMapPin | null>(null);
@@ -1143,13 +1170,20 @@ export default function AppMap({
   // pins. OFF by default; the tray's toggle stamps the newest frame's time
   // so nobody mistakes minutes-old radar for real time.
   const [showRadar, setShowRadar] = useState(
-    () => deepLinkLayers.has("radar") || (layerPrefs.radar ?? false),
+    () =>
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("radar") || (layerPrefs.radar ?? false),
+      ),
   );
   const [showTraffic, setShowTraffic] = useState(
     () =>
-      deepLinkLayers.has("roads") ||
-      deepLinkLayers.has("traffic") ||
-      (layerPrefs.traffic ?? false),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("roads") ||
+          deepLinkLayers.has("traffic") ||
+          (layerPrefs.traffic ?? false),
+      ),
   );
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
@@ -1160,9 +1194,12 @@ export default function AppMap({
   // OFF by default. Empty until the FredScanner feed is configured.
   const [showIncidents, setShowIncidents] = useState(
     () =>
-      deepLinkLayers.has("roads") ||
-      deepLinkLayers.has("incidents") ||
-      (layerPrefs.incidents ?? false),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("roads") ||
+          deepLinkLayers.has("incidents") ||
+          (layerPrefs.incidents ?? false),
+      ),
   );
   const [incidentHealth, setIncidentHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "FrederickScanner", disabled: true }),
@@ -1176,14 +1213,20 @@ export default function AppMap({
   // the browser never receives an exact public-safety aircraft position.
   const [showRotorcraft, setShowRotorcraft] = useState(
     () =>
-      deepLinkLayers.has("air") ||
-      (layerPrefs.aviation ?? false),
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("air") || (layerPrefs.aviation ?? false),
+      ),
   );
   const [rotorcraftStatus, setRotorcraftStatus] =
     useState<RotorcraftLayerStatus | null>(null);
   // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
   const [showCameras, setShowCameras] = useState(
-    () => deepLinkLayers.has("cameras") || (layerPrefs.cameras ?? false),
+    () =>
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("cameras") || (layerPrefs.cameras ?? false),
+      ),
   );
   const [cameraHealth, setCameraHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "Maryland CHART", disabled: true }),

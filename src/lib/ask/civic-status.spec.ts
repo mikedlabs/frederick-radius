@@ -290,6 +290,127 @@ describe("civic Ask grounded results", () => {
     expect(result.sources[1]?.name).toContain("US 15");
   });
 
+  it("does not present current countywide incidents as a downtown forecast", () => {
+    const result = roadStatusAskResult({
+      available: true,
+      data: [{
+        id: "us-15-current",
+        type: "Incident",
+        description: "Crash on US 15",
+        county: "Frederick",
+        road: "US 15",
+        direction: "SB",
+        location: "US 15 near Rosemont Avenue",
+        lng: -77.421,
+        lat: 39.426,
+        started_at: "2026-07-28T15:45:00.000Z",
+        severity: "High",
+        lanes_affected: "Right lane blocked",
+      }],
+    }, {
+      query: "Are there road closures downtown tomorrow?",
+      label: "Near you",
+      origin: { lat: 39.414, lng: -77.411 },
+      canShowDistance: true,
+    }, ROAD_NOW);
+
+    expect(result.status).toBe("empty");
+    expect(result.answer).toContain(
+      "current and countywide",
+    );
+    expect(result.answer).toContain(
+      "do not provide a verified forecast of downtown closures",
+    );
+    expect(result.answer).toContain(
+      "will not present today’s countywide incidents as a match",
+    );
+    expect(result.sources.some(
+      (source) => source.slug === "mdot-chart-us-15-current",
+    )).toBe(false);
+    expect(result.sources.map((source) => source.slug)).toEqual([
+      "city-frederick-road-closures",
+      "city-frederick-alerts",
+    ]);
+    expect(result.actions?.[0]).toMatchObject({
+      label: "Check City road closures",
+      kind: "open",
+    });
+  });
+
+  it("does not present incidents elsewhere in the county as downtown matches", () => {
+    const result = roadStatusAskResult({
+      available: true,
+      data: [{
+        id: "i-70-current",
+        type: "Incident",
+        description: "Work zone on I-70",
+        county: "Frederick",
+        road: "I-70",
+        direction: "EB",
+        location: "I-70 near MD 144",
+        lng: -77.35,
+        lat: 39.39,
+        started_at: "2026-07-28T15:30:00.000Z",
+        severity: "Medium",
+        lanes_affected: "Shoulder closed",
+      }],
+    }, {
+      query: "Are any roads closed downtown right now?",
+      label: "Near you",
+    }, ROAD_NOW);
+
+    expect(result.status).toBe("empty");
+    expect(result.answer).toContain(
+      "do not provide a complete view of downtown street closures",
+    );
+    expect(result.answer).toContain(
+      "will not present incidents elsewhere in the county as downtown matches",
+    );
+    expect(result.sources.some(
+      (source) => source.slug === "mdot-chart-i-70-current",
+    )).toBe(false);
+    expect(result.sources[0]).toMatchObject({
+      slug: "city-frederick-road-closures",
+      confidence: "high",
+    });
+  });
+
+  it("does not present current incidents as a future countywide match", () => {
+    const result = roadStatusAskResult({
+      available: true,
+      data: [{
+        id: "i-70-current",
+        type: "Incident",
+        description: "Crash on I-70",
+        county: "Frederick",
+        road: "I-70",
+        direction: "WB",
+        location: "I-70 near MD 85",
+        lng: -77.42,
+        lat: 39.39,
+        started_at: "2026-07-28T15:30:00.000Z",
+        severity: "High",
+        lanes_affected: "Right lane blocked",
+      }],
+    }, {
+      query: "Will I-70 be open tomorrow?",
+      label: "Frederick County",
+    }, ROAD_NOW);
+
+    expect(result.status).toBe("empty");
+    expect(result.answer).toContain(
+      "will not present today’s incidents as a future match",
+    );
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0]?.slug).toBe(
+      "frederick-county-road-closures",
+    );
+    expect(result.actions?.[0]).toMatchObject({
+      label: "Check County road closures",
+      kind: "open",
+    });
+  });
+
   it("does not substitute another road when a named route has no listed incident", () => {
     const result = roadStatusAskResult({
       available: true,

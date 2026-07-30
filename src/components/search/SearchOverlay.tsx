@@ -842,7 +842,7 @@ export default function SearchOverlay({
               touch phone none of these keys exist, so the row hides on
               coarse-pointer devices and the match count stands alone
               (fresh-eyes audit, Jul 2026). */}
-          <div className="hidden items-center gap-3 [@media(hover:hover)_and_(pointer:fine)]:flex">
+          <div className="hidden items-center gap-3 [@media(min-width:768px)_and_(hover:hover)_and_(pointer:fine)]:flex">
             <KbdHint label="tab" desc="move" />
             <KbdHint label="↵" desc="open" />
             <KbdHint label="esc" desc="close" />

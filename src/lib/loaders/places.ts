@@ -495,7 +495,7 @@ if (typeof window === "undefined") {
       .map((p) => p.slug)
       .join(", ");
     console.warn(
-      `[placement] places: ${PLACEMENT_REVIEW_ROWS.length} row(s) excluded and retained for admin review (outside county outline + 1.5km buffer, or missing coord). Examples: ${sample}`,
+      `[placement] places: ${PLACEMENT_REVIEW_ROWS.length} row(s) excluded and retained for admin review (outside county outline and reviewed Mount Airy extent, or missing coord). Examples: ${sample}`,
     );
   }
 }
