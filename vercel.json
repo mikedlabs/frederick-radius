@@ -74,7 +74,7 @@
     },
     {
       "path": "/api/cron/radius-search",
-      "schedule": "30 8 * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/cron/spatial-places",
