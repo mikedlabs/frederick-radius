@@ -16,9 +16,15 @@ export const MAPBOX_SERVER_TOKEN =
  * Forward geocoding is deliberately opt-in. It is enrichment, not a critical
  * request-path dependency, and keeping the switch fail-closed gives production
  * an immediate circuit breaker for cost anomalies.
+ *
+ * Required browser checks run against deterministic local fixtures. They must
+ * not fan out dozens of paid third-party geocodes during a cold event assembly;
+ * the geocoder has its own contract tests, while the browser gate verifies that
+ * core surfaces remain usable when dependencies fail.
  */
 export const MAPBOX_GEOCODING_ENABLED =
-  process.env.MAPBOX_GEOCODING_ENABLED === "1";
+  process.env.MAPBOX_GEOCODING_ENABLED === "1" &&
+  process.env.CI !== "true";
 
 /**
  * A restricted publishable fallback requires an allowed Referer even when the
