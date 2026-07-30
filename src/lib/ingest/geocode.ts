@@ -1,26 +1,14 @@
-/**
- * Geocode events with an address but no coords yet. New addresses are sent to
- * Google once, then served from the verified venue cache. Published event pins
- * are reconciled against that cache on later passes so legacy/unprovenanced
- * coordinates cannot survive indefinitely.
- *
- * Spec said Mapbox; we don't have Mapbox — using Google Geocoding API on
- * the existing GOOGLE_PLACES_API_KEY (enable "Geocoding API" in GCP).
- *
- * Venue cache: most events repeat at the same place (city hall, library
- * branches, parks). We check `venue_geocache` by normalized address first
- * and seed it only from explicitly verified catalog places.
- */
 import type { Sql } from "postgres";
 import { normalizeForCache } from "./location";
 import { PLACES } from "@/data/places";
 import { isValidCoord, type LngLat } from "@/lib/geo";
 
 const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
-const RATE_DELAY_MS = 120; // ~500/min, well under Google limits
+const RATE_DELAY_MS = 120;
 const GEOCODE_TIMEOUT_MS = 8_000;
 const GEOCODE_CALL_BUDGET_MS = GEOCODE_TIMEOUT_MS + RATE_DELAY_MS + 500;
 const GEOCODE_ROUTE_RESERVE_MS = 5_000;
+
 export const VERIFIED_GOOGLE_CACHE_SOURCE = "google-verified-v1";
 export const VERIFIED_CATALOG_CACHE_SOURCE = "catalog-verified-v1";
 
@@ -34,11 +22,8 @@ export type GeocodeStats = {
   fromApi: number;
   failed: number;
   seeded: number;
-  /** Published pins whose address is anchored to a current trusted cache row. */
   revalidated: number;
-  /** Trusted cache coordinates that corrected a published event pin. */
   repaired: number;
-  /** Published pins cleared because no current trusted provenance exists. */
   cleared: number;
   status: "ok" | "degraded";
   degradedReason?: GeocodeDegradedReason;
@@ -47,18 +32,9 @@ export type GeocodeStats = {
 };
 
 export type GeocodePendingOptions = {
-  /**
-   * Absolute route deadline. The worker refuses to begin a Google request
-   * unless a full timeout window plus a small DB/finalization reserve remains.
-   */
   deadlineAt?: number;
 };
 
-/**
- * Convert a route's remaining wall-clock budget into a worst-case-safe batch
- * size. This prevents a 400/800-row tail from starting after the feed ingest
- * has already consumed most of a Vercel function's lifetime.
- */
 export function geocodeLimitForRemaining(
   remainingMs: number,
   requestedLimit: number,
@@ -67,7 +43,10 @@ export function geocodeLimitForRemaining(
   const usableMs = Math.max(0, remainingMs - GEOCODE_ROUTE_RESERVE_MS);
   return Math.max(
     0,
-    Math.min(Math.floor(requestedLimit), Math.floor(usableMs / GEOCODE_CALL_BUDGET_MS)),
+    Math.min(
+      Math.floor(requestedLimit),
+      Math.floor(usableMs / GEOCODE_CALL_BUDGET_MS),
+    ),
   );
 }
 
@@ -113,12 +92,6 @@ export type GoogleGeocodeOutcome =
     }
   | { kind: "disabled" };
 
-/**
- * Address-level results are useful even when Google interpolates the street
- * number. Venue results need to remain valid too: parks, fairgrounds, schools,
- * and named businesses commonly arrive as a premise / establishment /
- * point_of_interest with GEOMETRIC_CENTER rather than street_address.
- */
 const ADDRESS_RESULT_TYPES = new Set([
   "street_address",
   "street_number",
@@ -166,21 +139,6 @@ function hasUsableResultType(types: string[]): boolean {
   );
 }
 
-/**
- * Trust boundary for Google Geocoding responses.
- *
- * A result is publishable only when it is:
- *   - a complete match;
- *   - address- or venue-shaped (never a town, ZIP, county, or state centroid);
- *   - precise enough to place a pin; and
- *   - inside the real Frederick County outline plus the documented municipal
- *     straddle allowance.
- *
- * We may skip an area-level or imprecise suggestion to reach the first usable
- * address/venue result. Once a result has both a usable type and precision,
- * it is authoritative for this response: an out-of-county result is rejected
- * rather than fishing later results for an in-county alternative.
- */
 export function parseGoogleGeocodeResponse(json: unknown): GoogleGeocodeOutcome {
   const payload = json as GoogleGeocodeResponse | null;
   if (!payload || typeof payload.status !== "string") {
@@ -190,22 +148,22 @@ export function parseGoogleGeocodeResponse(json: unknown): GoogleGeocodeOutcome 
     return { kind: "reject", reason: "zero-results" };
   }
   if (payload.status !== "OK") {
-    const statusReason: GoogleGeocodeSystemReason =
-      payload.status === "OVER_QUERY_LIMIT" || payload.status === "OVER_DAILY_LIMIT"
+    const reason: GoogleGeocodeSystemReason =
+      payload.status === "OVER_QUERY_LIMIT" ||
+      payload.status === "OVER_DAILY_LIMIT"
         ? "quota"
         : payload.status === "REQUEST_DENIED"
           ? "auth"
           : payload.status === "INVALID_REQUEST"
             ? "invalid-request"
             : "upstream";
-    return { kind: "system", reason: statusReason, status: payload.status };
+    return { kind: "system", reason, status: payload.status };
   }
   if (!Array.isArray(payload.results)) {
     return { kind: "system", reason: "malformed-response" };
   }
 
   let sawUsableType = false;
-
   for (const raw of payload.results) {
     const result = raw as GoogleGeocodeResult;
     const types = Array.isArray(result.types)
@@ -221,7 +179,6 @@ export function parseGoogleGeocodeResponse(json: unknown): GoogleGeocodeOutcome 
     ) {
       continue;
     }
-
     if (result.partial_match === true) {
       return { kind: "reject", reason: "partial-match" };
     }
@@ -250,12 +207,6 @@ type VenueCacheEntry = {
   source: string;
 };
 
-/**
- * Only explicitly verified catalog coordinates and Google rows written
- * through the validator above may leave the cache. Legacy `curated` and
- * `google` rows predate these trust boundaries, so they are deliberately
- * revalidated/replaced without a schema migration.
- */
 export function trustedCachedCoordinate(entry: VenueCacheEntry): LngLat | null {
   if (
     entry.source !== VERIFIED_CATALOG_CACHE_SOURCE &&
@@ -267,41 +218,41 @@ export function trustedCachedCoordinate(entry: VenueCacheEntry): LngLat | null {
   return isValidCoord(coordinate) ? coordinate : null;
 }
 
-/**
- * Prime venue_geocache from genuinely verified catalog rows in one statement.
- * Google-verified entries always win: the catalog seed may repair legacy cache
- * provenance, but it must never downgrade a response that passed the current
- * Google precision/boundary validator.
- */
 export async function seedVenueCache(sql: Sql): Promise<number> {
   const rowsByAddress = new Map(
-    PLACES
-      .filter((p) => p.is_verified && p.address && isValidCoord(p.geom))
-      .map((p) => ({
-        norm: normalizeForCache(`${p.address}, ${p.city}, MD ${p.postal_code ?? ""}`),
-        lat: p.geom.lat,
-        lng: p.geom.lng,
+    PLACES.filter((place) =>
+      Boolean(place.is_verified && place.address && isValidCoord(place.geom)),
+    )
+      .map((place) => ({
+        norm: normalizeForCache(
+          `${place.address}, ${place.city}, MD ${place.postal_code ?? ""}`,
+        ),
+        lat: place.geom.lat,
+        lng: place.geom.lng,
       }))
-      .filter((r) => r.norm.length > 4)
-      .map((r) => [r.norm, r] as const),
+      .filter((row) => row.norm.length > 4)
+      .map((row) => [row.norm, row] as const),
   );
   const rows = [...rowsByAddress.values()];
   if (rows.length === 0) return 0;
 
+  const values = sql(
+    rows.map((row) => ({
+      norm_address: row.norm,
+      lat: row.lat,
+      lng: row.lng,
+      source: VERIFIED_CATALOG_CACHE_SOURCE,
+    })),
+    "norm_address",
+    "lat",
+    "lng",
+    "source",
+  );
+
+  // postgres.js' object helper emits the column list itself. Adding a second
+  // explicit `(norm_address, ...)` list makes invalid SQL before the values.
   const result = await sql`
-    insert into venue_geocache (norm_address, lat, lng, source)
-    ${sql(
-      rows.map((row) => ({
-        norm_address: row.norm,
-        lat: row.lat,
-        lng: row.lng,
-        source: VERIFIED_CATALOG_CACHE_SOURCE,
-      })),
-      "norm_address",
-      "lat",
-      "lng",
-      "source",
-    )}
+    insert into venue_geocache ${values}
     on conflict (norm_address) do update
     set lat = excluded.lat,
         lng = excluded.lng,
@@ -318,24 +269,6 @@ type PublishedGeocodeReconciliation = {
   cleared: number | string;
 };
 
-/**
- * Reconcile every currently publishable event pin against address-level cache
- * provenance before selecting new work.
- *
- * `ingested_events` predates provenance on each event, so there is no reliable
- * timestamp or flag that separates legacy pins from pins created by the
- * current validator. The cache does carry provenance. A single set-based
- * reconciliation therefore:
- *
- *   - keeps and counts pins backed by a current verified cache source;
- *   - repairs coordinates that drift from that trusted row; and
- *   - clears every other current pin so an unverified legacy result cannot
- *     remain public while it waits for a fresh geocode.
- *
- * The address expression mirrors normalizeForCache. This is intentionally run
- * on every pass: after the first cleanup it is a read plus writes only when
- * provenance or coordinates no longer agree.
- */
 export async function reconcilePublishedGeocodes(
   sql: Sql,
 ): Promise<{ revalidated: number; repaired: number; cleared: number }> {
@@ -396,7 +329,9 @@ export async function reconcilePublishedGeocodes(
   };
 }
 
-export async function googleGeocode(address: string): Promise<GoogleGeocodeOutcome> {
+export async function googleGeocode(
+  address: string,
+): Promise<GoogleGeocodeOutcome> {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) return { kind: "disabled" };
 
@@ -407,37 +342,38 @@ export async function googleGeocode(address: string): Promise<GoogleGeocodeOutco
       ? address
       : `${address}, Maryland`;
     const url = `${GEOCODE_URL}?address=${encodeURIComponent(query)}&region=us&key=${key}`;
-    const res = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal });
 
     let parsed: GoogleGeocodeOutcome;
     try {
-      parsed = parseGoogleGeocodeResponse(await res.json());
+      parsed = parseGoogleGeocodeResponse(await response.json());
     } catch {
       return {
         kind: "system",
         reason: "malformed-response",
-        status: res.status,
+        status: response.status,
       };
     }
 
-    // Google is migrating some API statuses from HTTP 200 to 4xx/5xx. A
-    // 404 carrying ZERO_RESULTS is still a definitive address miss; every
-    // other non-OK transport status is infrastructure, quota, or auth.
-    if (!res.ok) {
-      if (res.status === 404 && parsed.kind === "reject" && parsed.reason === "zero-results") {
+    if (!response.ok) {
+      if (
+        response.status === 404 &&
+        parsed.kind === "reject" &&
+        parsed.reason === "zero-results"
+      ) {
         return parsed;
       }
       return {
         kind: "system",
         reason:
-          res.status === 429
+          response.status === 429
             ? "quota"
-            : res.status === 401 || res.status === 403
+            : response.status === 401 || response.status === 403
               ? "auth"
-              : res.status >= 500
+              : response.status >= 500
                 ? "upstream"
                 : "http",
-        status: res.status,
+        status: response.status,
       };
     }
     return parsed;
@@ -472,6 +408,7 @@ export async function geocodePending(
     degradedReason: googleEnabled ? undefined : "disabled",
     budgetStopped: 0,
   };
+
   stats.seeded = await seedVenueCache(sql);
   const reconciliation = await reconcilePublishedGeocodes(sql);
   stats.revalidated = reconciliation.revalidated;
@@ -510,25 +447,25 @@ export async function geocodePending(
     limit ${limit}
   `;
 
-  // A batch can contain several occurrences at one venue. Remember the
-  // address outcome so a definitive reject costs one API call, not one call
-  // per occurrence selected before the first review row is inserted.
   const outcomeByAddress = new Map<string, GoogleGeocodeOutcome>();
 
   for (let index = 0; index < pending.length; index++) {
-    const ev = pending[index];
-    const norm = normalizeForCache(ev.address);
+    const event = pending[index];
+    const norm = normalizeForCache(event.address);
     let outcome = outcomeByAddress.get(norm);
     let calledGoogle = false;
 
     if (!outcome) {
-      const cached = await sql<{ lat: number; lng: number; source: string }[]>`
+      const cached = await sql<
+        Array<{ lat: number | string; lng: number | string; source: string }>
+      >`
         select lat, lng, source from venue_geocache
         where norm_address = ${norm}
         limit 1
       `;
       const cachedCoordinate =
         cached.length > 0 ? trustedCachedCoordinate(cached[0]) : null;
+
       if (cachedCoordinate) {
         outcome = { kind: "match", coordinate: cachedCoordinate };
         stats.fromCache++;
@@ -543,13 +480,19 @@ export async function geocodePending(
           stats.budgetStopped = pending.length - index;
           break;
         }
+
         calledGoogle = true;
-        outcome = await googleGeocode(ev.address);
+        outcome = await googleGeocode(event.address);
         if (outcome.kind === "match") {
-          const coords = outcome.coordinate;
+          const coordinates = outcome.coordinate;
           await sql`
             insert into venue_geocache (norm_address, lat, lng, source)
-            values (${norm}, ${coords.lat}, ${coords.lng}, ${VERIFIED_GOOGLE_CACHE_SOURCE})
+            values (
+              ${norm},
+              ${coordinates.lat},
+              ${coordinates.lng},
+              ${VERIFIED_GOOGLE_CACHE_SOURCE}
+            )
             on conflict (norm_address) do update
             set lat = excluded.lat,
                 lng = excluded.lng,
@@ -563,9 +506,6 @@ export async function geocodePending(
     }
 
     if (outcome.kind === "system") {
-      // A quota/auth/upstream/network problem affects the batch, not the
-      // address. Stop immediately so one outage cannot fan out into hundreds
-      // of calls or pollute the human review queue.
       stats.failed++;
       stats.status = "degraded";
       stats.degradedReason = outcome.reason;
@@ -585,7 +525,7 @@ export async function geocodePending(
       await sql`
         insert into unparseable_locations
           (source_domain, source_uid, raw_location)
-        values (${ev.source_domain}, ${ev.source_uid}, ${ev.address})
+        values (${event.source_domain}, ${event.source_uid}, ${event.address})
         on conflict (source_domain, source_uid) do update
         set raw_location = excluded.raw_location,
             seen_at = now()
@@ -596,21 +536,20 @@ export async function geocodePending(
       continue;
     }
 
-    const coords = outcome.coordinate;
+    const coordinates = outcome.coordinate;
     await sql`
       update ingested_events
-      set lat = ${coords.lat}, lng = ${coords.lng}, geocoded_at = now()
-      where id = ${ev.id}
+      set lat = ${coordinates.lat},
+          lng = ${coordinates.lng},
+          geocoded_at = now()
+      where id = ${event.id}
     `;
 
-    // Only a source event whose address changed can carry a stale review row
-    // into a successful attempt. Routine successes avoid an unconditional
-    // delete query.
-    if (ev.has_stale_review) {
+    if (event.has_stale_review) {
       await sql`
         delete from unparseable_locations
-        where source_domain = ${ev.source_domain}
-          and source_uid = ${ev.source_uid}
+        where source_domain = ${event.source_domain}
+          and source_uid = ${event.source_uid}
       `;
     }
 
@@ -618,5 +557,6 @@ export async function geocodePending(
       await new Promise((resolve) => setTimeout(resolve, RATE_DELAY_MS));
     }
   }
+
   return stats;
 }
