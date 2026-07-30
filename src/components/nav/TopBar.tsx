@@ -41,6 +41,12 @@ export function shouldShowGlobalMobileSearch(pathname: string): boolean {
   return !pageOwnsPrimarySearch(pathname);
 }
 
+export function shouldShowGlobalLocation(pathname: string): boolean {
+  // Ask owns its scope inside the composer. A second location control in the
+  // persistent header showed two competing answers to "where am I looking?"
+  return !pathname.startsWith("/ask");
+}
+
 export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
@@ -339,7 +345,7 @@ export default function TopBar() {
               overflow button. Labels appear when the header has room; both
               destinations retain full touch targets and accessible names on
               narrow phones. */}
-          <LocationChip />
+          {shouldShowGlobalLocation(pathname) ? <LocationChip /> : null}
 
           {/* Pulse stays named on larger screens. On a phone it appears only
               when active, unavailable, or already open, so safety never gets

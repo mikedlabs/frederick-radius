@@ -9,6 +9,8 @@ describe("Today Ask Radius launcher", () => {
 
     expect(html).toContain('action="/ask"');
     expect(html).toContain('name="q"');
+    expect(html).toContain("data-ask-composer");
+    expect(html).toContain("data-ask-composer-mark");
     expect(html).not.toContain("/api/ask");
   });
 
@@ -17,6 +19,6 @@ describe("Today Ask Radius launcher", () => {
 
     expect(html).toContain('data-surface-row="ask"');
     expect(html).not.toContain('class="mt-3 scroll-mt-24"');
-    expect(html).toContain("inset 3px 0 0 var(--app-brand)");
+    expect(html).toContain("border-b py-2");
   });
 });

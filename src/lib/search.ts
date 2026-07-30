@@ -45,7 +45,7 @@ export type SearchHit =
 const STOP = new Set([
   "the", "a", "an", "in", "of", "and", "or", "to", "at", "for", "with", "on", "is", "are", "be",
   "me", "my", "we", "you", "your", "i'm", "im",
-  "need", "want", "wanna", "looking", "look", "find", "show", "get", "give",
+  "need", "want", "wanna", "looking", "look", "find", "show", "get", "give", "browse", "browsing",
   "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
   // Time and preference language constrains the decision but is not evidence
   // that a place satisfies the requested thing. Keeping "tonight" as a

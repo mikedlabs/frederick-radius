@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  ArrowUp,
   Check,
   ChevronDown,
   Clock3,
@@ -12,14 +11,26 @@ import {
   LocateFixed,
   Mail,
   MapPin,
-  MessageCircleQuestion,
   Navigation,
   Phone,
-  Search,
   Share2,
   Star,
+  X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
+import {
+  ASK_COMPOSER_INPUT_CLASS,
+  AskComposerFrame,
+  AskComposerMark,
+  AskComposerSubmit,
+} from "@/components/ask/AskComposer";
+import Sheet from "@/components/ui/Sheet";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import { answerCanLocalize } from "@/lib/ask/localize";
@@ -32,7 +43,7 @@ import type {
   AskSource,
 } from "@/lib/ask/answer";
 import { haptic } from "@/lib/haptics";
-import { getInterests } from "@/lib/personalize";
+import { getHomeMuni, getInterests } from "@/lib/personalize";
 import {
   getScope,
   parseScope,
@@ -87,11 +98,11 @@ const QUICK_ASKS = [
 const WORKSPACE_ASKS = [
   {
     label: "Dinner tonight",
-    query: "Where should I eat in Frederick County tonight?",
+    query: "Where should I eat tonight?",
   },
   {
     label: "What is on tonight?",
-    query: "What is worth doing in Frederick County today?",
+    query: "What is worth doing tonight?",
   },
   {
     label: "Find a restroom",
@@ -213,7 +224,7 @@ export function queryNeedsNearbyContext(query: string): boolean {
 const LOCAL_DISCOVERY =
   /\b(?:pizza|tacos?|taqueria|sushi|ramen|pho|burgers?|sandwich(?:es)?|bbq|barbecue|wings?|coffee|espresso|latte|cafe|café|brunch|breakfast|lunch|dinner|bakery|bagels?|donuts?|ice cream|gelato|dessert|beer|brewery|breweries|taproom|bars?|cocktails?|wine|winery|cidery|distillery|pub|gastropub|restaurants?|dining|parks?|trails?|hikes?|playground|gym|yoga|museum|thrift|bookstore|bikes?|bicycles?|cycling|ice rink|bowling|arcade|barber|salons?)\b/i;
 const LOCAL_PLACE_REQUEST =
-  /\b(?:where\s+(?:can|could|should|do)\s+(?:i|we|you)\s+(?:find|get|rent|buy|borrow|visit|go|grab|use|charge|park|pick\s+up)|find\s+me\s+(?:a|an|some))\b/i;
+  /\b(?:where\s+(?:can|could|should|do)\s+(?:i|we|you)\s+(?:find|get|eat|rent|buy|borrow|visit|go|grab|use|charge|park|pick\s+up)|find\s+me\s+(?:a|an|some))\b/i;
 const GENERAL_INFORMATION_MARKERS =
   /\b(?:information|info|instructions?|requirements?|applications?|forms?|websites?|online|rules?|polic(?:y|ies)|laws?|data|statistics?|records?|documents?|budgets?|schedules?)\b/i;
 const NON_LOCAL_MARKERS =
@@ -287,24 +298,55 @@ export function nearbyQueryNeedsAreaChoice(
 function activeContextLabel(
   scope: Scope | null,
   hasDevicePosition: boolean,
+  homeScope: Scope | null = null,
 ): string {
   if (scope === "nearme" && hasDevicePosition) return "Near your location";
   if (scope === "nearme") return "Whole county";
   if (scope) return scopeLabel(scope);
-  return hasDevicePosition ? "Near your location" : "Frederick County";
+  if (hasDevicePosition) return "Near your location";
+  if (homeScope) return `Ranked from ${scopeLabel(homeScope)}`;
+  return "Frederick County";
+}
+
+function compactContextLabel(label: string): string {
+  if (label === "Frederick County" || label === "Whole county") return "County";
+  if (label === "Near your location") return "Near me";
+  if (label.startsWith("Ranked from ")) {
+    return `Home · ${label.slice("Ranked from ".length).replace(/ City$/, "")}`;
+  }
+  return label.replace(/ City$/, "");
 }
 
 function requestScope(
   query: string,
   selectedScope: Scope | null,
   hasDevicePosition: boolean,
-): Scope {
+): Scope | null {
   const safeSelectedScope =
     selectedScope === "nearme" && !hasDevicePosition ? null : selectedScope;
   return (
     explicitAreaInQuery(query) ??
     safeSelectedScope ??
-    (hasDevicePosition ? "nearme" : "county")
+    (hasDevicePosition ? "nearme" : null)
+  );
+}
+
+function storedAskScope(): Scope | null {
+  // Home is a ranking fallback, not an explicit browsing filter. Converting
+  // it to town:* hard-filtered answers to the saved town and could override a
+  // fresh device fix when someone was elsewhere in the county.
+  return getScope();
+}
+
+function askContextKey(
+  scope: Scope | null,
+  fallbackHomeScope: Scope | null,
+): string {
+  return (
+    scope ??
+    (fallbackHomeScope
+      ? `home:${scopeTownSlug(fallbackHomeScope)}`
+      : "auto")
   );
 }
 
@@ -799,6 +841,8 @@ type AreaChooserProps = {
   hasDevicePosition: boolean;
   onUseLocation: () => void;
   onChooseScope: (scope: Scope) => void;
+  onClose: () => void;
+  variant?: "inline" | "sheet";
 };
 
 function AreaChooser({
@@ -808,6 +852,8 @@ function AreaChooser({
   hasDevicePosition,
   onUseLocation,
   onChooseScope,
+  onClose,
+  variant = "inline",
 }: AreaChooserProps) {
   const selectedTown = scopeTownSlug(currentScope) ?? "";
   const locationFailed =
@@ -820,29 +866,59 @@ function AreaChooser({
       ref={containerRef}
       id="ask-area-chooser"
       role="group"
-      aria-labelledby="ask-area-heading"
+      aria-labelledby={variant === "inline" ? "ask-area-heading" : undefined}
+      aria-label={variant === "sheet" ? "Search area options" : undefined}
       tabIndex={-1}
-      className="mt-2 rounded-[18px] border p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
-        boxShadow: "var(--app-elev-1)",
+      onKeyDown={(event) => {
+        if (variant === "sheet") return;
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        onClose();
       }}
+      className={
+        variant === "sheet"
+          ? "outline-none"
+          : "mt-2 rounded-[18px] border p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+      }
+      style={
+        variant === "sheet"
+          ? undefined
+          : {
+              borderColor: "var(--app-border)",
+              background: "var(--app-bg-elevated-solid)",
+              boxShadow: "var(--app-elev-1)",
+            }
+      }
     >
-      <p
-        id="ask-area-heading"
-        className="text-[13px] font-semibold"
-        style={{ color: "var(--app-ink)" }}
-      >
-        Choose where Radius should look.
-      </p>
-      <p
-        className="mt-1 text-[11px] leading-relaxed"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Radius uses a device location only after you ask it to. It never treats a
-        network location as your precise position.
-      </p>
+      {variant === "inline" ? (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <p
+              id="ask-area-heading"
+              className="pt-1 text-[13px] font-semibold"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Choose where Radius should look.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close area chooser"
+              className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.97]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <p
+            className="mt-1 text-[11px] leading-relaxed"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Radius uses a device location only after you ask it to. It never
+            treats a network location as your precise position.
+          </p>
+        </>
+      ) : null}
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
@@ -926,6 +1002,118 @@ function AreaChooser({
   );
 }
 
+function WorkspaceComposer({
+  inputRef,
+  areaTriggerRef,
+  contextLabel,
+  expanded,
+  loading,
+  compact,
+  query,
+  onQueryChange,
+  onSubmit,
+  onCancel,
+  onToggleArea,
+}: {
+  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  areaTriggerRef: RefObject<HTMLButtonElement | null>;
+  contextLabel: string;
+  expanded: boolean;
+  loading: boolean;
+  compact: boolean;
+  query: string;
+  onQueryChange: (query: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  onToggleArea: () => void;
+}) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
+    event.preventDefault();
+    if (query.trim() && !loading) onSubmit();
+  };
+
+  const areaControl = (
+    <button
+      ref={areaTriggerRef}
+      type="button"
+      onClick={onToggleArea}
+      disabled={loading}
+      aria-expanded={expanded}
+      aria-controls="ask-area-chooser"
+      aria-label={`Search area: ${contextLabel}. Change area.`}
+      title={contextLabel}
+      className="tap-44 inline-flex h-11 max-w-[96px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
+      style={{
+        background: "var(--app-bg-sunken)",
+        color: "var(--app-ink-2)",
+      }}
+    >
+      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="hidden truncate min-[350px]:inline">
+        {compactContextLabel(contextLabel)}
+      </span>
+    </button>
+  );
+
+  return (
+    <>
+      <span id="ask-composer-context" className="sr-only">
+        Current search area: {contextLabel}. Add a time, area, budget, or other
+        constraint for a more useful answer.
+      </span>
+      <div className="flex items-center gap-1.5">
+        {!compact ? <AskComposerMark compact /> : null}
+        <textarea
+          ref={(node) => {
+            inputRef.current = node;
+          }}
+          value={query}
+          readOnly={loading}
+          rows={1}
+          maxLength={MAX_QUERY_LENGTH}
+          enterKeyHint="send"
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={compact ? "Ask a follow-up." : "Ask anything."}
+          className={`${ASK_COMPOSER_INPUT_CLASS} min-h-11 px-1 py-2`}
+          style={{ color: "var(--app-ink)" }}
+          aria-label="Ask Radius"
+          aria-describedby="ask-composer-context"
+        />
+        {compact && loading ? (
+          <span
+            data-ask-inline-status
+            className="hidden h-11 shrink-0 items-center gap-1.5 px-1 text-[10px] font-semibold min-[360px]:inline-flex"
+            style={{ color: "var(--app-ink-2)" }}
+            aria-hidden
+          >
+            <span
+              className="pulse-dot h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--app-brand)" }}
+              aria-hidden
+            />
+            Radius is checking.
+          </span>
+        ) : (
+          areaControl
+        )}
+        <AskComposerSubmit
+          disabled={!query.trim() && !loading}
+          loading={loading}
+          onCancel={onCancel}
+        />
+      </div>
+    </>
+  );
+}
+
 type AskFrederickProps = {
   hideLabel?: boolean;
   initialQuery?: string;
@@ -953,17 +1141,26 @@ export default function AskFrederick({
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
   const [currentScope, setCurrentScope] = useState<Scope | null>(null);
-  const [answeredScope, setAnsweredScope] = useState<Scope | null>(null);
+  const [homeScope, setHomeScope] = useState<Scope | null>(null);
+  const [answeredContextKey, setAnsweredContextKey] = useState<string | null>(
+    null,
+  );
   const [hasCachedPosition, setHasCachedPosition] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const areaChooserRef = useRef<HTMLDivElement | null>(null);
+  const areaTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const areaSheetScrollRef = useRef<number | null>(null);
   const answerHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
   const visibleResultRef = useRef<AskResult | null>(null);
   const submittedQueryRef = useRef("");
-  const pendingNearbyQueryRef = useRef<string | null>(null);
+  const locationRequestPendingRef = useRef(false);
+  const pendingNearbyQueryRef = useRef<{
+    query: string;
+    selfContained: boolean;
+  } | null>(null);
   const urlQueryRef = useRef<string | null>(null);
   const skipNextAnswerScrollRef = useRef(false);
   const restorePositionRef = useRef<{
@@ -978,12 +1175,17 @@ export default function AskFrederick({
   const workspace = mode === "workspace";
   const hasDevicePosition =
     geolocation.state.status === "granted" || hasCachedPosition;
-  const contextLabel = activeContextLabel(currentScope, hasDevicePosition);
+  const contextLabel = activeContextLabel(
+    currentScope,
+    hasDevicePosition,
+    homeScope,
+  );
   visibleResultRef.current = res;
   submittedQueryRef.current = submittedQuery;
 
   useEffect(() => {
-    setCurrentScope(getScope());
+    setCurrentScope(storedAskScope());
+    setHomeScope(parseScope(getHomeMuni()));
     setHasCachedPosition(Boolean(readCachedPosition()));
     const unsubscribe = subscribeScopeChange((scope) => {
       requestIdRef.current += 1;
@@ -1000,7 +1202,8 @@ export default function AskFrederick({
   }, []);
 
   useEffect(() => {
-    if (!showAreaChooser || !nearbyGateQuery) return;
+    if (!showAreaChooser) return;
+    if (workspace && res) return;
     const frame = window.requestAnimationFrame(() => {
       areaChooserRef.current?.focus({ preventScroll: true });
       areaChooserRef.current?.scrollIntoView({
@@ -1009,7 +1212,38 @@ export default function AskFrederick({
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [nearbyGateQuery, showAreaChooser]);
+  }, [res, showAreaChooser, workspace]);
+
+  useEffect(() => {
+    const scrollY = areaSheetScrollRef.current;
+    if (scrollY === null) return;
+    let innerFrame: number | null = null;
+    const outerFrame = window.requestAnimationFrame(() => {
+      // The canonical sheet focuses its first control on entry. Restore the
+      // underlying reading position one paint later so opening or closing an
+      // area sheet never throws someone back up a long answer.
+      innerFrame = window.requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: "auto" });
+        if (!showAreaChooser) areaSheetScrollRef.current = null;
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(outerFrame);
+      if (innerFrame !== null) window.cancelAnimationFrame(innerFrame);
+    };
+  }, [showAreaChooser]);
+
+  useEffect(() => {
+    if (!workspace) return;
+    const node = inputRef.current;
+    if (!(node instanceof HTMLTextAreaElement)) return;
+    node.style.height = "auto";
+    const minHeight = 44;
+    const maxHeight = res ? 96 : 120;
+    const nextHeight = Math.min(Math.max(node.scrollHeight, minHeight), maxHeight);
+    node.style.height = `${nextHeight}px`;
+    node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [q, res, workspace]);
 
   useEffect(() => {
     if (!res || loading) return;
@@ -1052,18 +1286,30 @@ export default function AskFrederick({
 
   useEffect(() => {
     if (geolocation.state.status !== "granted") return;
-    const pendingQuery = pendingNearbyQueryRef.current;
+    const pending = pendingNearbyQueryRef.current;
+    const wasRequested = locationRequestPendingRef.current;
+    if (!pending && !wasRequested) {
+      // A fresh cached fix is useful for ranking, but passive hydration is
+      // not a new scope choice. In particular, it must not replace an
+      // explicit town or abort a permalink request already in flight.
+      setHasCachedPosition(true);
+      return;
+    }
+    locationRequestPendingRef.current = false;
     pendingNearbyQueryRef.current = null;
     setScope("nearme");
     setHasCachedPosition(true);
     setNearbyGateQuery(null);
     setShowAreaChooser(false);
-    if (pendingQuery) {
-      void askRef.current(pendingQuery, {
+    if (pending) {
+      void askRef.current(pending.query, {
         position: geolocation.state.position,
         scope: "nearme",
         skipNearbyGate: true,
+        selfContained: pending.selfContained,
       });
+    } else {
+      window.requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [geolocation.state]);
 
@@ -1116,9 +1362,12 @@ export default function AskFrederick({
       setShowAllSources(restored.showAllSources);
       setShowAreaChooser(false);
       setNearbyGateQuery(null);
-      const restoredScope = parseScope(restored.scope) ?? "county";
+      const restoredScope = parseScope(restored.scope);
+      const restoredHomeScope = parseScope(getHomeMuni());
       setCurrentScope(restoredScope);
-      setAnsweredScope(restoredScope);
+      setAnsweredContextKey(
+        askContextKey(restoredScope, restoredHomeScope),
+      );
       setShareStatus("idle");
       setRes(restored.result);
       return;
@@ -1137,14 +1386,27 @@ export default function AskFrederick({
     // Keep an unset scope distinct from an explicitly chosen whole-county
     // scope. Local place hunts should ask for an area on a visitor's first
     // request; a person who deliberately chose the county should keep it.
-    const selectedScope = options.scope ?? getScope();
+    const selectedScope = options.scope ?? getScope() ?? currentScope;
     const resolvedScope = requestScope(contextualQuery, selectedScope, Boolean(position));
+    // URL questions can run before the mount effect hydrates React state.
+    // Reading the browser preference here keeps that first request correctly
+    // home-ranked without putting client-only storage into server rendering.
+    const fallbackHomeScope = homeScope ?? parseScope(getHomeMuni());
+    // "Near me" and "closest" require a real device fix or an area the user
+    // deliberately chose. A saved home is enough to rank general discovery,
+    // but it is not proof of where the person is standing now.
+    const gateScope = queryNeedsNearbyContext(contextualQuery)
+      ? selectedScope
+      : selectedScope ?? fallbackHomeScope;
 
     if (
       !options.skipNearbyGate &&
-      nearbyQueryNeedsAreaChoice(contextualQuery, selectedScope, Boolean(position))
+      nearbyQueryNeedsAreaChoice(contextualQuery, gateScope, Boolean(position))
     ) {
-      pendingNearbyQueryRef.current = text;
+      pendingNearbyQueryRef.current = {
+        query: text,
+        selfContained: Boolean(options.selfContained),
+      };
       setQ(text);
       setNearbyGateQuery(text);
       setShowAreaChooser(true);
@@ -1182,7 +1444,8 @@ export default function AskFrederick({
       .slice()
       .sort()
       .join(",")}`;
-    const cacheKey = `${effectiveQuery.toLowerCase()}|${resolvedScope}|${
+    const cacheScope = askContextKey(resolvedScope, fallbackHomeScope);
+    const cacheKey = `${effectiveQuery.toLowerCase()}|${cacheScope}|${
       position ? `${position.lat.toFixed(3)},${position.lng.toFixed(3)}` : "no-fix"
     }|${tasteKey}`;
 
@@ -1199,7 +1462,7 @@ export default function AskFrederick({
       setRequestFailure(null);
       setSubmittedQuery(text);
       setShowAllSources(false);
-      setAnsweredScope(resolvedScope);
+      setAnsweredContextKey(cacheScope);
       setRes(cached.result);
       if (cached.result.status !== "empty") {
         track("ask_answer");
@@ -1220,7 +1483,7 @@ export default function AskFrederick({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: effectiveQuery,
-          scope: resolvedScope,
+          scope: resolvedScope ?? undefined,
           lat: position ? Number(position.lat.toFixed(4)) : undefined,
           lng: position ? Number(position.lng.toFixed(4)) : undefined,
           taste: { savedPlaceSlugs, interests },
@@ -1247,7 +1510,7 @@ export default function AskFrederick({
         setRequestFailure(failure);
         setSubmittedQuery(text);
         setShowAllSources(false);
-        setAnsweredScope(resolvedScope);
+        setAnsweredContextKey(cacheScope);
         setRes(next);
         if (next.status !== "empty") {
           track("ask_answer");
@@ -1268,12 +1531,12 @@ export default function AskFrederick({
         setRequestFailure(abortFailure);
         setSubmittedQuery(text);
         setShowAllSources(false);
-        setAnsweredScope(resolvedScope);
+        setAnsweredContextKey(cacheScope);
         setRes(
           errorResult(
             abortFailure === "timeout"
-              ? "Radius took too long to answer. Your question is still here, so you can try again."
-              : "That request was canceled. Your question is still here if you want to try again.",
+              ? "Radius took too long to answer, but your question is still here if you want to try again."
+              : "That request was canceled, and your question is still here if you want to try again.",
           ),
         );
         track(abortFailure === "timeout" ? "ask_timeout" : "ask_cancel");
@@ -1284,7 +1547,7 @@ export default function AskFrederick({
         setRequestFailure("network");
         setSubmittedQuery(text);
         setShowAllSources(false);
-        setAnsweredScope(resolvedScope);
+        setAnsweredContextKey(cacheScope);
         setRes(
           errorResult(
             "Radius could not reach the answer service. Check your connection and try again.",
@@ -1319,36 +1582,52 @@ export default function AskFrederick({
   }
 
   function chooseScope(nextScope: Scope): void {
-    const pendingQuery = pendingNearbyQueryRef.current;
+    const pending = pendingNearbyQueryRef.current;
+    locationRequestPendingRef.current = false;
     pendingNearbyQueryRef.current = null;
     setScope(nextScope);
     setCurrentScope(nextScope);
     setNearbyGateQuery(null);
     setShowAreaChooser(false);
-    if (pendingQuery) {
-      void ask(pendingQuery, { scope: nextScope, skipNearbyGate: true });
+    if (pending) {
+      void ask(pending.query, {
+        scope: nextScope,
+        skipNearbyGate: true,
+        selfContained: pending.selfContained,
+      });
+    } else {
+      window.requestAnimationFrame(() => inputRef.current?.focus());
     }
+  }
+
+  function closeAreaChooser(): void {
+    setShowAreaChooser(false);
+    window.requestAnimationFrame(() => areaTriggerRef.current?.focus());
   }
 
   function useDeviceLocation(): void {
     const cached = readCachedPosition();
     if (cached) {
-      const pendingQuery = pendingNearbyQueryRef.current;
+      const pending = pendingNearbyQueryRef.current;
       pendingNearbyQueryRef.current = null;
       setScope("nearme");
       setCurrentScope("nearme");
       setHasCachedPosition(true);
       setNearbyGateQuery(null);
       setShowAreaChooser(false);
-      if (pendingQuery) {
-        void ask(pendingQuery, {
+      if (pending) {
+        void ask(pending.query, {
           position: cached,
           scope: "nearme",
           skipNearbyGate: true,
+          selfContained: pending.selfContained,
         });
+      } else {
+        window.requestAnimationFrame(() => inputRef.current?.focus());
       }
       return;
     }
+    locationRequestPendingRef.current = true;
     geolocation.request();
   }
 
@@ -1360,17 +1639,28 @@ export default function AskFrederick({
    *  (or a cached fix) re-run THIS query. */
   function localizeAnswer(): void {
     if (!submittedQuery) return;
+    const effectiveQuery = (permalinkQuery || submittedQuery).trim();
+    if (!effectiveQuery) return;
     const cached = readCachedPosition();
     if (cached) {
       setScope("nearme");
       setCurrentScope("nearme");
       setHasCachedPosition(true);
-      void ask(submittedQuery, { position: cached, scope: "nearme", skipNearbyGate: true });
+      void ask(effectiveQuery, {
+        position: cached,
+        scope: "nearme",
+        skipNearbyGate: true,
+        selfContained: true,
+      });
       return;
     }
     // No cached fix: request the device location. On grant, the geolocation
     // effect re-runs this pending query with the position and re-ranks.
-    pendingNearbyQueryRef.current = submittedQuery;
+    pendingNearbyQueryRef.current = {
+      query: effectiveQuery,
+      selfContained: true,
+    };
+    locationRequestPendingRef.current = true;
     geolocation.request();
   }
 
@@ -1502,9 +1792,8 @@ export default function AskFrederick({
     res &&
       submittedQueryRef.current &&
       !explicitAreaInQuery(submittedQueryRef.current) &&
-      answeredScope &&
-      currentScope &&
-      answeredScope !== currentScope,
+      answeredContextKey &&
+      answeredContextKey !== askContextKey(currentScope, homeScope),
   );
 
   return (
@@ -1528,7 +1817,8 @@ export default function AskFrederick({
             className="flex items-center gap-2 text-[12px] font-semibold"
             style={{ color: "var(--app-ink-2)" }}
           >
-            <MessageCircleQuestion className="h-4 w-4" aria-hidden /> Ask Radius
+            <AskComposerMark compact />
+            Ask Radius
           </p>
           <p className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
             Answers use Radius listings and cited local sources.
@@ -1537,7 +1827,14 @@ export default function AskFrederick({
       ) : null}
 
       <div
-        className={workspace ? "border-y py-2.5 sm:py-3" : undefined}
+        data-ask-composer-dock={workspace && res ? "sticky" : undefined}
+        className={
+          workspace && res
+            ? "sticky top-[var(--app-topbar-offset)] z-[var(--z-raised)] -mx-2 border-y bg-[var(--app-bg)]/95 px-2 py-2 backdrop-blur-md"
+            : workspace
+              ? "border-y py-2.5 sm:py-3"
+              : undefined
+        }
         style={
           workspace
             ? {
@@ -1546,40 +1843,6 @@ export default function AskFrederick({
             : undefined
         }
       >
-        <div className="mb-1 flex min-h-8 items-center justify-between gap-3">
-          <p
-            aria-label={`Search area: ${contextLabel}`}
-            className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-semibold"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{contextLabel}</span>
-          </p>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setShowAreaChooser((open) => !open)}
-              aria-expanded={showAreaChooser}
-              aria-controls="ask-area-chooser"
-              className="tap-44 shrink-0 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              {currentScope || hasDevicePosition ? "Change area" : "Choose area"}
-            </button>
-          </div>
-        </div>
-
-        {showAreaChooser ? (
-          <AreaChooser
-            containerRef={areaChooserRef}
-            currentScope={currentScope}
-            geolocationStatus={geolocation.state.status}
-            hasDevicePosition={hasDevicePosition}
-            onUseLocation={useDeviceLocation}
-            onChooseScope={chooseScope}
-          />
-        ) : null}
-
         <form
           role="search"
           aria-label="Ask Radius"
@@ -1588,97 +1851,69 @@ export default function AskFrederick({
             event.preventDefault();
             void ask(q);
           }}
-          className={
-            workspace
-              ? "mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-1.5"
-              : "mt-2 flex items-center gap-2 rounded-[14px] border bg-[var(--app-bg-elevated-solid)] py-1 pl-4 pr-1.5"
-          }
-          style={{
-            borderColor: "var(--app-border-strong, var(--app-border))",
-            boxShadow: workspace ? "var(--app-edge)" : "var(--app-elev-1)",
-          }}
+          className={workspace ? undefined : "mt-2"}
         >
-          {workspace ? (
-            <textarea
-              ref={(node) => {
-                inputRef.current = node;
-              }}
-              value={q}
-              rows={res ? 1 : 2}
-              maxLength={MAX_QUERY_LENGTH}
-              onChange={(event) => setQ(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  if (q.trim() && !loading) void ask(q);
-                }
-              }}
-              placeholder={
-                res
-                  ? "Ask for a closer option or change the time."
-                  : "Quiet dinner downtown before a 7:30 show."
-              }
-              className={`${res ? "min-h-[50px]" : "min-h-[64px]"} w-full resize-none bg-transparent px-2.5 py-2 text-[15.5px] leading-[1.55] outline-none placeholder:text-[var(--app-ink-3)]`}
-              style={{ color: "var(--app-ink)" }}
-              aria-label="Ask Radius"
-            />
-          ) : (
-            <input
-              ref={(node) => {
-                inputRef.current = node;
-              }}
-              value={q}
-              onChange={(event) => setQ(event.target.value)}
-              placeholder={
-                res ? "Ask for a closer option or another time…" : placeholder
-              }
-              className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--app-ink-3)]"
-              style={{ color: "var(--app-ink)" }}
-              aria-label="Ask Radius"
-            />
-          )}
-
-          {workspace ? (
-            <div className="flex items-center justify-between gap-3 px-1 pb-0.5">
-              <span
-                className="hidden items-center gap-1.5 text-[10.5px] sm:inline-flex"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                <Search className="h-3.5 w-3.5" aria-hidden />
-                Ask about places, plans, events, or local services.
-              </span>
-              <button
-                type="submit"
-                disabled={!q.trim() || loading}
-                className="tap-44 ml-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] px-4 text-[12px] font-bold transition active:scale-[0.98] disabled:opacity-35"
-                style={{
-                  background: "var(--app-brand-press)",
-                  color: "var(--app-on-brand, #fff)",
+          <AskComposerFrame
+            compact
+            className={workspace ? undefined : "flex items-center gap-2"}
+          >
+            {workspace ? (
+              <WorkspaceComposer
+                inputRef={inputRef}
+                areaTriggerRef={areaTriggerRef}
+                contextLabel={contextLabel}
+                expanded={showAreaChooser}
+                loading={loading}
+                compact={Boolean(res)}
+                query={q}
+                onQueryChange={setQ}
+                onSubmit={() => void ask(q)}
+                onCancel={cancelCurrentRequest}
+                onToggleArea={() => {
+                  if (!showAreaChooser && workspace && res) {
+                    areaSheetScrollRef.current = window.scrollY;
+                  }
+                  setShowAreaChooser((open) => !open);
                 }}
-              >
-                Ask Radius
-                <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="submit"
-              disabled={!q.trim() || loading}
-              aria-label="Ask Radius"
-              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[10px] transition active:scale-95 disabled:opacity-35"
-              style={{
-                background: "var(--app-brand-press)",
-                color: "var(--app-on-brand, #fff)",
-              }}
-            >
-              <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            </button>
-          )}
+              />
+            ) : (
+              <>
+                <AskComposerMark compact />
+                <input
+                  ref={(node) => {
+                    inputRef.current = node;
+                  }}
+                  value={q}
+                  readOnly={loading}
+                  onChange={(event) => setQ(event.target.value)}
+                  placeholder={
+                    res ? "Ask for something closer or different." : placeholder
+                  }
+                  className={`${ASK_COMPOSER_INPUT_CLASS} h-11`}
+                  style={{ color: "var(--app-ink)" }}
+                  aria-label="Ask Radius"
+                />
+                <AskComposerSubmit
+                  disabled={!q.trim() && !loading}
+                  loading={loading}
+                  onCancel={cancelCurrentRequest}
+                />
+              </>
+            )}
+          </AskComposerFrame>
         </form>
+
+        {showAreaChooser && !(workspace && res) ? (
+          <AreaChooser
+            containerRef={areaChooserRef}
+            currentScope={currentScope}
+            geolocationStatus={geolocation.state.status}
+            hasDevicePosition={hasDevicePosition}
+            onUseLocation={useDeviceLocation}
+            onChooseScope={chooseScope}
+            onClose={closeAreaChooser}
+          />
+        ) : null}
 
         {nearbyGateQuery ? (
           <div
@@ -1694,7 +1929,7 @@ export default function AskFrederick({
               Radius needs a real area for that question.
             </p>
             <p className="mt-1 text-[11px] leading-relaxed">
-              Use your device location or choose a town above.
+              Use your device location or choose a town from the area control.
             </p>
           </div>
         ) : null}
@@ -1721,38 +1956,45 @@ export default function AskFrederick({
         ) : null}
       </div>
 
+      <Sheet
+        open={Boolean(showAreaChooser && workspace && res)}
+        onClose={closeAreaChooser}
+        title="Search area"
+        subtitle="Use your location for nearby answers, or choose a town."
+        maxHeight="70dvh"
+      >
+        <AreaChooser
+          containerRef={areaChooserRef}
+          currentScope={currentScope}
+          geolocationStatus={geolocation.state.status}
+          hasDevicePosition={hasDevicePosition}
+          onUseLocation={useDeviceLocation}
+          onChooseScope={chooseScope}
+          onClose={closeAreaChooser}
+          variant="sheet"
+        />
+      </Sheet>
+
       {workspace && !res && !loading && !nearbyGateQuery ? (
         <section aria-labelledby="ask-start-heading" className="mt-3">
-          <div className="flex min-h-9 items-center justify-between gap-3 px-1">
-            <h2
-              id="ask-start-heading"
-              className="text-[10px] font-bold uppercase tracking-[0.11em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Try a question
-            </h2>
-            <Link
-              href="/compass"
-              className="tap-44 inline-flex items-center gap-1 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Browse tools
-              <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
-          </div>
-          <div className="mt-1.5 grid grid-cols-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+          <h2 id="ask-start-heading" className="sr-only">
+            Questions to try
+          </h2>
+          <div
+            className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Questions to try"
+          >
             {WORKSPACE_ASKS.map((prompt, index) => (
               <button
                 key={prompt.label}
                 type="button"
                 onClick={() => runIntent(prompt.query)}
-                className={`tap-44 grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_16px] items-center gap-2 border-b px-2 text-left text-[11.5px] font-semibold leading-snug transition hover:bg-[var(--app-bg-sunken)] active:opacity-70 ${
-                  index === WORKSPACE_ASKS.length - 1 && WORKSPACE_ASKS.length % 2 === 1
-                    ? "col-span-2"
-                    : "odd:border-r"
-                }`}
+                className="tap-44 inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-full border px-3.5 text-left text-[11px] font-semibold transition hover:bg-[var(--app-bg-elevated-solid)] active:scale-[0.98]"
                 style={{
-                  borderColor: "var(--app-border)",
+                  borderColor:
+                    index === 0 ? "var(--app-control-border)" : "var(--app-border)",
+                  background:
+                    index === 0 ? "var(--app-bg-elevated-solid)" : "transparent",
                   color: "var(--app-ink-2)",
                 }}
               >
@@ -1760,6 +2002,16 @@ export default function AskFrederick({
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             ))}
+          </div>
+          <div className="mt-1 flex justify-end">
+            <Link
+              href="/compass"
+              className="tap-44 inline-flex items-center gap-1 px-1 text-[10.5px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Browse tools
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
           </div>
         </section>
       ) : null}
@@ -1781,23 +2033,13 @@ export default function AskFrederick({
               background: "var(--app-bg-sunken)",
             }}
           >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5 text-[12px] font-semibold">
-                <span
-                  className="pulse-dot h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: "var(--app-brand)" }}
-                  aria-hidden
-                />
-                <span>{LOADING_MESSAGE}</span>
-              </div>
-              <button
-                type="button"
-                onClick={cancelCurrentRequest}
-                className="tap-44 shrink-0 rounded-full px-3 text-[11px] font-semibold transition hover:bg-[var(--app-bg-elevated-solid)] active:scale-[0.98]"
-                style={{ color: "var(--app-brand-press)" }}
-              >
-                Cancel
-              </button>
+            <div className="flex min-w-0 items-center gap-2.5 text-[12px] font-semibold">
+              <span
+                className="pulse-dot h-2 w-2 shrink-0 rounded-full"
+                style={{ background: "var(--app-brand)" }}
+                aria-hidden
+              />
+              <span>{LOADING_MESSAGE}</span>
             </div>
           </div>
         ) : null}
