@@ -166,6 +166,47 @@ describe("qualifiedSearch — natural category plurals", () => {
   });
 });
 
+describe("qualifiedSearch — strict daily-utility categories", () => {
+  const downtown = {
+    origin: { lng: -77.4105, lat: 39.4143 },
+    municipality: "frederick",
+    contextLabel: "your location",
+  } as const;
+
+  it("returns only gas-station records for a nearest gas query", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where is the nearest gas station?",
+      12,
+      undefined,
+      downtown,
+    );
+    const places = hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(meta.qualifiers.strictPlaceKind).toBe("gas-station");
+    expect(places.length).toBeGreaterThan(0);
+    expect(
+      places.every((place) => place.primary_type === "gas_station"),
+    ).toBe(true);
+  });
+
+  it("returns no places for ATM when the catalog has no ATM evidence", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where is the nearest ATM?",
+      12,
+      undefined,
+      downtown,
+    );
+    const places = hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(meta.qualifiers.strictPlaceKind).toBe("atm");
+    expect(places).toEqual([]);
+  });
+});
+
 describe("qualifiedSearch — Ask uses place context by default", () => {
   const gravelAndGrind = { lng: -77.40955, lat: 39.42165 };
 

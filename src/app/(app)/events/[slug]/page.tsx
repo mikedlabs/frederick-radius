@@ -44,7 +44,7 @@ import GettingThere from "@/components/event/GettingThere";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { isAreaCentroid } from "@/lib/events/geo-confidence";
+import { eventHasPreciseLocation } from "@/lib/events/geo-confidence";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
@@ -64,6 +64,7 @@ import {
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
 import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
+import { eventHasTrustworthyEnd } from "@/lib/events/format";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -204,7 +205,21 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const cat = CATEGORY_BY_SLUG[event.category];
   const desc = (event.description ?? "").trim();
   const description = splitDescription(desc);
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
+  const venuePlace = event.venue_place_slug
+    ? clientPlaceBySlug(event.venue_place_slug)
+    : null;
+  const hasPreciseLocation = eventHasPreciseLocation(
+    event,
+    Boolean(venuePlace),
+  );
+  const pinGeom = venuePlace?.geom ?? event.geom;
+  const directionsUrl = hasPreciseLocation
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
+    : null;
+  const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
+  const calendarEndsAt = hasTrustworthyEnd
+    ? event.ends_at
+    : event.starts_at;
   const icsUrl = `/api/events/${event.slug}/ics`;
 
   // Map our lifecycle status to schema.org's enum — a postponed/cancelled game
@@ -224,7 +239,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     "@type": "Place",
     name: event.venue_name || event.municipality_name || "Frederick County",
     ...(event.address ? { address: event.address } : {}),
-    geo: { "@type": "GeoCoordinates", latitude: event.geom.lat, longitude: event.geom.lng },
+    ...(hasPreciseLocation
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: pinGeom.lat,
+            longitude: pinGeom.lng,
+          },
+        }
+      : {}),
   };
   const virtualJsonLdLocation = onlineActionUrl
     ? { "@type": "VirtualLocation", url: onlineActionUrl }
@@ -237,7 +260,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     // Local-offset form (2026-06-11T17:00:00-04:00) — Google accepts UTC
     // "Z" but prefers this, and it self-documents tz correctness.
     startDate: easternOffsetIso(event.starts_at),
-    endDate: easternOffsetIso(event.ends_at),
+    ...(hasTrustworthyEnd
+      ? { endDate: easternOffsetIso(event.ends_at) }
+      : {}),
     eventStatus: schemaEventStatus,
     eventAttendanceMode:
       attendance === "online"
@@ -278,7 +303,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const [saveCount, related, nearby] = await Promise.all([
     eventSaveCount(event.slug).catch(() => null),
     loadRelatedEventSections(event, new Date(nowMs)),
-    physicalAttendance
+    physicalAttendance && hasPreciseLocation
       ? loadEventNearbyPlaces(event)
       : Promise.resolve({ food: [], parking: [], source: "catalog-fallback" as const }),
   ]);
@@ -553,7 +578,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           weather at the event start, closest parking, and the
           nearest food spot into one card. Self-hides if none of
           the three signals are available. */}
-      {physicalAttendance && (
+      {physicalAttendance && hasPreciseLocation && (
         <EventSmartPairings
           event={event}
           nearbyFood={nearbyFood}
@@ -600,8 +625,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
           null;
         const hasThird = thirdAction !== null;
-        const dirPrimary = physicalAttendance && !hasThird;
-        const gridCols = 1 + (physicalAttendance ? 1 : 0) + (hasThird ? 1 : 0);
+        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
+        const gridCols =
+          1 +
+          (physicalAttendance && hasPreciseLocation ? 1 : 0) +
+          (hasThird ? 1 : 0);
 
         const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
         const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
@@ -618,7 +646,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   slug: event.slug,
                   title: event.title,
                   starts_at: event.starts_at,
-                  ends_at: event.ends_at,
+                  ends_at: calendarEndsAt,
                   description: event.description,
                   venue_name: event.venue_name,
                   address: event.address,
@@ -631,7 +659,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 Add to calendar
               </a>
             )}
-            {physicalAttendance && (
+            {physicalAttendance && hasPreciseLocation && directionsUrl && (
               <a
                 href={directionsUrl}
                 target="_blank"
@@ -658,35 +686,19 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         );
       })()}
 
-      {/* Getting there — parking + MARC logistics, from data already in the
-          repo. Renders only when a line is EARNED (verified field-note
-          parking, a downtown garage within 1.1km, or MARC within a 12-min
-          walk); a Thurmont carnival shows nothing here. */}
-      {/* The visual WHERE — a static map thumb, tap-through to the live map
-          centered on the venue. Gate on NOT-a-town-centroid, not on
-          isGeoPrecise: that helper demands a `placement` stamp most events
-          never carry (the first ship hid the map on nearly everything,
-          including hand-curated venue coords). A non-centroid geom is real
-          enough to pin; centroids stay honestly hidden. */}
-      {physicalAttendance && (() => {
-        // A resolved venue PLACE is the authoritative pin: its geom wins even
-        // when it sits inside the 40m centroid epsilon (Carroll Creek
-        // Amphitheater is ~30m from the downtown feed anchor, so the pure
-        // centroid test hid a genuinely-located venue — caught on prod).
-        const venuePlace = event.venue_place_slug ? clientPlaceBySlug(event.venue_place_slug) : null;
-        const pinGeom = venuePlace?.geom ?? event.geom;
-        const showPin = Boolean(venuePlace) || !isAreaCentroid(event.geom);
-        return (
-          <>
-            {showPin && <VenueMiniMap geom={pinGeom} name={event.venue_name} />}
-            <GettingThere
-              geom={pinGeom}
-              venuePlaceSlug={event.venue_place_slug ?? undefined}
-              geoPrecise={showPin}
-            />
-          </>
-        );
-      })()}
+      {/* A map, directions, and nearby logistics are precise-location claims.
+          Area-only feed coordinates keep the venue text but never generate a
+          downtown pin for an event elsewhere in the county. */}
+      {physicalAttendance && hasPreciseLocation && (
+        <>
+          <VenueMiniMap geom={pinGeom} name={event.venue_name} />
+          <GettingThere
+            geom={pinGeom}
+            venuePlaceSlug={event.venue_place_slug ?? undefined}
+            geoPrecise
+          />
+        </>
+      )}
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">
@@ -916,7 +928,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 slug: event.slug,
                 title: event.title,
                 starts_at: event.starts_at,
-                ends_at: event.ends_at,
+                ends_at: calendarEndsAt,
                 description: event.description,
                 venue_name: event.venue_name,
                 address: event.address,
@@ -945,7 +957,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 primary
               />
             )}
-            {physicalAttendance && (
+            {physicalAttendance && hasPreciseLocation && directionsUrl && (
               <MobileBarLink
                 href={directionsUrl}
                 icon={Navigation}

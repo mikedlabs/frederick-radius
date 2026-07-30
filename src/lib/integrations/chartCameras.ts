@@ -7,7 +7,8 @@
  * feed in mdot-chart.ts). Shape: { data: [ { id, name, description, lat, lon,
  * commMode, opStatus, publicVideoURL, routeNumber, … } ] }. ~300 cameras
  * statewide; we keep only the ones inside Frederick County (isValidCoord =
- * the real county polygon + straddle buffer) that are actually online.
+ * the real county polygon or reviewed Mount Airy town extent) that are
+ * actually online.
  *
  * Locations are static, so this is cached long; the live view happens at the
  * publicVideoURL when the user taps a camera. Failures reject so Next does not

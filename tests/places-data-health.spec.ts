@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import places from "@/data/places-client.json" with { type: "json" };
+import { PLACES as SOURCE_PLACES } from "@/data/places";
 import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
 import { isValidCoord } from "@/lib/geo";
@@ -34,6 +35,7 @@ type Place = {
 
 const PLACES = places as unknown as Place[];
 const slugs = new Set(PLACES.map((p) => p.slug));
+const sourceSlugs = new Set(SOURCE_PLACES.map((p) => p.slug));
 
 // The 12 incorporated municipalities + Urbana (the canonical vocab). Anything
 // else silently drops from every municipality-keyed filter and town page.
@@ -131,9 +133,9 @@ describe("places-overrides referential integrity", () => {
       .map(([slug]) => slug),
   );
 
-  it("every patch key resolves to a live place (no stale orphans)", () => {
+  it("every patch key resolves to a source place (no stale orphans)", () => {
     const orphans = Object.keys(ov.patch ?? {}).filter(
-      (s) => !slugs.has(s) && !quarantined.has(s),
+      (s) => !sourceSlugs.has(s) && !quarantined.has(s),
     );
     expect(orphans).toEqual([]);
   });
@@ -161,7 +163,7 @@ describe("wikimedia landmark-photo integrity", () => {
 });
 
 describe("field-notes referential integrity", () => {
-  it("every field-note key resolves to a live place", () => {
+  it("every field-note key resolves to a source place", () => {
     // Quarantine exemption (same as the overrides checks above): a field note
     // on an enrichment-quarantined record stays attached to the hidden base
     // record pending the owner's per-record disposition pass — deleting or
@@ -173,7 +175,7 @@ describe("field-notes referential integrity", () => {
         .map(([slug]) => slug),
     );
     const orphans = Object.keys(fieldNotes as Record<string, unknown>).filter(
-      (s) => !slugs.has(s) && !quarantined.has(s),
+      (s) => !sourceSlugs.has(s) && !quarantined.has(s),
     );
     expect(orphans).toEqual([]);
   });

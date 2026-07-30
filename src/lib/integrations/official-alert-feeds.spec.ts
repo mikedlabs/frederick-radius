@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getOfficialCivicAlertsResult,
+  isLocallyRelevantCivicAlert,
   OFFICIAL_CIVIC_ALERT_FEEDS,
   parseOfficialAlertFeed,
 } from "./official-alert-feeds";
@@ -27,6 +28,43 @@ describe("official CivicPlus alert parsing", () => {
     expect(parsed.valid).toBe(true);
     expect(parsed.alerts).toEqual([]);
     expect(parsed.asOf).toBe("2026-07-28T16:25:59.000Z");
+  });
+
+  it("does not promote a Southern Maryland health bulletin as a Frederick alert", () => {
+    expect(
+      isLocallyRelevantCivicAlert({
+        kind: "health-notice",
+        title: "Measles exposure update",
+        summary:
+          "Two cases were confirmed in residents of Southern Maryland after travel.",
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps a health notice that names Frederick County", () => {
+    expect(
+      isLocallyRelevantCivicAlert({
+        kind: "health-notice",
+        title: "Frederick County health notice",
+        summary: "Residents should read the current guidance.",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps feed-scoped emergencies, closings, and burn bans", () => {
+    for (const kind of [
+      "city-emergency",
+      "health-closing",
+      "health-burn-ban",
+    ] as const) {
+      expect(
+        isLocallyRelevantCivicAlert({
+          kind,
+          title: "Official update",
+          summary: "Read the current notice.",
+        }),
+      ).toBe(true);
+    }
   });
 
   it("normalizes active state, clean text, timestamps, and provenance", () => {

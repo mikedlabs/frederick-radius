@@ -208,7 +208,7 @@ describe("buildWantAnswer context", () => {
     ]);
   });
 
-  it("treats confirmed-open as evidence, not a gate, when required-hours coverage is thin", () => {
+  it("leads with confirmed-open before unknown hours when required-hours coverage is thin", () => {
     const resolution = resolveWantAvailability(
       [
         cand({
@@ -234,10 +234,11 @@ describe("buildWantAnswer context", () => {
     );
 
     expect(resolution.hardAvailability).toBe(false);
-    expect(resolution.current[0]?.slug).toBe("near-unknown");
-    expect(resolution.current.map((candidate) => candidate.slug)).toContain(
+    expect(resolution.current.map((candidate) => candidate.slug)).toEqual([
       "far-open",
-    );
+      "near-unknown",
+      "mid-unverified",
+    ]);
   });
 
   it("keeps confirmed-open food as a hard gate when hours coverage is sufficient", () => {
@@ -289,6 +290,40 @@ describe("buildWantAnswer context", () => {
     );
     expect(answer?.hero?.where).toBe("Frederick");
     expect(answer?.hero?.confidence).toBeUndefined();
+  });
+
+  it("uses the reviewed want taxonomy instead of raw secondary categories", () => {
+    const restaurant = buildWantAnswer(
+      "cat:restaurant",
+      null,
+      { lng: -77.4105, lat: 39.4143 },
+      new Date("2026-07-29T21:00:00.000Z"),
+      {
+        contextLabel: "Near you",
+        contextSource: "device",
+      },
+    );
+    const coffee = buildWantAnswer(
+      "coffee",
+      null,
+      { lng: -77.4105, lat: 39.4143 },
+      new Date("2026-07-29T21:00:00.000Z"),
+      {
+        contextLabel: "Near you",
+        contextSource: "device",
+      },
+    );
+    const restaurantSlugs = [
+      restaurant?.hero?.slug,
+      ...(restaurant?.also.map((row) => row.slug) ?? []),
+    ];
+    const coffeeSlugs = [
+      coffee?.hero?.slug,
+      ...(coffee?.also.map((row) => row.slug) ?? []),
+    ];
+
+    expect(restaurantSlugs).not.toContain("the-original-popcorn-house");
+    expect(coffeeSlugs).not.toContain("voila-in-frederick");
   });
 
   it("leads with Gravel & Grind for coffee beside its downtown storefront", () => {

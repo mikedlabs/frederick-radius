@@ -463,6 +463,18 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.every((source) => source.category === "parking")).toBe(true);
   });
 
+  it("understands a plain downtown parking question", async () => {
+    const result = await askFrederick(
+      "Where should I park downtown right now?",
+      downtown,
+    );
+    expect(result.intelligence?.tools).toContain("parking");
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(
+      result.sources.every((source) => source.category === "parking"),
+    ).toBe(true);
+  });
+
   it("treats parking near me as location context, not a place named me", async () => {
     const result = await askFrederick("Where can I park near me?", downtown);
     expect(result.intelligence?.tools).toContain("parking");
@@ -683,6 +695,48 @@ describe("askFrederick structured answers", () => {
     }
   });
 
+  it("answers happy hour from verified live schedules, not generic bars", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T21:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "Where is happy hour near me right now?",
+        { ...downtown, canShowDistance: true },
+      );
+
+      expect(result.usedModel).toBe(false);
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(
+        result.sources.every((source) =>
+          /^On now · until /.test(source.status ?? ""),
+        ),
+      ).toBe(true);
+      expect(result.sources.some((source) => source.name === "Orioles Nest 331")).toBe(false);
+      expect(result.answer).toContain("confirmed happy hour");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not substitute a late-open bar when no happy hour is confirmed", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T06:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "Where is happy hour near me right now?",
+        { ...downtown, canShowDistance: true },
+      );
+
+      expect(result.status).toBe("empty");
+      expect(result.sources).toEqual([]);
+      expect(result.answer).toContain(
+        "I won’t substitute a bar just because it stays open late",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("honors a numbered date-night list with actual date-night records", async () => {
     const result = await askFrederick("three date-night restaurants downtown", downtown);
     expect(result.intent).toMatchObject({ kind: "place", audience: "date" });
@@ -695,9 +749,9 @@ describe("askFrederick structured answers", () => {
     ]);
   });
 
-  it("does not repeat a city already contained in a business name", async () => {
+  it("does not recommend a retail-only tea shop as independent coffee", async () => {
     const result = await askFrederick("independent coffee near me", downtown);
-    expect(result.sources[0]?.name).toBe("Voila in Frederick");
+    expect(result.sources.some((source) => source.name === "Voila in Frederick")).toBe(false);
     expect(result.answer).not.toContain("Voila in Frederick in Frederick");
   });
 

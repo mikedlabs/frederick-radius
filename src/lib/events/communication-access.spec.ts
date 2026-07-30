@@ -4,7 +4,10 @@ import {
   eventCommunicationAccess,
   hasDeafCommunityOrCommunicationAccess,
 } from "./communication-access";
-import { eventMatchesTopic } from "@/lib/ask/answer";
+import {
+  eventMatchesTopic,
+  isLongRunningCommunicationAccessProgram,
+} from "@/lib/ask/answer";
 import type { Event } from "@/data/events";
 
 function event(
@@ -127,5 +130,25 @@ describe("event communication access", () => {
       true,
     );
     expect(eventMatchesTopic(unrelated, "ASL or captioned events")).toBe(false);
+  });
+
+  it("distinguishes a multi-week enrollment span from a dated drop-in event", () => {
+    const course = event({
+      slug: "six-week-asl-class",
+      title: "6-Week ASL Class",
+      source: "mdcc",
+      starts_at: "2026-07-14T22:00:00.000Z",
+      ends_at: "2026-08-18T23:00:00.000Z",
+    });
+    const captionedMeeting = event({
+      slug: "captioned-meeting",
+      title: "Captioned community meeting",
+      description: "The meeting includes live captions.",
+    });
+
+    expect(isLongRunningCommunicationAccessProgram(course)).toBe(true);
+    expect(
+      isLongRunningCommunicationAccessProgram(captionedMeeting),
+    ).toBe(false);
   });
 });

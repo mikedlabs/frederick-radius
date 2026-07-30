@@ -45,6 +45,41 @@ describe("search qualifiers", () => {
     expect(matchesSearchQualifiers(openCoffee, parsed, "thurmont")).toBe(false);
   });
 
+  it.each([
+    ["pharmacy", { category: "pharmacy", primary_type: "pharmacy" }],
+    ["gas-station", { category: "services", primary_type: "gas_station" }],
+    ["atm", { category: "services", primary_type: "atm" }],
+  ] as const)(
+    "requires exact %s evidence instead of admitting an arbitrary nearby place",
+    (strictPlaceKind, evidence) => {
+      const query = strictPlaceKind === "gas-station"
+        ? "nearest gas station"
+        : strictPlaceKind === "atm"
+          ? "nearest ATM"
+          : "closest pharmacy";
+      const parsed = parseSearchQualifiers(query);
+      expect(parsed.strictPlaceKind).toBe(strictPlaceKind);
+      expect(
+        matchesSearchQualifiers(
+          { ...openCoffee, ...evidence },
+          parsed,
+        ),
+      ).toBe(true);
+      expect(matchesSearchQualifiers(openCoffee, parsed)).toBe(false);
+    },
+  );
+
+  it("keeps the open-now gate strict for pharmacies", () => {
+    const parsed = parseSearchQualifiers("closest pharmacy open now");
+    expect(parsed.strictPlaceKind).toBe("pharmacy");
+    expect(matchesSearchQualifiers({
+      ...openCoffee,
+      category: "pharmacy",
+      primary_type: "pharmacy",
+      open_status: { state: "closed" },
+    }, parsed)).toBe(false);
+  });
+
   it("does not treat open mic as an open-now place filter", () => {
     const parsed = parseSearchQualifiers("open mic tonight");
     expect(parsed.openNow).toBe(false);

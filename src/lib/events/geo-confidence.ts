@@ -74,3 +74,29 @@ export function isGeoPrecise(e: { placement?: string; geom: LngLat }): boolean {
   const c = eventGeoConfidence(e);
   return c === "venue_match" || c === "exact_address";
 }
+
+/**
+ * Event pages can also resolve a real place record for the venue. That
+ * authoritative match wins even when the venue happens to sit close to one
+ * of the area anchors. Older curated events do not all carry a placement
+ * stamp, so a non-centroid coordinate remains eligible unless an explicit
+ * area confidence says otherwise.
+ */
+export function eventHasPreciseLocation(
+  e: {
+    placement?: string;
+    geom: LngLat;
+    geo_confidence?: GeoConfidence;
+  },
+  hasResolvedVenue = false,
+): boolean {
+  if (hasResolvedVenue) return true;
+  if (e.geo_confidence === "area") return false;
+  if (
+    e.geo_confidence === "venue_match" ||
+    e.geo_confidence === "exact_address"
+  ) {
+    return true;
+  }
+  return isGeoPrecise(e) || !isAreaCentroid(e.geom);
+}

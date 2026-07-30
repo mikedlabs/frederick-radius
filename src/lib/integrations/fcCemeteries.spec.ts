@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { normalizeCemeteries } from "./fcCemeteries";
 
-// A point near Foxville (inside the county ring) — a real row's shape.
-const FOXVILLE = { lng: -77.4991, lat: 39.6719 };
+// A point near Thurmont, safely inside the county ring — a real row's shape.
+// The old Foxville fixture sits over the Washington County line and only
+// passed while the app used a blanket county-border buffer.
+const COUNTY_POINT = { lng: -77.4102, lat: 39.6243 };
 // Westminster (Carroll County) — the source carries a few reference
 // points over the county line; the ring gate must drop them.
 const WESTMINSTER = { lng: -76.9958, lat: 39.5754 };
@@ -17,7 +19,7 @@ function feature(over: {
     geometry:
       over.coords === null
         ? null
-        : { type: over.type ?? "Point", coordinates: over.coords ?? [FOXVILLE.lng, FOXVILLE.lat] },
+        : { type: over.type ?? "Point", coordinates: over.coords ?? [COUNTY_POINT.lng, COUNTY_POINT.lat] },
     properties: {
       FID: 2,
       Name: "Mt Zion Methodist Church",
@@ -39,7 +41,7 @@ describe("normalizeCemeteries", () => {
       place: "Foxville",
       approximate: false,
     });
-    expect(rows[0].lng).toBeCloseTo(FOXVILLE.lng, 4);
+    expect(rows[0].lng).toBeCloseTo(COUNTY_POINT.lng, 4);
   });
 
   it("flags approximate locations instead of dropping them", () => {

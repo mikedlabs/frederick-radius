@@ -52,6 +52,20 @@ describe("parseAskIntent", () => {
     });
   });
 
+  it.each([
+    ["What is the closest pharmacy open now?", "Pharmacies"],
+    ["Where is the nearest gas station?", "Gas stations"],
+    ["Where is the nearest ATM?", "ATMs"],
+  ])(
+    "recognizes a strict daily-utility request as place discovery: %s",
+    (query, label) => {
+      expect(parseAskIntent(query)).toMatchObject({
+        kind: "place",
+        label,
+      });
+    },
+  );
+
   it("does not turn civic or general information requests into place discovery", () => {
     expect(parseAskIntent("Where can I get a building permit?")).toMatchObject({
       kind: "civic",

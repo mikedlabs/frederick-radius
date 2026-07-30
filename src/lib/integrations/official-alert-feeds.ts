@@ -63,6 +63,26 @@ export type OfficialCivicAlertsResult = {
   sourceHealth: OfficialCivicAlertSourceHealth[];
 };
 
+const FREDERICK_PLACE_RE =
+  /\b(?:frederick(?:\s+(?:city|county))?|brunswick|burkittsville|emmitsburg|middletown|mount airy|new market|rosemont|thurmont|urbana|walkersville|woodsboro)\b/i;
+
+/**
+ * A Frederick County publisher can syndicate a broader Maryland health
+ * bulletin. Official provenance does not make that bulletin a local alert.
+ *
+ * City emergencies, county closings, and burn bans are locally scoped by the
+ * feed itself. General health notices earn alert treatment only when the
+ * published text names Frederick or one of the county's municipalities.
+ * Broader notices remain available at the official source without displacing
+ * an actually local road, weather, or safety signal in Pulse.
+ */
+export function isLocallyRelevantCivicAlert(
+  alert: Pick<OfficialCivicAlert, "kind" | "title" | "summary">,
+): boolean {
+  if (alert.kind !== "health-notice") return true;
+  return FREDERICK_PLACE_RE.test(`${alert.title} ${alert.summary}`);
+}
+
 export const OFFICIAL_CIVIC_ALERT_FEEDS: readonly FeedDefinition[] = [
   {
     id: "city-emergency",

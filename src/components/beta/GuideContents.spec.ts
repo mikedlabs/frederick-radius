@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { openNowLine } from "@/components/beta/GuideContents";
 
 describe("beta open-now proof copy", () => {
@@ -32,6 +33,18 @@ describe("beta open-now proof copy", () => {
     );
     expect(`${line?.lead} ${line?.rest}`).not.toMatch(
       /live to the minute|at this minute/i,
+    );
+  });
+
+  it("does not promise live tap lists or complete same-day brewery hours", () => {
+    const source = readFileSync(
+      "src/components/beta/GuideContents.tsx",
+      "utf8",
+    );
+
+    expect(source).not.toMatch(/with its tap list and the day(?:'|’s) hours/i);
+    expect(source).toContain(
+      "signature beers, posted hours, and source-backed taproom events",
     );
   });
 });

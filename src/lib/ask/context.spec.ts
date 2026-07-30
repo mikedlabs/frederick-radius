@@ -62,6 +62,35 @@ describe("eventContextLines", () => {
     expect(picked.map((e) => e.slug)).toEqual(["tmrw"]);
   });
 
+  it("ranks a major draw ahead of a small earlier listing when asked for the biggest event", () => {
+    const pool = [
+      ev({
+        slug: "early-small",
+        title: "Taproom Trivia",
+        starts_at: "2026-07-16T17:00:00-04:00",
+        ends_at: "2026-07-16T18:00:00-04:00",
+        category: "food-drink",
+      }),
+      ev({
+        slug: "alive-at-five",
+        title: "Alive at Five",
+        starts_at: "2026-07-16T17:00:00-04:00",
+        ends_at: "2026-07-16T20:00:00-04:00",
+        category: "music",
+        ticket_url: "https://example.com/tickets",
+      }),
+    ];
+
+    const { picked } = eventContextLines(
+      pool,
+      "tomorrow",
+      WED_6PM,
+      "What is the biggest event tomorrow?",
+      1,
+    );
+    expect(picked.map((event) => event.slug)).toEqual(["alive-at-five"]);
+  });
+
   it("tonight keeps the 7 PM show even when afternoon programs would eat the cap (the prod miss)", () => {
     const afternoon = Array.from({ length: 12 }, (_, i) =>
       ev({ slug: `pm${i}`, title: `Program ${i}`, starts_at: "2026-07-15T13:45:00-04:00", ends_at: "2026-07-15T14:45:00-04:00" }),

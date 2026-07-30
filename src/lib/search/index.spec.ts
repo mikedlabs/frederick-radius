@@ -53,4 +53,29 @@ describe("deterministic map search actions", () => {
       href: "/tonight",
     });
   });
+
+  it.each([
+    ["public restroom near me", /restroom|bathroom|toilet/i],
+    ["trash can near me", /trash|garbage|waste/i],
+    ["dog waste bags near me", /dog|pet|waste/i],
+    ["EV charging near me", /\bev\b|electric|charg/i],
+    ["playgrounds near me", /playground|park|recreation/i],
+    ["urgent care near me", /urgent|medical|hospital|clinic|walk-in/i],
+  ])("does not proximity-fill %s with unrelated businesses", (query, evidence) => {
+    const results = qualifiedSearchIndex(query, 8, [], {
+      origin: { lng: -77.4105, lat: 39.4143 },
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).results;
+    const places = results.filter((result) => result.type === "place");
+
+    expect(
+      places.every((result) =>
+        evidence.test(
+          `${result.title} ${result.subtitle} ${result.badge ?? ""}`,
+        ),
+      ),
+    ).toBe(true);
+  });
 });

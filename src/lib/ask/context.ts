@@ -1,6 +1,7 @@
 import { buildHorizonBounds, groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventDateBlock } from "@/lib/events/format";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
+import { compareForLead } from "@/lib/events/lead-rank";
 import { currentMeal } from "@/lib/meal";
 import { CUISINES } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -37,6 +38,10 @@ export type AskEvent = {
   municipality?: string | null;
   municipality_name?: string;
   geom?: LngLat;
+  hero_image?: string | null;
+  ticket_url?: string | null;
+  is_free?: boolean;
+  price_text?: string | null;
 };
 
 /** Preserve an explicit town scope before building a time-window block. The
@@ -191,7 +196,10 @@ const CRAVING_QUERY: Array<{ key: string; re: RegExp }> = [
   { key: "cat:bakery", re: /\b(baker(y|ies)|donuts?|doughnuts?|pastr(y|ies)|croissants?|cupcakes?|bagels?)\b/i },
   { key: "breweries", re: /\b(beers?|brewer(y|ies)|taprooms?|brewpubs?)\b/i },
   { key: "wineries", re: /\b(winer(y|ies)|vineyards?|wine tasting|cider(y|ies))\b/i },
-  { key: "drinks", re: /\b(drinks?|cocktails?|happy hour|bars?|nightcap)\b/i },
+  // Happy hour is a schedule-backed deal request, not a synonym for "bar."
+  // askFrederick handles it before this generic craving router so a late-open
+  // bar can never masquerade as a verified happy-hour offer.
+  { key: "drinks", re: /\b(drinks?|cocktails?|bars?|nightcap)\b/i },
   { key: "movies", re: /\b(movies?|cinemas?|film showing)\b/i },
 ];
 
@@ -388,6 +396,13 @@ const CATEGORY_HINTS: Record<string, string[]> = {
  * chronological order breaks ties (stable sort over date-sorted input).
  */
 export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
+  if (
+    /\b(?:biggest|major|main|headline|headliner|marquee|must[- ]see)\b/i.test(
+      query,
+    )
+  ) {
+    return [...picked].sort(compareForLead);
+  }
   const tokens = query
     .toLowerCase()
     .split(/[^a-z]+/)

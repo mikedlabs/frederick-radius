@@ -154,11 +154,7 @@ export default function SportsPage() {
           bodyClassName="space-y-10 sm:space-y-12"
         >
         <section>
-          <SectionHeading
-            title="Upcoming team games"
-            href="/api/calendar/sports.ics"
-            cta="Sports calendar"
-          />
+          <SectionHeading title="Upcoming team games" />
           <p
             className="mb-4 mt-2 max-w-[42rem] text-[12.5px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
@@ -198,7 +194,7 @@ export default function SportsPage() {
         {/* Live score on game days (home or away) — the client island
             self-hides on an idle day and polls only while a game is live. */}
         <div className="[&:not(:empty)]:mt-4">
-          <KeysScore />
+          <KeysScore showMoreLink={false} />
         </div>
         <p
           className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.14em]"

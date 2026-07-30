@@ -715,6 +715,20 @@ export type QualifiedSearchIndexResult = {
   meta: QualifiedSearchMeta;
 };
 
+const MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY = new Set([
+  "action:map-trash",
+  "action:map-restrooms",
+  "action:map-water",
+  "action:map-dog-stations",
+  "action:map-wifi",
+  "action:map-outlets",
+  "action:map-radar",
+  "action:map-roads",
+  "action:map-cameras",
+  "action:map-incidents",
+  "action:map-transit",
+]);
+
 /** Search adapter for natural-language qualifiers. Recognized constraints are
  * applied to the result set; they are never reduced to decorative copy. */
 export function qualifiedSearchIndex(
@@ -730,7 +744,19 @@ export function qualifiedSearchIndex(
     eventPool,
     context,
   );
-  const ranked = qualified.hits.map(hitToResult);
+  const deterministicUtilityAction = head.some((result) =>
+    MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY.has(result.id),
+  );
+  const ranked = qualified.hits
+    .map(hitToResult)
+    // A live amenity layer is the answer. A nearby business whose name shares
+    // one loose token is not a useful second choice and made the flagship
+    // search overlay look random after a correct first row. Keep guide/page
+    // doors, but do not proximity-fill these utility requests with places.
+    .filter(
+      (result) =>
+        !deterministicUtilityAction || result.type !== "place",
+    );
   const hasDeterministicMapAction = head.some((result) =>
     result.id.startsWith("action:map-"),
   );
