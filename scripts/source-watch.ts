@@ -19,8 +19,8 @@ import {
   type FirecrawlRestOptions,
 } from "./lib/firecrawl-rest";
 
-loadEnvironment({ path: resolve(".env.local") });
-loadEnvironment();
+loadEnvironment({ path: resolve(".env.local"), quiet: true });
+loadEnvironment({ quiet: true });
 
 const DEFAULT_CONFIG_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -34,11 +34,7 @@ const CREDITS_PER_SOURCE = 1;
 const ABSOLUTE_MONTHLY_CREDIT_CAP = 500;
 
 export type SourceWatchStatus =
-  | "new"
-  | "same"
-  | "changed"
-  | "removed"
-  | "error";
+  "new" | "same" | "changed" | "removed" | "error";
 
 export type SourceWatchSource = {
   id: string;
@@ -139,6 +135,14 @@ export type RunSourceWatchOptions = {
   reportDirectory?: string;
   fetchPage?: FirecrawlPageFetcher;
   now?: () => Date;
+  /** Optional exact source ids from the reviewed allowlist. */
+  sourceIds?: readonly string[];
+};
+
+export type SourceWatchCliArgs = {
+  live: boolean;
+  confirmed: boolean;
+  sourceIds: string[];
 };
 
 export class SourceWatchError extends Error {
@@ -183,10 +187,16 @@ export function classifySourceWatchHash(
 }
 
 function invalidConfig(message: string): never {
-  throw new SourceWatchError("INVALID_CONFIG", `Source Watch config: ${message}`);
+  throw new SourceWatchError(
+    "INVALID_CONFIG",
+    `Source Watch config: ${message}`,
+  );
 }
 
-function assertPositiveInteger(value: unknown, label: string): asserts value is number {
+function assertPositiveInteger(
+  value: unknown,
+  label: string,
+): asserts value is number {
   if (!Number.isInteger(value) || Number(value) <= 0) {
     invalidConfig(`${label} must be a positive integer.`);
   }
@@ -198,7 +208,9 @@ function validateExactPublicUrl(
   allowHttp: boolean,
 ): string {
   if (typeof value !== "string" || !value || value !== value.trim()) {
-    invalidConfig(`${label} must be an exact URL without surrounding whitespace.`);
+    invalidConfig(
+      `${label} must be an exact URL without surrounding whitespace.`,
+    );
   }
 
   try {
@@ -216,7 +228,8 @@ function validateExactPublicUrl(
 export function validateSourceWatchConfig(
   value: SourceWatchConfig,
 ): SourceWatchConfig {
-  if (!value || typeof value !== "object") invalidConfig("root must be an object.");
+  if (!value || typeof value !== "object")
+    invalidConfig("root must be an object.");
   if (value.version !== 1) invalidConfig("version must be 1.");
   if (value.mode !== "candidate-only") {
     invalidConfig('mode must be "candidate-only".');
@@ -251,7 +264,10 @@ export function validateSourceWatchConfig(
     invalidConfig("limits.timeoutMs cannot exceed 60000.");
   }
   if (!Array.isArray(value.sources)) invalidConfig("sources must be an array.");
-  if (value.sources.length < 10 || value.sources.length > value.limits.maxSources) {
+  if (
+    value.sources.length < 10 ||
+    value.sources.length > value.limits.maxSources
+  ) {
     invalidConfig(
       `sources must contain 10-${value.limits.maxSources} allowlisted entries.`,
     );
@@ -283,9 +299,7 @@ export function validateSourceWatchConfig(
         typeof httpException.reason !== "string" ||
         !httpException.reason.trim())
     ) {
-      invalidConfig(
-        `${prefix}.httpException requires reviewedBy and reason.`,
-      );
+      invalidConfig(`${prefix}.httpException requires reviewedBy and reason.`);
     }
     const allowHttp = httpException !== undefined;
     const exactUrl = validateExactPublicUrl(
@@ -315,7 +329,10 @@ export function validateSourceWatchConfig(
         `${prefix} requires non-empty name, category, purpose, and rightsPosture.`,
       );
     }
-    if (source.provenance !== "first-party" && source.provenance !== "government") {
+    if (
+      source.provenance !== "first-party" &&
+      source.provenance !== "government"
+    ) {
       invalidConfig(`${prefix}.provenance must be first-party or government.`);
     }
   }
@@ -333,12 +350,43 @@ export function validateSourceWatchConfig(
   return value;
 }
 
+export function selectSourceWatchSources(
+  config: SourceWatchConfig,
+  sourceIds: readonly string[] | undefined,
+): SourceWatchConfig {
+  const validated = validateSourceWatchConfig(config);
+  if (!sourceIds || sourceIds.length === 0) return validated;
+
+  const uniqueIds = [...new Set(sourceIds)];
+  for (const id of uniqueIds) {
+    if (!id || id !== id.trim()) {
+      invalidConfig("selected source ids must be non-empty and trimmed.");
+    }
+  }
+
+  const sourcesById = new Map(
+    validated.sources.map((source) => [source.id, source] as const),
+  );
+  const unknownIds = uniqueIds.filter((id) => !sourcesById.has(id));
+  if (unknownIds.length > 0) {
+    invalidConfig(
+      `unknown selected source id${unknownIds.length === 1 ? "" : "s"}: ${unknownIds.join(", ")}.`,
+    );
+  }
+
+  return {
+    ...validated,
+    sources: uniqueIds.map((id) => sourcesById.get(id)!),
+  };
+}
+
 async function readConfig(configPath: string): Promise<SourceWatchConfig> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(configPath, "utf8"));
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown read error";
+    const message =
+      error instanceof Error ? error.message : "unknown read error";
     throw new SourceWatchError(
       "INVALID_CONFIG",
       `Could not read Source Watch config: ${message}`,
@@ -355,7 +403,10 @@ function emptyState(month: string): SourceWatchState {
   };
 }
 
-async function readState(statePath: string, month: string): Promise<SourceWatchState> {
+async function readState(
+  statePath: string,
+  month: string,
+): Promise<SourceWatchState> {
   let raw: string;
   try {
     raw = await readFile(statePath, "utf8");
@@ -395,7 +446,8 @@ async function readState(statePath: string, month: string): Promise<SourceWatchS
     state.budget.months[month] ??= { attemptedCredits: 0 };
     return state;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown parse error";
+    const message =
+      error instanceof Error ? error.message : "unknown parse error";
     throw new SourceWatchError(
       "INVALID_STATE",
       `Source Watch state is unreadable; budget was not reset: ${message}`,
@@ -422,20 +474,41 @@ function isExpectedFinalHost(requestedUrl: string, finalUrl: string): boolean {
   }
 }
 
-function safeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
-  const allowedKeys = [
-    "title",
-    "statusCode",
-    "contentType",
-    "language",
-    "sourceURL",
-    "url",
-  ];
+function safeMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  const allowedKeys = ["title", "statusCode", "contentType", "language"];
   return Object.fromEntries(
     allowedKeys
       .filter((key) => metadata[key] !== undefined)
       .map((key) => [key, metadata[key]]),
   );
+}
+
+export function sanitizeSourceWatchLinks(
+  links: readonly string[],
+  sourceUrl: string,
+  allowHttp = false,
+): string[] {
+  const source = validateFirecrawlPublicUrl(sourceUrl, { allowHttp });
+  const sanitized = new Set<string>();
+
+  for (const rawLink of links) {
+    try {
+      const parsed = new URL(rawLink, source);
+      if (canonicalHost(parsed.href) !== canonicalHost(source.href)) continue;
+      parsed.search = "";
+      parsed.hash = "";
+      validateFirecrawlPublicUrl(parsed.href, { allowHttp });
+      sanitized.add(parsed.href);
+    } catch {
+      // Provider-returned links are optional evidence. Unsafe, malformed, or
+      // cross-host values are discarded rather than retained in an artifact.
+    }
+    if (sanitized.size >= 25) break;
+  }
+
+  return [...sanitized];
 }
 
 function reportedStatusCode(
@@ -450,10 +523,11 @@ function reportedStatusCode(
 }
 
 function safeErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : "Unknown source error";
-  return message
-    .replace(/\bfc-[A-Za-z0-9_-]+\b/g, "[redacted]")
-    .slice(0, 500);
+  const message =
+    error instanceof Error ? error.message : "Unknown source error";
+  const apiKey = process.env.FIRECRAWL_API_KEY ?? "";
+  const redacted = apiKey ? message.split(apiKey).join("[redacted]") : message;
+  return redacted.replace(/\bfc-[A-Za-z0-9_-]+\b/g, "[redacted]").slice(0, 500);
 }
 
 function emptySummary(): Record<SourceWatchStatus, number> {
@@ -543,7 +617,10 @@ async function removeObservedLock(
   }
 }
 
-async function acquireLock(lockPath: string, now: Date): Promise<{
+async function acquireLock(
+  lockPath: string,
+  now: Date,
+): Promise<{
   release: () => Promise<void>;
 }> {
   await mkdir(dirname(lockPath), { recursive: true });
@@ -597,13 +674,17 @@ export async function runSourceWatch(
 }> {
   const now = options.now?.() ?? new Date();
   if (Number.isNaN(now.getTime())) {
-    throw new SourceWatchError("INVALID_CONFIG", "Source Watch clock is invalid.");
+    throw new SourceWatchError(
+      "INVALID_CONFIG",
+      "Source Watch clock is invalid.",
+    );
   }
   const checkedAt = now.toISOString();
   const month = checkedAt.slice(0, 7);
-  const config = options.config
-    ? validateSourceWatchConfig(options.config)
-    : await readConfig(options.configPath ?? DEFAULT_CONFIG_PATH);
+  const loadedConfig =
+    options.config ??
+    (await readConfig(options.configPath ?? DEFAULT_CONFIG_PATH));
+  const config = selectSourceWatchSources(loadedConfig, options.sourceIds);
   const reportDirectory = options.reportDirectory ?? DEFAULT_REPORT_DIRECTORY;
   const statePath = join(reportDirectory, "state.json");
   const lockPath = join(reportDirectory, ".run.lock");
@@ -661,7 +742,10 @@ export async function runSourceWatch(
         }
 
         const currentHash = hashSourceWatchContent(snapshot.markdown);
-        const status = classifySourceWatchHash(previous?.contentHash, currentHash);
+        const status = classifySourceWatchHash(
+          previous?.contentHash,
+          currentHash,
+        );
         summary[status] += 1;
         const observation: StoredObservation = {
           url: source.url,
@@ -689,7 +773,11 @@ export async function runSourceWatch(
             currentHash,
             textLength: snapshot.markdown.length,
             linkCount: snapshot.links.length,
-            links: snapshot.links.slice(0, 25),
+            links: sanitizeSourceWatchLinks(
+              snapshot.links,
+              source.url,
+              source.httpException !== undefined,
+            ),
             metadata: safeMetadata(snapshot.metadata),
           });
         }
@@ -751,8 +839,90 @@ export async function runSourceWatch(
   }
 }
 
+export function sourceWatchReportHasSuccessfulRetrieval(
+  report: SourceWatchReport,
+): boolean {
+  return report.sourcesChecked.length > report.summary.error;
+}
+
+export function parseSourceWatchCliArgs(
+  args: readonly string[],
+): SourceWatchCliArgs {
+  const sourceIds: string[] = [];
+  let live = false;
+  let confirmed = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]!;
+    if (argument === "--live") {
+      live = true;
+      continue;
+    }
+    if (argument === "--confirm") {
+      confirmed = true;
+      continue;
+    }
+    if (argument === "--source") {
+      const sourceId = args[index + 1];
+      if (!sourceId || sourceId.startsWith("--")) {
+        throw new Error("--source requires a reviewed source id.");
+      }
+      sourceIds.push(sourceId);
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("--source=")) {
+      const sourceId = argument.slice("--source=".length);
+      if (!sourceId) {
+        throw new Error("--source requires a reviewed source id.");
+      }
+      sourceIds.push(sourceId);
+      continue;
+    }
+    throw new Error(`Unknown Source Watch argument: ${argument}`);
+  }
+
+  return { live, confirmed, sourceIds };
+}
+
 async function main(): Promise<void> {
-  const result = await runSourceWatch();
+  const { live, confirmed, sourceIds } = parseSourceWatchCliArgs(
+    process.argv.slice(2),
+  );
+  const loadedConfig = await readConfig(DEFAULT_CONFIG_PATH);
+  const config = selectSourceWatchSources(loadedConfig, sourceIds);
+
+  if (!live) {
+    console.log(
+      `Source Watch plan: ${config.sources.length} reviewed source(s), ` +
+        `${config.sources.length * CREDITS_PER_SOURCE}/${config.limits.maxCreditsPerRun} ` +
+        "maximum run credits.",
+    );
+    for (const source of config.sources) {
+      console.log(`- ${source.id}: ${source.url}`);
+    }
+    console.log("Plan only. No API requests or files were written.");
+    console.log(
+      "Use --live --confirm after reviewing config/source-watch.json.",
+    );
+    return;
+  }
+
+  if (!confirmed) {
+    throw new Error(
+      "Live Source Watch runs require both --live and --confirm.",
+    );
+  }
+  if (!process.env.FIRECRAWL_API_KEY) {
+    throw new Error(
+      "FIRECRAWL_API_KEY is required for a live Source Watch run.",
+    );
+  }
+
+  const result = await runSourceWatch({
+    config: loadedConfig,
+    sourceIds,
+  });
   const changed =
     result.report.summary.new +
     result.report.summary.changed +
@@ -762,6 +932,11 @@ async function main(): Promise<void> {
     `Source Watch checked ${result.report.sourcesChecked.length} allowlisted sources; ${changed} review candidate(s).`,
   );
   console.log(`Candidate report: ${result.reportPath}`);
+  if (!sourceWatchReportHasSuccessfulRetrieval(result.report)) {
+    throw new Error(
+      "Source Watch did not retrieve any selected source successfully. Review the uploaded candidate report.",
+    );
+  }
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : "";

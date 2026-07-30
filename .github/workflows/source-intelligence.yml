@@ -1,0 +1,213 @@
+name: Source intelligence pilot
+
+# Manual, review-only pilots for finding and watching first-party sources.
+# This workflow never writes canonical app data, commits changes, or publishes
+# provider output. Keep it manual until several reviewed runs prove useful.
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: "Choose a zero-cost plan or one capped live provider run"
+        required: true
+        type: choice
+        default: tavily-plan
+        options:
+          - tavily-plan
+          - tavily-scout
+          - firecrawl-watch
+      profile:
+        description: "Reviewed Tavily discovery profile"
+        required: true
+        type: choice
+        default: menus-reservations-accessibility
+        options:
+          - official-civic-mdot
+          - official-new-events
+          - menus-reservations-accessibility
+          - food-truck-schedules
+          - unresolved-source-recovery
+      source:
+        description: "Exact reviewed Firecrawl page for a one-source pilot"
+        required: true
+        type: choice
+        default: weinberg-performances
+        options:
+          - downtown-frederick-events
+          - celebrate-frederick-events
+          - great-frederick-fair-schedule
+          - visit-frederick-events
+          - weinberg-performances
+          - sky-stage-calendar
+          - delaplaine-events
+          - maryland-ensemble-events
+          - frederick-center-events
+          - mdcc-deaf-community-events
+          - city-emergency-alerts
+          - county-health-alerts
+          - county-connector-schedules
+          - county-food-truck-roster
+      confirm_live:
+        description: "Required for a live provider request"
+        required: true
+        type: boolean
+        default: false
+      initialize_state:
+        description: "Allow the first live run to create a new budget ledger and comparison baseline"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-intelligence-pilot
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: Production
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The provider cache and attempted-credit ledgers must survive ephemeral
+      # runners or daily/monthly caps would reset on every manual run.
+      - name: Restore source intelligence state
+        id: source-state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            scripts/reports/source-scout-cache.json
+            scripts/reports/source-scout-usage.json
+            scripts/reports/source-watch/state.json
+          key: source-intelligence-state-${{ github.run_id }}
+          restore-keys: |
+            source-intelligence-state-
+
+      - name: Zero-cost Tavily plan and preflight
+        if: ${{ inputs.tool == 'tavily-plan' || inputs.tool == 'tavily-scout' }}
+        env:
+          SCOUT_PROFILE: ${{ inputs.profile }}
+        run: |
+          set -o pipefail
+          npm run source:scout -- --profile="$SCOUT_PROFILE" 2>&1 | tee source-intelligence.log
+
+      - name: Zero-cost Firecrawl plan and preflight
+        if: ${{ inputs.tool == 'firecrawl-watch' }}
+        env:
+          WATCH_SOURCE: ${{ inputs.source }}
+        run: |
+          set -o pipefail
+          npm run source:watch -- --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
+
+      - name: Require explicit live confirmation
+        if: ${{ inputs.tool != 'tavily-plan' && !inputs.confirm_live }}
+        run: |
+          echo "::error title=Live confirmation required::Run the workflow again with confirm_live checked."
+          exit 1
+
+      - name: Keep live budget state on main
+        if: ${{ inputs.tool != 'tavily-plan' && inputs.confirm_live && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error title=Live pilots run from main only::Choose the main branch so provider budgets and comparison state cannot split across branch-scoped caches."
+          exit 1
+
+      - name: Protect persistent budgets and comparison state
+        if: ${{ inputs.tool != 'tavily-plan' && inputs.confirm_live && !inputs.initialize_state }}
+        env:
+          RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
+          SELECTED_TOOL: ${{ inputs.tool }}
+        run: |
+          if [ -z "$RESTORED_STATE_KEY" ]; then
+            echo "::error title=Source state was not restored::If this is the first intentional live run, check initialize_state. Otherwise stop and recover the previous state before spending credits."
+            exit 1
+          fi
+          case "$SELECTED_TOOL" in
+            tavily-scout)
+              test -f scripts/reports/source-scout-usage.json || {
+                echo "::error title=Tavily usage ledger is missing::Check initialize_state only for the first intentional run."
+                exit 1
+              }
+              ;;
+            firecrawl-watch)
+              test -f scripts/reports/source-watch/state.json || {
+                echo "::error title=Firecrawl comparison baseline is missing::Check initialize_state only for the first intentional run."
+                exit 1
+              }
+              ;;
+          esac
+
+      - name: Run capped Tavily Source Scout
+        if: ${{ inputs.tool == 'tavily-scout' && inputs.confirm_live }}
+        env:
+          SCOUT_PROFILE: ${{ inputs.profile }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: |
+          if [ -z "$TAVILY_API_KEY" ]; then
+            echo "::error title=Missing TAVILY_API_KEY::Add a fresh key to the GitHub Production environment."
+            exit 1
+          fi
+          set -o pipefail
+          npm run source:scout -- --live --confirm --profile="$SCOUT_PROFILE" 2>&1 | tee -a source-intelligence.log
+
+      - name: Run one-source Firecrawl Source Watch pilot
+        if: ${{ inputs.tool == 'firecrawl-watch' && inputs.confirm_live }}
+        env:
+          WATCH_SOURCE: ${{ inputs.source }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          if [ -z "$FIRECRAWL_API_KEY" ]; then
+            echo "::error title=Missing FIRECRAWL_API_KEY::Add the key to the GitHub Production environment."
+            exit 1
+          fi
+          set -o pipefail
+          npm run source:watch -- --live --confirm --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
+
+      - name: Add operator result to job summary
+        if: always()
+        run: |
+          {
+            echo "## Source intelligence pilot"
+            echo
+            echo "Review evidence only. No Radius data was published."
+            echo
+            echo '```text'
+            cat source-intelligence.log 2>/dev/null || echo "No provider run was completed."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-intelligence-${{ inputs.tool }}-${{ github.run_id }}
+          path: |
+            source-intelligence.log
+            scripts/reports/source-scout-latest.json
+            scripts/reports/source-watch/source-watch-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Save source intelligence state
+        if: ${{ always() && inputs.tool != 'tavily-plan' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/reports/source-scout-cache.json
+            scripts/reports/source-scout-usage.json
+            scripts/reports/source-watch/state.json
+          key: source-intelligence-state-${{ github.run_id }}

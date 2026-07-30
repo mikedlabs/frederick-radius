@@ -20,30 +20,31 @@ describe("scheduled data workflow contracts", () => {
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
     const workflow = workflowText("data-steward.yml");
 
+    expect(workflow).toContain('cron: "17 9 * * *"');
     expect(workflow).toContain(
       "NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}",
     );
     expect(workflow).toContain(
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}",
     );
-    expect(workflow).toContain(
+    // The Vercel hours writer already retrieves businessStatus in the same
+    // paid Place Details call. The GitHub materializer must not repeat a
+    // status-only Google sweep over the same catalog.
+    expect(workflow).not.toContain("run: npm run refresh:business-status");
+    expect(workflow).not.toContain(
       "GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}",
     );
     expect(workflow).not.toContain("secrets.DATABASE_URL");
   });
 
-  it("builds the pre-status identity snapshot before either paid place refresh", () => {
+  it("builds the pre-status identity snapshot before materializing hours and status", () => {
     const workflow = workflowText("data-steward.yml");
     const identityBuild = workflow.indexOf(
       "run: npm run build:place-refresh-identities",
     );
-    const statusRefresh = workflow.indexOf(
-      "run: npm run refresh:business-status",
-    );
     const hoursPull = workflow.indexOf("run: npm run refresh:hours");
 
     expect(identityBuild).toBeGreaterThan(-1);
-    expect(statusRefresh).toBeGreaterThan(identityBuild);
     expect(hoursPull).toBeGreaterThan(identityBuild);
   });
 
@@ -63,6 +64,19 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
+  it("does not schedule the non-persisting paid business-status reporter", () => {
+    const vercel = JSON.parse(
+      readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"),
+    ) as { crons?: Array<{ path?: string }> };
+
+    expect(vercel.crons ?? []).not.toContainEqual(
+      expect.objectContaining({ path: "/api/cron/business-status" }),
+    );
+    expect(vercel.crons ?? []).toContainEqual(
+      expect.objectContaining({ path: "/api/cron/hours-refresh" }),
+    );
+  });
+
   it.each([
     "ingest-business-info.yml",
     "ingest-civic.yml",
@@ -74,6 +88,30 @@ describe("scheduled data workflow contracts", () => {
       "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
     );
   });
+
+  it.each([
+    "ingest-business-info.yml",
+    "ingest-civic.yml",
+    "ingest-venues.yml",
+  ])(
+    "%s fails closed when its optional Firecrawl fallback is misconfigured",
+    (name) => {
+      const workflow = workflowText(name);
+
+      expect(workflow).toContain("Verify optional Firecrawl fallback");
+      expect(workflow).toContain(
+        "FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}",
+      );
+      expect(workflow).toContain(
+        "FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}",
+      );
+      expect(workflow).toContain(
+        "FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}",
+      );
+      expect(workflow).toContain('if [ -z "$FIRECRAWL_API_KEY" ]; then');
+      expect(workflow).toContain('"$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 20');
+    },
+  );
 
   it("does not splice workflow input into a secret-bearing shell command", () => {
     const workflow = workflowText("ingest-business-info.yml");

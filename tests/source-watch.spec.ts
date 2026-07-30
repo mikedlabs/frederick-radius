@@ -7,7 +7,11 @@ import {
   classifySourceWatchHash,
   hashSourceWatchContent,
   normalizeSourceWatchContent,
+  parseSourceWatchCliArgs,
   runSourceWatch,
+  sanitizeSourceWatchLinks,
+  selectSourceWatchSources,
+  sourceWatchReportHasSuccessfulRetrieval,
   SourceWatchError,
   validateSourceWatchConfig,
   type SourceWatchConfig,
@@ -70,7 +74,9 @@ describe("Source Watch content identity", () => {
     const configPath = fileURLToPath(
       new URL("../config/source-watch.json", import.meta.url),
     );
-    const config = JSON.parse(await readFile(configPath, "utf8")) as SourceWatchConfig;
+    const config = JSON.parse(
+      await readFile(configPath, "utf8"),
+    ) as SourceWatchConfig;
     const validated = validateSourceWatchConfig(config);
 
     expect(validated.sources).toHaveLength(14);
@@ -100,11 +106,98 @@ describe("Source Watch content identity", () => {
     };
     expect(validateSourceWatchConfig(httpConfig)).toBe(httpConfig);
   });
+
+  it("accepts only exact reviewed source ids for a focused pilot", () => {
+    const config = testConfig();
+    const selected = selectSourceWatchSources(config, [
+      "official-source-3",
+      "official-source-1",
+      "official-source-3",
+    ]);
+
+    expect(selected.sources.map(({ id }) => id)).toEqual([
+      "official-source-3",
+      "official-source-1",
+    ]);
+    expect(() =>
+      selectSourceWatchSources(config, ["not-reviewed"]),
+    ).toThrowError(/unknown selected source id/i);
+  });
+
+  it("parses explicit plan and confirmed live CLI selections", () => {
+    expect(parseSourceWatchCliArgs(["--source=official-source-1"])).toEqual({
+      live: false,
+      confirmed: false,
+      sourceIds: ["official-source-1"],
+    });
+    expect(
+      parseSourceWatchCliArgs([
+        "--live",
+        "--confirm",
+        "--source",
+        "official-source-2",
+      ]),
+    ).toEqual({
+      live: true,
+      confirmed: true,
+      sourceIds: ["official-source-2"],
+    });
+    expect(() => parseSourceWatchCliArgs(["--unknown"])).toThrowError(
+      /unknown source watch argument/i,
+    );
+  });
+
+  it("retains only same-host links without query strings or fragments", () => {
+    expect(
+      sanitizeSourceWatchLinks(
+        [
+          "/events/123?token=secret#details",
+          "https://source-1.example.test/events/123?utm_source=test",
+          "https://tickets.example.test/private",
+          "http://127.0.0.1/private",
+        ],
+        "https://source-1.example.test/events",
+      ),
+    ).toEqual(["https://source-1.example.test/events/123"]);
+  });
 });
 
 describe("Source Watch candidate runs", () => {
+  it("checks and reserves exactly one credit for a selected source", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const fetchPage = vi.fn(async (url: string) =>
+      snapshot(url, `Official page for ${url}`),
+    );
+
+    const result = await runSourceWatch({
+      config: testConfig(),
+      sourceIds: ["official-source-4"],
+      reportDirectory,
+      fetchPage,
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+
+    expect(fetchPage).toHaveBeenCalledOnce();
+    expect(fetchPage).toHaveBeenCalledWith(
+      "https://source-4.example.test/events",
+      expect.objectContaining({ timeoutMs: 1_000 }),
+    );
+    expect(result.report.sourcesChecked).toEqual([
+      {
+        id: "official-source-4",
+        url: "https://source-4.example.test/events",
+      },
+    ]);
+    expect(result.report.budget.attemptedCreditsThisRun).toBe(1);
+    expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(true);
+  });
+
   it("recovers a stale lock that records its PID and timestamp", async () => {
-    const reportDirectory = await mkdtemp(join(tmpdir(), "radius-source-watch-"));
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
     await writeFile(
       join(reportDirectory, ".run.lock"),
       `${JSON.stringify({
@@ -130,7 +223,9 @@ describe("Source Watch candidate runs", () => {
   });
 
   it("reports new, same, changed, removed, and error without publishing content", async () => {
-    const reportDirectory = await mkdtemp(join(tmpdir(), "radius-source-watch-"));
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
     const config = testConfig();
     let round = 1;
     const fetchPage = vi.fn(async (url: string) => {
@@ -183,20 +278,18 @@ describe("Source Watch candidate runs", () => {
       removed: 1,
       error: 1,
     });
-    expect(second.report.candidates.map(({ status }) => status).sort()).toEqual([
-      "changed",
-      "error",
-      "removed",
-    ]);
+    expect(second.report.candidates.map(({ status }) => status).sort()).toEqual(
+      ["changed", "error", "removed"],
+    );
     expect(second.report.kind).toBe("candidate-only");
     expect(JSON.stringify(second.report)).not.toContain(
       "A materially changed official page",
     );
 
     const files = await readdir(reportDirectory);
-    expect(files.filter((file) => file.startsWith("source-watch-"))).toHaveLength(
-      2,
-    );
+    expect(
+      files.filter((file) => file.startsWith("source-watch-")),
+    ).toHaveLength(2);
     expect(files).toContain("state.json");
     expect(files).not.toContain(".run.lock");
 
@@ -209,7 +302,9 @@ describe("Source Watch candidate runs", () => {
   });
 
   it("reserves the hard monthly cap before making any further request", async () => {
-    const reportDirectory = await mkdtemp(join(tmpdir(), "radius-source-watch-"));
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
     const config = testConfig(10);
     const fetchPage = vi.fn(async (url: string) =>
       snapshot(url, `Official page for ${url}`),
@@ -237,7 +332,9 @@ describe("Source Watch candidate runs", () => {
   });
 
   it("rejects a cross-host redirect as an error candidate", async () => {
-    const reportDirectory = await mkdtemp(join(tmpdir(), "radius-source-watch-"));
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
     const config = testConfig(10);
     const fetchPage = vi.fn(async (url: string) => ({
       ...snapshot(url, "Official page"),
@@ -257,10 +354,13 @@ describe("Source Watch candidate runs", () => {
       status: "error",
       errorCode: "SOURCE_REJECTED",
     });
+    expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(false);
   });
 
   it("treats a successful Firecrawl envelope reporting 404 as removed", async () => {
-    const reportDirectory = await mkdtemp(join(tmpdir(), "radius-source-watch-"));
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
     const config = testConfig(10);
     const fetchPage = vi.fn(async (url: string) => ({
       ...snapshot(url, "Not found page"),
