@@ -220,6 +220,95 @@ describe("Radius search index builder", () => {
     expect(mocks.embedMany).not.toHaveBeenCalled();
   });
 
+  it("commits searchable text before a best-effort cleanup failure", async () => {
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+    let transactionCount = 0;
+    let baselineCommitted = false;
+    const cleanupError = Object.assign(
+      new Error("sensitive bound content must not be logged"),
+      {
+        name: "PostgresError",
+        code: "57014",
+        severity: "ERROR",
+        schema_name: "public",
+        table_name: "radius_search_documents",
+        routine: "ProcessInterrupts",
+        detail: "sensitive place document",
+      },
+    );
+    const tx = vi.fn((strings: TemplateStringsArray) => {
+      const text = queryText(strings);
+      if (text.includes("pg_try_advisory_xact_lock")) {
+        return Promise.resolve([{ acquired: true }]);
+      }
+      if (text.includes("select source_id")) {
+        return Promise.resolve([]);
+      }
+      if (text.includes("delete from public.radius_search_documents")) {
+        expect(baselineCommitted).toBe(true);
+        return Promise.reject(cleanupError);
+      }
+      return Promise.resolve([]);
+    });
+    const sql = Object.assign(vi.fn(), {
+      begin: vi.fn(
+        async (callback: (transaction: typeof tx) => unknown) => {
+          transactionCount += 1;
+          const currentTransaction = transactionCount;
+          const result = await callback(tx);
+          if (currentTransaction === 1) baselineCommitted = true;
+          return result;
+        },
+      ),
+    });
+    mocks.getSql.mockReturnValue(sql);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      total: 1,
+      processed: 1,
+      remaining: 0,
+      current: true,
+      cleanupWarning: {
+        code: "retired_documents_cleanup_failed",
+      },
+    });
+    expect(sql.begin).toHaveBeenCalledTimes(2);
+    expect(
+      tx.mock.calls.some(([strings]) =>
+        queryText(strings).includes(
+          "insert into public.radius_search_documents",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      tx.mock.calls.some(([strings]) =>
+        queryText(strings).includes("statement_timeout = '5s'"),
+      ),
+    ).toBe(true);
+    expect(mocks.embedMany).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      "[radius-search] retired-document cleanup failed after the search baseline committed",
+      {
+        name: "PostgresError",
+        code: "57014",
+        severity: "ERROR",
+        schema: "public",
+        table: "radius_search_documents",
+        routine: "ProcessInterrupts",
+      },
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(
+      "sensitive bound content",
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(
+      "sensitive place document",
+    );
+    warn.mockRestore();
+  });
+
   it("skips a concurrent refresh before any storage or paid work", async () => {
     const tx = vi.fn(
       (strings: TemplateStringsArray) =>

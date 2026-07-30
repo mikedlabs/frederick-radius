@@ -43,8 +43,22 @@ function row(
   };
 }
 
-function insertDb(options: { rejectWith?: Error } = {}) {
-  const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+function postgresError(code: string, message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
+}
+
+function insertDb(
+  options: {
+    rejectWith?: Error;
+    rejectRollupWith?: Error;
+  } = {},
+) {
+  const onConflictDoUpdate = vi.fn().mockImplementation(() => {
+    if (options.rejectRollupWith) {
+      return Promise.reject(options.rejectRollupWith);
+    }
+    return Promise.resolve(undefined);
+  });
   const values = vi.fn().mockImplementation((payload: unknown) => {
     const rows = Array.isArray(payload) ? payload : [payload];
     const isRollup = Boolean(
@@ -169,6 +183,55 @@ describe("feed snapshot persistence boundary", () => {
     expect(database.onConflictDoUpdate).toHaveBeenCalledOnce();
   });
 
+  it("falls back to the historical insert when the rollup table is missing", async () => {
+    const missingTable = postgresError(
+      "42P01",
+      'relation "feed_source_health" does not exist',
+    );
+    const database = insertDb({
+      rejectRollupWith: Object.assign(
+        new Error("Drizzle query failed"),
+        { cause: missingTable },
+      ),
+    });
+    mocks.getDb.mockReturnValue(database.db);
+    recordSnapshot("__test_legacy_persist__", [row()]);
+
+    await expect(
+      persistCurrentSnapshotsStrict(["__test_legacy_persist__"]),
+    ).resolves.toBe(1);
+
+    expect(database.db.transaction).toHaveBeenCalledOnce();
+    expect(database.insert).toHaveBeenCalledTimes(3);
+    expect(database.onConflictDoUpdate).toHaveBeenCalledOnce();
+    const fallback = database.values.mock.calls[2][0] as Array<
+      Record<string, unknown>
+    >;
+    expect(fallback).toEqual([
+      expect.objectContaining({
+        source: "__test_legacy_persist__",
+        count: 1,
+      }),
+    ]);
+    expect(fallback[0]).not.toHaveProperty("recent_mean_count");
+  });
+
+  it("does not turn a rollup permission failure into a legacy success", async () => {
+    const database = insertDb({
+      rejectRollupWith: postgresError(
+        "42501",
+        "permission denied for feed_source_health",
+      ),
+    });
+    mocks.getDb.mockReturnValue(database.db);
+    recordSnapshot("__test_rollup_permission__", [row()]);
+
+    await expect(
+      persistCurrentSnapshotsStrict(["__test_rollup_permission__"]),
+    ).rejects.toThrow("permission denied");
+    expect(database.insert).toHaveBeenCalledTimes(2);
+  });
+
   it("returns zero instead of breaking the health cron when persistence fails", async () => {
     const database = insertDb({
       rejectWith: new Error("database temporarily unavailable"),
@@ -212,6 +275,44 @@ describe("feed snapshot persistence boundary", () => {
     await expect(hydrateSnapshotsStrict()).rejects.toThrow(
       "read unavailable",
     );
+    expect(select).toHaveBeenCalledOnce();
+  });
+
+  it("hydrates from bounded legacy history when the rollup table is missing", async () => {
+    const projectionOrderBy = vi.fn().mockRejectedValue(
+      Object.assign(new Error("Drizzle query failed"), {
+        cause: postgresError(
+          "42P01",
+          'relation "feed_source_health" does not exist',
+        ),
+      }),
+    );
+    const limit = vi.fn().mockResolvedValue([
+      {
+        source: "__test_legacy_hydrate__",
+        taken_at: new Date("2026-07-28T12:00:00.000Z"),
+        count: 4,
+        free_ratio: 0.25,
+        empty_desc_ratio: 0,
+        top_venue: null,
+        top_category: null,
+        earliest: null,
+        latest: null,
+      },
+    ]);
+    const legacyOrderBy = vi.fn(() => ({ limit }));
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({ orderBy: projectionOrderBy })
+      .mockReturnValueOnce({ orderBy: legacyOrderBy });
+    const select = vi.fn(() => ({ from }));
+    mocks.getDb.mockReturnValue({ select });
+    _resetHydrateThrottle();
+
+    await expect(hydrateSnapshotsStrict()).resolves.toBeUndefined();
+    expect(select).toHaveBeenCalledTimes(2);
+    expect(from).toHaveBeenCalledTimes(2);
+    expect(limit).toHaveBeenCalledWith(100);
   });
 
   it("caps retention deletes to one bounded oldest-first batch", async () => {

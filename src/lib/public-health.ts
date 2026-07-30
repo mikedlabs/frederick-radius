@@ -83,6 +83,21 @@ function withinDeadline<T>(
   return Promise.race([guarded, deadline]).finally(() => clearTimeout(timer));
 }
 
+function logDependencyFailure(
+  dependency: "database" | "source-ledger",
+  outcome: "rejected" | "timeout",
+): void {
+  // Keep this machine-readable but deliberately omit thrown messages, query
+  // text, URLs, and environment values. The public response stays equally
+  // compact while operators can distinguish a fast rejection from a deadline.
+  console.warn(JSON.stringify({
+    level: "warn",
+    event: "public_health_dependency_failure",
+    dependency,
+    outcome,
+  }));
+}
+
 function deploymentEnvironment(
   value: string | undefined,
 ): PublicHealthSnapshot["deployment"]["environment"] {
@@ -182,6 +197,9 @@ export async function getPublicHealthSnapshot(
     dependencies.probeDatabase(),
     dependencies.databaseDeadlineMs,
   );
+  if (databaseResult.status !== "fulfilled") {
+    logDependencyFailure("database", databaseResult.status);
+  }
   const databaseLatencyMs =
     databaseResult.status === "fulfilled"
       ? Math.max(0, Math.round(performance.now() - databaseStartedAt))
@@ -213,6 +231,8 @@ export async function getPublicHealthSnapshot(
     );
     if (sourceResult.status === "fulfilled") {
       data = summarizePublicSourceHealth(sourceResult.value);
+    } else {
+      logDependencyFailure("source-ledger", sourceResult.status);
     }
   }
 

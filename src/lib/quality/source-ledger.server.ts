@@ -15,6 +15,31 @@ const SOURCE_REGISTRY = SOURCE_REGISTRY_RAW as SourceManifestEntry[];
 
 type RawSql = NonNullable<ReturnType<typeof getSql>>;
 
+function isUndefinedTableError(error: unknown): boolean {
+  let candidate: unknown = error;
+  const seen = new Set<unknown>();
+
+  while (
+    candidate !== null
+    && typeof candidate === "object"
+    && !seen.has(candidate)
+  ) {
+    seen.add(candidate);
+    if (
+      "code" in candidate
+      && (candidate as { code?: unknown }).code === "42P01"
+    ) {
+      return true;
+    }
+    candidate =
+      "cause" in candidate
+        ? (candidate as { cause?: unknown }).cause
+        : null;
+  }
+
+  return false;
+}
+
 function configurationEvidence(): SourceConfigurationEvidence[] {
   const statuses = feedStatuses();
   return [...statuses.keyed, ...statuses.keyless].flatMap((feed) =>
@@ -48,21 +73,50 @@ async function snapshotEvidence(
   sql: RawSql,
   sourceKeys: string[],
 ): Promise<SourceEvidence[]> {
-  const rows = (await sql`
-    WITH wanted(source) AS (
-      SELECT unnest(${sourceKeys}::text[])
-    )
-    SELECT wanted.source,
-           health.taken_at,
-           health.count
-    FROM wanted
-    JOIN feed_source_health health
-      ON health.source = wanted.source
-  `) as unknown as Array<{
+  type SnapshotEvidenceRow = {
     source: string;
     taken_at: string | Date;
     count: number;
-  }>;
+  };
+
+  let rows: SnapshotEvidenceRow[];
+  try {
+    rows = (await sql`
+      WITH wanted(source) AS (
+        SELECT unnest(${sourceKeys}::text[])
+      )
+      SELECT wanted.source,
+             health.taken_at,
+             health.count
+      FROM wanted
+      JOIN feed_source_health health
+        ON health.source = wanted.source
+    `) as unknown as SnapshotEvidenceRow[];
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // Migration 0039 is installed manually. Keep the health surface and its
+    // worker compatible during a code-first rollout, but only for PostgreSQL's
+    // exact undefined-table signal. Permission and query failures must remain
+    // visible to strict monitoring callers.
+    rows = (await sql`
+      WITH wanted(source) AS (
+        SELECT unnest(${sourceKeys}::text[])
+      )
+      SELECT wanted.source,
+             latest.taken_at,
+             latest.count
+      FROM wanted
+      JOIN LATERAL (
+        SELECT taken_at, count
+        FROM feed_snapshots
+        WHERE feed_snapshots.source = wanted.source
+        ORDER BY taken_at DESC, id DESC
+        LIMIT 1
+      ) latest ON true
+    `) as unknown as SnapshotEvidenceRow[];
+  }
+
   return rows.map((row) => {
     const at = new Date(row.taken_at).toISOString();
     return {
