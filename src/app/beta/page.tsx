@@ -27,11 +27,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * /beta — the gate, framed as the guide's own table of contents rendered
- * live. A new visitor reads a title for what Frederick Radius is, the way
- * in (a personal code, or a code by email), then the county proving itself:
- * "The county, right now" over the drone flight, and "In the guide", whose
- * every figure the server computed on this request.
+ * /beta — the legacy invite page, framed as the guide's own table of contents
+ * rendered live. The public site no longer redirects visitors here; the page
+ * remains for existing personal-code, email-invite, and beta-feedback flows.
  *
  * Owner calls, 2026-07: the code and the email sit at the top so the way in
  * is never buried; the title leads with what the guide is before the proof.

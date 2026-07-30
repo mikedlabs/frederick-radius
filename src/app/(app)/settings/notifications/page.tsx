@@ -6,8 +6,9 @@ import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   robots: { index: false },
-  title: "Notifications",
-  description: "Choose which Frederick Radius alerts appear on this device.",
+  title: "Alerts & feedback",
+  description:
+    "Choose which Frederick Radius alerts appear and whether this device uses phone feedback.",
 };
 
 export default function NotificationsSettingsPage() {
@@ -27,11 +28,11 @@ export default function NotificationsSettingsPage() {
           Settings
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Notifications
+          Alerts & feedback
         </h1>
         <p className="text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Turn on only the alerts you want. You can change them or disconnect
-          this device at any time.
+          Choose what this phone should tell you, when it should stay quiet,
+          and whether actions should feel tactile.
         </p>
       </header>
 
@@ -46,11 +47,11 @@ export default function NotificationsSettingsPage() {
         }}
       >
         <p className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
-          What we send
+          You stay in control
         </p>
         <p className="mt-1">
-          We send only the topics and time windows you choose. There are no
-          marketing messages, and every alert can be turned off here.
+          Alert choices and quiet hours apply to this device. Urgent civic
+          alerts can bypass quiet hours only when civic alerts are on.
         </p>
       </section>
     </div>

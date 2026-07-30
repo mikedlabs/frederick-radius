@@ -702,11 +702,11 @@ export default function AppMap({
     // captures its return path so the full page always comes back to the same
     // highlighted place rather than a visually similar, unselected map.
     try {
-      const url = new URL(window.location.href);
-      if (url.pathname === "/map") {
-        url.searchParams.set("place", pin.slug);
-        url.searchParams.delete("event");
-        window.history.replaceState(window.history.state, "", url.toString());
+      if (window.location.pathname === "/map") {
+        replaceMapUrl((params) => {
+          params.set("place", pin.slug);
+          params.delete("event");
+        });
       }
     } catch {
       // The sheet still opens if address-bar persistence is unavailable.
@@ -940,12 +940,12 @@ export default function AppMap({
   const [selectionUrlReady, setSelectionUrlReady] = useState(false);
   useEffect(() => {
     if (!dock || !selectionUrlReady) return;
-    const url = new URL(window.location.href);
-    if (selectedSlug) url.searchParams.set("place", selectedSlug);
-    else url.searchParams.delete("place");
-    if (selectedEvent) url.searchParams.set("event", selectedEvent.slug);
-    else url.searchParams.delete("event");
-    window.history.replaceState(window.history.state, "", url.toString());
+    replaceMapUrl((params) => {
+      if (selectedSlug) params.set("place", selectedSlug);
+      else params.delete("place");
+      if (selectedEvent) params.set("event", selectedEvent.slug);
+      else params.delete("event");
+    });
   }, [dock, selectedEvent, selectedSlug, selectionUrlReady]);
   // Pin peek — the compact bottom card that rises when a curated pin is
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
@@ -2747,9 +2747,7 @@ export default function AppMap({
     // synchronously because unrelated URL effects can still be settling while
     // the user chooses a result.
     if (q.trim()) {
-      const url = new URL(window.location.href);
-      url.searchParams.set("q", q.trim());
-      window.history.replaceState(window.history.state, "", url.toString());
+      replaceMapUrl((params) => params.set("q", q.trim()));
     }
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
@@ -2838,7 +2836,6 @@ export default function AppMap({
       const p = placesBySlug.get(r.id.replace(/^place:/, ""));
       if (p) {
         const map = mapRef.current?.getMap();
-        setQ("");
         if (map) {
           cameraIntentRef.current = true;
           // A named search result is an explicit destination, not a gentle
@@ -2858,7 +2855,6 @@ export default function AppMap({
       const event = events.find((candidate) => candidate.slug === r.id.replace(/^event:/, ""));
       if (event) {
         const map = mapRef.current?.getMap();
-        setQ("");
         openMapSelection({ kind: "event", value: event });
         if (map) {
           cameraIntentRef.current = true;

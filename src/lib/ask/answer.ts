@@ -1859,7 +1859,10 @@ export async function askFrederick(
               : "I couldn’t load the official forecast, active-alert feed, or a fresh AirNow observation right now.",
         ].filter(Boolean).join(" ")
     : null;
-  if (weatherSnapshot?.alerts.length) {
+  // A direct AQI question should cite the measured AirNow observation, not
+  // inherit whatever unrelated NWS alert happens to be active that day. This
+  // also keeps the answer stable across heat, flood, and wind-alert windows.
+  if (weatherSnapshot?.alerts.length && !asksAirQuality) {
     const alert = weatherSnapshot.alerts[0];
     sources.push({ slug: `nws-alert-${alert.id}`, name: alert.event, category: "civic", city: "Frederick County", href: alert.url, eyebrow: "Active National Weather Service alert", reason: alert.headline, confidence: "high" });
   }

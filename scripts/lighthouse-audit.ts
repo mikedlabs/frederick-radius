@@ -57,15 +57,19 @@ function parseArgs(): Args {
   const enforce =
     argv.includes("--enforce") || process.env.PERF_ENFORCE === "1";
 
-  // The set is intentionally narrow: the four current primary decision
-  // surfaces plus one dynamic place route. The previous list still audited
-  // retired /now, /browse, and /radius aliases, which could stay green while
-  // the routes people actually use regressed.
+  // The set is intentionally narrow: the primary decision surfaces, the
+  // computationally distinct transit and Ask experiences, and one dynamic
+  // place route. Add more URLs sparingly so the weekly pass stays useful.
+  //
+  // Canonical routes only. Measuring redirects hides the destination's
+  // real navigation cost and can make a retired alias look like a supported
+  // product surface.
   const urls = [
     "/today",
     "/map",
     "/events",
     "/ask",
+    "/transit",
     "/places/carroll-creek-linear-park-frederick",
   ];
   return { base, urls, label, enforce };

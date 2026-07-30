@@ -411,6 +411,16 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         keywords: ["scanner", "police scanner", "fire scanner", "dispatch", "911 calls", "incidents", "crashes", "fires", "wires down", "frederick scanner"],
       },
       {
+        id: "road-cameras",
+        label: "Road camera wall",
+        description: "View official CHART cameras across Frederick County.",
+        href: "/cameras",
+        icon: "camera",
+        tone: "cool",
+        parentJourney: "map",
+        keywords: ["traffic camera", "traffic cameras", "road camera", "camera wall", "i-70 camera", "us 15 camera", "us 340 camera"],
+      },
+      {
         id: "emergency-vet",
         label: "Emergency vet care",
         description: "Find listed emergency animal care and poison-help contacts.",

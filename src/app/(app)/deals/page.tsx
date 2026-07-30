@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Tag } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Tag } from "lucide-react";
 import { allDeals } from "@/lib/loaders/todaysDeals";
 import PageBloom from "@/components/ui/PageBloom";
-import FieldStamp from "@/components/ui/FieldStamp";
 import DealsBrowser from "@/components/deals/DealsBrowser";
+import { PageWide } from "@/components/layout/Page";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/deals" },
@@ -34,11 +34,10 @@ export default function DealsPage() {
   const today = easternDow(now);
   const rows = allDeals();
 
-  // Count of deals running TODAY (named-day deals only) for the intro lead.
-  const todayCount = rows.filter((r) => r.days.includes(today)).length;
+  const venueCount = new Set(rows.map((row) => row.slug)).size;
 
   return (
-    <div className="relative space-y-5">
+    <PageWide className="relative">
       <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -52,28 +51,74 @@ export default function DealsPage() {
         </Link>
       </nav>
 
-      <header className="pt-0.5">
-        <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />
-        <div className="flex items-center justify-between py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>Frederick County</span>
-          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{rows.length} special{rows.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
-              <Tag className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-              Daily specials
-            </h1>
-            <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {todayCount > 0 ? (
-                <><span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>{todayCount} running today.</span>{" "}Pick a day to see the specials by town. Each one was checked at its source.</>
-              ) : (
-                <>Pick a day to see the specials by town. Each one was checked at its source.</>
-              )}
-            </p>
-            <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-brand)" }} />
+      <header
+        className="relative overflow-hidden rounded-[var(--app-radius-xl)] border px-4 py-5 sm:px-6 sm:py-7"
+        style={{
+          borderColor: "var(--app-border)",
+          background:
+            "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated-solid)) 100%)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <Tag
+          aria-hidden
+          className="pointer-events-none absolute -right-5 -top-5 h-36 w-36 rotate-12 opacity-[0.055] sm:h-44 sm:w-44"
+          strokeWidth={1}
+          style={{ color: "var(--app-brand-press)" }}
+        />
+        <div className="relative max-w-[44rem]">
+          <p
+            className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Frederick County
+          </p>
+          <h1
+            className="mt-2 font-editorial text-[38px] font-semibold leading-[0.96] tracking-[-0.035em] sm:text-[48px]"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Daily deals
+          </h1>
+          <p
+            className="mt-3 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Choose a day, then narrow by town. We keep the source and
+            last-checked date with every listing.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span
+              className="inline-flex min-h-8 items-center rounded-full border px-3 text-[12px] font-semibold tabular-nums"
+              style={{
+                borderColor: "color-mix(in srgb, var(--app-brand) 22%, var(--app-border))",
+                background: "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated))",
+                color: "var(--app-brand-press)",
+              }}
+            >
+              {rows.length} {rows.length === 1 ? "special" : "specials"} tracked
+            </span>
+            <span
+              className="inline-flex min-h-8 items-center rounded-full border px-3 text-[12px] font-medium"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              {venueCount} {venueCount === 1 ? "place" : "places"}
+            </span>
+            <span
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium"
+              style={{
+                borderColor: "color-mix(in srgb, var(--app-positive) 22%, var(--app-border))",
+                background: "color-mix(in srgb, var(--app-positive) 7%, var(--app-bg-elevated))",
+                color: "var(--app-positive)",
+              }}
+            >
+              <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+              Source checked
+            </span>
           </div>
-          <FieldStamp id="deals" top="CHECKED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
         </div>
       </header>
 
@@ -82,13 +127,26 @@ export default function DealsPage() {
           No current specials are on file. Do you know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
         </p>
       ) : (
-        <DealsBrowser rows={rows} today={today} />
+        <DealsBrowser rows={rows} today={today} nowIso={now.toISOString()} />
       )}
 
-      <p className="px-1 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Times change. Each spot links to its place page so you can double-check before you go. Looking for happy hour instead?{" "}
-        <Link href="/happy-hour" className="underline" style={{ color: "var(--app-cool)" }}>See happy hours</Link>.
-      </p>
-    </div>
+      <aside
+        className="flex flex-col gap-2 rounded-[var(--app-radius-lg)] border px-4 py-3 text-[12px] leading-relaxed sm:flex-row sm:items-center sm:justify-between"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "color-mix(in srgb, var(--app-bg-sunken) 55%, transparent)",
+          color: "var(--app-ink-3)",
+        }}
+      >
+        <p>Deal details can change. Check the source before making a special trip.</p>
+        <Link
+          href="/happy-hour"
+          className="tap-44 shrink-0 font-semibold underline decoration-1 underline-offset-4"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Browse happy hours
+        </Link>
+      </aside>
+    </PageWide>
   );
 }

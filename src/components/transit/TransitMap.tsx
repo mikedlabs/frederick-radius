@@ -21,23 +21,90 @@ import { haptic } from "@/lib/haptics";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import {
   clearPendingTransitRouteFocus,
+  clearPendingTransitVehicleFocus,
+  isTransitVehicleFocusDetail,
   takePendingTransitRouteFocus,
+  takePendingTransitVehicleFocus,
   TRANSIT_ROUTE_FOCUS_EVENT,
+  TRANSIT_VEHICLE_FOCUS_EVENT,
   type TransitRouteFocusDetail,
+  type TransitVehicleFocusDetail,
 } from "@/lib/transit-focus";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import TRANSIT from "@/data/transit.json";
+import TRANSIT_NETWORK from "@/data/transit-network.json";
+import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
 const SHAPES = TRANSIT.shapes as Record<string, number[][]>;
-// The 386 static GTFS stops. These carry the stop_id the realtime feed keys
-// on, so a tapped stop can be joined to its live arrivals — unlike the Socrata
-// stops (different id space) the map used to render for decoration only.
-const STOPS_JSON: TransitStop[] = (
-  TRANSIT.stops as Array<{ id: string | number; name: string; lat: number; lng: number }>
-).map((s) => ({ id: String(s.id), name: s.name, lng: s.lng, lat: s.lat }));
+type ShapeVariant = { id: string; points: number[][] };
+const SHAPE_VARIANTS = (
+  TRANSIT_NETWORK as {
+    shapeVariants?: Record<string, ShapeVariant[]>;
+  }
+).shapeVariants ?? {};
+const SHAPE_LINES_BY_ROUTE: Record<string, number[][][]> = Object.fromEntries(
+  ROUTES.map((route) => {
+    const variants = SHAPE_VARIANTS[route.id]
+      ?.map((variant) => variant.points)
+      .filter((points) => points.length >= 2);
+    return [
+      route.id,
+      variants && variants.length > 0
+        ? variants
+        : SHAPES[route.id]
+          ? [SHAPES[route.id]]
+          : [],
+    ];
+  }),
+);
+// Only static GTFS stops with current stop_time membership are rider-selectable.
+// They retain the stop_id the realtime feed keys on, so a tap can join to live
+// arrivals without offering announcement-only or discontinued stop records.
+const STOPS_JSON: TransitStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
+  id: stop.id,
+  name: stop.name,
+  lng: stop.lng,
+  lat: stop.lat,
+}));
+
+type ActiveVehicleFocus = TransitVehicleFocusDetail & {
+  requestId: number;
+};
+
+type TransitMapInstance = ReturnType<MapRef["getMap"]>;
+
+function frameVehicleAndStop(
+  map: TransitMapInstance,
+  detail: TransitVehicleFocusDetail,
+): void {
+  let west = Math.min(detail.bus.lng, detail.stop.lng);
+  let east = Math.max(detail.bus.lng, detail.stop.lng);
+  let south = Math.min(detail.bus.lat, detail.stop.lat);
+  let north = Math.max(detail.bus.lat, detail.stop.lat);
+  // Mapbox needs a non-zero box when a bus is reporting at the stop.
+  if (east - west < 0.0008) {
+    west -= 0.0004;
+    east += 0.0004;
+  }
+  if (north - south < 0.0008) {
+    south -= 0.0004;
+    north += 0.0004;
+  }
+  const reduced =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ??
+    false;
+  map.fitBounds(
+    [[west, south], [east, north]],
+    {
+      padding: 54,
+      maxZoom: 15,
+      duration: reduced ? 0 : 500,
+    },
+  );
+}
 
 /**
  * The transit SERVICE AREA — the bounding box of every route polyline (the real
@@ -47,14 +114,16 @@ const STOPS_JSON: TransitStop[] = (
  */
 const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
   let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-  for (const pts of Object.values(SHAPES)) {
-    for (const p of pts) {
-      const lat = p[0], lng = p[1];
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
+  for (const routeLines of Object.values(SHAPE_LINES_BY_ROUTE)) {
+    for (const points of routeLines) {
+      for (const p of points) {
+        const lat = p[0], lng = p[1];
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
     }
   }
   // Sensible fallback (downtown Frederick) if shapes are somehow empty.
@@ -69,7 +138,7 @@ const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
  * Frederick-palette Mapbox base the rest of the app uses.
  *
  * Visual choices
- *   - One Source with all 36 routes. No per-route color — every line
+ *   - One Source with the caller's route network. No per-route color — every line
  *     paints in --app-cool (Carroll Creek slate) so the network
  *     reads as a single transit system at a glance. Adding 36
  *     distinct colors would turn the map into spaghetti.
@@ -83,10 +152,12 @@ const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
  *     gestures off because route inspection is the whole point
  *     and a pinch-to-zoom hint would compete with the route lines.
  *
- * Honest sourcing: route shapes come from MD Open Data (Socrata,
- * keyless, weekly revalidate via transitFrederick.ts). Interactive stop
- * locations and ids come from the committed static TransIT GTFS snapshot.
- * Vehicle positions and arrival estimates are separate GTFS-realtime data.
+ * Honest sourcing: route shapes are supplied by the server page. /transit
+ * prefers the official static GTFS snapshot and uses Maryland Open Data only
+ * as a fallback; other map surfaces can still supply their reviewed overlay.
+ * Interactive stop locations and ids come from the committed static TransIT
+ * GTFS snapshot. Vehicle positions and arrival estimates are separate
+ * GTFS-realtime data.
  */
 export default function TransitMap({
   shapes,
@@ -127,9 +198,9 @@ export default function TransitMap({
    *  Frederick); without one it frames the whole service area on load. Used by
    *  the /pulse live-bus map. */
   lockToService?: boolean;
-  /** Render the 386 static GTFS stops as tappable dots. A tap opens the stop's
-   *  name, the routes that serve it, and its live inbound arrivals. Off by
-   *  default (the /pulse map stays a clean live-bus view). */
+  /** Render current membership-backed static GTFS stops as tappable dots. A
+   *  tap opens the stop's name and live inbound arrivals. Off by default (the
+   *  /pulse map stays a clean live-bus view). */
   interactiveStops?: boolean;
   /** Overlay live MARC train positions alongside the buses. On by default so
    *  /transit shows rail; /pulse sets it false to stay a pure live-bus view. */
@@ -147,34 +218,45 @@ export default function TransitMap({
   // Route highlighter: the selected route id (null = show all). The selected
   // route's path is drawn from the GTFS shapes (transit.json), keyed by route.
   const [route, setRoute] = useState<string | null>(null);
+  const focusRequestSeq = useRef(0);
+  const [vehicleFocus, setVehicleFocus] =
+    useState<ActiveVehicleFocus | null>(null);
   const selMeta = route ? ROUTES.find((r) => r.id === route) : null;
   const selLine = useMemo(() => {
     if (!route) return null;
-    const pts = SHAPES[route];
-    if (!pts || pts.length < 2) return null;
-    return {
+    const routeLines = SHAPE_LINES_BY_ROUTE[route];
+    if (!routeLines || routeLines.length === 0) return null;
+    const feature: GeoJSON.Feature<GeoJSON.MultiLineString> = {
       type: "Feature" as const,
-      geometry: { type: "LineString" as const, coordinates: pts.map(([lat, lng]) => [lng, lat]) },
+      geometry: {
+        type: "MultiLineString" as const,
+        coordinates: routeLines.map((points) =>
+          points.map(([lat, lng]) => [lng, lat]),
+        ),
+      },
       properties: {},
     };
+    return feature;
   }, [route]);
 
   useEffect(() => {
     const map = mapRef.current?.getMap();
-    if (!map || !route) return;
-    const pts = SHAPES[route];
-    if (!pts || pts.length < 2) return;
+    if (!map || !route || vehicleFocus) return;
+    const routeLines = SHAPE_LINES_BY_ROUTE[route];
+    if (!routeLines || routeLines.length === 0) return;
 
     let west = Infinity;
     let south = Infinity;
     let east = -Infinity;
     let north = -Infinity;
-    for (const [lat, lng] of pts) {
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      west = Math.min(west, lng);
-      east = Math.max(east, lng);
-      south = Math.min(south, lat);
-      north = Math.max(north, lat);
+    for (const points of routeLines) {
+      for (const [lat, lng] of points) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        west = Math.min(west, lng);
+        east = Math.max(east, lng);
+        south = Math.min(south, lat);
+        north = Math.max(north, lat);
+      }
     }
     if (![west, south, east, north].every(Number.isFinite)) return;
 
@@ -183,7 +265,13 @@ export default function TransitMap({
       [[west, south], [east, north]],
       { padding: 54, duration: reduced ? 0 : 500 },
     );
-  }, [route]);
+  }, [route, vehicleFocus]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !vehicleFocus) return;
+    frameVehicleAndStop(map, vehicleFocus);
+  }, [vehicleFocus]);
 
   // The compact route finder below the map uses the same route state instead
   // of acting like a second, disconnected catalog. Selecting a result focuses
@@ -192,14 +280,50 @@ export default function TransitMap({
     const applyRoute = (routeId: string | null | undefined) => {
       if (!routeId || !ROUTES.some((item) => item.id === routeId)) return;
       clearPendingTransitRouteFocus();
+      setVehicleFocus(null);
       setRoute(routeId);
+    };
+    const applyVehicle = (
+      detail: TransitVehicleFocusDetail | null | undefined,
+    ) => {
+      if (!detail || !isTransitVehicleFocusDetail(detail)) return;
+      clearPendingTransitVehicleFocus();
+      clearPendingTransitRouteFocus();
+      focusRequestSeq.current += 1;
+      setVehicleFocus({
+        ...detail,
+        requestId: focusRequestSeq.current,
+      });
+      setRoute(
+        detail.routeId &&
+          ROUTES.some((item) => item.id === detail.routeId)
+          ? detail.routeId
+          : null,
+      );
     };
     const focusRoute = (event: Event) => {
       applyRoute((event as CustomEvent<TransitRouteFocusDetail>).detail?.routeId);
     };
+    const focusVehicle = (event: Event) => {
+      applyVehicle(
+        (event as CustomEvent<TransitVehicleFocusDetail>).detail,
+      );
+    };
     window.addEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
-    applyRoute(takePendingTransitRouteFocus());
-    return () => window.removeEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
+    window.addEventListener(TRANSIT_VEHICLE_FOCUS_EVENT, focusVehicle);
+    const pendingVehicle = takePendingTransitVehicleFocus();
+    if (pendingVehicle) {
+      applyVehicle(pendingVehicle);
+    } else {
+      applyRoute(takePendingTransitRouteFocus());
+    }
+    return () => {
+      window.removeEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
+      window.removeEventListener(
+        TRANSIT_VEHICLE_FOCUS_EVENT,
+        focusVehicle,
+      );
+    };
   }, []);
 
   // Stop-tap detail (interactiveStops only): the tapped stop, resolved to its
@@ -250,7 +374,10 @@ export default function TransitMap({
             <span className="sr-only">Bus route</span>
             <select
               value={route ?? ""}
-              onChange={(event) => setRoute(event.target.value || null)}
+              onChange={(event) => {
+                setVehicleFocus(null);
+                setRoute(event.target.value || null);
+              }}
               className="min-h-11 max-w-[13rem] rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             >
@@ -293,17 +420,18 @@ export default function TransitMap({
           // area, the user can zoom out for outlying buses. Without a center,
           // frame the whole service area so the map still lands where buses run
           // instead of the empty county.
-          if (lockToService && !center) {
+          if (vehicleFocus) {
+            frameVehicleAndStop(e.target, vehicleFocus);
+          } else if (lockToService && !center) {
             e.target.fitBounds(SERVICE_BOUNDS, { padding: 24, duration: 0 });
           }
         }}
       >
         <AttributionControl compact position="bottom-right" />
-        {/* The loader types geometry as `unknown` to stay defensive
-            about Socrata's response, but Mapbox's Source needs the
-            strict GeoJSON shape. Cast at the boundary — the
-            normalizer in transitFrederick.ts has already filtered to
-            LineString/MultiLineString features. */}
+        {/* LineFC types geometry as `unknown` to stay defensive at each
+            upstream boundary, while Mapbox's Source needs strict GeoJSON.
+            Cast only here after the server-side normalizer has kept line
+            features. */}
         <Source
           id="transit-routes"
           type="geojson"
@@ -359,6 +487,50 @@ export default function TransitMap({
               type="line"
               paint={{ "line-color": selMeta.color, "line-width": 5, "line-opacity": 0.95 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
+            />
+          </Source>
+        )}
+
+        {/* The rider's chosen stop stays visually distinct after a stop-to-bus
+            handoff. This is a target, not a claim that the straight-line
+            distance is the bus path; the official route variants remain the
+            only painted path. */}
+        {vehicleFocus && (
+          <Source
+            id="transit-rider-target"
+            type="geojson"
+            data={{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Point",
+                coordinates: [
+                  vehicleFocus.stop.lng,
+                  vehicleFocus.stop.lat,
+                ],
+              },
+            }}
+          >
+            <Layer
+              id="transit-rider-target-halo"
+              type="circle"
+              paint={{
+                "circle-radius": 13,
+                "circle-color": "#ffffff",
+                "circle-opacity": 0.92,
+                "circle-stroke-color": selMeta?.color ?? ACCENTS.slate,
+                "circle-stroke-width": 3,
+              }}
+            />
+            <Layer
+              id="transit-rider-target-core"
+              type="circle"
+              paint={{
+                "circle-radius": 4,
+                "circle-color": selMeta?.color ?? ACCENTS.slate,
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+              }}
             />
           </Source>
         )}
@@ -472,7 +644,12 @@ export default function TransitMap({
 
         {/* Real-time vehicle positions — route-colored badges that glide
             between polls. Self-hides when the feed reports zero. */}
-        <LiveBuses show={liveBuses} highlightRouteId={route ?? undefined} />
+        <LiveBuses
+          show={liveBuses}
+          highlightRouteId={route ?? undefined}
+          focusVehicleId={vehicleFocus?.vehicleId}
+          focusRequestId={vehicleFocus?.requestId}
+        />
 
         {/* Live MARC trains ride the same live toggle as the buses, so the
             rail corridor moves too instead of sitting as static pins. */}
@@ -505,8 +682,17 @@ export default function TransitMap({
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--app-cool)" }}
           />
-          TransIT Frederick · {shapes.features.length} route segments
+          TransIT Frederick · {shapes.features.length} published route patterns
           {renderStops.length > 0 && ` · ${renderStops.length} stops`}
+        </span>
+      )}
+      {vehicleFocus && (
+        <span className="sr-only" role="status" aria-live="polite">
+          Tracking bus {vehicleFocus.vehicleId}
+          {vehicleFocus.stopName
+            ? ` to ${vehicleFocus.stopName}`
+            : " to the selected stop"}
+          .
         </span>
       )}
       </div>

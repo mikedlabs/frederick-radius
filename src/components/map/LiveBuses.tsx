@@ -2,8 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
+import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
+import TRANSIT_NETWORK from "@/data/transit-network.json";
+import { readableTextOn } from "@/lib/color/readableText";
 import { haptic } from "@/lib/haptics";
+import { shouldLimitLiveEffects } from "@/lib/motion";
+import { findCurrentTransitVehicle } from "@/lib/transit-focus";
+import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
+import {
+  MAX_SAVED_TRANSIT_BUSES,
+  transitBusWatchId,
+  type TransitBusRef,
+} from "@/components/transit/transitRiderModel";
+import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
 import { exposeMarkerChild } from "./markerA11y";
 
 /**
@@ -14,7 +26,8 @@ import { exposeMarkerChild } from "./markerA11y";
  *
  * The motion is read FROM the data, never faked:
  *   • Snap-to-route glide — a bus tweens ALONG its route polyline
- *     (TRANSIT.shapes), not in a straight line across blocks, so it tracks
+ *     (the official GTFS shape variants), not in a straight line across
+ *     blocks, so it tracks
  *     real streets. Falls back to a straight line when a report sits too far
  *     off the published shape (detours, GPS drift) — honest over pretty.
  *   • Heading — a chevron + a tapering motion streak point the way the bus
@@ -48,7 +61,9 @@ type LiveVehicle = {
  *  when there's no predicted time, so the UI shows the stop name alone. */
 function etaLabel(etaEpoch: number | undefined, nowMs: number): string | null {
   if (etaEpoch == null || nowMs === 0) return null;
-  const mins = Math.round((etaEpoch * 1000 - nowMs) / 60000);
+  const deltaMs = etaEpoch * 1000 - nowMs;
+  if (deltaMs < -60_000) return null;
+  const mins = Math.round(deltaMs / 60000);
   if (mins <= 0) return "due";
   if (mins === 1) return "1 min";
   if (mins > 90) return null; // stale/implausible prediction — name only
@@ -58,6 +73,9 @@ type TransitRoute = { id: string; short: string; name: string; color: string; te
 
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
   (TRANSIT.routes as TransitRoute[]).map((r) => [r.id, r]),
+);
+const SELECTABLE_STOP_BY_ID = new Map(
+  CURRENT_TRANSIT_STOPS.map((stop) => [String(stop.id), stop]),
 );
 
 const POLL_MS = 15_000;
@@ -91,13 +109,34 @@ function bearingOf(a: Pt, b: Pt): number {
   return (Math.atan2(east, north) * (180 / Math.PI) + 360) % 360;
 }
 
-const SHAPE_BY_ROUTE: Record<string, Shape> = Object.fromEntries(
-  Object.entries(TRANSIT.shapes as Record<string, number[][]>).map(([id, raw]) => {
-    const pts: Pt[] = raw.map((p) => ({ lat: p[0], lng: p[1] }));
-    const cum: number[] = [0];
-    for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + planarDist(pts[i - 1], pts[i]);
-    return [id, { pts, cum, total: cum[cum.length - 1] ?? 0 }];
-  }),
+function buildShape(raw: number[][]): Shape {
+  const pts: Pt[] = raw.map((p) => ({ lat: p[0], lng: p[1] }));
+  const cum: number[] = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum[i] = cum[i - 1] + planarDist(pts[i - 1], pts[i]);
+  }
+  return { pts, cum, total: cum[cum.length - 1] ?? 0 };
+}
+
+const NETWORK_SHAPES = (
+  TRANSIT_NETWORK as {
+    shapeVariants?: Record<string, Array<{ points: number[][] }>>;
+  }
+).shapeVariants ?? {};
+const SHAPES_BY_ROUTE: Record<string, Shape[]> = Object.fromEntries(
+  Object.entries(TRANSIT.shapes as Record<string, number[][]>).map(
+    ([routeId, representative]) => {
+      const variants = NETWORK_SHAPES[routeId]
+        ?.map((variant) => buildShape(variant.points))
+        .filter((shape) => shape.total > 0);
+      return [
+        routeId,
+        variants && variants.length > 0
+          ? variants
+          : [buildShape(representative)],
+      ];
+    },
+  ),
 );
 
 /** Nearest point on the polyline: arc-length `s` + perpendicular distance `d`. */
@@ -153,27 +192,6 @@ const MOVE_EPS = 0.00009;
 // Move that maps to a full-length streak (~240 m / 15 s ≈ 58 km/h).
 const SPEED_FULL = 0.0022;
 
-const relativeLuminance = (hex: string): number => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return 0;
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const linear = (channel: number) => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-};
-/** Paper or ink, whichever has the stronger WCAG contrast on the route. */
-function readableOn(hex: string): string {
-  const bg = relativeLuminance(hex);
-  const ink = relativeLuminance("#221C15");
-  const paper = relativeLuminance("#FCFBF8");
-  const inkContrast = (Math.max(bg, ink) + 0.05) / (Math.min(bg, ink) + 0.05);
-  const paperContrast = (Math.max(bg, paper) + 0.05) / (Math.min(bg, paper) + 0.05);
-  return inkContrast >= paperContrast ? "#221C15" : "#FCFBF8";
-}
-
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 // Animated position PLUS the derived motion cue, carried together so render
@@ -185,11 +203,30 @@ type Tween =
   | { id: string; mode: "route"; shape: Shape; sFrom: number; sTo: number; moving: boolean; len: number }
   | { id: string; mode: "line"; fromLng: number; fromLat: number; toLng: number; toLat: number; bearing?: number; moving: boolean; len: number };
 
-export default function LiveBuses({ show, highlightRouteId }: { show: boolean; highlightRouteId?: string }) {
+export default function LiveBuses({
+  show,
+  highlightRouteId,
+  focusVehicleId,
+  focusRequestId,
+}: {
+  show: boolean;
+  highlightRouteId?: string;
+  focusVehicleId?: string;
+  focusRequestId?: number;
+}) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
   const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "stale" | "error">("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  const [dismissedFocusKey, setDismissedFocusKey] =
+    useState<string | null>(null);
+  const [watching, setWatching] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{
+    vehicleId: string;
+    message: string;
+  } | null>(null);
+  const { buses: savedBuses, toggle: toggleSavedBus } =
+    useSavedTransitBuses();
   const [ago, setAgo] = useState(0);
   // Wall-clock now (ms), refreshed on the 1s tick — drives the next-stop ETA
   // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
@@ -199,9 +236,24 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
   const [pollSeq, setPollSeq] = useState(0);
   // Computed once on the client; never changes, so no effect/ref needed.
   // (Markers only render after a poll, so there's no hydration mismatch.)
-  const [reduced] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+  const [reduced] = useState(() => shouldLimitLiveEffects());
   const posRef = useRef<Record<string, Pos>>({});
   const rafRef = useRef<number | null>(null);
+  const alertedStopRef = useRef<string | null>(null);
+  const focusKey = focusVehicleId
+    ? `${focusRequestId ?? "default"}:${focusVehicleId}`
+    : null;
+  const focusedVehicle = findCurrentTransitVehicle({
+    vehicles,
+    vehicleId: focusVehicleId,
+    expectedRouteId: highlightRouteId,
+    feedCurrent: feedStatus === "ready",
+    nowMs,
+  });
+  const activeSelected =
+    focusedVehicle && focusKey !== dismissedFocusKey
+      ? focusedVehicle.vehicleId
+      : selected;
 
   useEffect(() => { posRef.current = pos; }, [pos]);
 
@@ -265,16 +317,34 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
       const moving = moved > MOVE_EPS;
       const len = Math.max(0, Math.min(1, moved / SPEED_FULL));
 
-      const shape = v.routeId ? SHAPE_BY_ROUTE[v.routeId] : undefined;
-      if (shape && shape.total > 0) {
+      const routeShapes = v.routeId ? SHAPES_BY_ROUTE[v.routeId] : undefined;
+      let bestRouteTween:
+        | Extract<Tween, { mode: "route" }>
+        | null = null;
+      let bestRouteScore = Infinity;
+      for (const shape of routeShapes ?? []) {
+        if (shape.total <= 0) continue;
         const pa = projectToShape(shape, a);
         const pb = projectToShape(shape, b);
         const onRoute = pa.d <= SNAP_MAX_OFFSET && pb.d <= SNAP_MAX_OFFSET;
         const sane = Math.abs(pb.s - pa.s) <= SNAP_MAX_ARC;
         if (onRoute && sane) {
-          return { id: v.vehicleId, mode: "route", shape, sFrom: pa.s, sTo: pb.s, moving, len };
+          const score = pa.d + pb.d;
+          if (score < bestRouteScore) {
+            bestRouteScore = score;
+            bestRouteTween = {
+              id: v.vehicleId,
+              mode: "route",
+              shape,
+              sFrom: pa.s,
+              sTo: pb.s,
+              moving,
+              len,
+            };
+          }
         }
       }
+      if (bestRouteTween) return bestRouteTween;
       return {
         id: v.vehicleId,
         mode: "line",
@@ -327,8 +397,8 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
   // is stable between polls and doesn't thrash mapbox). Null when nothing is
   // selected or the next stop couldn't be resolved.
   const nextStopView = useMemo(() => {
-    if (!selected) return null;
-    const v = vehicles.find((x) => x.vehicleId === selected);
+    if (!activeSelected) return null;
+    const v = vehicles.find((x) => x.vehicleId === activeSelected);
     if (!v?.nextStop) return null;
     const color = (v.routeId ? ROUTE_BY_ID[v.routeId]?.color : undefined) ?? "#285D73";
     const line: GeoJSON.Feature<GeoJSON.LineString> = {
@@ -340,7 +410,26 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
       },
     };
     return { stop: v.nextStop, color, line };
-  }, [selected, vehicles]);
+  }, [activeSelected, vehicles]);
+
+  // Catch mode is deliberately foreground-only: while this map remains open,
+  // one selected bus can give a single optional phone tap as it reaches the
+  // two-minute window for its reported next stop. It is not a background push
+  // and never invents an ETA when TransIT does not provide one.
+  useEffect(() => {
+    if (!watching || feedStatus === "stale" || nowMs <= 0) return;
+    const vehicle = vehicles.find((candidate) => candidate.vehicleId === watching);
+    const stop = vehicle?.nextStop;
+    if (!stop?.etaEpoch) return;
+    const minutes = (stop.etaEpoch * 1000 - nowMs) / 60_000;
+    if (minutes > 2 || minutes < -1) return;
+    // Prediction timestamps can shift on every feed refresh. Key the cue to
+    // the vehicle and stop so an ETA adjustment cannot vibrate repeatedly.
+    const alertKey = `${watching}:${stop.id}`;
+    if (alertedStopRef.current === alertKey) return;
+    alertedStopRef.current = alertKey;
+    haptic("warning");
+  }, [feedStatus, nowMs, vehicles, watching]);
 
   if (!show) return null;
   if (vehicles.length === 0) {
@@ -428,7 +517,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         if (!p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
         const color = route?.color ?? "#285D73";
-        const text = readableOn(color);
+        const text = readableTextOn(color);
         const label = route?.short ?? "·";
         const moving = !reduced && p.moving;
         const dwelling = !reduced && !p.moving;
@@ -444,7 +533,13 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
           >
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.vehicleId); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                haptic("light");
+                setDismissedFocusKey(focusKey);
+                setSelected(v.vehicleId);
+                setSaveNotice(null);
+              }}
               aria-label={`TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${feedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: feedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
@@ -530,8 +625,8 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
           </Marker>
         );
       })}
-      {selected && (() => {
-        const v = vehicles.find((x) => x.vehicleId === selected);
+      {activeSelected && (() => {
+        const v = vehicles.find((x) => x.vehicleId === activeSelected);
         const p = v ? pos[v.vehicleId] : undefined;
         if (!v || !p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
@@ -542,8 +637,48 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
             : p.moving
               ? "Moving now"
               : "At a stop";
+        const etaDeltaMinutes =
+          feedStatus !== "stale" && v.nextStop?.etaEpoch && nowMs > 0
+            ? (v.nextStop.etaEpoch * 1000 - nowMs) / 60_000
+            : null;
+        const hasUsableEta =
+          etaDeltaMinutes !== null && etaDeltaMinutes >= -1;
         const eta =
           feedStatus === "stale" ? null : etaLabel(v.nextStop?.etaEpoch, nowMs);
+        const etaMinutes =
+          hasUsableEta
+            ? Math.max(0, Math.ceil(etaDeltaMinutes))
+            : null;
+        const approachProgress =
+          etaMinutes === null
+            ? null
+            : Math.max(8, Math.min(100, ((12 - etaMinutes) / 12) * 100));
+        const isWatching = watching === v.vehicleId;
+        const targetStop = v.nextStop
+          ? SELECTABLE_STOP_BY_ID.get(v.nextStop.id)
+          : undefined;
+        const busRef: TransitBusRef = {
+          vehicleId: v.vehicleId,
+          tripId: v.tripId,
+          routeId: v.routeId,
+          routeShort: route?.short,
+          routeName: route?.name,
+          targetStop: targetStop
+            ? {
+                id: String(targetStop.id),
+                name: targetStop.name,
+                lat: targetStop.lat,
+                lng: targetStop.lng,
+              }
+            : undefined,
+          lastSeenAt: v.timestamp,
+        };
+        const busSaved = savedBuses.some(
+          (bus) => bus.watchId === transitBusWatchId(busRef),
+        );
+        const canSaveExactRun =
+          Boolean(v.tripId && targetStop) && feedStatus === "ready";
+        const canToggleSaved = busSaved || canSaveExactRun;
         return (
           <Popup
             longitude={p.lng}
@@ -551,12 +686,15 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
             anchor="bottom"
             offset={24}
             closeOnClick
-            onClose={() => setSelected(null)}
+            onClose={() => {
+              setDismissedFocusKey(focusKey);
+              setSelected(null);
+            }}
             maxWidth="230px"
           >
             <div style={{ padding: "2px 2px 4px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ display: "grid", placeItems: "center", minWidth: 22, height: 22, padding: "0 5px", borderRadius: 999, background: color, color: readableOn(color), fontSize: 11, fontWeight: 700 }}>
+                <span style={{ display: "grid", placeItems: "center", minWidth: 22, height: 22, padding: "0 5px", borderRadius: 999, background: color, color: readableTextOn(color), fontSize: 11, fontWeight: 700 }}>
                   {route?.short ?? "·"}
                 </span>
                 <strong className="font-sans" style={{ fontSize: 15, lineHeight: 1.2, color: "var(--app-ink, #221C15)" }}>
@@ -571,18 +709,191 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
               {/* Next stop — the flight-tracker line: where it's headed + when.
                   Name alone when there's no live ETA (honest, never guessed). */}
               {v.nextStop && (
-                <div style={{ marginTop: 5, display: "flex", alignItems: "baseline", gap: 5, fontSize: 12.5, lineHeight: 1.25 }}>
-                  <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
-                    Next
-                  </span>
-                  <span style={{ fontWeight: 600, color: "var(--app-ink, #221C15)" }}>
-                    {v.nextStop.name}
-                    {eta && (
-                      <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 700 }}> · {eta}</span>
-                    )}
-                  </span>
+                <div style={{ marginTop: 7 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 5, fontSize: 12.5, lineHeight: 1.25 }}>
+                    <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
+                      Next
+                    </span>
+                    <span style={{ fontWeight: 600, color: "var(--app-ink, #221C15)" }}>
+                      {v.nextStop.name}
+                      {eta && (
+                        <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 700 }}> · {eta}</span>
+                      )}
+                    </span>
+                  </div>
+                  {approachProgress !== null && (
+                    <div
+                      role="progressbar"
+                      aria-label={`Approach to ${v.nextStop.name}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(approachProgress)}
+                      style={{
+                        height: 4,
+                        marginTop: 7,
+                        overflow: "hidden",
+                        borderRadius: 999,
+                        background: "var(--app-border, #D9D2C3)",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          display: "block",
+                          width: `${approachProgress}%`,
+                          height: "100%",
+                          borderRadius: 999,
+                          background: color,
+                          transition: reduced ? "none" : "width 500ms ease",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
+              {v.nextStop?.etaEpoch &&
+                feedStatus !== "stale" &&
+                (hasUsableEta || isWatching) && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const next = isWatching ? null : v.vehicleId;
+                    setWatching(next);
+                    alertedStopRef.current = null;
+                    haptic(next ? "success" : "light");
+                  }}
+                  aria-pressed={isWatching}
+                  style={{
+                    width: "100%",
+                    minHeight: 44,
+                    marginTop: 9,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    border: `1px solid ${isWatching ? color : "var(--app-border, #D9D2C3)"}`,
+                    borderRadius: 999,
+                    background: isWatching
+                      ? `color-mix(in srgb, ${color} 10%, white)`
+                      : "var(--app-bg-elevated, #FCFBF8)",
+                    color: "var(--app-ink, #221C15)",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <BellRing aria-hidden size={14} strokeWidth={2.2} />
+                  {isWatching ? "Watching next stop" : "Watch next stop"}
+                </button>
+              )}
+              {isWatching && (
+                !hasUsableEta ? (
+                  <p
+                    role="status"
+                    style={{ marginTop: 5, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}
+                  >
+                    The last reported arrival has expired. Turn off watching
+                    or wait for a fresh estimate.
+                  </p>
+                ) : etaMinutes !== null && etaMinutes <= 2 ? (
+                  <p
+                    role="status"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      lineHeight: 1.35,
+                      color: "var(--app-brand-press, #9E3824)",
+                    }}
+                  >
+                    The reported arrival is within about two minutes.
+                  </p>
+                ) : (
+                  <p style={{ marginTop: 5, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}>
+                    Keep this map open. Radius will show the two-minute cue
+                    here, and supported phones may also vibrate.
+                  </p>
+                )
+              )}
+              <button
+                type="button"
+                disabled={!canToggleSaved}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const result = toggleSavedBus(busRef);
+                  if (result.limitReached) {
+                    haptic("warning");
+                    setSaveNotice({
+                      vehicleId: v.vehicleId,
+                      message: `You can save up to ${MAX_SAVED_TRANSIT_BUSES} buses.`,
+                    });
+                    return;
+                  }
+                  haptic(result.saved ? "success" : "light");
+                    setSaveNotice({
+                      vehicleId: v.vehicleId,
+                      message: result.saved
+                        ? result.persistent
+                          ? `Bus ${v.vehicleId} saved on this device.`
+                          : `Bus ${v.vehicleId} saved for this visit only. Device storage is unavailable.`
+                        : result.persistent
+                          ? `Bus ${v.vehicleId} removed from Saved.`
+                          : `Bus ${v.vehicleId} removed for this visit only. Device storage is unavailable.`,
+                    });
+                }}
+                aria-pressed={busSaved}
+                style={{
+                  width: "100%",
+                  minHeight: 44,
+                  marginTop: 7,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  border: `1px solid ${
+                    busSaved
+                      ? color
+                      : "var(--app-border, #D9D2C3)"
+                  }`,
+                  borderRadius: 999,
+                  background: busSaved
+                    ? `color-mix(in srgb, ${color} 10%, white)`
+                    : "var(--app-bg-elevated, #FCFBF8)",
+                  color: "var(--app-ink, #221C15)",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: canToggleSaved ? "pointer" : "not-allowed",
+                  opacity: canToggleSaved ? 1 : 0.62,
+                }}
+              >
+                {busSaved ? (
+                  <BookmarkCheck aria-hidden size={14} strokeWidth={2.2} />
+                ) : (
+                  <Bookmark aria-hidden size={14} strokeWidth={2.2} />
+                )}
+                {busSaved
+                  ? "Saved bus"
+                  : canSaveExactRun
+                    ? "Save this bus"
+                    : v.tripId && !targetStop
+                      ? "Next stop unavailable"
+                      : "Live trip unavailable"}
+              </button>
+              {saveNotice?.vehicleId === v.vehicleId ? (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 5,
+                    fontSize: 9.5,
+                    lineHeight: 1.35,
+                    color: "var(--app-ink-3, #5C5A50)",
+                  }}
+                >
+                  {saveNotice.message}
+                </p>
+              ) : null}
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
                 {feedStatus === "stale"
                   ? `Feed delayed · last update ${ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago`

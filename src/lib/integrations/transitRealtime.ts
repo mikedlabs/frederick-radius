@@ -26,6 +26,8 @@ const VEHICLE_POSITIONS =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/vehiclePositions";
 const TRIP_UPDATES =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/tripUpdates";
+const SERVICE_ALERTS =
+  "https://passio3.com/frederick/passioTransit/gtfs/realtime/serviceAlerts";
 const TIMEOUT_MS = 10_000;
 
 export type TransitFeedStatus = "ok" | "degraded" | "unavailable";
@@ -49,6 +51,22 @@ export type TransitFeedResult<T> = {
 
 /** Where a bus is in its run, GTFS-rt VehiclePosition.current_status. */
 export type VehicleStatus = "INCOMING_AT" | "STOPPED_AT" | "IN_TRANSIT_TO";
+
+export type TripScheduleRelationship =
+  | "SCHEDULED"
+  | "ADDED"
+  | "UNSCHEDULED"
+  | "CANCELED"
+  | "REPLACEMENT"
+  | "DUPLICATED"
+  | "DELETED"
+  | "NEW";
+
+export type StopScheduleRelationship =
+  | "SCHEDULED"
+  | "SKIPPED"
+  | "NO_DATA"
+  | "UNSCHEDULED";
 
 /** A resolved next stop for a bus — name + coordinate from the static stop
  *  table, with the predicted arrival epoch (seconds) when TripUpdates has it.
@@ -93,6 +111,7 @@ export type TripStop = {
   stopSequence?: number;
   arrivalEpoch?: number;
   departureEpoch?: number;
+  scheduleRelationship?: StopScheduleRelationship;
 };
 
 /** A trip's predicted stop timetable, keyed back to its vehicle/route. */
@@ -100,6 +119,10 @@ export type TripUpdate = {
   tripId?: string;
   routeId?: string;
   vehicleId?: string;
+  directionId?: number;
+  scheduleRelationship?: TripScheduleRelationship;
+  /** Provider timestamp for this trip update, Unix seconds. */
+  timestamp?: number;
   stops: TripStop[];
 };
 
@@ -113,6 +136,62 @@ function vehicleStatus(raw: unknown): VehicleStatus | undefined {
       : undefined;
   }
   return raw === 0 ? "INCOMING_AT" : raw === 1 ? "STOPPED_AT" : raw === 2 ? "IN_TRANSIT_TO" : undefined;
+}
+
+function tripScheduleRelationship(
+  raw: unknown,
+): TripScheduleRelationship | undefined {
+  if (typeof raw === "string") {
+    return raw === "SCHEDULED" ||
+      raw === "ADDED" ||
+      raw === "UNSCHEDULED" ||
+      raw === "CANCELED" ||
+      raw === "REPLACEMENT" ||
+      raw === "DUPLICATED" ||
+      raw === "DELETED" ||
+      raw === "NEW"
+      ? raw
+      : undefined;
+  }
+  return raw === 0
+    ? "SCHEDULED"
+    : raw === 1
+      ? "ADDED"
+      : raw === 2
+        ? "UNSCHEDULED"
+        : raw === 3
+          ? "CANCELED"
+          : raw === 5
+            ? "REPLACEMENT"
+            : raw === 6
+              ? "DUPLICATED"
+              : raw === 7
+                ? "DELETED"
+                : raw === 8
+                  ? "NEW"
+                  : undefined;
+}
+
+function stopScheduleRelationship(
+  raw: unknown,
+): StopScheduleRelationship | undefined {
+  if (typeof raw === "string") {
+    return raw === "SCHEDULED" ||
+      raw === "SKIPPED" ||
+      raw === "NO_DATA" ||
+      raw === "UNSCHEDULED"
+      ? raw
+      : undefined;
+  }
+  return raw === 0
+    ? "SCHEDULED"
+    : raw === 1
+      ? "SKIPPED"
+      : raw === 2
+        ? "NO_DATA"
+        : raw === 3
+          ? "UNSCHEDULED"
+          : undefined;
 }
 
 type Long = { toNumber: () => number };
@@ -224,12 +303,23 @@ function tripUpdatesFromFeed(
         stopSequence: stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
         arrivalEpoch: toNumber(arr),
         departureEpoch: toNumber(dep),
+        scheduleRelationship: stopScheduleRelationship(
+          stu.scheduleRelationship,
+        ),
       });
     }
     out.push({
       tripId: tu.trip?.tripId ?? undefined,
       routeId: tu.trip?.routeId ?? undefined,
       vehicleId: tu.vehicle?.id ?? undefined,
+      directionId:
+        tu.trip?.directionId != null
+          ? Number(tu.trip.directionId)
+          : undefined,
+      scheduleRelationship: tripScheduleRelationship(
+        tu.trip?.scheduleRelationship,
+      ),
+      timestamp: toNumber(tu.timestamp),
       stops,
     });
   }
@@ -315,7 +405,19 @@ export async function getLiveVehiclesWithNextStopResult(): Promise<LiveVehiclesR
   };
 }
 
-export type StopPrediction = { stopId: string; routeId?: string; arrivalEpoch?: number };
+export type StopPrediction = {
+  stopId: string;
+  routeId?: string;
+  tripId?: string;
+  vehicleId?: string;
+  directionId?: number;
+  stopSequence?: number;
+  arrivalEpoch?: number;
+  /** Provider timestamp for the individual TripUpdate, Unix seconds. */
+  timestamp?: number;
+  tripScheduleRelationship?: TripScheduleRelationship;
+  scheduleRelationship?: StopScheduleRelationship;
+};
 
 function stopPredictionsFromFeed(
   feed: GtfsFeedMessage,
@@ -324,13 +426,43 @@ function stopPredictionsFromFeed(
   for (const e of feed.entity) {
     const tu = e.tripUpdate;
     if (!tu) continue;
+    const tripRelationship = tripScheduleRelationship(
+      tu.trip?.scheduleRelationship,
+    );
+    // This endpoint answers "which buses are still expected to stop here?"
+    // A canceled/deleted trip is useful disruption data, but it is not an
+    // inbound arrival and must never reach catchability UI.
+    if (
+      tripRelationship === "CANCELED" ||
+      tripRelationship === "DELETED"
+    ) {
+      continue;
+    }
     for (const stu of tu.stopTimeUpdate ?? []) {
       const arr = stu.arrival?.time;
+      const dep = stu.departure?.time;
       if (stu.stopId == null) continue;
+      const stopRelationship = stopScheduleRelationship(
+        stu.scheduleRelationship,
+      );
+      // GTFS-realtime SKIPPED means this vehicle will not call at the stop.
+      // Omitting it is safer than showing a countdown for a bus that passes by.
+      if (stopRelationship === "SKIPPED") continue;
       out.push({
         stopId: String(stu.stopId),
         routeId: tu.trip?.routeId ?? undefined,
-        arrivalEpoch: toNumber(arr),
+        tripId: tu.trip?.tripId ?? undefined,
+        vehicleId: tu.vehicle?.id ?? undefined,
+        directionId:
+          tu.trip?.directionId != null
+            ? Number(tu.trip.directionId)
+            : undefined,
+        stopSequence:
+          stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
+        arrivalEpoch: toNumber(arr) ?? toNumber(dep),
+        timestamp: toNumber(tu.timestamp),
+        tripScheduleRelationship: tripRelationship,
+        scheduleRelationship: stopRelationship,
       });
     }
   }
@@ -358,4 +490,121 @@ export async function getStopPredictionsResult(): Promise<
  */
 export async function getStopPredictions(): Promise<StopPrediction[]> {
   return (await getStopPredictionsResult()).data;
+}
+
+export type TransitServiceAlert = {
+  id: string;
+  header: string;
+  description?: string;
+  routeIds: string[];
+  stopIds: string[];
+  activePeriods: Array<{ start?: number; end?: number }>;
+  cause?: string;
+  effect?: string;
+};
+
+const ALERT_CAUSES: Record<number, string> = {
+  1: "Unknown cause",
+  2: "Other cause",
+  3: "Technical problem",
+  4: "Strike",
+  5: "Demonstration",
+  6: "Accident",
+  7: "Holiday",
+  8: "Weather",
+  9: "Maintenance",
+  10: "Construction",
+  11: "Police activity",
+  12: "Medical emergency",
+};
+
+const ALERT_EFFECTS: Record<number, string> = {
+  1: "No service",
+  2: "Reduced service",
+  3: "Significant delays",
+  4: "Detour",
+  5: "Additional service",
+  6: "Modified service",
+  7: "Other effect",
+  8: "Unknown effect",
+  9: "Stop moved",
+  10: "No effect",
+  11: "Accessibility issue",
+};
+
+function enumLabel(
+  raw: unknown,
+  labels: Record<number, string>,
+): string | undefined {
+  if (typeof raw === "string") {
+    const normalized = raw
+      .toLocaleLowerCase()
+      .replaceAll("_", " ")
+      .replace(/^\w/, (letter) => letter.toLocaleUpperCase());
+    return normalized || undefined;
+  }
+  return typeof raw === "number" ? labels[raw] : undefined;
+}
+
+function translatedText(
+  value:
+    | { translation?: Array<{ text?: string | null }> | null }
+    | null
+    | undefined,
+): string | undefined {
+  return value?.translation
+    ?.map((translation) => translation.text?.trim())
+    .find((text): text is string => Boolean(text));
+}
+
+function serviceAlertsFromFeed(feed: GtfsFeedMessage): TransitServiceAlert[] {
+  return feed.entity.flatMap((entity, index) => {
+    const alert = entity.alert;
+    const header = translatedText(alert?.headerText);
+    if (!alert || !header) return [];
+    const selectors = alert.informedEntity ?? [];
+    return [
+      {
+        id: entity.id?.trim() || `alert-${index + 1}`,
+        header,
+        description: translatedText(alert.descriptionText),
+        routeIds: Array.from(
+          new Set(
+            selectors
+              .map((selector) => selector.routeId?.trim())
+              .filter((routeId): routeId is string => Boolean(routeId)),
+          ),
+        ),
+        stopIds: Array.from(
+          new Set(
+            selectors
+              .map((selector) => selector.stopId?.trim())
+              .filter((stopId): stopId is string => Boolean(stopId)),
+          ),
+        ),
+        activePeriods: (alert.activePeriod ?? []).map((period) => ({
+          start: toNumber(period.start),
+          end: toNumber(period.end),
+        })),
+        cause: enumLabel(alert.cause, ALERT_CAUSES),
+        effect: enumLabel(alert.effect, ALERT_EFFECTS),
+      },
+    ];
+  });
+}
+
+/** Provider-published bus disruptions with explicit feed availability. An
+ * empty successful feed means only that no alert entity was published; callers
+ * must not turn that into a broader "service normal" promise. */
+export async function getTransitServiceAlertsResult(): Promise<
+  TransitFeedResult<TransitServiceAlert[]>
+> {
+  const decoded = await decodeFeed(SERVICE_ALERTS);
+  return {
+    data: decoded.feed ? serviceAlertsFromFeed(decoded.feed) : [],
+    status: decoded.status,
+    available: decoded.available,
+    feedTimestamp: decoded.feedTimestamp,
+    receivedAt: decoded.receivedAt,
+  };
 }

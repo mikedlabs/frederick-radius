@@ -373,6 +373,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
+          viewTransitionName: `event-${event.slug}`,
         }}
       >
         {eventVisual ? (

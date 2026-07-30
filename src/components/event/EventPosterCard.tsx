@@ -108,6 +108,7 @@ export default function EventPosterCard({
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        viewTransitionName: `event-${event.slug}`,
       }}
       data-event-poster={onPhoto ? "photo" : "category"}
     >

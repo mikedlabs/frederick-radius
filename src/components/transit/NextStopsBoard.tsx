@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import TRANSIT from "@/data/transit.json";
+import { readableTextOn } from "@/lib/color/readableText";
 import { useLiveVehicles } from "./useLiveVehicles";
 
 /**
@@ -24,14 +25,6 @@ const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
 );
 
 const MAX_ROWS = 8;
-
-function readableOn(hex: string): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "#FFFFFF";
-  const n = parseInt(m[1], 16);
-  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.62 ? "#221C15" : "#FFFFFF";
-}
 
 /** Minutes-to-arrival, from state nowMs (never Date.now() in render). */
 function etaMins(etaEpoch: number | undefined, nowMs: number): number | null {
@@ -115,7 +108,7 @@ export default function NextStopsBoard() {
               <span
                 aria-hidden
                 className="grid h-6 min-w-[26px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-[11px] font-bold tabular-nums"
-                style={{ background: color, color: readableOn(color) }}
+                style={{ background: color, color: readableTextOn(color) }}
               >
                 {route?.short ?? "·"}
               </span>

@@ -32,7 +32,12 @@ export const APP_PAGES: AppPage[] = [
   { href: "/food-trucks", title: "Food trucks", blurb: "Find mobile food vendors and open a vendor feed when one is available.", keywords: ["food truck", "food trucks"] },
   { href: "/live-music", title: "Live music", blurb: "See published venue lineups and ticketed shows.", keywords: ["live music", "bands", "who is playing", "lineup"] },
 
+  // ── Events & planning ──
+  { href: "/events", title: "Events", blurb: "See listed events happening today, tonight, this weekend, or later.", keywords: ["events", "things to do", "whats happening", "today", "tonight", "this weekend"] },
+  { href: "/events/calendar", title: "Event calendar", blurb: "Browse listed Frederick County events on a month calendar.", keywords: ["event calendar", "events calendar", "calendar", "month view"] },
+
   // ── Practical tools ──
+  { href: "/map", title: "Map Frederick County", blurb: "Browse the county map and turn practical local layers on or off.", keywords: ["map", "county map", "map layers", "explore map"] },
   { href: "/parking", title: "Parking guide", blurb: "Find downtown garages and event parking, including ParkMobile zones.", keywords: ["parking", "garage", "parkmobile"] },
   { href: "/transit", title: "Transit & buses", blurb: "See where county TransIT routes run and when.", keywords: ["bus", "transit", "marc", "commuter"] },
   { href: "/shipping", title: "Shipping & post", blurb: "Find listed postal and shipping locations by town.", keywords: ["post office", "usps", "ups", "fedex", "mail", "package", "drop box", "shipping"] },
@@ -47,6 +52,7 @@ export const APP_PAGES: AppPage[] = [
 
   // ── Live county status ──
   { href: "/pulse", title: PRODUCT_NAMES.liveConditions.pageTitle, blurb: PRODUCT_NAMES.liveConditions.description, keywords: ["traffic", "power outage", "outage", "school closings", "road conditions", "live conditions", "pulse"] },
+  { href: "/cameras", title: "Frederick road cameras", blurb: "View official Maryland CHART traffic cameras on Frederick County roads.", keywords: ["traffic camera", "traffic cameras", "road camera", "camera wall", "i-70 camera", "us 15 camera", "us 340 camera"] },
   { href: "/rivers", title: "River levels", blurb: "Read current USGS gauge data for Frederick County waterways.", keywords: ["river", "rivers", "water level", "gauge", "fishing", "kayak"] },
   { href: "/overhead", title: "Overhead flights", blurb: "See aircraft currently transmitting near Frederick on a live map.", keywords: ["planes", "plane", "flight", "flights", "helicopter"] },
   { href: "/rhythm", title: "The county rhythm", blurb: "See how places with posted hours open and close throughout the week.", keywords: ["rhythm"] },
@@ -54,6 +60,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/signals", title: PRODUCT_NAMES.civicSignals.pageTitle, blurb: PRODUCT_NAMES.civicSignals.description, keywords: ["civic data", "public data", "government data", "county data", "city data", "service requests", "civic signals"] },
 
   // ── Directories & discovery ──
+  { href: "/search", title: "Search everything", blurb: "Search Radius places, events, towns, guides, and working tools.", keywords: ["search", "find", "search everything"] },
   { href: "/reserve", title: "Book a table", blurb: "Find restaurants with checked reservation links.", keywords: ["reserve", "reservation", "reservations", "book a table", "opentable", "resy"] },
   { href: "/places", title: "Places, A to Z", blurb: "Browse the place index and switch between list and map views.", keywords: ["directory", "all places", "a to z", "listings"] },
   { href: "/towns", title: "Towns and communities", blurb: "Choose an area to see place counts and upcoming events.", keywords: ["towns", "municipalities", "villages"] },
@@ -70,8 +77,12 @@ export const APP_PAGES: AppPage[] = [
   { href: "/emergency", title: "Emergency & urgent care", blurb: "Call 911, the county ER, urgent care, and the poison and crisis lines.", keywords: ["emergency", "911", "hospital", "emergency room", "er", "urgent care", "poison control", "frederick health hospital", "ambulance", "crisis line"] },
   { href: "/scanner", title: PRODUCT_NAMES.publicDispatch.pageTitle, blurb: PRODUCT_NAMES.publicDispatch.description, keywords: ["scanner", "police scanner", "fire scanner", "dispatch", "911 calls", "incidents", "crashes", "fires", "wires down", "frederick scanner"] },
   { href: "/emergency-vet", title: "Pet emergency care", blurb: "Find listed emergency animal care and poison-help contacts.", keywords: ["emergency vet", "animal hospital", "pet emergency", "pet poison"] },
+  { href: "/report", title: "Add a map note", blurb: "Send Radius a useful field note about a mapped location.", keywords: ["add map note", "map note", "field note", "report map issue"] },
   { href: "/submit/event", title: "Add an event", blurb: "Submit a local event for review.", keywords: ["add event", "submit event", "post an event"] },
+  { href: "/submit/place", title: "Add a place", blurb: "Tell Radius about a Frederick County place that is missing.", keywords: ["add place", "submit place", "missing place", "suggest place"] },
 
   // ── Yours ──
   { href: "/my-radius", title: "Saved", blurb: "Review your saved places, events, routes, and taps.", keywords: ["saved", "favorites", "bookmarks"] },
+  { href: "/settings", title: "Settings", blurb: "Choose your home area and tune Radius for your needs.", keywords: ["settings", "home town", "home area", "preferences"] },
+  { href: "/settings/notifications", title: "Alerts & feedback", blurb: "Choose local alerts, quiet hours, and phone feedback for this device.", keywords: ["alerts", "notifications", "quiet hours", "phone feedback", "haptics"] },
 ];

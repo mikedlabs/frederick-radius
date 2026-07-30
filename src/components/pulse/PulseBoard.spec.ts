@@ -3,14 +3,31 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   AlertDataPanel,
-  SystemsLedger,
   pulseClearedKeys,
-  pulseMoreCheckLabel,
   pulseStatusWord,
-  pulseTilesWithData,
-  pulseTilesWithoutData,
+  pulseTileBanks,
+  pulseTileState,
   type PulseTile,
 } from "./PulseBoard";
+
+function tile(
+  key: string,
+  state: Partial<Pick<PulseTile, "active" | "attention" | "degraded">> = {},
+): PulseTile {
+  return {
+    key,
+    label: key,
+    iconName: "Shield",
+    sourceLabel: "Test source",
+    countLabel: "Current",
+    accent: "var(--app-cool)",
+    active: state.active ?? false,
+    attention: state.attention ?? false,
+    degraded: state.degraded,
+    kind: "status",
+    body: null,
+  };
+}
 
 describe("Pulse status language", () => {
   it("keeps missing data visually distinct from an active alert", () => {
@@ -19,6 +36,13 @@ describe("Pulse status language", () => {
       degraded: true,
       hasLead: false,
       tone: "warning",
+    })).toBe("Partial data");
+
+    expect(pulseStatusWord({
+      allClear: true,
+      degraded: true,
+      hasLead: false,
+      tone: "positive",
     })).toBe("Partial data");
 
     expect(pulseStatusWord({
@@ -54,59 +78,6 @@ describe("Pulse status language", () => {
     })).toBe("Advisory");
   });
 
-  it("routes unavailable feeds to More checks instead of the visible briefing", () => {
-    const tile = (key: string, degraded = false): PulseTile => ({
-      key,
-      label: key,
-      iconName: "CloudSun",
-      sourceLabel: "Test source",
-      countLabel: degraded ? "No fresh reading" : "Current",
-      accent: "var(--app-cool)",
-      active: false,
-      attention: false,
-      degraded,
-      kind: "status",
-      body: null,
-    });
-
-    const tiles = [
-      tile("weather"),
-      tile("air", true),
-      tile("traffic"),
-    ];
-
-    expect(pulseTilesWithData(tiles).map((item) => item.key)).toEqual([
-      "weather",
-      "traffic",
-    ]);
-    expect(pulseTilesWithoutData(tiles).map((item) => item.key)).toEqual([
-      "air",
-    ]);
-  });
-
-  it("labels degraded checks without presenting missing data as clear", () => {
-    const degradedTile = (active: boolean, countLabel: string): PulseTile => ({
-      key: "alerts",
-      label: "Official alerts",
-      iconName: "CloudAlert",
-      sourceLabel: "Test source",
-      countLabel,
-      accent: "var(--app-warning)",
-      active,
-      attention: active,
-      degraded: true,
-      kind: "status",
-      body: null,
-    });
-
-    expect(pulseMoreCheckLabel(degradedTile(false, "No current notices"))).toBe(
-      "Unavailable",
-    );
-    expect(pulseMoreCheckLabel(degradedTile(true, "2 current notices"))).toBe(
-      "Last confirmed: 2 current notices",
-    );
-  });
-
   it("does not report an unavailable feed as cleared since the last look", () => {
     const tile = (
       key: string,
@@ -135,49 +106,6 @@ describe("Pulse status language", () => {
         ],
       ),
     ).toEqual(["traffic"]);
-  });
-
-  it("renders a degraded feed only in More checks and calls it unavailable", () => {
-    const tile = (
-      key: string,
-      label: string,
-      countLabel: string,
-      degraded = false,
-    ): PulseTile => ({
-      key,
-      label,
-      iconName: "CloudSun",
-      sourceLabel: "Test source",
-      countLabel,
-      accent: "var(--app-cool)",
-      active: false,
-      attention: false,
-      degraded,
-      kind: "status",
-      body: null,
-    });
-
-    const tiles = [
-      tile("weather", "Weather", "Mostly sunny"),
-      tile("air", "Air quality", "No active advisory", true),
-    ];
-    const available = pulseTilesWithData(tiles);
-    const unavailable = pulseTilesWithoutData(tiles);
-    const html = renderToStaticMarkup(
-      createElement(SystemsLedger, {
-        tiles: unavailable,
-        onOpen: () => undefined,
-      }),
-    );
-
-    expect(available.map((item) => item.key)).toEqual(["weather"]);
-    expect(unavailable.map((item) => item.key)).toEqual(["air"]);
-    expect(html).toContain("More checks");
-    expect(html).toContain("1 unavailable");
-    expect(html).toContain('aria-label="Air quality: Unavailable"');
-    expect(html).not.toContain("Air quality: No active advisory");
-    expect(html).not.toContain(">No active advisory<");
-    expect(html.match(/>Air quality</g)).toHaveLength(1);
   });
 
   it("keeps every alert fact caption at the 11px mobile floor", () => {
@@ -209,5 +137,52 @@ describe("Pulse status language", () => {
 
     expect(html).toContain("text-caption");
     expect(html).not.toMatch(/text-\[(?:8\.5|9\.5|10)px\]/);
+  });
+});
+
+describe("Pulse smart blocks", () => {
+  it("uses written states and lets unavailable data outrank activity", () => {
+    expect(pulseTileState(tile("quiet"))).toBe("Current");
+    expect(pulseTileState(tile("moving", { active: true }))).toBe("Active");
+    expect(pulseTileState(tile("warning", { attention: true }))).toBe(
+      "Attention",
+    );
+    expect(
+      pulseTileState(
+        tile("missing", { active: true, attention: true, degraded: true }),
+      ),
+    ).toBe("Feed unavailable");
+    expect(
+      pulseTileState({
+        ...tile("partial", { active: true }),
+        availability: "partial",
+      }),
+    ).toBe("Partial data");
+    expect(
+      pulseTileState({
+        ...tile("disabled"),
+        availability: "not-connected",
+      }),
+    ).toBe("Not connected");
+  });
+
+  it("keeps every tile in one stable bank and leaves unknown feeds visible", () => {
+    const banks = pulseTileBanks([
+      tile("traffic"),
+      tile("weather"),
+      tile("news"),
+      tile("future-feed"),
+    ]);
+
+    expect(banks.map((bank) => bank.key)).toEqual([
+      "conditions",
+      "getting-around",
+      "county-systems",
+      "local-pulse",
+      "more-signals",
+    ]);
+    expect(
+      banks.flatMap((bank) => bank.tiles.map((entry) => entry.key)),
+    ).toEqual(["weather", "traffic", "news", "future-feed"]);
   });
 });

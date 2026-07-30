@@ -34,8 +34,24 @@ export function tripUpdatesByTripId(updates: TripUpdate[]): Map<string, TripUpda
 }
 
 const stuTime = (s: TripStop): number | undefined => s.arrivalEpoch ?? s.departureEpoch;
+const realtimeEta = (s: TripStop): number | undefined =>
+  s.scheduleRelationship === "NO_DATA" ? undefined : stuTime(s);
 const bySeq = (a: TripStop, b: TripStop): number =>
   (a.stopSequence ?? Number.POSITIVE_INFINITY) - (b.stopSequence ?? Number.POSITIVE_INFINITY);
+
+function nextCallableStop(
+  stops: TripStop[],
+  afterSequence: number,
+): TripStop | undefined {
+  return stops
+    .filter(
+      (s) =>
+        s.stopSequence != null &&
+        s.stopSequence > afterSequence &&
+        s.scheduleRelationship !== "SKIPPED",
+    )
+    .sort(bySeq)[0];
+}
 
 /**
  * Find the trip-timetable entry for the stop the vehicle reports (by stopId).
@@ -86,6 +102,16 @@ export function resolveNextStop(
   const tu = v.tripId ? byTrip.get(v.tripId) : undefined;
   const stopped = v.status === "STOPPED_AT";
 
+  // CANCELED and DELETED updates describe trips that will not operate. The
+  // VehiclePositions feed can lag the TripUpdates feed, so never decorate a
+  // still-published position with a destination from a withdrawn trip.
+  if (
+    tu?.scheduleRelationship === "CANCELED" ||
+    tu?.scheduleRelationship === "DELETED"
+  ) {
+    return undefined;
+  }
+
   let targetStopId: string | undefined;
   let etaEpoch: number | undefined;
 
@@ -95,20 +121,25 @@ export function resolveNextStop(
       // Moving / approaching: the reported stop IS the next stop. Take its ETA
       // from the timetable; if the trip has no STU for it, still name it.
       if (at) {
-        targetStopId = at.stopId;
-        etaEpoch = stuTime(at);
+        const next =
+          at.scheduleRelationship === "SKIPPED" &&
+          at.stopSequence != null
+            ? nextCallableStop(tu.stops, at.stopSequence)
+            : at.scheduleRelationship === "SKIPPED"
+              ? undefined
+              : at;
+        targetStopId = next?.stopId;
+        etaEpoch = next ? realtimeEta(next) : undefined;
       } else if (v.stopId != null) {
         targetStopId = v.stopId;
       }
     } else if (at?.stopSequence != null) {
       // STOPPED_AT the reported stop: the next stop is the one right after it
       // in the trip's OWN sequence space (consistent within TripUpdates).
-      const next = tu.stops
-        .filter((s) => s.stopSequence != null && s.stopSequence > at.stopSequence!)
-        .sort(bySeq)[0];
+      const next = nextCallableStop(tu.stops, at.stopSequence);
       if (next) {
         targetStopId = next.stopId;
-        etaEpoch = stuTime(next);
+        etaEpoch = realtimeEta(next);
       }
     }
   } else if (!stopped && v.stopId != null) {

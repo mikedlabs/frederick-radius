@@ -130,7 +130,7 @@ test.describe("mobile discovery shell", () => {
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("searchbox", { name: "Search Frederick and Radius tools" }),
+      page.getByRole("searchbox", { name: "Search all Radius tools" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
@@ -362,34 +362,56 @@ test.describe("mobile discovery shell", () => {
     await expect(page).not.toHaveURL(/[?&]t=/);
   });
 
-  test("All tools starts with common tasks and reveals one chosen outcome", async ({ page }) => {
+  test("Compass search stays useful without creating horizontal overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Compass" }),
+    ).toBeVisible();
     const toolSearch = page.getByRole("searchbox", {
-      name: "Search Frederick and Radius tools",
+      name: "Search all Radius tools",
     });
     await expect(toolSearch).toBeVisible();
-    await expect(toolSearch).toHaveAttribute("data-compass-ready", "true");
-    await expect(page.getByRole("navigation", { name: "Start here" })).toBeVisible();
+    await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
+      "data-compass-ready",
+      "true",
+    );
+    const pinned = page.locator(
+      'section[aria-labelledby="compass-pinned-heading"]',
+    );
+    for (const label of [
+      "Ask Radius",
+      "Near me",
+      "Live conditions",
+      "Nearby essentials",
+    ]) {
+      await expect(
+        pinned.getByRole("link", { name: new RegExp(`^${label}\\b`) }),
+      ).toBeVisible();
+    }
 
     await toolSearch.fill("coffee");
     await expect(toolSearch).toHaveAttribute("type", "search");
     await expect(toolSearch).toHaveAttribute("inputmode", "search");
-    await expect(page.getByRole("button", { name: "Clear search" })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Clear tool search" })).toHaveCount(1);
     await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveAttribute("href", "/search?q=coffee");
     await toolSearch.fill("weather");
     await expect(page.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
 
-    const outcomes = page.getByRole("group", { name: "Choose what you need" });
-    const goingOut = outcomes.getByRole("button", { name: /Eat, drink, or go out/ });
-    const explore = outcomes.getByRole("button", { name: /Explore Frederick/ });
-    await expect(goingOut).toHaveAttribute("aria-expanded", "false");
-    await explore.click();
-    await expect(goingOut).toHaveAttribute("aria-expanded", "false");
-    await expect(explore).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("link", { name: /Parks/ })).toBeVisible();
-    await expect(page.locator("summary").filter({ hasText: /See all \d+ tools/ })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+
+    await page.getByRole("button", { name: "Manage" }).click();
+    const dialog = page.getByRole("dialog", { name: "Tool Deck" });
+    await expect(dialog).toBeVisible();
+    expect(
+      await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
+    ).toBeLessThanOrEqual(1);
   });
 
   test("search does not turn unrelated typo fragments into a local match", async ({ page }) => {
@@ -420,7 +442,12 @@ test.describe("mobile discovery shell", () => {
 
   test("Pulse leads with a compact live briefing", async ({ page }) => {
     await page.goto("/pulse", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: /At a glance|Before you go/ })).toBeVisible();
-    await expect(page.getByText("Open for details")).toBeVisible();
+    await expect(page.getByText("Frederick Pulse", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Right now", exact: true }),
+    ).toBeVisible();
+    const board = page.locator("[data-pulse-board]");
+    await expect(board).toBeVisible();
+    await expect(board.locator("[data-pulse-key]").first()).toBeVisible();
   });
 });

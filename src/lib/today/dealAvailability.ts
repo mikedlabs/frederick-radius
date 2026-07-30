@@ -10,8 +10,9 @@ export type DealAvailability = {
 /**
  * Turn the already-distilled display hours from today's deals into an honest
  * availability label. The shared schedule parser only makes a live claim when
- * it can understand a real range (or "All day"); a single or missing time
- * keeps the deliberately softer "Today" label.
+ * it can understand a real time range. "All day" describes the special, not
+ * the venue's opening hours, so it keeps the deliberately softer "Today"
+ * label until authoritative place hours can be intersected.
  */
 export function todayDealAvailability(
   hours: string | undefined,
@@ -23,6 +24,10 @@ export function todayDealAvailability(
     // stack read as the page apologizing four times; the soft "Today"
     // label already carries the honest claim, absence carries the rest.
     return { state: "today", label: "Today", when: "", rank: 2 };
+  }
+
+  if (/^\s*all day\s*$/i.test(hours)) {
+    return { state: "today", label: "Today", when: hours, rank: 2 };
   }
 
   const status = happyHourStatus(`${weekday} ${hours}`, now);

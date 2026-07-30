@@ -1,9 +1,10 @@
 /**
  * Build src/data/transit.json from the live TransIT Frederick GTFS feed.
- * Fetches the static GTFS zip, extracts routes, stops, and a
- * representative (longest) simplified shape per route — the network the
- * live-bus map / radius reachability draw on. Realtime is separate
- * (src/lib/integrations/transitRealtime.ts).
+ * Fetches the static GTFS zip and extracts routes, stops, trip identity, and
+ * every published route shape. `shapes` retains one representative line per
+ * route for compatibility with older progress/snap code; `shapeVariants`
+ * preserves the full network so alternate patterns do not disappear from the
+ * rider map. Realtime is separate (src/lib/integrations/transitRealtime.ts).
  *
  *   npm run build:transit
  *
@@ -17,6 +18,14 @@ const OFFICIAL_SCHEDULE_URL =
   "https://www.frederickcountymd.gov/199/Connector-Schedules";
 const TMP = "/tmp/fr-gtfs";
 const OUT = new URL("../src/data/transit.json", import.meta.url).pathname;
+const NETWORK_OUT = new URL(
+  "../src/data/transit-network.json",
+  import.meta.url,
+).pathname;
+const TRIPS_OUT = new URL(
+  "../src/data/transit-trips.json",
+  import.meta.url,
+).pathname;
 
 function splitCsvLine(line: string): string[] {
   const out: string[] = []; let cur = "", q = false;
@@ -61,9 +70,51 @@ async function main() {
       wc: s.wheelchair_boarding === "1" || undefined,
     }));
 
-  // route → representative (longest) shape, simplified to ≤120 pts
+  // Keep the trip identity fields needed to turn a realtime trip_id into a
+  // useful direction/headsign. This is descriptive context only; it is not a
+  // static departure-time promise.
+  const tripRows = csv("trips.txt");
+  const trips = Object.fromEntries(
+    tripRows
+      .filter((trip) => trip.trip_id && trip.route_id)
+      .map((trip) => [
+        trip.trip_id,
+        {
+          routeId: trip.route_id,
+          shapeId: trip.shape_id || undefined,
+          serviceId: trip.service_id || undefined,
+          directionId:
+            trip.direction_id === "0" || trip.direction_id === "1"
+              ? Number(trip.direction_id)
+              : undefined,
+          headsign: trip.trip_headsign?.trim() || undefined,
+        },
+      ]),
+  );
+  const routeByTripId = new Map(
+    tripRows
+      .filter((trip) => trip.trip_id && trip.route_id)
+      .map((trip) => [trip.trip_id, trip.route_id]),
+  );
+  const stopRouteSets: Record<string, Set<string>> = {};
+  for (const stopTime of csv("stop_times.txt")) {
+    const routeId = routeByTripId.get(stopTime.trip_id);
+    if (!routeId || !stopTime.stop_id) continue;
+    (stopRouteSets[stopTime.stop_id] ??= new Set()).add(routeId);
+  }
+  const stopRoutes = Object.fromEntries(
+    Object.entries(stopRouteSets).map(([stopId, routeIds]) => [
+      stopId,
+      Array.from(routeIds).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      ),
+    ]),
+  );
+
+  // route → every official shape, plus one representative (longest) shape
+  // retained in the old `shapes` field for backwards compatibility.
   const shapeByRoute: Record<string, Set<string>> = {};
-  for (const t of csv("trips.txt")) {
+  for (const t of tripRows) {
     if (!t.shape_id) continue;
     (shapeByRoute[t.route_id] ??= new Set()).add(t.shape_id);
   }
@@ -78,10 +129,52 @@ async function main() {
     return out.map((p) => [+p[1].toFixed(5), +p[2].toFixed(5)]);
   };
   const shapes: Record<string, number[][]> = {};
+  const shapeVariants: Record<
+    string,
+    Array<{
+      id: string;
+      directionIds: number[];
+      headsigns: string[];
+      points: number[][];
+    }>
+  > = {};
   for (const [rid, set] of Object.entries(shapeByRoute)) {
     let best: string | null = null;
     for (const sid of set) if (raw[sid] && (!best || raw[sid].length > raw[best].length)) best = sid;
     if (best) shapes[rid] = simplify(raw[best]);
+    shapeVariants[rid] = Array.from(set)
+      .filter((shapeId) => Boolean(raw[shapeId]))
+      .map((shapeId) => {
+        const matchingTrips = tripRows.filter(
+          (trip) => trip.route_id === rid && trip.shape_id === shapeId,
+        );
+        return {
+          id: shapeId,
+          directionIds: Array.from(
+            new Set(
+              matchingTrips
+                .map((trip) =>
+                  trip.direction_id === "0" || trip.direction_id === "1"
+                    ? Number(trip.direction_id)
+                    : null,
+                )
+                .filter(
+                  (directionId): directionId is number =>
+                    directionId != null,
+                ),
+            ),
+          ).sort(),
+          headsigns: Array.from(
+            new Set(
+              matchingTrips
+                .map((trip) => trip.trip_headsign?.trim())
+                .filter((headsign): headsign is string => Boolean(headsign)),
+            ),
+          ).sort(),
+          points: simplify(raw[shapeId]),
+        };
+      })
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
   }
 
   const feedInfo = csv("feed_info.txt")[0] ?? {};
@@ -104,8 +197,23 @@ async function main() {
     routes, stops, shapes,
   };
   writeFileSync(OUT, JSON.stringify(out));
+  // These richer indexes are split from transit.json so the many small client
+  // components that only need route colors or stop coordinates do not all
+  // inherit the full network/trip payload. Trip metadata is joined into the
+  // stop-arrivals API server-side.
+  writeFileSync(
+    NETWORK_OUT,
+    JSON.stringify({ shapeVariants, stopRoutes }),
+  );
+  writeFileSync(TRIPS_OUT, JSON.stringify(trips));
   rmSync(TMP, { recursive: true, force: true });
-  console.log(`  transit.json: ${routes.length} routes · ${stops.length} stops · ${Object.keys(shapes).length} shapes`);
+  const variantCount = Object.values(shapeVariants).reduce(
+    (sum, variants) => sum + variants.length,
+    0,
+  );
+  console.log(
+    `  transit.json: ${routes.length} routes · ${stops.length} stops · ${variantCount} shape variants · ${Object.keys(trips).length} trips`,
+  );
 }
 
 main();

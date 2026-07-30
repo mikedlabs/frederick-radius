@@ -14,6 +14,7 @@ const SURFACES = [
   "/pulse",
   "/compass",
   "/my-radius",
+  "/deals",
   "/beta",
 ] as const;
 

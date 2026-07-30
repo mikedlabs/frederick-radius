@@ -14,7 +14,9 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "frame-src 'none'",
+  // The camera wall embeds Maryland CHART's official public viewer. Keep
+  // every other third-party frame blocked.
+  "frame-src 'self' https://chart.maryland.gov",
   "form-action 'self'",
   `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://plausible.io`,
   "style-src 'self' 'unsafe-inline'",

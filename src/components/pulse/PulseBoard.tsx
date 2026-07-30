@@ -54,12 +54,30 @@ const ICONS: Record<string, LucideIcon> = {
   Zap,
 };
 
-const CONDITIONS = new Set(["weather", "air", "rivers"]);
-const GETTING_AROUND = new Set(["traffic", "roadwork", "train", "airports"]);
-const PRIMARY_CONDITIONS = new Set(["weather", "air", "traffic", "roadwork"]);
-const STEADY_SYSTEMS = new Set(["power", "safety", "schools", "alerts"]);
-const LOCAL_UPDATES = new Set(["fixit", "trout", "airspace", "news", "police", "scanner"]);
 const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
+
+const PULSE_BANK_DEFINITIONS = [
+  {
+    key: "conditions",
+    label: "Conditions",
+    tileKeys: ["weather", "air", "alerts", "rivers"],
+  },
+  {
+    key: "getting-around",
+    label: "Getting around",
+    tileKeys: ["traffic", "scanner", "roadwork", "train", "airports"],
+  },
+  {
+    key: "county-systems",
+    label: "County systems",
+    tileKeys: ["power", "safety", "schools"],
+  },
+  {
+    key: "local-pulse",
+    label: "Local pulse",
+    tileKeys: ["fixit", "police", "news", "trout", "airspace"],
+  },
+] as const;
 
 export type PulseHeroChip = {
   tone: "danger" | "warning" | "cool" | "positive";
@@ -139,6 +157,9 @@ export type PulseTile = {
   attention: boolean;
   /** The source did not answer, so a zero value is unknown rather than clear. */
   degraded?: boolean;
+  /** More precise source state for tiles that remain useful with partial data
+   * or whose integration is intentionally not connected. */
+  availability?: "current" | "partial" | "unavailable" | "not-connected";
   kind: "feature" | "gauge" | "status";
   peek?: string;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
@@ -146,36 +167,84 @@ export type PulseTile = {
   body: ReactNode;
 };
 
-export function pulseTilesWithData(tiles: PulseTile[]): PulseTile[] {
-  return tiles.filter((tile) => !tile.degraded);
+export type PulseTileState =
+  | "Attention"
+  | "Active"
+  | "Current"
+  | "Partial data"
+  | "Not connected"
+  | "Feed unavailable";
+
+export type PulseTileBank = {
+  key: string;
+  label: string;
+  tiles: PulseTile[];
+};
+
+/** Written state always accompanies color on a key. Missing data outranks
+ * activity because a feed that did not answer cannot make a live claim. */
+export function pulseTileState(tile: PulseTile): PulseTileState {
+  const availability =
+    tile.availability ?? (tile.degraded ? "unavailable" : "current");
+  if (availability === "unavailable") return "Feed unavailable";
+  if (availability === "not-connected") return "Not connected";
+  if (availability === "partial") return "Partial data";
+  if (tile.attention) return "Attention";
+  if (tile.active) return "Active";
+  return "Current";
 }
 
-export function pulseTilesWithoutData(tiles: PulseTile[]): PulseTile[] {
-  return tiles.filter((tile) => tile.degraded);
-}
-
-export function pulseMoreCheckLabel(tile: PulseTile): string {
-  if (!tile.degraded) return tile.countLabel;
-  if (tile.active && tile.countLabel.trim()) {
-    return `Last confirmed: ${tile.countLabel}`;
+/** Stable banks keep the board predictable while allowing conditional feeds
+ * to disappear honestly. Every supplied tile is claimed once; a new key that
+ * has not been classified yet remains visible in the fallback bank. */
+export function pulseTileBanks(tiles: PulseTile[]): PulseTileBank[] {
+  const byKey = new Map(tiles.map((tile) => [tile.key, tile]));
+  const claimed = new Set<string>();
+  const banks: PulseTileBank[] = PULSE_BANK_DEFINITIONS.map((bank) => {
+    const bankTiles = bank.tileKeys.flatMap((key) => {
+      const tile = byKey.get(key);
+      if (!tile) return [];
+      claimed.add(key);
+      return [tile];
+    });
+    return { key: bank.key, label: bank.label, tiles: bankTiles };
+  });
+  const fallback = tiles.filter((tile) => !claimed.has(tile.key));
+  if (fallback.length > 0) {
+    banks.push({ key: "more-signals", label: "More signals", tiles: fallback });
   }
-  return "Unavailable";
+  return banks;
 }
 
+/**
+ * Do not describe a previously active item as cleared when its source simply
+ * stopped answering. A clear message is only earned by a current, quiet
+ * reading.
+ */
 export function pulseClearedKeys(
   previousActive: Record<string, string>,
   tiles: PulseTile[],
 ): string[] {
   const currentActiveKeys = new Set(
     tiles
-      .filter((tile) => tile.attention && !tile.degraded)
+      .filter(
+        (tile) =>
+          tile.attention &&
+          pulseTileState(tile) !== "Feed unavailable" &&
+          pulseTileState(tile) !== "Not connected",
+      )
       .map((tile) => tile.key),
   );
-  const unavailableKeys = new Set(
-    tiles.filter((tile) => tile.degraded).map((tile) => tile.key),
+  const unknownKeys = new Set(
+    tiles
+      .filter((tile) => {
+        const state = pulseTileState(tile);
+        return state === "Feed unavailable" || state === "Not connected";
+      })
+      .map((tile) => tile.key),
   );
   return Object.keys(previousActive).filter(
-    (key) => !currentActiveKeys.has(key) && !unavailableKeys.has(key),
+    (key) => !currentActiveKeys.has(key) && !unknownKeys.has(key),
   );
 }
 
@@ -213,42 +282,35 @@ function GroupHeading({
   note?: string;
 }) {
   return (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-end gap-3">
-        <h2 id={id} className="min-w-0 break-words font-sans text-[20px] font-semibold leading-tight tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
-          {title}
-        </h2>
+    <div className="flex min-w-0 items-baseline justify-between gap-4">
+      <h2
+        id={id}
+        className="min-w-0 break-words font-sans text-[17px] font-semibold leading-tight tracking-[-0.02em]"
+        style={{ color: "var(--app-ink)" }}
+      >
+        {title}
+      </h2>
+      {note && (
         <span
-          aria-hidden
-          className="mb-1 h-px min-w-4 flex-1"
-          style={{
-            background:
-              "linear-gradient(90deg, color-mix(in srgb, var(--app-cool) 38%, var(--app-border)), var(--app-border))",
-          }}
-        />
-        {note && <span className="max-w-[45%] shrink pb-0.5 text-right text-[11px] leading-tight [overflow-wrap:anywhere]" style={{ color: "var(--app-ink-3)" }}>{note}</span>}
-      </div>
+          className="max-w-[48%] shrink text-right text-[10.5px] leading-tight [overflow-wrap:anywhere]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {note}
+        </span>
+      )}
     </div>
   );
 }
 
-/**
- * The under-hero readout. Two modes, so the eye never has to sort good news
- * from bad inside one grid (owner: "can alerts be more clear"):
- *   - Anything live (a danger/warning chip present) → an Active alerts LEDGER:
- *     one bordered row per live situation, a 3px severity bar in its tone, an
- *     Public Sans title, and a tabular "<severity word> · <clock>" meta. Positive
- *     "No X reported" chips are dropped here — a live board shows only what's
- *     live. Tapping a row opens that tile's drawer.
- *   - All clear → the calm fact grid (the positive/informational chips).
- */
+/** Live situations stay in a short ledger with a written severity, so color is
+ * supportive rather than the only signal. Quiet facts belong in Right now. */
 function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (key: string) => void; last: boolean }) {
   const color = CHIP_TONE[chip.tone];
   const meta = [TONE_WORD[chip.tone], chip.meta].filter(Boolean).join(" · ");
   const inner = (
     <>
       <span aria-hidden className="w-[3px] shrink-0 self-stretch rounded-full" style={{ background: color }} />
-      <span className="min-w-0 flex-1 py-2">
+      <span className="min-w-0 flex-1 py-2.5">
         <span className="block line-clamp-2 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{chip.label}</span>
         <span className="mt-0.5 block break-words font-mono text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{meta}</span>
       </span>
@@ -268,53 +330,25 @@ function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (
   );
 }
 
-function HeroFacts({ chips, onOpen, dark = false }: { chips: PulseHeroChip[]; onOpen: (key: string) => void; dark?: boolean }) {
-  if (chips.length === 0) return null;
-  const hasLive = chips.some((chip) => chip.tone === "danger" || chip.tone === "warning");
-
-  if (hasLive) {
-    // Only live situations; positives never sit next to a real alert.
-    const rows = chips.filter((chip) => chip.tone !== "positive").slice(0, 4);
-    return (
-      <ul className="overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
-        {rows.map((chip, index) => (
-          <AlertLedgerRow key={`${chip.key ?? "row"}-${index}`} chip={chip} onOpen={onOpen} last={index === rows.length - 1} />
-        ))}
-      </ul>
-    );
-  }
-
-  // All clear: the calm fact grid (positive + informational).
+function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
+  const rows = chips.filter((chip) => chip.tone !== "positive").slice(0, 4);
+  if (rows.length === 0) return null;
   return (
-    <ul className="grid border-y sm:grid-cols-2" style={{ borderColor: dark ? "rgba(255,255,255,.12)" : "var(--app-border)" }}>
-      {chips.slice(0, 4).map((chip, index) => {
-        const color = CHIP_TONE[chip.tone];
-        const content = (
-          <>
-            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
-            <span className="min-w-0 flex-1 truncate">{chip.label}</span>
-            {chip.key && <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-50" />}
-          </>
-        );
-        return (
-          <li key={`${chip.key ?? "fact"}-${index}`}>
-            {chip.key ? (
-              <button
-                type="button"
-                onClick={() => onOpen(chip.key!)}
-                className="flex min-h-11 w-full items-center gap-2 border-b px-1 text-left text-[11.5px] font-medium sm:odd:border-r"
-                style={{ borderColor: dark ? "rgba(255,255,255,.12)" : "var(--app-border)", color: dark ? "rgba(255,255,255,.68)" : "var(--app-ink-2)" }}
-              >
-                {content}
-              </button>
-            ) : (
-              <span className="flex min-h-11 items-center gap-2 border-b px-1 text-[11.5px] font-medium sm:odd:border-r" style={{ borderColor: dark ? "rgba(255,255,255,.12)" : "var(--app-border)", color: dark ? "rgba(255,255,255,.68)" : "var(--app-ink-2)" }}>
-                {content}
-              </span>
-            )}
-          </li>
-        );
-      })}
+    <ul
+      className="overflow-hidden rounded-[var(--app-radius-md)] border px-2"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated-solid)",
+      }}
+    >
+      {rows.map((chip, index) => (
+        <AlertLedgerRow
+          key={`${chip.key ?? "row"}-${index}`}
+          chip={chip}
+          onOpen={onOpen}
+          last={index === rows.length - 1}
+        />
+      ))}
     </ul>
   );
 }
@@ -336,28 +370,28 @@ export function AlertDataPanel({
 }) {
   return (
     <div
-      className="mt-4 overflow-hidden rounded-[var(--app-radius-md)] border"
+      className="overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{
-        borderColor: `color-mix(in srgb, ${color} 36%, var(--app-border))`,
-        background: `color-mix(in srgb, ${color} 7%, var(--app-bg-elevated-solid))`,
+        borderColor: `color-mix(in srgb, ${color} 32%, var(--app-border))`,
+        background: "var(--app-bg-elevated-solid)",
       }}
     >
       <div
-        className="flex min-h-10 items-center gap-2 border-b px-3 py-2"
+        className="flex min-h-11 items-center gap-2.5 border-b px-3"
         style={{ borderColor: `color-mix(in srgb, ${color} 24%, var(--app-border))` }}
       >
         <span
           aria-hidden
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px]"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
           style={{
             color,
-            background: `color-mix(in srgb, ${color} 14%, transparent)`,
+            background: `color-mix(in srgb, ${color} 11%, transparent)`,
           }}
         >
           {createElement(iconFor(lead), { className: "h-4 w-4", strokeWidth: 2.2 })}
         </span>
-        <span className="text-caption min-w-0 flex-1 font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-2)" }}>
-          Verified data
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          {lead.label}
         </span>
         <span className="text-caption max-w-[44%] text-right font-medium" style={{ color: "var(--app-ink-3)" }}>
           {lead.sourceLabel}
@@ -368,14 +402,14 @@ export function AlertDataPanel({
         {facts.slice(0, 4).map((fact, index) => (
           <div
             key={`${fact.label}-${index}`}
-            className="min-w-0 border-b px-3 py-2.5 odd:border-r"
+            className="min-w-0 border-b px-3 py-2 odd:border-r"
             style={{ borderColor: `color-mix(in srgb, ${color} 20%, var(--app-border))` }}
           >
-            <dt className="text-caption font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            <dt className="text-caption font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
               {fact.label}
             </dt>
             <dd
-              className={`${index === 0 ? "text-[18px] " : "text-[12px] "}mt-1 break-words font-semibold leading-tight tabular-nums`}
+              className={`${index === 0 ? "text-[17px] " : "text-[12px] "}mt-1 break-words font-semibold leading-tight tabular-nums`}
               style={{ color: index === 0 ? color : "var(--app-ink)" }}
             >
               {fact.value}
@@ -391,7 +425,7 @@ export function AlertDataPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
         {meta ? (
-          <p className="text-caption flex min-w-0 items-center gap-1.5 font-medium" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-caption flex min-w-0 items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
             <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
             {meta}
           </p>
@@ -399,11 +433,9 @@ export function AlertDataPanel({
         <button
           type="button"
           onClick={onOpen}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3 text-[11.5px] font-semibold transition active:opacity-70"
+          className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[11.5px] font-semibold transition active:opacity-70"
           style={{
             color: "var(--app-ink)",
-            borderColor: `color-mix(in srgb, ${color} 34%, var(--app-border))`,
-            background: `color-mix(in srgb, ${color} 15%, var(--app-bg-elevated-solid))`,
           }}
         >
           {actionLabel}
@@ -474,161 +506,383 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   );
 }
 
-export function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
-  if (tiles.length === 0) return null;
-  const degradedCount = tiles.filter((tile) => tile.degraded).length;
-  const hasDegraded = degradedCount > 0;
-  return (
-    <section aria-labelledby="pulse-systems-heading" className="min-w-0">
-      <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
-        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
-          {hasDegraded ? (
-            <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
-          ) : (
-            <Shield aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
-          )}
-          <span id="pulse-systems-heading" className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            More checks
-          </span>
-          <span className="shrink-0 text-[10.5px]" style={{ color: hasDegraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-            {hasDegraded
-              ? `${degradedCount} unavailable`
-              : `${tiles.length} checked`}
-          </span>
-          <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-55 transition-transform group-open:rotate-180" />
-        </summary>
-        <ul className="grid min-w-0 grid-cols-2 gap-x-4 border-t px-1 py-2 sm:grid-cols-4" style={{ borderColor: "var(--app-border)" }}>
-          {tiles.map((tile) => {
-            const degraded = tile.degraded === true;
-            const statusLabel = pulseMoreCheckLabel(tile);
-            return (
-              <li key={tile.key} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => onOpen(tile.key)}
-                  className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
-                  aria-label={`${tile.label}: ${statusLabel}`}
-                >
-                  {degraded ? (
-                    <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
-                  ) : (
-                    <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
-                  )}
-                  <span className="min-w-0">
-                    <span className="block truncate text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>{tile.label}</span>
-                    <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{statusLabel}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </details>
-    </section>
-  );
+function formatGaugeValue(tile: PulseTile): string {
+  const gauge = tile.gauge;
+  if (!gauge || !Number.isFinite(gauge.value)) return "N/A";
+  const decimals = gauge.decimals ?? 0;
+  if (gauge.comma) {
+    return gauge.value.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
+  return gauge.value.toFixed(decimals);
 }
 
-function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+function pulseTileReading(tile: PulseTile): string {
+  if (tile.feature) {
+    return [
+      `${tile.feature.temp} degrees`,
+      tile.feature.condition,
+      tile.feature.hl,
+    ].filter(Boolean).join(", ");
+  }
+  if (tile.gauge) {
+    return `${formatGaugeValue(tile)} ${tile.gauge.unit}. ${tile.countLabel}`;
+  }
+  return [tile.countLabel, tile.peek].filter(Boolean).join(". ");
+}
+
+/** A seated instrument key: the information changes shape by data kind, but
+ * the entire surface remains one predictable button into the existing drawer. */
+function PulseSmartBlock({
+  tile,
+  onOpen,
+  index,
+  bankKey,
+}: {
+  tile: PulseTile;
+  onOpen: () => void;
+  index: number;
+  bankKey: string;
+}) {
+  const state = pulseTileState(tile);
+  const unavailable = state === "Feed unavailable";
+  const keyColor = unavailable ? "var(--app-warning)" : tile.accent;
+  const stateColor =
+    state === "Current" ? "var(--app-ink-3)" : keyColor;
+  const accessibleReading = unavailable
+    ? "Latest reading unavailable"
+    : pulseTileReading(tile);
+  const gaugeValue = formatGaugeValue(tile);
+  const gaugePct = Math.max(0, Math.min(100, tile.gauge?.pct ?? 0));
+
   return (
-    <li className="min-w-0">
-      <button type="button" onClick={onOpen} className="group flex min-h-[58px] min-w-0 w-full max-w-full items-center gap-3 overflow-hidden border-b py-2.5 text-left last:border-b-0" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
-        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 10%, transparent)` }}>
-          {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
+    <li
+      data-pulse-bank-item={bankKey}
+      className={`min-w-0${tile.kind === "feature" ? " col-span-2 sm:col-span-1" : ""}`}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        data-pulse-key={tile.key}
+        aria-haspopup="dialog"
+        aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
+        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[140px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2"
+        style={{
+          borderColor: unavailable
+            ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
+            : "var(--app-border)",
+          background: `linear-gradient(160deg, color-mix(in srgb, ${keyColor} 7%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-bg-sunken) 52%, var(--app-bg-elevated-solid)) 100%)`,
+          animationDelay: `${Math.min(index, 8) * 38}ms`,
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(105% 82% at 0% 0%, ${keyColor} 0%, transparent 72%)`,
+            opacity: state === "Current" ? 0.1 : 0.18,
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+          style={{ background: keyColor, opacity: unavailable ? 1 : 0.82 }}
+        />
+
+        <span className="relative flex w-full min-w-0 items-center justify-between gap-2">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border"
+            style={{
+              borderColor: `color-mix(in srgb, ${keyColor} 20%, var(--app-border))`,
+              color: keyColor,
+              background: `color-mix(in srgb, ${keyColor} 10%, var(--app-bg-elevated-solid))`,
+            }}
+          >
+            {createElement(iconFor(tile), {
+              className: "h-4 w-4",
+              strokeWidth: 2.15,
+            })}
+          </span>
+          <span
+            className="min-w-0 truncate text-[8.5px] font-bold uppercase tracking-[0.105em]"
+            style={{ color: stateColor }}
+          >
+            {state}
+          </span>
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block break-words text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
-          <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ?? tile.countLabel}</span>
+
+        {unavailable ? (
+          <span className="relative mt-3 block min-w-0 flex-1">
+            <span
+              className="block text-[15px] font-semibold leading-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Latest reading unavailable
+            </span>
+            <span
+              className="mt-1.5 block text-[10px] leading-snug"
+              style={{ color: "var(--app-warning)" }}
+            >
+              Open the source details for context.
+            </span>
+          </span>
+        ) : tile.feature ? (
+          <span className="relative mt-3 flex min-w-0 flex-1 items-end gap-3">
+            <span
+              className="shrink-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.04em] tabular-nums"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.feature.temp}°
+            </span>
+            <span className="min-w-0 pb-0.5">
+              <span
+                className="block line-clamp-2 text-[12px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {tile.feature.condition}
+              </span>
+              {tile.feature.hl ? (
+                <span
+                  className="mt-1 block truncate font-mono text-[9.5px] tabular-nums"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {tile.feature.hl}
+                </span>
+              ) : null}
+            </span>
+          </span>
+        ) : tile.gauge ? (
+          <span className="relative mt-3 flex min-w-0 flex-1 items-center gap-2.5">
+            <span
+              aria-hidden
+              className="relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full"
+              style={{
+                background: `conic-gradient(${keyColor} ${gaugePct}%, color-mix(in srgb, var(--app-border) 72%, transparent) 0)`,
+              }}
+            >
+              <span
+                className="absolute inset-[4px] rounded-full"
+                style={{ background: "var(--app-bg-elevated-solid)" }}
+              />
+              <span
+                className={`relative z-10 font-mono font-semibold leading-none tabular-nums${tile.gauge.comma ? " text-[17px]" : " text-[21px]"}`}
+                style={{ color: "var(--app-ink)" }}
+              >
+                {gaugeValue}
+              </span>
+            </span>
+            <span className="min-w-0">
+              <span
+                className="block line-clamp-2 text-[10px] font-medium leading-tight"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                {tile.gauge.unit}
+              </span>
+              <span
+                className="mt-1 block line-clamp-2 text-[10px] leading-tight"
+                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
+              >
+                {tile.countLabel}
+              </span>
+            </span>
+          </span>
+        ) : (
+          <span className="relative mt-3 block min-w-0 flex-1">
+            <span
+              className="block line-clamp-2 text-[15px] font-semibold leading-[1.18] tracking-[-0.01em]"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.countLabel}
+            </span>
+            {tile.peek && tile.peek !== tile.countLabel ? (
+              <span
+                className="mt-1.5 block line-clamp-2 text-[10px] leading-snug"
+                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
+              >
+                {tile.peek}
+              </span>
+            ) : null}
+          </span>
+        )}
+
+        <span
+          className="relative mt-2.5 block w-full min-w-0 border-t pt-2"
+          style={{ borderColor: "color-mix(in srgb, var(--app-border) 74%, transparent)" }}
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              className="min-w-0 flex-1 truncate text-[11px] font-semibold"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {tile.label}
+            </span>
+            <ArrowRight
+              aria-hidden
+              className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
+            />
+          </span>
+          <span
+            className="mt-0.5 block truncate text-[8.5px]"
+            style={{ color: "var(--app-ink-3)" }}
+            title={tile.sourceLabel}
+          >
+            Source · {tile.sourceLabel}
+          </span>
         </span>
-        <span className="min-w-0 max-w-[7rem] shrink text-right text-[10.5px] leading-tight [overflow-wrap:anywhere]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ? tile.countLabel : ""}</span>
-        <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" />
       </button>
     </li>
   );
 }
 
-/** One compact instrument card. Pulse shows the four readings most likely to
- * change a trip first; the remaining feeds stay one tap away in More checks. */
-function ConditionReading({
-  tile,
+function PulseSmartGrid({
+  banks,
   onOpen,
-  wide = false,
 }: {
-  tile: PulseTile;
-  onOpen: () => void;
-  wide?: boolean;
+  banks: PulseTileBank[];
+  onOpen: (key: string) => void;
 }) {
-  const f = tile.feature;
+  const entries = banks.flatMap((bank) =>
+    bank.tiles.map((tile) => ({ bankKey: bank.key, tile })),
+  );
+  if (entries.length === 0) return null;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`group flex min-h-[92px] min-w-0 flex-col border-t-2 p-2.5 text-left transition active:bg-black/[0.025] ${
-        wide ? "col-span-2 !border-r-0" : ""
-      }`}
-      style={{
-        borderColor: "var(--app-border)",
-        borderTopColor: tile.degraded
-          ? "var(--app-warning)"
-          : `color-mix(in srgb, ${tile.accent} 42%, var(--app-border))`,
-        background: `color-mix(in srgb, ${tile.accent} 2.5%, transparent)`,
-      }}
-      aria-label={`${tile.label}: ${f?.condition ?? tile.countLabel}`}
+    <ul
+      data-pulse-board
+      className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
     >
-      <span className="flex w-full min-w-0 items-center gap-1.5">
-        <span
-          aria-hidden
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px]"
-          style={{
-            color: tile.accent,
-            background: `color-mix(in srgb, ${tile.accent} 10%, transparent)`,
-          }}
-        >
-          {createElement(iconFor(tile), { className: "h-3.5 w-3.5", strokeWidth: 2 })}
-        </span>
-        <span className="min-w-0 flex-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.045em]" style={{ color: "var(--app-ink-2)" }}>
-          {tile.label}
-        </span>
-        <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5" />
-      </span>
-      <span className="mt-auto block min-w-0 pt-2">
-        {f ? (
-          <span className="block min-w-0">
-            <span className="block font-serif text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-              {f.temp}°
-            </span>
-            <span className="mt-1 block min-w-0 text-[11px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              {f.condition}
-            </span>
-          </span>
-        ) : (
-          <span className="block min-w-0 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            {tile.countLabel}
-          </span>
-        )}
-        {f?.hl && <span className="mt-1 block truncate text-[11px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{f.hl}</span>}
-      </span>
-    </button>
+      {entries.map(({ bankKey, tile }, index) => (
+        <PulseSmartBlock
+          key={tile.key}
+          tile={tile}
+          bankKey={bankKey}
+          index={index}
+          onOpen={() => onOpen(tile.key)}
+        />
+      ))}
+    </ul>
   );
 }
 
-/** An attention tile: a live situation, so it spans the row with its accent on
- *  a left rule and carries the one-line peek the compact stat cards omit. */
+function SecondarySignals({
+  updates,
+  visibleUpdates,
+  showAllUpdates,
+  onToggleUpdates,
+  onOpen,
+}: {
+  updates: PulseTile[];
+  visibleUpdates: PulseTile[];
+  showAllUpdates: boolean;
+  onToggleUpdates: () => void;
+  onOpen: (key: string) => void;
+}) {
+  if (updates.length === 0) return null;
+  const degradedCount = updates.filter((tile) => tile.degraded).length;
+  const total = updates.length;
+
+  return (
+    <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
+      <details
+        className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
+        }}
+      >
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+          {degradedCount > 0 ? (
+            <AlertTriangle
+              aria-hidden
+              className="h-4 w-4 shrink-0"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-warning)" }}
+            />
+          ) : (
+            <Shield
+              aria-hidden
+              className="h-4 w-4 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-ink-3)" }}
+            />
+          )}
+          <span id="pulse-secondary-heading" className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              More local signals
+            </span>
+            <span className="mt-0.5 block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+              {degradedCount > 0
+                ? `${degradedCount} ${degradedCount === 1 ? "feed needs" : "feeds need"} a refresh`
+                : `${total} additional ${total === 1 ? "source" : "sources"}`}
+            </span>
+          </span>
+          <ChevronDown
+            aria-hidden
+            className="h-4 w-4 shrink-0 opacity-50 transition-transform group-open:rotate-180"
+          />
+        </summary>
+
+        <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+          <div className="mb-2 flex items-center gap-2">
+            <Newspaper aria-hidden className="h-3.5 w-3.5" style={{ color: "var(--app-ink-3)" }} />
+            <h3
+              className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Local pulse
+            </h3>
+          </div>
+          <ul
+            id="pulse-local-updates"
+            data-pulse-bank="local-pulse"
+            className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            {visibleUpdates.map((tile, index) => (
+              <PulseSmartBlock
+                key={tile.key}
+                tile={tile}
+                bankKey="local-pulse"
+                index={index}
+                onOpen={() => onOpen(tile.key)}
+              />
+            ))}
+          </ul>
+          {updates.length > 4 && (
+            <button
+              type="button"
+              onClick={onToggleUpdates}
+              aria-expanded={showAllUpdates}
+              aria-controls="pulse-local-updates"
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              {showAllUpdates ? "Show fewer updates" : `${updates.length - 4} more updates`}
+              <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
+            </button>
+          )}
+        </div>
+      </details>
+    </section>
+  );
+}
+
+/** A live situation row with the context the compact readings intentionally omit. */
 function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group col-span-2 flex items-center gap-3 rounded-[var(--app-radius-md)] border border-l-[3px] px-3.5 py-3 text-left transition active:scale-[0.99]"
+      className="group flex min-h-[62px] w-full items-center gap-3 border-b px-2 py-2.5 text-left transition last:border-b-0 active:bg-black/[0.025]"
       style={{
-        borderColor: `color-mix(in srgb, ${tile.accent} 42%, var(--app-border))`,
-        borderLeftColor: tile.accent,
-        background: `color-mix(in srgb, ${tile.accent} 7%, var(--app-bg-elevated))`,
+        borderColor: "var(--app-border)",
       }}
     >
       <span
         aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-        style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 13%, transparent)` }}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+        style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 11%, transparent)` }}
       >
         {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
       </span>
@@ -659,36 +913,12 @@ export default function PulseBoard({
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
   const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
-  // A feed that did not answer does not earn a full card beside live,
-  // actionable information. Keep it in the underlying tile set so a direct
-  // detail URL remains honest, but omit it from the briefing until it has a
-  // current reading.
-  const availableTiles = pulseTilesWithData(tiles);
-  const unavailableTiles = pulseTilesWithoutData(tiles);
-  const unavailableKeys = new Set(
-    unavailableTiles.map((tile) => tile.key),
-  );
-  const visibleChips = chips.filter(
-    (chip) => !chip.key || !unavailableKeys.has(chip.key),
-  );
-  const summarizedKeys = new Set(visibleChips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
-  const attention = availableTiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const conditions = availableTiles.filter((tile) => CONDITIONS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const gettingAround = availableTiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const steady = availableTiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const localUpdates = availableTiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const summarizedKeys = new Set(chips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
+  const attention = tiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
+  const banks = useMemo(() => pulseTileBanks(tiles), [tiles]);
+  const localUpdates = banks.find((bank) => bank.key === "local-pulse")?.tiles ?? [];
+  const overviewBanks = banks.filter((bank) => bank.key !== "local-pulse" && bank.tiles.length > 0);
   const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
-  const beforeYouGo = [...conditions, ...gettingAround];
-  const atGlance = [
-    ...beforeYouGo.filter((tile) => PRIMARY_CONDITIONS.has(tile.key)),
-    ...beforeYouGo.filter((tile) => !PRIMARY_CONDITIONS.has(tile.key)),
-  ].slice(0, 4);
-  const atGlanceKeys = new Set(atGlance.map((tile) => tile.key));
-  const moreChecks = [
-    ...unavailableTiles,
-    ...beforeYouGo.filter((tile) => !atGlanceKeys.has(tile.key)),
-    ...steady,
-  ];
 
   const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
@@ -727,6 +957,10 @@ export default function PulseBoard({
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
   const heroColor = CHIP_TONE[heroTone];
   const heroFacts = hero.facts?.filter((fact) => fact.value.trim().length > 0).slice(0, 4) ?? [];
+  // Structured metric panels help for weather, air, traffic, and similar
+  // readings. Official-alert and police leads already carry their essential
+  // facts in the alert ledger, so repeating them here creates two competing
+  // explanations for the same situation.
   const leadUsesMetricPanel = Boolean(
     lead &&
     lead.key !== "alerts" &&
@@ -736,6 +970,11 @@ export default function PulseBoard({
     !hero.allClear &&
     leadUsesMetricPanel &&
     heroFacts.length > 0;
+  const attentionChips = chips.filter(
+    (chip) => chip.tone !== "positive" && (!showAlertData || chip.key !== hero.leadKey),
+  );
+  const attentionCount = attention.length + attentionChips.length + (showAlertData ? 1 : 0);
+  const hasAttention = attentionCount > 0;
   const statusWord = pulseStatusWord({
     allClear: hero.allClear,
     degraded,
@@ -746,58 +985,64 @@ export default function PulseBoard({
   return (
     <>
       <header
-        className="-mx-4 -mt-6 border-y border-l-4 px-5 pb-5 pt-5 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:py-6 lg:mx-0 lg:mt-0 lg:rounded-[var(--app-radius-md)] lg:border"
-        style={{
-          borderColor: "var(--app-border)",
-          borderLeftColor: heroColor,
-          background: hero.allClear
-            ? `color-mix(in srgb, ${heroColor} 3%, var(--app-bg-elevated-solid))`
-            : `linear-gradient(145deg, color-mix(in srgb, ${heroColor} 13%, var(--app-bg-elevated-solid)) 0%, color-mix(in srgb, ${heroColor} 5%, var(--app-bg-elevated-solid)) 62%, var(--app-bg-elevated-solid) 100%)`,
-        }}
+        className="-mx-4 -mt-6 border-b px-4 pb-5 pt-4 text-[var(--app-ink)] sm:-mx-5 sm:px-5 sm:pb-6 lg:mx-0 lg:mt-0 lg:px-0 lg:pt-0"
+        style={{ borderColor: "var(--app-border)" }}
       >
-        <div className="max-w-[42rem]">
+        <div className="max-w-[44rem]">
           <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.13em]">
-              <span style={{ color: "var(--app-ink-2)" }}>Pulse</span>
+            <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className="inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2"
+                aria-hidden
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
                 style={{
                   color: heroColor,
-                  borderColor: `color-mix(in srgb, ${heroColor} 35%, var(--app-border))`,
-                  background: `color-mix(in srgb, ${heroColor} 9%, transparent)`,
+                  background: `color-mix(in srgb, ${heroColor} 11%, transparent)`,
                 }}
               >
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: heroColor }} />
-                {statusWord}
+                {hero.allClear ? (
+                  <Check className="h-4 w-4" strokeWidth={2.5} />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" strokeWidth={2.25} />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span
+                  className="block text-[9.5px] font-semibold uppercase tracking-[0.12em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Frederick Pulse
+                </span>
+                <span className="mt-0.5 block text-[12px] font-semibold" style={{ color: heroColor }}>
+                  {statusWord}
+                </span>
               </span>
             </div>
             <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
-          <h1 className="mt-3 max-w-[38rem] font-sans text-[clamp(1.45rem,6vw,2rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-balance text-[var(--app-ink)]">
+          <h1 className="mt-4 max-w-[40rem] font-sans text-[clamp(1.45rem,5.5vw,1.85rem)] font-semibold leading-[1.12] tracking-[-0.025em] text-balance text-[var(--app-ink)]">
             {hero.line}
           </h1>
-          <p className="mt-2 max-w-[36rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {showAlertData && lead ? (
-            <AlertDataPanel
-              facts={heroFacts}
-              lead={lead}
-              meta={hero.leadMeta}
-              actionLabel={hero.actionLabel ?? "See what this means"}
-              color={heroColor}
-              onOpen={() => openTile(lead.key)}
-            />
-          ) : (hero.leadMeta || lead) && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t pt-2.5" style={{ borderColor: "var(--app-border)" }}>
-              {hero.leadMeta && <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] font-medium text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />{hero.leadMeta}</p>}
-              {lead && <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-1.5 text-[11.5px] font-semibold text-[var(--app-ink)] transition active:opacity-70">
-                {hero.actionLabel ?? "See what this means"}
-                <ArrowRight aria-hidden className="h-3.5 w-3.5" />
-              </button>}
+          <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
+          {!showAlertData && (hero.leadMeta || lead) && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              {hero.leadMeta && (
+                <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-[var(--app-ink-3)]">
+                  <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                  {hero.leadMeta}
+                </p>
+              )}
+              {lead && (
+                <button
+                  type="button"
+                  onClick={() => openTile(lead.key)}
+                  className="inline-flex min-h-11 items-center gap-1.5 text-[11.5px] font-semibold text-[var(--app-ink)] transition active:opacity-70"
+                >
+                  {hero.actionLabel ?? "See what this means"}
+                  <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           )}
-          {!hero.allClear && visibleChips.length > 0 ? (
-            <div className="mt-3"><HeroFacts chips={visibleChips} onOpen={openTile} /></div>
-          ) : null}
         </div>
       </header>
 
@@ -805,69 +1050,108 @@ export default function PulseBoard({
 
       <SinceLastLook tiles={tiles} />
 
-      <div className="grid min-w-0 items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-10">
-        <div className="min-w-0 space-y-7">
-          {attention.length > 0 && (
-            <section aria-labelledby="pulse-attention-heading" className="min-w-0 space-y-2.5">
-              <GroupHeading id="pulse-attention-heading" title="Happening now" note={`${attention.length} live`} />
-              <div className="grid min-w-0 grid-cols-2 gap-2.5">
-                {attention.map((tile) => <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
-              </div>
-            </section>
-          )}
-
-          {atGlance.length > 0 && (
-            <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
-              <GroupHeading
-                id="pulse-live-board-heading"
-                title={hero.allClear ? "At a glance" : "Before you go"}
-                note="Open for details"
-              />
-              <div
-                className="grid min-w-0 grid-cols-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] shadow-[var(--app-elev-1)] [&>button:nth-child(-n+2)]:border-b [&>button:nth-child(odd)]:border-r"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                {atGlance.map((tile, index) => (
-                  <ConditionReading
-                    key={tile.key}
-                    tile={tile}
-                    onOpen={() => openTile(tile.key)}
-                    wide={atGlance.length % 2 === 1 && index === atGlance.length - 1}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        <aside className="min-w-0 space-y-7">
-          <SystemsLedger tiles={moreChecks} onOpen={openTile} />
-
-          {localUpdates.length > 0 && (
-            <section aria-labelledby="pulse-updates-heading" className="min-w-0">
-              <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
-                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
-                  <Newspaper aria-hidden className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} />
-                  <span id="pulse-updates-heading" className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                    Local updates
-                  </span>
-                  <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{localUpdates.length} sources</span>
-                  <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-55 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="min-w-0 border-t px-1" style={{ borderColor: "var(--app-border)" }}>
-                  <ul id="pulse-local-updates" className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
-                  {localUpdates.length > 4 && (
-                    <button type="button" onClick={() => setShowAllUpdates((value) => !value)} aria-expanded={showAllUpdates} aria-controls="pulse-local-updates" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-                      {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more updates`}
-                      <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
-                    </button>
-                  )}
+      <div className="mx-auto min-w-0 max-w-[64rem] space-y-6">
+        {hasAttention && (
+          <section aria-labelledby="pulse-attention-heading" className="min-w-0 space-y-2.5">
+            <GroupHeading
+              id="pulse-attention-heading"
+              title="Needs attention"
+              note={`${attentionCount} ${attentionCount === 1 ? "update" : "updates"}`}
+            />
+            <div className="space-y-2.5">
+              {showAlertData && lead && (
+                <AlertDataPanel
+                  facts={heroFacts}
+                  lead={lead}
+                  meta={hero.leadMeta}
+                  actionLabel={hero.actionLabel ?? "See what this means"}
+                  color={heroColor}
+                  onOpen={() => openTile(lead.key)}
+                />
+              )}
+              <HeroFacts chips={attentionChips} onOpen={openTile} />
+              {attention.length > 0 && (
+                <div
+                  className="overflow-hidden rounded-[var(--app-radius-md)] border px-1"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    background: "var(--app-bg-elevated-solid)",
+                  }}
+                >
+                  {attention.map((tile) => (
+                    <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                  ))}
                 </div>
-              </details>
-            </section>
-          )}
-        </aside>
+              )}
+            </div>
+          </section>
+        )}
+
+        {overviewBanks.length > 0 && (
+          <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
+            <GroupHeading
+              id="pulse-live-board-heading"
+              title="Right now"
+              note={`${tiles.length} ${tiles.length === 1 ? "source" : "sources"} checked`}
+            />
+            <PulseSmartGrid banks={overviewBanks} onOpen={openTile} />
+          </section>
+        )}
+
+        <SecondarySignals
+          updates={localUpdates}
+          visibleUpdates={visibleUpdates}
+          showAllUpdates={showAllUpdates}
+          onToggleUpdates={() => setShowAllUpdates((value) => !value)}
+          onOpen={openTile}
+        />
       </div>
+
+      <style>{`
+        .fr-pulse-key {
+          isolation: isolate;
+          transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.78),
+            inset 0 -1px 0 rgba(34,28,21,0.055),
+            0 1px 2px rgba(34,28,21,0.055),
+            0 8px 18px -15px rgba(34,28,21,0.42);
+        }
+        .fr-pulse-key:active {
+          transform: translateY(1px) scale(0.985);
+          box-shadow:
+            inset 0 1px 2px rgba(34,28,21,0.08),
+            0 1px 2px rgba(34,28,21,0.05);
+        }
+        @media (hover: hover) {
+          .fr-pulse-key:hover {
+            transform: translateY(-1.5px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.88),
+              inset 0 -1px 0 rgba(34,28,21,0.05),
+              0 2px 4px rgba(34,28,21,0.07),
+              0 16px 28px -18px rgba(34,28,21,0.48);
+          }
+        }
+        .fr-pulse-seat {
+          animation: fr-pulse-seat 420ms cubic-bezier(.2,.8,.3,1) both;
+        }
+        @keyframes fr-pulse-seat {
+          from { opacity: 0; transform: translateY(7px) scale(0.975); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fr-pulse-key,
+          .fr-pulse-key * {
+            animation: none !important;
+            transition: none !important;
+          }
+          .fr-pulse-key:active,
+          .fr-pulse-key:hover {
+            transform: none;
+          }
+        }
+      `}</style>
 
       <BottomDrawer
         open={open !== null}

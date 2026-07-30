@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Clock3, MapPinned, Radio, Route } from "lucide-react";
 import type {
   LiveIncidentSignal,
   LiveIncidentSnapshot,
 } from "@/lib/live/incidentSnapshot";
+import { haptic } from "@/lib/haptics";
 
 const POLL_MS = 60_000;
 const CLOCK_TICK_MS = 30_000;
@@ -71,21 +72,31 @@ function mapHref(incident: LiveIncidentSignal): string {
 function IncidentRow({
   incident,
   nowMs,
+  isNew,
 }: {
   incident: LiveIncidentSignal;
   nowMs: number;
+  isNew: boolean;
 }) {
   const corroborated = incident.status === "corroborated";
   const context = roadContext(incident);
 
   return (
     <li
-      className="overflow-hidden rounded-[var(--app-radius-md)] border"
+      className={`overflow-hidden rounded-[var(--app-radius-md)] border ${
+        isNew ? "pop-in" : ""
+      }`}
+      data-new-report={isNew ? "true" : undefined}
       style={{
-        borderColor: corroborated
+        borderColor: corroborated || isNew
           ? "color-mix(in srgb, var(--app-cool) 34%, var(--app-border))"
           : "var(--app-border)",
-        background: "var(--app-bg-elevated)",
+        background: isNew
+          ? "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))"
+          : "var(--app-bg-elevated)",
+        boxShadow: isNew
+          ? "0 0 0 3px color-mix(in srgb, var(--app-cool) 9%, transparent)"
+          : undefined,
       }}
     >
       <div className="p-3.5">
@@ -114,6 +125,17 @@ function IncidentRow({
               >
                 {incident.kind}
               </h3>
+              {isNew ? (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em]"
+                  style={{
+                    color: "white",
+                    background: "var(--app-brand-press)",
+                  }}
+                >
+                  New
+                </span>
+              ) : null}
               <span
                 className="rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em]"
                 style={{
@@ -186,6 +208,10 @@ export default function ScannerTimeline({
 }) {
   const [snapshot, setSnapshot] = useState(initial);
   const [nowMs, setNowMs] = useState(() => Date.parse(initial.updatedAt) || 0);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  const knownIds = useRef(new Set(initial.items.map((item) => item.id)));
+  const firstRefresh = useRef(true);
+  const clearNewTimer = useRef<number | null>(null);
   const shown = snapshot.items.slice(0, 2);
   const corroboratedCount = snapshot.corroboratedCount;
 
@@ -201,6 +227,32 @@ export default function ScannerTimeline({
         if (!response.ok) return;
         const next = (await response.json()) as LiveIncidentSnapshot;
         if (!mounted || !Array.isArray(next.items)) return;
+        const nextIds = new Set(next.items.map((item) => item.id));
+        if (!firstRefresh.current) {
+          const freshCorroborated = next.items.filter(
+            (item) =>
+              item.status === "corroborated" &&
+              !knownIds.current.has(item.id),
+          );
+          if (
+            freshCorroborated.length > 0 &&
+            document.visibilityState === "visible"
+          ) {
+            setNewIds(
+              new Set(freshCorroborated.map((item) => item.id)),
+            );
+            haptic("warning");
+            if (clearNewTimer.current) {
+              window.clearTimeout(clearNewTimer.current);
+            }
+            clearNewTimer.current = window.setTimeout(
+              () => setNewIds(new Set()),
+              5_000,
+            );
+          }
+        }
+        firstRefresh.current = false;
+        knownIds.current = nextIds;
         setSnapshot(next);
         setNowMs(Date.now());
       } catch {
@@ -222,6 +274,9 @@ export default function ScannerTimeline({
       mounted = false;
       window.clearInterval(poll);
       window.clearInterval(tick);
+      if (clearNewTimer.current) {
+        window.clearTimeout(clearNewTimer.current);
+      }
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
@@ -279,6 +334,7 @@ export default function ScannerTimeline({
               key={incident.id}
               incident={incident}
               nowMs={nowMs}
+              isNew={newIds.has(incident.id)}
             />
           ))}
         </ul>

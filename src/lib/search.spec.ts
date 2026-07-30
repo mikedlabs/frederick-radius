@@ -322,6 +322,8 @@ describe("search — app-page guides", () => {
     const h = search(q, 10).find((x) => x.type === "page");
     return h?.type === "page" ? h.page.href : null;
   };
+  const pageHrefs = (q: string) =>
+    search(q, 30).flatMap((hit) => hit.type === "page" ? [hit.page.href] : []);
 
   it("everyday needs resolve to the right guide", () => {
     expect(topPage("public restroom")).toBe("/amenities");
@@ -337,6 +339,14 @@ describe("search — app-page guides", () => {
     expect(pageIdx).toBeGreaterThanOrEqual(0);
     const firstPlaceIdx = hits.findIndex((h) => h.type === "place");
     if (firstPlaceIdx >= 0) expect(pageIdx).toBeLessThan(firstPlaceIdx);
+  });
+
+  it("indexes the working tools that were previously missing from global search", () => {
+    expect(pageHrefs("map layers")).toContain("/map");
+    expect(pageHrefs("event calendar")).toContain("/events/calendar");
+    expect(pageHrefs("quiet hours")).toContain("/settings/notifications");
+    expect(pageHrefs("missing place")).toContain("/submit/place");
+    expect(pageHrefs("field note")).toContain("/report");
   });
 
   it("unrelated queries surface no page rows", () => {

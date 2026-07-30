@@ -97,6 +97,7 @@ import {
   getFrederickTransitRoutes,
   getFrederickTransitRouteShapes,
   getTransitFreshness,
+  type LineFC,
 } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
 import TransitMap from "@/components/transit/TransitMapClient";
@@ -106,8 +107,11 @@ import NextStopsBoard from "@/components/transit/NextStopsBoard";
 import RoutePearls from "@/components/transit/RoutePearls";
 import TransitRouteFinder from "@/components/transit/TransitRouteFinder";
 import TransitStopFinder from "@/components/transit/TransitStopFinder";
+import TransitServiceAlerts from "@/components/transit/TransitServiceAlerts";
 import PageBloom from "@/components/ui/PageBloom";
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
+import TRANSIT_NETWORK from "@/data/transit-network.json" with { type: "json" };
+import { CURRENT_TRANSIT_STOP_COUNT } from "@/lib/transit-static";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/transit" },
@@ -124,8 +128,9 @@ export const revalidate = 60;
 /**
  * /transit — a map-led transit dashboard.
  *
- * The page answers "what can I catch right now, and where" before any reference
- * or exit. Order: the next-ride summary, the live network map, expandable
+ * The page answers the rider's stop-level decision before any network-wide
+ * reference: where is my stop, what is inbound, and do I have enough time to
+ * walk there. Order: rider command center, network status, live map, expandable
  * system-wide boards, then planning and reference tools.
  *
  * Live data that exists today: TransIT vehicle positions with a resolved next
@@ -161,6 +166,79 @@ function sourceDate(iso: string | undefined): string | null {
     year: "numeric",
     timeZone: "UTC",
   }).format(date);
+}
+
+/** The official static GTFS snapshot is the canonical network on this page.
+ * Maryland Open Data remains a fail-soft fallback and a freshness comparison,
+ * but it can lag behind newly published routes. GTFS points are [lat, lng];
+ * GeoJSON coordinates are [lng, lat]. */
+function staticTransitShapes(): LineFC {
+  const data = TRANSIT_RAW as {
+    routes: Array<{ id: string; short: string; name: string }>;
+    shapes?: Record<string, number[][]>;
+  };
+  const network = TRANSIT_NETWORK as {
+    shapeVariants?: Record<
+      string,
+      Array<{
+        id: string;
+        directionIds: number[];
+        headsigns: string[];
+        points: number[][];
+      }>
+    >;
+  };
+  const routeById = new Map(data.routes.map((route) => [route.id, route]));
+  const publishedShapes =
+    network.shapeVariants && Object.keys(network.shapeVariants).length > 0
+      ? Object.entries(network.shapeVariants).flatMap(([routeId, variants]) =>
+          variants.map((variant) => ({
+            routeId,
+            variantId: variant.id,
+            directionIds: variant.directionIds,
+            headsigns: variant.headsigns,
+            points: variant.points,
+          })),
+        )
+      : Object.entries(data.shapes ?? {}).map(([routeId, points]) => ({
+          routeId,
+          variantId: routeId,
+          directionIds: [] as number[],
+          headsigns: [] as string[],
+          points,
+        }));
+  return {
+    type: "FeatureCollection",
+    features: publishedShapes.flatMap(
+      ({ routeId, variantId, directionIds, headsigns, points }) => {
+        const coordinates = points
+          .filter(
+            (point) =>
+              point.length >= 2 &&
+              Number.isFinite(point[0]) &&
+              Number.isFinite(point[1]),
+          )
+          .map(([lat, lng]) => [lng, lat]);
+        if (coordinates.length < 2) return [];
+        const route = routeById.get(routeId);
+        return [
+          {
+            type: "Feature" as const,
+            geometry: { type: "LineString", coordinates },
+            properties: {
+              routeId,
+              name: route?.name ?? "TransIT route",
+              short: route?.short ?? "",
+              variantId,
+              directionIds: directionIds.join(","),
+              headsigns: headsigns.join(" · "),
+              source: "Official TransIT GTFS",
+            },
+          },
+        ];
+      },
+    ),
+  };
 }
 
 function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout?: "rail" | "grid" }) {
@@ -199,10 +277,14 @@ function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout
 }
 
 export default async function TransitPage() {
-  // All fetches run in parallel; each revalidates on its own schedule (routes
-  // + shapes weekly, freshness daily, the two MARC feeds ~30-60s).
+  const canonicalShapes = staticTransitShapes();
+  // All network fetches run in parallel; each revalidates on its own schedule.
+  // The committed official GTFS network avoids a cold Maryland Open Data call.
+  // The latter remains a fail-soft fallback if a future build lacks shapes.
   const [shapes, routes, freshness, board, alerts] = await Promise.all([
-    getFrederickTransitRouteShapes(),
+    canonicalShapes.features.length > 0
+      ? Promise.resolve(canonicalShapes)
+      : getFrederickTransitRouteShapes(),
     getFrederickTransitRoutes(),
     getTransitFreshness(),
     getMarcBoard(new Date()),
@@ -241,6 +323,8 @@ export default async function TransitPage() {
   const staticSnapshotDate = sourceDate(staticFeed?.fetchedOn);
   const serviceWindowStart = sourceDate(staticFeed?.serviceWindowStart);
   const serviceWindowEnd = sourceDate(staticFeed?.serviceWindowEnd);
+  const networkPatternCount = shapes.features.length;
+  const staticStopCount = CURRENT_TRANSIT_STOP_COUNT;
 
   return (
     <div className="relative space-y-5">
@@ -255,14 +339,18 @@ export default async function TransitPage() {
           Transit
         </h1>
         <p className="max-w-[38rem] text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          Use the live map for bus stops and arrivals. MARC departures are here too.
+          Find your stop, see the next buses, and know when to start walking. MARC departures are here too.
         </p>
       </header>
 
-      {/* The next useful bus or train, without requiring a map interaction. */}
-      <TransitNow board={board} />
-
+      {/* The primary rider decision: choose a stop, compare the walk with live
+          arrivals, and keep frequently used stops one tap away. */}
       <TransitStopFinder />
+
+      <TransitServiceAlerts />
+
+      {/* Network-wide context follows the rider's own stop decision. */}
+      <TransitNow board={board} />
 
       <a
         href="https://frederickcountymd.gov/222/Accessibility-Features"
@@ -285,7 +373,11 @@ export default async function TransitPage() {
           Deaf and hard-of-hearing riders: Maryland Relay 711 and TransIT
           accessibility help.
         </span>
-        <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+        <ExternalLink
+          className="h-3.5 w-3.5 shrink-0"
+          strokeWidth={2}
+          aria-hidden
+        />
       </a>
 
       <section aria-labelledby="live-network-heading" className="space-y-2.5">
@@ -299,19 +391,34 @@ export default async function TransitPage() {
               Live network
             </h2>
             <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Tap a stop for arrivals or choose a route to frame its path.
+              Follow buses on the map, tap another stop, or frame a route.
             </p>
           </div>
           <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-cool)" }}>
             Buses + MARC
           </span>
         </div>
+        <p
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] font-medium"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <span>Official TransIT network</span>
+          <span aria-hidden>·</span>
+          <span>{networkPatternCount} published route patterns</span>
+          {staticStopCount > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{staticStopCount} stops</span>
+            </>
+          )}
+        </p>
         <TransitMap
           shapes={shapes}
           height="clamp(20rem, 44svh, 26rem)"
           liveBuses
           highlightRoutes
           interactiveStops
+          hideBadge
         />
       </section>
 
@@ -463,7 +570,7 @@ export default async function TransitPage() {
 
       {routesAge && (
         <p className="text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          Route shapes are from Maryland Open Data, updated {routesAge}.
+          The map uses the official TransIT GTFS network. Maryland Open Data was last updated {routesAge} and is used as a secondary comparison.
         </p>
       )}
 
@@ -472,8 +579,8 @@ export default async function TransitPage() {
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         <p>
-          Route lines come from Maryland Open Data. Stop locations, route names, and route colors come
-          from a static TransIT GTFS snapshot{staticSnapshotDate ? ` downloaded ${staticSnapshotDate}` : ""}
+          Route lines, stop locations, route names, and route colors come from an official TransIT GTFS
+          snapshot{staticSnapshotDate ? ` downloaded ${staticSnapshotDate}` : ""}
           {serviceWindowStart && serviceWindowEnd ? `, covering ${serviceWindowStart} through ${serviceWindowEnd}` : ""}.
           Vehicle positions and inbound estimates use a separate GTFS-realtime feed and appear only as
           live information while that feed is responding.

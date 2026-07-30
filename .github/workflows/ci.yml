@@ -24,6 +24,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,7 +44,7 @@ jobs:
       - name: Audit migration ledger
         run: npm run db:audit
       - name: Unit tests
-        run: npm test
+        run: npm run test:all
       - name: Production recovery selection tests
         run: node --test scripts/lib/production-rollback.test.mjs
       - name: Build
@@ -53,6 +54,21 @@ jobs:
           # degrade when these are absent. Provide empty defaults so the
           # build exercises the real code paths without external calls.
           NEXT_TELEMETRY_DISABLED: "1"
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Production browser and connected-journey gate
+        run: npm run test:release
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
+      - name: Keep browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-browser-failure-traces
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   browser-chaos:
     # Keep this job name stable and mark it required in the main branch rule.

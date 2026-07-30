@@ -30,12 +30,14 @@ import { test, expect } from "@playwright/test";
 const PUBLIC_ROUTES = [
   "/today",
   "/events",
-  "/radius",
+  "/parks",
   "/history",
   "/about",
   "/access",
   "/tonight",
   "/discover",
+  "/transit",
+  "/compass",
   "/m/frederick",
   "/category/food",
 ] as const;

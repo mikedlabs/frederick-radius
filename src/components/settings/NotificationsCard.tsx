@@ -3,20 +3,51 @@
 import { track } from "@/lib/track";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, Check, AlertCircle, Send } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  BellOff,
+  Check,
+  Play,
+  Send,
+  Smartphone,
+} from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 import { isIos, isStandalone } from "@/lib/pwa-display";
 import { getHomeMuni } from "@/lib/personalize";
+import {
+  haptic,
+  isPhoneFeedbackEnabled,
+  PHONE_FEEDBACK_CHANGE_EVENT,
+  PHONE_FEEDBACK_STORAGE_KEY,
+  phoneFeedbackSupport,
+  setPhoneFeedbackEnabled,
+  type PhoneFeedbackSupport,
+} from "@/lib/haptics";
 
-const ALL_TOPICS: PushTopic[] = [
-  "civic-alerts",
-  "traffic-alerts",
-  "saved-events",
-  "daily-briefing",
-  "specials",
-  "parking",
-  "golden-hour",
+const TOPIC_GROUPS: Array<{
+  label: string;
+  description: string;
+  topics: PushTopic[];
+}> = [
+  {
+    label: "Needs attention",
+    description: "Changes that can affect your day.",
+    topics: ["civic-alerts", "traffic-alerts", "parking"],
+  },
+  {
+    label: "Your plans",
+    description: "Reminders connected to things you follow.",
+    topics: ["saved-events", "specials"],
+  },
+  {
+    label: "Daily rhythm",
+    description: "Optional, predictable check-ins.",
+    topics: ["daily-briefing", "golden-hour"],
+  },
 ];
+
+const ALL_TOPICS = TOPIC_GROUPS.flatMap((group) => group.topics);
 
 type SupportState =
   | "unknown"
@@ -43,7 +74,162 @@ function hourLabel(h: number): string {
   return `${hr} ${period}`;
 }
 
-export default function NotificationsCard() {
+function PhoneFeedbackCard() {
+  const [enabled, setEnabled] = useState(true);
+  const [support, setSupport] = useState<PhoneFeedbackSupport>("none");
+  const [previewState, setPreviewState] = useState<
+    "sent" | "unavailable" | null
+  >(null);
+
+  useEffect(() => {
+    // Device capability and localStorage exist only after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEnabled(isPhoneFeedbackEnabled());
+    setSupport(phoneFeedbackSupport());
+
+    const onPreferenceChange = (event: Event) => {
+      const next = (event as CustomEvent<{ enabled?: boolean }>).detail?.enabled;
+      setEnabled(
+        typeof next === "boolean" ? next : isPhoneFeedbackEnabled(),
+      );
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === PHONE_FEEDBACK_STORAGE_KEY) {
+        setEnabled(isPhoneFeedbackEnabled());
+      }
+    };
+    window.addEventListener(
+      PHONE_FEEDBACK_CHANGE_EVENT,
+      onPreferenceChange,
+    );
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(
+        PHONE_FEEDBACK_CHANGE_EVENT,
+        onPreferenceChange,
+      );
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const toggle = useCallback(() => {
+    const next = !enabled;
+    if (!next) haptic("light");
+    setPhoneFeedbackEnabled(next);
+    setEnabled(next);
+    if (next) haptic("success");
+    setPreviewState(null);
+  }, [enabled]);
+
+  const preview = useCallback(() => {
+    setPreviewState(haptic("success") ? "sent" : "unavailable");
+    window.setTimeout(() => setPreviewState(null), 1800);
+  }, []);
+
+  const unavailable = support === "none";
+  const supportCopy =
+    support === "vibration"
+      ? "Short vibration cues confirm saves, choices, and near-arrival moments."
+      : support === "ios-tap"
+        ? "Short tap cues confirm actions when your iPhone supports them."
+        : "This browser does not expose physical feedback. Visual confirmations still work.";
+
+  return (
+    <article
+      className="rounded-[var(--app-radius-lg)] border p-4"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+      }}
+    >
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
+            style={{
+              background:
+                "color-mix(in srgb, var(--app-brand) 11%, transparent)",
+              color: "var(--app-brand-press)",
+            }}
+          >
+            <Smartphone className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h2
+              className="text-[15px] font-semibold"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Phone feedback
+            </h2>
+            <p
+              className="mt-0.5 text-[12px] leading-relaxed"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {supportCopy}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled && !unavailable}
+          aria-label="Phone feedback"
+          onClick={toggle}
+          disabled={unavailable}
+          className="tap-44 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-45"
+          style={{
+            background:
+              enabled && !unavailable
+                ? "var(--app-brand)"
+                : "color-mix(in srgb, var(--app-ink) 22%, transparent)",
+          }}
+        >
+          <span
+            className="inline-block h-5 w-5 rounded-full bg-white transition-transform"
+            style={{
+              transform:
+                enabled && !unavailable
+                  ? "translateX(22px)"
+                  : "translateX(2px)",
+              boxShadow: "var(--app-elev-1)",
+            }}
+          />
+        </button>
+      </header>
+
+      <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+        <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          This preference is stored only on this device.
+        </p>
+        {!unavailable && (
+          <button
+            type="button"
+            onClick={preview}
+            disabled={!enabled}
+            className="inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold disabled:opacity-45"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            <Play className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            {previewState === "sent"
+              ? "Feedback sent"
+              : previewState === "unavailable"
+                ? "No cue detected"
+                : "Try feedback"}
+          </button>
+        )}
+      </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {previewState === "sent"
+          ? "The phone feedback cue was sent."
+          : previewState === "unavailable"
+            ? "This browser did not accept the phone feedback cue."
+            : ""}
+      </p>
+    </article>
+  );
+}
+
+function PushNotificationsCard() {
   const [support, setSupport] = useState<SupportState>("unknown");
   const [pubKey, setPubKey] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
@@ -53,6 +239,7 @@ export default function NotificationsCard() {
   const [quietStart, setQuietStart] = useState<number | null>(null);
   const [quietEnd, setQuietEnd] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // Feature detect + load existing subscription on mount.
@@ -159,13 +346,17 @@ export default function NotificationsCard() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
+        await sub.unsubscribe().catch(() => false);
         flash("Couldn't save subscription. Try again later.");
         return;
       }
       setSubscription(sub);
       setSupport("subscribed");
       track("push_optin");
+      haptic("success");
       flash("Notifications on.");
+    } catch {
+      flash("Notifications could not be turned on. Try again.");
     } finally {
       setBusy(false);
     }
@@ -183,6 +374,7 @@ export default function NotificationsCard() {
       await subscription.unsubscribe();
       setSubscription(null);
       setSupport("ready");
+      haptic("medium");
       flash("Notifications off.");
     } finally {
       setBusy(false);
@@ -191,47 +383,81 @@ export default function NotificationsCard() {
 
   // Persist topic changes when subscribed by re-POSTing the subscription.
   const saveTopics = useCallback(
-    async (next: Set<PushTopic>) => {
-      if (!subscription) return;
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-          topics: [...next],
-          home_town: getHomeMuni() ?? undefined,
-        }),
-      });
+    async (next: Set<PushTopic>): Promise<boolean> => {
+      if (!subscription) return false;
+      setSaving(true);
+      try {
+        const response = await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            topics: [...next],
+            home_town: getHomeMuni() ?? undefined,
+          }),
+        });
+        if (!response.ok) {
+          flash("That topic change did not save. Try it again.");
+          return false;
+        }
+        return true;
+      } catch {
+        flash("That topic change did not save. Try it again.");
+        return false;
+      } finally {
+        setSaving(false);
+      }
     },
-    [subscription],
+    [subscription, flash],
   );
 
   const toggleTopic = useCallback(
     (t: PushTopic) => {
-      setTopics((prev) => {
-        const next = new Set(prev);
-        if (next.has(t)) next.delete(t);
-        else next.add(t);
-        void saveTopics(next);
-        return next;
+      if (saving) return;
+      haptic("light");
+      const previous = new Set(topics);
+      const next = new Set(topics);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      setTopics(next);
+      void saveTopics(next).then((saved) => {
+        if (!saved) setTopics(previous);
       });
     },
-    [saveTopics],
+    [saveTopics, saving, topics],
   );
 
-  // Persist quiet hours (both null = off). Best-effort, like topic saves.
+  // Persist quiet hours (both null = off). Roll back the controls when the
+  // server rejects the change so the visible setting remains truthful.
   const applyQuiet = useCallback(
-    (start: number | null, end: number | null) => {
+    async (start: number | null, end: number | null) => {
+      if (!subscription || saving) return;
+      const previousStart = quietStart;
+      const previousEnd = quietEnd;
       setQuietStart(start);
       setQuietEnd(end);
-      if (!subscription) return;
-      void fetch("/api/push/prefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: subscription.endpoint, quiet_start: start, quiet_end: end }),
-      }).catch(() => {});
+      haptic("light");
+      setSaving(true);
+      try {
+        const response = await fetch("/api/push/prefs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+            quiet_start: start,
+            quiet_end: end,
+          }),
+        });
+        if (!response.ok) throw new Error("quiet-hours-save-failed");
+      } catch {
+        setQuietStart(previousStart);
+        setQuietEnd(previousEnd);
+        flash("That quiet-hours change did not save. Try it again.");
+      } finally {
+        setSaving(false);
+      }
     },
-    [subscription],
+    [flash, quietEnd, quietStart, saving, subscription],
   );
 
   const sendTest = useCallback(async () => {
@@ -248,11 +474,45 @@ export default function NotificationsCard() {
         flash(json.error ? `Send failed: ${json.error}` : "Send failed.");
         return;
       }
+      haptic("success");
       flash("The test notification was sent.");
     } finally {
       setBusy(false);
     }
   }, [subscription, flash]);
+
+  if (support === "unknown") {
+    return (
+      <article
+        aria-busy="true"
+        className="rounded-[var(--app-radius-lg)] border p-4"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+        }}
+      >
+        <header className="flex items-center gap-2">
+          <Bell
+            className="h-4 w-4"
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+          <h2
+            className="text-[15px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Local alerts
+          </h2>
+        </header>
+        <p
+          className="mt-2 text-[12px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Checking notification support on this device…
+        </p>
+      </article>
+    );
+  }
 
   if (support === "unsupported") {
     return (
@@ -260,7 +520,7 @@ export default function NotificationsCard() {
         <header className="flex items-center gap-2">
           <BellOff className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Notifications
+            Local alerts
           </h2>
         </header>
         <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
@@ -277,7 +537,7 @@ export default function NotificationsCard() {
         <header className="flex items-center gap-2">
           <BellOff className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Notifications
+            Local alerts
           </h2>
         </header>
         <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
@@ -294,7 +554,7 @@ export default function NotificationsCard() {
         <header className="flex items-center gap-2">
           <Bell className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Notifications
+            Local alerts
           </h2>
         </header>
         <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -326,7 +586,7 @@ export default function NotificationsCard() {
             aria-hidden
           />
           <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Notifications
+            Local alerts
           </h2>
         </div>
         {support === "blocked" ? (
@@ -340,7 +600,7 @@ export default function NotificationsCard() {
           <button
             type="button"
             onClick={enabled ? unsubscribe : subscribe}
-            disabled={busy}
+            disabled={busy || saving || !pubKey}
             className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50"
             style={{
               background: enabled ? "var(--app-bg-elevated)" : "var(--app-brand)",
@@ -365,62 +625,112 @@ export default function NotificationsCard() {
           ? "Notifications are blocked at the browser level. Re-enable in your site settings to subscribe."
           : enabled
             ? topics.size === 0
-              ? "You're subscribed. Pick at least one topic below to start receiving alerts."
-              : "Your topic choices save automatically."
+              ? "You’re connected. Pick at least one alert below."
+              : saving
+                ? "Saving your choices…"
+                : `${topics.size} ${topics.size === 1 ? "alert is" : "alerts are"} on for this device.`
             : "Turn notifications on, then choose the topics you want."}
       </p>
 
-      <ul className="mt-4 space-y-2">
-        {ALL_TOPICS.map((t) => {
-          const info = TOPIC_LABELS[t];
-          const on = topics.has(t);
-          const disabled = !enabled || busy;
-          return (
-            <li key={t}>
-              <button
-                type="button"
-                onClick={() => toggleTopic(t)}
-                disabled={disabled}
-                aria-pressed={on}
-                className={`flex w-full items-start gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left transition active:scale-[0.99] ${
-                  disabled ? "opacity-60" : ""
-                }`}
-                style={{
-                  borderColor: on ? "var(--app-brand)" : "var(--app-border)",
-                  background: on
-                    ? "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated))"
-                    : "var(--app-bg-elevated)",
-                }}
+      <div className="mt-4 space-y-4">
+        {TOPIC_GROUPS.map((group) => (
+          <section key={group.label} aria-labelledby={`topic-${group.label.replace(/\s+/g, "-").toLowerCase()}`}>
+            <div className="mb-2">
+              <h3
+                id={`topic-${group.label.replace(/\s+/g, "-").toLowerCase()}`}
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--app-ink-2)" }}
               >
-                <span
-                  aria-hidden
-                  className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border"
-                  style={{
-                    background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                    borderColor: on ? "var(--app-brand)" : "var(--app-border)",
-                  }}
-                >
-                  {on && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                </span>
-                <span className="min-w-0">
-                  <span
-                    className="block text-[14px] font-semibold leading-tight"
-                    style={{ color: "var(--app-ink)" }}
+                {group.label}
+              </h3>
+              <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                {group.description}
+              </p>
+            </div>
+            <ul
+              className="overflow-hidden rounded-[var(--app-radius-md)] border"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              {group.topics.map((t, index) => {
+                const info = TOPIC_LABELS[t];
+                const on = topics.has(t);
+                const disabled = !enabled || busy || saving;
+                return (
+                  <li
+                    key={t}
+                    className={index > 0 ? "border-t" : undefined}
+                    style={{ borderColor: "var(--app-border)" }}
                   >
-                    {info.label}
-                  </span>
-                  <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                    {info.desc}
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                    <button
+                      type="button"
+                      onClick={() => toggleTopic(t)}
+                      disabled={disabled}
+                      aria-pressed={on}
+                      className={`flex w-full items-start gap-3 px-3 py-3 text-left transition active:scale-[0.99] ${
+                        disabled ? "opacity-55" : ""
+                      }`}
+                      style={{
+                        background: on
+                          ? "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated))"
+                          : "var(--app-bg-elevated)",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border"
+                        style={{
+                          background: on
+                            ? "var(--app-brand)"
+                            : "var(--app-bg-elevated)",
+                          borderColor: on
+                            ? "var(--app-brand)"
+                            : "var(--app-border)",
+                        }}
+                      >
+                        {on && (
+                          <Check
+                            className="h-3 w-3 text-white"
+                            strokeWidth={3}
+                          />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span
+                          className="block text-[14px] font-semibold leading-tight"
+                          style={{ color: "var(--app-ink)" }}
+                        >
+                          {info.label}
+                        </span>
+                        <span
+                          className="mt-0.5 block text-[11px] leading-snug"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {info.desc}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       {enabled && (
-        <div className="mt-4 rounded-[var(--app-radius-md)] border px-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
+        <section
+          className="mt-5 border-t pt-4"
+          style={{ borderColor: "var(--app-border)" }}
+          aria-labelledby="delivery-tools"
+        >
+          <h3
+            id="delivery-tools"
+            className="mb-2 text-[12px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Delivery tools
+          </h3>
+          <div className="rounded-[var(--app-radius-md)] border px-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
@@ -432,9 +742,14 @@ export default function NotificationsCard() {
             </div>
             <button
               type="button"
-              onClick={() => (quietStart !== null && quietEnd !== null ? applyQuiet(null, null) : applyQuiet(21, 7))}
+              onClick={() => void (
+                quietStart !== null && quietEnd !== null
+                  ? applyQuiet(null, null)
+                  : applyQuiet(21, 7)
+              )}
               aria-pressed={quietStart !== null && quietEnd !== null}
-              className="tactile tactile-interactive shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold"
+              disabled={saving}
+              className="tactile tactile-interactive shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold disabled:opacity-50"
               style={{
                 background: quietStart !== null && quietEnd !== null ? "var(--app-brand)" : "var(--app-bg-elevated)",
                 color: quietStart !== null && quietEnd !== null ? "white" : "var(--app-ink-2)",
@@ -450,8 +765,9 @@ export default function NotificationsCard() {
               <select
                 aria-label="Quiet hours start"
                 value={quietStart}
-                onChange={(e) => applyQuiet(Number(e.target.value), quietEnd)}
-                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px]"
+                onChange={(e) => void applyQuiet(Number(e.target.value), quietEnd)}
+                disabled={saving}
+                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px] disabled:opacity-50"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
               >
                 {Array.from({ length: 24 }, (_, h) => (
@@ -462,8 +778,9 @@ export default function NotificationsCard() {
               <select
                 aria-label="Quiet hours end"
                 value={quietEnd}
-                onChange={(e) => applyQuiet(quietStart, Number(e.target.value))}
-                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px]"
+                onChange={(e) => void applyQuiet(quietStart, Number(e.target.value))}
+                disabled={saving}
+                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px] disabled:opacity-50"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
               >
                 {Array.from({ length: 24 }, (_, h) => (
@@ -472,19 +789,18 @@ export default function NotificationsCard() {
               </select>
             </div>
           )}
-        </div>
-      )}
-
-      {enabled && (
-        <button
-          type="button"
-          onClick={sendTest}
-          disabled={busy}
-          className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold disabled:opacity-50"
-          style={{ color: "var(--app-cool)" }}
-        >
-          <Send className="h-3 w-3" strokeWidth={2.25} aria-hidden /> Send me a test
-        </button>
+          </div>
+          <button
+            type="button"
+            onClick={sendTest}
+            disabled={busy || saving}
+            className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold disabled:opacity-50"
+            style={{ color: "var(--app-cool)" }}
+          >
+            <Send className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            Send a test notification
+          </button>
+        </section>
       )}
 
       {/* Always-present live region so screen readers announce the toast
@@ -498,5 +814,14 @@ export default function NotificationsCard() {
         {toast}
       </p>
     </article>
+  );
+}
+
+export default function NotificationsCard() {
+  return (
+    <div className="space-y-3">
+      <PhoneFeedbackCard />
+      <PushNotificationsCard />
+    </div>
   );
 }

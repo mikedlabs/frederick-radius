@@ -18,8 +18,13 @@ describe("todayDealAvailability", () => {
     expect(todayDealAvailability("11 AM–2 PM", "Tuesday", tue6pm).state).toBe("earlier");
   });
 
-  it("treats an all-day special as currently available", () => {
-    expect(todayDealAvailability("All day", "Tuesday", tue6pm).state).toBe("now");
+  it("keeps an all-day special soft until venue hours are authoritative", () => {
+    expect(todayDealAvailability("All day", "Tuesday", tue6pm)).toEqual({
+      state: "today",
+      label: "Today",
+      when: "All day",
+      rank: 2,
+    });
   });
 
   it("uses soft copy when a time cannot be interpreted as a range", () => {
@@ -46,6 +51,7 @@ describe("todayDealAvailability", () => {
       { slug: "later", hours: "8–10 PM" },
       { slug: "earlier", hours: "11 AM–2 PM" },
       { slug: "single-time", hours: "6 PM" },
+      { slug: "all-day", hours: "All day" },
       { slug: "unknown" },
     ];
 

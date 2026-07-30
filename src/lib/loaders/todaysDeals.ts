@@ -20,20 +20,108 @@ type FNDeal = { text: string; source_url?: string; confidence?: string; last_ver
 type FNEntry = { deals?: FNDeal[] };
 const NOTES = data as Record<string, FNEntry>;
 
-const DAY_IDX: Record<string, number> = {
-  sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2,
-  wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4,
-  fri: 5, friday: 5, sat: 6, saturday: 6,
-};
-const DAY_RE =
-  /\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday|tues|thurs|thur|weds|sun|mon|tue|wed|thu|fri|sat)\b/gi;
+export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-/** Weekday indices named anywhere in the deal text (empty = no day stated). */
-function daysInText(t: string): Set<number> {
-  const out = new Set<number>();
-  for (const m of t.toLowerCase().matchAll(DAY_RE)) {
-    const n = DAY_IDX[m[1]];
-    if (n !== undefined) out.add(n);
+const DAY_IDX: Record<string, WeekdayIndex> = {
+  sun: 0, sunday: 0, sundays: 0,
+  mon: 1, monday: 1, mondays: 1,
+  tue: 2, tues: 2, tuesday: 2, tuesdays: 2,
+  wed: 3, weds: 3, wednesday: 3, wednesdays: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4, thursdays: 4,
+  fri: 5, friday: 5, fridays: 5,
+  sat: 6, saturday: 6, saturdays: 6,
+};
+// Longest-first keeps a plural token together instead of letting the shorter
+// singular alternative stop at its internal word boundary.
+const DAY_TOKEN_SOURCE = Object.keys(DAY_IDX)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
+const DAY_RE = new RegExp(String.raw`\b(${DAY_TOKEN_SOURCE})\b`, "gi");
+const DAY_RANGE_RE = new RegExp(
+  String.raw`\b(${DAY_TOKEN_SOURCE})\b\s*(?:[-–—]|\b(?:to|through|thru)\b)\s*\b(${DAY_TOKEN_SOURCE})\b`,
+  "gi",
+);
+
+function dayIndex(token: string): WeekdayIndex | undefined {
+  return DAY_IDX[token.toLowerCase()];
+}
+
+/** Expand Tue–Fri as Tue/Wed/Thu/Fri. Wraparound ranges such as Fri–Mon are
+ * supported too, with a hard seven-day bound so malformed input cannot loop. */
+function expandDayRange(start: WeekdayIndex, end: WeekdayIndex): WeekdayIndex[] {
+  const days: WeekdayIndex[] = [start];
+  let current = start;
+  for (let i = 0; i < 6 && current !== end; i++) {
+    current = ((current + 1) % 7) as WeekdayIndex;
+    days.push(current);
+  }
+  return days;
+}
+
+type DayMention = {
+  start: number;
+  end: number;
+  days: Set<WeekdayIndex>;
+};
+
+/**
+ * Find the scheduling mentions in source order. A range is one mention, while
+ * adjacent list items ("Tuesday, Wednesday, and Thursday") are merged into one
+ * shared schedule group. Day names separated by actual offer copy remain
+ * separate, which lets the per-day view isolate Monkey Lala's three specials.
+ */
+function dayMentions(text: string): DayMention[] {
+  const ranges: DayMention[] = [];
+  for (const match of text.matchAll(new RegExp(DAY_RANGE_RE.source, "gi"))) {
+    const start = dayIndex(match[1]);
+    const end = dayIndex(match[2]);
+    if (start === undefined || end === undefined || match.index === undefined) continue;
+    ranges.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      days: new Set(expandDayRange(start, end)),
+    });
+  }
+
+  const atoms: DayMention[] = [...ranges];
+  for (const match of text.matchAll(new RegExp(DAY_RE.source, "gi"))) {
+    if (match.index === undefined) continue;
+    const start = match.index;
+    const end = start + match[0].length;
+    if (ranges.some((range) => start >= range.start && end <= range.end)) continue;
+    const day = dayIndex(match[1]);
+    if (day === undefined) continue;
+    atoms.push({ start, end, days: new Set([day]) });
+  }
+  atoms.sort((a, b) => a.start - b.start);
+
+  const mentions: DayMention[] = [];
+  for (const atom of atoms) {
+    const previous = mentions.at(-1);
+    if (
+      previous &&
+      /^\s*(?:,\s*)?(?:(?:and|&)\s*)?$/i.test(text.slice(previous.end, atom.start))
+    ) {
+      for (const day of atom.days) previous.days.add(day);
+      previous.end = atom.end;
+    } else {
+      mentions.push({
+        start: atom.start,
+        end: atom.end,
+        days: new Set(atom.days),
+      });
+    }
+  }
+  return mentions;
+}
+
+/** Weekday indices named anywhere in the deal text (empty = no day stated).
+ * Plural weekday names and inclusive ranges are normalized at this boundary so
+ * every downstream count, filter, and "today" claim uses the same truth. */
+export function daysInText(text: string): Set<WeekdayIndex> {
+  const out = new Set<WeekdayIndex>();
+  for (const mention of dayMentions(text)) {
+    for (const day of mention.days) out.add(day);
   }
   return out;
 }
@@ -54,8 +142,10 @@ function readsAsOffer(t: string): boolean {
 const MONEY_RE = /\$\s*\d|\d\s*%/i;
 const STRONG_VALUE_RE =
   /\b(?:\d{1,3}\s*%\s*off|half[-\s]?(?:off|price)|bogo|buy\s+one\s+get\s+one|discount(?:ed)?|all[-\s]?you[-\s]?can[-\s]?eat|ayce|bottomless|happy\s*hour|kids?\s+eat\s+for)\b|\$\s*\d+(?:\.\d{1,2})?\s*off\b/i;
-const DAY_PREFIX_RE =
-  /^\s*(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nes|nesday)?|thur?(?:s|sday)?|fri(?:day)?|sat(?:urday)?)\b/i;
+const DAY_PREFIX_RE = new RegExp(
+  String.raw`^\s*(?:${DAY_TOKEN_SOURCE})\b`,
+  "i",
+);
 const DEAL_FOOD_RE =
   /\b(?:appetizers?|beer|bottles?|burgers?|cocktails?|crabs?|drafts?|drinks?|entrees?|food|margaritas?|meals?|oysters?|pasta|pizza|ribs?|shrimp|tacos?|wings?|wine)\b/i;
 const FREE_VALUE_RE =
@@ -81,6 +171,14 @@ export function isActionableDeal(text: string): boolean {
   // A named weekday plus a real price is a conventional daily special. A
   // price mentioned later in an ordinary tour/menu description is not.
   if (DAY_PREFIX_RE.test(t) && MONEY_RE.test(t)) return true;
+  const titleClause = t.split(":")[0]?.trim() ?? "";
+  if (
+    titleClause.length <= 40 &&
+    daysInText(titleClause).size > 0 &&
+    MONEY_RE.test(t)
+  ) {
+    return true;
+  }
 
   // "Pizza Night: $10..." and "Tuesday taco specials" are useful even when
   // their source does not use the words discount/off.
@@ -101,8 +199,46 @@ export function isActionableDeal(text: string): boolean {
 function todayClause(raw: string, dow: number): string {
   if (daysInText(raw).size < 2) return raw;
   const parts = raw.split(/;|\.\s+/).map((s) => s.trim()).filter(Boolean);
-  const todays = parts.filter((p) => daysInText(p).has(dow));
-  return todays.length ? todays.join("; ") : raw;
+  const partDays = parts.map((part) => daysInText(part));
+  const explicit = partDays
+    .map((days, index) => ({ days, index }))
+    .filter(({ days }) => days.size > 0);
+  const selected = explicit.filter(({ days }) => days.has(dow as WeekdayIndex));
+  if (selected.length === 0) return raw;
+
+  const included = new Set<number>();
+  // Preserve a source preamble that introduces the whole schedule.
+  const firstExplicit = explicit[0]?.index ?? 0;
+  for (let index = 0; index < firstExplicit; index++) included.add(index);
+
+  for (const { index } of selected) {
+    included.add(index);
+    // Terms and elaboration without their own weekday belong to the explicit
+    // clause immediately before them. Stop as soon as another weekday starts.
+    for (let next = index + 1; next < parts.length; next++) {
+      if (partDays[next].size > 0) break;
+      included.add(next);
+    }
+  }
+
+  const relevant = parts.filter((_, index) => included.has(index));
+  const joined = relevant.length ? relevant.join("; ") : raw;
+  const colon = joined.indexOf(":");
+  if (colon > 0) {
+    const prefix = joined.slice(0, colon);
+    const scheduledOffer = joined.slice(colon + 1).trim();
+    // Source notes sometimes introduce a week of specials before the first
+    // colon ("Shares Avery's nightly specials: Tuesday ..."). That venue
+    // context is useful in the complete source text, but it should not become
+    // the headline for every selected day.
+    if (
+      !daysInText(prefix).has(dow as WeekdayIndex) &&
+      daysInText(scheduledOffer).has(dow as WeekdayIndex)
+    ) {
+      return scheduledOffer;
+    }
+  }
+  return joined;
 }
 
 /**
@@ -121,9 +257,12 @@ function publicOffer(text: string): string {
   return out.length >= 4 ? out : "";
 }
 
-function easternDow(now: Date): number {
+function easternDow(now: Date): WeekdayIndex {
   const wd = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
-  return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd] ?? 0;
+  const days: Record<string, WeekdayIndex> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return days[wd] ?? 0;
 }
 
 export const EASTERN_WEEKDAY = (now: Date): string =>
@@ -188,9 +327,55 @@ export function extractHours(text: string): string | undefined {
   );
   if (range) return formatHours(range[0]);
   if (/\ball day\b/i.test(text)) return "All day";
+  if (/\b(?:at|from|starting at)\s+open\b/i.test(text)) return "At open";
   const at = text.match(/\b(?:at|from|starting at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i);
   if (at) return formatHours(at[1]);
   return undefined;
+}
+
+function clauseStartBefore(text: string, index: number): number {
+  const before = text.slice(0, index);
+  const semicolon = before.lastIndexOf(";");
+  const sentence = before.lastIndexOf(". ");
+  return Math.max(semicolon + 1, sentence >= 0 ? sentence + 2 : 0);
+}
+
+function clauseEndAfter(text: string, index: number): number {
+  const tail = text.slice(index);
+  const match = /;|\.(?=\s|$)/.exec(tail);
+  return match?.index === undefined ? text.length : index + match.index;
+}
+
+/**
+ * Resolve the time attached to one weekday instead of assigning the first time
+ * in a compound source string to every day. The scan is source-preserving: it
+ * narrows only the context used to identify the label.
+ */
+export function extractHoursForDay(text: string, day: number): string | undefined {
+  const mentions = dayMentions(text);
+  for (let index = 0; index < mentions.length; index++) {
+    const mention = mentions[index];
+    if (!mention.days.has(day as WeekdayIndex)) continue;
+
+    const hardEnd = clauseEndAfter(text, mention.end);
+    const nextMention = mentions[index + 1];
+    const end = nextMention && nextMention.start < hardEnd
+      ? nextMention.start
+      : hardEnd;
+    const after = extractHours(text.slice(mention.start, end));
+    if (after) return after;
+
+    // Some sources put timing before the day ("all day on Wednesdays"). Only
+    // inspect that prefix when no other weekday group occupies the same clause,
+    // otherwise an earlier group's time could leak onto this one.
+    const hardStart = clauseStartBefore(text, mention.start);
+    const previousMention = mentions[index - 1];
+    if (!previousMention || previousMention.end <= hardStart) {
+      const before = extractHours(text.slice(hardStart, mention.end));
+      if (before) return before;
+    }
+  }
+  return extractHours(todayClause(text, day));
 }
 
 /** Strip a leading weekday marker ("Tuesday: ...", "Thursday all day: ...",
@@ -199,10 +384,10 @@ export function extractHours(text: string): string | undefined {
  *  "all day" between the weekday and its separator, and a bare weekday followed
  *  by more text (no separator). A mid-phrase "Taco Tuesday" keeps its day. */
 function trimDay(offer: string): string {
-  const t = offer.replace(
-    /^\s*(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nes|nesday)?|thur?(?:s|sday)?|fri(?:day)?|sat(?:urday)?)\b(?:\s+all\s+day)?(?:\s*[:.\-–]\s*|\s+)/i,
-    "",
-  );
+  const t = offer.replace(new RegExp(
+    String.raw`^\s*(?:${DAY_TOKEN_SOURCE})\b(?:\s+all\s+day)?(?:\s*[:.\-–]\s*|\s+)`,
+    "i",
+  ), "");
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
@@ -215,8 +400,10 @@ function stripHours(offer: string): string {
     .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–—]\s*(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|close)\b/gi, "")
     .replace(/\ball day\b/gi, "")
     .replace(/\b(?:at|from|starting at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, "")
+    .replace(/\b(?:at|from|starting at)\s+open\b/gi, "")
     .replace(/\(\s*\)/g, "")
     .replace(/\s*,\s*,/g, ",")
+    .replace(/\s*,\s*;/g, ";")
     .replace(/\s*,\s*\./g, ".")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([.,;)])/g, "$1")
@@ -390,7 +577,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       // a non-deal ("Live music Thursday") in a list titled "verified specials".
       const today = publicOffer(todayClause(raw, dow));
       if (!readsAsOffer(today) || !isActionableDeal(today)) continue;
-      const hours = extractHours(today);
+      const hours = extractHoursForDay(raw, dow);
       const fn = fieldNotesFor(slug);
       // The offer leads with the WHAT; the day prefix + the hours are pulled
       // out (header states the day, a chip states the time) so the headline
@@ -433,9 +620,19 @@ export type DealRow = {
   town?: string;
   category?: string;
   photo?: string;
-  /** The offer, with the leading weekday prefix and the hours stripped out. */
+  /** Backward-compatible full display offer, with leading day + hours removed. */
   offer: string;
-  /** Parsed run-time ("5–9 PM", "All day"), or undefined when none is stated. */
+  /** Short scan headline distilled without replacing the complete offer. */
+  headline: string;
+  /** A source-stated restriction lifted from the offer, when present. */
+  terms?: string;
+  /** Complete cleaned public offer before any selected-day narrowing. */
+  fullOffer: string;
+  /** Selected-day display copy. Unrelated weekday clauses are excluded. */
+  offerByDay?: Partial<Record<number, string>>;
+  /** Selected-day time labels. Mixed schedules stay separate here. */
+  hoursByDay?: Partial<Record<number, string>>;
+  /** Shared run-time only. Undefined when timing differs by weekday. */
   hours?: string;
   /** Weekday indices (0=Sun) named in the deal text. Empty = a standing
    *  special with no fixed day — shown honestly on its own shelf, never
@@ -445,6 +642,16 @@ export type DealRow = {
   verified: string | null;
   confidence: string;
 };
+
+/** Selected-day offer with a safe fallback for standing/legacy rows. */
+export function dealOfferForDay(row: DealRow, day: number): string {
+  return row.offerByDay?.[day] ?? row.offer;
+}
+
+/** Selected-day timing with a safe fallback for standing/legacy rows. */
+export function dealHoursForDay(row: DealRow, day: number): string | undefined {
+  return row.hoursByDay?.[day] ?? row.hours;
+}
 
 /**
  * EVERY verified deal on file, shaped for the /deals browser. Unlike
@@ -465,15 +672,39 @@ export function allDeals(): DealRow[] {
       if (!OK[conf] || !d.last_verified) continue;
       const raw = publicOffer(stripProvenance((d.text || "").trim()));
       if (!readsAsOffer(raw) || !isActionableDeal(raw)) continue;
+      const days = [...daysInText(raw)].sort((a, b) => a - b);
+      const offer = stripHours(trimDay(raw));
+      const distilled = distillOffer(offer);
+      const offerByDay: Partial<Record<number, string>> = {};
+      const hoursByDay: Partial<Record<number, string>> = {};
+      for (const day of days) {
+        const relevant = publicOffer(todayClause(raw, day));
+        offerByDay[day] = stripHours(trimDay(relevant || raw));
+        const dayHours = extractHoursForDay(raw, day);
+        if (dayHours) hoursByDay[day] = dayHours;
+      }
+      const dayHourValues = days.map((day) => hoursByDay[day]);
+      const sharedHours =
+        days.length === 0
+          ? extractHours(raw)
+          : new Set(dayHourValues).size === 1
+            ? dayHourValues[0]
+            : undefined;
       rows.push({
         slug,
         name: place.name,
         town,
         category: place.category,
         photo: place.google_photo_url,
-        offer: stripHours(trimDay(raw)),
-        hours: extractHours(raw),
-        days: [...daysInText(raw)].sort((a, b) => a - b),
+        offer,
+        headline: distilled.headline,
+        terms: distilled.terms,
+        fullOffer: raw,
+        offerByDay: days.length > 0 ? offerByDay : undefined,
+        hoursByDay:
+          Object.keys(hoursByDay).length > 0 ? hoursByDay : undefined,
+        hours: sharedHours,
+        days,
         source_url: d.source_url,
         verified: verifiedLabel(d.last_verified),
         confidence: conf,

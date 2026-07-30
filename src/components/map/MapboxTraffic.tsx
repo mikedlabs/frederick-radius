@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Layer, Source } from "react-map-gl/mapbox";
 import {
   MAPBOX_TRAFFIC_CLOSURE_FILTER,
@@ -11,6 +12,8 @@ import {
   MAPBOX_TRAFFIC_SOURCE_LAYER,
 } from "./mapboxTrafficStyle";
 
+const TRAFFIC_FADE_MS = 220;
+
 /**
  * Mapbox supplies road-flow context; Maryland CHART and Radius's reviewed
  * incident feeds remain the authority for local closures and disruptions.
@@ -19,7 +22,30 @@ import {
  * map into a permanent red/yellow road diagram.
  */
 export default function MapboxTraffic({ show }: { show: boolean }) {
-  if (!show) return null;
+  const [mounted, setMounted] = useState(show);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let frame = 0;
+    let cleanup = 0;
+    if (show) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMounted(true);
+      frame = window.requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
+      cleanup = window.setTimeout(
+        () => setMounted(false),
+        TRAFFIC_FADE_MS,
+      );
+    }
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      if (cleanup) window.clearTimeout(cleanup);
+    };
+  }, [show]);
+
+  if (!mounted) return null;
 
   return (
     <Source
@@ -60,7 +86,11 @@ export default function MapboxTraffic({ show }: { show: boolean }) {
             16,
             2.2,
           ],
-          "line-opacity": 0.72,
+          "line-opacity": visible ? 0.72 : 0,
+          "line-opacity-transition": {
+            duration: TRAFFIC_FADE_MS,
+            delay: 0,
+          },
         }}
       />
       <Layer
@@ -74,7 +104,14 @@ export default function MapboxTraffic({ show }: { show: boolean }) {
           "line-cap": "round",
           "line-join": "round",
         }}
-        paint={MAPBOX_TRAFFIC_FLOW_PAINT}
+        paint={{
+          ...MAPBOX_TRAFFIC_FLOW_PAINT,
+          "line-opacity": visible ? 0.88 : 0,
+          "line-opacity-transition": {
+            duration: TRAFFIC_FADE_MS,
+            delay: 0,
+          },
+        }}
       />
       <Layer
         id="mapbox-traffic-closures"
@@ -87,7 +124,14 @@ export default function MapboxTraffic({ show }: { show: boolean }) {
           "line-cap": "round",
           "line-join": "round",
         }}
-        paint={MAPBOX_TRAFFIC_CLOSURE_PAINT}
+        paint={{
+          ...MAPBOX_TRAFFIC_CLOSURE_PAINT,
+          "line-opacity": visible ? 0.96 : 0,
+          "line-opacity-transition": {
+            duration: TRAFFIC_FADE_MS,
+            delay: 0,
+          },
+        }}
       />
     </Source>
   );

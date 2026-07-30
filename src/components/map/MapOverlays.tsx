@@ -19,6 +19,8 @@ import { directionsHref } from "@/lib/map/directionsHref";
  * active (dark by default), the reader pulls one in when they want it.
  */
 
+const LAYER_FADE_MS = 220;
+
 // Per-overlay dot color. Resolved values come from the brand contract because
 // Mapbox GL paint expressions cannot read CSS custom properties; a var() here
 // fails to parse and the layer never colorizes or renders.
@@ -51,6 +53,10 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
   const { current: map } = useMap();
   const [data, setData] = useState<Record<string, GeoJSON.FeatureCollection>>({});
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [rendered, setRendered] = useState<OverlayKey[]>(active);
+  const [visible, setVisible] = useState<Set<OverlayKey>>(
+    () => new Set(active),
+  );
   // Keys whose fetch has started, so a re-render never refetches.
   const started = useRef<Set<string>>(new Set());
   const mounted = useRef(true);
@@ -61,6 +67,28 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
       mounted.current = false;
     };
   }, []);
+
+  // Keep a just-disabled layer mounted long enough for Mapbox's paint
+  // transition to finish. New layers mount at opacity zero, then become
+  // visible on the next frame, so activation reads as a deliberate layer
+  // change instead of a hard pop.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRendered((current) => [...new Set([...current, ...active])]);
+    const frame = window.requestAnimationFrame(() => {
+      setVisible(new Set(active));
+    });
+    const activeSet = new Set(active);
+    const cleanup = window.setTimeout(() => {
+      setRendered((current) =>
+        current.filter((key) => activeSet.has(key)),
+      );
+    }, LAYER_FADE_MS);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(cleanup);
+    };
+  }, [active]);
 
   // Lazy load: fetch each newly active overlay's GeoJSON once.
   useEffect(() => {
@@ -151,10 +179,11 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
 
   return (
     <>
-      {active.map((key) => {
+      {rendered.map((key) => {
         const fc = data[key];
         if (!fc) return null;
         const color = COLOR[key] ?? "#B5462B";
+        const isVisible = visible.has(key);
         // Geometry-aware: a layer can carry polygons (park grounds) AND
         // points (named markers) in one file. Fills draw first (under),
         // points draw over them; the filters keep each Layer honest, so
@@ -167,7 +196,11 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
               filter={["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]]}
               paint={{
                 "fill-color": color,
-                "fill-opacity": 0.16,
+                "fill-opacity": isVisible ? 0.16 : 0,
+                "fill-opacity-transition": {
+                  duration: LAYER_FADE_MS,
+                  delay: 0,
+                },
               }}
             />
             <Layer
@@ -177,7 +210,11 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
               paint={{
                 "line-color": color,
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 14, 1.2],
-                "line-opacity": 0.5,
+                "line-opacity": isVisible ? 0.5 : 0,
+                "line-opacity-transition": {
+                  duration: LAYER_FADE_MS,
+                  delay: 0,
+                },
               }}
             />
             <Layer
@@ -189,7 +226,11 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
                 "circle-color": color,
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.5,
-                "circle-opacity": 0.9,
+                "circle-opacity": isVisible ? 0.9 : 0,
+                "circle-opacity-transition": {
+                  duration: LAYER_FADE_MS,
+                  delay: 0,
+                },
               }}
             />
           </Source>

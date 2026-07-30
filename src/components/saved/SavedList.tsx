@@ -18,6 +18,9 @@ import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
 import SavedWallet from "@/components/saved/SavedWallet";
 import SavedEventWallet from "@/components/saved/SavedEventWallet";
+import SavedTransitSection from "@/components/saved/SavedTransitSection";
+import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
+import { useSavedTransitStops } from "@/components/transit/useSavedTransitStops";
 import { fmtClockShort } from "@/components/saved/walletFacts";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
@@ -25,7 +28,15 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { MapPin, Search, Settings, ArrowRight, Layers, ChevronDown } from "lucide-react";
+import {
+  ArrowRight,
+  BusFront,
+  ChevronDown,
+  Layers,
+  MapPin,
+  Search,
+  Settings,
+} from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -117,7 +128,9 @@ function Masthead({ stand }: { stand: ReactNode }) {
   return (
     <header className="sv-mast">
       <div className="min-w-0">
-        <h1>Saved</h1>
+        <h1 id="saved-page-heading" tabIndex={-1}>
+          Saved
+        </h1>
         <p className="sv-stand truncate">{stand}</p>
       </div>
       <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
@@ -141,6 +154,14 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
 export default function SavedList({ userEmail }: { userEmail?: string | null }) {
   const mounted = useMounted();
   const items = useSavedList();
+  const {
+    stops: savedTransitStops,
+    remove: removeSavedTransitStop,
+  } = useSavedTransitStops();
+  const {
+    buses: savedTransitBuses,
+    remove: removeSavedTransitBus,
+  } = useSavedTransitBuses();
   // ── Split-store fix (experience review, save-loop finding #1). Signed-in
   // saves are written to the DB (useToggleFollow) while `items` is
   // localStorage-only, so this page silently omitted DB follows: save on the
@@ -606,10 +627,17 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // Notes OR visited places alone are enough to skip the blank-journal empty
   // state — a user can annotate or mark "been here" without bookmarking.
   // (placesBySlug is resolved by here, so both lists are final — no flash.)
-  if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) {
+  if (
+    items.length === 0 &&
+    placeRefsAll.length === 0 &&
+    notedPlaces.length === 0 &&
+    visitedPlaces.length === 0 &&
+    savedTransitStops.length === 0 &&
+    savedTransitBuses.length === 0
+  ) {
     return (
       <div className="space-y-4">
-        <Masthead stand="Places and events you want to keep" />
+        <Masthead stand="Places, events, buses, and stops you want to keep" />
         <EmptyState />
       </div>
     );
@@ -644,6 +672,20 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     if (townN > 1) standParts.push(<span key="t">{townN} towns</span>);
   } else if (events.length > 0) {
     standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
+  }
+  const transitSavedCount =
+    savedTransitStops.length + savedTransitBuses.length;
+  const hasOrganizerContent =
+    items.length > 0 ||
+    placeRefsAll.length > 0 ||
+    notedPlaces.length > 0 ||
+    visitedPlaces.length > 0;
+  if (transitSavedCount > 0) {
+    standParts.push(
+      <span key="r">
+        {transitSavedCount} transit save{transitSavedCount === 1 ? "" : "s"}
+      </span>,
+    );
   }
   // Wallet is the calm default. Legacy stored "wallet" preferences map to the
   // organizer's list view; Map only mounts after the person opens the advanced
@@ -716,6 +758,17 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           )}
         </section>
       )}
+
+      <SavedTransitSection
+        stops={savedTransitStops}
+        buses={savedTransitBuses}
+        onRemoveStop={(stop) => {
+          return removeSavedTransitStop(stop);
+        }}
+        onRemoveBus={(bus) => {
+          return removeSavedTransitBus(bus);
+        }}
+      />
 
       {places.length > 0 && (
         <section aria-labelledby="saved-places-heading" className="space-y-2.5">
@@ -793,6 +846,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         </section>
       )}
 
+      {hasOrganizerContent ? (
       <details
         id="saved-organizer"
         onToggle={(event) => setOrganizerOpen(event.currentTarget.open)}
@@ -1160,19 +1214,23 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
               ? ` · ${events.length} device-only event${events.length === 1 ? "" : "s"}`
               : ` · ${events.length} event${events.length === 1 ? "" : "s"}`
           )}
-          {userEmail && " · routes and taps stay on this device"}
+          {savedTransitStops.length > 0 &&
+            ` · ${savedTransitStops.length} stop${savedTransitStops.length === 1 ? "" : "s"}`}
+          {savedTransitBuses.length > 0 &&
+            ` · ${savedTransitBuses.length} bus${savedTransitBuses.length === 1 ? "" : "es"}`}
+          {userEmail && " · transit and taps stay on this device"}
         </p>
       </footer>
         </div>
       </details>
+      ) : null}
     </div>
   );
 }
 
 
-/** Honest and never a dead end: one sentence and one primary next step. The
- * app shell already exposes Map, Events, and Ask, so repeating those doors here
- * makes an empty collection feel like another tools directory. */
+/** Honest and never a dead end: one sentence, then the two places where saves
+ * begin. The app shell already exposes the rest of Radius. */
 export function EmptyState() {
   return (
     <div className="max-w-sm space-y-4 py-2">
@@ -1180,17 +1238,31 @@ export function EmptyState() {
         className="px-0.5 font-serif text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
-        Save a place or event to keep it here for later.
+        Save a place, event, bus trip, or stop to keep it here for later.
       </p>
-      <Link
-        href="/search"
-        className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
-        style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
-      >
-        <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
-        Find something to save
-        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/search"
+          className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
+          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+        >
+          <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Find something to save
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+        <Link
+          href="/transit"
+          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
+          style={{
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-cool)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
+        >
+          <BusFront className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Find a bus or stop
+        </Link>
+      </div>
     </div>
   );
 }
