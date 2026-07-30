@@ -47,6 +47,7 @@ function sources(
   return {
     seed: vi.fn(() => null),
     archive: vi.fn(async () => null),
+    unified: vi.fn(async () => null),
     live: vi.fn(async () => null),
     ingested: vi.fn(async () => null),
     persist: vi.fn(async (value: EventWithMeta) => ({
@@ -111,6 +112,7 @@ describe("resolveEventPageBySlugWithSources", () => {
       resolveEventPageBySlugWithSources(curated.slug, new Date(), loaders),
     ).resolves.toEqual({ event: curated, kind: "seed" });
     expect(loaders.archive).not.toHaveBeenCalled();
+    expect(loaders.unified).not.toHaveBeenCalled();
     expect(loaders.live).not.toHaveBeenCalled();
     expect(loaders.ingested).not.toHaveBeenCalled();
   });
@@ -139,6 +141,31 @@ describe("resolveEventPageBySlugWithSources", () => {
       current.slug,
     ]);
     expect(current.source_id).toBe("publisher-uid-123");
+  });
+
+  it("resolves a card from the same unified snapshot used by the browse board", async () => {
+    const visible = event("summerfest-family-theatre-2026-07-30");
+    const persist = vi.fn(async (value: EventWithMeta) => ({
+      id: "identity-unified",
+      canonicalSlug: value.slug,
+      snapshot: value,
+    }));
+    const loaders = sources({
+      unified: vi.fn(async () => visible),
+      persist,
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        visible.slug,
+        new Date("2026-07-30T04:30:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: visible, kind: "unified" });
+    expect(persist).toHaveBeenCalledWith(visible, [
+      visible.slug,
+      visible.slug,
+    ]);
   });
 
   it("aborts the losing source when the first usable event wins", async () => {
