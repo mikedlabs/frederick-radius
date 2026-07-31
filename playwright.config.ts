@@ -62,6 +62,10 @@ export default defineConfig({
       ? `npm run start -- -p ${PORT}`
       : `npm run dev -- -p ${PORT}`,
     url: `http://localhost:${PORT}`,
+    // Normal test runs keep the dev server quiet. The short-lived async trace
+    // used by the required chaos gate must pipe stdout so its sanitized
+    // boundary/fetch markers survive in the Actions log.
+    stdout: process.env.RADIUS_CI_ASYNC_TRACE === "1" ? "pipe" : "ignore",
     reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER,
     timeout: 120_000,
   },
