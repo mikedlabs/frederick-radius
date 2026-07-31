@@ -310,7 +310,12 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
       place.slug !== host?.slug && FOOD_AND_DRINK.has(place.category),
       (place) => place.geom,
     );
-    const garage = nearest(anchor, input.parking, 950);
+    const garage = nearest(
+      anchor,
+      input.parking,
+      950,
+      (parking) => !parking.isClosed,
+    );
     const transit = nearest(anchor, input.transitStops, 700);
 
     // An event listing alone is not a discovery. Require at least one useful

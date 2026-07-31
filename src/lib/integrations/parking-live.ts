@@ -34,9 +34,14 @@ export const GARAGE_FULL_THRESHOLD = 90;
 export const GARAGE_FILLING_THRESHOLD = 75;
 /** Maximum age accepted for an occupancy snapshot that may drive an alert. */
 export const PARKING_OCCUPANCY_MAX_AGE_MS = 10 * 60 * 1_000;
+export const PARKING_OCCUPANCY_MAX_BYTES = 64 * 1_024;
+export const PARKING_OCCUPANCY_MAX_ROWS = 25;
+export const PARKING_OCCUPANCY_MAX_FIELD_LENGTH = 256;
 
 const PARKING_OCCUPANCY_TIMEOUT_MS = 8_000;
 const PARKING_OCCUPANCY_FUTURE_TOLERANCE_MS = 2 * 60 * 1_000;
+const PARKING_COUNT_TOLERANCE_RATIO = 0.02;
+const PARKING_PERCENT_TOLERANCE_POINTS = 3;
 
 export type GarageOccupancy = {
   /** Our canonical ParkingGarage.slug, or null when the feed name can't be
@@ -50,6 +55,8 @@ export type GarageOccupancy = {
   percentFull: number | null;
   /** Raw status string from the feed (e.g. "OPEN", "FULL"), when present. */
   status: string | null;
+  /** Derived only from an explicit CLOSED/OUT-OF-SERVICE status. */
+  isClosed: boolean;
   /** Derived: at/over the full threshold, zero spaces, or a FULL status. */
   isFull: boolean;
   /** Derived: at/over the filling threshold but not yet full. */
@@ -137,6 +144,15 @@ function statusSaysFull(status: string | null): boolean {
   return /\bfull\b/i.test(status);
 }
 
+function statusSaysClosed(status: string | null): boolean {
+  return Boolean(
+    status &&
+      /\b(?:closed|out[\s_-]*of[\s_-]*service)\b/i.test(
+        status,
+      ),
+  );
+}
+
 type RawDeck = Record<string, unknown>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -148,6 +164,27 @@ function rawDeckList(raw: unknown): unknown[] | null {
   if (!isRecord(raw)) return null;
   const list = raw.decks ?? raw.garages ?? raw.lots ?? raw.data;
   return Array.isArray(list) ? list : null;
+}
+
+function fieldsWithinLimit(value: unknown): boolean {
+  const stack: unknown[] = [value];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current === "string") {
+      if (current.length > PARKING_OCCUPANCY_MAX_FIELD_LENGTH) return false;
+      continue;
+    }
+    if (Array.isArray(current)) {
+      stack.push(...current);
+      continue;
+    }
+    if (!isRecord(current)) continue;
+    for (const [key, nested] of Object.entries(current)) {
+      if (key.length > PARKING_OCCUPANCY_MAX_FIELD_LENGTH) return false;
+      stack.push(nested);
+    }
+  }
+  return true;
 }
 
 /**
@@ -179,12 +216,17 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
         percentFull = null;
       }
       const status = str(d.status ?? d.state);
+      const isClosed = statusSaysClosed(status);
       const isFull =
-        (percentFull !== null && percentFull >= GARAGE_FULL_THRESHOLD) ||
-        (available !== null && available <= 0) ||
-        statusSaysFull(status);
+        !isClosed &&
+        ((percentFull !== null && percentFull >= GARAGE_FULL_THRESHOLD) ||
+          (available !== null && available <= 0) ||
+          statusSaysFull(status));
       const isFilling =
-        !isFull && percentFull !== null && percentFull >= GARAGE_FILLING_THRESHOLD;
+        !isClosed &&
+        !isFull &&
+        percentFull !== null &&
+        percentFull >= GARAGE_FILLING_THRESHOLD;
       return {
         garageSlug: resolveGarageSlug(name),
         name,
@@ -193,6 +235,7 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
         capacity,
         percentFull,
         status,
+        isClosed,
         isFull,
         isFilling,
         updated: str(d.updated ?? d.last_updated ?? d.timestamp ?? d.as_of),
@@ -242,6 +285,60 @@ function hasOccupancySignal(deck: GarageOccupancy): boolean {
   return countSignal || statusSignal;
 }
 
+function validateDeckConsistency(deck: GarageOccupancy): void {
+  const { available, occupied, capacity, percentFull } = deck;
+  if (
+    (available !== null && available < 0) ||
+    (occupied !== null && occupied < 0) ||
+    (capacity !== null && capacity <= 0) ||
+    (capacity !== null && available !== null && available > capacity) ||
+    (capacity !== null && occupied !== null && occupied > capacity)
+  ) {
+    fail("invalid-payload");
+  }
+
+  if (capacity === null) return;
+  const countTolerance = Math.max(
+    2,
+    capacity * PARKING_COUNT_TOLERANCE_RATIO,
+  );
+  if (
+    available !== null &&
+    occupied !== null &&
+    Math.abs(available + occupied - capacity) > countTolerance
+  ) {
+    fail("invalid-payload");
+  }
+
+  if (percentFull === null) return;
+  if (
+    occupied !== null &&
+    Math.abs(percentFull - (occupied / capacity) * 100) >
+      PARKING_PERCENT_TOLERANCE_POINTS
+  ) {
+    fail("invalid-payload");
+  }
+  if (
+    available !== null &&
+    Math.abs(percentFull - ((capacity - available) / capacity) * 100) >
+      PARKING_PERCENT_TOLERANCE_POINTS
+  ) {
+    fail("invalid-payload");
+  }
+}
+
+function assertSnapshotFreshForRead(
+  snapshot: ParkingOccupancySnapshot,
+  nowMs: number,
+): ParkingOccupancySnapshot {
+  if (snapshot.decks.length === 0) fail("invalid-payload");
+  for (const deck of snapshot.decks) {
+    if (!deck.updated) fail("invalid-payload");
+    assertFreshTimestamp(deck.updated, nowMs);
+  }
+  return snapshot;
+}
+
 function validateSnapshot(
   raw: unknown,
   nowMs: number,
@@ -250,31 +347,40 @@ function validateSnapshot(
   if (
     !rows ||
     rows.length === 0 ||
+    rows.length > PARKING_OCCUPANCY_MAX_ROWS ||
     rows.some((row) => !isRecord(row))
   ) {
     fail("invalid-payload");
   }
+  if (!fieldsWithinLimit(raw)) fail("invalid-payload");
 
-  const parsed = parseOccupancy(raw);
-  const knownDecks = parsed.decks.filter(
-    (deck) => deck.garageSlug && hasOccupancySignal(deck),
-  );
-  if (knownDecks.length === 0) fail("invalid-payload");
-
-  for (const deck of knownDecks) {
-    if (
-      (deck.available !== null && deck.available < 0) ||
-      (deck.occupied !== null && deck.occupied < 0) ||
-      (deck.capacity !== null && deck.capacity <= 0) ||
-      (deck.capacity !== null &&
-        deck.available !== null &&
-        deck.available > deck.capacity) ||
-      (deck.capacity !== null &&
-        deck.occupied !== null &&
-        deck.occupied > deck.capacity)
-    ) {
+  for (const row of rows) {
+    if (!isRecord(row)) fail("invalid-payload");
+    const rawPercent = num(
+      row.percent_full ??
+        row.percentFull ??
+        row.occupancy ??
+        row.occupancy_pct,
+    );
+    if (rawPercent !== null && (rawPercent < 0 || rawPercent > 100)) {
       fail("invalid-payload");
     }
+  }
+
+  const parsed = parseOccupancy(raw);
+  const knownDecks = parsed.decks.filter((deck) => deck.garageSlug);
+  if (knownDecks.length === 0) fail("invalid-payload");
+  if (knownDecks.some((deck) => !hasOccupancySignal(deck))) {
+    fail("invalid-payload");
+  }
+
+  const canonicalSlugs = knownDecks.map((deck) => deck.garageSlug);
+  if (new Set(canonicalSlugs).size !== canonicalSlugs.length) {
+    fail("invalid-payload");
+  }
+
+  for (const deck of knownDecks) {
+    validateDeckConsistency(deck);
   }
 
   if (parsed.asOf) {
@@ -291,7 +397,14 @@ function validateSnapshot(
     }
   }
 
-  return { asOf: parsed.asOf, decks: knownDecks };
+  const normalized = {
+    asOf: parsed.asOf,
+    decks: knownDecks.map((deck) => ({
+      ...deck,
+      updated: deck.updated ?? parsed.asOf,
+    })),
+  };
+  return assertSnapshotFreshForRead(normalized, nowMs);
 }
 
 type FetchOccupancyOptions = {
@@ -299,6 +412,51 @@ type FetchOccupancyOptions = {
   nowMs?: number;
   timeoutMs?: number;
 };
+
+async function readBoundedJson(response: Response): Promise<unknown> {
+  const declaredHeader = response.headers.get("content-length");
+  if (declaredHeader) {
+    const declared = Number(declaredHeader);
+    if (
+      !Number.isFinite(declared) ||
+      declared < 0 ||
+      declared > PARKING_OCCUPANCY_MAX_BYTES
+    ) {
+      await response.body?.cancel().catch(() => undefined);
+      fail("invalid-payload");
+    }
+  }
+  if (!response.body) fail("invalid-payload");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > PARKING_OCCUPANCY_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        fail("invalid-payload");
+      }
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+    chunks.push(decoder.decode());
+  } catch (error) {
+    if (error instanceof ParkingOccupancyUnavailableError) throw error;
+    fail("network");
+  } finally {
+    reader.releaseLock();
+  }
+
+  try {
+    return JSON.parse(chunks.join("")) as unknown;
+  } catch {
+    fail("invalid-payload");
+  }
+}
 
 /**
  * One strict upstream pull. It throws a sanitized typed error so a failed
@@ -351,12 +509,7 @@ export async function fetchParkingOccupancyFresh(
     fail("invalid-payload");
   }
 
-  let raw: unknown;
-  try {
-    raw = await res.json();
-  } catch {
-    fail("invalid-payload");
-  }
+  const raw = await readBoundedJson(res);
   return validateSnapshot(raw, options.nowMs ?? Date.now());
 }
 
@@ -367,26 +520,29 @@ export async function fetchParkingOccupancyFresh(
  */
 const getCachedParkingOccupancy = unstable_cache(
   fetchParkingOccupancyFresh,
-  ["parking-occupancy-v2"],
+  ["parking-occupancy-v3"],
   {
     revalidate: 60,
     tags: ["parking-occupancy"],
   },
 );
 
-export async function getParkingOccupancyResult(): Promise<ParkingOccupancyResult> {
-  const checkedAt = new Date().toISOString();
-  if (!parkingFeedEnabled()) {
-    return { status: "unavailable", checkedAt, reason: "disabled" };
-  }
-  if (!process.env.PARKING_OCCUPANCY_URL) {
-    return { status: "unavailable", checkedAt, reason: "missing-url" };
-  }
+/**
+ * Revalidate cache output at read time. Next may serve a stale value while a
+ * background refresh fails; that stale-while-revalidate behavior is useful for
+ * ordinary content but must never make an old occupancy count look current.
+ */
+export async function resolveParkingOccupancyResult(
+  loadSnapshot: () => Promise<ParkingOccupancySnapshot>,
+  nowMs = Date.now(),
+): Promise<ParkingOccupancyResult> {
+  const checkedAt = new Date(nowMs).toISOString();
   try {
+    const snapshot = await loadSnapshot();
     return {
       status: "ok",
       checkedAt,
-      snapshot: await getCachedParkingOccupancy(),
+      snapshot: assertSnapshotFreshForRead(snapshot, nowMs),
     };
   } catch (error) {
     return {
@@ -398,6 +554,18 @@ export async function getParkingOccupancyResult(): Promise<ParkingOccupancyResul
           : "network",
     };
   }
+}
+
+export async function getParkingOccupancyResult(): Promise<ParkingOccupancyResult> {
+  const nowMs = Date.now();
+  const checkedAt = new Date(nowMs).toISOString();
+  if (!parkingFeedEnabled()) {
+    return { status: "unavailable", checkedAt, reason: "disabled" };
+  }
+  if (!process.env.PARKING_OCCUPANCY_URL) {
+    return { status: "unavailable", checkedAt, reason: "missing-url" };
+  }
+  return resolveParkingOccupancyResult(getCachedParkingOccupancy, nowMs);
 }
 
 /**

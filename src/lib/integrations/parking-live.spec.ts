@@ -4,8 +4,13 @@ import {
   getParkingOccupancy,
   getParkingOccupancyResult,
   parseOccupancy,
+  resolveParkingOccupancyResult,
   GARAGE_FULL_THRESHOLD,
   PARKING_OCCUPANCY_MAX_AGE_MS,
+  PARKING_OCCUPANCY_MAX_BYTES,
+  PARKING_OCCUPANCY_MAX_FIELD_LENGTH,
+  PARKING_OCCUPANCY_MAX_ROWS,
+  type ParkingOccupancySnapshot,
 } from "./parking-live";
 
 const NOW_MS = Date.parse("2026-07-31T12:00:00.000Z");
@@ -81,6 +86,33 @@ describe("parseOccupancy", () => {
       decks: [{ name: "Court", status: "NOT FULL" }],
     }).decks[0];
     expect(d.isFull).toBe(false);
+  });
+
+  it("keeps an explicitly closed garage separate from full and available", () => {
+    const d = parseOccupancy({
+      decks: [{
+        name: "Court",
+        status: "CLOSED",
+        available: 0,
+        percent_full: 100,
+      }],
+    }).decks[0];
+    expect(d).toMatchObject({
+      isClosed: true,
+      isFull: false,
+      isFilling: false,
+    });
+  });
+
+  it("does not translate a sensor outage into a garage closure", () => {
+    const d = parseOccupancy({
+      decks: [{ name: "Court", status: "SENSOR OFFLINE" }],
+    }).decks[0];
+    expect(d).toMatchObject({
+      isClosed: false,
+      isFull: false,
+      isFilling: false,
+    });
   });
 
   it("flags filling-up (75–89%) without marking it full", () => {
@@ -161,6 +193,7 @@ describe("fetchParkingOccupancyFresh", () => {
         garageSlug: "court-street-parking-garage-frederick",
         available: 12,
         capacity: 400,
+        updated: "2026-07-31T11:58:00.000Z",
       }],
     });
     const [, init] = fetchImpl.mock.calls[0];
@@ -191,6 +224,52 @@ describe("fetchParkingOccupancyFresh", () => {
 
     expect(snapshot.decks).toHaveLength(1);
     expect(snapshot.decks[0].updated).toBe("2026-07-31T11:57:00.000Z");
+  });
+
+  it("accepts small count drift inside the documented estimate tolerance", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: 400,
+          available: 99,
+          occupied: 300,
+          percent_full: 75,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).resolves.toMatchObject({
+      decks: [{ available: 99, occupied: 300, percentFull: 75 }],
+    });
+  });
+
+  it("preserves an explicit closed state from the trusted loader", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          available: 0,
+          status: "OUT OF SERVICE",
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).resolves.toMatchObject({
+      decks: [{ isClosed: true, isFull: false, isFilling: false }],
+    });
   });
 
   it.each([
@@ -229,6 +308,76 @@ describe("fetchParkingOccupancyFresh", () => {
           name: "Court Street Garage",
           capacity: 400,
           available: "N/A",
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "duplicate rows for one canonical garage",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [
+          { name: "Court Street Garage", available: 20 },
+          { name: "Court Street Deck", available: 21 },
+        ],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "contradictory available and occupied counts",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: 400,
+          available: 100,
+          occupied: 100,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "a percentage that contradicts the counts",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: 400,
+          available: 100,
+          occupied: 300,
+          percent_full: 10,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "too many rows",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: Array.from(
+          { length: PARKING_OCCUPANCY_MAX_ROWS + 1 },
+          (_, index) => ({ name: `Lot ${index}`, available: 20 }),
+        ),
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "an oversized field",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: `Court ${"x".repeat(PARKING_OCCUPANCY_MAX_FIELD_LENGTH)}`,
+          available: 20,
         }],
       }), {
         headers: { "content-type": "application/json" },
@@ -342,9 +491,93 @@ describe("fetchParkingOccupancyFresh", () => {
       nowMs: NOW_MS,
     })).rejects.toMatchObject({ reason: "http" });
   });
+
+  it("rejects a declared response larger than the feed budget", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("{}", {
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(PARKING_OCCUPANCY_MAX_BYTES + 1),
+        },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({ reason: "invalid-payload" });
+  });
+
+  it("stops an undeclared response that crosses the feed budget", async () => {
+    const payload = JSON.stringify({
+      as_of: "2026-07-31T11:59:00.000Z",
+      decks: [{
+        name: "Court Street Garage",
+        available: 20,
+        padding: "x".repeat(PARKING_OCCUPANCY_MAX_BYTES),
+      }],
+    });
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(payload, {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({ reason: "invalid-payload" });
+  });
 });
 
 describe("parking occupancy availability", () => {
+  const cachedSnapshot = (updated: string): ParkingOccupancySnapshot => ({
+    asOf: updated,
+    decks: [{
+      garageSlug: "court-street-parking-garage-frederick",
+      name: "Court Street Garage",
+      available: 25,
+      occupied: 375,
+      capacity: 400,
+      percentFull: 94,
+      status: "OPEN",
+      isClosed: false,
+      isFull: true,
+      isFilling: false,
+      updated,
+    }],
+  });
+
+  it("rejects a cached snapshot after the hard freshness limit", async () => {
+    const staleAt = new Date(
+      NOW_MS - PARKING_OCCUPANCY_MAX_AGE_MS - 1,
+    ).toISOString();
+
+    await expect(resolveParkingOccupancyResult(
+      async () => cachedSnapshot(staleAt),
+      NOW_MS,
+    )).resolves.toMatchObject({
+      status: "unavailable",
+      reason: "stale",
+    });
+  });
+
+  it("does not turn a failed cache refresh into an empty green snapshot", async () => {
+    const result = await resolveParkingOccupancyResult(
+      async () => {
+        throw new Error("licensed-test-key");
+      },
+      NOW_MS,
+    );
+
+    expect(result).toEqual({
+      status: "unavailable",
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      reason: "network",
+    });
+    expect(JSON.stringify(result)).not.toContain("licensed-test-key");
+  });
+
   it("requires explicit approval even when a URL was accidentally set", async () => {
     process.env.PARKING_OCCUPANCY_URL =
       "https://www.cityoffrederickmd.gov/161/Parking";

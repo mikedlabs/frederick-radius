@@ -58,10 +58,6 @@ export async function GET(request: Request) {
       { status: 503 },
     );
   }
-  if (!configurePush()) {
-    return NextResponse.json({ ok: true, skipped: "VAPID not configured" });
-  }
-
   const occupancy = await getParkingOccupancyResult();
   if (occupancy.status === "unavailable") {
     return NextResponse.json(
@@ -78,6 +74,11 @@ export async function GET(request: Request) {
     );
   }
   const snap = occupancy.snapshot;
+  // Feed health is checked before this delivery gate. Otherwise an enabled,
+  // broken source looks green whenever push happens to be unconfigured.
+  if (!configurePush()) {
+    return NextResponse.json({ ok: true, skipped: "VAPID not configured" });
+  }
   const nameBySlug = new Map(PARKING_GARAGES.map((g) => [g.slug, g.name]));
 
   // Coarse fill-window for the dedupe key: date + 3-hour block (UTC). One alert
@@ -87,12 +88,18 @@ export async function GET(request: Request) {
 
   // Which matched garages currently have room — so the alert can suggest one.
   const withSpace = snap.decks
-    .filter((d) => d.garageSlug && !d.isFull && (d.available ?? 1) > 0)
+    .filter(
+      (d) =>
+        d.garageSlug &&
+        !d.isClosed &&
+        !d.isFull &&
+        (d.available ?? 1) > 0,
+    )
     .map((d) => nameBySlug.get(d.garageSlug!) ?? d.name);
 
   const results: Array<{ garage: string; percentFull: number | null; claimed: boolean; sent: number }> = [];
   for (const d of snap.decks) {
-    if (!d.isFull || !d.garageSlug) continue;
+    if (d.isClosed || !d.isFull || !d.garageSlug) continue;
     const label = nameBySlug.get(d.garageSlug) ?? d.name;
     const detail =
       d.available !== null && d.available <= 0

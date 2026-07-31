@@ -5394,7 +5394,7 @@ export default function AppMap({
                       haptic("light");
                       openMapSelection({ kind: "parking", value: g });
                     }}
-                    aria-label={`${g.name} parking garage`}
+                    aria-label={`${g.name} parking garage${g.isClosed ? ", closed" : ""}`}
                     className="fr-park-marker"
                     style={{ "--park-fill": fill, "--park-ink": ink } as React.CSSProperties}
                   >

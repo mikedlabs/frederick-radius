@@ -38,6 +38,7 @@ const currentDeck = (
     capacity: number | null;
     percentFull: number | null;
     status: string | null;
+    isClosed: boolean;
     isFull: boolean;
     isFilling: boolean;
     updated: string | null;
@@ -50,6 +51,7 @@ const currentDeck = (
   capacity: 400,
   percentFull: 75,
   status: "OPEN",
+  isClosed: false,
   isFull: false,
   isFilling: true,
   updated: "2026-07-31T11:59:00.000Z",
@@ -107,7 +109,7 @@ describe("GET /api/cron/parking-alerts", () => {
     expect(mocks.configurePush).not.toHaveBeenCalled();
   });
 
-  it("does not pull occupancy when push delivery is unavailable", async () => {
+  it("validates occupancy before reporting that push delivery is unavailable", async () => {
     mocks.configurePush.mockReturnValue(false);
 
     const response = await GET(request());
@@ -117,7 +119,26 @@ describe("GET /api/cron/parking-alerts", () => {
       ok: true,
       skipped: "VAPID not configured",
     });
-    expect(mocks.getParkingOccupancyResult).not.toHaveBeenCalled();
+    expect(mocks.getParkingOccupancyResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 503 for a broken enabled feed even when push is unavailable", async () => {
+    mocks.configurePush.mockReturnValue(false);
+    mocks.getParkingOccupancyResult.mockResolvedValue({
+      status: "unavailable",
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      reason: "stale",
+    });
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      status: "unavailable",
+      reason: "stale",
+    });
+    expect(mocks.configurePush).not.toHaveBeenCalled();
   });
 
   it.each(["network", "timeout", "invalid-payload", "stale"])(
@@ -216,5 +237,47 @@ describe("GET /api/cron/parking-alerts", () => {
         sent: 2,
       }],
     });
+  });
+
+  it("never alerts or recommends a closed garage", async () => {
+    mocks.getParkingOccupancyResult.mockResolvedValue({
+      status: "ok",
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      snapshot: {
+        asOf: "2026-07-31T11:59:00.000Z",
+        decks: [
+          currentDeck({
+            available: 0,
+            occupied: 400,
+            percentFull: 100,
+            isFull: true,
+            isFilling: false,
+          }),
+          currentDeck({
+            garageSlug: "carroll-creek-parking-garage-frederick",
+            name: "Carroll Creek Deck",
+            available: 80,
+            occupied: 320,
+            percentFull: 80,
+            status: "CLOSED",
+            isClosed: true,
+            isFull: true,
+            isFilling: false,
+          }),
+        ],
+      },
+    });
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.fanoutToTopic).toHaveBeenCalledTimes(1);
+    expect(mocks.fanoutToTopic).toHaveBeenCalledWith(
+      "parking",
+      expect.stringContaining("court-street-parking-garage-frederick:"),
+      expect.objectContaining({
+        body: "Check the other downtown garages for space.",
+      }),
+    );
   });
 });
