@@ -1,17 +1,18 @@
 /**
  * Daily-briefing fanout cron — "Today in Frederick", every morning at 8.
  *
- * Composes a one-line briefing from LIVE data (NWS today's forecast +
- * the live event count for today) and fans it out to subscribers opted
- * into the "daily-briefing" topic. This is the marquee daily-return
- * tool: the reason a resident keeps the app installed.
+ * Composes a one-line briefing from NWS today's forecast + the same
+ * cache-warmed public event board used by Today, Events, and Map, then fans
+ * it out to subscribers opted into the "daily-briefing" topic. This is the
+ * marquee daily-return tool: the reason a resident keeps the app installed.
  *
- * Timing: Vercel cron runs in UTC, so we schedule BOTH 12:00 and 13:00
+ * Timing: Vercel cron runs in UTC, so we schedule BOTH 12:03 and 13:03
  * UTC (vercel.json) and let the route itself proceed only when it is 8am
  * Eastern — that lands it at 8am local year-round across DST without any
- * timezone math in the schedule. The dedupe key is the Eastern date, so
- * even if both invocations ever passed the hour gate, only the first
- * actually sends (fanoutToTopic claims the (topic, key) pair once).
+ * timezone math in the schedule. The three-minute offset follows the
+ * minute-zero event warm-up instead of racing it. The dedupe key is the
+ * Eastern date, so even if both invocations ever passed the hour gate, only
+ * the first actually sends (fanoutToTopic claims the (topic, key) pair once).
  *
  * Honest content: each part self-omits when its data is missing; we
  * never push a fabricated temperature or event count. If we have nothing
@@ -24,7 +25,7 @@ import { verifyCronAuth } from "../../ingest/_auth";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { configurePush } from "@/lib/push";
 import { getNwsForecast } from "@/lib/integrations/nws";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { frederickHour } from "@/lib/search-suggestions";
 
@@ -51,13 +52,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, skipped: "VAPID not configured" });
   }
 
-  // ── Compose from live data (both fail soft) ──────────────────────
-  const [fc, live] = await Promise.all([
+  const now = new Date();
+
+  // Compose from the same cache-warmed board every public event surface uses.
+  // Calling getLiveEvents directly here used to start a second countywide
+  // source refresh at the same minute as warm-events just to count one day.
+  const [fc, eventBoard] = await Promise.all([
     getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    getLiveEvents(1).catch(() => ({ events: [] as Array<{ starts_at: string }> })),
+    assembleUnifiedEvents(now).catch(() => null),
   ]);
 
-  const todayKey = easternDateKey(new Date());
+  const todayKey = easternDateKey(now);
 
   // daily[0] is today's daytime period — high + short forecast.
   const today = fc?.daily?.[0];
@@ -66,7 +71,7 @@ export async function GET(request: Request) {
       ? `Today's forecast is ${today.temperature}°${today.temperatureUnit ?? "F"} with ${today.shortForecast.toLowerCase()}.`
       : null;
 
-  const todayCount = (live.events ?? []).filter(
+  const todayCount = (eventBoard?.publicEvents ?? []).filter(
     (e) => easternDateKey(new Date(e.starts_at)) === todayKey,
   ).length;
 

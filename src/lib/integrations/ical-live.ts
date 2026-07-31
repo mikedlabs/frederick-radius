@@ -1132,7 +1132,11 @@ async function fetchRssFeed(
     const res = await fetch(feed.url, {
       signal: deadline.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
-      next: { revalidate: 3600 },
+      // Cache the parsed event set at the source-page/unified boundary below.
+      // A second fetch-level SWR cache can return a stale body while its hidden
+      // refresh outlives the route; a connection failure then rejects Next's
+      // response waitUntil after the handler has already produced a 200.
+      cache: "no-store",
     });
     if (!res.ok) {
       reportFeedUnavailable(feed, `HTTP ${res.status}`);
@@ -1318,7 +1322,7 @@ async function fetchTribeFeed(
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "application/json",
       },
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!res.ok) {
       if (res.status === 410 || res.status === 404) {
@@ -1666,7 +1670,7 @@ async function fetchWixHtmlFeed(
           "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "text/html,application/xhtml+xml",
       },
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!response.ok) {
       console.warn(
@@ -1744,7 +1748,7 @@ async function fetchJsonArrayFeed(
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "application/json",
       },
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!res.ok) {
       if (res.status === 410 || res.status === 404) {
@@ -2018,7 +2022,11 @@ async function fetchVibemapFeed(
       "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
       Accept: "application/json",
     };
-    const first = await fetch(pageUrl(1), { signal: deadline.signal, headers, next: { revalidate: 3600 } });
+    const first = await fetch(pageUrl(1), {
+      signal: deadline.signal,
+      headers,
+      cache: "no-store",
+    });
     if (!first.ok) {
       if (first.status === 410 || first.status === 404) {
         console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${first.status})`);
@@ -2035,7 +2043,11 @@ async function fetchVibemapFeed(
     const restPages = Math.min(totalPages, VIBEMAP_MAX_PAGES);
     const rest = await Promise.all(
       Array.from({ length: Math.max(0, restPages - 1) }, (_, i) =>
-        fetch(pageUrl(i + 2), { signal: deadline.signal, headers, next: { revalidate: 3600 } })
+        fetch(pageUrl(i + 2), {
+          signal: deadline.signal,
+          headers,
+          cache: "no-store",
+        })
           .then((r) => (r.ok ? (r.json() as Promise<VibemapRow[]>) : []))
           .catch((error) => {
             // A single later page may fail soft, but a parent/deadline abort

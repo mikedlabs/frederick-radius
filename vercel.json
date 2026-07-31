@@ -58,7 +58,7 @@
     },
     {
       "path": "/api/cron/daily-briefing",
-      "schedule": "0 12,13 * * *"
+      "schedule": "3 12,13 * * *"
     },
     {
       "path": "/api/cron/rain-tomorrow",
