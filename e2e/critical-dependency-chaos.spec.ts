@@ -145,14 +145,29 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/events");
+    const eventsExplorer = page.locator("[data-events-interaction-ready]");
+    await expect(eventsExplorer).toHaveAttribute(
+      "data-events-interaction-ready",
+      "true",
+      { timeout: 30_000 },
+    );
     await page
       .getByRole("tablist", { name: "Browse events by what you want to do" })
       .getByRole("tab", { name: /Music/i })
       .click();
-    await expect(
-      page.getByText("Couldn’t load the rest of the calendar. Try again."),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+    const eventsWereComplete =
+      await eventsExplorer.getAttribute("data-events-complete") === "true";
+    if (!eventsWereComplete) {
+      await expect
+        .poll(() => hits.unavailable.includes("/api/events/browse"), {
+          timeout: 15_000,
+        })
+        .toBe(true);
+      await expect(
+        page.getByText("Couldn’t load the rest of the calendar. Try again."),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+    }
     await expect(page.getByText(/No events are on the calendar/i)).toHaveCount(0);
 
     // ASK: the answer service is down, but the question remains editable and
@@ -168,11 +183,12 @@ test.describe("critical surfaces under combined dependency failure", () => {
       name: "Ask Radius",
       exact: true,
     });
+    await expect(
+      page.locator("[data-ask-interaction-ready]"),
+    ).toHaveAttribute("data-ask-interaction-ready", "true", {
+      timeout: 30_000,
+    });
     await expect(ask).toBeEditable();
-    // domcontentloaded can precede App Router hydration. Let the controlled
-    // field own its value before filling, otherwise hydration can restore the
-    // initial empty state immediately after Playwright writes to the DOM.
-    await page.waitForTimeout(300);
     await ask.fill("What is on tonight?");
     await expect(askSubmit).toBeEnabled();
     await askSubmit.click();

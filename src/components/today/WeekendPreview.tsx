@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarRange } from "lucide-react";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { traceTodayRender } from "@/lib/today/render-trace";
 import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
 import { easternParts } from "@/lib/tz";
 import { daypart } from "@/lib/daypart";
@@ -33,10 +32,7 @@ export default async function WeekendPreview({
   const part = daypart(now);
   if ((weekday !== 4 && weekday !== 5) || (part !== "morning" && part !== "midday")) return null;
 
-  const assembled = await traceTodayRender(
-    "weekend-events",
-    eventsPromise.catch(() => null),
-  );
+  const assembled = await eventsPromise.catch(() => null);
   if (!assembled) return null;
   const bounds = buildHorizonBounds(now);
   const weekend =

@@ -4,7 +4,6 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { poolsStatus } from "@/lib/pools";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
-import { traceTodayRender } from "@/lib/today/render-trace";
 // eslint-disable-next-line no-restricted-imports -- SERVER component: resolves two seasonal pool records before rendering and does not ship the catalog to the client.
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 
@@ -24,10 +23,7 @@ export default async function PoolsToday({ now }: { now: Date }) {
   // Posted hours do not make an outdoor pool safe during dangerous weather or
   // unhealthy measured air. Suppress this module instead of showing a
   // contradictory green "Open" claim under the safety readout.
-  const hold = await traceTodayRender(
-    "pools",
-    loadOutdoorSafetyHold(undefined, { now }),
-  );
+  const hold = await loadOutdoorSafetyHold(undefined, { now });
   if (hold) return null;
 
   // Open pools first, then the rest — the answer ("what can I swim at now")

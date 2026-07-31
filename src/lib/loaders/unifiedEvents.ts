@@ -199,8 +199,6 @@ function readAdapter<T>(
 // unstable_cache wrapper — no Next incremental cache outside the runtime).
 // App code must keep calling assembleUnifiedEvents.
 export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
-  const traceStartedAt = Date.now();
-  if (process.env.CI) console.info("[today-render] assemble-raw:start");
   const curatedUpcoming = allUpcoming(now);
   const unavailable = new Set<string>();
   const markUnavailable = (source: string) => () => unavailable.add(source);
@@ -329,11 +327,6 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // is excluded by the adapter (it already arrives via the live county iCal).
     withTimeout(getIngestedSeries(), FEED_MS, [], markUnavailable("ingested calendars")),
   ]);
-  if (process.env.CI) {
-    console.info(
-      `[today-render] assemble-raw:fanout-settled ${Date.now() - traceStartedAt}ms`,
-    );
-  }
   const liveAdapterItems = new Map<LiveAdapterKey, LiveEvent[]>();
   let squarespaceRaw: VenueEvent[] = [];
   for (const result of adapterResults) {
@@ -435,9 +428,7 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // pin-upgrade, thumbnail, or notice is invisible; a dead board is not.
   let positioned = deduped;
   try {
-    if (process.env.CI) console.info("[today-render] assemble-raw:geocode-start");
     positioned = await upgradeEventGeoms(deduped);
-    if (process.env.CI) console.info("[today-render] assemble-raw:geocode-settled");
   } catch {
     // Geocode upgrade failed — pins stay at their pre-upgrade geom.
   }
@@ -458,12 +449,6 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     unified = applyEventNotices(decorated, now);
   } catch {
     // Notice stamp failed — cards render without cancel/postpone badges.
-  }
-
-  if (process.env.CI) {
-    console.info(
-      `[today-render] assemble-raw:complete ${Date.now() - traceStartedAt}ms`,
-    );
   }
 
   return {
@@ -565,7 +550,5 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   const isCurrent = Math.abs(now.getTime() - Date.now()) <= 300_000;
   if (!isCurrent) return assembleRaw(now);
 
-  const cached = await cachedAssemble();
-  if (process.env.CI) console.info("[today-render] cached-assemble:settled");
-  return hydrateUnifiedEvents(cached);
+  return hydrateUnifiedEvents(await cachedAssemble());
 }

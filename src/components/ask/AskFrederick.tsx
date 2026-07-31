@@ -1138,6 +1138,7 @@ export default function AskFrederick({
   const [permalinkQuery, setPermalinkQuery] = useState("");
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const [showAllSources, setShowAllSources] = useState(false);
+  const [interactionReady, setInteractionReady] = useState(false);
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
   const [currentScope, setCurrentScope] = useState<Scope | null>(null);
@@ -1184,6 +1185,7 @@ export default function AskFrederick({
   submittedQueryRef.current = submittedQuery;
 
   useEffect(() => {
+    setInteractionReady(true);
     setCurrentScope(storedAskScope());
     setHomeScope(parseScope(getHomeMuni()));
     setHasCachedPosition(Boolean(readCachedPosition()));
@@ -1799,6 +1801,7 @@ export default function AskFrederick({
   return (
     <section
       aria-labelledby={workspace ? "ask-radius-heading" : undefined}
+      data-ask-interaction-ready={interactionReady ? "true" : "false"}
       className={workspace ? "mx-auto max-w-[760px]" : undefined}
     >
       {workspace ? (

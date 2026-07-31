@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, School } from "lucide-react";
 import { getFcpsAlerts, type FcpsStatus } from "@/lib/integrations/fcps";
-import { traceTodayRender } from "@/lib/today/render-trace";
 
 // Only these statuses are worth a masthead line; "open"/"unknown" are not news.
 const ACTIONABLE: Record<string, string> = {
@@ -25,10 +24,7 @@ const RECENT_MS = 18 * 60 * 60 * 1000; // a morning-of announcement window
  * Suspense so it never blocks the I-want grid; self-hides when nothing applies.
  */
 export default async function FcpsBeat({ now }: { now: Date }) {
-  const alerts = await traceTodayRender(
-    "masthead-fcps",
-    getFcpsAlerts().catch(() => []),
-  );
+  const alerts = await getFcpsAlerts().catch(() => []);
   const nowMs = now.getTime();
   const hit = alerts.find(
     (a) =>

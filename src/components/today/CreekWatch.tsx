@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Waves } from "lucide-react";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { classifyFlood, FLOOD_STAGES, type FloodKey } from "@/lib/integrations/floodStage";
-import { traceTodayRender } from "@/lib/today/render-trace";
 
 const SEVERITY: Record<FloodKey, number> = { normal: 0, action: 1, minor: 2, moderate: 3, major: 4 };
 
@@ -33,10 +32,7 @@ function fmtTime(iso?: string): string | null {
  * Async server component, streamed in its own Suspense; taps to /rivers.
  */
 export default async function CreekWatch() {
-  const sites = await traceTodayRender(
-    "masthead-creek-watch",
-    getFrederickWaterSites().catch(() => []),
-  );
+  const sites = await getFrederickWaterSites().catch(() => []);
 
   let worst: { river: string; label: string; tone: string; ft: number; at: string | null; sev: number } | null = null;
   for (const s of sites) {

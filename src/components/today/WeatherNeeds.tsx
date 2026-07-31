@@ -7,7 +7,6 @@ import {
 import { nwsDisplaySeverity } from "@/components/today/CivicAlerts";
 import { prioritizeAlerts } from "@/lib/alert-priority";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
-import { traceTodayRender } from "@/lib/today/render-trace";
 
 /**
  * WeatherNeeds — the "what you need" layer that appears ONLY during an active
@@ -133,10 +132,7 @@ const HAZARDS: Record<Hazard, { label: string; advice: string; icon: LucideIcon;
 export default async function WeatherNeeds() {
   let snapshot: Awaited<ReturnType<typeof getCurrentSituationSnapshot>>;
   try {
-    snapshot = await traceTodayRender(
-      "weather-needs",
-      getCurrentSituationSnapshot(),
-    );
+    snapshot = await getCurrentSituationSnapshot();
   } catch {
     return null; // analytics/feed failure must never break Today
   }

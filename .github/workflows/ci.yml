@@ -98,7 +98,6 @@ jobs:
           --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          RADIUS_CI_ASYNC_TRACE: "1"
       - name: Keep chaos failure traces
         if: failure()
         uses: actions/upload-artifact@v4

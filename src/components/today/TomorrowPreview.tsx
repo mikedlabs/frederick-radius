@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Sunrise, ChevronRight } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
-import { traceTodayRender } from "@/lib/today/render-trace";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { compareForLead } from "@/lib/events/lead-rank";
 import { isUtilityEvent } from "@/lib/event-kind";
@@ -25,20 +24,14 @@ type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 export default async function TomorrowPreview({ now, eventsPromise }: { now: Date; eventsPromise: EventsPromise }) {
   if (!isTomorrowPreviewTime(now)) return null; // strict clock gate — day renders nothing
 
-  const { publicEvents } = await traceTodayRender(
-    "tomorrow-events",
-    eventsPromise,
-  );
+  const { publicEvents } = await eventsPromise;
   const tomorrowKey = easternDayKey(new Date(now.getTime() + 24 * 3_600_000));
   const draws = publicEvents
     .filter((e) => easternDayKey(new Date(e.starts_at)) === tomorrowKey && !isUtilityEvent(e))
     .sort(compareForLead);
   const top = draws[0] ?? null;
 
-  const forecast = await traceTodayRender(
-    "tomorrow-weather",
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-  );
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const wx = tomorrowDaytimeForecast(forecast, now);
 
   // Nothing to promise → nothing to show (honest empty, never filler).
