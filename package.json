@@ -72,6 +72,7 @@
     "closures:detect": "tsx --tsconfig tsconfig.json scripts/detect-closures.ts",
     "source:watch": "tsx --tsconfig tsconfig.json scripts/source-watch.ts",
     "source:scout": "tsx --tsconfig tsconfig.json scripts/source-scout.ts",
+    "pilot:apify-venues": "tsx --tsconfig tsconfig.json scripts/apify-venue-pilot.ts",
     "coord:audit": "tsx --tsconfig tsconfig.json scripts/coord-audit.ts",
     "refresh:business-status": "npm run build:place-refresh-identities && tsx --tsconfig tsconfig.json scripts/refresh-business-status.ts",
     "copy:scores": "tsx --tsconfig tsconfig.json scripts/copy-scores.ts",

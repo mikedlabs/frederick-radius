@@ -79,6 +79,23 @@ build on it. Three honest paths, best first:
 3. **30-second human-in-the-loop** — paste the post/image weekly; Claude
    extracts; publishes. Reliable fallback.
 
+The full candidate-only design, official platform boundaries, food-truck
+freshness rules, and owner-beacon priority are documented in
+`docs/SOCIAL_AND_EPHEMERAL_LEADS.md`.
+
+## External retrieval providers
+
+Firecrawl and Apify are retrieval mechanisms, not source authorities. Keep
+them out of visitor request paths and use at most one external provider for a
+source attempt after the structured, native-fetch, and local-render paths are
+insufficient. The original venue, organizer, business, or government URL stays
+attached to every candidate.
+
+The first Apify evaluation is a manual, review-only three-page venue pilot. It
+accepts no arbitrary URL, stores no downloaded page, cannot publish, and has
+hard page, result, time, monthly-attempt, and dollar ceilings. See
+`docs/APIFY_VENUE_PILOT.md`.
+
 ## Rendering reality (learned by testing real venue sites)
 Many venue calendars **don't work with a bare fetch**: they're
 JS-rendered (events aren't in the static HTML — e.g. Sky Stage) or the
@@ -89,10 +106,11 @@ static pages, `render` for JS/blocked ones.
 
 ### Configured venue sources (May 2026 research)
 The Banyan, Weinberg Center (covers New Spire), Sky Stage, Bushwaller's,
-Cellar Door, Bentztown — real URLs in `config/venue-sources.json`, all
-`render: true`. JoJo's + The Derby are social-heavy → left empty until a
-non-social source exists. FCPS closings page is captured for the
-school-closings profile: `fcps.org/families_students/weather_delays_closings`.
+Cellar Door, Bentztown, JoJo's, and The Frederick Center have real sources in
+`config/venue-sources.json`. The Derby remains social-only and is left empty
+until a permitted first-party source exists. FCPS closings page is captured for
+the school-closings profile:
+`fcps.org/families_students/weather_delays_closings`.
 
 ### The smarter shortcut: aggregators
 Several local sources already aggregate **many** venues at once — far
