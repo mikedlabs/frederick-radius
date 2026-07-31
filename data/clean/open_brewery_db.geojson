@@ -1,0 +1,479 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4024446,
+          39.4121161
+        ]
+      },
+      "properties": {
+        "external_id": "724a6296-cdac-4d35-92fd-cc44960010ff",
+        "name": "Attaboy Beer",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "400 Sagner Ave Ste 400",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701-6083"
+        },
+        "phone": "3013388229",
+        "website": "http://www.attaboybeer.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3995969,
+          39.38204685
+        ]
+      },
+      "properties": {
+        "external_id": "63e51e47-8ece-4348-bdbc-313f2d8be6e2",
+        "name": "Barley and Hops Grill",
+        "brewery_type": "brewpub",
+        "municipality": "frederick",
+        "address": {
+          "street": "5473 Urbana Pike",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21704-7275"
+        },
+        "phone": "3016685555",
+        "website": "http://www.barleyandhops.net",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.41045515,
+          39.41607325
+        ]
+      },
+      "properties": {
+        "external_id": "61c3bf4d-95e0-4afd-8d93-b2764ae5eba5",
+        "name": "Brewer's Alley Restaurant and Brewery",
+        "brewery_type": "brewpub",
+        "municipality": "frederick",
+        "address": {
+          "street": "124 N Market St",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701-5422"
+        },
+        "phone": "3016310089",
+        "website": "http://www.brewers-alley.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.42679107,
+          39.3628322
+        ]
+      },
+      "properties": {
+        "external_id": "e2b339ba-8984-497a-ba6b-91882dec1515",
+        "name": "Flying Dog Brewery",
+        "brewery_type": "regional",
+        "municipality": "frederick",
+        "address": {
+          "street": "4607 Wedgewood Blvd",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21703-7120"
+        },
+        "phone": "3016947899",
+        "website": "http://www.flyingdogbrewery.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2034606,
+          39.4706993
+        ]
+      },
+      "properties": {
+        "external_id": "fc496ca5-6117-4863-b75c-2da11269792a",
+        "name": "Frey's Brewing Company",
+        "brewery_type": "micro",
+        "municipality": "mount-airy",
+        "address": {
+          "street": "8601 Mapleville Rd",
+          "city": "Mount Airy",
+          "state": "MD",
+          "zip": "21771-9705"
+        },
+        "phone": "3016397146",
+        "website": "http://www.freysbrewing.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4038238,
+          39.4131393
+        ]
+      },
+      "properties": {
+        "external_id": "bcf296e4-8135-4002-ae22-b45d3136d11d",
+        "name": "Idiom Brewing Company",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "340 East Patrick Street, #104",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "phone": "3016603133",
+        "website": "https://www.idiombrewing.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1541854,
+          39.377486
+        ]
+      },
+      "properties": {
+        "external_id": "8304a04f-9cd5-4788-9d8a-68d0aa5eacef",
+        "name": "Liquidity Aleworks",
+        "brewery_type": "nano",
+        "municipality": "mount-airy",
+        "address": {
+          "street": "8 North Main Street",
+          "city": "Mt. Airy",
+          "state": "MD",
+          "zip": "21771"
+        },
+        "phone": "3017031165",
+        "website": "http://www.liquidityaleworks.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4026989,
+          39.4267696
+        ]
+      },
+      "properties": {
+        "external_id": "0333aa64-4cba-4ee3-afac-c98982abf9ae",
+        "name": "Midnight Run Brewing",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "912 North East Street",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "phone": "2406511424",
+        "website": "http://www.midnightrunbrew.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2246904,
+          39.4592945
+        ]
+      },
+      "properties": {
+        "external_id": "d5e5313e-a58c-4076-a44a-07c37cb61d94",
+        "name": "Milkhouse Brewery at Stillpoint Farm",
+        "brewery_type": "micro",
+        "municipality": "mount-airy",
+        "address": {
+          "street": "8253 Dollyhyde Rd",
+          "city": "Mount Airy",
+          "state": "MD",
+          "zip": "21771-9404"
+        },
+        "phone": "2404011517",
+        "website": "http://www.milkhousebrewery.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3989904,
+          39.4403205
+        ]
+      },
+      "properties": {
+        "external_id": "adfe0535-71ce-4c68-859d-ffdf7a96883b",
+        "name": "Monocacy Brewing Co",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "1781 N Market St",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701-4305"
+        },
+        "phone": "3016310671",
+        "website": "http://monocacybrewing.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3912138,
+          39.40928
+        ]
+      },
+      "properties": {
+        "external_id": "dd9deed9-dddf-45b9-b439-8a6a4d9be915",
+        "name": "Olde Mother Brewing Co.",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "526 N Market St.",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "phone": "3016241700",
+        "website": "http://OldeMother.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4769918,
+          39.3865838
+        ]
+      },
+      "properties": {
+        "external_id": "b34c3873-63ff-4815-b7f9-07e72b3699e3",
+        "name": "Prospect Point Brewing",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "5500A Jefferson Pike",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21703"
+        },
+        "phone": "2404908943",
+        "website": "http://prospectpointbrewing.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4033704,
+          39.4122174
+        ]
+      },
+      "properties": {
+        "external_id": "d6b76c7e-49ce-4430-9570-e8259e6f2c4c",
+        "name": "RAK Brewing",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "400 Sagner Ave Suite 200",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "phone": "2404469034",
+        "website": "https://rakbrewing.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1924996,
+          39.4228993
+        ]
+      },
+      "properties": {
+        "external_id": "82f5632c-93f4-43b4-b98b-b33462688c31",
+        "name": "Red Shedman Farm Brewery",
+        "brewery_type": "micro",
+        "municipality": "mount-airy",
+        "address": {
+          "street": "13601 Glissans Mill Rd",
+          "city": "Mount Airy",
+          "state": "MD",
+          "zip": "21771-8507"
+        },
+        "phone": "3018315889",
+        "website": "http://www.redshedman.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3808825,
+          39.4401824
+        ]
+      },
+      "properties": {
+        "external_id": "a97cece8-723b-47c3-8962-dd9b9cfe57e0",
+        "name": "Rockwell Brewery",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "880 N East St Unit 201",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701-5045"
+        },
+        "phone": "3017324880",
+        "website": "http://www.rockwellbrewery.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4028201,
+          39.4248729
+        ]
+      },
+      "properties": {
+        "external_id": "6a4f1d69-a4f8-4fb4-88a6-580593cb2c59",
+        "name": "Sandbox Brewhouse",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "880 N East St #201",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "phone": "3016642618",
+        "website": "http://sandboxbrewhouse.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6302935,
+          39.3136514
+        ]
+      },
+      "properties": {
+        "external_id": "7d0390dd-7798-4be0-8df3-9dab9fb59ae2",
+        "name": "Smoketown Brewing Station",
+        "brewery_type": "micro",
+        "municipality": "brunswick",
+        "address": {
+          "street": "223 W Potomac St",
+          "city": "Brunswick",
+          "state": "MD",
+          "zip": "21716-1117"
+        },
+        "phone": "3018344828",
+        "website": "http://www.smoketownbrewing.com",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4346912,
+          39.5589667
+        ]
+      },
+      "properties": {
+        "external_id": "c248e0a7-e70f-4cf5-9fb4-dcd65ec49648",
+        "name": "Springfield Manor Brewery, Winery & Distillery",
+        "brewery_type": "micro",
+        "municipality": "thurmont",
+        "address": {
+          "street": "11836 Auburn Rd",
+          "city": "Thurmont",
+          "state": "MD",
+          "zip": "21788"
+        },
+        "phone": "3012710099",
+        "website": "https://www.springfieldmanor.com/",
+        "source": "open_brewery_db"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.512519,
+          39.391045
+        ]
+      },
+      "properties": {
+        "external_id": "061fff88-4a8a-4a81-8a99-2ac2d203732c",
+        "name": "Steinhardt Brewing Company",
+        "brewery_type": "micro",
+        "municipality": "frederick",
+        "address": {
+          "street": "340 East Patrick St, Suite 100-102",
+          "city": "Frederick",
+          "state": "MD",
+          "zip": "21701"
+        },
+        "website": "http://www.steinhardtbrewing.com",
+        "source": "open_brewery_db"
+      }
+    }
+  ]
+}
