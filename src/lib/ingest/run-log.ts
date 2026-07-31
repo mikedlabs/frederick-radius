@@ -13,14 +13,49 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 
-async function insertIngestRun(sourceSlug: string): Promise<string | null> {
+type CancelableQuery<T> = Promise<T> & {
+  cancel: () => void;
+};
+
+type StrictRunLogOptions = {
+  signal?: AbortSignal;
+};
+
+/**
+ * postgres-js exposes an actual query cancel operation. Wire strict cron
+ * heartbeats to the route's AbortSignal so a Promise deadline cannot return
+ * while a queued INSERT later creates an orphan `running` row.
+ */
+async function waitForRunLogQuery<T>(
+  query: CancelableQuery<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!signal) return query;
+  const cancel = () => query.cancel();
+  if (signal.aborted) {
+    cancel();
+    return query;
+  }
+  signal.addEventListener("abort", cancel, { once: true });
+  try {
+    return await query;
+  } finally {
+    signal.removeEventListener("abort", cancel);
+  }
+}
+
+async function insertIngestRun(
+  sourceSlug: string,
+  options: StrictRunLogOptions = {},
+): Promise<string | null> {
   const sql = getSql();
   if (!sql) return null;
-  const rows = (await sql`
-    INSERT INTO ingest_runs (source_slug, started_at, status)
-    VALUES (${sourceSlug}, now(), 'running')
-    RETURNING id
-  `) as unknown as Array<{ id: string }>;
+  const query = sql`
+      INSERT INTO ingest_runs (source_slug, started_at, status)
+      VALUES (${sourceSlug}, now(), 'running')
+      RETURNING id
+    ` as unknown as CancelableQuery<Array<{ id: string }>>;
+  const rows = await waitForRunLogQuery(query, options.signal);
   return rows[0]?.id ?? null;
 }
 
@@ -35,8 +70,11 @@ export async function startIngestRun(sourceSlug: string): Promise<string | null>
 
 /** Phase-worker variant: database errors reject instead of looking like a
  * successful telemetry no-op. */
-export function startIngestRunStrict(sourceSlug: string): Promise<string | null> {
-  return insertIngestRun(sourceSlug);
+export function startIngestRunStrict(
+  sourceSlug: string,
+  options: StrictRunLogOptions = {},
+): Promise<string | null> {
+  return insertIngestRun(sourceSlug, options);
 }
 
 export type IngestRunResult = {
@@ -51,20 +89,22 @@ export type IngestRunResult = {
 async function updateIngestRun(
   runId: string | null,
   result: IngestRunResult,
+  options: StrictRunLogOptions = {},
 ): Promise<void> {
   if (!runId) return;
   const sql = getSql();
   if (!sql) return;
-  await sql`
-    UPDATE ingest_runs
-    SET ended_at = now(),
-        status = ${result.status},
-        records_in = ${result.records_in ?? 0},
-        records_upserted = ${result.records_upserted ?? 0},
-        records_failed = ${result.records_failed ?? 0},
-        error = ${result.error ?? null}
-    WHERE id = ${runId}
-  `;
+  const query = sql`
+      UPDATE ingest_runs
+      SET ended_at = now(),
+          status = ${result.status},
+          records_in = ${result.records_in ?? 0},
+          records_upserted = ${result.records_upserted ?? 0},
+          records_failed = ${result.records_failed ?? 0},
+          error = ${result.error ?? null}
+      WHERE id = ${runId}
+    ` as unknown as CancelableQuery<unknown>;
+  await waitForRunLogQuery(query, options.signal);
 }
 
 export async function finishIngestRun(
@@ -83,8 +123,9 @@ export async function finishIngestRun(
 export function finishIngestRunStrict(
   runId: string | null,
   result: IngestRunResult,
+  options: StrictRunLogOptions = {},
 ): Promise<void> {
-  return updateIngestRun(runId, result);
+  return updateIngestRun(runId, result, options);
 }
 
 /**

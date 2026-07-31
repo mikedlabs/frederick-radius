@@ -2,6 +2,7 @@ import type { Anomaly } from "@/lib/integrations/feed-snapshot";
 
 export const DATA_HEALTH_FEEDS_RUN = "data-health:feeds";
 export const DATA_HEALTH_RETENTION_RUN = "data-health:retention";
+export const EVENT_ARCHIVE_RUN = "event-archive";
 export const DATA_HEALTH_PHASE_MAX_AGE_MS = 2 * 60 * 60_000;
 const PHASE_DIAGNOSTIC_MAX_CHARS = 240;
 
@@ -9,10 +10,12 @@ const FEED_DIAGNOSTIC =
   /^(?:(?:Phase checks failed|Live sources failed): [a-z0-9_-]+(?:, [a-z0-9_-]+)*\.(?: )?)+$/;
 const RETENTION_DIAGNOSTIC =
   /^Retention tasks failed: (?:feed_snapshots|push_log|nfc_events|community_reports)(?:, (?:feed_snapshots|push_log|nfc_events|community_reports))*\.$/;
+const EVENT_ARCHIVE_DIAGNOSTIC =
+  /^Archive checks failed: (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-incomplete|archive-truncated)(?:, (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-incomplete|archive-truncated))*\.$/;
 
 /**
  * Worker error columns can eventually contain arbitrary provider or database
- * failures, so they must not be copied into alerts by default. These two phase
+ * failures, so they must not be copied into alerts by default. These phase
  * workers deliberately write a small controlled vocabulary. Preserve only
  * those known summaries, then cap the result before it reaches Slack/GitHub.
  */
@@ -26,7 +29,9 @@ function controlledPhaseDiagnostic(
       ? FEED_DIAGNOSTIC.test(error)
       : source === DATA_HEALTH_RETENTION_RUN
         ? RETENTION_DIAGNOSTIC.test(error)
-        : false;
+        : source === EVENT_ARCHIVE_RUN
+          ? EVENT_ARCHIVE_DIAGNOSTIC.test(error)
+          : false;
   if (!allowed) return null;
   return error.length <= PHASE_DIAGNOSTIC_MAX_CHARS
     ? error

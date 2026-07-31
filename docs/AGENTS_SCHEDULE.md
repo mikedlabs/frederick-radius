@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-30
 
 ---
 
@@ -21,6 +21,7 @@ food-truck jobs.
 
 | Cadence | Job | What it does | Mechanism |
 | --- | --- | --- | --- |
+| Every 2 hours at :11 | `event-archive` | Reuses the hot event-cache products to upsert durable event identities and aliases. It records its own strict heartbeat, can be retried safely through idempotent batches, and only tombstones rows from publishers whose complete raw inventory succeeded. | Vercel cron (`/api/cron/event-archive`) |
 | Every 30 min | `notify-civic-alerts` | Pushes new civic alerts to subscribers. | Vercel cron (`/api/cron/notify-civic-alerts`) |
 | Every 4 hours at :15 | `food-truck-schedules` | Refreshes the compact published-stop artifact from allowlisted vendor, venue, and organizer calendars. | Vercel cron (`/api/cron/food-truck-schedules`) |
 | Nightly 09:00 UTC | `ingest/civicengage` | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain. | Vercel cron (`/api/ingest/civicengage`) |
@@ -53,7 +54,10 @@ the live store with no judgment required. These are idempotent and safe
 to run unattended: `business-status` re-derives open/closed from Google
 Places, `data-health` snapshots freshness, `ingest/civicengage`,
 `ingest/fcpl`, and `ingest/fcvfra` pull the scheduled event feeds, and
-`notify-civic-alerts` fans out push notifications. Data health is split into a
+`notify-civic-alerts` fans out push notifications. `warm-events` is limited to
+the user-facing caches; the slower `event-archive` worker has its own runtime
+budget and heartbeat so archive pressure cannot delay those cache warms. Data
+health is split into a
 bounded feed worker, a separately gated retention worker, and a read-mostly
 final reporter so one slow database queue cannot consume a single long-running
 cron.

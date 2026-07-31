@@ -17,6 +17,7 @@ import type { Anomaly } from "@/lib/integrations/feed-snapshot";
 import {
   DATA_HEALTH_FEEDS_RUN,
   DATA_HEALTH_RETENTION_RUN,
+  EVENT_ARCHIVE_RUN,
 } from "@/lib/quality/data-health-phases";
 import civicSources from "@/../config/civicengage_sources.json" with { type: "json" };
 
@@ -312,6 +313,7 @@ const ACTIVE_INGEST_RUN_SOURCES = new Set([
   "tripwires",
   DATA_HEALTH_FEEDS_RUN,
   DATA_HEALTH_RETENTION_RUN,
+  EVENT_ARCHIVE_RUN,
   ...ACTIVE_EVENT_HEALTH_SOURCES.map((source) => source.runSlug),
 ]);
 

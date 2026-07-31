@@ -6,13 +6,14 @@
  *      copy-scores.json) are regenerated at build time by `npm run
  *      dedup` / `npm run copy:scores`; this is the report only.
  *
- *   2. Reporter-side: read the bounded feed-worker heartbeat and rolling
- *      snapshots, run database/tripwire checks, deliver the one coherent
- *      external report, and record the final board heartbeat.
+ *   2. Reporter-side: read the bounded feed-worker and event-archive
+ *      heartbeats plus rolling snapshots, run database/tripwire checks,
+ *      deliver the one coherent external report, and record the final board
+ *      heartbeat.
  *
- * Fresh feed snapshotting and retention are independently scheduled routes.
- * This keeps one database backlog or upstream fetch from consuming the final
- * report's entire function window.
+ * Fresh feed snapshotting, durable event archiving, and retention are
+ * independently scheduled routes. This keeps one database backlog or upstream
+ * fetch from consuming the final report's entire function window.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -49,6 +50,7 @@ import { withDeadlineOutcome } from "@/lib/promise-deadline";
 import {
   DATA_HEALTH_FEEDS_RUN,
   DATA_HEALTH_RETENTION_RUN,
+  EVENT_ARCHIVE_RUN,
   evaluateDataHealthPhase,
 } from "@/lib/quality/data-health-phases";
 
@@ -207,6 +209,10 @@ export async function GET(request: Request) {
     DATA_HEALTH_FEEDS_RUN,
     phaseRuns,
   );
+  const eventArchivePhase = evaluateDataHealthPhase(
+    EVENT_ARCHIVE_RUN,
+    phaseRuns,
+  );
   const retentionPhase = retentionPruneEnabled
     ? evaluateDataHealthPhase(
         DATA_HEALTH_RETENTION_RUN,
@@ -215,6 +221,7 @@ export async function GET(request: Request) {
     : null;
   const phaseAnomalies = [
     feedPhase.anomaly,
+    eventArchivePhase.anomaly,
     retentionPhase?.anomaly ?? null,
     ...(hydrateOutcome.status === "fulfilled"
       ? []
@@ -256,6 +263,7 @@ export async function GET(request: Request) {
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
     { name: "feed-worker", green: feedPhase.green },
+    { name: "event-archive", green: eventArchivePhase.green },
     {
       name: "snapshot-history",
       green: hydrateOutcome.status === "fulfilled",
@@ -309,6 +317,7 @@ export async function GET(request: Request) {
   const deliveryMs = Date.now() - deliveryStartedAt;
   const requiredPhaseUnavailable =
     !feedPhase.green
+    || !eventArchivePhase.green
     || hydrateOutcome.status !== "fulfilled"
     || (retentionPruneEnabled && retentionPhase?.green !== true);
 
@@ -396,6 +405,15 @@ export async function GET(request: Request) {
         sources_checked: feedPhase.run?.recordsIn ?? 0,
         snapshots_persisted: feedPhase.run?.recordsUpserted ?? 0,
         failed: feedPhase.run?.recordsFailed ?? null,
+      },
+      event_archive: {
+        green: eventArchivePhase.green,
+        status: eventArchivePhase.run?.status ?? null,
+        started_at: eventArchivePhase.run?.startedAt ?? null,
+        ended_at: eventArchivePhase.run?.endedAt ?? null,
+        events_seen: eventArchivePhase.run?.recordsIn ?? 0,
+        events_upserted: eventArchivePhase.run?.recordsUpserted ?? 0,
+        failed: eventArchivePhase.run?.recordsFailed ?? null,
       },
       retention: {
         enabled: retentionPruneEnabled,
