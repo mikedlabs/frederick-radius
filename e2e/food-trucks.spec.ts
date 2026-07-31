@@ -80,9 +80,20 @@ test("a vendor claim opens with the selected truck already filled in", async ({ 
 
 test("Today gives food trucks an honest live-or-preview entry", async ({ page }) => {
   await page.goto("/today");
-  await page
-    .getByRole("button", { name: "More for today", exact: true })
-    .click();
+  const moreForToday = page.getByRole("region", {
+    name: "More for today",
+    exact: true,
+  });
+  await expect(moreForToday).toHaveAttribute(
+    "data-collapsible-interaction-ready",
+    "true",
+  );
+  const moreForTodayButton = moreForToday.getByRole("button", {
+    name: "More for today",
+    exact: true,
+  });
+  await moreForTodayButton.click();
+  await expect(moreForTodayButton).toHaveAttribute("aria-expanded", "true");
   const card = page.getByRole("link", { name: /Food trucks|food truck.*live/i });
   await expect(card).toBeVisible();
   await expect(card).toHaveAttribute(
