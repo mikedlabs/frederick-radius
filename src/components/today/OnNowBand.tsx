@@ -25,6 +25,7 @@ import {
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
+import { traceTodayRender } from "@/lib/today/render-trace";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 const present = (value: string | null): value is string => Boolean(value);
@@ -75,12 +76,15 @@ export default async function OnNowBand({
   // The header uses the same schedules as the cards. A day match alone is not
   // enough to claim that a market or offer is available now.
   const marketsPromise = marketTeaserAbove ? Promise.resolve([]) : marketsOpenToday(now);
-  const [{ publicEvents }, scheduledMarkets, deals, hold] = await Promise.all([
-    eventsPromise,
-    marketsPromise,
-    getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER),
-    loadOutdoorSafetyHold(undefined, { now }),
-  ]);
+  const [{ publicEvents }, scheduledMarkets, deals, hold] = await traceTodayRender(
+    "on-now-band",
+    Promise.all([
+      eventsPromise,
+      marketsPromise,
+      getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER),
+      loadOutdoorSafetyHold(undefined, { now }),
+    ]),
+  );
   // Markets in this band are outdoor. A published schedule is not permission
   // to promote one during dangerous weather or unhealthy measured air. Other
   // indoor offers remain useful and continue to render.

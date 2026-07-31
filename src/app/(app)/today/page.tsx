@@ -61,6 +61,7 @@ import PageChapter from "@/components/ui/PageChapter";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
+import { traceTodayRender } from "@/lib/today/render-trace";
 
 /**
  * Now — the daily briefing.
@@ -157,7 +158,10 @@ export default async function HomePage() {
   // await it (assembleUnifiedEvents is itself unstable_cache-wrapped, and a
   // single awaited promise yields one result). (Audit: unified-events
   // cold-miss streaming gap.)
-  const eventsPromise = assembleUnifiedEvents(now);
+  const eventsPromise = traceTodayRender(
+    "unified-events",
+    assembleUnifiedEvents(now),
+  );
 
   // WEATHER-CONDITIONAL COMPOSITION — the page already knows the sky; let it
   // reshape the answer, not just the headline. A wet hour sits the golden-hour
@@ -166,10 +170,13 @@ export default async function HomePage() {
   // NWS forecast rides Next's fetch cache, so this is ~0ms warm, and the 800ms
   // race means a slow feed can never hold the shell hostage — it just means an
   // ordinary-day composition.
-  const forecastForLean = await Promise.race([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
-  ]);
+  const forecastForLean = await traceTodayRender(
+    "page-weather-lean",
+    Promise.race([
+      getNwsForecast(FREDERICK_CENTER).catch(() => null),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+    ]),
+  );
   const lean = leanFromForecast(forecastForLean, now);
 
   const daypartRows = buildDaypartRows(now, lean);
@@ -452,7 +459,10 @@ function OpenPlaceLead({
 async function TodayLocalGuidesWithSchedule({ now }: { now: Date }) {
   let nextStop: ReturnType<typeof nextPublishedFoodTruckStop> = null;
   try {
-    const schedule = await getFoodTruckSchedule(now);
+    const schedule = await traceTodayRender(
+      "food-truck-schedule",
+      getFoodTruckSchedule(now),
+    );
     nextStop = nextPublishedFoodTruckStop(schedule.stops, now);
   } catch {
     // The live pin and local roster paths remain useful if a feed is unavailable.

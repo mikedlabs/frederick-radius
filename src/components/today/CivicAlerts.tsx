@@ -17,6 +17,7 @@ import {
   type RoadAttentionSignal,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
+import { traceTodayRender } from "@/lib/today/render-trace";
 import type { OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 
 type UnifiedAlert = {
@@ -250,12 +251,15 @@ const STYLES = {
  * moment a real feed exists — absent until then, never faked.
  */
 export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
-  const [situation, roads, official, nps] = await Promise.all([
-    getCurrentSituationSnapshot(),
-    getRoadIntelligenceSnapshot(),
-    getOfficialCivicAlertsSnapshot(),
-    getNpsAlerts(),
-  ]);
+  const [situation, roads, official, nps] = await traceTodayRender(
+    "civic-alerts",
+    Promise.all([
+      getCurrentSituationSnapshot(),
+      getRoadIntelligenceSnapshot(),
+      getOfficialCivicAlertsSnapshot(),
+      getNpsAlerts(),
+    ]),
+  );
   const weatherIsFresh =
     situation.sources.weather.availability === "available" &&
     situation.sources.weather.freshness === "fresh";

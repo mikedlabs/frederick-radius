@@ -5,6 +5,7 @@ import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
+import { traceTodayRender } from "@/lib/today/render-trace";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
@@ -119,11 +120,14 @@ export default async function TodayCard() {
   // alert feed and current AQI beside it, with short ceilings so a slow safety
   // provider never holds the whole hero hostage. A failed alert feed is carried
   // forward explicitly; the verdict then falls back to neutral copy.
-  const [forecast, alertResult, airObservations] = await Promise.all([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    within<NwsAlertsResult>(getNwsAlertsResult(), 2_500, { alerts: [], available: false }),
-    within(getAirQuality(FREDERICK_CENTER, { deadlineMs: 2_500 }), 2_500, null),
-  ]);
+  const [forecast, alertResult, airObservations] = await traceTodayRender(
+    "today-card",
+    Promise.all([
+      getNwsForecast(FREDERICK_CENTER).catch(() => null),
+      within<NwsAlertsResult>(getNwsAlertsResult(), 2_500, { alerts: [], available: false }),
+      within(getAirQuality(FREDERICK_CENTER, { deadlineMs: 2_500 }), 2_500, null),
+    ]),
+  );
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
