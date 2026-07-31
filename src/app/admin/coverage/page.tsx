@@ -3,11 +3,13 @@ import Link from "next/link";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { PLACES as SOURCE_PLACES } from "@/data/places";
 import PLACE_ENRICHMENT_RAW from "@/data/places-enrichment.json";
+import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import {
   COVERAGE_TARGETS,
   coveragePriorities,
   summarizeCoverage,
+  summarizeCoverageByCategory,
   summarizeCoverageByTown,
   type CoverageDimension,
   type CoveragePriority,
@@ -178,6 +180,14 @@ export default function CoverageAdmin() {
       const bRatio =
         b.percentages[b.weakest] / COVERAGE_TARGETS[b.weakest];
       return aRatio - bRatio || a.percentages.copy - b.percentages.copy || a.total - b.total;
+    });
+  const categoryCoverage = summarizeCoverageByCategory(places, CATEGORIES)
+    .sort((a, b) => {
+      const aRatio =
+        a.percentages[a.weakest] / COVERAGE_TARGETS[a.weakest];
+      const bRatio =
+        b.percentages[b.weakest] / COVERAGE_TARGETS[b.weakest];
+      return aRatio - bRatio || b.total - a.total || a.name.localeCompare(b.name);
     });
   const belowTargetCount = coverage.filter((town) => town.belowTarget).length;
   const smallCatalogs = coverage.filter((town) => town.total < REVIEW_COUNT);
@@ -478,6 +488,99 @@ export default function CoverageAdmin() {
                       : "neutral",
               }))}
             />
+          </div>
+        </details>
+      </Section>
+
+      <Section
+        title="Coverage by category"
+        description="This matrix exposes categories that have plenty of listings but weak hours, imagery, useful descriptions, or direct actions. It uses the same normalized public records as discovery and Ask."
+      >
+        <details
+          className="mt-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <summary
+            className="tap-44 cursor-pointer px-3 py-2.5 text-[13px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Show {categoryCoverage.length} active categories
+          </summary>
+          <div
+            className="border-t"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <HairlineList>
+              {categoryCoverage.map((category, index) => (
+                <li
+                  key={category.slug}
+                  className="bg-[var(--app-bg-elevated)] px-3 py-3"
+                  style={
+                    index > 0
+                      ? { borderTop: "1px solid var(--app-border)" }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p
+                        className="truncate text-[13px] font-semibold"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {category.name}
+                      </p>
+                      <p
+                        className="text-[10.5px]"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {category.total} public place
+                        {category.total === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <StatusPill
+                      tone={category.belowTarget ? "warning" : "positive"}
+                    >
+                      {category.belowTarget
+                        ? `${DIMENSIONS[category.weakest].short} is weakest`
+                        : "Within targets"}
+                    </StatusPill>
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-1.5">
+                    {(Object.keys(DIMENSIONS) as CoverageDimension[]).map(
+                      (dimension) => (
+                        <div
+                          key={dimension}
+                          className="rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] px-1.5 py-1.5 text-center"
+                        >
+                          <p
+                            className="font-mono text-[11px] font-semibold tabular-nums"
+                            style={{
+                              color:
+                                metricTone(
+                                  dimension,
+                                  category.percentages[dimension],
+                                ) === "positive"
+                                  ? "var(--app-ink-2)"
+                                  : category.percentages[dimension] === 0
+                                    ? "var(--app-danger)"
+                                    : "var(--app-warning-press)",
+                            }}
+                          >
+                            {category.percentages[dimension].toFixed(0)}%
+                          </p>
+                          <p
+                            className="mt-0.5 text-[9px] uppercase tracking-[0.06em]"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {DIMENSIONS[dimension].short}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </li>
+              ))}
+            </HairlineList>
           </div>
         </details>
       </Section>

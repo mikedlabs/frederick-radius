@@ -1,15 +1,19 @@
 /**
- * Visit Frederick (visitfrederick.org) -> live events from the destination
- * marketing organization's public events RSS feed.
+ * Visit Frederick (visitfrederick.org) -> activation-ready event facts from
+ * the destination marketing organization's public events RSS feed.
  *
  * Visit Frederick runs on the Simpleview CMS. Its on-page events calendar is
  * a client-rendered widget backed by an authenticated REST API, but the same
  * data is published keyless at the standard Simpleview events RSS endpoint:
  *   GET https://www.visitfrederick.org/event/rss/
  * So discovery is "read the public feed", no token, no scraping of rendered
- * HTML. The feed carries ~30 active/upcoming listings: title, link (with a
- * stable numeric id), region + theme categories, an image, a date RANGE, and
- * a blurb.
+ * HTML. The feed carries ~30 active/upcoming listings. Radius uses only
+ * factual fields (title, source link, date range, region, category, and free
+ * status). Publisher prose and images are intentionally excluded unless
+ * separate reuse permission is documented. The runtime and refresh worker
+ * both fail closed unless VISIT_FREDERICK_FACTS_REUSE_APPROVED=1; the source
+ * registry keeps this integration pending until that written permission is
+ * recorded.
  *
  * Honest modelling of an imperfect feed:
  *   - DATES, NOT TIMES. The feed gives each listing a calendar date range
@@ -29,11 +33,13 @@
  *     here; the unified assembly's content matcher + clean-slug map collapse the
  *     overlap (same title + same day -> one card).
  *
- * Confidence is `partner` (provenance EVENT_SOURCE_REGISTRY["visit-frederick"]):
- * a curated destination-marketing feed, county-official adjacent. Fully
- * fail-soft: any network or parse failure degrades to [], never throws into the
- * events page. The pure parser is exported for unit testing against a captured
- * feed fixture, with no network.
+ * Once approved, confidence is `verified` (provenance
+ * EVENT_SOURCE_REGISTRY["visit-frederick"]): the publisher's own event RSS,
+ * with no partnership, affiliation, or endorsement implied. Usage remains
+ * subject to the publisher's terms. Fully fail-soft: any network or parse
+ * failure degrades to [], never throws into the events page. The pure parser
+ * is exported for unit testing against a captured feed fixture, with no
+ * network.
  */
 import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -46,29 +52,22 @@ import {
   eventAdapterOk,
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
+import {
+  isExactVisitFrederickFeedUrl,
+  readStoredVisitFrederickSnapshot,
+  VISIT_FREDERICK_FEED_URL,
+  VISIT_FREDERICK_SNAPSHOT_FRESH_MS,
+  VISIT_FREDERICK_SNAPSHOT_MAX_STALE_MS,
+  visitFrederickFactsReuseApproved,
+  visitFrederickSnapshotAgeMs,
+} from "@/lib/integrations/visitfrederick-snapshot";
 
-const FEED_URL = "https://www.visitfrederick.org/event/rss/";
-const FETCH_TIMEOUT_MS = 15_000;
+const FEED_URL = VISIT_FREDERICK_FEED_URL;
+const FETCH_TIMEOUT_MS = 2_500;
+const MAX_FEED_BYTES = 512 * 1_024;
 const SOURCE_LABEL = "Visit Frederick";
 const USER_AGENT = "FrederickRadius/1.0 (+https://frederickradius.app)";
 const EVENT_IMAGE_HOST = "assets.simpleviewinc.com";
-
-// Detail-page enrichment (Item 1): each RSS link points at a detail page that
-// embeds schema.org Event JSON-LD with the venue, address, and coordinates the
-// RSS omits. We fetch those pages with a small concurrency pool and a short
-// per-page timeout, and cache each for a day (they are near-static for a given
-// event id), so the cold cost is paid once per day app-wide and a warm render
-// is ~30 data-cache reads. Any page that fails leaves its event on the town
-// centroid (today's behaviour) — enrichment is purely additive.
-const DETAIL_TIMEOUT_MS = 4_000;
-const DETAIL_CONCURRENCY = 8;
-const DETAIL_REVALIDATE_S = 86_400;
-// Hard ceiling on the whole enrichment fan-out, independent of the per-page
-// timeout × wave math. If detail pages are slow on a cold render, we return the
-// un-enriched RSS rows at this point rather than let enrichment gate the events
-// assembly. In-flight fetches keep running and still warm the per-page cache
-// for the next render, so a slow first paint self-heals.
-const DETAIL_ENRICH_BUDGET_MS = 7_000;
 
 // Visit Frederick region tag (lower-cased) -> our municipality slug. The feed
 // tags each listing with a region; map the ones that name a town we model,
@@ -402,135 +401,199 @@ export function parseVisitFrederickDetail(html: string): VfDetail | null {
   return null;
 }
 
-/** Run `fn` over `items` with at most `limit` in flight; preserves order. */
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const idx = next++;
-      out[idx] = await fn(items[idx]);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
+function isXmlContentType(value: string | null): boolean {
+  if (!value) return false;
+  const mediaType = value.split(";", 1)[0]?.trim().toLowerCase();
+  return (
+    mediaType === "application/rss+xml" ||
+    mediaType === "application/xml" ||
+    mediaType === "text/xml"
+  );
 }
 
-/** Fetch one detail page and parse its JSON-LD. Fail-soft → null. Cached a day
- *  per URL (detail pages are near-static for a given event id). */
-async function fetchVisitFrederickDetail(url: string): Promise<VfDetail | null> {
+export function isVisitFrederickRss(xml: string): boolean {
+  const start = xml.replace(/^\uFEFF/, "").trimStart().slice(0, 1_024);
+  return (
+    /^(?:<\?xml\b[^>]*>\s*)?<rss\b/i.test(start) &&
+    /<channel\b/i.test(xml) &&
+    /<\/channel>\s*<\/rss>\s*$/i.test(xml.trim())
+  );
+}
+
+export function visitFrederickFeedPayloadIsValid(
+  xml: string,
+  contentType: string | null,
+  finalUrl: string,
+): boolean {
+  return (
+    new TextEncoder().encode(xml).byteLength <= MAX_FEED_BYTES &&
+    isXmlContentType(contentType) &&
+    isExactVisitFrederickFeedUrl(finalUrl) &&
+    isVisitFrederickRss(xml)
+  );
+}
+
+async function readNativeFeedBody(res: Response): Promise<string | null> {
+  const declaredLength = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_FEED_BYTES) {
+    return null;
+  }
+  if (!res.body) return "";
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let xml = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > MAX_FEED_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    xml += decoder.decode(value, { stream: true });
+  }
+  return xml + decoder.decode();
+}
+
+export type VisitFrederickNativeFeedResult =
+  | { state: "ok"; xml: string }
+  | {
+      state: "recoverable" | "not-found" | "rejected";
+      reason: string;
+    };
+
+/**
+ * One bounded native read used only by the background refresh. Firecrawl is
+ * deliberately absent from this function: paid recovery belongs only in the
+ * authenticated scheduled job.
+ */
+export async function fetchVisitFrederickNativeFeed(): Promise<
+  VisitFrederickNativeFeedResult
+> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), DETAIL_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(FEED_URL, {
       signal: ctrl.signal,
-      next: { revalidate: DETAIL_REVALIDATE_S },
+      cache: "no-store",
+      redirect: "manual",
       headers: { "User-Agent": USER_AGENT },
     });
-    if (!res.ok) return null;
-    return parseVisitFrederickDetail(await res.text());
-  } catch {
-    return null;
+    if (res.status >= 300 && res.status < 400) {
+      return {
+        state: "rejected",
+        reason: "the publisher redirect was not followed",
+      };
+    }
+    const finalUrl = res.url;
+    if (!isExactVisitFrederickFeedUrl(finalUrl)) {
+      return {
+        state: "rejected",
+        reason: "the publisher response did not remain on the reviewed feed URL",
+      };
+    }
+    if (res.status === 404 || res.status === 410) {
+      return { state: "not-found", reason: `HTTP ${res.status}` };
+    }
+    if (!res.ok) {
+      const recoverable =
+        res.status === 403 ||
+        res.status === 408 ||
+        res.status === 429 ||
+        res.status >= 500;
+      return {
+        state: recoverable ? "recoverable" : "rejected",
+        reason: `HTTP ${res.status}`,
+      };
+    }
+    const xml = await readNativeFeedBody(res);
+    if (
+      xml === null ||
+      !visitFrederickFeedPayloadIsValid(
+        xml,
+        res.headers.get("content-type"),
+        finalUrl,
+      )
+    ) {
+      return {
+        state: "recoverable",
+        reason: "the publisher returned an invalid RSS response",
+      };
+    }
+    return { state: "ok", xml };
+  } catch (err) {
+    const timedOut =
+      ctrl.signal.aborted ||
+      (err instanceof Error && err.name === "AbortError");
+    return {
+      state: "recoverable",
+      reason: timedOut
+        ? `timed out after ${FETCH_TIMEOUT_MS}ms`
+        : "the publisher could not be reached",
+    };
   } finally {
     clearTimeout(timer);
   }
 }
 
 /**
- * Fetch + normalize the Visit Frederick events RSS, then enrich each row from
- * its detail page (venue, address, precise geo, fuller description). Returns []
- * (never throws into the events page) on any RSS network/parse failure;
- * degrades to the un-enriched RSS rows if enrichment as a whole fails. The RSS
- * is HTTP-cached (revalidate 3600) and each detail page a day, so concurrent
- * /today + /events renders share cache entries.
+ * Strip fields covered by the publisher's content/image permission language.
+ * Dates, title, category, location facts, and the attributed source link stay.
+ */
+export function factualVisitFrederickEvents(
+  events: readonly LiveEvent[],
+): LiveEvent[] {
+  return events.map((event) => {
+    const facts = { ...event };
+    delete facts.hero_image;
+    return { ...facts, description: "" };
+  });
+}
+
+/**
+ * Read the durable snapshot first. A fresh successful snapshot is healthy; an
+ * older or last-attempt-failed snapshot is deliberately partial so the board
+ * can keep useful rows without presenting stale-good data as live. Production
+ * visitor requests never invoke Firecrawl.
  */
 async function fetchVisitFrederickResultUncached(): Promise<
   EventAdapterResult<LiveEvent>
 > {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  let base: LiveEvent[];
-  try {
-    const res = await fetch(FEED_URL, {
-      signal: ctrl.signal,
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": USER_AGENT },
-    });
-    if (!res.ok) {
-      // A public publisher refusing a server-side reader is an upstream
-      // availability state, not an application exception. The adapter result
-      // below preserves that state for the unified source-health report. This
-      // line runs once per cached refresh rather than once per page request.
-      console.info(
-        `[visit-frederick] unavailable this refresh (HTTP ${res.status}; fail-soft)`,
-      );
+  if (!visitFrederickFactsReuseApproved()) {
+    return eventAdapterFailed();
+  }
+  const snapshot = await readStoredVisitFrederickSnapshot({
+    cacheMode: "cache-first",
+    timeoutMs: 1_500,
+  });
+  if (snapshot) {
+    if (
+      snapshot.lastAttemptStatus === "not-found" &&
+      snapshot.events.length === 0
+    ) {
       return eventAdapterFailed();
     }
-    base = normalizeVisitFrederickRss(await res.text());
-  } catch (err) {
-    const reason =
-      err instanceof Error && err.name === "AbortError"
-        ? `timed out after ${FETCH_TIMEOUT_MS}ms`
-        : err instanceof Error
-          ? err.message
-          : String(err);
-    console.info(
-      `[visit-frederick] unavailable this refresh (${reason}; fail-soft)`,
-    );
-    return eventAdapterFailed();
-  } finally {
-    clearTimeout(timer);
+    const ageMs = visitFrederickSnapshotAgeMs(snapshot);
+    if (ageMs <= VISIT_FREDERICK_SNAPSHOT_MAX_STALE_MS) {
+      const healthy =
+        ageMs <= VISIT_FREDERICK_SNAPSHOT_FRESH_MS &&
+        (snapshot.lastAttemptStatus === "ok-native" ||
+          snapshot.lastAttemptStatus === "ok-firecrawl");
+      return healthy
+        ? eventAdapterOk(snapshot.events)
+        : eventAdapterFailed(snapshot.events);
+    }
+    if (!snapshot.sourceFetchedAt) return eventAdapterFailed();
   }
-  if (base.length === 0) return eventAdapterOk(base);
-
-  // Enrich each row from its detail page. Fail-soft PER PAGE (a failed page
-  // keeps the centroid row the RSS produced), bounded by an OVERALL wall-time
-  // budget (return un-enriched rows if it trips), and wrapped so any thrown
-  // error returns the un-enriched feed — the worst case equals prior behaviour.
-  let budgetTimer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const enrich = mapWithConcurrency(base, DETAIL_CONCURRENCY, async (e) => {
-      const d = e.url ? await fetchVisitFrederickDetail(e.url) : null;
-      if (!d) return e;
-      const description = d.description.length > e.description.length ? d.description : e.description;
-      return {
-        ...e,
-        venue_name: d.venue_name || e.venue_name,
-        address: d.address || e.address,
-        description,
-        hero_image: d.hero_image ?? e.hero_image,
-        municipality: d.municipality ?? e.municipality,
-        // Precise coord -> mark "geocoded" so the card shows a real distance.
-        // No coord -> stay on the town centroid (no placement -> "area").
-        ...(d.geom ? { geom: d.geom, placement: "geocoded" as const } : {}),
-      };
-    });
-    const budget = new Promise<LiveEvent[]>((resolve) => {
-      budgetTimer = setTimeout(() => resolve(base), DETAIL_ENRICH_BUDGET_MS);
-    });
-    return eventAdapterOk(await Promise.race([enrich, budget]));
-  } catch (err) {
-    console.info(
-      "[visit-frederick] detail enrichment unavailable this refresh; using the RSS rows:",
-      err instanceof Error ? err.message : String(err),
-    );
-    return eventAdapterOk(base);
-  } finally {
-    clearTimeout(budgetTimer);
-  }
+  return eventAdapterFailed();
 }
 
-// Cache the ADAPTER RESULT, not only the successful HTTP body. Next's fetch
-// cache does not retain a non-2xx response, which meant Visit Frederick's WAF
-// 403 was retried from /today, /events, /map, and each event-detail lookup.
-// Keeping the failed result for the same hour both protects the publisher and
-// turns hundreds of identical logs into one health signal per refresh. The
-// `events` tag still lets an explicit event refresh retry immediately, while
-// single-flight coalesces concurrent cold misses inside one worker.
+// Cache the adapter result so Today, Events, Map, and event resolution share
+// one bounded Blob read per five minutes. This window is short enough that
+// cached partial data cannot materially outlive the hard 24-hour stale limit.
+// The background refresh also invalidates this tag after a durable write.
 const fetchVisitFrederickOnce = createSingleFlight<
   "current",
   EventAdapterResult<LiveEvent>
@@ -542,10 +605,11 @@ const fetchVisitFrederickCached = unstable_cache(
       fetchVisitFrederickResultUncached,
     ),
   [
-    "visit-frederick-adapter-v1",
+    "visit-frederick-adapter-v2",
     process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+    process.env.VISIT_FREDERICK_FACTS_REUSE_APPROVED ?? "0",
   ],
-  { revalidate: 3600, tags: ["events", "visit-frederick"] },
+  { revalidate: 300, tags: ["events", "visit-frederick"] },
 );
 
 export function fetchVisitFrederickResult(): Promise<

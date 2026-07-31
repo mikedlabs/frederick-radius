@@ -94,6 +94,7 @@ export default function CollapsibleSection({
     <button
       type="button"
       onClick={toggle}
+      disabled={!mounted}
       aria-expanded={mounted ? open : defaultOpen}
       aria-controls={contentId}
       className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
@@ -124,7 +125,12 @@ export default function CollapsibleSection({
   );
 
   return (
-    <section aria-label={ariaTitle} className={className}>
+    <section
+      aria-label={ariaTitle}
+      aria-busy={!mounted}
+      data-collapsible-interaction-ready={mounted ? "true" : "false"}
+      className={className}
+    >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <div id={contentId} hidden={!open} className="pt-1.5">
         {children}

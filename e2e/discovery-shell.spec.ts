@@ -60,9 +60,13 @@ test.describe("mobile discovery shell", () => {
     await expect(page.locator(".map-edge-tool-locate")).toBeVisible();
     await expect(page.locator(".map-edge-tool-essential")).toBeHidden();
     const focusedDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
-    expect(focusedDockBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(
-      (coldMapBox?.y ?? 0) + (coldMapBox?.height ?? 0) * 0.3,
-    );
+    // A focus event alone does not prove that a software keyboard opened.
+    // Keep the command at thumb height until visualViewport reports an actual
+    // keyboard contraction; moving it on every tap made the map jump under a
+    // person's finger on hardware-keyboard and desktop-touch devices.
+    expect(
+      Math.abs((focusedDockBox?.y ?? 0) - (coldDockBox?.y ?? 0)),
+    ).toBeLessThanOrEqual(2);
     await expect(page.locator("[data-map-dock] .dock-head button")).toHaveCount(1);
     await expect(
       page.getByRole("button", { name: /Open map tools|Map tools,/ }),

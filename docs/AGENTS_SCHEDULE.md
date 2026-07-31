@@ -22,6 +22,7 @@ food-truck jobs.
 | Cadence | Job | What it does | Mechanism |
 | --- | --- | --- | --- |
 | Every 2 hours at :11 | `event-archive` | Reuses the hot event-cache products to upsert durable event identities and aliases. It records its own strict heartbeat, can be retried safely through idempotent batches, and only tombstones rows from publishers whose complete raw inventory succeeded. | Vercel cron (`/api/cron/event-archive`) |
+| Dormant | `visit-frederick` | The factual-only snapshot route is activation-ready but deliberately unscheduled until written Visit Frederick factual-reuse permission is documented. | Manual verification only; not present in `vercel.json` |
 | Every 30 min | `notify-civic-alerts` | Pushes new civic alerts to subscribers. | Vercel cron (`/api/cron/notify-civic-alerts`) |
 | Every 4 hours at :15 | `food-truck-schedules` | Refreshes the compact published-stop artifact from allowlisted vendor, venue, and organizer calendars. | Vercel cron (`/api/cron/food-truck-schedules`) |
 | Nightly 09:00 UTC | `ingest/civicengage` | Refreshes Frederick County and municipal CivicEngage calendars into the event store, with one durable source heartbeat per domain. | Vercel cron (`/api/ingest/civicengage`) |
@@ -130,6 +131,16 @@ OIDC and AI Gateway can authenticate Ask Radius text generation, but do not
 provide embedding support for this writer. Its optional
 `RADIUS_SEARCH_CRON_BATCH` is clamped to 1–512 documents per run and defaults
 to 256.
+
+The Visit Frederick snapshot route is prepared but dormant. Do not add it to
+`vercel.json` or set `VISIT_FREDERICK_FACTS_REUSE_APPROVED=1` until written
+permission for factual reuse is documented. Once that approval exists, the
+worker needs `BLOB_READ_WRITE_TOKEN`, `DATABASE_URL`, `CRON_SECRET`,
+`FIRECRAWL_API_KEY`, and `FIRECRAWL_FETCH_FALLBACK=1` in Vercel Production.
+Firecrawl remains a recovery path, not the normal source: an activated worker
+tries the publisher RSS first and has a code-level ceiling of 12 app-side
+recovery attempts per Eastern day. Those attempts are not a promise about how
+many provider credits Firecrawl will charge.
 
 > Treat every key as production: scope it to the minimum needed, never
 > echo it in logs, and rotate it if a workflow run ever exposes it.

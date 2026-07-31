@@ -43,10 +43,37 @@ function writer(
   overrides: Partial<EventArchiveBatchWriter> = {},
 ): EventArchiveBatchWriter {
   return {
-    upsert: vi.fn(async (rows) => rows.length),
+    upsert: vi.fn(async (rows) => ({
+      upserted: rows.length,
+      ignoredLifecycleOnly: 0,
+    })),
     tombstoneMissing: vi.fn(async () => 0),
     ...overrides,
   };
+}
+
+function lifecycleWriter() {
+  const records = new Map<
+    string,
+    ReturnType<typeof prepareEventArchiveRows>["rows"][number]
+  >();
+  const sink = writer({
+    upsert: vi.fn(async (rows) => {
+      let upserted = 0;
+      let ignoredLifecycleOnly = 0;
+      for (const row of rows) {
+        const key = `${row.source}\u0000${row.source_uid}`;
+        if (records.has(key) || row.event_status === "scheduled") {
+          records.set(key, row);
+          upserted++;
+        } else {
+          ignoredLifecycleOnly++;
+        }
+      }
+      return { upserted, ignoredLifecycleOnly };
+    }),
+  });
+  return { records, sink };
 }
 
 describe("event archive batch", () => {
@@ -82,6 +109,7 @@ describe("event archive batch", () => {
     );
 
     expect(result.upserted).toBe(1);
+    expect(result.ignoredLifecycleOnly).toBe(0);
     expect(result.complete).toBe(true);
     expect(result.tombstonesEnabled).toBe(false);
     expect(sink.tombstoneMissing).not.toHaveBeenCalled();
@@ -170,7 +198,10 @@ describe("event archive batch", () => {
     const sink = writer({
       upsert: vi.fn(async (rows) => {
         now += 60;
-        return rows.length;
+        return {
+          upserted: rows.length,
+          ignoredLifecycleOnly: 0,
+        };
       }),
     });
     const result = await syncEventArchiveBatchWithWriter(
@@ -212,4 +243,102 @@ describe("event archive batch", () => {
     expect(prepared.truncated).toBe(true);
     expect(prepared.rows.map((row) => row.slug)).toEqual(["soon-event"]);
   });
+
+  it("updates the existing canonical snapshot when a scheduled event is cancelled", async () => {
+    const { records, sink } = lifecycleWriter();
+    const scheduled = event(
+      "alive-at-five-2026-08-06",
+      "alive-0806",
+      "2026-07-29T12:00:00.000Z",
+    );
+    const cancelled = {
+      ...scheduled,
+      status: "cancelled" as const,
+      last_verified_at: "2026-07-30T12:00:00.000Z",
+    };
+
+    const first = await syncEventArchiveBatchWithWriter(
+      [scheduled],
+      {},
+      sink,
+    );
+    const changed = await syncEventArchiveBatchWithWriter(
+      [cancelled],
+      {},
+      sink,
+    );
+
+    expect(first).toMatchObject({
+      complete: true,
+      upserted: 1,
+      ignoredLifecycleOnly: 0,
+    });
+    expect(changed).toMatchObject({
+      complete: true,
+      upserted: 1,
+      ignoredLifecycleOnly: 0,
+    });
+    expect(records.get("celebrate\u0000alive-0806")).toMatchObject({
+      slug: scheduled.slug,
+      event_status: "cancelled",
+      snapshot: expect.objectContaining({ status: "cancelled" }),
+    });
+  });
+
+  it("updates the existing canonical snapshot when a scheduled event is postponed", async () => {
+    const { records, sink } = lifecycleWriter();
+    const scheduled = event(
+      "summer-concert-2026-08-14",
+      "concert-0814",
+      "2026-07-29T12:00:00.000Z",
+    );
+    const postponed = {
+      ...scheduled,
+      status: "postponed" as const,
+      last_verified_at: "2026-07-30T12:00:00.000Z",
+    };
+
+    await syncEventArchiveBatchWithWriter([scheduled], {}, sink);
+    const changed = await syncEventArchiveBatchWithWriter(
+      [postponed],
+      {},
+      sink,
+    );
+
+    expect(changed).toMatchObject({
+      complete: true,
+      upserted: 1,
+      ignoredLifecycleOnly: 0,
+    });
+    expect(records.get("celebrate\u0000concert-0814")).toMatchObject({
+      slug: scheduled.slug,
+      event_status: "postponed",
+      snapshot: expect.objectContaining({ status: "postponed" }),
+    });
+  });
+
+  it.each(["cancelled", "postponed"] as const)(
+    "processes but does not publish a brand-new %s-only source row",
+    async (status) => {
+      const { records, sink } = lifecycleWriter();
+      const lifecycleOnly = {
+        ...event(`unpublished-${status}-event`, `orphan-${status}`),
+        status,
+      };
+
+      const result = await syncEventArchiveBatchWithWriter(
+        [lifecycleOnly],
+        {},
+        sink,
+      );
+
+      expect(result).toMatchObject({
+        complete: true,
+        accepted: 1,
+        upserted: 0,
+        ignoredLifecycleOnly: 1,
+      });
+      expect(records.size).toBe(0);
+    },
+  );
 });

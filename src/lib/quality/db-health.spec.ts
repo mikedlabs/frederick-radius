@@ -51,16 +51,17 @@ describe("evaluateDbHealth", () => {
     expect(sql).toHaveBeenCalled();
   });
 
-  it("only reports available after both database probes complete", async () => {
+  it("only reports available after all required database probes complete", async () => {
     const sql = vi
       .fn()
       .mockResolvedValueOnce([{ relname: "public_without_rls" }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     mocks.getSql.mockReturnValue(sql);
 
     const result = await evaluateDbHealth();
 
-    expect(sql).toHaveBeenCalledTimes(2);
+    expect(sql).toHaveBeenCalledTimes(3);
     expect(result).toEqual({
       status: "available",
       reason: null,
@@ -73,9 +74,38 @@ describe("evaluateDbHealth", () => {
     });
   });
 
+  it("surfaces required runtime tables that have not been deployed", async () => {
+    const sql = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { table_name: "event_canonical_records" },
+        { table_name: "feed_source_health" },
+      ])
+      .mockResolvedValueOnce([]);
+    mocks.getSql.mockReturnValue(sql);
+
+    const result = await evaluateDbHealth();
+
+    expect(result).toEqual({
+      status: "available",
+      reason: null,
+      anomalies: [
+        {
+          source: "database schema",
+          kind: "schema_missing",
+          detail: expect.stringContaining(
+            "public.event_canonical_records, public.feed_source_health",
+          ),
+        },
+      ],
+    });
+  });
+
   it("treats a fresh unchanged heartbeat as current even when event rows are old", async () => {
     const sql = vi
       .fn()
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -98,6 +128,7 @@ describe("evaluateDbHealth", () => {
   it("surfaces a fresh failed heartbeat instead of trusting older event rows", async () => {
     const sql = vi
       .fn()
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -129,6 +160,7 @@ describe("evaluateDbHealth", () => {
     const sql = vi
       .fn()
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           source_domain: "www.new-source.test",
@@ -156,6 +188,7 @@ describe("evaluateDbHealth", () => {
     const sql = vi
       .fn()
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           source_domain: "fcvfra.com",
@@ -182,6 +215,7 @@ describe("evaluateDbHealth", () => {
     const started = new Date(Date.now() - 20 * 60_000).toISOString();
     const sql = vi
       .fn()
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -245,6 +279,16 @@ describe("getRecentIngestRuns", () => {
         error: null,
       },
       {
+        source_slug: "visit-frederick-snapshot",
+        status: "ok",
+        started_at: now,
+        ended_at: now,
+        records_in: 29,
+        records_upserted: 29,
+        records_failed: 0,
+        error: null,
+      },
+      {
         source_slug: "frederick_county_calendar",
         status: "ok",
         started_at: "2026-01-01T00:00:00.000Z",
@@ -273,6 +317,9 @@ describe("getRecentIngestRuns", () => {
         source: "event-archive",
         stale: false,
       }),
+    ]));
+    expect(runs).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: "visit-frederick-snapshot" }),
     ]));
   });
 });

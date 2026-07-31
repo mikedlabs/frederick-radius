@@ -1299,14 +1299,17 @@ export default function MapDock(props: MapDockProps) {
                       onClick={(event) => {
                         event.stopPropagation();
                         flushMapSearchUrl();
-                        closeSearchPanel();
                         const current = new URL(window.location.href);
                         current.searchParams.set("q", props.q.trim());
                         const returnTo =
                           normalizeMapReturnTo(
                             `${current.pathname}${current.search}${current.hash}`,
                           ) ?? "/map";
-                        router.push(
+                        // This leaves the map with one exact return URL. A
+                        // document navigation avoids an App Router race where
+                        // the panel could close while the search transition was
+                        // cancelled, making the tap appear to do nothing.
+                        window.location.assign(
                           `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                         );
                       }}
@@ -1395,14 +1398,13 @@ export default function MapDock(props: MapDockProps) {
                     type="button"
                     onClick={() => {
                       flushMapSearchUrl();
-                      closeSearchPanel();
                       const current = new URL(window.location.href);
                       current.searchParams.set("q", props.q.trim());
                       const returnTo =
                         normalizeMapReturnTo(
                           `${current.pathname}${current.search}${current.hash}`,
                         ) ?? "/map";
-                      router.push(
+                      window.location.assign(
                         `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                       );
                     }}

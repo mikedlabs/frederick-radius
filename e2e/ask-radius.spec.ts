@@ -32,6 +32,9 @@ async function fulfill(route: Route, result: AskResult, status = 200) {
 }
 
 async function submit(page: Page, query: string) {
+  await expect(
+    page.locator('[data-ask-interaction-ready="true"]'),
+  ).toBeVisible();
   const input = page.getByRole("textbox", { name: "Ask Radius" });
   await input.fill(query);
   await input.press("Enter");
@@ -313,6 +316,8 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "What is happening tonight?");
+    await expect(page.getByText("More context", { exact: true })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
     const dock = page.locator('[data-ask-composer-dock="sticky"]');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const readingPosition = await page.evaluate(() => window.scrollY);

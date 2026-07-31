@@ -20,10 +20,12 @@ describe("computePlaceTrustReport", () => {
     expect(report.places).toBe(publicPlaces().length);
   });
 
-  it("the confidence distribution covers the ladder and sums to the catalog", () => {
+  it("the confidence distribution matches the current catalog and sums cleanly", () => {
     const { curated, partner, verified, scraped } = report.confidence;
     expect(curated).toBeGreaterThan(0);
-    expect(partner).toBeGreaterThan(0);
+    // Partner is reserved for a documented Radius relationship. A publisher's
+    // public listing does not create one.
+    expect(partner).toBe(0);
     expect(verified).toBeGreaterThan(0);
     expect(scraped).toBeGreaterThan(0);
     expect(curated + partner + verified + scraped).toBe(publicPlaces().length);

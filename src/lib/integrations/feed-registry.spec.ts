@@ -13,6 +13,8 @@ const ORIGINAL = {
     process.env.FREDERICK_COUNTY_GIS_APPROVED_SOURCES,
   HOOD_CALENDAR_URL: process.env.HOOD_CALENDAR_URL,
   FCPS_FEED_URL: process.env.FCPS_FEED_URL,
+  PARKING_OCCUPANCY_ENABLED: process.env.PARKING_OCCUPANCY_ENABLED,
+  PARKING_OCCUPANCY_URL: process.env.PARKING_OCCUPANCY_URL,
 };
 
 function restore(name: keyof typeof ORIGINAL) {
@@ -41,6 +43,26 @@ describe("feed configuration registry", () => {
     process.env.PULSEPOINT_ENABLED = "1";
     pulse = feedStatuses().keyed.find((feed) => feed.name === "PulsePoint");
     expect(pulse).toMatchObject({ configured: true, missingEnvs: [] });
+  });
+
+  it("requires explicit approval as well as a licensed parking endpoint", () => {
+    process.env.PARKING_OCCUPANCY_URL =
+      "https://parking.example.test/occupancy";
+    delete process.env.PARKING_OCCUPANCY_ENABLED;
+
+    let parking = feedStatuses().keyed.find(
+      (feed) => feed.name === "Parking occupancy",
+    );
+    expect(parking).toMatchObject({
+      configured: false,
+      missingEnvs: ["PARKING_OCCUPANCY_ENABLED"],
+    });
+
+    process.env.PARKING_OCCUPANCY_ENABLED = "1";
+    parking = feedStatuses().keyed.find(
+      (feed) => feed.name === "Parking occupancy",
+    );
+    expect(parking).toMatchObject({ configured: true, missingEnvs: [] });
   });
 
   it("does not mistake optional Hood and FCPS URL overrides for credentials", () => {

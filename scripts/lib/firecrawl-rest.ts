@@ -2,6 +2,9 @@ import { isIP } from "node:net";
 
 const FIRECRAWL_SCRAPE_ENDPOINT = "https://api.firecrawl.dev/v2/scrape";
 const DEFAULT_TIMEOUT_MS = 20_000;
+const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1_024 * 1_024;
+const MIN_PROVIDER_TIMEOUT_MS = 1_000;
+const MAX_PROVIDER_TIMEOUT_MS = 300_000;
 
 export type FirecrawlFetch = (
   input: string | URL | Request,
@@ -16,6 +19,8 @@ export type FirecrawlPageSnapshot = {
   /** Model-friendly page text. Firecrawl currently supplies this as Markdown. */
   text: string;
   markdown: string;
+  /** Present when the caller explicitly requests Firecrawl's rawHtml format. */
+  rawHtml?: string;
   links: string[];
   metadata: Record<string, unknown>;
 };
@@ -23,9 +28,33 @@ export type FirecrawlPageSnapshot = {
 export type FirecrawlRestOptions = {
   /** Defaults to FIRECRAWL_API_KEY at call time. */
   apiKey?: string;
+  /** Local wall-clock deadline for Radius's request to Firecrawl. */
   timeoutMs?: number;
+  /**
+   * Firecrawl's own source-fetch deadline. This is sent to the provider so a
+   * locally aborted request cannot keep running against the account's budget.
+   */
+  providerTimeoutMs?: number;
   /** Reviewed exception for a source that genuinely has no HTTPS endpoint. */
   allowHttp?: boolean;
+  /** Defaults to markdown. rawHtml preserves XML/RSS without conversion. */
+  outputFormat?: "markdown" | "rawHtml";
+  /** Defaults to true, matching the existing page-extraction behavior. */
+  onlyMainContent?: boolean;
+  /** Optional Firecrawl cache window in milliseconds. */
+  maxAgeMs?: number;
+  /** Explicit provider cache policy. Defaults to true when maxAgeMs is set. */
+  storeInCache?: boolean;
+  /** Reject a provider response that omits its final source URL. */
+  requireReportedFinalUrl?: boolean;
+  /** Bounds the complete Firecrawl JSON response before parsing. */
+  maxResponseBytes?: number;
+  /**
+   * Provider proxy class. Authoritative fixed-source recovery should use
+   * `basic` so one attempt cannot silently escalate into a multi-credit auto
+   * or enhanced request.
+   */
+  proxy?: "basic" | "enhanced" | "auto";
   /** Test seam; production callers use the global server-side fetch. */
   fetchImpl?: FirecrawlFetch;
 };
@@ -66,6 +95,7 @@ type FirecrawlResponseBody = {
   message?: unknown;
   data?: {
     markdown?: unknown;
+    rawHtml?: unknown;
     links?: unknown;
     metadata?: unknown;
   };
@@ -197,6 +227,28 @@ function validateTimeout(timeoutMs: number): void {
   }
 }
 
+function validateProviderTimeout(timeoutMs: number): void {
+  if (
+    !Number.isFinite(timeoutMs) ||
+    timeoutMs < MIN_PROVIDER_TIMEOUT_MS ||
+    timeoutMs > MAX_PROVIDER_TIMEOUT_MS
+  ) {
+    throw new FirecrawlRestError(
+      "INVALID_TIMEOUT",
+      `Firecrawl providerTimeoutMs must be between ${MIN_PROVIDER_TIMEOUT_MS} and ${MAX_PROVIDER_TIMEOUT_MS}ms.`,
+    );
+  }
+}
+
+function validateMaxResponseBytes(maxResponseBytes: number): void {
+  if (!Number.isFinite(maxResponseBytes) || maxResponseBytes <= 0) {
+    throw new FirecrawlRestError(
+      "INVALID_RESPONSE",
+      "Firecrawl maxResponseBytes must be a positive number.",
+    );
+  }
+}
+
 function redact(value: string, apiKey: string): string {
   const withoutKey = apiKey ? value.split(apiKey).join("[redacted]") : value;
   return withoutKey.replace(/\bfc-[A-Za-z0-9_-]+\b/g, "[redacted]");
@@ -230,13 +282,63 @@ function recordMetadata(value: unknown): Record<string, unknown> {
 
 function reportedFinalUrl(
   metadata: Record<string, unknown>,
-  requestedUrl: string,
-): string {
+  requireExplicitFinalUrl: boolean,
+): string | null {
   if (typeof metadata.url === "string" && metadata.url) return metadata.url;
-  if (typeof metadata.sourceURL === "string" && metadata.sourceURL) {
+  // Firecrawl's sourceURL may only echo the caller's requested URL. It is
+  // useful attribution for general review tooling, but it cannot prove where
+  // an authoritative-source request finally landed after redirects.
+  if (
+    !requireExplicitFinalUrl &&
+    typeof metadata.sourceURL === "string" &&
+    metadata.sourceURL
+  ) {
     return metadata.sourceURL;
   }
-  return requestedUrl;
+  return null;
+}
+
+async function readBoundedResponseText(
+  response: Response,
+  maxResponseBytes: number,
+): Promise<string> {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > maxResponseBytes
+  ) {
+    throw new FirecrawlRestError(
+      "INVALID_RESPONSE",
+      "Firecrawl response exceeded its declared size limit.",
+      { status: response.status },
+    );
+  }
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let bytesRead = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > maxResponseBytes) {
+        await reader.cancel("Firecrawl response exceeded its size limit");
+        throw new FirecrawlRestError(
+          "INVALID_RESPONSE",
+          "Firecrawl response exceeded its size limit.",
+          { status: response.status },
+        );
+      }
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+    chunks.push(decoder.decode());
+    return chunks.join("");
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /**
@@ -264,6 +366,26 @@ export async function fetchFirecrawlPage(
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   validateTimeout(timeoutMs);
+  const providerTimeoutMs =
+    options.providerTimeoutMs ??
+    Math.min(
+      MAX_PROVIDER_TIMEOUT_MS,
+      Math.max(MIN_PROVIDER_TIMEOUT_MS, Math.floor(timeoutMs - 500)),
+    );
+  validateProviderTimeout(providerTimeoutMs);
+  const maxResponseBytes =
+    options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
+  validateMaxResponseBytes(maxResponseBytes);
+  const outputFormat = options.outputFormat ?? "markdown";
+  if (
+    options.maxAgeMs !== undefined &&
+    (!Number.isFinite(options.maxAgeMs) || options.maxAgeMs < 0)
+  ) {
+    throw new FirecrawlRestError(
+      "INVALID_RESPONSE",
+      "Firecrawl maxAgeMs must be a non-negative number.",
+    );
+  }
 
   const fetchImpl = options.fetchImpl ?? fetch;
   const controller = new AbortController();
@@ -281,14 +403,29 @@ export async function fetchFirecrawlPage(
       },
       body: JSON.stringify({
         url: requestedUrl,
-        formats: ["markdown", "links"],
-        onlyMainContent: true,
+        formats:
+          outputFormat === "rawHtml"
+            ? ["rawHtml"]
+            : ["markdown", "links"],
+        onlyMainContent: options.onlyMainContent ?? true,
+        // Firecrawl v2 defaults this to true. Authoritative-source retrieval
+        // must retain normal certificate validation.
+        skipTlsVerification: false,
+        timeout: Math.trunc(providerTimeoutMs),
+        ...(options.proxy ? { proxy: options.proxy } : {}),
+        ...(options.maxAgeMs !== undefined
+          ? {
+              maxAge: Math.trunc(options.maxAgeMs),
+              storeInCache: options.storeInCache ?? true,
+            }
+          : {}),
       }),
       signal: controller.signal,
     });
     stage = "body";
-    rawBody = await response.text();
+    rawBody = await readBoundedResponseText(response, maxResponseBytes);
   } catch (error) {
+    if (error instanceof FirecrawlRestError) throw error;
     if (
       controller.signal.aborted ||
       (error instanceof DOMException && error.name === "AbortError")
@@ -345,24 +482,40 @@ export async function fetchFirecrawlPage(
     );
   }
 
+  const content =
+    outputFormat === "rawHtml"
+      ? payload?.data?.rawHtml
+      : payload?.data?.markdown;
   if (
     payload?.success !== true ||
     !payload.data ||
-    typeof payload.data.markdown !== "string"
+    typeof content !== "string"
   ) {
     const detail = responseMessage(payload, apiKey);
     throw new FirecrawlRestError(
       "INVALID_RESPONSE",
       detail
         ? `Firecrawl did not return a usable page: ${detail}`
-        : "Firecrawl did not return the requested Markdown page.",
+        : `Firecrawl did not return the requested ${outputFormat} page.`,
       { status: response.status },
     );
   }
 
   const metadata = recordMetadata(payload.data.metadata);
-  const markdown = payload.data.markdown;
-  const finalUrl = reportedFinalUrl(metadata, requestedUrl);
+  const markdown =
+    typeof payload.data.markdown === "string" ? payload.data.markdown : "";
+  const reportedUrl = reportedFinalUrl(
+    metadata,
+    options.requireReportedFinalUrl === true,
+  );
+  if (options.requireReportedFinalUrl === true && !reportedUrl) {
+    throw new FirecrawlRestError(
+      "INVALID_RESPONSE",
+      "Firecrawl did not report the final source URL.",
+      { status: response.status },
+    );
+  }
+  const finalUrl = reportedUrl ?? requestedUrl;
   try {
     validateFirecrawlPublicUrl(finalUrl, {
       allowHttp: options.allowHttp === true,
@@ -378,8 +531,9 @@ export async function fetchFirecrawlPage(
   return {
     requestedUrl,
     finalUrl,
-    text: markdown,
+    text: content,
     markdown,
+    ...(outputFormat === "rawHtml" ? { rawHtml: content } : {}),
     links: stringLinks(payload.data.links),
     metadata,
   };

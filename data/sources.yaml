@@ -185,7 +185,7 @@ sources:
     contact: https://www.openstreetmap.org/copyright
     status: active
     collection: runtime
-    last_validated: 2026-07-23
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/overpass.ts
@@ -704,42 +704,44 @@ sources:
     endpoint_type: rss
     format: rss
     refresh_cadence: hourly
-    license: usage limited, headlines only
+    license: public RSS endpoint; reuse terms not confirmed; headlines, publisher names, timestamps, and source links only
     contact: https://news.google.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/news.ts
     notes: |
-      Integration coded (getLocalHeadlines), consumed by
-      LocalNewsStrip — but LocalNewsStrip is currently UNMOUNTED on
-      /now per the rebuild that decided news belongs on its own
-      surface, not the daily briefing. Code remains so a future news
-      route can light it up without re-implementing. Headlines + link
-      + timestamp only; never full text.
+      Active, keyless request-time integration. getLocalHeadlines() is
+      consumed by Pulse and the Radius reading deck. It reads four
+      Frederick-focused Google News RSS searches, keeps headline metadata
+      and outbound links only, rejects obvious obituary/property noise,
+      and never republishes article text. Live endpoint returned XML on
+      2026-07-30.
 
   - id: reddit_frederick
-    name: Reddit r/Frederick
+    name: Reddit r/FrederickMD community radar
     owner: Reddit
-    url: https://www.reddit.com/r/Frederick/top.rss
+    url: https://www.reddit.com/r/frederickmd/.rss
     endpoint_type: rss
     format: rss
     refresh_cadence: hourly
-    license: Reddit API terms
+    license: public RSS endpoint; Reddit terms apply; admin-only titles and links; reuse terms not confirmed
     contact: https://www.reddit.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: src/lib/integrations/reddit.ts
+    transform_file: src/lib/integrations/redditRadar.ts
     notes: |
-      Integration coded (getFrederickRedditPulse), consumed by
-      RedditPulse — but RedditPulse is currently UNMOUNTED on /now
-      per the rebuild that called the top posts "noisy subreddit
-      posts." Code remains so a future community-pulse surface can
-      light it up. OAuth optional via REDDIT_CLIENT_ID; falls back
-      to the unauthenticated .rss feed.
+      Active, keyless request-time source for the owner-only /admin/radar
+      review queue. Radius reads the official subreddit Atom feed, keeps
+      titles, timestamps, and outbound post links, and does not republish
+      comments or post bodies. It remains deliberately absent from public
+      recommendation surfaces because posts are unverified. Live endpoint
+      returned Atom on 2026-07-30.
 
   - id: firstenergy_outages
     name: FirstEnergy Outages, Potomac Edison
@@ -1475,11 +1477,13 @@ sources:
       or a City-provided feed) is not yet confirmed, so url is null on
       purpose; (2) redistribution licensing is unconfirmed.
 
-      The APP-SIDE is already wired and DORMANT behind one flag: set
-      PARKING_OCCUPANCY_URL (optionally PARKING_OCCUPANCY_KEY) and the
-      runtime loader src/lib/integrations/parking-live.ts lights up the
-      /parking live badges and the /api/cron/parking-alerts fanout. Unset
-      = graceful no-op, no fabricated counts. (The predictive
+      The APP-SIDE is already wired and DORMANT behind an explicit approval
+      boundary. Set PARKING_OCCUPANCY_ENABLED=1 only after the endpoint and
+      redistribution terms are confirmed, then set PARKING_OCCUPANCY_URL
+      (optionally PARKING_OCCUPANCY_KEY). The runtime loader
+      src/lib/integrations/parking-live.ts then lights up the /parking live
+      badges and the /api/cron/parking-alerts fanout. Disabled = graceful
+      no-op, no fabricated counts. (The predictive
       /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
       batch-ingest mirror of that same model. pending_review by design.
 
@@ -1509,18 +1513,26 @@ sources:
   - id: mta_marc_rt
     name: MTA MARC GTFS realtime
     owner: Maryland Transit Administration
-    url: https://feeds.mta.maryland.gov
+    url: https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/
     endpoint_type: gtfs_rt
     format: gtfs_rt
     refresh_cadence: realtime
-    license: public, MTA
-    contact: https://www.mta.maryland.gov
-    status: pending_approval
-    last_validated: null
+    license: official public GTFS-realtime endpoints; reuse terms not confirmed; MTA attribution retained
+    contact: https://www.mta.maryland.gov/developer-resources
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Brunswick Line. May require a Swiftly or MTA key.
+    transform_file: src/lib/integrations/marcTrains.ts
+    notes: |
+      Active, keyless request-time integration. marcTrains.ts overlays the
+      official MARC TripUpdates feed on Radius's schedule-backed Brunswick
+      Line board and reads the official alert feed; marcVehicles.ts reads
+      the matching VehiclePositions feed for live train markers. All reads
+      filter to the Brunswick Line or Frederick County stations and fail
+      soft. TripUpdates and VehiclePositions returned decodable protobuf
+      payloads on 2026-07-30. No Swiftly credential is used.
 
   - id: visit_frederick
     name: Visit Frederick Events
@@ -1528,28 +1540,25 @@ sources:
     url: https://www.visitfrederick.org/event/rss/
     endpoint_type: rss
     format: rss
-    refresh_cadence: hourly
-    license: public publisher RSS; link and attribution retained
+    refresh_cadence: on_demand (after written factual-reuse permission)
+    license: publisher factual reuse awaiting documented written permission
     contact: https://www.visitfrederick.org
-    status: active
-    collection: runtime
-    last_validated: 2026-07-23
+    status: pending_approval
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/visitfrederick.ts
     notes: |
-      Active keyless Simpleview RSS integration. The feed supplies dates but
-      not reliable clock times or coordinates, so the adapter uses all-day
-      semantics and town-level placement until the linked official detail
-      page supplies valid Event JSON-LD. Source links and Visit Frederick
-      attribution remain on every row.
+      The bounded snapshot route and fixed-URL Firecrawl recovery are
+      activation-ready but deliberately unscheduled. Do not set
+      VISIT_FREDERICK_FACTS_REUSE_APPROVED=1, add a Vercel cron, or require
+      Visit Frederick evidence rows until written permission for factual reuse
+      is documented. The prepared path stores factual event fields only,
+      retains publisher links and attribution, and does not mirror publisher
+      prose or images.
 
-  # Sports games — owner: "people need to know about sports games".
-  # Registered as real candidates, NOT fabricated: none publishes a
-  # confirmed clean iCal/RSS, so per the no-ungated-data rule they
-  # stay pending until a feed + license is verified. Sports events
-  # that arrive via the already-live Celebrate/County/Hood feeds are
-  # already classified (ical-live CATEGORY_KEYWORDS "sports").
+  # Local sports schedules. These are separate from the general campus
+  # event feeds and run through the purpose-built local-sports adapter.
   - id: frederick_keys
     name: Frederick Keys (MLB Draft League)
     owner: Frederick Keys / MiLB
@@ -1573,37 +1582,65 @@ sources:
   - id: hood_athletics
     name: Hood College Blazers Athletics
     owner: Hood College Athletics
-    url: https://hoodathletics.com/calendar
-    endpoint_type: ical
+    url: https://hoodathletics.com/services/responsive-calendar.ashx
+    endpoint_type: rest_json
     format: json
-    refresh_cadence: daily
-    license: public calendar, confirm export URL
+    refresh_cadence: hourly
+    license: first-party public schedule endpoint; reuse terms not confirmed; source links retained
     contact: https://hoodathletics.com
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/local-sports.ts
     notes: |
-      Separate from the Hood general Trumba feed (already active).
-      Uses ActiveCalendar (go.activecalendar.com/hood); an .ics export
-      likely exists but the exact URL is unconfirmed — promote once a
-      real export URL is verified, then add to ical-live FEEDS.
+      Active, keyless SIDEARM schedule integration, separate from Hood's
+      general campus calendar. Radius requests a bounded month window,
+      preserves home/away state, scores and official media links, and never
+      offers away-game tickets. Endpoint returned JSON on 2026-07-30.
+
+  - id: mount_athletics
+    name: Mount St. Mary's Mountaineers Athletics
+    owner: Mount St. Mary's Athletics
+    url: https://mountathletics.com/services/responsive-calendar.ashx
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: first-party public schedule endpoint; reuse terms not confirmed; source links retained
+    contact: https://mountathletics.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/local-sports.ts
+    notes: |
+      Active, keyless SIDEARM schedule integration. Radius requests a
+      bounded month window, preserves home/away state, scores and official
+      media links, and never offers away-game tickets. Endpoint returned
+      JSON on 2026-07-30.
+
   - id: fcc_athletics
     name: Frederick Community College Athletics
     owner: Frederick Community College
-    url: https://www.frederick.edu/athletics
-    endpoint_type: scrape
-    format: json
-    refresh_cadence: weekly
-    license: unknown, confirm with owner
-    contact: https://www.frederick.edu
-    status: pending_approval
-    last_validated: null
+    url: https://www.fccathletics.com/composite?print=rss
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: first-party public RSS schedule; reuse terms not confirmed; source links retained
+    contact: https://www.fccathletics.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Cougars schedules. Feed format/license unconfirmed.
+    transform_file: src/lib/integrations/local-sports.ts
+    notes: |
+      Active, keyless PrestoSports RSS integration. The adapter preserves
+      home/away state and scores, treats an unpublished start time as TBA,
+      and retains the official schedule link. Endpoint returned RSS on
+      2026-07-30.
 
   - id: google_civic
     name: Google Civic Information

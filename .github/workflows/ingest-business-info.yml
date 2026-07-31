@@ -57,6 +57,8 @@ jobs:
             exit 1
           fi
       - run: npm ci
+      - name: Verify business copy boundary before paid extraction
+        run: npm test -- tests/business-info-copy.spec.ts tests/style-lint.spec.ts
       - name: Install Chromium (for the render fallback on JS-only sites)
         run: npx playwright install --with-deps chromium
       - name: Verify optional Firecrawl fallback

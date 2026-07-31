@@ -482,6 +482,18 @@ const DEPT_HINTS: { terms: string[]; match: string }[] = [
   { terms: ["fire", "rescue", "ems"], match: "fire and rescue" },
   { terms: ["health", "clinic", "vaccine"], match: "health" },
   { terms: ["senior", "aging", "elder"], match: "aging" },
+  // The MVA is the most-asked state line and the catalog has no place row
+  // for it, so a bare "dmv" used to dead-end on an empty overlay (answer
+  // audit, Jul 2026). Only unambiguous vehicle terms: plain "registration"
+  // is left out because voter registration is a different door.
+  {
+    terms: [
+      "dmv", "mva", "drivers license", "driver's license", "license plate",
+      "vehicle registration", "registration renewal", "real id",
+      "learners permit", "car title", "emissions test",
+    ],
+    match: "mva",
+  },
 ];
 
 /**

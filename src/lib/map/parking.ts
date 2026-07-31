@@ -31,6 +31,8 @@ export type ParkingPin = {
   available: number | null;
   /** Live percent-full (0-100), or null when unknown. */
   percentFull: number | null;
+  /** Explicit provider closure/offline state. */
+  isClosed: boolean;
   /** Derived by the feed: at/over the full threshold, zero spaces, or a
    *  FULL status string. */
   isFull: boolean;
@@ -44,10 +46,11 @@ export type ParkingPin = {
 export type ParkingTone = "positive" | "warning" | "danger" | "neutral";
 
 /** True when the feed carries ANY usable live signal for this deck. */
-export function parkingHasLive(pin: Pick<ParkingPin, "available" | "percentFull" | "isFull" | "isFilling">): boolean {
+export function parkingHasLive(pin: Pick<ParkingPin, "available" | "percentFull" | "isClosed" | "isFull" | "isFilling">): boolean {
   return (
     pin.available !== null ||
     pin.percentFull !== null ||
+    pin.isClosed ||
     pin.isFull ||
     pin.isFilling
   );
@@ -55,7 +58,7 @@ export function parkingHasLive(pin: Pick<ParkingPin, "available" | "percentFull"
 
 /**
  * Availability → marker tint. The one rule the marker and the peek share:
- *   - full           → danger  (red)
+ *   - closed/full    → danger  (red; the peek states which one)
  *   - filling up     → warning (amber)
  *   - plenty of live data, not filling → positive (green)
  *   - no live signal → neutral (ink; NEVER faked green)
@@ -64,8 +67,9 @@ export function parkingHasLive(pin: Pick<ParkingPin, "available" | "percentFull"
  * as a bare string with no number — that's still an honest "full".
  */
 export function parkingTone(
-  pin: Pick<ParkingPin, "available" | "percentFull" | "isFull" | "isFilling">,
+  pin: Pick<ParkingPin, "available" | "percentFull" | "isClosed" | "isFull" | "isFilling">,
 ): ParkingTone {
+  if (pin.isClosed) return "danger";
   if (pin.isFull) return "danger";
   if (pin.isFilling) return "warning";
   return parkingHasLive(pin) ? "positive" : "neutral";
@@ -73,6 +77,7 @@ export function parkingTone(
 
 /**
  * The honest spaces line for the peek card:
+ *   - closed           → "Closed"
  *   - full             → "Full"
  *   - a real count     → "N space(s) open"
  *   - no live number   → null  (render the garage with no number)
@@ -82,8 +87,9 @@ export function parkingTone(
  * "spaces open" — no hype.
  */
 export function parkingSpacesLabel(
-  pin: Pick<ParkingPin, "available" | "isFull">,
+  pin: Pick<ParkingPin, "available" | "isClosed" | "isFull">,
 ): string | null {
+  if (pin.isClosed) return "Closed";
   if (pin.isFull) return "Full";
   if (pin.available !== null) {
     return `${pin.available} space${pin.available === 1 ? "" : "s"} open`;

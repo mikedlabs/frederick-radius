@@ -128,9 +128,20 @@ test.describe("critical surfaces under combined dependency failure", () => {
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/today");
     await expect(page.getByRole("link", { name: "Open Ask Radius" })).toBeVisible();
-    await page
-      .getByRole("button", { name: "More for today", exact: true })
-      .click();
+    const moreForToday = page.getByRole("region", {
+      name: "More for today",
+      exact: true,
+    });
+    await expect(moreForToday).toHaveAttribute(
+      "data-collapsible-interaction-ready",
+      "true",
+    );
+    const moreForTodayButton = moreForToday.getByRole("button", {
+      name: "More for today",
+      exact: true,
+    });
+    await moreForTodayButton.click();
+    await expect(moreForTodayButton).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("link", { name: /Food trucks/i })).toBeVisible();
     await expect
       .poll(() => hits.malformed.includes("/api/food-trucks/live"))

@@ -53,7 +53,9 @@ describe("Today decision hierarchy", () => {
 
     expect(disclosureStart).toBeGreaterThan(-1);
     expect(disclosureEnd).toBeGreaterThan(disclosureStart);
-    expect(disclosure).toContain("<TodayLocalGuidesWithSchedule");
+    expect(disclosure).toContain("<TodayLocalGuides");
+    expect(disclosure).toContain("fallback={<TodayFoodTruckGuide />}");
+    expect(disclosure).toContain("<TodayFoodTruckGuideWithSchedule");
     expect(disclosure).toContain("<FromYourSaved");
     expect(disclosure).toContain("<WeekendPreview");
     expect(disclosure).toContain("<PoolsToday");

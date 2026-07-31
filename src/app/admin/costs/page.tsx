@@ -25,10 +25,11 @@ export const dynamic = "force-dynamic";
  *
  * usage_counters is incremented beside every PAID upstream fetch
  * (lib/usage-meter.ts). This page turns those tallies into a per-upstream
- * readout (today / 7 days / 30 days) with an ESTIMATED dollar figure, plus a
- * cost-controls checklist showing which protections are actually configured.
- * The estimates are deliberately conservative labels, never a bill: the
- * provider consoles (linked) are the source of truth.
+ * readout (today / 7 days / 30 days) with either an ESTIMATED dollar figure or
+ * an honest capped-attempt count, plus a cost-controls checklist showing which
+ * protections are actually configured. The estimates are deliberately
+ * conservative labels, never a bill: the provider consoles (linked) are the
+ * source of truth.
  *
  * Composed from the shared admin kit (@/components/admin/kit) so the whole
  * /admin surface reads as one calm field guide. The metered rows and cost
@@ -36,24 +37,44 @@ export const dynamic = "force-dynamic";
  * a mono stat line, and an untruncated note that no kit row slot covers.
  */
 
-/** Unit-price ESTIMATES per 1,000 calls, in dollars. Update from the provider
- *  pricing pages when they change; the UI labels every figure an estimate. */
-const UPSTREAMS: Array<{
+type MeteredUpstreamBase = {
   key: PaidUpstream;
   label: string;
+  note: string;
+};
+
+type UnitEstimateUpstream = MeteredUpstreamBase & {
+  billing: "unit-estimate";
   per1000: number;
   freeMonthly?: number;
-  note: string;
-}> = [
-  { key: "google_photo", label: "Google place photos", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
-  { key: "anthropic_ask", label: "Ask Radius AI", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
-  { key: "google_routes_matrix", label: "Google Routes matrix", per1000: 10, note: "Current travel-time calls are 1×1 matrices. Google bills per returned element; traffic-aware drive elements use the Pro SKU, while walk elements can cost less. One-hour cache hits do not increment." },
-  { key: "mapbox_directions", label: "Mapbox walking directions", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
-  { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
-  { key: "mapbox_matrix", label: "Mapbox travel matrix", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Mapbox bills each returned matrix element. Within reach caches its 2–9-place shortlist for five minutes or one day, while map-search walking enrichment stays no-store." },
-  { key: "mapbox_search_box", label: "Mapbox Search Box fallback", per1000: 11.5, freeMonthly: 2_500, note: "After the 2,500-session monthly free tier. Counts each fallback session when its first suggestion succeeds, including sessions abandoned without a selection. Radius search always runs first." },
-  { key: "mapbox_geocode", label: "Mapbox permanent geocoding", per1000: 5, note: "Stored event-address enrichment. Mapbox has no free tier for permanent results; disabled unless MAPBOX_GEOCODING_ENABLED=1." },
-  { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, freeMonthly: 50_000, note: "After the 50k/month free tier; cached for 30 days per location." },
+};
+
+type PlanCreditUpstream = MeteredUpstreamBase & {
+  billing: "plan-credit";
+  dailyCap: number;
+};
+
+type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
+
+/** Unit prices are estimates, not bills. Capped-attempt services deliberately do
+ * not receive a made-up dollar conversion. */
+const UPSTREAMS: MeteredUpstream[] = [
+  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
+  { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
+  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Current travel-time calls are 1×1 matrices. Google bills per returned element; traffic-aware drive elements use the Pro SKU, while walk elements can cost less. One-hour cache hits do not increment." },
+  { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
+  { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
+  { key: "mapbox_matrix", label: "Mapbox travel matrix", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Mapbox bills each returned matrix element. Within reach caches its 2–9-place shortlist for five minutes or one day, while map-search walking enrichment stays no-store." },
+  { key: "mapbox_search_box", label: "Mapbox Search Box fallback", billing: "unit-estimate", per1000: 11.5, freeMonthly: 2_500, note: "After the 2,500-session monthly free tier. Counts each fallback session when its first suggestion succeeds, including sessions abandoned without a selection. Radius search always runs first." },
+  { key: "mapbox_geocode", label: "Mapbox permanent geocoding", billing: "unit-estimate", per1000: 5, note: "Stored event-address enrichment. Mapbox has no free tier for permanent results; disabled unless MAPBOX_GEOCODING_ENABLED=1." },
+  { key: "mapbox_static", label: "Mapbox static maps", billing: "unit-estimate", per1000: 1, freeMonthly: 50_000, note: "After the 50k/month free tier; cached for 30 days per location." },
+  {
+    key: "firecrawl_visit_frederick",
+    label: "Visit Frederick recovery",
+    billing: "plan-credit",
+    dailyCap: 12,
+    note: "One app-side attempt is reserved before each exact Visit Frederick feed recovery request. Failed attempts remain in this tally even when Firecrawl does not bill a provider credit. The provider dashboard is the source of truth.",
+  },
 ];
 
 const BILLING_LINKS: Array<{ label: string; href: string }> = [
@@ -61,6 +82,7 @@ const BILLING_LINKS: Array<{ label: string; href: string }> = [
   { label: "Vercel AI Gateway usage", href: "https://vercel.com/dashboard/ai" },
   { label: "Anthropic fallback usage", href: "https://console.anthropic.com/settings/usage" },
   { label: "Mapbox statistics", href: "https://account.mapbox.com/statistics" },
+  { label: "Firecrawl usage", href: "https://www.firecrawl.dev/app" },
   { label: "Vercel usage", href: "https://vercel.com/dashboard/usage" },
 ];
 
@@ -69,9 +91,10 @@ function dayKeyEastern(d: Date): string {
 }
 
 function estimatedMonthlyCost(
-  upstream: (typeof UPSTREAMS)[number],
+  upstream: MeteredUpstream,
   calls: number,
-): number {
+): number | null {
+  if (upstream.billing === "plan-credit") return null;
   return (
     (Math.max(0, calls - (upstream.freeMonthly ?? 0)) / 1000) *
     upstream.per1000
@@ -90,6 +113,22 @@ function EstimateFigure({ est }: { est: number }) {
       </p>
       <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
         est / 30d
+      </p>
+    </div>
+  );
+}
+
+function PlanCreditFigure({ used, limit }: { used: number; limit: number }) {
+  return (
+    <div className="shrink-0 text-right">
+      <p
+        className="font-mono text-[14px] font-semibold leading-none tabular-nums"
+        style={{ color: used >= limit ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+      >
+        {used.toLocaleString()} / {limit}
+      </p>
+      <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+        recovery attempts today
       </p>
     </div>
   );
@@ -151,11 +190,18 @@ export default async function CostsAdmin() {
     const mtdEst = estimatedMonthlyCost(u, monthCalls);
     const projectedEst = estimatedMonthlyCost(u, projectedCalls);
     // Same alarm rule as the desk's cost sentinel: real volume, 3x the median.
-    const hot = todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily);
-    return { key: u.key, mtdEst, projectedEst, hot };
+    const atDailyCap =
+      u.billing === "plan-credit" && todayCalls >= u.dailyCap;
+    const hot =
+      atDailyCap ||
+      (todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily));
+    return { key: u.key, mtdEst, projectedEst, hot, atDailyCap };
   });
-  const totalMtd = monthMath.reduce((a, m) => a + m.mtdEst, 0);
-  const totalProjected = monthMath.reduce((a, m) => a + m.projectedEst, 0);
+  const totalMtd = monthMath.reduce((a, m) => a + (m.mtdEst ?? 0), 0);
+  const totalProjected = monthMath.reduce(
+    (a, m) => a + (m.projectedEst ?? 0),
+    0,
+  );
   const hotCount = monthMath.filter((m) => m.hot).length;
 
   // Cost-control posture — read live from env so the checklist is honest.
@@ -176,9 +222,10 @@ export default async function CostsAdmin() {
       title="Usage costs"
       intro={
         <>
-          The app&rsquo;s own tally of calls to the paid upstreams, priced with rough
-          unit estimates. The provider consoles are the source of truth for real
-          bills; this tells you where the money is going before the invoice does.
+          The app&rsquo;s own tally of paid calls and capped recovery attempts.
+          Metered services use rough unit estimates; attempt counters stay
+          separate from provider credits and bills. Provider consoles remain
+          the source of truth.
         </>
       }
     >
@@ -226,21 +273,38 @@ export default async function CostsAdmin() {
                       <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
                         {u.label}
                       </p>
-                      {month?.hot && <StatusPill tone="danger">running hot today</StatusPill>}
+                      {month?.hot && (
+                        <StatusPill tone="danger">
+                          {month.atDailyCap ? "daily cap reached" : "running hot today"}
+                        </StatusPill>
+                      )}
                     </div>
                     <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                       today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
-                      <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                      {u.billing === "unit-estimate" ? (
+                        <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                      ) : (
+                        <span style={{ color: "var(--app-ink-3)" }}> · recovery attempts · hard cap {u.dailyCap}/day</span>
+                      )}
                     </p>
-                    <p className="mt-0.5 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                      month ~${(month?.mtdEst ?? 0).toFixed(2)}
-                      <span style={{ color: "var(--app-ink-3)" }}> · projected ~${(month?.projectedEst ?? 0).toFixed(2)}</span>
-                    </p>
+                    {u.billing === "unit-estimate" && (
+                      <p className="mt-0.5 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                        month ~${(month?.mtdEst ?? 0).toFixed(2)}
+                        <span style={{ color: "var(--app-ink-3)" }}> · projected ~${(month?.projectedEst ?? 0).toFixed(2)}</span>
+                      </p>
+                    )}
                     <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
                       {u.note}
                     </p>
                   </div>
-                  <EstimateFigure est={est30} />
+                  {u.billing === "unit-estimate" && est30 !== null ? (
+                    <EstimateFigure est={est30} />
+                  ) : (
+                    <PlanCreditFigure
+                      used={d1}
+                      limit={u.billing === "plan-credit" ? u.dailyCap : 0}
+                    />
+                  )}
                 </div>
               </li>
             );
@@ -288,9 +352,11 @@ export default async function CostsAdmin() {
         Providers can still reject or fail an attempted call, so their consoles
         remain the billing source of truth. Unit prices are estimates pinned in
         code (src/app/admin/costs/page.tsx); update them when provider pricing
-        changes. The month projection extends what has already been spent at the
-        median daily rate of the last seven full days, so one spiky day does not
-        distort it.
+        changes. Firecrawl recovery is shown as app-side attempts and is
+        excluded from dollar totals because an attempt is not the same as a
+        provider credit or billable call. The month
+        projection extends what has already been spent at the median daily rate
+        of the last seven full days, so one spiky day does not distort it.
       </p>
     </AdminShell>
   );

@@ -14,7 +14,6 @@ import VENUE_EVENTS from "@/data/venue-events.json";
 import FIELD_NOTES from "@/data/field-notes.json";
 import CLIFFNOTES from "@/data/town-cliffnotes.json";
 import HOURS_REFRESH from "@/data/places-hours-refresh.json";
-import BUSINESS_STATUS from "@/data/business-status.json";
 
 const DAY = 86_400_000;
 
@@ -69,11 +68,11 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
     });
   }
 
-  // 2. The app's trustworthy open/closed state depends on two materialized
-  // Google refreshes. A Vercel cron can populate the database, and the
-  // data-steward can spend on a status sweep, but neither helps users unless
-  // the resulting artifact reaches the canonical loader. Empty or old files
-  // are therefore release-health failures, not an invisible advisory.
+  // 2. The app's trustworthy open/closed state depends on the materialized
+  // rolling Google refresh, which carries both hours and business status.
+  // The Vercel writer can populate the database, but it does not help users
+  // unless the resulting artifact reaches the canonical loader. An empty or
+  // old file is therefore a release-health failure, not an invisible advisory.
   const hoursEntries = Object.entries(
     HOURS_REFRESH as Record<string, unknown>,
   ).filter(([key]) => !key.startsWith("_"));
@@ -87,24 +86,6 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
     "Run the hours-refresh cron through a full cycle, then pull and merge the data-steward PR.",
   );
   if (hoursAnomaly) out.push(hoursAnomaly);
-
-  const statusData = BUSINESS_STATUS as {
-    generated_at?: string | null;
-    overrides?: Record<string, { refreshed_at?: string }>;
-  };
-  const statusAnomaly = snapshotFreshnessAnomaly(
-    "business-status.json",
-    [
-      statusData.generated_at ?? undefined,
-      ...Object.values(statusData.overrides ?? {}).map(
-        (entry) => entry.refreshed_at,
-      ),
-    ],
-    now,
-    2,
-    "Check the data-steward Google secret and merge its latest status PR.",
-  );
-  if (statusAnomaly) out.push(statusAnomaly);
 
   // 3. Hand-verified curated layers: count entries whose last_verified is
   //    older than the re-verification window. One line per dataset, only

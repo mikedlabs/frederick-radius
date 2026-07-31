@@ -149,8 +149,13 @@ GitHub currently reports no branch protection and no repository ruleset for
 | 8 | Exact-build review | Unit, type, lint, data, build, browser, accessibility, mobile hierarchy, and performance checks run against the exact preview commit. |
 
 Do not make Firecrawl or Tavily part of the live Today, Map, Events, Search, or
-Ask request path to satisfy this list. Their role is to produce bounded,
-review-only source candidates outside the user's visit.
+Ask request path to satisfy this list. Tavily remains review-only. The fixed-
+URL Visit Frederick background recovery is activation-ready but deliberately
+unscheduled until written factual-reuse permission is documented. If approved
+and activated, the authenticated route has an atomic 12-attempt daily ceiling,
+persists only factual event fields, and serves public pages from Blob rather
+than a provider request. That ceiling counts app-side recovery attempts, not
+Firecrawl provider credits; the provider dashboard remains authoritative.
 
 ## Known data limits
 
@@ -204,6 +209,9 @@ The local worktree now contains candidate-only Firecrawl and Tavily tooling:
 - Source Scout performs capped discovery searches for known source gaps
 - Both write only ignored operator reports
 - Neither changes canonical data or public answers
+- The Visit Frederick snapshot route is prepared but unscheduled and its
+  source ledger remains `pending_approval` until written factual-reuse
+  permission is documented
 - Tavily/Firecrawl OAuth connections are available interactively in Codex
 - Unattended scripts still require fresh server-side API keys
 

@@ -753,8 +753,8 @@ async function BrowseMapArea() {
   // Downtown parking garages as map pins: the static curated metadata
   // (name / address / coords / rate) merged with the live availability
   // snapshot keyed by garage slug. Only garages with real coordinates draw.
-  // Every live field falls back to its honest empty (available null, isFull
-  // false) so a dormant feed yields neutral markers with no invented count.
+  // Every live field falls back to its honest empty (available null, closed /
+  // full false) so a dormant feed yields neutral markers with no invented count.
   const parking: ParkingPin[] = PARKING_GARAGES.filter((g) => g.geom).map((g) => {
     const occ = parkingOccupancy.get(g.slug);
     return {
@@ -766,6 +766,7 @@ async function BrowseMapArea() {
       rate: g.hourly_rate,
       available: occ?.available ?? null,
       percentFull: occ?.percentFull ?? null,
+      isClosed: occ?.isClosed ?? false,
       isFull: occ?.isFull ?? false,
       isFilling: occ?.isFilling ?? false,
       updated: occ?.updated ?? null,

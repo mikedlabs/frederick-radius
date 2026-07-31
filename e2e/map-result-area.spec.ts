@@ -13,6 +13,11 @@ test.describe("deliberate map result areas", () => {
 
     const canvas = page.locator("canvas.mapboxgl-canvas");
     await expect(canvas).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
     await expect(
       page.getByRole("button", { name: "Show results here" }),
     ).toHaveCount(0);
@@ -32,7 +37,10 @@ test.describe("deliberate map result areas", () => {
     expect(new URL(page.url()).searchParams.get("c")).toBe(committedCamera);
 
     const commitBox = await commit.boundingBox();
-    expect(commitBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // Chromium can report a nominal 44px CSS target as 43.99999 physical
+    // pixels after device-scale conversion. Round only for this tap-size
+    // contract; the layout assertion remains a real 44px minimum.
+    expect(Math.round(commitBox?.height ?? 0)).toBeGreaterThanOrEqual(44);
 
     await commit.click();
     await expect(commit).toHaveCount(0);
@@ -61,6 +69,11 @@ test.describe("deliberate map result areas", () => {
 
     const canvas = page.locator("canvas.mapboxgl-canvas");
     await expect(canvas).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     if (!box) return;

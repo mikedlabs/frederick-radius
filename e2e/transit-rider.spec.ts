@@ -109,6 +109,10 @@ test("a rider can find, save, and track the exact inbound bus without mobile ove
 
   const commandCenter = page.getByRole("region", { name: "My stop" });
   await expect(commandCenter).toBeVisible();
+  await expect(commandCenter).toHaveAttribute(
+    "data-transit-stop-interaction-ready",
+    "true",
+  );
   const stopSearch = commandCenter.getByRole("searchbox", {
     name: "Search bus stops by name",
   });

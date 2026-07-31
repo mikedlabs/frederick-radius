@@ -5,7 +5,7 @@
  */
 import { getIngestedSeries } from "./ingested";
 import { allUpcoming } from "./events";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
 
 export type CalEvent = {
   id: string;
@@ -96,7 +96,10 @@ export async function getMonthEvents(
 
   // Live feeds
   try {
-    const { events: live } = await getLiveEvents(90);
+    // Calendar is a public dynamic route, not a source-health probe. Read the
+    // parsed per-source cache so opening a month cannot fan out to every
+    // upstream calendar. The warm-events cron owns refreshing this boundary.
+    const { events: live } = await getCachedLiveEvents(90);
     for (const e of live) {
       if (!inWindow(e.starts_at)) continue;
       events.push({

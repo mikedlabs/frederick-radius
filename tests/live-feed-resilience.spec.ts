@@ -76,6 +76,24 @@ describe("getLiveEvents — feed failures never block or break the page", () => 
     }
   });
 
+  it("keeps every upstream event body out of a nested Next SWR cache", async () => {
+    const respondWithEmptyFeed: typeof fetch = async () =>
+      new Response("[]", { status: 200 });
+    const fetchMock = vi.fn(respondWithEmptyFeed);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getLiveEvents(60, {
+      includeTicketmaster: false,
+      readMode: "probe",
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(options).toMatchObject({ cache: "no-store" });
+      expect(options).not.toHaveProperty("next");
+    }
+  });
+
   it("coalesces concurrent 60-day and 90-day reads of the same raw calendar", async () => {
     const respondWithCalendar: typeof fetch = async () =>
       new Response(

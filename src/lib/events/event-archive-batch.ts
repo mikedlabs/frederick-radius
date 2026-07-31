@@ -2,6 +2,7 @@ import "server-only";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
+import { archiveJsonText } from "@/lib/events/archive-json";
 
 type JsonValue =
   | null
@@ -27,6 +28,12 @@ export type EventArchiveBatchResult = {
   complete: boolean;
   accepted: number;
   upserted: number;
+  /**
+   * Cancellation/postponement rows that had no previously published
+   * canonical identity. They were processed successfully but intentionally
+   * not turned into new public event records.
+   */
+  ignoredLifecycleOnly: number;
   tombstoned: number;
   batches: number;
   truncated: boolean;
@@ -38,11 +45,16 @@ type BatchWriteContext = {
   deadlineAt: number;
 };
 
+export type EventArchiveBatchWriteResult = {
+  upserted: number;
+  ignoredLifecycleOnly: number;
+};
+
 export type EventArchiveBatchWriter = {
   upsert(
     rows: readonly EventArchiveBatchRow[],
     context: BatchWriteContext,
-  ): Promise<number>;
+  ): Promise<EventArchiveBatchWriteResult>;
   tombstoneMissing?(
     seen: readonly Pick<EventArchiveBatchRow, "source" | "source_uid">[],
     successfulSources: readonly string[],
@@ -78,7 +90,7 @@ type InternalEventArchiveBatchOptions = EventArchiveBatchOptions & {
 export const EVENT_ARCHIVE_BATCH_SIZE = 200;
 // The production board currently carries a little over 800 upcoming rows.
 // Keep a hard ceiling, but leave enough headroom for a busy seasonal calendar
-// so the ordinary warm pass archives every actionable link.
+// so the dedicated archive pass preserves every actionable link.
 export const EVENT_ARCHIVE_MAX_EVENTS = 1_200;
 export const EVENT_ARCHIVE_DEADLINE_MS = 6_000;
 export const EVENT_ARCHIVE_TOMBSTONE_GRACE_MS = 36 * 60 * 60_000;
@@ -157,15 +169,11 @@ export function prepareEventArchiveRows(
   };
 }
 
-function asJson(value: unknown): JsonValue {
-  return JSON.parse(JSON.stringify(value)) as JsonValue;
-}
-
 const postgresWriter: EventArchiveBatchWriter = {
   async upsert(rows, context) {
     const sql = getSql();
     if (!sql || rows.length === 0 || Date.now() >= context.deadlineAt) {
-      return 0;
+      return { upserted: 0, ignoredLifecycleOnly: 0 };
     }
     return sql.begin(async (tx) => {
       const remainingMs = Math.max(100, context.deadlineAt - Date.now());
@@ -211,7 +219,9 @@ const postgresWriter: EventArchiveBatchWriter = {
           incoming.event_status,
           incoming.source_url,
           incoming.verified_at
-        from jsonb_to_recordset(${tx.json(asJson(rows))}::jsonb) as incoming(
+        from jsonb_to_recordset(
+          ${archiveJsonText(rows)}::jsonb
+        ) as incoming(
           source text,
           source_uid text,
           slug text,
@@ -262,6 +272,7 @@ const postgresWriter: EventArchiveBatchWriter = {
           now()
         from event_archive_incoming as incoming
         where incoming.canonical_event_id is null
+          and incoming.event_status = 'scheduled'
         order by incoming.slug, incoming.verified_at desc
         on conflict (canonical_slug) do update
           set last_seen_at = now(),
@@ -376,12 +387,25 @@ const postgresWriter: EventArchiveBatchWriter = {
         using event_archive_incoming as incoming
         where tombstone.canonical_event_id = incoming.canonical_event_id
       `;
-      const count = await tx<{ count: number }[]>`
-        select count(*)::int as count
+      const count = await tx<{
+        upserted: number;
+        ignored_lifecycle_only: number;
+      }[]>`
+        select
+          count(*) filter (
+            where canonical_event_id is not null
+          )::int as upserted,
+          count(*) filter (
+            where canonical_event_id is null
+              and event_status in ('cancelled', 'postponed')
+          )::int as ignored_lifecycle_only
         from event_archive_incoming
-        where canonical_event_id is not null
       `;
-      return count[0]?.count ?? 0;
+      return {
+        upserted: count[0]?.upserted ?? 0,
+        ignoredLifecycleOnly:
+          count[0]?.ignored_lifecycle_only ?? 0,
+      };
     });
   },
 
@@ -417,7 +441,9 @@ const postgresWriter: EventArchiveBatchWriter = {
       await tx`
         insert into event_archive_seen (source, source_uid)
         select seen.source, seen.source_uid
-        from jsonb_to_recordset(${tx.json(asJson(seen))}::jsonb) as seen(
+        from jsonb_to_recordset(
+          ${archiveJsonText(seen)}::jsonb
+        ) as seen(
           source text,
           source_uid text
         )
@@ -427,7 +453,7 @@ const postgresWriter: EventArchiveBatchWriter = {
         insert into event_archive_success_sources (source)
         select value
         from jsonb_array_elements_text(
-          ${tx.json(asJson(successfulSources))}::jsonb
+          ${archiveJsonText(successfulSources)}::jsonb
         ) as source(value)
         on conflict do nothing
       `;
@@ -545,6 +571,7 @@ export async function syncEventArchiveBatchWithWriter(
   const startedAt = clock();
   const deadlineAt = startedAt + deadlineMs;
   let upserted = 0;
+  let ignoredLifecycleOnly = 0;
   let batches = 0;
   let timedOut = false;
 
@@ -563,14 +590,15 @@ export async function syncEventArchiveBatchWithWriter(
       timedOut = true;
       break;
     }
-    upserted += written;
+    upserted += written.upserted;
+    ignoredLifecycleOnly += written.ignoredLifecycleOnly;
     batches++;
   }
 
   const complete =
     !prepared.truncated &&
     !timedOut &&
-    upserted === prepared.rows.length;
+    upserted + ignoredLifecycleOnly === prepared.rows.length;
   const tombstonesEnabled =
     complete &&
     options.seenSourceIdentities !== undefined &&
@@ -607,6 +635,7 @@ export async function syncEventArchiveBatchWithWriter(
     complete: complete && !timedOut,
     accepted: prepared.rows.length,
     upserted,
+    ignoredLifecycleOnly,
     tombstoned,
     batches,
     truncated: prepared.truncated,

@@ -1654,10 +1654,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ─────────────────────────────────────────────────────
- * View Transitions API — smooth cross-page navigation.
- * Supported in Chrome/Edge/Safari. No-op elsewhere.
+ * View Transitions API — controlled in-app navigation.
+ * BottomNav and SideRail opt into these animations around
+ * App Router changes. Do not enable automatic cross-document
+ * transitions here: the map deliberately uses a hard return
+ * navigation to clear stale route state, and Chrome can abort an
+ * automatic transition before the returned map hydrates.
  * ───────────────────────────────────────────────────── */
-@view-transition { navigation: auto; }
 ::view-transition-old(root) {
   animation: vt-fade-out 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
@@ -1667,7 +1670,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes vt-fade-out { to { opacity: 0; transform: translateY(-6px); } }
 @keyframes vt-fade-in  { from { opacity: 0; transform: translateY(6px); } }
 /* Reduced motion: gate the navigation slide off for prefers-reduced-motion
- * users (WCAG 2.3.3) — this is now the single route transition. */
+ * users (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
@@ -1676,8 +1679,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* (The .route-fade route crossfade was removed 2026-07: it double-faded with
- * the View Transitions API above, producing a washed/blank frame on nav —
- * shell-hardening P5. The View Transitions block is now the single system.) */
+ * the controlled View Transitions above, producing a washed/blank frame on
+ * nav — shell-hardening P5.) */
 
 /* Rotating-prompt cross-fade for the TopBar search pill. Subtle: the
    user notices the prompt changed without their eye being pulled to

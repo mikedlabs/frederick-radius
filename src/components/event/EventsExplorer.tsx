@@ -164,6 +164,35 @@ export function reconcileBrowseResponse(
   };
 }
 
+export function eventGroupRenderState({
+  summaryCount,
+  loadedCount,
+  dataComplete,
+  anyFilter,
+  hasLead,
+  peek,
+}: {
+  summaryCount?: number;
+  loadedCount: number;
+  dataComplete: boolean;
+  anyFilter: boolean;
+  hasLead: boolean;
+  peek: number;
+}): { groupCount: number; totalRest: number; canExpand: boolean } {
+  // A degraded response can add rows that were absent from the server
+  // snapshot. Keep the trusted complete count when it is larger, but never
+  // let that stale summary hide rows that are already present in the client.
+  const groupCount = !dataComplete && !anyFilter
+    ? Math.max(summaryCount ?? 0, loadedCount)
+    : loadedCount;
+  const totalRest = Math.max(0, groupCount - (hasLead ? 1 : 0));
+  return {
+    groupCount,
+    totalRest,
+    canExpand: totalRest > peek,
+  };
+}
+
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
 // ViewState shape has no free-text field. "all" and the forward-compat
@@ -966,14 +995,17 @@ export default function EventsExplorer({
               lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
             const rest = lead ? g.events.slice(1) : g.events;
             const PEEK = leadVariant === "feature" ? 2 : 3;
-            const groupCount = !dataComplete && !anyFilter
-              ? summary.horizonCounts[g.key]
-              : g.events.length;
-            const totalRest = Math.max(0, groupCount - (lead ? 1 : 0));
+            const { groupCount, totalRest, canExpand } = eventGroupRenderState({
+              summaryCount: summary.horizonCounts[g.key],
+              loadedCount: g.events.length,
+              dataComplete,
+              anyFilter,
+              hasLead: Boolean(lead),
+              peek: PEEK,
+            });
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
-            const overflow = isOpen && dataComplete ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
-            const canExpand = totalRest > PEEK;
+            const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
@@ -1041,7 +1073,7 @@ export default function EventsExplorer({
                               className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
                               style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
                             >
-                              {overflow} more on the calendar <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                              {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
                           </div>
                         )}

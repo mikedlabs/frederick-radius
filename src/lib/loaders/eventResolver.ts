@@ -3,9 +3,13 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import {
+  assembleUnifiedEvents,
+  type UnifiedEvents,
+} from "@/lib/loaders/unifiedEvents";
 import { hasActionableAttendance } from "@/lib/events/attendance";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import { easternDayKey } from "@/lib/tz";
 import {
   archivedEventBySlug,
   persistEventIdentity,
@@ -73,7 +77,7 @@ const DEFAULT_SOURCES: EventResolverSources = {
     if (context.signal.aborted) return null;
     const result = await assembleUnifiedEvents(now);
     if (context.signal.aborted) return null;
-    return result.publicEvents.find((event) => event.slug === slug) ?? null;
+    return eventFromUnifiedSnapshot(slug, result);
   },
   ingested: (slug, context) =>
     context.signal.aborted
@@ -97,6 +101,73 @@ type EventLookupOutcome =
   | { status: "error"; error: unknown };
 
 const LOOKUP_TIMEOUT = Symbol("event-lookup-timeout");
+
+class UnifiedEventSnapshotDegradedError extends Error {
+  constructor(readonly unavailable: readonly string[]) {
+    super(
+      unavailable.length > 0
+        ? `Unified event snapshot is incomplete: ${unavailable.join(", ")}`
+        : "Unified event snapshot is incomplete.",
+    );
+    this.name = "UnifiedEventSnapshotDegradedError";
+  }
+}
+
+/**
+ * A hit remains useful even when another provider is degraded. An absent row,
+ * however, is only a definitive miss when the unified snapshot is healthy.
+ * Keeping this distinction at the source boundary prevents a partial calendar
+ * from turning a real event link into a 404.
+ */
+export function eventFromUnifiedSnapshot(
+  slug: string,
+  result: Pick<UnifiedEvents, "publicEvents" | "sourceHealth">,
+): EventWithMeta | null {
+  const event = result.publicEvents.find((candidate) => candidate.slug === slug);
+  if (event) return event;
+  if (result.sourceHealth.degraded) {
+    throw new UnifiedEventSnapshotDegradedError(
+      result.sourceHealth.unavailable,
+    );
+  }
+  return null;
+}
+
+/**
+ * Clean live slugs end in their dashed Eastern calendar day; ingested slugs
+ * end in compact YYYYMMDD. A valid past day is useful routing evidence after
+ * the durable archive has supplied a definitive miss: the direct live reader
+ * only contains events whose start is still ahead, so asking it to rebuild
+ * every provider cannot recover that URL. The unified snapshot still runs
+ * because a multi-day event can have a past start and remain underway; the
+ * ingested reader keeps its historical occurrences.
+ *
+ * Legacy `live-...-YYYY-MM-DD-HHmm` aliases are deliberately excluded. Only
+ * the direct live reader understands that format, including an old alias for
+ * a multi-day event that may still be underway.
+ */
+function eventSlugDay(slug: string): string | null {
+  if (slug.startsWith("live-")) return null;
+  const dashed = slug.match(/-(\d{4}-\d{2}-\d{2})$/)?.[1];
+  const compact = slug.match(/-(\d{4})(\d{2})(\d{2})$/);
+  const candidate = dashed ?? (compact
+    ? `${compact[1]}-${compact[2]}-${compact[3]}`
+    : null);
+  if (!candidate) return null;
+  const parsed = new Date(`${candidate}T12:00:00.000Z`);
+  if (
+    !Number.isFinite(parsed.getTime())
+    || parsed.toISOString().slice(0, 10) !== candidate
+  ) {
+    return null;
+  }
+  return candidate;
+}
+
+function isPastDatedEventSlug(slug: string, now: Date): boolean {
+  const day = eventSlugDay(slug);
+  return day !== null && day < easternDayKey(now);
+}
 
 export class EventResolutionTimeoutError extends Error {
   readonly sources: AsyncEventSource[];
@@ -254,7 +325,21 @@ export async function resolveEventPageBySlugWithSources(
   // because the durable archive has not warmed yet. The shared snapshot is
   // normally already hot after /events or /api/events/browse; the same hard
   // page deadline still bounds a cold lookup.
-  for (const source of ["unified", "live", "ingested"] as const) {
+  // Once the archive has answered definitively, a past-dated slug cannot be
+  // recovered by `live`: that reader's provider adapters discard events whose
+  // start is before now. Keep unified in the race for ongoing multi-day rows
+  // and ingested for retained historical occurrences, but do not make an old
+  // shared link pay for a countywide live-feed fanout that cannot match it.
+  // An archive timeout/error deliberately keeps the original all-source path,
+  // so unavailable durable storage is never disguised as a 404.
+  const pastDatedLookup =
+    archive.status === "miss" && isPastDatedEventSlug(slug, now);
+  const directSources: readonly DirectEventSource[] =
+    pastDatedLookup
+      ? ["unified", "ingested"]
+      : ["unified", "live", "ingested"];
+
+  for (const source of directSources) {
     if (Date.now() >= deadline || controller.signal.aborted) break;
     pending.set(
       source,
@@ -295,6 +380,13 @@ export async function resolveEventPageBySlugWithSources(
   }
   controller.abort();
 
+  // A degraded unified miss already proves the optimized past lookup is
+  // incomplete. If the independent ingested read also hangs, report the known
+  // unavailable state rather than letting timeout precedence obscure it. A
+  // hit above still wins, and archive failures never enter this branch.
+  if (pastDatedLookup && failed.length > 0) {
+    throw new EventResolutionUnavailableError([...new Set(failed)]);
+  }
   if (timedOut.length > 0) {
     throw new EventResolutionTimeoutError([...new Set(timedOut)]);
   }

@@ -86,6 +86,7 @@ describe("GET /api/cron/event-archive", () => {
       complete: true,
       accepted: 1,
       upserted: 1,
+      ignoredLifecycleOnly: 0,
       tombstoned: 0,
       batches: 1,
       truncated: false,
@@ -120,6 +121,7 @@ describe("GET /api/cron/event-archive", () => {
       archive: {
         accepted: 1,
         upserted: 1,
+        ignored_lifecycle_only: 0,
         complete: true,
         tombstones_enabled: true,
       },
@@ -154,6 +156,130 @@ describe("GET /api/cron/event-archive", () => {
     );
   });
 
+  it("updates cancelled and postponed identities without archiving other hidden lanes", async () => {
+    const scheduled = {
+      ...publicCard,
+      status: "scheduled",
+    };
+    const cancelled = {
+      slug: "alive-at-five-2026-08-06",
+      source: "celebrate",
+      source_id: "alive-0806",
+      status: "cancelled",
+    };
+    const postponed = {
+      slug: "summer-concert-2026-08-14",
+      source: "celebrate",
+      source_id: "concert-0814",
+      status: "postponed",
+    };
+    const hiddenMeeting = {
+      slug: "planning-commission-2026-08-11",
+      source: "city-frederick",
+      source_id: "meeting-0811",
+      status: "scheduled",
+    };
+    mocks.assembleUnifiedEvents.mockResolvedValue({
+      unified: [scheduled, cancelled, postponed, hiddenMeeting],
+      publicEvents: [scheduled],
+      sourceHealth: { degraded: false, unavailable: [] },
+    });
+    mocks.syncEventArchiveBatch.mockResolvedValue({
+      complete: true,
+      accepted: 3,
+      upserted: 1,
+      ignoredLifecycleOnly: 2,
+      tombstoned: 0,
+      batches: 1,
+      truncated: false,
+      timedOut: false,
+      tombstonesEnabled: false,
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.syncEventArchiveBatch).toHaveBeenCalledWith(
+      [scheduled, cancelled, postponed],
+      expect.objectContaining({
+        successfulSources: ["celebrate"],
+      }),
+    );
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      expect.objectContaining({
+        status: "ok",
+        records_in: 3,
+        records_upserted: 1,
+        records_failed: 0,
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(body.archive).toMatchObject({
+      accepted: 3,
+      upserted: 1,
+      ignored_lifecycle_only: 2,
+      complete: true,
+    });
+  });
+
+  it("attempts lifecycle updates even when the public board is empty", async () => {
+    const cancelled = {
+      slug: "alive-at-five-2026-08-06",
+      source: "celebrate",
+      source_id: "alive-0806",
+      status: "cancelled",
+    };
+    mocks.assembleUnifiedEvents.mockResolvedValue({
+      unified: [cancelled],
+      publicEvents: [],
+      sourceHealth: { degraded: false, unavailable: [] },
+    });
+    mocks.syncEventArchiveBatch.mockResolvedValue({
+      complete: true,
+      accepted: 1,
+      upserted: 0,
+      ignoredLifecycleOnly: 1,
+      tombstoned: 0,
+      batches: 1,
+      truncated: false,
+      timedOut: false,
+      tombstonesEnabled: false,
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(mocks.syncEventArchiveBatch).toHaveBeenCalledWith(
+      [cancelled],
+      expect.any(Object),
+    );
+    expect(body).toMatchObject({
+      ok: false,
+      status: "error",
+      archive_attempted: true,
+      failures: ["no-public-events"],
+      archive: {
+        accepted: 1,
+        upserted: 0,
+        ignored_lifecycle_only: 1,
+        complete: true,
+      },
+    });
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      expect.objectContaining({
+        status: "error",
+        records_in: 1,
+        records_upserted: 0,
+        records_failed: 1,
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
   it("does not touch the archive when its audit heartbeat cannot start", async () => {
     mocks.startIngestRunStrict.mockResolvedValue(null);
 
@@ -178,6 +304,7 @@ describe("GET /api/cron/event-archive", () => {
       complete: true,
       accepted: 0,
       upserted: 0,
+      ignoredLifecycleOnly: 0,
       tombstoned: 0,
       batches: 0,
       truncated: false,
@@ -245,6 +372,7 @@ describe("GET /api/cron/event-archive", () => {
       complete: false,
       accepted: 1_200,
       upserted: 1_200,
+      ignoredLifecycleOnly: 0,
       tombstoned: 0,
       batches: 6,
       truncated: true,

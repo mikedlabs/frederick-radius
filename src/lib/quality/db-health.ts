@@ -23,6 +23,21 @@ import civicSources from "@/../config/civicengage_sources.json" with { type: "js
 
 type RawSql = NonNullable<ReturnType<typeof getSql>>;
 
+const REQUIRED_RUNTIME_TABLES = [
+  // Native menus (0036).
+  "menu_sources",
+  "native_menus",
+  "menu_sections",
+  "menu_items",
+  // Durable event identity (0038).
+  "event_canonical_records",
+  "event_source_identities",
+  "event_slug_aliases",
+  "event_tombstones",
+  // Current source-health projection (0039).
+  "feed_source_health",
+] as const;
+
 export type DbHealthStatus = "available" | "unavailable";
 export type DbHealthUnavailableReason = "not_configured" | "query_failed";
 export type DbHealthEvaluation = {
@@ -63,6 +78,17 @@ async function queryRlsUnprotectedTables(sql: RawSql): Promise<string[]> {
   return rows.map((r) => r.relname);
 }
 
+async function queryMissingRuntimeTables(sql: RawSql): Promise<string[]> {
+  const rows = (await sql`
+    SELECT required.table_name
+    FROM unnest(${[...REQUIRED_RUNTIME_TABLES]}::text[])
+      AS required(table_name)
+    WHERE to_regclass('public.' || required.table_name) IS NULL
+    ORDER BY required.table_name
+  `) as unknown as Array<{ table_name: string }>;
+  return rows.map((row) => row.table_name);
+}
+
 /**
  * mig-6 — RLS-coverage guard. The security model is deny-all RLS on every
  * public table (drizzle/0007, 0009): all reads/writes go through Drizzle on a
@@ -92,6 +118,26 @@ export async function findRlsAnomalies(): Promise<Anomaly[]> {
     kind: "rls_unprotected" as const,
     detail: `public.${t} has RLS DISABLED — the anon/PostgREST role can read/write it. Run "ALTER TABLE public.${t} ENABLE ROW LEVEL SECURITY;" in the Supabase SQL editor.`,
   }));
+}
+
+/**
+ * Migration-readiness guard for code paths that otherwise fail soft to empty
+ * data. Keeping this in the connected nightly check prevents an unapplied
+ * event-archive, native-menu, or source-health migration from looking like a
+ * healthy feature that simply has no records.
+ */
+export async function findMissingRuntimeTables(): Promise<string[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    return await queryMissingRuntimeTables(sql);
+  } catch (err) {
+    console.warn(
+      "[db-health] runtime schema check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
 }
 
 /** A source that exists in ingested_events but hasn't refreshed within this
@@ -246,7 +292,7 @@ export async function findStaleIngestSources(
 }
 
 /**
- * Cron-facing database evaluation. Both required probes must complete before
+ * Cron-facing database evaluation. Every required probe must complete before
  * the database can be called available; otherwise the cron cannot distinguish
  * healthy data from checks that never ran.
  */
@@ -267,10 +313,12 @@ export async function evaluateDbHealth(
   if (!sql) return infrastructureUnavailable("not_configured");
 
   try {
-    const [rlsTables, staleIngestAnomalies] = await Promise.all([
-      queryRlsUnprotectedTables(sql),
-      queryStaleIngestSources(sql, maxAgeHours),
-    ]);
+    const [rlsTables, missingRuntimeTables, staleIngestAnomalies] =
+      await Promise.all([
+        queryRlsUnprotectedTables(sql),
+        queryMissingRuntimeTables(sql),
+        queryStaleIngestSources(sql, maxAgeHours),
+      ]);
     return {
       status: "available",
       reason: null,
@@ -282,6 +330,20 @@ export async function evaluateDbHealth(
             detail: `public.${table} has RLS DISABLED — the anon/PostgREST role can read/write it. Run "ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;" in the Supabase SQL editor.`,
           }),
         ),
+        ...(missingRuntimeTables.length > 0
+          ? [
+              {
+                source: "database schema",
+                kind: "schema_missing" as const,
+                detail:
+                  "Required runtime tables are missing: " +
+                  missingRuntimeTables
+                    .map((table) => `public.${table}`)
+                    .join(", ") +
+                  ". Apply and verify the matching migration before relying on these features.",
+              },
+            ]
+          : []),
         ...staleIngestAnomalies,
       ],
     };

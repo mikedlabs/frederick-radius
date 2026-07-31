@@ -110,6 +110,54 @@ describe("GET /api/cron/data-health-feeds", () => {
     });
   });
 
+  it("starts heartbeat, hydration, and provider work together", async () => {
+    let finishStart: ((value: string) => void) | undefined;
+    let finishHydration: (() => void) | undefined;
+    let finishLive:
+      | ((value: {
+          events: never[];
+          sources_succeeded: string[];
+          sources_failed: string[];
+        }) => void)
+      | undefined;
+    mocks.startIngestRunStrict.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          finishStart = resolve;
+        }),
+    );
+    mocks.hydrateSnapshotsStrict.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishHydration = resolve;
+        }),
+    );
+    mocks.getLiveEvents.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishLive = resolve;
+        }),
+    );
+
+    const pending = GET(request());
+    await vi.waitFor(() => {
+      expect(mocks.startIngestRunStrict).toHaveBeenCalledTimes(1);
+      expect(mocks.hydrateSnapshotsStrict).toHaveBeenCalledTimes(1);
+      expect(mocks.getLiveEvents).toHaveBeenCalledTimes(1);
+    });
+
+    finishStart?.("feed-run");
+    finishHydration?.();
+    finishLive?.({
+      events: [],
+      sources_succeeded: ["county", "city-frederick"],
+      sources_failed: [],
+    });
+
+    const response = await pending;
+    expect(response.status).toBe(200);
+  });
+
   it("fails closed when snapshot persistence fails without exposing the error", async () => {
     mocks.persistCurrentSnapshotsStrict.mockRejectedValue(
       new Error("postgres://user:secret@example.invalid/database"),

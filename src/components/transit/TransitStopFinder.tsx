@@ -30,6 +30,7 @@ import {
   useGeolocation,
   type GeoPosition,
 } from "@/hooks/useGeolocation";
+import { useMounted } from "@/hooks/useSaved";
 import { haversineMeters } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
 import { readableTextOn } from "@/lib/color/readableText";
@@ -868,6 +869,7 @@ function SavedStopRail({
  * arrivals with a usable location fix.
  */
 export default function TransitStopFinder() {
+  const interactionReady = useMounted();
   const { state: geoState, request: requestLocation } = useGeolocation();
   const { stops: savedStops, toggle: toggleSavedStop } =
     useSavedTransitStops();
@@ -1024,6 +1026,10 @@ export default function TransitStopFinder() {
   return (
     <section
       aria-labelledby="my-stop-heading"
+      aria-busy={!interactionReady}
+      data-transit-stop-interaction-ready={
+        interactionReady ? "true" : "false"
+      }
       className="overflow-hidden rounded-[var(--app-radius-lg)] border"
       style={{
         borderColor: "var(--app-border)",
@@ -1133,6 +1139,7 @@ export default function TransitStopFinder() {
             />
             <input
               type="search"
+              disabled={!interactionReady}
               value={query}
               onChange={(event) => {
                 const nextQuery = event.target.value;
@@ -1164,7 +1171,7 @@ export default function TransitStopFinder() {
           <button
             type="button"
             onClick={showNearestStops}
-            disabled={geoState.status === "loading"}
+            disabled={!interactionReady || geoState.status === "loading"}
             aria-label="Show the nearest bus stops"
             className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition disabled:opacity-60 motion-reduce:transition-none"
             style={{

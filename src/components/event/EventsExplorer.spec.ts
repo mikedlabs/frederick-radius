@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { reconcileBrowseResponse } from "./EventsExplorer";
+import {
+  eventGroupRenderState,
+  reconcileBrowseResponse,
+} from "./EventsExplorer";
 
 function event(
   slug: string,
@@ -99,5 +102,41 @@ describe("EventsExplorer deferred browse reconciliation", () => {
     expect(reconciled.liveSlugs).toEqual(["known-event"]);
     expect(reconciled.sourceHealth.degraded).toBe(true);
     expect(reconciled.dataComplete).toBe(false);
+  });
+
+  it("keeps rows from a newly populated degraded horizon expandable", () => {
+    const state = eventGroupRenderState({
+      // The server snapshot had no events in this horizon, but a partial
+      // refresh successfully returned seven before another source failed.
+      summaryCount: 0,
+      loadedCount: 7,
+      dataComplete: false,
+      anyFilter: false,
+      hasLead: true,
+      peek: 3,
+    });
+
+    expect(state).toEqual({
+      groupCount: 7,
+      totalRest: 6,
+      canExpand: true,
+    });
+  });
+
+  it("keeps a larger trusted summary count while the browse response is incomplete", () => {
+    const state = eventGroupRenderState({
+      summaryCount: 9,
+      loadedCount: 4,
+      dataComplete: false,
+      anyFilter: false,
+      hasLead: true,
+      peek: 3,
+    });
+
+    expect(state).toEqual({
+      groupCount: 9,
+      totalRest: 8,
+      canExpand: true,
+    });
   });
 });

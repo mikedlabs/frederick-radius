@@ -791,6 +791,10 @@ export default function AppMap({
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
+  // A visible canvas is not proof that Mapbox has loaded its style and sources.
+  // This flag deliberately promises only that the load handler ran. Initial
+  // amenity/selection camera work may still follow, so do not call it settled.
+  const [mapLoaded, setMapLoaded] = useState(false);
   // A browser with no WebGL (locked-down corporate profile, a headless/bot
   // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
   // renders an empty rectangle, which is exactly the "map failed to load" a
@@ -3484,6 +3488,7 @@ export default function AppMap({
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       data-map-peek={dock && selectionOpen ? "open" : undefined}
       data-map-error={mapError || undefined}
+      data-map-loaded={dock && mapLoaded ? "true" : undefined}
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
@@ -3872,6 +3877,7 @@ export default function AppMap({
             installCountySpotlight(e.target);
             markMapOnLoad();
             commitResultViewport(e.target);
+            setMapLoaded(true);
             // A restored `?c=` camera can open already zoomed in without ever
             // firing moveend, so seed the reset FAB's visibility from the
             // initial frame too.
@@ -5394,7 +5400,7 @@ export default function AppMap({
                       haptic("light");
                       openMapSelection({ kind: "parking", value: g });
                     }}
-                    aria-label={`${g.name} parking garage`}
+                    aria-label={`${g.name} parking garage${g.isClosed ? ", closed" : ""}`}
                     className="fr-park-marker"
                     style={{ "--park-fill": fill, "--park-ink": ink } as React.CSSProperties}
                   >

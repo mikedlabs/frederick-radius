@@ -120,8 +120,9 @@
     {
       "file": "0023_redact_beta_signup_push_logs.sql",
       "sha256": "8edca16d91bea4f778da5a1b55e36aee03a35a405df24756615f14d280e9f166",
-      "production_state": "effects_absent",
-      "note": "A live production check found legacy beta-signup owner-alert bodies still containing email addresses. Apply only after backup state is confirmed, then verify the matching row count is zero."
+      "production_state": "migration_recorded",
+      "migration_record": "redact_beta_signup_push_logs",
+      "note": "Supabase migration history records redact_beta_signup_push_logs at version 20260731114719. A live verification found zero remaining beta-signup owner-alert bodies outside the generic redacted copy."
     },
     {
       "file": "0024_place_hours_refresh.sql",
@@ -187,13 +188,16 @@
     {
       "file": "0035_ingested_event_media.sql",
       "sha256": "9f6f4885d83c52ebaa6d75693f58eee0effc4d394fde252d9b6bb2d907038e53",
-      "production_state": "unverified"
+      "production_state": "migration_recorded",
+      "migration_record": "ingested_event_media",
+      "note": "Supabase migration history records ingested_event_media at version 20260731114720. A live check confirmed both publisher-media columns exist while ingested_events remains RLS-protected from anon and authenticated roles."
     },
     {
       "file": "0036_native_menus.sql",
       "sha256": "d4e9ebfb0c0c50bc3b53551b0c8ad4c845c6d28d590c8c94bd2a84dcb39c30b5",
-      "production_state": "unverified",
-      "note": "Recorded from the repository; production has not been checked."
+      "production_state": "migration_recorded",
+      "migration_record": "native_menus",
+      "note": "Supabase migration history records native_menus at version 20260731114505. A live check confirmed all four tables, expected indexes and constraints, deny-by-default RLS, no anon/authenticated SELECT, and intended service-role CRUD access."
     },
     {
       "file": "0037_places_postgis.sql",
@@ -205,14 +209,16 @@
     {
       "file": "0038_event_identity_archive.sql",
       "sha256": "a02faac9e07c03bb04c442a7d0d0f3ee7f7333de648ead2fee66a5214575c8ab",
-      "production_state": "unverified",
-      "note": "Recorded from the repository; production has not been checked."
+      "production_state": "migration_recorded",
+      "migration_record": "event_identity_archive",
+      "note": "Supabase migration history records event_identity_archive at version 20260730024552 and the follow-up ensure_event_identity_archive_contract_20260730 at version 20260730044808. A live check confirmed all four archive tables exist with RLS enabled."
     },
     {
       "file": "0039_feed_source_health_rollups.sql",
       "sha256": "f5b56e8964cbbd0f7ba26bd7d26b160231beb04d1e93e568e860c059d0e79841",
-      "production_state": "unverified",
-      "note": "Recorded from the repository; production has not been checked."
+      "production_state": "migration_recorded",
+      "migration_record": "feed_source_health_rollups",
+      "note": "Supabase migration history records feed_source_health_rollups at version 20260730031339. A live check confirmed the RLS-protected projection exists and contains current source-health rows."
     }
   ]
 }

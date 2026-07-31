@@ -30,7 +30,11 @@ import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
 import { isChainName } from "@/lib/category-ranking";
 import { isRecommendable } from "@/lib/relevance";
-import { getParkingOccupancy, parkingFeedConfigured } from "@/lib/integrations/parking-live";
+import {
+  getParkingOccupancy,
+  parkingFeedConfigured,
+  type GarageOccupancy,
+} from "@/lib/integrations/parking-live";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { matchesSearchQualifiers, parseSearchQualifiers } from "@/lib/search/qualifiers";
 import { loadAskWeather } from "@/lib/ask/weather";
@@ -78,6 +82,12 @@ export function shouldUseRadiusAgent(query: string, intent: AskIntent): boolean 
   if (intent.kind === "civic") return false;
   if (intent.regions.length > 0) return false;
   return intent.kind === "explore" || intent.kind === "plan" || COMPLEX_RE.test(query);
+}
+
+export function parkingStatusForAsk(
+  deck: Pick<GarageOccupancy, "availabilityState">,
+): GarageOccupancy["availabilityState"] {
+  return deck.availabilityState;
 }
 
 function categoryName(slug: string): string {
@@ -327,7 +337,7 @@ export async function runRadiusAgent(
   });
 
   const checkParking = tool({
-    description: "Check licensed live downtown garage occupancy. Returns unavailable rather than guessing when the feed is not configured.",
+    description: "Check licensed live downtown garage occupancy. Returns unavailable rather than guessing when the feed is not configured. A garage status of open confirms operating state only, not free spaces; unknown must never be described as available.",
     inputSchema: z.object({}),
     execute: async () => {
       toolsUsed.add("parking");
@@ -341,7 +351,7 @@ export async function runRadiusAgent(
           name: deck.name,
           spaces: deck.available,
           percentFull: deck.percentFull,
-          status: deck.isFull ? "full" : deck.isFilling ? "filling" : "available",
+          status: parkingStatusForAsk(deck),
         })),
       };
     },

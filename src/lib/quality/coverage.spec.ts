@@ -8,6 +8,7 @@ import {
   hasUsefulDecisionCopy,
   hasUsefulPhoto,
   summarizeCoverage,
+  summarizeCoverageByCategory,
   summarizeCoverageByTown,
   type CoveragePlace,
 } from "./coverage";
@@ -173,5 +174,46 @@ describe("coverage quality metrics", () => {
       "photo",
     ]);
     expect(priorities[0]?.needed).toBe(1);
+  });
+
+  it("shows field readiness by normalized category", () => {
+    const places = [
+      place({
+        slug: "cafe",
+        category: "coffee",
+        hero_image: "/owned/cafe.jpg",
+        website: "https://example.com/cafe",
+        short_blurb:
+          "This neighborhood cafe serves espresso and breakfast near the square.",
+      }),
+      place({
+        slug: "restaurant",
+        category: "restaurant",
+        website: "https://example.com/restaurant",
+      }),
+    ];
+
+    const categories = summarizeCoverageByCategory(places, [
+      { slug: "coffee", name: "Coffee" },
+      { slug: "restaurant", name: "Restaurants" },
+    ]);
+
+    expect(categories).toHaveLength(2);
+    expect(categories.find((category) => category.slug === "coffee")).toMatchObject({
+      name: "Coffee",
+      total: 1,
+      photo: 1,
+      copy: 1,
+      action: 1,
+    });
+    expect(
+      categories.find((category) => category.slug === "restaurant"),
+    ).toMatchObject({
+      name: "Restaurants",
+      total: 1,
+      photo: 0,
+      copy: 0,
+      action: 1,
+    });
   });
 });

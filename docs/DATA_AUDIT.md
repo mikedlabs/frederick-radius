@@ -84,7 +84,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 - **Live-music venue iCals** — `src/data/live-music-venues.ts` (Tenth Ward, Monocacy Brewing, Bentztown, etc.) consumed request-time by ical-live; Squarespace JSON via `squarespace-live.ts` (3600, "no cron, kept fresh hourly").
 - **Frederick Keys** — `frederickKeys.ts` (MLB StatsAPI schedule, keyless, 3600).
 - **Hood College** — `hood.ts` (Trumba iCal, keyed via `HOOD_CALENDAR_URL`) — **no external importers found; likely dark**.
-- **Visit Frederick** — `visitfrederick.ts` (event RSS, 3600).
+- **Visit Frederick** — `visitfrederick.ts` and `/api/cron/visit-frederick` are activation-ready for a factual-only Vercel Blob snapshot, but the source remains `pending_approval` and the route is deliberately absent from `vercel.json` until written factual-reuse permission is documented. If activated, public requests still read Blob only; the fixed-URL Firecrawl fallback is capped in app-side recovery attempts, not reported as provider credits.
 - **Boundary cleaning** — `src/lib/events/normalize.ts` + `src/lib/format/placeName.ts` — all feed text normalized at ingest/load, never render-time.
 
 ## Civic / live conditions
