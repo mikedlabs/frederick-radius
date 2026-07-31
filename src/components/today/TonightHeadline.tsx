@@ -39,7 +39,17 @@ function easternStartHour(iso: string): number {
   );
 }
 
-export default function TonightHeadline({ event, now }: { event: EventWithMeta; now: Date }) {
+export default function TonightHeadline({
+  event,
+  now,
+  embedded = false,
+}: {
+  event: EventWithMeta;
+  now: Date;
+  /** Nested event-program treatment: tighter rhythm, h3 semantics, lazy art,
+   *  and no offline-lead write because the place decision above owns it. */
+  embedded?: boolean;
+}) {
   const live = isEventLiveNow(event, now);
   const date = eventDateBlock(event);
   const accent = CATEGORY_BY_SLUG[event.category]?.color ?? "#7A7975";
@@ -62,20 +72,23 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
     .join(" · ");
   const titleId = `today-headliner-${event.slug}-title`;
   const detailId = `today-headliner-${event.slug}-detail`;
+  const Title = embedded ? "h3" : "h2";
 
   return (
-    <section aria-label="The headliner" className="mt-6">
-      <OfflineTodayCapture
-        snapshot={{
-          dayKey: easternDayKey(now),
-          lead: {
-            kind: "event",
-            title: event.title,
-            detail: [live ? "On now when saved" : date.time, where].filter(Boolean).join(" · "),
-            href: `/events/${event.slug}`,
-          },
-        }}
-      />
+    <section aria-label="The headliner" className={embedded ? "mt-3" : "mt-6"}>
+      {!embedded ? (
+        <OfflineTodayCapture
+          snapshot={{
+            dayKey: easternDayKey(now),
+            lead: {
+              kind: "event",
+              title: event.title,
+              detail: [live ? "On now when saved" : date.time, where].filter(Boolean).join(" · "),
+              href: `/events/${event.slug}`,
+            },
+          }}
+        />
+      ) : null}
       <p
         className="mb-1.5 flex items-center gap-1.5 px-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
         style={{ color: "var(--app-brand-press)" }}
@@ -101,13 +114,13 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
           >
             {/* This is Today’s one opt-in editorial face. It stays fluid and
                 untruncated so a real event name still reads cleanly at 320px. */}
-            <h2
+            <Title
               id={titleId}
               className="min-w-0 break-words px-0.5 font-editorial text-[clamp(1.875rem,9vw,2.75rem)] leading-[0.98] tracking-[-0.025em] [text-wrap:balance]"
               style={{ color: "var(--app-ink)" }}
             >
               {event.title}
-            </h2>
+            </Title>
             <p
               id={detailId}
               className="mt-2 px-0.5 text-[13px] leading-snug"
@@ -134,7 +147,7 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
                   src={featureImage}
                   alt=""
                   fill
-                  priority
+                  priority={!embedded}
                   unoptimized={featureImage.startsWith("/api/place-photo")}
                   sizes="(max-width: 640px) 100vw, 720px"
                   placeholder="blur"
