@@ -5,6 +5,10 @@ import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
 import { businessTopic } from "@/lib/push-topics";
 import {
+  cancelPendingReturnBridgeValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
+import {
   clearFollowsSync,
   hasCompletedFollowsSync,
   markFollowsSyncComplete,
@@ -271,6 +275,9 @@ export function useToggleFollow(slug: string, source?: string) {
     const current = remoteStore ?? new Set<string>();
     const { next, wasFollowed } = toggleSlug(current, slug);
     writeRemote(next);
+    if (wasFollowed && next.size === 0) {
+      cancelPendingReturnBridgeValue("place");
+    }
     track("save_place", { on: !wasFollowed, source: source ?? "place_detail", synced: true });
 
     void fetch("/api/follows", {
@@ -282,6 +289,9 @@ export function useToggleFollow(slug: string, source?: string) {
     })
       .then((r) => {
         if (!r.ok) throw new Error("follow write failed");
+        if (!wasFollowed && remoteStore?.has(slug)) {
+          signalReturnBridgeValue("place");
+        }
         // Only mirror the push topic once the follow actually persisted, so a
         // reverted (failed) follow never leaves a dangling biz:<slug> topic.
         void syncFollowPushTopic(slug, !wasFollowed);

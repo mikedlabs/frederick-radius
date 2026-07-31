@@ -21,6 +21,7 @@ import SavedEventWallet from "@/components/saved/SavedEventWallet";
 import SavedTransitSection from "@/components/saved/SavedTransitSection";
 import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
 import { useSavedTransitStops } from "@/components/transit/useSavedTransitStops";
+import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
 import { fmtClockShort } from "@/components/saved/walletFacts";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
@@ -639,6 +640,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
       <div className="space-y-4">
         <Masthead stand="Places, events, buses, and stops you want to keep" />
         <EmptyState />
+        <KeepRadiusCard variant="row" />
       </div>
     );
   }
@@ -845,6 +847,8 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           )}
         </section>
       )}
+
+      <KeepRadiusCard variant="row" />
 
       {hasOrganizerContent ? (
       <details

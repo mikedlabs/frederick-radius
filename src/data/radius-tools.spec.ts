@@ -105,6 +105,7 @@ describe("Radius tool registry", () => {
       "nonprofits",
       "collections",
       "saved",
+      "keep-radius",
       "notifications",
       "rivers",
       "overhead",
@@ -148,12 +149,15 @@ describe("Radius tool registry", () => {
       }
 
       if (url.hash) {
-        expect(tool.href).toBe("/beer#find-your-pour");
-        const beerFinder = readFileSync(
-          join(process.cwd(), "src/components/beer/BeerSpinner.tsx"),
-          "utf8",
-        );
-        expect(beerFinder).toContain(`id="${url.hash.slice(1)}"`);
+        const file = tool.href === "/beer#find-your-pour"
+          ? "src/components/beer/BeerSpinner.tsx"
+          : tool.href === "/settings#keep-radius"
+            ? "src/components/settings/PreferencesPanel.tsx"
+            : null;
+        expect(file, `unknown hash destination: ${tool.href}`).not.toBeNull();
+        expect(
+          readFileSync(join(process.cwd(), file as string), "utf8"),
+        ).toContain(`id="${url.hash.slice(1)}"`);
       }
     }
   });

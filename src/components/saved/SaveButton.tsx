@@ -6,6 +6,14 @@ import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { subscribeDevicePush } from "@/lib/pushSubscribe";
+import {
+  isInstallPromptSuppressedPath,
+  isStandalone,
+} from "@/lib/pwa-display";
+import {
+  currentReturnBridgeState,
+  openReturnBridge,
+} from "@/lib/return-bridge";
 import { track } from "@/lib/track";
 import { toast } from "sonner";
 
@@ -43,10 +51,13 @@ const PUSH_NUDGE_KEY = "fr:push-nudge:v1";
  *  ever per device, only when permission is still undecided; a dismissal is
  *  final (Settings remains the deliberate path). Never the browser prompt
  *  cold: the toast asks first, in our voice, and the browser prompt appears
- *  only after an explicit "Remind me". */
+ *  only after an explicit "Remind me". Acquisition comes first: in a normal
+ *  browser tab the Return Bridge owns this save moment, and notifications stay
+ *  available from Settings after the user has installed Radius. */
 async function maybeOfferEventReminders(slug: string): Promise<void> {
   try {
     if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!isStandalone()) return;
     if (Notification.permission !== "default") return; // already granted or blocked
     if (window.localStorage.getItem(PUSH_NUDGE_KEY)) return; // offered before
     window.localStorage.setItem(PUSH_NUDGE_KEY, "1");
@@ -161,6 +172,17 @@ export default function SaveButton({
         e.preventDefault();
         e.stopPropagation();
         const wasSaved = renderedSaved;
+        const returnState = currentReturnBridgeState();
+        const modalOpen = Boolean(
+          document.querySelector('[role="dialog"][aria-modal="true"]'),
+        );
+        const offerKeepAction =
+          !wasSaved
+          && !isStandalone()
+          && !returnState.completed
+          && returnState.valueKind === null
+          && isInstallPromptSuppressedPath(window.location.pathname)
+          && !modalOpen;
         setOptimisticSaved(!wasSaved);
         haptic(wasSaved ? "light" : "medium");
         toggle();
@@ -184,9 +206,14 @@ export default function SaveButton({
           // instead of the routine acknowledgement, plus a longer
           // dwell so the user has time to read what just happened.
           toast.success("Your saved list starts here", {
-            description: "Save places you care about. Find them all under Saved.",
-            duration: 5000,
-            action: { label: "Undo", onClick: () => toggle() },
+            description: "Anything you save stays together under Saved.",
+            duration: offerKeepAction ? 7000 : 5000,
+            action: offerKeepAction
+              ? { label: "Keep handy", onClick: openReturnBridge }
+              : { label: "Undo", onClick: () => toggle() },
+            cancel: offerKeepAction
+              ? { label: "Undo", onClick: () => toggle() }
+              : undefined,
           });
         } else {
           toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
