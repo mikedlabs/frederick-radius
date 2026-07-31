@@ -53,6 +53,11 @@ import {
   hashSourceContent,
   sourceFingerprintMatches,
 } from "./lib/source-content-fingerprint";
+import {
+  BUSINESS_INFO_SHAPE,
+  cleanExtractedBusinessInfo,
+  type ExtractedBusinessInfo,
+} from "./lib/business-info-copy";
 import { publicPlaceBySlug } from "@/lib/loaders/places";
 import { isDestinationCategory } from "@/lib/relevance";
 import {
@@ -65,7 +70,7 @@ const OUT = resolve("src/data/business-info.json");
 const ENR = resolve("src/data/places-enrichment.json");
 const PUBLIC = resolve("src/data/places-client.json");
 const CFG = resolve("config/business-info.json");
-const BUSINESS_EXTRACTOR_VERSION = "business-deep-info-v1";
+const BUSINESS_EXTRACTOR_VERSION = "business-deep-info-v2-plain-copy";
 
 type Enrichment = Record<
   string,
@@ -78,14 +83,7 @@ type Cfg = {
   defaultLimit: number;
   renderFallbackMinChars: number;
 };
-type Info = {
-  known_for?: string;
-  happy_hour?: string;
-  specials?: string[];
-  hours_text?: string;
-  notable?: string;
-};
-type Record_ = Info & {
+type Record_ = ExtractedBusinessInfo & {
   name?: string;
   commerce_links?: ExtractedBusinessCommerceLink[];
   /** Backward compatibility for records written before deterministic anchors. */
@@ -121,20 +119,6 @@ type QueueCandidate = {
   explicitRequest?: boolean;
 };
 
-const SHAPE =
-  `Extract these from this local business's own website. Include ONLY facts ` +
-  `clearly stated on the page — omit any field that isn't. Return JSON:\n` +
-  `{\n` +
-  `  "known_for": string — one complete sentence stating the strongest useful fact about what the place is known for; add a second fact only when it changes the decision,\n` +
-  `  "happy_hour": string — days + times + what's discounted, verbatim where possible (e.g. "Mon–Fri 4–6pm: $5 drafts, $7 wells"),\n` +
-  `  "specials": string[] — recurring weekly specials (e.g. "Taco Tuesday", "half-price bottles Wednesday"),\n` +
-  `  "hours_text": string — operating hours as published,\n` +
-  `  "notable": string — one complete sentence with another useful supported detail, such as patio access, a dog policy, a recurring music night, or parking\n` +
-  `}\n` +
-  `Use complete sentences for known_for and notable. Do not write fragments, slogans, promotional filler, or an automatic three-part list. ` +
-  `Do not return URLs; links are collected directly from real page anchors. ` +
-  `Never invent prices, times, or dishes. If nothing applies, return {}.`;
-
 function domainOf(u: string): string {
   try {
     return new URL(u).hostname.replace(/^www\./, "");
@@ -162,33 +146,6 @@ async function fetchAdaptive(
     fallback ??= plain;
   }
   return fallback;
-}
-
-function cleanExtractedInfo(value: unknown): Info {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const raw = value as Record<string, unknown>;
-  const text = (key: keyof Info): string | undefined => {
-    const candidate = raw[key];
-    return typeof candidate === "string" && candidate.trim()
-      ? candidate.trim()
-      : undefined;
-  };
-  const specials = Array.isArray(raw.specials)
-    ? raw.specials
-        .filter(
-          (candidate): candidate is string =>
-            typeof candidate === "string" && Boolean(candidate.trim()),
-        )
-        .map((candidate) => candidate.trim())
-    : undefined;
-
-  return {
-    ...(text("known_for") ? { known_for: text("known_for") } : {}),
-    ...(text("happy_hour") ? { happy_hour: text("happy_hour") } : {}),
-    ...(specials?.length ? { specials } : {}),
-    ...(text("hours_text") ? { hours_text: text("hours_text") } : {}),
-    ...(text("notable") ? { notable: text("notable") } : {}),
-  };
 }
 
 function isAllowedWebsite(url: string, cfg: Cfg): boolean {
@@ -406,10 +363,22 @@ async function main() {
 
     if (!(await ensureModelReady())) break;
     const extracted = await extractJson<unknown>(
-      `Business: ${candidate.displayName} (Frederick County, MD).\n${SHAPE}`,
+      `Business: ${candidate.displayName} (Frederick County, MD).\n${BUSINESS_INFO_SHAPE}`,
       snapshot.text,
     );
-    const info = cleanExtractedInfo(extracted);
+    const cleanup = cleanExtractedBusinessInfo(extracted);
+    const { info } = cleanup;
+    if (cleanup.rewritten.length > 0) {
+      console.log(
+        `  ~ ${slug}: plain-copy cleanup (${cleanup.rewritten.join(", ")})`,
+      );
+    }
+    for (const dropped of cleanup.dropped) {
+      console.log(
+        `  - ${slug}: ${dropped.field} withheld by voice gate ` +
+          `(${dropped.rules.join(", ")})`,
+      );
+    }
     const commerceLinks = classifyOfficialCommerceLinks(
       snapshot.links,
       snapshot.finalUrl,

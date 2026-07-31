@@ -158,6 +158,17 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
+  it("checks the business copy boundary before any paid extraction", () => {
+    const workflow = workflowText("ingest-business-info.yml");
+    const copyBoundary = workflow.indexOf(
+      "npm test -- tests/business-info-copy.spec.ts tests/style-lint.spec.ts",
+    );
+    const extraction = workflow.indexOf("npm run ingest:business");
+
+    expect(copyBoundary).toBeGreaterThan(-1);
+    expect(extraction).toBeGreaterThan(copyBoundary);
+  });
+
   it("grants explicit write permissions to every workflow that opens a PR", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
