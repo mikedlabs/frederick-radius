@@ -92,6 +92,7 @@ describe("assembleRaw — assembly seam", () => {
       expect.objectContaining({
         includeTicketmaster: false,
         signal: expect.any(AbortSignal),
+        readMode: "public",
       }),
     );
   });

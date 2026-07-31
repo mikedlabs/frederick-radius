@@ -82,6 +82,7 @@ describe("GET /api/cron/data-health-feeds", () => {
     expect(mocks.getLiveEvents).toHaveBeenCalledWith(60, {
       includeTicketmaster: false,
       signal: expect.anything(),
+      readMode: "probe",
     });
     const signal = mocks.getLiveEvents.mock.calls[0]?.[1]?.signal as
       | AbortSignal

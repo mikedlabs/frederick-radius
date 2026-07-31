@@ -26,7 +26,8 @@ export type EventSourceCircuitOutcome<T> = {
 export type EventSourceCircuitClassification =
   | "success"
   | "failure"
-  | "neutral";
+  | "neutral"
+  | "cancelled";
 
 type CircuitEntry = {
   phase: EventSourceCircuitPhase;
@@ -39,6 +40,12 @@ type CircuitEntry = {
 export type EventSourceCircuitOptions<T> = {
   classify: (value: T) => EventSourceCircuitClassification;
   fallback: () => T;
+  /**
+   * Caller-owned cancellation must not be published as shared work. When
+   * false, the attempt still observes and updates the public circuit (including
+   * stale-good fallback), but it neither joins nor becomes `inFlight`.
+   */
+  shareInFlight?: boolean;
 };
 
 export type EventSourceCircuitPolicy = {
@@ -101,6 +108,7 @@ export class EventSourceCircuitRegistry {
   ): Promise<EventSourceCircuitOutcome<T>> {
     const entry = this.entry(source);
     const now = this.now();
+    const shareInFlight = options.shareInFlight !== false;
 
     if (
       entry.phase === "open"
@@ -112,16 +120,31 @@ export class EventSourceCircuitRegistry {
 
     // A closed cold fill and a half-open recovery probe are both single-flight.
     // Concurrent visitors share the one attempt rather than multiplying load.
-    if (entry.inFlight) {
+    if (shareInFlight && entry.inFlight) {
       return entry.inFlight as Promise<EventSourceCircuitOutcome<T>>;
     }
 
-    if (entry.phase === "open") {
+    const stateBeforeAttempt = {
+      phase: entry.phase,
+      failures: entry.failures,
+      nextProbeAtMs: entry.nextProbeAtMs,
+      lastGood: entry.lastGood,
+    };
+
+    if (shareInFlight && entry.phase === "open") {
       entry.phase = "half-open";
       entry.nextProbeAtMs = null;
     }
 
-    const attempt = this.attempt(entry, work, options);
+    const attempt = this.attempt(
+      entry,
+      work,
+      options,
+      stateBeforeAttempt,
+      shareInFlight,
+    );
+    if (!shareInFlight) return attempt;
+
     entry.inFlight = attempt as Promise<EventSourceCircuitOutcome<unknown>>;
     try {
       return await attempt;
@@ -161,6 +184,8 @@ export class EventSourceCircuitRegistry {
     entry: CircuitEntry,
     work: () => Promise<T>,
     options: EventSourceCircuitOptions<T>,
+    stateBeforeAttempt: Omit<CircuitEntry, "inFlight">,
+    restoreStateOnCancellation: boolean,
   ): Promise<EventSourceCircuitOutcome<T>> {
     let value: T;
     try {
@@ -170,6 +195,29 @@ export class EventSourceCircuitRegistry {
     }
 
     const classification = options.classify(value);
+    if (classification === "cancelled") {
+      // A caller-owned deadline says nothing about provider health. Shared
+      // work may have moved an open circuit to half-open, so restore its exact
+      // pre-attempt state. Isolated work never made that transition and must
+      // be a no-op: restoring its snapshot could erase a concurrent visitor's
+      // successful update.
+      if (restoreStateOnCancellation) {
+        entry.phase = stateBeforeAttempt.phase;
+        entry.failures = stateBeforeAttempt.failures;
+        entry.nextProbeAtMs = stateBeforeAttempt.nextProbeAtMs;
+        entry.lastGood = stateBeforeAttempt.lastGood;
+      }
+      const servedStale = entry.lastGood !== undefined;
+      return {
+        value: servedStale ? (entry.lastGood as T) : value,
+        phase: entry.phase,
+        attempted: true,
+        degraded: true,
+        servedStale,
+        nextProbeAtMs: entry.nextProbeAtMs,
+      };
+    }
+
     if (classification === "success") {
       entry.phase = "closed";
       entry.failures = 0;

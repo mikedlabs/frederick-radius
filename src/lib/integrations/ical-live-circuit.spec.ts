@@ -63,9 +63,14 @@ describe("public live-event source circuit integration", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const good = await getLiveEventsForSources(["celebrate"], 60);
+    const controller = new AbortController();
     const failedRefresh = await getLiveEventsForSources(
       ["celebrate"],
       60,
+      {
+        signal: controller.signal,
+        readMode: "public",
+      },
     );
     const skippedVisitor = await getLiveEventsForSources(
       ["celebrate"],
@@ -102,7 +107,10 @@ describe("public live-event source circuit integration", () => {
     const health = await getLiveEventsForSources(
       ["celebrate"],
       60,
-      { signal: healthController.signal },
+      {
+        signal: healthController.signal,
+        readMode: "probe",
+      },
     );
     expect(health.sources_succeeded).toEqual(["celebrate"]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -131,8 +139,9 @@ describe("public live-event source circuit integration", () => {
     });
   });
 
-  it("caps the public municipal fanout at four providers", async () => {
+  it("caps a cancellable public municipal fanout at four providers", async () => {
     vi.useRealTimers();
+    const controller = new AbortController();
     const releases: Array<() => void> = [];
     let active = 0;
     let maxActive = 0;
@@ -164,6 +173,10 @@ describe("public live-event source circuit integration", () => {
         "msd",
       ],
       60,
+      {
+        signal: controller.signal,
+        readMode: "public",
+      },
     );
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
@@ -184,5 +197,131 @@ describe("public live-event source circuit integration", () => {
       ],
     });
     expect(maxActive).toBe(4);
+  });
+
+  it("does not open circuits or start queued providers after caller cancellation", async () => {
+    vi.useRealTimers();
+    const controller = new AbortController();
+    const fetchMock = vi.fn<typeof fetch>((_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const rejectAbort = () =>
+          reject(new DOMException("Aborted", "AbortError"));
+        if (init?.signal?.aborted) rejectAbort();
+        else init?.signal?.addEventListener("abort", rejectAbort, {
+          once: true,
+        });
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = getLiveEventsForSources(
+      [
+        "celebrate",
+        "hood",
+        "fair",
+        "heritage-frederick",
+        "monocacy",
+        "msd",
+      ],
+      60,
+      {
+        signal: controller.signal,
+        readMode: "public",
+      },
+    );
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    controller.abort();
+
+    await expect(pending).resolves.toMatchObject({
+      sources_succeeded: [],
+      sources_failed: [
+        "celebrate",
+        "hood",
+        "fair",
+        "heritage-frederick",
+        "monocacy",
+        "msd",
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    for (const source of [
+      "celebrate",
+      "hood",
+      "fair",
+      "heritage-frederick",
+    ]) {
+      expect(publicEventSourceCircuits.snapshot(`feed:${source}`)).toEqual({
+        phase: "closed",
+        failures: 0,
+        nextProbeAtMs: null,
+        hasLastGood: false,
+      });
+    }
+  });
+
+  it("does not let a cancellable public caller cancel an ordinary visitor", async () => {
+    vi.useRealTimers();
+    const callerController = new AbortController();
+    const requests: Array<{
+      resolve: (response: Response) => void;
+      signal?: AbortSignal;
+    }> = [];
+    const fetchMock = vi.fn<typeof fetch>((_input, init) =>
+      new Promise<Response>((resolve, reject) => {
+        const request = {
+          resolve,
+          signal: init?.signal ?? undefined,
+        };
+        requests.push(request);
+        const rejectAbort = () =>
+          reject(new DOMException("Aborted", "AbortError"));
+        if (request.signal?.aborted) rejectAbort();
+        else request.signal?.addEventListener("abort", rejectAbort, {
+          once: true,
+        });
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const cancellable = getLiveEventsForSources(
+      ["celebrate"],
+      60,
+      {
+        signal: callerController.signal,
+        readMode: "public",
+      },
+    );
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const ordinaryVisitor = getLiveEventsForSources(["celebrate"], 60);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    callerController.abort();
+    requests[1]?.resolve(
+      new Response(ICAL, {
+        status: 200,
+        headers: { "content-type": "text/calendar" },
+      }),
+    );
+
+    const [cancelledResult, visitorResult] = await Promise.all([
+      cancellable,
+      ordinaryVisitor,
+    ]);
+
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    expect(requests[1]?.signal?.aborted).toBe(false);
+    expect(cancelledResult.sources_failed).toEqual(["celebrate"]);
+    expect(visitorResult.sources_succeeded).toEqual(["celebrate"]);
+    expect(visitorResult.events.map((event) => event.id)).toEqual([
+      "recovered-event",
+    ]);
+    expect(publicEventSourceCircuits.snapshot("feed:celebrate")).toEqual({
+      phase: "closed",
+      failures: 0,
+      nextProbeAtMs: null,
+      hasLastGood: true,
+    });
   });
 });

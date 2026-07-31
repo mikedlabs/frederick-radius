@@ -131,7 +131,10 @@ describe("warm-event live fetch session", () => {
     const pending = getLiveEventsForSources(
       ["celebrate"],
       60,
-      { signal: controller.signal },
+      {
+        signal: controller.signal,
+        readMode: "public",
+      },
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
@@ -177,7 +180,10 @@ describe("warm-event live fetch session", () => {
     const probe = getLiveEventsForSources(
       ["celebrate"],
       60,
-      { signal: probeController.signal },
+      {
+        signal: probeController.signal,
+        readMode: "probe",
+      },
     );
     const publicFill = getLiveEventsForSources(["celebrate"], 60);
     await vi.advanceTimersByTimeAsync(0);
@@ -233,7 +239,10 @@ describe("warm-event live fetch session", () => {
     const pending = getLiveEventsForSources(
       ["dfp"],
       60,
-      { signal: controller.signal },
+      {
+        signal: controller.signal,
+        readMode: "public",
+      },
     );
     await vi.waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);

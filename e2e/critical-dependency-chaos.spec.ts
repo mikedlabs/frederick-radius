@@ -20,10 +20,31 @@ async function installDependencyChaos(page: Page) {
     // A request that starts but never produces a usable response. Keep the
     // delay short enough for a required PR check while still exercising the
     // mounted component's pending state and aborted-request path.
-    if (pathname === "/api/sports/keys" || pathname === "/api/search") {
+    const searchQuery =
+      pathname === "/api/search"
+        ? new URL(route.request().url()).searchParams.get("q")
+        : null;
+    if (
+      pathname === "/api/sports/keys" ||
+      (pathname === "/api/search" && searchQuery === "coffee nearby")
+    ) {
       remember("hanging", route);
       await new Promise((resolve) => setTimeout(resolve, 300));
       await route.abort("timedout");
+      return;
+    }
+
+    // Let one map query complete with a trustworthy local zero so the separate
+    // malformed backup-search path is actually exercised.
+    if (
+      pathname === "/api/search" &&
+      searchQuery === "zzzxqv map fallback"
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results: [] }),
+      });
       return;
     }
 
@@ -122,9 +143,9 @@ test.describe("critical surfaces under combined dependency failure", () => {
       .toBe(true);
     await expect(page.getByText(/No food trucks|Nothing.*food truck/i)).toHaveCount(0);
 
-    // MAP: even when the drawing engine cannot initialize in headless CI, the
-    // route must preserve either its search instrument or the readable-list
-    // recovery action. Both are real ways forward, not a blank canvas.
+    // MAP: separately break the primary Radius index and the county-bounded
+    // backup. Neither outage may be translated into a confident zero-result
+    // claim, and the original query plus recovery actions must remain.
     response = await page.goto("/map", {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
@@ -132,10 +153,38 @@ test.describe("critical surfaces under combined dependency failure", () => {
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/map");
     const mapSearch = page.getByRole("combobox", { name: "Search this map" });
-    const mapFallback = page.getByRole("link", { name: "All places" });
+    await expect(mapSearch).toBeVisible();
+    await mapSearch.fill("coffee nearby");
     await expect
-      .poll(async () => (await mapSearch.isVisible()) || (await mapFallback.isVisible()))
+      .poll(() => hits.hanging.includes("/api/search"))
       .toBe(true);
+    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    const searchAttempts = hits.hanging.filter(
+      (path) => path === "/api/search",
+    ).length;
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByText("Searching Radius…")).toBeVisible();
+    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    await expect
+      .poll(
+        () =>
+          hits.hanging.filter((path) => path === "/api/search").length,
+      )
+      .toBeGreaterThan(searchAttempts);
+    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+
+    await mapSearch.fill("zzzxqv map fallback");
+    await expect(mapSearch).toHaveValue("zzzxqv map fallback");
+    await expect
+      .poll(() => hits.malformed.includes("/api/map/search-fallback"), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+    await expect(mapSearch).toHaveValue("zzzxqv map fallback");
+    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
 
     // EVENTS: choosing an interest requests the complete calendar. A 503 must
     // be named as an outage while the already-rendered board and retry remain.

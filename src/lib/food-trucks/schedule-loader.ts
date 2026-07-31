@@ -1,8 +1,21 @@
 import "server-only";
 
 import { buildFoodTruckSchedule } from "./schedule";
-import { readStoredFoodTruckSchedule } from "./schedule-store";
+import {
+  readStoredFoodTruckSchedule,
+  type FoodTruckScheduleReadOptions,
+} from "./schedule-store";
 import type { FoodTruckScheduleSnapshot } from "./schedule-types";
+
+const TODAY_STORED_READ = {
+  cacheMode: "cache-first",
+  timeoutMs: 900,
+} satisfies FoodTruckScheduleReadOptions;
+
+const BOARD_STORED_READ = {
+  cacheMode: "origin-fresh",
+  timeoutMs: 3_000,
+} satisfies FoodTruckScheduleReadOptions;
 
 function coversNow(snapshot: FoodTruckScheduleSnapshot, now: Date): boolean {
   const time = now.getTime();
@@ -26,13 +39,13 @@ function coversNow(snapshot: FoodTruckScheduleSnapshot, now: Date): boolean {
 export async function getStoredFoodTruckSchedule(
   now = new Date(),
 ): Promise<FoodTruckScheduleSnapshot | null> {
-  const stored = await readStoredFoodTruckSchedule();
+  const stored = await readStoredFoodTruckSchedule(TODAY_STORED_READ);
   return stored && coversNow(stored, now) ? stored : null;
 }
 
 /** Read the cron-built board first, then fail softly to the official feeds. */
 export async function getFoodTruckSchedule(now = new Date()): Promise<FoodTruckScheduleSnapshot> {
-  const stored = await getStoredFoodTruckSchedule(now);
-  if (stored) return stored;
+  const stored = await readStoredFoodTruckSchedule(BOARD_STORED_READ);
+  if (stored && coversNow(stored, now)) return stored;
   return buildFoodTruckSchedule(now);
 }

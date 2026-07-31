@@ -39,6 +39,10 @@ describe("food-truck schedule loader", () => {
     mocks.read.mockResolvedValue(current);
 
     await expect(getStoredFoodTruckSchedule(now)).resolves.toBe(current);
+    expect(mocks.read).toHaveBeenCalledWith({
+      cacheMode: "cache-first",
+      timeoutMs: 900,
+    });
     expect(mocks.build).not.toHaveBeenCalled();
   });
 
@@ -58,6 +62,10 @@ describe("food-truck schedule loader", () => {
     mocks.build.mockResolvedValue(rebuilt);
 
     await expect(getFoodTruckSchedule(now)).resolves.toBe(rebuilt);
+    expect(mocks.read).toHaveBeenCalledWith({
+      cacheMode: "origin-fresh",
+      timeoutMs: 3_000,
+    });
     expect(mocks.build).toHaveBeenCalledWith(now);
   });
 

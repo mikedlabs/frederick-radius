@@ -23,9 +23,9 @@ describe("map interaction state contracts", () => {
   it("clears a cached map search when the route no longer has q", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
 
-    expect(source).toContain(
-      "setQ((current) => (current === routeQuery ? current : routeQuery));",
-    );
+    expect(source).toContain("const liveRouteQuery");
+    expect(source).toContain("current === liveRouteQuery ? current : liveRouteQuery");
+    expect(source).toContain("pendingLocalQueryRef.current = null");
     expect(source).not.toContain("if (!routeQuery) return;");
   });
 

@@ -3096,25 +3096,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* iOS can cover a bottom-fixed search with its keyboard. While the field is
      active, lift the whole command into the visible top shelf and let results
      open downward. The map stays visible behind it. */
-  .dock[data-search-open="true"],
-  .dock:has(.dock-search-input:focus) {
+  .dock[data-search-keyboard="true"] {
     top: max(8px, env(safe-area-inset-top, 0px));
     bottom: auto;
   }
-  .dock[data-search-open="true"] .dock-search-results,
-  .dock:has(.dock-search-input:focus) .dock-search-results {
+  .dock[data-search-keyboard="true"] .dock-search-results {
     top: calc(100% + 5px);
     bottom: auto;
     margin-top: 0;
   }
-  .dock[data-search-open="true"] .dock-active-state,
-  .dock:has(.dock-search-input:focus) .dock-active-state {
+  .dock[data-search-keyboard="true"] .dock-active-state {
     display: none;
   }
-  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-right,
-  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-right {
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
   }
 }
@@ -4734,7 +4729,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 68px;
   }
 }
-.dock-host:has(.dock-search-input:focus) .map-results-here,
 .dock-host:has(.dock[data-search-open="true"]) .map-results-here {
   opacity: 0;
   pointer-events: none;
@@ -5584,10 +5578,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: max(10px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
-  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock[data-search-open="true"]) .mapboxgl-ctrl-bottom-right,
-  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock-search-input:focus) .mapboxgl-ctrl-bottom-right {
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
   }
 }

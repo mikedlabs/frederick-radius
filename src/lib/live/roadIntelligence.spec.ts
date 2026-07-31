@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   workZones: vi.fn(),
@@ -37,6 +37,10 @@ import { getRoadIntelligenceSnapshot } from "./roadIntelligence";
 const unavailable = { data: [], available: false };
 
 describe("road intelligence request boundary", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.workZones.mockReset();

@@ -304,6 +304,7 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
         getLiveEvents(60, {
           includeTicketmaster: false,
           signal,
+          readMode: "public",
         }),
       FEED_MS,
       {

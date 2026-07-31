@@ -729,6 +729,38 @@ const MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY = new Set([
   "action:map-transit",
 ]);
 
+const MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS = new Set([
+  "action:map-trash",
+  "action:map-restrooms",
+  "action:map-water",
+  "action:map-dog-stations",
+  "action:map-wifi",
+  "action:map-outlets",
+  "action:map-parking",
+  "action:map-transit",
+  "action:map-radar",
+  "action:map-roads",
+  "action:map-cameras",
+  "action:map-incidents",
+  "action:map-parks",
+  "action:map-trails",
+]);
+
+/**
+ * True when the query is completely handled by deterministic map controls
+ * whose result cannot improve by waiting for the live event corpus.
+ *
+ * Requiring every matching map action to be event-independent protects mixed
+ * requests such as "parks and events tonight": those still receive current
+ * event enrichment instead of taking the utility fast path.
+ */
+export function isLiveEventIndependentMapActionQuery(query: string): boolean {
+  const actions = matchMapActions(query);
+  return actions.length > 0 && actions.every((action) =>
+    MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS.has(action.id),
+  );
+}
+
 /** Search adapter for natural-language qualifiers. Recognized constraints are
  * applied to the result set; they are never reduced to decorative copy. */
 export function qualifiedSearchIndex(

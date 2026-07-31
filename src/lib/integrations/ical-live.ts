@@ -65,10 +65,25 @@ const MAX_ICAL_SOURCE_BYTES = 5_000_000;
 const MAX_WIX_HTML_SOURCE_BYTES = 3_000_000;
 // Event providers are external, burst-sensitive services. Four concurrent
 // source pulls keeps a cold board quick without opening twenty-plus sockets at
-// once. Abortable data-health probes retain their direct fanout below so their
-// cancellation and recovery semantics do not inherit public circuit state.
+// once. The same load-shedding ceiling applies to data-health probes, while
+// their cancellation and recovery semantics remain isolated from public
+// circuit state.
 const PUBLIC_EVENT_SOURCE_CONCURRENCY = 4;
 const PUBLIC_EVENT_FETCH_HORIZON_DAYS = 90;
+
+/**
+ * Public reads participate in the visitor-facing resilience contract:
+ * bounded fanout, circuit breaking, and stale-good fallback. Probe reads are
+ * operational checks owned by data-health; they deliberately bypass both the
+ * public circuit and the request-scoped warm-fill session so their answer
+ * reflects the provider itself.
+ */
+export type LiveEventReadMode = "public" | "probe";
+
+type LiveEventReadOptions = {
+  signal?: AbortSignal;
+  readMode?: LiveEventReadMode;
+};
 
 export type LiveEvent = {
   id: string;
@@ -885,7 +900,12 @@ function parseICalEvents(text: string): ParsedVEvent[] {
   return out;
 }
 
-type FeedFetchResult = { events: LiveEvent[]; ok: boolean };
+type FeedFetchResult = {
+  events: LiveEvent[];
+  ok: boolean;
+  /** Caller-owned cancellation is not evidence that the provider failed. */
+  aborted?: boolean;
+};
 type RawIcalResponse = {
   ok: boolean;
   status: number;
@@ -2054,9 +2074,9 @@ async function fetchFeedOnce(
   parentSignal?: AbortSignal,
 ): Promise<FeedFetchResult> {
   if (feed.source === "county") {
-    // Abortable health probes are intentionally isolated from the cached
-    // county result. Otherwise a route deadline could cancel a shared fill
-    // being awaited by a public event page.
+    // A cancelable read cannot enter the persistent county cache fill.
+    // Otherwise a caller-owned deadline could cancel work shared by a later
+    // event-page render.
     if (parentSignal) {
       return fetchRssFeed(feed, windowDays, parentSignal);
     }
@@ -2191,26 +2211,49 @@ function trimFeedResultToWindow(
 async function fetchFeed(
   feed: FeedSpec,
   windowDays: number,
-  parentSignal?: AbortSignal,
+  options: LiveEventReadOptions = {},
 ): Promise<FeedFetchResult> {
-  // A cancellable operational caller owns its work. Do not place it into the
-  // request-scoped session map, where aborting it could poison another
-  // consumer sharing that session.
-  if (parentSignal) {
-    return fetchFeedOnce(feed, windowDays, parentSignal);
+  const readMode = options.readMode ?? "public";
+
+  // A probe owns its work. It bypasses both public circuit state and the
+  // request-scoped session map, where an operational deadline could otherwise
+  // cancel or reuse a visitor-facing fill.
+  if (readMode === "probe") {
+    return fetchFeedOnce(feed, windowDays, options.signal);
   }
 
-  const publicFetch = async (sharedWindowDays: number) => {
+  const publicFetch = async (
+    sharedWindowDays: number,
+    signal?: AbortSignal,
+  ) => {
     const circuitKey =
       sharedWindowDays <= PUBLIC_EVENT_FETCH_HORIZON_DAYS
         ? `feed:${feed.source}`
         : `feed:${feed.source}:h${sharedWindowDays}`;
     const outcome = await publicEventSourceCircuits.run(
       circuitKey,
-      () => fetchFeedOnce(feed, sharedWindowDays),
+      async () => {
+        const result = await fetchFeedOnce(feed, sharedWindowDays, signal);
+        return signal?.aborted
+          ? { ...result, ok: false, aborted: true }
+          : result;
+      },
       {
-        classify: (result) => result.ok ? "success" : "failure",
-        fallback: (): FeedFetchResult => ({ events: [], ok: false }),
+        classify: (result) =>
+          result.aborted
+            ? "cancelled"
+            : result.ok
+              ? "success"
+              : "failure",
+        fallback: (): FeedFetchResult => ({
+          events: [],
+          ok: false,
+          ...(signal?.aborted ? { aborted: true } : {}),
+        }),
+        // A caller-owned deadline must remain abortable without becoming the
+        // global single-flight promise. Otherwise an ordinary visitor arriving
+        // moments later could inherit this caller's cancellation.
+        shareInFlight: signal === undefined,
       },
     );
     // A stale-good value remains useful, but it must never make the source look
@@ -2224,6 +2267,17 @@ async function fetchFeed(
     PUBLIC_EVENT_FETCH_HORIZON_DAYS,
     windowDays,
   );
+  // A cancellable public caller must still use the public circuit and its
+  // stale-good value, but it must not publish abortable work into the warm-fill
+  // session where another consumer could inherit the caller's deadline.
+  if (options.signal) {
+    const startedAtMs = Date.now();
+    const result = await publicFetch(publicWindowDays, options.signal);
+    return windowDays >= publicWindowDays
+      ? result
+      : trimFeedResultToWindow(result, startedAtMs, windowDays);
+  }
+
   const session = liveEventFetchSession.getStore();
   if (!session) {
     const result = await publicFetch(publicWindowDays);
@@ -2254,7 +2308,7 @@ async function fetchFeed(
 export async function getLiveEventsForSources(
   sources: readonly LiveEvent["source"][],
   windowDays = 60,
-  options: { signal?: AbortSignal } = {},
+  options: LiveEventReadOptions = {},
 ): Promise<{
   events: LiveEvent[];
   sources_succeeded: string[];
@@ -2265,18 +2319,22 @@ export async function getLiveEventsForSources(
     (feed) => feed.url && wanted.has(feed.source),
   );
   const read = (feed: FeedSpec) =>
-    fetchFeed(feed, windowDays, options.signal).then((result) => ({
+    (options.signal?.aborted
+      ? Promise.resolve<FeedFetchResult>({
+          events: [],
+          ok: false,
+          aborted: true,
+        })
+      : fetchFeed(feed, windowDays, options)).then((result) => ({
       source: feed.source,
       evts: result.events,
       ok: result.ok,
     }));
-  const results = options.signal
-    ? await Promise.all(feeds.map(read))
-    : await mapEventSourcesWithConcurrency(
-        feeds,
-        PUBLIC_EVENT_SOURCE_CONCURRENCY,
-        read,
-      );
+  const results = await mapEventSourcesWithConcurrency(
+    feeds,
+    PUBLIC_EVENT_SOURCE_CONCURRENCY,
+    read,
+  );
 
   const seen = new Map<string, LiveEvent>();
   for (const { evts } of results) {
@@ -2316,6 +2374,7 @@ export async function getLiveEvents(
   options: {
     includeTicketmaster?: boolean;
     signal?: AbortSignal;
+    readMode?: LiveEventReadMode;
   } = {},
 ): Promise<{
   events: LiveEvent[];
@@ -2327,26 +2386,33 @@ export async function getLiveEvents(
   // so this path is unchanged until that key is set. Both yield the
   // same LiveEvent shape, so they share the dedupe/filter/sort below.
   const includeTicketmaster = options.includeTicketmaster !== false;
+  const readMode = options.readMode ?? "public";
   const feeds = FEEDS.filter((feed) => feed.url);
   const read = (feed: FeedSpec) =>
-    fetchFeed(feed, windowDays, options.signal).then((result) => ({
+    (options.signal?.aborted
+      ? Promise.resolve<FeedFetchResult>({
+          events: [],
+          ok: false,
+          aborted: true,
+        })
+      : fetchFeed(feed, windowDays, {
+          signal: options.signal,
+          readMode,
+        })).then((result) => ({
       source: feed.source,
       evts: result.events,
       ok: result.ok,
     }));
   const [feedResults, ticketmasterResult] = await Promise.all([
-    // Operational callers pass a signal and retain the old direct fanout: the
-    // route-owned signal can cancel every request immediately, and those
-    // probes never read or mutate public circuit state.
-    options.signal
-      ? Promise.all(feeds.map(read))
-      : mapEventSourcesWithConcurrency(
-          feeds,
-          PUBLIC_EVENT_SOURCE_CONCURRENCY,
-          read,
-        ),
+    // Public and probe reads share the same load-shedding ceiling. Their
+    // resilience state remains intentionally separate inside fetchFeed.
+    mapEventSourcesWithConcurrency(
+      feeds,
+      PUBLIC_EVENT_SOURCE_CONCURRENCY,
+      read,
+    ),
     includeTicketmaster
-      ? options.signal
+      ? readMode === "probe"
         ? fetchLiveTicketmasterMusicResult()
         : runPublicEventAdapter(
             "ticketmaster-music",
