@@ -1,7 +1,19 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { archivedEventFromSnapshot } from "./event-identity";
+
+const mocks = vi.hoisted(() => ({
+  getSql: vi.fn(),
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  getSql: mocks.getSql,
+}));
+
+import {
+  archivedEventFromSnapshot,
+  persistEventIdentity,
+} from "./event-identity";
 
 function snapshot(): EventWithMeta {
   return {
@@ -33,6 +45,10 @@ function snapshot(): EventWithMeta {
 }
 
 describe("event identity archive", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("rebinds a valid snapshot to its canonical slug", () => {
     expect(
       archivedEventFromSnapshot(
@@ -66,4 +82,86 @@ describe("event identity archive", () => {
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("FROM anon, authenticated");
   });
+
+  it.each(["cancelled", "postponed"] as const)(
+    "does not create a canonical page for a brand-new %s-only event",
+    async (status) => {
+      const transactionQueries: string[] = [];
+      const tx = Object.assign(
+        vi.fn((strings: TemplateStringsArray) => {
+          const text = Array.from(strings).join(" ");
+          transactionQueries.push(text);
+          return Promise.resolve([]);
+        }),
+        { json: vi.fn((value: unknown) => value) },
+      );
+      const sql = {
+        begin: vi.fn(
+          async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+            callback(tx),
+        ),
+      };
+      mocks.getSql.mockReturnValue(sql);
+
+      await expect(
+        persistEventIdentity({ ...snapshot(), status }),
+      ).resolves.toBeNull();
+
+      expect(
+        transactionQueries.some((query) =>
+          query.includes("insert into public.event_canonical_records"),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it.each(["cancelled", "postponed"] as const)(
+    "updates a previously scheduled canonical event to %s",
+    async (status) => {
+      const transactionCalls: unknown[][] = [];
+      const tx = Object.assign(
+        vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+          const text = Array.from(strings).join(" ");
+          transactionCalls.push([text, ...values]);
+          if (
+            text.includes("from public.event_source_identities as identity")
+          ) {
+            return Promise.resolve([
+              {
+                id: "11111111-1111-4111-8111-111111111111",
+                canonical_slug: snapshot().slug,
+              },
+            ]);
+          }
+          return Promise.resolve([]);
+        }),
+        { json: vi.fn((value: unknown) => value) },
+      );
+      const sql = {
+        begin: vi.fn(
+          async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+            callback(tx),
+        ),
+      };
+      mocks.getSql.mockReturnValue(sql);
+
+      const changed = { ...snapshot(), status };
+      await expect(persistEventIdentity(changed)).resolves.toMatchObject({
+        canonicalSlug: snapshot().slug,
+        snapshot: expect.objectContaining({ status }),
+      });
+
+      const snapshotUpdate = transactionCalls.find(([query]) =>
+        String(query).includes("set snapshot ="),
+      );
+      expect(snapshotUpdate).toContain(status);
+      expect(
+        transactionCalls.some(([query]) =>
+          String(query).includes(
+            "insert into public.event_canonical_records",
+          ),
+        ),
+      ).toBe(false);
+    },
+  );
 });

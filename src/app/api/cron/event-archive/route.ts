@@ -147,6 +147,19 @@ export async function GET(request: Request) {
 
   const publicEvents =
     unified?.status === "fulfilled" ? unified.value.publicEvents : [];
+  // Cancelled and postponed rows are intentionally absent from public
+  // discovery, but an event Radius previously published still needs its
+  // durable record updated. The archive writer refuses to create a brand-new
+  // canonical page from a lifecycle-only row.
+  const lifecycleEvents =
+    unified?.status === "fulfilled"
+      ? unified.value.unified.filter(
+          (event) =>
+            event.status === "cancelled"
+            || event.status === "postponed",
+        )
+      : [];
+  const archiveEvents = [...publicEvents, ...lifecycleEvents];
   if (
     unified?.status === "fulfilled"
     && unified.value.sourceHealth.degraded
@@ -188,9 +201,9 @@ export async function GET(request: Request) {
       : undefined;
 
   const archiveOutcome =
-    publicEvents.length > 0
+    archiveEvents.length > 0
       ? await withDeadlineOutcome(
-          syncEventArchiveBatch(publicEvents, {
+          syncEventArchiveBatch(archiveEvents, {
             deadlineMs: EVENT_ARCHIVE_DB_DEADLINE_MS,
             successfulSources,
             seenSourceIdentities,
@@ -212,7 +225,8 @@ export async function GET(request: Request) {
     if (archive.truncated) failures.add("archive-truncated");
     if (
       !archive.complete
-      || archive.upserted !== archive.accepted
+      || archive.upserted + archive.ignoredLifecycleOnly
+        !== archive.accepted
     ) {
       failures.add("archive-incomplete");
     }
@@ -231,7 +245,7 @@ export async function GET(request: Request) {
     (signal) =>
       finishIngestRunStrict(runId, {
         status,
-        records_in: publicEvents.length,
+        records_in: archiveEvents.length,
         records_upserted: recordsUpserted,
         records_failed: failureList.length,
         error: failureSummary(failureList),
@@ -274,6 +288,7 @@ export async function GET(request: Request) {
       ? {
           accepted: archive.accepted,
           upserted: archive.upserted,
+          ignored_lifecycle_only: archive.ignoredLifecycleOnly,
           tombstoned: archive.tombstoned,
           batches: archive.batches,
           complete: archive.complete,

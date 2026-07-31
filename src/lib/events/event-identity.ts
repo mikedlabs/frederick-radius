@@ -1,6 +1,7 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { archiveJsonText } from "@/lib/events/archive-json";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -263,6 +264,13 @@ export async function persistEventIdentity(
       )[0];
     }
 
+    // A cancellation or postponement is an update to something Radius
+    // already published, not a reason to create a brand-new event page. The
+    // dedicated archive worker applies the same rule in bulk. Stable source
+    // identity (or an old slug alias) still lets a real scheduled event
+    // receive its new lifecycle status and snapshot below.
+    if (!record && eventStatus !== "scheduled") return null;
+
     if (!record) {
       const inserted = await tx<IdentityRow[]>`
         insert into public.event_canonical_records (
@@ -275,7 +283,7 @@ export async function persistEventIdentity(
         )
         values (
           ${event.slug},
-          ${tx.json(snapshotObject(event, event.slug))},
+          ${archiveJsonText(snapshotObject(event, event.slug))}::jsonb,
           ${startsAt},
           ${endsAt},
           ${eventStatus},
@@ -319,7 +327,7 @@ export async function persistEventIdentity(
     const snapshot = snapshotObject(event, canonicalSlug);
     await tx`
       update public.event_canonical_records
-      set snapshot = ${tx.json(snapshot)},
+      set snapshot = ${archiveJsonText(snapshot)}::jsonb,
           starts_at = ${startsAt},
           ends_at = ${endsAt},
           event_status = ${eventStatus},
