@@ -136,6 +136,14 @@ test("a map place sheet carries its live camera, layers, and query to the full p
       return `${url.pathname}${url.search}${url.hash}`;
     })
     .toBe(mapReturnHref);
+  // The exact selected place is part of the return state, so its phone peek
+  // intentionally sits above the search controls. Prove that selection came
+  // back, then close it before checking the restored query field.
+  const closeReturnedPlace = page.getByRole("button", {
+    name: "Close Gravel & Grind",
+  });
+  await expect(closeReturnedPlace).toBeVisible();
+  await closeReturnedPlace.click();
   await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
     "Gravel and Grind",
   );
