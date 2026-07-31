@@ -192,7 +192,11 @@ describe("resolveEventPageBySlugWithSources", () => {
   });
 
   it("resolves a retained ingested occurrence after its slug day has passed", async () => {
-    const retained = event("library-movie-fcpl-2026-07-27");
+    const retained = {
+      ...event("library-movie-fcpl-20260727"),
+      starts_at: "2026-07-27T18:00:00.000Z",
+      ends_at: "2026-07-27T20:00:00.000Z",
+    };
     const loaders = sources({
       ingested: vi.fn(async () => retained),
       live: vi.fn(
@@ -212,6 +216,45 @@ describe("resolveEventPageBySlugWithSources", () => {
       retained.slug,
       retained.slug,
     ]);
+  });
+
+  it("returns an honest miss for a past compact ingested slug without starting live providers", async () => {
+    const loaders = sources({
+      live: vi.fn(
+        () => new Promise<EventWithMeta | null>(() => undefined),
+      ),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        "library-movie-fcpl-20260509",
+        new Date("2026-07-31T16:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toBeNull();
+    expect(loaders.unified).toHaveBeenCalledOnce();
+    expect(loaders.ingested).toHaveBeenCalledOnce();
+    expect(loaders.live).not.toHaveBeenCalled();
+  });
+
+  it("keeps legacy live aliases on the alias-aware direct reader", async () => {
+    const legacy = {
+      ...event("live-summer-exhibit-test-venue-2026-07-01-1400"),
+      starts_at: "2026-07-01T18:00:00.000Z",
+      ends_at: "2026-08-31T21:00:00.000Z",
+    };
+    const loaders = sources({
+      live: vi.fn(async () => legacy),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        legacy.slug,
+        new Date("2026-07-30T16:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: legacy, kind: "live" });
+    expect(loaders.live).toHaveBeenCalledOnce();
   });
 
   it("returns an honest miss for a past-dated slug without starting the live fanout", async () => {
@@ -346,6 +389,23 @@ describe("resolveEventPageBySlugWithSources", () => {
 
   it("uses the Eastern day boundary before classifying a dated slug as past", async () => {
     const sameEasternDay = event("late-show-2026-07-30");
+    const loaders = sources({
+      live: vi.fn(async () => sameEasternDay),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        sameEasternDay.slug,
+        // 10 PM on July 30 in Frederick, though the UTC date is July 31.
+        new Date("2026-07-31T02:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: sameEasternDay, kind: "live" });
+    expect(loaders.live).toHaveBeenCalledOnce();
+  });
+
+  it("uses the Eastern day boundary for compact ingested-style slugs", async () => {
+    const sameEasternDay = event("late-library-show-fcpl-20260730");
     const loaders = sources({
       live: vi.fn(async () => sameEasternDay),
     });

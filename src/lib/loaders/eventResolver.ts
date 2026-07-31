@@ -100,16 +100,25 @@ type EventLookupOutcome =
 const LOOKUP_TIMEOUT = Symbol("event-lookup-timeout");
 
 /**
- * Clean live and ingested event slugs end in their Eastern calendar day. A
- * valid past day is useful routing evidence after the durable archive has
- * supplied a definitive miss: the direct live reader only contains events
- * whose start is still ahead, so asking it to rebuild every provider cannot
- * recover that URL. The unified snapshot still runs because a multi-day event
- * can have a past start and remain underway; the ingested reader keeps its
- * historical occurrences.
+ * Clean live slugs end in their dashed Eastern calendar day; ingested slugs
+ * end in compact YYYYMMDD. A valid past day is useful routing evidence after
+ * the durable archive has supplied a definitive miss: the direct live reader
+ * only contains events whose start is still ahead, so asking it to rebuild
+ * every provider cannot recover that URL. The unified snapshot still runs
+ * because a multi-day event can have a past start and remain underway; the
+ * ingested reader keeps its historical occurrences.
+ *
+ * Legacy `live-...-YYYY-MM-DD-HHmm` aliases are deliberately excluded. Only
+ * the direct live reader understands that format, including an old alias for
+ * a multi-day event that may still be underway.
  */
 function eventSlugDay(slug: string): string | null {
-  const candidate = slug.match(/-(\d{4}-\d{2}-\d{2})(?:-\d+)?$/)?.[1];
+  if (slug.startsWith("live-")) return null;
+  const dashed = slug.match(/-(\d{4}-\d{2}-\d{2})$/)?.[1];
+  const compact = slug.match(/-(\d{4})(\d{2})(\d{2})$/);
+  const candidate = dashed ?? (compact
+    ? `${compact[1]}-${compact[2]}-${compact[3]}`
+    : null);
   if (!candidate) return null;
   const parsed = new Date(`${candidate}T12:00:00.000Z`);
   if (
