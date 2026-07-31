@@ -122,8 +122,12 @@ export async function GET(request: NextRequest) {
     Boolean(qualifiers.compoundIntent || qualifiers.strictPlaceKind) ||
     directCategoryRequest ||
     exactEntityAnswer;
+  const baseHasAtmHandoff = base.results.some(
+    (result) => result.id === "action:map-atm",
+  );
   const skipLiveEventAssembly =
-    mapRequest && !isEventSearchIntent(q) && baseAnswersMap;
+    !isEventSearchIntent(q) &&
+    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff);
   // Rank against the LIVE unified event set, not just the ~30 curated
   // seeds: searching "pride" found nothing while "Pride at the Pubs" led
   // /events (fresh-eyes audit, Jul 2026). The assembly is the same
@@ -156,7 +160,15 @@ export async function GET(request: NextRequest) {
       searchResult = qualifiedSearchIndex(q, limit, events, searchContext);
     }
   }
-  const { results, meta } = searchResult;
+  // The global ATM action is a handoff into Map's live provider search. Once
+  // the request is already coming from Map, returning that same action would
+  // route back to /map?q=ATM and prevent AppMap's zero-result fallback from
+  // ever running.
+  const mapAtmHandoff = mapRequest && baseHasAtmHandoff;
+  const results = mapRequest
+    ? searchResult.results.filter((result) => result.id !== "action:map-atm")
+    : searchResult.results;
+  const { meta } = searchResult;
   const responseMeta = liveEventsUnavailable
     ? { ...meta, liveEventsUnavailable: true }
     : meta;
@@ -175,7 +187,7 @@ export async function GET(request: NextRequest) {
   }
 
   // A real query that found nothing is a data gap — bank it after responding.
-  if (results.length === 0) {
+  if (results.length === 0 && !mapAtmHandoff) {
     after(() => recordSearchMiss(q, "search"));
   }
 

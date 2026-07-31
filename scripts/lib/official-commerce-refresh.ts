@@ -4,7 +4,7 @@ import {
   type ExtractedBusinessCommerceLink,
   type PageAnchor,
 } from "./official-commerce-links";
-import { isKnownThirdPartyBusinessSource } from "./business-info-source-policy";
+import { businessInfoSourceKind } from "./business-info-source-policy";
 import { dedupeCommerceDestinations } from "@/lib/commerce/canonical";
 
 export const FOOD_DRINK_CATEGORIES = new Set([
@@ -102,11 +102,14 @@ function excludedHostMatches(host: string, rawRule: string): boolean {
 /** Reject directories, social profiles, government pages, and unsafe URLs. */
 export function isEligibleOfficialBusinessWebsite(
   url: string,
+  businessName: string,
   excludedDomains: string[],
 ): boolean {
   const host = normalizedHostname(url);
   if (!host) return false;
-  if (isKnownThirdPartyBusinessSource(url)) return false;
+  if (businessInfoSourceKind(url, businessName) !== "business_website") {
+    return false;
+  }
   return !excludedDomains.some((rule) => excludedHostMatches(host, rule));
 }
 

@@ -132,14 +132,28 @@ async function fetchAdaptive(
 
 async function crawlOfficialWebsite(
   officialUrl: string,
+  businessName: string,
   cfg: Config,
   maxFollowPages: number,
   postalCode?: string,
 ): Promise<CrawlSuccess | CrawlFailure> {
+  if (
+    !isEligibleOfficialBusinessWebsite(
+      officialUrl,
+      businessName,
+      cfg.excludeDomains,
+    )
+  ) {
+    return { ok: false, reason: "starting URL is not owned by this business" };
+  }
   const home = await fetchAdaptive(officialUrl, cfg.renderFallbackMinChars);
   if (!home) return { ok: false, reason: "official site was unreadable" };
   if (
-    !isEligibleOfficialBusinessWebsite(home.finalUrl, cfg.excludeDomains)
+    !isEligibleOfficialBusinessWebsite(
+      home.finalUrl,
+      businessName,
+      cfg.excludeDomains,
+    )
   ) {
     return {
       ok: false,
@@ -169,7 +183,11 @@ async function crawlOfficialWebsite(
     if (
       !page ||
       !isTrustedBusinessWebsiteRedirect(home.finalUrl, page.finalUrl) ||
-      !isEligibleOfficialBusinessWebsite(page.finalUrl, cfg.excludeDomains)
+      !isEligibleOfficialBusinessWebsite(
+        page.finalUrl,
+        businessName,
+        cfg.excludeDomains,
+      )
     ) {
       continue;
     }
@@ -275,6 +293,7 @@ async function main() {
       Boolean(place.website) &&
       isEligibleOfficialBusinessWebsite(
         place.website!,
+        place.name,
         cfg.excludeDomains,
       ),
   );
@@ -314,6 +333,7 @@ async function main() {
       place,
       result: await crawlOfficialWebsite(
         place.website!,
+        place.name,
         cfg,
         options.maxFollowPages,
         place.postal_code,

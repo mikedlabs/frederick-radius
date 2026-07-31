@@ -22,26 +22,96 @@ describe("official commerce refresh", () => {
 
   it("accepts official sites and rejects unsafe, government, social, and directory URLs", () => {
     expect(
-      isEligibleOfficialBusinessWebsite("https://example.com", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "https://example.com",
+        "Example Restaurant",
+        excluded,
+      ),
     ).toBe(true);
     expect(
-      isEligibleOfficialBusinessWebsite("https://menu.example.com", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "https://menu.example.com",
+        "Example Restaurant",
+        excluded,
+      ),
     ).toBe(true);
     expect(
-      isEligibleOfficialBusinessWebsite("javascript:alert(1)", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "javascript:alert(1)",
+        "Example Restaurant",
+        excluded,
+      ),
     ).toBe(false);
     expect(
-      isEligibleOfficialBusinessWebsite("https://www.yelp.com/biz/example", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "https://www.yelp.com/biz/example",
+        "Example Restaurant",
+        excluded,
+      ),
     ).toBe(false);
     expect(
-      isEligibleOfficialBusinessWebsite("https://food.city.gov/menu", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "https://food.city.gov/menu",
+        "Example Restaurant",
+        excluded,
+      ),
     ).toBe(false);
     expect(
-      isEligibleOfficialBusinessWebsite("https://notyelp.com", excluded),
+      isEligibleOfficialBusinessWebsite(
+        "https://notyelp.com",
+        "Not Yelp",
+        excluded,
+      ),
     ).toBe(true);
     expect(
       isEligibleOfficialBusinessWebsite(
         "https://www.bringfido.com/attraction/12519",
+        "Baker Park Dog Park",
+        [],
+      ),
+    ).toBe(false);
+    for (const [url, name] of [
+      [
+        "https://local.yahoo.com/info-12634973-cruise-holidays-of-frederick-frederick/",
+        "Cruise Holidays",
+      ],
+      [
+        "https://web.frederickchamber.org/Restaurants/Example-Restaurant-42",
+        "Example Restaurant",
+      ],
+      [
+        "https://www.touristplaces.info/frederick-md/staley-park/",
+        "Staley Park",
+      ],
+      [
+        "https://epicbend.com/cacique-in-frederick/",
+        "Cacique Frederick",
+      ],
+      [
+        "https://www.frederickschild.com/5-places-to-sip-a-healthy-smoothie-in-frederick-county/",
+        "Vitality Protein Smoothie Bar",
+      ],
+      [
+        "https://ffm.org/farmers/stone-hearth-bakery",
+        "Stone Hearth Bakery",
+      ],
+    ]) {
+      expect(isEligibleOfficialBusinessWebsite(url, name, [])).toBe(false);
+    }
+  });
+
+  it("accepts a valid Frederick business site only for its bound business", () => {
+    expect(
+      isEligibleOfficialBusinessWebsite(
+        "https://www.cafe-nola.com/menu",
+        "Cafe Nola",
+        [],
+      ),
+    ).toBe(true);
+    expect(
+      isEligibleOfficialBusinessWebsite(
+        "https://www.cafe-nola.com/menu",
+        "Different Coffee Shop",
         [],
       ),
     ).toBe(false);
