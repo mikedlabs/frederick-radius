@@ -19,7 +19,11 @@ import { VERIFIED_TOWN_WEBSITES } from "@/data/town-websites";
 import { approvedCountyHealthEndpoints } from "@/lib/integrations/fcCountyHealth";
 import {
   HIGH_VALUE_SOURCE_ENDPOINTS,
+  MARC_SOURCE_ENDPOINTS,
+  RUNTIME_SOURCE_ENDPOINTS,
+  aggregateFeedHealthBySource,
   probeFeedEndpoints,
+  runtimeSourceProbeGate,
   type FeedHealthEndpoint as Endpoint,
 } from "@/lib/quality/feed-health";
 
@@ -64,30 +68,7 @@ const FEED_ENDPOINTS: Endpoint[] = [
     critical: true,
     method: "GET",
   },
-  {
-    group: "MARC static GTFS",
-    url: "https://feeds.mta.maryland.gov/gtfs/marc",
-    critical: true,
-    method: "HEAD",
-  },
-  {
-    group: "MARC vehicle positions",
-    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-vp.pb",
-    critical: true,
-    method: "GET",
-  },
-  {
-    group: "MARC trip updates",
-    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-tu.pb",
-    critical: true,
-    method: "GET",
-  },
-  {
-    group: "MTA service alerts",
-    url: "https://feeds.mta.maryland.gov/alerts.pb",
-    critical: true,
-    method: "GET",
-  },
+  ...MARC_SOURCE_ENDPOINTS,
   {
     group: "County rec FeatureServer",
     url: "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0?f=json",
@@ -106,104 +87,10 @@ const FEED_ENDPOINTS: Endpoint[] = [
 // degraded state to their consumers. Probe every upstream here, but keep each
 // one warning-only: no single source below provides complete traffic, weather,
 // emergency, or public-health coverage by itself.
-const RUNTIME_FEED_ENDPOINTS: Endpoint[] = [
-  {
-    group: "Maryland WZDx",
-    sourceId: "md_wzdx",
-    url: "https://filter.ritis.org/wzdx_v4.1/mdot.geojson",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART traffic speeds",
-    sourceId: "mdot_chart_tss",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART travel times",
-    sourceId: "mdot_chart_travel",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTravelRouteDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART message signs",
-    sourceId: "mdot_chart_dms",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getDMSMapDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART road weather",
-    sourceId: "mdot_chart_rwis",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getRWISMapDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART road conditions",
-    sourceId: "mdot_chart_ips",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getIPSMapDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "CHART snow emergency",
-    sourceId: "mdot_chart_sep",
-    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getSEPMapDataJSON.do",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "City emergency RSS",
-    sourceId: "city_emergency_rss",
-    url: "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=63&CID=City-Emergencies-4",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "County Health burn-ban RSS",
-    sourceId: "county_health_alerts",
-    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Burn-Ban-4",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "County Health closings RSS",
-    sourceId: "county_health_alerts",
-    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Closings-5",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "County Health notices RSS",
-    sourceId: "county_health_alerts",
-    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Health-Notices-1",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "NWS local storm reports",
-    sourceId: "nws_lsr",
-    url: "https://api.weather.gov/products/types/LSR/locations/LWX",
-    critical: false,
-    method: "GET",
-  },
-  {
-    group: "NOAA nowCOAST lightning",
-    sourceId: "nowcoast_lightning",
-    url: "https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
-    critical: false,
-    method: "GET",
-  },
-];
-
 const ENDPOINTS: Endpoint[] = [
   ...TOWN_ENDPOINTS,
   ...FEED_ENDPOINTS,
-  ...RUNTIME_FEED_ENDPOINTS,
+  ...RUNTIME_SOURCE_ENDPOINTS,
   ...HIGH_VALUE_SOURCE_ENDPOINTS,
   ...approvedCountyHealthEndpoints(),
 ];
@@ -229,6 +116,10 @@ async function main() {
   );
   const downOther = results.filter(
     (r) => !r.ok && !r.skipped && !r.critical,
+  );
+  const runtimeGate = runtimeSourceProbeGate(
+    aggregateFeedHealthBySource(results),
+    results,
   );
 
   console.log(
@@ -263,8 +154,16 @@ async function main() {
           .map((r) => `  - [${r.group}] ${r.url} → ${r.status}`)
           .join("\n"),
     );
-    process.exit(1);
   }
+
+  if (runtimeGate.blocking && downCritical.length === 0) {
+    console.error(
+      "\nSYSTEMIC runtime-source outage — failing the run:\n" +
+        `  - ${runtimeGate.failed} of ${runtimeGate.configured} configured source(s) failed (${runtimeGate.reason}).`,
+    );
+  }
+
+  if (downCritical.length || runtimeGate.blocking) process.exit(1);
 
   console.log("\nAll critical feeds healthy.");
 }

@@ -410,9 +410,10 @@ test.describe("mobile discovery shell", () => {
       ),
     ).toBeLessThanOrEqual(1);
 
-    await page.getByRole("button", { name: "Manage" }).click();
-    const dialog = page.getByRole("dialog", { name: "Tool Deck" });
+    await page.getByRole("button", { name: "Edit" }).click();
+    const dialog = page.getByRole("dialog", { name: "All tools" });
     await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("searchbox")).toHaveCount(0);
     expect(
       await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
     ).toBeLessThanOrEqual(1);

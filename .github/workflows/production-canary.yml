@@ -11,6 +11,10 @@ name: Production apex canary
 # the repository secret VERCEL_TOKEN; read-only canary runs do not.
 on:
   deployment_status:
+  # Event providers can degrade after a clean deployment. Six small checks a
+  # day catch that drift without turning this canary into a high-cost crawler.
+  schedule:
+    - cron: "27 */4 * * *"
   workflow_dispatch:
     inputs:
       base_url:
@@ -22,7 +26,9 @@ on:
         required: false
 
 concurrency:
-  group: production-apex-canary
+  # Keep routine observations away from the rollback-capable deployment gate.
+  # Runs from the same trigger still supersede older copies of themselves.
+  group: production-apex-canary-${{ github.event_name }}
   cancel-in-progress: true
 
 permissions:
@@ -33,6 +39,7 @@ jobs:
     name: Apex matches promoted commit
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
       (
         github.event.deployment_status.state == 'success' &&
         (

@@ -99,6 +99,35 @@ jobs:
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 
+      # Keep the checked-in scorecard on the same snapshot as the generated
+      # client data. Without this step the review document can describe an old
+      # catalog and an obsolete refresh cycle even while the bot PR is current.
+      - name: Refresh coverage scorecard
+        run: npm run coverage:scorecard
+
+      # Reduce a large generated-data diff to the status decisions a person
+      # needs to inspect. The script compares HEAD with the rebuilt worktree,
+      # writes a manifest into the PR, and exposes compact counts below.
+      - name: Build hours refresh review manifest
+        id: hours-review
+        run: npm run review:hours-refresh
+
+      - name: Flag status changes for manual review
+        if: ${{ steps.hours-review.outputs.review_required == 'true' }}
+        env:
+          PUBLIC_ADDITIONS: ${{ steps.hours-review.outputs.public_additions }}
+          PUBLIC_REMOVALS: ${{ steps.hours-review.outputs.public_removals }}
+          NEWLY_CLOSED: ${{ steps.hours-review.outputs.newly_closed }}
+        run: |
+          echo "::warning title=Hours refresh needs place-status review::$PUBLIC_REMOVALS public removal(s), $PUBLIC_ADDITIONS public addition(s), and $NEWLY_CLOSED new closed-status transition(s). Read docs/hours-refresh-review.md before merging."
+
+      - name: Publish hours refresh review summary
+        if: ${{ always() }}
+        run: |
+          if [ -f docs/hours-refresh-review.md ]; then
+            cat docs/hours-refresh-review.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Enforce critical data gates
         run: npm run gates
 
@@ -119,12 +148,29 @@ jobs:
             Automated nightly refresh from the data-steward workflow.
 
             Ran: build:place-refresh-identities, refresh:hours,
-            build:client-places, and the data-quality scorecard. The rolling
+            build:client-places, coverage:scorecard, the hours-change review,
+            and the data-quality gates. The rolling
             hours snapshot includes Google's latest business status for each
             refreshed identity. Transit refresh runs in its own independent job.
             Critical gates block this PR; existing high-severity coverage debt
             remains visible without blocking an incremental refresh. Review the
             diff before merging.
+
+            Hours change review:
+            - Manual review required: ${{ steps.hours-review.outputs.review_required }}
+            - Public additions: ${{ steps.hours-review.outputs.public_additions }}
+            - Public removals: ${{ steps.hours-review.outputs.public_removals }}
+            - Newly closed provider statuses: ${{ steps.hours-review.outputs.newly_closed }}
+            - Reopenings: ${{ steps.hours-review.outputs.reopenings }}
+
+            Read `docs/hours-refresh-review.md` before merging. Public additions,
+            removals, and new closure transitions are never hidden inside the
+            generated JSON diff.
+
+            Review checklist:
+            - [ ] I checked every public addition and removal in the manifest.
+            - [ ] I verified each newly closed public place against a current first-party or official source.
+            - [ ] I confirmed the coverage gain and unmatched-row count are reasonable.
           labels: |
             data-pipeline
             automated

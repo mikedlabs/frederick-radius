@@ -17,7 +17,11 @@ import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
-import { isChainName, ratingSignal } from "@/lib/category-ranking";
+import {
+  coffeeIntentTier,
+  isChainName,
+  ratingSignal,
+} from "@/lib/category-ranking";
 import { isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 
@@ -136,6 +140,10 @@ export type WantCandidate = {
   google_rating_count?: number;
   hidden_gem?: boolean;
   local_favorite?: boolean;
+  /** Relevance bucket for a specific want. Undefined keeps the ordinary
+   * ranking unchanged; generic coffee uses it to put actual coffee
+   * destinations before incidental and boba matches. */
+  intent_fit_tier?: number;
 };
 
 /** The slice of a place a `refine` predicate can read — the narrowing seam
@@ -276,6 +284,8 @@ export function partitionWant(candidates: WantCandidate[]): {
   );
 
   const byProximityThenScore = (a: WantCandidate, b: WantCandidate) => {
+    const fit = (b.intent_fit_tier ?? 0) - (a.intent_fit_tier ?? 0);
+    if (fit !== 0) return fit;
     const da = a.distance_m ?? Infinity;
     const db = b.distance_m ?? Infinity;
     if (da !== db) return da - db;
@@ -284,6 +294,8 @@ export function partitionWant(candidates: WantCandidate[]): {
   open.sort(byProximityThenScore);
   other.sort(byProximityThenScore);
   later.sort((a, b) => {
+    const fit = (b.intent_fit_tier ?? 0) - (a.intent_fit_tier ?? 0);
+    if (fit !== 0) return fit;
     const oa = a.open_status.state === "closed" ? a.open_status.opensAt ?? "99" : "99";
     const ob = b.open_status.state === "closed" ? b.open_status.opensAt ?? "99" : "99";
     return oa.localeCompare(ob);
@@ -413,8 +425,10 @@ export function approxHeroIndex(open: WantCandidate[]): number {
   if (open.length <= 1) return 0;
   const pool = Math.min(open.length, 10);
   let best = 0;
+  const score = (candidate: WantCandidate) =>
+    candidate.feature_score + (candidate.intent_fit_tier ?? 0) * 10;
   for (let i = 1; i < pool; i++) {
-    if (open[i].feature_score > open[best].feature_score) best = i;
+    if (score(open[i]) > score(open[best])) best = i;
   }
   return best;
 }
@@ -425,6 +439,7 @@ function bestFitScore(candidate: WantCandidate, preciseOrigin: boolean): number 
     : 0;
   return (
     candidate.feature_score +
+    (candidate.intent_fit_tier ?? 0) * 10 +
     (candidate.local_favorite ? 1.5 : 0) +
     (candidate.hidden_gem ? 0.5 : 0) +
     ratingSignal(candidate.google_rating, candidate.google_rating_count) * 0.75 -
@@ -611,6 +626,10 @@ export function buildWantAnswer(
       ) && mayPublishVisitabilityHours(p.slug, p.hours, now);
       return {
         ...p,
+        intent_fit_tier:
+          cKey === "coffee"
+            ? coffeeIntentTier(p) - (isChainName(p.name) ? 1.5 : 0)
+            : undefined,
         hours: mayAssertHours ? p.hours : undefined,
         hours_verified: mayAssertHours,
         open_status: getOpenStatus(

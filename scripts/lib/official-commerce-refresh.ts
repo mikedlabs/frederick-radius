@@ -4,6 +4,8 @@ import {
   type ExtractedBusinessCommerceLink,
   type PageAnchor,
 } from "./official-commerce-links";
+import { isKnownThirdPartyBusinessSource } from "./business-info-source-policy";
+import { dedupeCommerceDestinations } from "@/lib/commerce/canonical";
 
 export const FOOD_DRINK_CATEGORIES = new Set([
   "bar",
@@ -104,6 +106,7 @@ export function isEligibleOfficialBusinessWebsite(
 ): boolean {
   const host = normalizedHostname(url);
   if (!host) return false;
+  if (isKnownThirdPartyBusinessSource(url)) return false;
   return !excludedDomains.some((rule) => excludedHostMatches(host, rule));
 }
 
@@ -227,7 +230,6 @@ export function selectCommerceDiscoveryPages(
 export function mergeDistinctCommerceLinks(
   groups: ExtractedBusinessCommerceLink[][],
 ): ExtractedBusinessCommerceLink[] {
-  const seen = new Set<string>();
   const merged: ExtractedBusinessCommerceLink[] = [];
   const maxByType: Record<ExtractedBusinessCommerceLink["type"], number> = {
     menu: 4,
@@ -237,32 +239,11 @@ export function mergeDistinctCommerceLinks(
     gift_card: 2,
   };
   const typeCounts = new Map<ExtractedBusinessCommerceLink["type"], number>();
-  const identity = (link: ExtractedBusinessCommerceLink): string => {
-    try {
-      const url = new URL(link.url);
-      for (const key of Array.from(url.searchParams.keys())) {
-        if (
-          key.toLowerCase().startsWith("utm_") ||
-          ["ot_source", "source"].includes(key.toLowerCase())
-        ) {
-          url.searchParams.delete(key);
-        }
-      }
-      return `${link.type}::${url.toString()}`;
-    } catch {
-      return `${link.type}::${link.url}`;
-    }
-  };
-  for (const group of groups) {
-    for (const link of group) {
-      const key = identity(link);
-      if (seen.has(key)) continue;
-      const count = typeCounts.get(link.type) ?? 0;
-      if (count >= maxByType[link.type]) continue;
-      seen.add(key);
-      merged.push(link);
-      typeCounts.set(link.type, count + 1);
-    }
+  for (const link of dedupeCommerceDestinations(groups.flat())) {
+    const count = typeCounts.get(link.type) ?? 0;
+    if (count >= maxByType[link.type]) continue;
+    merged.push(link);
+    typeCounts.set(link.type, count + 1);
   }
   return merged;
 }

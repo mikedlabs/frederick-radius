@@ -5,10 +5,10 @@
  * program reads as a real "what's on" draw on /events and /today — not a row
  * buried in a tucked civic module.
  *
- * Scoped deliberately to the library + fire-company sources. The county
- * CivicEngage ingest is EXCLUDED here: those events also arrive through the live
- * county iCal feed (source "county") that assembleRaw already merges, so lifting
- * them too would double-count. County still surfaces via the civic strip.
+ * Rails are scoped deliberately to the library + fire-company sources. County
+ * and town CivicEngage ingests are EXCLUDED from those rails because the same
+ * events arrive through live feeds. The detail resolver may still use a stored
+ * official row as a fail-soft copy when its matching live feed is unavailable.
  *
  * Each ingested SERIES (recurring-collapsed upstream) is expanded into one
  * EventWithMeta per upcoming occurrence (capped, so a weekly bingo doesn't flood
@@ -30,6 +30,10 @@ import {
   eventAttendanceMode,
   isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
+import { classifyEvent } from "@/lib/events/classify";
+import { cleanEventSlug } from "@/lib/events/normalize";
+import { FREDERICK_COUNTY_BBOX, type LngLat } from "@/lib/geo";
+import { resolveFrederickMunicipality } from "@/lib/location";
 
 /** Ingest source domains we lift into the main rails (library + fire company).
  *  Everything else (county CivicEngage) stays civic-only to avoid double-count
@@ -40,6 +44,103 @@ const SOURCE_BY_DOMAIN: Record<string, Event["source"]> = {
   "frederick.librarycalendar.com": "fcpl",
   "fcvfra.com": "fcvfra",
 };
+
+/**
+ * Scheduled ingestion retains official CivicPlus rows even when the live RSS
+ * endpoint has a bad minute. Those mirrors normally stay out of the public
+ * rails to avoid duplicates, but they are valuable as a durable deep-link
+ * fallback for the exact clean slug emitted by the live calendar.
+ */
+const LIVE_MIRROR_BY_DOMAIN: Record<
+  string,
+  {
+    source: Event["source"];
+    defaultMunicipality?: string;
+    countywide?: boolean;
+  }
+> = {
+  "www.frederickcountymd.gov": {
+    source: "county",
+    countywide: true,
+  },
+  "www.cityoffrederickmd.gov": {
+    source: "city-frederick",
+    defaultMunicipality: "frederick",
+  },
+  "www.mountairymd.gov": {
+    source: "mount-airy",
+    defaultMunicipality: "mount-airy",
+  },
+  "www.thurmont.com": {
+    source: "thurmont",
+    defaultMunicipality: "thurmont",
+  },
+};
+
+/**
+ * Event.geom is still required by the shared card contract. For a county row
+ * with no trustworthy address geocode, use one neutral county-area anchor and
+ * mark it unknown. Public map, distance, directions, and nearby-place surfaces
+ * all key off geo_confidence, so this point is never presented as the venue.
+ */
+const COUNTYWIDE_EVENT_ANCHOR: LngLat = {
+  lng: (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2,
+  lat: (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2,
+};
+
+const STREET_ADDRESS =
+  /\b\d{1,6}\s+[a-z0-9.' -]+\b(?:avenue|ave|boulevard|blvd|circle|cir|court|ct|drive|dr|highway|hwy|lane|ln|parkway|pkwy|pike|place|pl|road|rd|street|st|terrace|ter|trail|trl|way)\b/i;
+
+/** Infer a town label only from a street-level Maryland address. */
+function municipalityFromExactAddress(address: string | null): string | null {
+  if (!address || !STREET_ADDRESS.test(address)) return null;
+  const normalized = address.toLowerCase();
+  for (const municipality of Object.values(MUNICIPALITY_BY_SLUG)) {
+    const names =
+      municipality.slug === "frederick"
+        ? ["frederick", "frederick city"]
+        : [municipality.name.toLowerCase()];
+    if (
+      names.some((name) =>
+        new RegExp(`\\b${name.replace(/\s+/g, "\\s+")}\\s*,?\\s*md\\b`, "i").test(
+          normalized,
+        ),
+      )
+    ) {
+      return municipality.slug;
+    }
+  }
+  return null;
+}
+
+function countyMirrorGeography(s: IngestedSeries): {
+  municipality: string;
+  municipalityName: string;
+  geom: LngLat;
+  geoConfidence: ReturnType<typeof eventGeoConfidence>;
+} {
+  const exactGeom =
+    s.lat != null && s.lng != null ? { lng: s.lng, lat: s.lat } : null;
+  const geom = exactGeom ?? COUNTYWIDE_EVENT_ANCHOR;
+  const coordinateConfidence = exactGeom
+    ? eventGeoConfidence({ placement: "geocoded", geom: exactGeom })
+    : "unknown";
+  const coordinateMunicipality = coordinateConfidence === "exact_address"
+    ? resolveFrederickMunicipality(geom)
+    : null;
+  const exactMunicipality =
+    coordinateMunicipality?.inside === true
+      ? coordinateMunicipality.municipality.slug
+      : municipalityFromExactAddress(s.address);
+  const municipality = exactMunicipality ?? "county";
+  return {
+    municipality,
+    municipalityName:
+      MUNICIPALITY_BY_SLUG[municipality]?.name ?? "Frederick County",
+    geom,
+    geoConfidence: coordinateConfidence,
+  };
+}
 
 // ET calendar date (YYYYMMDD) for a UTC instant — used to make a stable,
 // human-readable slug suffix that matches the day a user sees.
@@ -64,17 +165,39 @@ export function ingestedEventSlug(title: string, source: string, startUtc: strin
   return `${base || "event"}-${source}-${etDateKey(startUtc)}`;
 }
 
-function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][number]): EventWithMeta | null {
-  const source = SOURCE_BY_DOMAIN[s.sourceDomain];
+function occurrenceToCard(
+  s: IngestedSeries,
+  occ: IngestedSeries["occurrences"][number],
+  routeStyle: "ingested" | "live" = "ingested",
+): EventWithMeta | null {
+  const mirror = LIVE_MIRROR_BY_DOMAIN[s.sourceDomain];
+  const source = SOURCE_BY_DOMAIN[s.sourceDomain] ?? mirror?.source;
   if (!source) return null;
-  const muni = MUNICIPALITY_BY_SLUG[s.municipality];
-  // Per-event geocode when we have it, else the town centroid. With a centroid,
-  // eventGeoConfidence resolves to "area" so the card NEVER claims a precise
-  // distance — the honesty guard the live adapter relies on.
-  const geom = s.lat != null && s.lng != null ? { lng: s.lng, lat: s.lat } : muni?.centroid;
+  const countyGeography = mirror?.countywide
+    ? countyMirrorGeography(s)
+    : null;
+  const municipality = countyGeography?.municipality ??
+    (MUNICIPALITY_BY_SLUG[s.municipality]
+      ? s.municipality
+      : mirror?.defaultMunicipality);
+  if (!municipality) return null;
+  const muni = MUNICIPALITY_BY_SLUG[municipality];
+  // A county mirror without a reliable geocode stays countywide/unknown.
+  // Other municipal mirrors may use their town centroid; eventGeoConfidence
+  // resolves that to "area", so the card never claims a precise distance.
+  const geom = countyGeography?.geom ??
+    (s.lat != null && s.lng != null
+      ? { lng: s.lng, lat: s.lat }
+      : muni?.centroid);
   if (!geom) return null;
   const category = s.category ?? "community";
-  const slug = ingestedEventSlug(s.title, source, occ.startsAtUtc);
+  const slug = routeStyle === "live"
+    ? cleanEventSlug({
+        presenter: s.presenter,
+        title: s.title,
+        startsAt: occ.startsAtUtc,
+      })
+    : ingestedEventSlug(s.title, source, occ.startsAtUtc);
   const attendance_mode = eventAttendanceMode({
     title: s.title,
     venue_name: s.venueName,
@@ -99,7 +222,7 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
     venue_name: attendance_mode === "online" ? "Online" : (s.venueName ?? ""),
     address: attendance_mode === "online" ? "" : (s.address ?? ""),
     geom,
-    municipality: s.municipality,
+    municipality,
     category,
     audience: [],
     // No reliable admission signal on these feeds — withhold the "Free" claim
@@ -119,9 +242,13 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
       source_url: occ.sourceUrl,
     }),
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
-    municipality_name: muni?.name ?? s.municipality,
+    municipality_name:
+      countyGeography?.municipalityName ?? muni?.name ?? municipality,
     distance_m: undefined,
-    geo_confidence: attendance_mode === "online" ? "unknown" : eventGeoConfidence({ geom }),
+    geo_confidence:
+      attendance_mode === "online"
+        ? "unknown"
+        : countyGeography?.geoConfidence ?? eventGeoConfidence({ geom }),
   };
 }
 
@@ -159,8 +286,12 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
   return cards;
 }
 
-/** Detail-route resolver: expand ALL occurrences of every lifted series so any
- *  shown card's slug resolves to a renderable event. Cached upstream. */
+/**
+ * Detail-route resolver. Lifted series resolve their namespaced slugs; official
+ * scheduled mirrors resolve the clean slugs emitted by their live feeds. The
+ * latter are not added to discovery, so this cannot duplicate a card — it only
+ * keeps a link useful when a publisher endpoint has a bad minute.
+ */
 export async function getIngestedCardBySlug(
   slug: string,
   options: { signal?: AbortSignal; deadline?: number } = {},
@@ -179,15 +310,35 @@ export async function getIngestedCardBySlug(
     ) {
       return null;
     }
-    if (!LIFTED_INGEST_SOURCES.has(s.sourceDomain)) continue;
-    if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
+    const lifted = LIFTED_INGEST_SOURCES.has(s.sourceDomain);
+    const liveMirror = LIVE_MIRROR_BY_DOMAIN[s.sourceDomain];
+    if (!lifted && !liveMirror) continue;
+    const lane = classifyEvent({
+      title: s.title,
+      category: s.category ?? undefined,
+    });
+    if (
+      lifted
+        ? !isPublicEvent({ title: s.title, category: s.category ?? undefined })
+        : lane === "private_rental" || lane === "cancelled"
+    ) {
+      continue;
+    }
     for (const occ of s.occurrences) {
-      const card = occurrenceToCard(s, occ);
+      const card = occurrenceToCard(
+        s,
+        occ,
+        liveMirror ? "live" : "ingested",
+      );
       // Centroid-geom upgrade first (matches the unified assembly, so the
       // detail pin agrees with the list card; normally a geocode-cache hit),
       // then the venue-thumb borrow (see liveEvents.ts note).
       if (card?.slug === slug) {
         if (options.signal?.aborted) return null;
+        // The stored official row is the resilience path for an unavailable
+        // live feed. Return its honest area-level location immediately rather
+        // than spending the detail page's remaining deadline on geocoding.
+        if (liveMirror) return withVenueThumb(card);
         return withVenueThumb(await upgradeEventGeom(card));
       }
     }

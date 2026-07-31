@@ -49,6 +49,10 @@
       "schedule": "5 */2 * * *"
     },
     {
+      "path": "/api/cron/runtime-source-health",
+      "schedule": "43 */2 * * *"
+    },
+    {
       "path": "/api/cron/data-health-retention",
       "schedule": "10 9 * * *"
     },

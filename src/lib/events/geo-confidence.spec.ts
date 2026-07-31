@@ -11,6 +11,15 @@ describe("eventHasPreciseLocation", () => {
     ).toBe(false);
   });
 
+  it("rejects an explicitly unknown non-centroid coordinate", () => {
+    expect(
+      eventHasPreciseLocation({
+        geom: { lng: -77.425, lat: 39.505 },
+        geo_confidence: "unknown",
+      }),
+    ).toBe(false);
+  });
+
   it("accepts an exact event coordinate", () => {
     expect(
       eventHasPreciseLocation({

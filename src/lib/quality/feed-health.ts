@@ -48,6 +48,8 @@ export type FeedHealthResult = {
 type ProbeOptions = {
   fetchImpl?: typeof fetch;
   env?: Readonly<Record<string, string | undefined>>;
+  /** Optional route-wide cancellation in addition to each source deadline. */
+  signal?: AbortSignal;
 };
 
 type ProbeManyOptions = ProbeOptions & {
@@ -60,6 +62,304 @@ const DEFAULT_PREFIX_BYTES = 4_096;
 const MAX_PREFIX_BYTES = 64 * 1_024;
 const DEFAULT_CONCURRENCY = 6;
 const MAX_CONCURRENCY = 12;
+
+/**
+ * MARC is one runtime product backed by four independent MTA endpoints. Keep
+ * the shared ledger id on every probe so a future persisted health pass can
+ * aggregate the group instead of leaving a working rail feed "unknown."
+ */
+export const MARC_SOURCE_ENDPOINTS: readonly FeedHealthEndpoint[] = [
+  {
+    group: "MARC static GTFS",
+    sourceId: "mta_marc_rt",
+    url: "https://feeds.mta.maryland.gov/gtfs/marc",
+    critical: true,
+    method: "HEAD",
+  },
+  {
+    group: "MARC vehicle positions",
+    sourceId: "mta_marc_rt",
+    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-vp.pb",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "MARC trip updates",
+    sourceId: "mta_marc_rt",
+    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-tu.pb",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "MTA service alerts",
+    sourceId: "mta_marc_rt",
+    url: "https://feeds.mta.maryland.gov/alerts.pb",
+    critical: true,
+    method: "GET",
+  },
+] as const;
+
+/**
+ * Request-time official-data adapters shared by the GitHub tripwire and the
+ * durable Vercel runtime-source health pass. Pipeline endpoints deliberately
+ * do not belong here: reachability is not proof that a pipeline published its
+ * transformed output.
+ */
+export const RUNTIME_SOURCE_ENDPOINTS: readonly FeedHealthEndpoint[] = [
+  {
+    group: "Maryland WZDx",
+    sourceId: "md_wzdx",
+    url: "https://filter.ritis.org/wzdx_v4.1/mdot.geojson",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|geo\+json/i,
+    bodyPattern: /^\s*\{/,
+    accept: "application/geo+json, application/json",
+  },
+  {
+    group: "CHART traffic speeds",
+    sourceId: "mdot_chart_tss",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "CHART travel times",
+    sourceId: "mdot_chart_travel",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTravelRouteDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "CHART message signs",
+    sourceId: "mdot_chart_dms",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getDMSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "CHART road weather",
+    sourceId: "mdot_chart_rwis",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getRWISMapDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "CHART road conditions",
+    sourceId: "mdot_chart_ips",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getIPSMapDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "CHART snow emergency",
+    sourceId: "mdot_chart_sep",
+    url: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getSEPMapDataJSON.do",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json|text\/plain/i,
+    bodyPattern: /^\s*[\[{]/,
+    accept: "application/json, text/plain",
+  },
+  {
+    group: "City emergency RSS",
+    sourceId: "city_emergency_rss",
+    url: "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=63&CID=City-Emergencies-4",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /xml|rss/i,
+    bodyPattern: /<rss\b|<\?xml\b/i,
+    accept: "application/rss+xml, application/xml, text/xml",
+  },
+  {
+    group: "County Health burn-ban RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Burn-Ban-4",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /xml|rss/i,
+    bodyPattern: /<rss\b|<\?xml\b/i,
+    accept: "application/rss+xml, application/xml, text/xml",
+  },
+  {
+    group: "County Health closings RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Closings-5",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /xml|rss/i,
+    bodyPattern: /<rss\b|<\?xml\b/i,
+    accept: "application/rss+xml, application/xml, text/xml",
+  },
+  {
+    group: "County Health notices RSS",
+    sourceId: "county_health_alerts",
+    url: "https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Health-Notices-1",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /xml|rss/i,
+    bodyPattern: /<rss\b|<\?xml\b/i,
+    accept: "application/rss+xml, application/xml, text/xml",
+  },
+  {
+    group: "NWS local storm reports",
+    sourceId: "nws_lsr",
+    url: "https://api.weather.gov/products/types/LSR/locations/LWX",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 1_024,
+    contentType: /json/i,
+    bodyPattern: /^\s*\{/,
+    accept: "application/json",
+  },
+  {
+    group: "NOAA nowCOAST lightning",
+    sourceId: "nowcoast_lightning",
+    url: "https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
+    critical: false,
+    method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /xml/i,
+    bodyPattern: /WMS_Capabilities|WMT_MS_Capabilities/i,
+    accept: "application/xml, text/xml",
+  },
+] as const;
+
+export type AggregatedSourceProbeResult = {
+  sourceId: string;
+  outcome: "success" | "failure" | "skipped";
+  endpointCount: number;
+  /** Safe, source-agnostic text suitable for durable operational evidence. */
+  error: string | null;
+};
+
+export type RuntimeSourceProbeGate = {
+  blocking: boolean;
+  configured: number;
+  healthy: number;
+  failed: number;
+  criticalFailed: string[];
+  reason: "critical-source" | "systemic-outage" | null;
+};
+
+/**
+ * Collapse one or more endpoint checks into exactly one source result. A
+ * multi-endpoint source is healthy only when every required endpoint answers.
+ * Detailed URLs, status notes, and credential names stay in ephemeral logs and
+ * are never copied into the database.
+ */
+export function aggregateFeedHealthBySource(
+  results: readonly FeedHealthResult[],
+): AggregatedSourceProbeResult[] {
+  const grouped = new Map<string, FeedHealthResult[]>();
+  for (const result of results) {
+    const sourceId = result.sourceId?.trim();
+    if (!sourceId) continue;
+    const rows = grouped.get(sourceId) ?? [];
+    rows.push(result);
+    grouped.set(sourceId, rows);
+  }
+
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([sourceId, rows]) => {
+      const succeeded = rows.every((row) => row.ok && !row.skipped);
+      const allSkipped = rows.every((row) => row.skipped);
+      const partiallySkipped =
+        !allSkipped && rows.some((row) => row.skipped);
+      return {
+        sourceId,
+        outcome: succeeded
+          ? "success"
+          : allSkipped
+            ? "skipped"
+            : "failure",
+        endpointCount: rows.length,
+        error: succeeded || allSkipped
+          ? null
+          : partiallySkipped
+            ? "The runtime source health probe is not configured."
+            : "One or more bounded runtime source health probes failed.",
+      };
+    });
+}
+
+/**
+ * Decide when a runtime probe pass is unhealthy enough to fail an HTTP-only
+ * scheduler or CI monitor. One optional publisher may fail without making the
+ * whole app unavailable, but a critical source, a total outage, or a majority
+ * outage across at least three configured sources must never look green.
+ */
+export function runtimeSourceProbeGate(
+  aggregated: readonly AggregatedSourceProbeResult[],
+  endpointResults: readonly FeedHealthResult[],
+): RuntimeSourceProbeGate {
+  const configured = aggregated.filter(
+    (result) => result.outcome !== "skipped",
+  );
+  const failed = configured.filter((result) => result.outcome === "failure");
+  const healthy = configured.length - failed.length;
+  const failedIds = new Set(failed.map((result) => result.sourceId));
+  const criticalFailed = [
+    ...new Set(
+      endpointResults
+        .filter(
+          (result) =>
+            result.critical &&
+            !result.ok &&
+            !result.skipped &&
+            result.sourceId &&
+            failedIds.has(result.sourceId),
+        )
+        .map((result) => result.sourceId as string),
+    ),
+  ].sort();
+  const systemicOutage =
+    configured.length > 0 &&
+    (healthy === 0 ||
+      (failed.length >= 3 && failed.length / configured.length >= 0.5));
+  const reason =
+    criticalFailed.length > 0
+      ? "critical-source"
+      : systemicOutage
+        ? "systemic-outage"
+        : null;
+
+  return {
+    blocking: reason !== null,
+    configured: configured.length,
+    healthy,
+    failed: failed.length,
+    criticalFailed,
+    reason,
+  };
+}
 
 /**
  * High-value active sources that were not covered by the original scheduled
@@ -251,6 +551,15 @@ export async function probeFeedEndpoint(
       note: `${endpoint.authHeader.env} is not configured`,
     };
   }
+  if (options.signal?.aborted) {
+    return {
+      ...base,
+      status: "ERR",
+      ok: false,
+      skipped: false,
+      note: "route deadline",
+    };
+  }
 
   const timeoutMs = boundedInt(
     endpoint.timeoutMs,
@@ -271,10 +580,14 @@ export async function probeFeedEndpoint(
   }
 
   try {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : timeoutSignal;
     const response = await fetchImpl(endpoint.url, {
       method: endpoint.method ?? "GET",
       redirect: "follow",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
       headers,
     });
     const httpOk = response.status >= 200 && response.status < 400;
@@ -353,7 +666,12 @@ export async function probeFeedEndpoints(
       while (true) {
         const index = nextIndex++;
         if (index >= endpoints.length) return;
-        results[index] = await probeFeedEndpoint(endpoints[index], options);
+        const endpoint = endpoints[index];
+        // Always enter the source classifier so an auth-gated source remains
+        // SKIP even after the route deadline. `probeFeedEndpoint` checks the
+        // already-aborted signal before fetch, so queued network work cannot
+        // start.
+        results[index] = await probeFeedEndpoint(endpoint, options);
       }
     }),
   );

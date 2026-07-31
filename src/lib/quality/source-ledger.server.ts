@@ -146,6 +146,12 @@ async function ingestEvidence(
            latest.records_in AS latest_records_in,
            latest.records_failed AS latest_records_failed,
            latest.error AS latest_error,
+           operational.started_at AS operational_started_at,
+           operational.ended_at AS operational_ended_at,
+           operational.status AS operational_status,
+           operational.records_in AS operational_records_in,
+           operational.records_failed AS operational_records_failed,
+           operational.error AS operational_error,
            success.started_at AS success_started_at,
            success.ended_at AS success_ended_at,
            success.records_in AS success_records_in
@@ -158,16 +164,27 @@ async function ingestEvidence(
       LIMIT 1
     ) latest ON true
     LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, status, records_in, records_failed, error
+      FROM ingest_runs
+      WHERE ingest_runs.source_slug = wanted.source
+        AND records_in IS NOT NULL
+      ORDER BY started_at DESC, id DESC
+      LIMIT 1
+    ) operational ON true
+    LEFT JOIN LATERAL (
       SELECT started_at, ended_at, records_in
       FROM ingest_runs
       WHERE ingest_runs.source_slug = wanted.source
         AND status = 'ok'
         AND ended_at IS NOT NULL
         AND coalesce(records_failed, 0) = 0
+        AND records_in IS NOT NULL
       ORDER BY started_at DESC, id DESC
       LIMIT 1
     ) success ON true
-    WHERE latest.started_at IS NOT NULL OR success.started_at IS NOT NULL
+    WHERE latest.started_at IS NOT NULL
+       OR operational.started_at IS NOT NULL
+       OR success.started_at IS NOT NULL
   `) as unknown as Array<{
     source: string;
     latest_started_at: string | Date | null;
@@ -176,6 +193,12 @@ async function ingestEvidence(
     latest_records_in: number | null;
     latest_records_failed: number | null;
     latest_error: string | null;
+    operational_started_at: string | Date | null;
+    operational_ended_at: string | Date | null;
+    operational_status: string | null;
+    operational_records_in: number | null;
+    operational_records_failed: number | null;
+    operational_error: string | null;
     success_started_at: string | Date | null;
     success_ended_at: string | Date | null;
     success_records_in: number | null;
@@ -190,25 +213,60 @@ async function ingestEvidence(
       ? new Date(row.latest_ended_at).toISOString()
       : null;
     if (latestStartedAt) {
+      const reachabilityProbe = row.latest_records_in === null;
       const completeSuccess =
         row.latest_status === "ok" &&
         latestEndedAt !== null &&
         Number(row.latest_records_failed ?? 0) === 0;
       items.push({
         sourceKey: row.source,
-        kind: "ingest_run",
+        kind: reachabilityProbe ? "reachability_probe" : "ingest_run",
         attemptedAt: latestStartedAt,
         outcome: completeSuccess
           ? "success"
           : row.latest_status === "running"
             ? "running"
             : "failure",
-        succeededAt: completeSuccess ? latestEndedAt : null,
-        publishedAt: completeSuccess ? latestEndedAt : null,
-        recordCount: completeSuccess
-          ? Number(row.latest_records_in ?? 0)
-          : null,
+        succeededAt:
+          completeSuccess && !reachabilityProbe ? latestEndedAt : null,
+        publishedAt:
+          completeSuccess && !reachabilityProbe ? latestEndedAt : null,
+        recordCount:
+          completeSuccess && row.latest_records_in !== null
+            ? Number(row.latest_records_in)
+            : null,
         error: completeSuccess ? null : row.latest_error ?? row.latest_status,
+      });
+    }
+
+    const operationalStartedAt = row.operational_started_at
+      ? new Date(row.operational_started_at).toISOString()
+      : null;
+    const operationalEndedAt = row.operational_ended_at
+      ? new Date(row.operational_ended_at).toISOString()
+      : null;
+    if (operationalStartedAt && operationalStartedAt !== latestStartedAt) {
+      const completeSuccess =
+        row.operational_status === "ok" &&
+        operationalEndedAt !== null &&
+        Number(row.operational_records_failed ?? 0) === 0;
+      items.push({
+        sourceKey: row.source,
+        kind: "ingest_run",
+        attemptedAt: operationalStartedAt,
+        outcome: completeSuccess
+          ? "success"
+          : row.operational_status === "running"
+            ? "running"
+            : "failure",
+        succeededAt: completeSuccess ? operationalEndedAt : null,
+        publishedAt: completeSuccess ? operationalEndedAt : null,
+        recordCount: completeSuccess
+          ? Number(row.operational_records_in)
+          : null,
+        error: completeSuccess
+          ? null
+          : row.operational_error ?? row.operational_status,
       });
     }
 
@@ -221,7 +279,8 @@ async function ingestEvidence(
     if (
       successStartedAt &&
       successEndedAt &&
-      successStartedAt !== latestStartedAt
+      successStartedAt !== latestStartedAt &&
+      successStartedAt !== operationalStartedAt
     ) {
       items.push({
         sourceKey: row.source,
@@ -230,7 +289,10 @@ async function ingestEvidence(
         outcome: "success",
         succeededAt: successEndedAt,
         publishedAt: successEndedAt,
-        recordCount: Number(row.success_records_in ?? 0),
+        recordCount:
+          row.success_records_in === null
+            ? null
+            : Number(row.success_records_in),
       });
     }
     return items;

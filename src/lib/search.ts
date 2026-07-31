@@ -11,7 +11,10 @@ import { countyRegionSummary, municipalityMatchesRegions, regionForMunicipality,
 import { APP_PAGES, type AppPage } from "@/data/app-pages";
 import { isUpcomingEvent } from "@/lib/events/visible";
 import { FREDERICK_CENTER, haversineMeters, type LngLat } from "@/lib/geo";
-import { isChainName } from "@/lib/category-ranking";
+import {
+  coffeeIntentScore,
+  isChainName,
+} from "@/lib/category-ranking";
 import {
   matchesSearchQualifiers,
   parseSearchQualifiers,
@@ -72,6 +75,92 @@ function normalize(s: string): string[] {
     .filter((t) => t.length >= 2 && !STOP.has(t));
   const specificTerms = terms.filter((term) => !LOCAL_CONTEXT.has(term));
   return specificTerms.length > 0 ? specificTerms : terms;
+}
+
+type RecognizedShortIntent = "atm" | "dmv" | "er" | "ev" | "wifi" | "ups";
+
+/**
+ * Short utility nouns need a closed meaning. Treating `er` or `ev` like an
+ * ordinary prefix makes Erica and Evangelical look relevant; treating ATM as
+ * the entire `services` bucket pads the right banks with salons and repair
+ * shops. These exact aliases are decisions, not typo fragments.
+ */
+function recognizedShortIntent(query: string): RecognizedShortIntent | null {
+  const normalized = query
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (normalized === "atm" || normalized === "atms") return "atm";
+  if (normalized === "dmv" || normalized === "mva") return "dmv";
+  if (normalized === "er" || normalized === "emergency room") return "er";
+  if (
+    normalized === "ev" ||
+    normalized === "ev charger" ||
+    normalized === "ev chargers" ||
+    normalized === "ev charging"
+  ) return "ev";
+  if (normalized === "wifi" || normalized === "wi fi") return "wifi";
+  if (normalized === "ups") return "ups";
+  return null;
+}
+
+function matchesRecognizedShortIntent(
+  place: PlaceCardData,
+  intent: RecognizedShortIntent,
+): boolean {
+  const exactFields = [
+    place.category,
+    place.primary_type ?? "",
+    ...(place.subcategories ?? []),
+    ...(place.tags ?? []),
+  ]
+    .map((value) => value.toLowerCase().replace(/_/g, "-"));
+  const evidence = [
+    place.name,
+    place.short_blurb,
+    place.description ?? "",
+    place.primary_type ?? "",
+    ...(place.subcategories ?? []),
+    ...(place.tags ?? []),
+    ...(place.search_aliases ?? []),
+  ].join(" ");
+  if (intent === "atm") {
+    // A bank is not proof that a publicly accessible ATM exists at this
+    // location. Only publish a catalog result when the record explicitly
+    // identifies an ATM; the search UI otherwise leads with live map search.
+    return (
+      exactFields.includes("atm") ||
+      /\b(?:atms?|cash machines?)\b/i.test([
+        place.name,
+        ...(place.search_aliases ?? []),
+      ].join(" "))
+    );
+  }
+  if (intent === "er") {
+    return (
+      /\b(?:emergency room|emergency department|hospital)\b/i.test(evidence) &&
+      !/\b(?:shelter|thrift|coalition)\b/i.test(place.name)
+    );
+  }
+  if (intent === "ev") {
+    return /\b(?:ev|electric vehicle)\b.{0,24}\bcharg(?:e|er|ers|ing)\b/i.test(evidence);
+  }
+  if (intent === "wifi") {
+    return exactFields.some((field) => field === "wifi" || field === "wi-fi");
+  }
+  if (intent === "ups") {
+    return /\bups\b|\bthe ups store\b/i.test(evidence);
+  }
+  // DMV is answered by the verified state contact, not a guessed place row.
+  return false;
+}
+
+function isGenericCoffeeIntent(query: string): boolean {
+  return (
+    /\b(?:coffee|cafe|café|espresso|latte|cappuccino|roaster)\b/i.test(query) &&
+    !/\b(?:boba|bubble tea|tea room|tearoom)\b/i.test(query)
+  );
 }
 
 function hasExplicitQueryEvidence(
@@ -496,10 +585,13 @@ export function search(
   const intent = detectIntent(query);
   const eventIntent = detectEventIntent(query);
   const expansion = expandQuery(query);
+  const shortIntent = recognizedShortIntent(query);
+  const genericCoffeeIntent = isGenericCoffeeIntent(query);
   const now = options.now ?? new Date();
 
   for (const p of clientPlaces()) {
     if (options.placeFilter && !options.placeFilter(p)) continue;
+    if (shortIntent && !matchesRecognizedShortIntent(p, shortIntent)) continue;
     const s =
       fieldScore(p.name, terms) * 4 +
       fieldScore(p.short_blurb, terms) * 1 +
@@ -541,18 +633,28 @@ export function search(
     // evidence to be present, so a synonym never promotes a whole
     // category on topic words alone.
     const xv = expansionScore(p.category, evidenceText, expansion);
+    const cv = genericCoffeeIntent ? coffeeIntentScore(p) : 0;
     // Event intent ("live music"): genuine venues stay in play, but a
     // place whose only claim was an incidental name token (the candle
     // shop "Liveyoung") steps aside for the actual events below.
     const ev = eventIntent ? (eventIntent.venueCats.has(p.category) ? 2 : -6) : 0;
-    if (s > 0 || iv > 0 || xv > 0 || options.includeMatchingPlaces) {
+    const utilityEvidence = shortIntent ? 12 : 0;
+    if (s > 0 || iv > 0 || xv > 0 || utilityEvidence > 0 || options.includeMatchingPlaces) {
       const place = options.origin
         ? { ...p, distance_m: haversineMeters(options.origin, p.geom) }
         : p;
       hits.push({
         type: "place",
         place,
-        score: s + p.feature_score + iv + ev + xv + (coverage?.score ?? 0),
+        score:
+          s +
+          p.feature_score +
+          iv +
+          ev +
+          xv +
+          cv +
+          utilityEvidence +
+          (coverage?.score ?? 0),
         conceptCoverage: coverage
           ? { matched: coverage.matched, total: coverage.total }
           : undefined,
@@ -560,7 +662,7 @@ export function search(
     }
   }
 
-  if (!options.onlyPlaces) for (const e of eventPool) {
+  if (!options.onlyPlaces && !shortIntent) for (const e of eventPool) {
     if (options.eventMunicipality && e.municipality !== options.eventMunicipality) continue;
     if (options.eventFilter && !options.eventFilter(e)) continue;
     const s =
@@ -580,12 +682,12 @@ export function search(
     }
   }
 
-  if (!options.onlyPlaces) for (const m of MUNICIPALITIES) {
+  if (!options.onlyPlaces && !shortIntent) for (const m of MUNICIPALITIES) {
     const s = fieldScore(m.name, terms) * 5 + fieldScore(m.description, terms) * 1;
     if (s > 0) hits.push({ type: "municipality", municipality: m, score: s });
   }
 
-  if (!options.onlyPlaces) for (const c of CATEGORIES) {
+  if (!options.onlyPlaces && !shortIntent) for (const c of CATEGORIES) {
     const s = fieldScore(c.name, terms) * 3 + fieldScore(c.blurb, terms) * 1;
     if (s > 0) hits.push({ type: "category", category: c, score: s });
   }
@@ -603,7 +705,12 @@ export function search(
       // A typed multi-word keyword ("ev charging", "post office") is the
       // strongest signal — full weight, since its words don't score solo.
       if (phrases.some((p) => ql.includes(p))) s += 14;
-      if (s >= 14) hits.push({ type: "page", page, score: s });
+      if (s >= 14) {
+        // A direct working guide should lead a terse utility query. The
+        // supporting place candidates remain underneath when the catalog has
+        // trustworthy evidence (for example, the hospital below the ER guide).
+        hits.push({ type: "page", page, score: s + (shortIntent ? 12 : 0) });
+      }
     }
   }
 
@@ -614,7 +721,12 @@ export function search(
   // sets (a DB round-trip would be strictly slower at ~1.5k names). Gated
   // at 4+ chars: shorter typos are indistinguishable from prefixes the
   // substring pass already handles.
-  if (!options.onlyPlaces && !options.placeFilter && query.trim().length >= 4) {
+  if (
+    !shortIntent &&
+    !options.onlyPlaces &&
+    !options.placeFilter &&
+    query.trim().length >= 4
+  ) {
     // Run the typo net on normalized terms, not conversational filler or
     // location context. A single typo keeps pg_trgm's permissive floor;
     // multi-word fallbacks must clear the stronger confidence threshold so

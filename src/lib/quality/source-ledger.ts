@@ -25,7 +25,8 @@ export type SourceEvidenceKind =
   | "feed_snapshot"
   | "ingest_run"
   | "artifact"
-  | "runtime_probe";
+  | "runtime_probe"
+  | "reachability_probe";
 
 export type SourceEvidenceOutcome = "success" | "failure" | "running";
 
@@ -238,7 +239,7 @@ function sourceReason(
     case "required_empty":
       return "The source succeeded with no rows, but this source requires records.";
     case "unknown":
-      return "No collection or publication evidence is recorded.";
+      return "No validated collection or publication evidence is recorded.";
     case "healthy_empty":
       return "The source answered successfully with no rows. An empty result is valid for this source.";
     case "healthy":
@@ -313,9 +314,21 @@ export function buildSourceLedger(
     .map((source): SourceLedgerRow => {
       const sourceEvidence = evidenceBySource.get(source.id) ?? [];
       const config = configBySource.get(source.id);
-      const latestAttempt = freshest(sourceEvidence, (item) => item.attemptedAt);
+      // A successful HTTP reachability check proves only that an upstream
+      // endpoint answered. It must not clear a parser/publisher failure or
+      // become a collection success. A failed reachability check remains
+      // operationally relevant and is allowed to put the source in failing.
+      const stateEvidence = sourceEvidence.filter(
+        (item) =>
+          item.kind !== "reachability_probe" || item.outcome === "failure",
+      );
+      const latestAttempt = freshest(
+        stateEvidence,
+        (item) => item.attemptedAt,
+      );
       const successful = sourceEvidence.filter(
-        (item) => item.outcome === "success",
+        (item) =>
+          item.outcome === "success" && item.kind !== "reachability_probe",
       );
       const latestSuccess = freshest(
         successful,

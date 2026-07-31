@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   categoryScore,
   bestMatches,
+  coffeeIntentTier,
   openNowOf,
   localFavoritesOf,
   nearestFrom,
@@ -41,6 +42,58 @@ describe("detection helpers", () => {
     expect(isLooseCategory("Serenity Tearoom")).toBe(true);
     expect(isLooseCategory("Market Street Boba Beans")).toBe(true);
     expect(isLooseCategory("Cafe Nola")).toBe(false);
+  });
+
+  it("separates a generic coffee destination from incidental and boba matches", () => {
+    expect(
+      coffeeIntentTier({
+        name: "Dublin Roasters Coffee",
+        category: "coffee",
+        primary_type: "coffee_shop",
+      }),
+    ).toBe(3);
+    expect(
+      coffeeIntentTier({
+        name: "Downtown Bakery",
+        category: "coffee",
+        primary_type: "bakery",
+      }),
+    ).toBe(2);
+    expect(
+      coffeeIntentTier({
+        name: "Neighborhood Bistro",
+        category: "coffee",
+        primary_type: "restaurant",
+        short_blurb: "Breakfast, sandwiches, and locally roasted coffee.",
+      }),
+    ).toBe(1);
+    expect(
+      coffeeIntentTier({
+        name: "Market Street Boba Beans",
+        category: "coffee",
+        primary_type: "tea_store",
+      }),
+    ).toBe(0);
+    // Production seed records do not all carry a Google primary_type. Keep
+    // the exact evidence Radius owns for Gravel & Grind sufficient to rank it
+    // as a coffee destination instead of relying on a test-only field.
+    expect(
+      coffeeIntentTier({
+        name: "Gravel & Grind",
+        category: "coffee",
+        subcategories: ["shopping"],
+        tags: ["coffee", "bike"],
+        short_blurb:
+          "This East 6th Street coffee bar and bike shop serves pour-overs up front.",
+      }),
+    ).toBe(3);
+    expect(
+      coffeeIntentTier({
+        name: "The Spice Tea Exchange",
+        category: "coffee",
+        subcategories: ["coffeeshop"],
+      }),
+    ).toBe(0);
   });
 });
 

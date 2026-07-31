@@ -13,7 +13,10 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import { getIngestedSeries } from "./ingested";
-import { ingestedSeriesToCards } from "./ingestedEvents";
+import {
+  getIngestedCardBySlug,
+  ingestedSeriesToCards,
+} from "./ingestedEvents";
 
 describe("multi-day all-day ingested visibility", () => {
   beforeEach(() => {
@@ -105,5 +108,88 @@ describe("multi-day all-day ingested visibility", () => {
     });
     const cards = ingestedSeriesToCards(series, new Date());
     expect(cards[0]?.hero_image).toBe(heroImage);
+  });
+
+  it("resolves a county live-feed slug from the stored official mirror", async () => {
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () => [
+        {
+          source_uid: "14339",
+          source_domain: "www.frederickcountymd.gov",
+          source_url:
+            "https://www.frederickcountymd.gov/calendar.aspx?EID=14339",
+          title: "Ethics Commission Meeting",
+          description: "The Frederick County Ethics Commission meets.",
+          starts_at_utc: "2026-08-11T23:00:00.000Z",
+          ends_at_utc: "2026-08-12T03:59:00.000Z",
+          all_day: false,
+          venue_name: "12 East Church Street, Winchester Room",
+          address: "2nd Floor, Frederick, MD 21701",
+          lat: null,
+          lng: null,
+          // CivicPlus stores a county label here rather than an app slug.
+          municipality: "Frederick County",
+          category: "Recreation Programs",
+          hero_image: null,
+          hero_image_alt: null,
+        },
+      ]) as never,
+    );
+
+    await expect(
+      getIngestedCardBySlug(
+        "ethics-commission-meeting-2026-08-11",
+      ),
+    ).resolves.toMatchObject({
+      slug: "ethics-commission-meeting-2026-08-11",
+      title: "Ethics Commission Meeting",
+      source: "county",
+      source_id: "14339",
+      municipality: "county",
+      municipality_name: "Frederick County",
+      geo_confidence: "unknown",
+      source_url:
+        "https://www.frederickcountymd.gov/calendar.aspx?EID=14339",
+    });
+    const card = await getIngestedCardBySlug(
+      "ethics-commission-meeting-2026-08-11",
+    );
+    expect(card?.geom).not.toEqual({ lng: -77.4105, lat: 39.4143 });
+  });
+
+  it("infers Frederick City only from a complete street-level county address", async () => {
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () => [
+        {
+          source_uid: "14340",
+          source_domain: "www.frederickcountymd.gov",
+          source_url:
+            "https://www.frederickcountymd.gov/calendar.aspx?EID=14340",
+          title: "Planning Commission Hearing",
+          description: "The commission meets for a public hearing.",
+          starts_at_utc: "2026-08-13T23:00:00.000Z",
+          ends_at_utc: "2026-08-14T01:00:00.000Z",
+          all_day: false,
+          venue_name: "County Office Building",
+          address: "12 E Church St, Frederick, MD 21701",
+          lat: null,
+          lng: null,
+          municipality: "Frederick County",
+          category: "Public Meetings",
+          hero_image: null,
+          hero_image_alt: null,
+        },
+      ]) as never,
+    );
+
+    await expect(
+      getIngestedCardBySlug(
+        "planning-commission-hearing-2026-08-13",
+      ),
+    ).resolves.toMatchObject({
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      geo_confidence: "unknown",
+    });
   });
 });

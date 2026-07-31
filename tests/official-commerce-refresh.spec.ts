@@ -39,6 +39,12 @@ describe("official commerce refresh", () => {
     expect(
       isEligibleOfficialBusinessWebsite("https://notyelp.com", excluded),
     ).toBe(true);
+    expect(
+      isEligibleOfficialBusinessWebsite(
+        "https://www.bringfido.com/attraction/12519",
+        [],
+      ),
+    ).toBe(false);
   });
 
   it("uses only the commerce-specific timestamp for refresh eligibility", () => {
@@ -163,6 +169,41 @@ describe("official commerce refresh", () => {
     expect(merged.filter((link) => link.type === "gift_card")).toHaveLength(1);
   });
 
+  it("collapses canonical and cross-type duplicate destinations", () => {
+    const source_url = "https://example.com/";
+    const merged = mergeDistinctCommerceLinks([
+      [
+        {
+          type: "menu",
+          url: "https://www.example.com/order/?source=popup&spot_id=42",
+          source_url,
+          anchor_text: "View menu",
+        },
+        {
+          type: "order",
+          url: "https://example.com/order",
+          source_url,
+          anchor_text: "Order online",
+        },
+        {
+          type: "order",
+          url: "http://example.com/order/",
+          source_url,
+          anchor_text: "Order online",
+        },
+      ],
+    ]);
+
+    expect(merged).toEqual([
+      {
+        type: "order",
+        url: "https://example.com/order",
+        source_url,
+        anchor_text: "Order online",
+      },
+    ]);
+  });
+
   it("sanitizes previously stored item links through the current classifier", () => {
     expect(
       sanitizeStoredCommerceLinks([
@@ -185,6 +226,28 @@ describe("official commerce refresh", () => {
         url: "https://example.com/frederick/order-online",
         anchor_text: "View menu",
         source_url: "https://example.com/",
+      },
+    ]);
+  });
+
+  it("does not erase a vetted entity-specific provider action", () => {
+    expect(
+      sanitizeStoredCommerceLinks([
+        {
+          type: "reservation",
+          url: "https://www.opentable.com/r/jojos-restaurant-and-tap-house-frederick?restref=1234&ot_source=Restaurant%20website",
+          anchor_text: "Reserve a table",
+          source_url:
+            "https://www.opentable.com/r/jojos-restaurant-and-tap-house-frederick",
+        },
+      ]),
+    ).toEqual([
+      {
+        type: "reservation",
+        url: "https://www.opentable.com/r/jojos-restaurant-and-tap-house-frederick?restref=1234&ot_source=Restaurant%20website",
+        anchor_text: "Reserve a table",
+        source_url:
+          "https://www.opentable.com/r/jojos-restaurant-and-tap-house-frederick",
       },
     ]);
   });

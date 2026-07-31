@@ -69,6 +69,43 @@ describe("search qualifiers", () => {
     },
   );
 
+  it("requires explicit ATM evidence instead of assuming every bank has one", () => {
+    const parsed = parseSearchQualifiers("nearest ATM");
+    expect(
+      matchesSearchQualifiers(
+        {
+          ...openCoffee,
+          category: "services",
+          name: "PNC Bank",
+          primary_type: "bank",
+        },
+        parsed,
+      ),
+    ).toBe(false);
+    expect(
+      matchesSearchQualifiers(
+        {
+          ...openCoffee,
+          category: "services",
+          name: "Bank of America with Drive-thru ATM",
+          primary_type: "bank",
+        },
+        parsed,
+      ),
+    ).toBe(true);
+    expect(
+      matchesSearchQualifiers(
+        {
+          ...openCoffee,
+          category: "services",
+          name: "A Downtown Salon",
+          primary_type: "beauty_salon",
+        },
+        parsed,
+      ),
+    ).toBe(false);
+  });
+
   it("keeps the open-now gate strict for pharmacies", () => {
     const parsed = parseSearchQualifiers("closest pharmacy open now");
     expect(parsed.strictPlaceKind).toBe("pharmacy");

@@ -199,6 +199,27 @@ function isPowerMapQuery(query: string): boolean {
   ]);
 }
 
+function isEvChargingMapQuery(query: string): boolean {
+  return (
+    query === "ev" ||
+    containsAnyPhrase(query, [
+      "ev charger",
+      "ev chargers",
+      "ev charging",
+      "electric car charger",
+      "electric car chargers",
+      "electric vehicle charger",
+      "electric vehicle chargers",
+      "charging station",
+      "charging stations",
+    ])
+  );
+}
+
+function isAtmMapQuery(query: string): boolean {
+  return containsAnyPhrase(query, ["atm", "atms", "cash machine", "cash machines"]);
+}
+
 function isParkingMapQuery(query: string): boolean {
   if (containsAnyPhrase(query, ["parking", "parkmobile"])) return true;
   if (query === "garage" || query === "garages") return true;
@@ -272,6 +293,13 @@ function isWeekendMapQuery(query: string): boolean {
  */
 const MAP_ACTIONS: readonly MapAction[] = [
   {
+    id: "action:map-atm",
+    title: "Find nearby ATMs",
+    subtitle: "Search the live map. ATM access is not independently verified.",
+    href: "/map?q=ATM",
+    matches: isAtmMapQuery,
+  },
+  {
     id: "action:map-trash",
     title: "Show trash cans on the map",
     subtitle: "Find field-mapped public trash cans.",
@@ -330,6 +358,13 @@ const MAP_ACTIONS: readonly MapAction[] = [
       "public wi fi",
       "wireless internet",
     ]),
+  },
+  {
+    id: "action:map-ev",
+    title: "Show EV charging on the map",
+    subtitle: "Find known electric-vehicle charging points.",
+    href: "/map?amenity=ev",
+    matches: isEvChargingMapQuery,
   },
   {
     id: "action:map-outlets",
@@ -539,10 +574,18 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
 ];
 
 function matchQuickActions(query: string): SearchResult[] {
-  const q = query.toLowerCase().trim();
+  const q = normalizeIntentText(query);
   if (!q) return [];
   return QUICK_ACTIONS.filter((a) =>
-    a.keywords.some((k) => k.startsWith(q) || q.startsWith(k) || k.includes(q)),
+    a.keywords.some((keyword) => {
+      const k = normalizeIntentText(keyword);
+      // Two- and three-character utility nouns are complete requests, not
+      // fragments. Without this guard, ER matched `dinner` and EV matched
+      // `events` / `evening`, putting planning cards above emergency and
+      // charging answers.
+      if (q.length <= 3) return k === q;
+      return k.startsWith(q) || q.startsWith(k) || containsPhrase(k, q);
+    }),
   ).map((a) => ({
     type: "action" as const,
     id: a.id,
@@ -716,11 +759,13 @@ export type QualifiedSearchIndexResult = {
 };
 
 const MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY = new Set([
+  "action:map-atm",
   "action:map-trash",
   "action:map-restrooms",
   "action:map-water",
   "action:map-dog-stations",
   "action:map-wifi",
+  "action:map-ev",
   "action:map-outlets",
   "action:map-radar",
   "action:map-roads",
@@ -730,11 +775,13 @@ const MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY = new Set([
 ]);
 
 const MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS = new Set([
+  "action:map-atm",
   "action:map-trash",
   "action:map-restrooms",
   "action:map-water",
   "action:map-dog-stations",
   "action:map-wifi",
+  "action:map-ev",
   "action:map-outlets",
   "action:map-parking",
   "action:map-transit",

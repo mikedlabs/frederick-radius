@@ -99,14 +99,14 @@ describe("evaluateDataHealthPhase", () => {
           status: "partial",
           recordsFailed: 2,
           error:
-            "Archive checks failed: live-partial, archive-incomplete.",
+            "Archive checks failed: live-partial, archive-cleanup.",
         }),
       ],
       NOW,
     );
 
     expect(state.anomaly?.detail).toContain("live-partial");
-    expect(state.anomaly?.detail).toContain("archive-incomplete");
+    expect(state.anomaly?.detail).toContain("archive-cleanup");
   });
 
   it("never copies an arbitrary worker error into an alert", () => {

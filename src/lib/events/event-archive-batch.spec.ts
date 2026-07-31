@@ -162,6 +162,106 @@ describe("event archive batch", () => {
     );
   });
 
+  it("reports a rejected tombstone cleanup without mislabeling it as a timeout", async () => {
+    const databaseError = Object.assign(
+      new Error("detail that must not leave the server"),
+      { code: "40001" },
+    );
+    const sink = writer({
+      tombstoneMissing: vi.fn(async () => {
+        throw databaseError;
+      }),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {
+        successfulSources: ["celebrate"],
+        seenSourceIdentities: [
+          { source: "celebrate", source_uid: "publisher-uid-44" },
+        ],
+      },
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: false,
+      recordsComplete: true,
+      accepted: 1,
+      upserted: 1,
+      timedOut: false,
+      failure: {
+        stage: "tombstone",
+        reason: "rejected",
+        code: "40001",
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain(databaseError.message);
+  });
+
+  it("reports an actual tombstone deadline as a timeout", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    try {
+      const sink = writer({
+        tombstoneMissing: vi.fn(() => new Promise<number>(() => undefined)),
+      });
+      const resultPromise = syncEventArchiveBatchWithWriter(
+        [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+        {
+          deadlineMs: 100,
+          successfulSources: ["celebrate"],
+          seenSourceIdentities: [
+            { source: "celebrate", source_uid: "publisher-uid-44" },
+          ],
+        },
+        sink,
+      );
+
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await resultPromise;
+
+      expect(result).toMatchObject({
+        complete: false,
+        recordsComplete: true,
+        timedOut: true,
+        failure: {
+          stage: "tombstone",
+          reason: "timed_out",
+          code: null,
+        },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("distinguishes a rejected record write from a deadline", async () => {
+    const sink = writer({
+      upsert: vi.fn(async () => {
+        throw new TypeError("bad archive payload");
+      }),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {},
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: false,
+      recordsComplete: false,
+      upserted: 0,
+      timedOut: false,
+      failure: {
+        stage: "upsert",
+        reason: "rejected",
+        code: "TypeError",
+      },
+    });
+  });
+
   it("uses the complete source inventory rather than the filtered public cards for removal checks", async () => {
     const sink = writer();
     const result = await syncEventArchiveBatchWithWriter(

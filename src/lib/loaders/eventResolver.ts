@@ -189,6 +189,15 @@ export class EventResolutionUnavailableError extends Error {
   }
 }
 
+export function isOperationalEventResolutionError(
+  error: unknown,
+): error is EventResolutionTimeoutError | EventResolutionUnavailableError {
+  return (
+    error instanceof EventResolutionTimeoutError ||
+    error instanceof EventResolutionUnavailableError
+  );
+}
+
 function eventLookup(
   lookup: () => Promise<EventWithMeta | null>,
 ): Promise<EventLookupOutcome> {
@@ -229,7 +238,7 @@ async function settleBeforeDeadline<T>(
 async function resolveArchive(
   slug: string,
   deadline: number,
-  sources: EventResolverSources,
+  sources: Pick<EventResolverSources, "archive">,
 ): Promise<
   | { status: "hit"; resolution: ResolvedEventPage }
   | { status: "miss" | "error" | "timeout" }
@@ -264,6 +273,39 @@ async function resolveArchive(
   const outcome = await settleBeforeDeadline(lookup, archiveDeadline);
   controller.abort();
   return outcome === LOOKUP_TIMEOUT ? { status: "timeout" } : outcome;
+}
+
+/**
+ * Metadata must never be the part of an event request that rebuilds the live
+ * calendar. Next resolves metadata before the page can render its route-level
+ * recovery UI, so an operational feed failure here used to replace that calm
+ * recovery state with a generic document error.
+ *
+ * Seed data and the durable identity archive are enough to produce rich,
+ * source-backed metadata without a provider fanout. A miss, timeout, or store
+ * failure returns null and lets the route emit conservative metadata while the
+ * page body performs the authoritative lookup. This deliberately does not
+ * claim a 404: an event may be real and newly published even when its durable
+ * snapshot has not been written yet.
+ */
+export async function resolveEventMetadataBySlugWithSources(
+  slug: string,
+  sources: Pick<EventResolverSources, "seed" | "archive">,
+): Promise<ResolvedEventPage | null> {
+  try {
+    const seed = sources.seed(slug);
+    if (seed && hasActionableAttendance(seed)) {
+      return { event: seed, kind: "seed" };
+    }
+
+    const deadline = Date.now() + EVENT_ARCHIVE_HEAD_START_MS;
+    const archive = await resolveArchive(slug, deadline, sources);
+    return archive.status === "hit" ? archive.resolution : null;
+  } catch {
+    // Metadata is descriptive, not authoritative. The page body owns the
+    // final hit/miss/unavailable decision and its user-facing recovery path.
+    return null;
+  }
 }
 
 async function persistWinner(
@@ -403,5 +445,18 @@ async function resolveEventPageBySlugUncached(
   return resolveEventPageBySlugWithSources(slug, now, DEFAULT_SOURCES);
 }
 
-// Metadata and body resolve the same slug during one render.
+async function resolveEventMetadataBySlugUncached(
+  slug: string,
+): Promise<ResolvedEventPage | null> {
+  return resolveEventMetadataBySlugWithSources(slug, DEFAULT_SOURCES);
+}
+
+// Page-body lookups are memoized within a render so downstream page work does
+// not repeat the same live resolution.
 export const resolveEventPageBySlug = cache(resolveEventPageBySlugUncached);
+// Metadata has a deliberately smaller dependency graph than the page body.
+// Keep its request memo separate so a safe metadata miss cannot mask a later
+// live hit, and a live lookup rejection cannot poison document metadata.
+export const resolveEventMetadataBySlug = cache(
+  resolveEventMetadataBySlugUncached,
+);

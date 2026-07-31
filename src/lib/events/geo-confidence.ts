@@ -91,7 +91,12 @@ export function eventHasPreciseLocation(
   hasResolvedVenue = false,
 ): boolean {
   if (hasResolvedVenue) return true;
-  if (e.geo_confidence === "area") return false;
+  if (
+    e.geo_confidence === "area" ||
+    e.geo_confidence === "unknown"
+  ) {
+    return false;
+  }
   if (
     e.geo_confidence === "venue_match" ||
     e.geo_confidence === "exact_address"

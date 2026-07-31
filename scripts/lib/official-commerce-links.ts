@@ -6,6 +6,8 @@
  * links against the fetched page, rejects unsafe schemes, and classifies only
  * strong menu/order/reservation/catering/gift-card signals.
  */
+import { dedupeCommerceDestinations } from "@/lib/commerce/canonical";
+import { isKnownThirdPartyBusinessSource } from "./business-info-source-policy";
 
 export type PageAnchor = {
   url: string;
@@ -172,6 +174,85 @@ function isCommerceProviderHost(host: string): boolean {
   );
 }
 
+/**
+ * A provider may be the stored evidence page for a previously vetted action,
+ * but only when the URL identifies one business. Generic provider home,
+ * search, account, and reservation-management pages are not place evidence.
+ */
+function commerceProviderEntityKey(rawUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const host = normalizedHost(url.hostname);
+  if (!isCommerceProviderHost(host) || isProviderSearch(url)) return null;
+
+  const segments = url.pathname
+    .split("/")
+    .map((segment) => segment.trim().toLowerCase())
+    .filter(Boolean);
+  if (segments.length === 0) return null;
+
+  if (hostMatches(host, "opentable.com")) {
+    const restaurantIndex = segments.indexOf("r");
+    const slug = restaurantIndex >= 0 ? segments[restaurantIndex + 1] : null;
+    if (slug) return `opentable:${slug}`;
+    const restref = url.searchParams.get("restref") ?? url.searchParams.get("rid");
+    return restref?.trim()
+      ? `opentable:${restref.trim().toLowerCase()}`
+      : null;
+  }
+
+  if (hostMatches(host, "resy.com")) {
+    const venueIndex = segments.indexOf("venues");
+    const slug = venueIndex >= 0 ? segments[venueIndex + 1] : null;
+    return slug ? `resy:${slug}` : null;
+  }
+
+  if (hostMatches(host, "toasttab.com")) {
+    const structuralPrefix = ["online", "order", "catering"];
+    let slug: string | undefined;
+    if (segments[0] === "local" && segments[1] === "order") {
+      slug = segments[2];
+    } else if (structuralPrefix.includes(segments[0] ?? "")) {
+      slug = segments[1];
+    } else if (
+      ![
+        "account",
+        "giftcards",
+        "login",
+        "restaurants",
+        "search",
+      ].includes(segments[0] ?? "")
+    ) {
+      slug = segments[0];
+    }
+    return slug ? `toast:${slug}` : null;
+  }
+
+  if (hostMatches(host, "doordash.com")) {
+    const storeIndex = segments.indexOf("store");
+    const id = storeIndex >= 0 ? segments[storeIndex + 2] : null;
+    return id ? `doordash:${id}` : null;
+  }
+
+  if (hostMatches(host, "ubereats.com")) {
+    const storeIndex = segments.indexOf("store");
+    const id = storeIndex >= 0 ? segments[storeIndex + 2] : null;
+    return id ? `ubereats:${id}` : null;
+  }
+
+  if (hostMatches(host, "grubhub.com")) {
+    const restaurantIndex = segments.indexOf("restaurant");
+    const id = restaurantIndex >= 0 ? segments[restaurantIndex + 2] : null;
+    return id ? `grubhub:${id}` : null;
+  }
+
+  return null;
+}
+
 const BLOCKED_EXTERNAL_DESTINATION_DOMAINS = [
   "yelp.com",
   "tripadvisor.com",
@@ -281,6 +362,12 @@ function classifyAnchor(
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
   if (isProviderSearch(url)) return null;
 
+  const sourceProviderEntity = commerceProviderEntityKey(sourceUrl);
+  if (sourceProviderEntity) {
+    const destinationProviderEntity = commerceProviderEntityKey(url.toString());
+    if (destinationProviderEntity !== sourceProviderEntity) return null;
+  }
+
   const text = anchor.text.toLowerCase();
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   let path = url.pathname.toLowerCase();
@@ -299,7 +386,7 @@ function classifyAnchor(
   ];
   const isItemDeepLink =
     itemQueryKeys.some((key) => url.searchParams.has(key)) ||
-    /(?:^|\/)(?:menu-item|items?|products?)(?:\/|$)/i.test(path) ||
+    /(?:^|\/)(?:menu-item|items?|product-list|products?)(?:\/|$)/i.test(path) ||
     /\/menus\/[^/]+\/\d+(?:\/|$)/i.test(path) ||
     (anchor.text.length > 100 && /[$€£]\s*\d/.test(anchor.text));
   const isNonActionPath =
@@ -375,6 +462,9 @@ function classifyAnchor(
   } catch {
     return null;
   }
+  if (type === "reservation" && isMismatchedNumberedEntity(sourceUrl, url)) {
+    return null;
+  }
   if (
     path === "/" &&
     isSameSiteFamily(sourceHost, url.hostname)
@@ -397,6 +487,25 @@ function classifyAnchor(
 }
 
 /**
+ * Civic platforms commonly link every facility page to one generic
+ * reservations department. Different numeric resource IDs are strong proof
+ * that the destination is not a booking action for the place being viewed
+ * (for example, Dog Parks /192 -> generic Reservations /298).
+ */
+function isMismatchedNumberedEntity(sourceUrl: string, destination: URL): boolean {
+  let source: URL;
+  try {
+    source = new URL(sourceUrl);
+  } catch {
+    return true;
+  }
+  if (!isSameSiteFamily(source.hostname, destination.hostname)) return false;
+  const sourceId = source.pathname.match(/^\/(\d+)(?:\/|$)/)?.[1];
+  const destinationId = destination.pathname.match(/^\/(\d+)(?:\/|$)/)?.[1];
+  return Boolean(sourceId && destinationId && sourceId !== destinationId);
+}
+
+/**
  * Classify anchors and return every distinct real commerce URL. Highest-signal
  * links come first within each type so the loader can expose one calm primary
  * action while the raw record still preserves the full set.
@@ -405,6 +514,12 @@ export function classifyOfficialCommerceLinks(
   anchors: PageAnchor[],
   sourceUrl: string,
 ): ExtractedBusinessCommerceLink[] {
+  if (
+    isKnownThirdPartyBusinessSource(sourceUrl) &&
+    !commerceProviderEntityKey(sourceUrl)
+  ) {
+    return [];
+  }
   let source: URL;
   try {
     source = new URL(sourceUrl);
@@ -424,15 +539,16 @@ export function classifyOfficialCommerceLinks(
     candidates.push(candidate);
   });
 
+  const distinctCandidates = dedupeCommerceDestinations(candidates);
   const typeOrder = Array.from(
     new Set(
-      [...candidates]
+      [...distinctCandidates]
         .sort((a, b) => a.index - b.index)
         .map(({ type }) => type),
     ),
   );
   return typeOrder.flatMap((type) =>
-    candidates
+    distinctCandidates
       .filter((candidate) => candidate.type === type)
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((candidate) => ({

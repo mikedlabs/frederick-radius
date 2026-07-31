@@ -26,6 +26,8 @@ export type EventArchiveBatchRow = {
 
 export type EventArchiveBatchResult = {
   complete: boolean;
+  /** Every accepted event row was durably processed, independent of cleanup. */
+  recordsComplete: boolean;
   accepted: number;
   upserted: number;
   /**
@@ -39,6 +41,14 @@ export type EventArchiveBatchResult = {
   truncated: boolean;
   timedOut: boolean;
   tombstonesEnabled: boolean;
+  failure: EventArchiveBatchFailure | null;
+};
+
+export type EventArchiveBatchFailure = {
+  stage: "upsert" | "tombstone";
+  reason: "rejected" | "timed_out";
+  /** A bounded SQLSTATE or JavaScript error name; never the raw message. */
+  code: string | null;
 };
 
 type BatchWriteContext = {
@@ -502,22 +512,44 @@ const postgresWriter: EventArchiveBatchWriter = {
   },
 };
 
+type BatchDeadlineOutcome<T> =
+  | { status: "fulfilled"; value: T }
+  | { status: "rejected"; error: unknown }
+  | { status: "timed_out" };
+
+function safeFailureCode(error: unknown): string | null {
+  const candidate =
+    typeof error === "object" && error !== null
+      ? typeof (error as { code?: unknown }).code === "string"
+        ? (error as { code: string }).code
+        : typeof (error as { name?: unknown }).name === "string"
+          ? (error as { name: string }).name
+          : null
+      : null;
+  return candidate && /^[A-Za-z0-9_.-]{1,64}$/.test(candidate)
+    ? candidate
+    : null;
+}
+
 async function beforeDeadline<T>(
   promise: Promise<T>,
   deadlineAt: number,
   clock: () => number,
-): Promise<T | null> {
+): Promise<BatchDeadlineOutcome<T>> {
   const remaining = deadlineAt - clock();
-  if (remaining <= 0) return null;
+  if (remaining <= 0) return { status: "timed_out" };
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      promise.then(
-        (value) => value,
-        () => null,
+      promise.then<BatchDeadlineOutcome<T>, BatchDeadlineOutcome<T>>(
+        (value) => ({ status: "fulfilled", value }),
+        (error: unknown) => ({ status: "rejected", error }),
       ),
-      new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), remaining);
+      new Promise<BatchDeadlineOutcome<T>>((resolve) => {
+        timer = setTimeout(
+          () => resolve({ status: "timed_out" }),
+          remaining,
+        );
       }),
     ]);
   } finally {
@@ -573,74 +605,103 @@ export async function syncEventArchiveBatchWithWriter(
   let upserted = 0;
   let ignoredLifecycleOnly = 0;
   let batches = 0;
-  let timedOut = false;
+  let failure: EventArchiveBatchFailure | null = null;
 
   for (let offset = 0; offset < prepared.rows.length; offset += batchSize) {
     if (clock() >= deadlineAt) {
-      timedOut = true;
+      failure = {
+        stage: "upsert",
+        reason: "timed_out",
+        code: null,
+      };
       break;
     }
     const batch = prepared.rows.slice(offset, offset + batchSize);
-    const written = await beforeDeadline(
+    const outcome = await beforeDeadline(
       writer.upsert(batch, { deadlineAt }),
       deadlineAt,
       clock,
     );
-    if (written === null) {
-      timedOut = true;
+    if (outcome.status !== "fulfilled") {
+      failure = {
+        stage: "upsert",
+        reason: outcome.status,
+        code:
+          outcome.status === "rejected"
+            ? safeFailureCode(outcome.error)
+            : null,
+      };
       break;
     }
+    const written = outcome.value;
     upserted += written.upserted;
     ignoredLifecycleOnly += written.ignoredLifecycleOnly;
     batches++;
   }
 
-  const complete =
+  const recordsComplete =
     !prepared.truncated &&
-    !timedOut &&
+    failure?.stage !== "upsert" &&
     upserted + ignoredLifecycleOnly === prepared.rows.length;
   const tombstonesEnabled =
-    complete &&
+    recordsComplete &&
     options.seenSourceIdentities !== undefined &&
     successfulSources.length > 0 &&
     typeof writer.tombstoneMissing === "function";
   let tombstoned = 0;
-  if (tombstonesEnabled && clock() < deadlineAt) {
-    const result = await beforeDeadline(
-      writer.tombstoneMissing!(
-        seenSourceIdentities,
-        successfulSources,
-        {
-          deadlineAt,
-          now: new Date(startedAt),
-          graceMs: clampInteger(
-            options.graceMs,
-            EVENT_ARCHIVE_TOMBSTONE_GRACE_MS,
-            24 * 60 * 60_000,
-            30 * 24 * 60 * 60_000,
-          ),
-        },
-      ),
-      deadlineAt,
-      clock,
-    );
-    if (result === null) {
-      timedOut = true;
+  if (tombstonesEnabled) {
+    if (clock() >= deadlineAt) {
+      failure = {
+        stage: "tombstone",
+        reason: "timed_out",
+        code: null,
+      };
     } else {
-      tombstoned = result;
+      const outcome = await beforeDeadline(
+        writer.tombstoneMissing!(
+          seenSourceIdentities,
+          successfulSources,
+          {
+            deadlineAt,
+            now: new Date(startedAt),
+            graceMs: clampInteger(
+              options.graceMs,
+              EVENT_ARCHIVE_TOMBSTONE_GRACE_MS,
+              24 * 60 * 60_000,
+              30 * 24 * 60 * 60_000,
+            ),
+          },
+        ),
+        deadlineAt,
+        clock,
+      );
+      if (outcome.status === "fulfilled") {
+        tombstoned = outcome.value;
+      } else {
+        failure = {
+          stage: "tombstone",
+          reason: outcome.status,
+          code:
+            outcome.status === "rejected"
+              ? safeFailureCode(outcome.error)
+              : null,
+        };
+      }
     }
   }
 
   return {
-    complete: complete && !timedOut,
+    complete: recordsComplete && failure === null,
+    recordsComplete,
     accepted: prepared.rows.length,
     upserted,
     ignoredLifecycleOnly,
     tombstoned,
     batches,
     truncated: prepared.truncated,
-    timedOut,
+    timedOut: failure?.reason === "timed_out",
     tombstonesEnabled,
+    failure,
   };
 }
 

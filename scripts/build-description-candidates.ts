@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { getPlaceBySlug, publicPlaces } from "@/lib/loaders/places";
 import type { PlaceDescriptionEntry } from "@/lib/loaders/placeDescriptions";
 import { isDescriptionMechanicallySafe } from "@/lib/copy-quality";
+import { businessInfoSourceKind } from "./lib/business-info-source-policy";
 
 type BusinessInfo = {
   known_for?: string;
@@ -66,6 +67,7 @@ function main(): void {
     invalid_or_unsafe_sentence: 0,
     missing_source_url: 0,
     non_https_source: 0,
+    ineligible_source: 0,
     unsafe_name_match: 0,
     protected_status: 0,
   };
@@ -101,6 +103,11 @@ function main(): void {
       skipped.non_https_source += 1;
       continue;
     }
+    const sourceKind = businessInfoSourceKind(sourceUrl, place.name);
+    if (!sourceKind) {
+      skipped.ineligible_source += 1;
+      continue;
+    }
     if (!namesMatch(place.name, info.name)) {
       skipped.unsafe_name_match += 1;
       continue;
@@ -116,7 +123,7 @@ function main(): void {
       blurb,
       status: "candidate",
       source: {
-        kind: "business_website",
+        kind: sourceKind,
         url: sourceUrl,
         fetched_at: info.source?.fetchedAt,
       },
