@@ -665,6 +665,7 @@ export type Anomaly = {
     // that was unavailable. They share this shape so they ride the existing
     // sendAnomalyAlert / dashboard rendering.
     | "rls_unprotected"
+    | "schema_missing"
     | "ingest_stale"
     | "infrastructure_unavailable"
     // Curated-freshness kinds (src/lib/quality/curated-freshness.ts): the

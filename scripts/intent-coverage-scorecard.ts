@@ -11,7 +11,7 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CRAVINGS, matchesCraving } from "@/data/cravings";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { publicPlaces } from "@/lib/loaders/places";
+import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 
 const CORE_KEYS = ["food", "coffee", "drinks", "outside", "grocery", "shops"] as const;
 const CORE = CORE_KEYS.map((key) => {
@@ -20,7 +20,10 @@ const CORE = CORE_KEYS.map((key) => {
   return craving;
 });
 
-const places = publicPlaces();
+// Match the same canonical, enriched categories and tags used by the public
+// surfaces. Running intents against the raw merged rows miscounts category
+// corrections and can report false town-level gaps.
+const places = publicPlaces().map((place) => decoratePlace(place));
 const counts = new Map<string, Map<string, number>>();
 
 for (const town of MUNICIPALITIES) {

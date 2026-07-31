@@ -19,11 +19,17 @@ import enrichment from "@/data/places-enrichment.json" with { type: "json" };
 import hoursRefresh from "@/data/places-hours-refresh.json" with { type: "json" };
 import amenities from "@/data/amenities.json" with { type: "json" };
 import { PLACES as SOURCE_PLACES } from "@/data/places";
+import { CATEGORIES } from "@/data/categories";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  COVERAGE_TARGETS,
+  summarizeCoverageByCategory,
+  type CoveragePlace,
+} from "@/lib/quality/coverage";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import {
   CORE_AMENITY_KINDS,
@@ -167,6 +173,16 @@ const total = rows.reduce(
 const pct = (n: number, d: number) => (d === 0 ? "—" : `${Math.round((n / d) * 100)}%`);
 const line = (r: Row) =>
   `| ${r.muni} | ${r.places} | ${r.withStoredHours} (${pct(r.withStoredHours, r.places)}) | ${r.withFreshHours} (${pct(r.withFreshHours, r.places)}) | ${r.withRating} (${pct(r.withRating, r.places)}) | ${r.withPhoto} (${pct(r.withPhoto, r.places)}) | ${r.notes} | ${r.favorites} |`;
+const categoryCoverage = summarizeCoverageByCategory(
+  places as unknown as CoveragePlace[],
+  CATEGORIES,
+).sort((a, b) => {
+  const aRatio = a.percentages[a.weakest] / COVERAGE_TARGETS[a.weakest];
+  const bRatio = b.percentages[b.weakest] / COVERAGE_TARGETS[b.weakest];
+  return aRatio - bRatio || b.total - a.total || a.name.localeCompare(b.name);
+});
+const categoryLine = (category: (typeof categoryCoverage)[number]) =>
+  `| ${category.name} | ${category.total} | ${category.hours} (${category.percentages.hours}%) | ${category.photo} (${category.percentages.photo}%) | ${category.copy} (${category.percentages.copy}%) | ${category.action} (${category.percentages.action}%) |`;
 
 const googleBackedSlugs = new Set(
   PLACES.filter((place) => isGooglePlaceId(place.google_place_id)).map(
@@ -237,6 +253,16 @@ const md = [
   ...rows.map(line),
   `| **${total.muni}** | **${total.places}** | ${total.withStoredHours} (${pct(total.withStoredHours, total.places)}) | ${total.withFreshHours} (${pct(total.withFreshHours, total.places)}) | ${total.withRating} (${pct(total.withRating, total.places)}) | ${total.withPhoto} (${pct(total.withPhoto, total.places)}) | **${total.notes}** | **${total.favorites}** |`,
   "",
+  "## Coverage by category",
+  "",
+  "This matrix uses the normalized public client records that discovery and Ask",
+  "consume. It reveals categories whose inventory is large but whose current",
+  "hours, imagery, decision-useful copy, or direct actions are still thin.",
+  "",
+  "| Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |",
+  "| --- | ---: | ---: | ---: | ---: | ---: |",
+  ...categoryCoverage.map(categoryLine),
+  "",
   "## Hours refresh artifact",
   "",
   "This is the committed rolling snapshot that strict `Open now` claims read.",
@@ -281,7 +307,7 @@ const md = [
   "1. Apply `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql` in Supabase.",
   "2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.",
   "3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.",
-  "4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:00 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.",
+  "4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:17 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.",
   "5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.",
   "",
   "## Committed event quality",

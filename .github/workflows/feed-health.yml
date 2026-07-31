@@ -12,12 +12,17 @@ on:
     - cron: "0 12 * * *" # 12:00 UTC daily (~7-8 AM Eastern)
   workflow_dispatch: {}
 
+concurrency:
+  group: feed-health
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   health:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,4 +38,9 @@ jobs:
 
       # No `|| true` here — a critical feed being down MUST fail the job.
       - name: Check feed health
+        env:
+          # Optional. Without it the NPS adapter is honestly reported as not
+          # configured; the workflow still checks every public/keyless source.
+          # The probe sends the value in a header and never prints it.
+          NPS_API_KEY: ${{ secrets.NPS_API_KEY }}
         run: npm run feed:health

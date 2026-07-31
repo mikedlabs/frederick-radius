@@ -7,6 +7,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
 import {
   FREDERICK_COUNTY_APPROVAL_GATED_SOURCE_IDS,
@@ -22,7 +23,7 @@ type SourceRow = {
   transform_file?: string | null;
 };
 
-const REQUIRED_ACTIVE: Record<string, Collection> = {
+export const REQUIRED_ACTIVE: Record<string, Collection> = {
   // Business/place spine.
   google_places: "workflow",
   business_info_extraction: "workflow",
@@ -36,6 +37,15 @@ const REQUIRED_ACTIVE: Record<string, Collection> = {
   fcvfra_events: "workflow",
   venue_event_extraction: "workflow",
   squarespace_venue_events: "runtime",
+  // Mounted live-information adapters. These contracts prevent a working
+  // runtime source from remaining falsely labelled scaffold/pending in the
+  // ledger after its UI or API consumer ships.
+  google_news_rss: "runtime",
+  reddit_frederick: "runtime",
+  mta_marc_rt: "runtime",
+  hood_athletics: "runtime",
+  mount_athletics: "runtime",
+  fcc_athletics: "runtime",
 };
 
 const REQUIRED_POLICY_GATED = [
@@ -171,4 +181,9 @@ function main() {
   console.log("Source registry audit passed.");
 }
 
-main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main();
+}

@@ -45,14 +45,16 @@ export async function GET(request: Request) {
   if (auth) return auth;
   const startedAt = Date.now();
 
-  const runStart = await withDeadlineOutcome(
+  // These three phases are independent: the heartbeat insert, historical
+  // snapshot hydration, and live provider fan-out do not consume one
+  // another's output. Starting them together removes up to 13 seconds of
+  // avoidable serial waiting and leaves enough room for the bounded database
+  // writes before Vercel's 60-second ceiling.
+  const runStartPromise = withDeadlineOutcome(
     startIngestRunStrict(DATA_HEALTH_FEEDS_RUN),
     RUN_LOG_DEADLINE_MS,
   );
-  const runId =
-    runStart.status === "fulfilled" ? runStart.value : null;
-
-  const hydration = await withDeadlineOutcome(
+  const hydrationPromise = withDeadlineOutcome(
     hydrateSnapshotsStrict(),
     HYDRATE_DEADLINE_MS,
   );
@@ -64,7 +66,7 @@ export async function GET(request: Request) {
   // Raise only this signal's listener ceiling so Node does not report a false
   // leak warning when more than ten providers compose their own deadlines.
   setMaxListeners(0, liveDeadline.signal);
-  const liveOutcome = await withDeadlineOutcome(
+  const livePromise = withDeadlineOutcome(
     getLiveEvents(60, {
       includeTicketmaster: false,
       signal: liveDeadline.signal,
@@ -72,7 +74,14 @@ export async function GET(request: Request) {
     }),
     LIVE_FEED_DEADLINE_MS + LIVE_FEED_ABORT_SETTLE_MS,
   );
+  const [runStart, hydration, liveOutcome] = await Promise.all([
+    runStartPromise,
+    hydrationPromise,
+    livePromise,
+  ]);
   liveDeadline.dispose();
+  const runId =
+    runStart.status === "fulfilled" ? runStart.value : null;
   const live =
     liveOutcome.status === "fulfilled"
       ? liveOutcome.value

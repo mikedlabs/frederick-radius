@@ -12,6 +12,7 @@ export type CoverageDimension = keyof typeof COVERAGE_TARGETS;
 export type CoveragePlace = {
   slug: string;
   name: string;
+  category?: string;
   municipality?: string;
   hours?: Record<string, unknown>;
   hours_verified?: boolean;
@@ -41,6 +42,13 @@ export type CoverageSummary = CoverageCounts & {
 };
 
 export type TownCoverage = CoverageSummary & {
+  slug: string;
+  name: string;
+  weakest: CoverageDimension;
+  belowTarget: boolean;
+};
+
+export type CategoryCoverage = CoverageSummary & {
   slug: string;
   name: string;
   weakest: CoverageDimension;
@@ -244,6 +252,44 @@ export function summarizeCoverageByTown(
   const nameBySlug = new Map(towns.map((town) => [town.slug, town.name]));
   return [...byTown.entries()].map(([slug, townPlaces]) => {
     const summary = summarizeWithCopyCounts(townPlaces, copyCounts);
+    const weakest = weakestDimension(summary.percentages);
+    const belowTarget = (Object.keys(COVERAGE_TARGETS) as CoverageDimension[]).some(
+      (dimension) =>
+        summary.percentages[dimension] < COVERAGE_TARGETS[dimension],
+    );
+    return {
+      slug,
+      name: nameBySlug.get(slug) ?? slug,
+      ...summary,
+      weakest,
+      belowTarget,
+    };
+  });
+}
+
+/**
+ * Category coverage uses the same public, normalized records and the same
+ * catalog-wide copy counts as the overall and town reports. That keeps a
+ * repeated blurb from looking unique merely because it crosses categories.
+ */
+export function summarizeCoverageByCategory(
+  places: readonly CoveragePlace[],
+  categories: readonly { slug: string; name: string }[],
+): CategoryCoverage[] {
+  const copyCounts = decisionCopyCounts(places);
+  const byCategory = new Map<string, CoveragePlace[]>();
+  for (const place of places) {
+    const slug = place.category || "unknown";
+    const current = byCategory.get(slug) ?? [];
+    current.push(place);
+    byCategory.set(slug, current);
+  }
+
+  const nameBySlug = new Map(
+    categories.map((category) => [category.slug, category.name]),
+  );
+  return [...byCategory.entries()].map(([slug, categoryPlaces]) => {
+    const summary = summarizeWithCopyCounts(categoryPlaces, copyCounts);
     const weakest = weakestDimension(summary.percentages);
     const belowTarget = (Object.keys(COVERAGE_TARGETS) as CoverageDimension[]).some(
       (dimension) =>

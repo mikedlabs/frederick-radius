@@ -17,29 +17,11 @@
  */
 import { VERIFIED_TOWN_WEBSITES } from "@/data/town-websites";
 import { approvedCountyHealthEndpoints } from "@/lib/integrations/fcCountyHealth";
-
-type Endpoint = {
-  group: string;
-  /** Source-ledger id when this probe maps to one manifest row. */
-  sourceId?: string;
-  url: string;
-  /** A down critical endpoint fails the run; non-critical only warns. */
-  critical: boolean;
-  /** Some GIS hosts answer GET only; use HEAD where it is safe + cheap. */
-  method?: "GET" | "HEAD";
-};
-
-type Result = {
-  group: string;
-  sourceId?: string;
-  url: string;
-  status: number | string;
-  ok: boolean;
-  critical: boolean;
-  note?: string;
-};
-
-const TIMEOUT_MS = 15_000;
+import {
+  HIGH_VALUE_SOURCE_ENDPOINTS,
+  probeFeedEndpoints,
+  type FeedHealthEndpoint as Endpoint,
+} from "@/lib/quality/feed-health";
 
 // Town homepages: read from the verified rows so this list stays in sync
 // with src/data/town-websites.ts (the 11 confirmed municipalities). A
@@ -222,50 +204,18 @@ const ENDPOINTS: Endpoint[] = [
   ...TOWN_ENDPOINTS,
   ...FEED_ENDPOINTS,
   ...RUNTIME_FEED_ENDPOINTS,
+  ...HIGH_VALUE_SOURCE_ENDPOINTS,
   ...approvedCountyHealthEndpoints(),
 ];
-
-async function probe(ep: Endpoint): Promise<Result> {
-  const base: Omit<Result, "status" | "ok"> = {
-    group: ep.group,
-    sourceId: ep.sourceId,
-    url: ep.url,
-    critical: ep.critical,
-  };
-  try {
-    const res = await fetch(ep.url, {
-      method: ep.method ?? "GET",
-      redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: {
-        // Some municipal sites 403 a bare client; present a plain UA.
-        "user-agent": "frederick-radius-feed-health/1.0",
-      },
-    });
-    return {
-      ...base,
-      status: res.status,
-      ok: res.status >= 200 && res.status < 400,
-    };
-  } catch (err) {
-    const msg =
-      err instanceof Error && err.name === "TimeoutError"
-        ? "timeout"
-        : err instanceof Error
-          ? err.message
-          : String(err);
-    return { ...base, status: "ERR", ok: false, note: msg };
-  }
-}
 
 async function main() {
   console.log(`Feed health: probing ${ENDPOINTS.length} endpoints...\n`);
 
-  const results = await Promise.all(ENDPOINTS.map(probe));
+  const results = await probeFeedEndpoints(ENDPOINTS, { concurrency: 6 });
 
   // Print a compact, aligned table of { url, status, ok }.
   const rows = results.map((r) => ({
-    ok: r.ok ? "OK " : "DOWN",
+    ok: r.skipped ? "SKIP" : r.ok ? "OK  " : "DOWN",
     status: String(r.status),
     crit: r.critical ? "CRIT" : "    ",
     source: r.sourceId ?? "",
@@ -273,13 +223,31 @@ async function main() {
   }));
   console.table(rows);
 
-  const downCritical = results.filter((r) => !r.ok && r.critical);
-  const downOther = results.filter((r) => !r.ok && !r.critical);
+  const skipped = results.filter((r) => r.skipped);
+  const downCritical = results.filter(
+    (r) => !r.ok && !r.skipped && r.critical,
+  );
+  const downOther = results.filter(
+    (r) => !r.ok && !r.skipped && !r.critical,
+  );
 
   console.log(
-    `\nSummary: ${results.filter((r) => r.ok).length}/${results.length} healthy, ` +
-      `${downCritical.length} critical down, ${downOther.length} non-critical down.`,
+    `\nSummary: ${results.filter((r) => r.ok).length} healthy, ` +
+      `${skipped.length} not configured, ${downCritical.length} critical down, ` +
+      `${downOther.length} non-critical down.`,
   );
+
+  if (skipped.length) {
+    console.info(
+      "\nConfiguration-gated probes skipped:\n" +
+        skipped
+          .map(
+            (r) =>
+              `  - [${r.group}] ${r.note ?? "required setting is not configured"}`,
+          )
+          .join("\n"),
+    );
+  }
 
   if (downOther.length) {
     console.warn(
