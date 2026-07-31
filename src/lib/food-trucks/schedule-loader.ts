@@ -14,9 +14,25 @@ function coversNow(snapshot: FoodTruckScheduleSnapshot, now: Date): boolean {
     time < Date.parse(snapshot.windowEnd)
   );
 }
+
+/**
+ * Read only the cron-built schedule.
+ *
+ * Lightweight surfaces such as Today use this path so a missing cache cannot
+ * turn five optional publisher feeds into render-blocking work. The dedicated
+ * food-truck page still uses `getFoodTruckSchedule` and may rebuild from those
+ * official sources when the stored board is unavailable.
+ */
+export async function getStoredFoodTruckSchedule(
+  now = new Date(),
+): Promise<FoodTruckScheduleSnapshot | null> {
+  const stored = await readStoredFoodTruckSchedule();
+  return stored && coversNow(stored, now) ? stored : null;
+}
+
 /** Read the cron-built board first, then fail softly to the official feeds. */
 export async function getFoodTruckSchedule(now = new Date()): Promise<FoodTruckScheduleSnapshot> {
-  const stored = await readStoredFoodTruckSchedule();
-  if (stored && coversNow(stored, now)) return stored;
+  const stored = await getStoredFoodTruckSchedule(now);
+  if (stored) return stored;
   return buildFoodTruckSchedule(now);
 }
