@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
+import { useMounted } from "@/hooks/useSaved";
 
 /**
  * NonprofitList — the org list with a name search and a folded long tail.
@@ -30,6 +31,7 @@ export type OrgRowData = {
 const INITIAL_CAP = 15;
 
 export default function NonprofitList({ orgs }: { orgs: readonly OrgRowData[] }) {
+  const interactionReady = useMounted();
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const q = query.trim().toLowerCase();
@@ -42,7 +44,10 @@ export default function NonprofitList({ orgs }: { orgs: readonly OrgRowData[] })
   const hidden = filtered.length - shown.length;
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2"
+      data-nonprofit-interaction-ready={interactionReady ? "true" : "false"}
+    >
       <div className="relative">
         <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
         <input

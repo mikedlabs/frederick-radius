@@ -128,6 +128,9 @@ test("the nonprofit directory starts compact and can reveal the full list", asyn
 
   const nonprofitLinks = page.locator('a[href^="/nonprofits/"]');
   await expect(nonprofitLinks).toHaveCount(15);
+  await expect(
+    page.locator('[data-nonprofit-interaction-ready="true"]'),
+  ).toBeVisible();
   const showAll = page.getByRole("button", { name: /^Show all \d+$/ });
   const advertisedTotal = Number((await showAll.textContent())?.match(/\d+/)?.[0]);
   expect(advertisedTotal).toBeGreaterThan(15);
