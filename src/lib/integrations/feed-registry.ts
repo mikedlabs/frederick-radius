@@ -71,7 +71,14 @@ export const KEYED_FEEDS: FeedDef[] = [
     approvedCountySourceId: "fc_county_facilities",
     powers: "Legacy County parks, libraries, and fire-station ingest",
   },
-  { name: "Parking occupancy", sourceIds: ["cof_parking_occupancy"], env: "PARKING_OCCUPANCY_URL", powers: "Live garage space counts on /parking and map peeks (PARKING_OCCUPANCY_KEY is optional when the owner feed requires it)" },
+  {
+    name: "Parking occupancy",
+    sourceIds: ["cof_parking_occupancy"],
+    env: "PARKING_OCCUPANCY_ENABLED",
+    additionalEnvs: ["PARKING_OCCUPANCY_URL"],
+    powers:
+      "Licensed live garage space counts on /parking and map peeks (PARKING_OCCUPANCY_KEY is optional when the owner feed requires it)",
+  },
 ];
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.

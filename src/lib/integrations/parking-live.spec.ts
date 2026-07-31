@@ -1,5 +1,38 @@
-import { describe, it, expect } from "vitest";
-import { parseOccupancy, GARAGE_FULL_THRESHOLD } from "./parking-live";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import {
+  fetchParkingOccupancyFresh,
+  getParkingOccupancy,
+  getParkingOccupancyResult,
+  parseOccupancy,
+  GARAGE_FULL_THRESHOLD,
+  PARKING_OCCUPANCY_MAX_AGE_MS,
+} from "./parking-live";
+
+const NOW_MS = Date.parse("2026-07-31T12:00:00.000Z");
+const ORIGINAL = {
+  PARKING_OCCUPANCY_ENABLED: process.env.PARKING_OCCUPANCY_ENABLED,
+  PARKING_OCCUPANCY_URL: process.env.PARKING_OCCUPANCY_URL,
+  PARKING_OCCUPANCY_KEY: process.env.PARKING_OCCUPANCY_KEY,
+};
+
+function restore(name: keyof typeof ORIGINAL) {
+  const value = ORIGINAL[name];
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
+beforeEach(() => {
+  delete process.env.PARKING_OCCUPANCY_ENABLED;
+  delete process.env.PARKING_OCCUPANCY_URL;
+  delete process.env.PARKING_OCCUPANCY_KEY;
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  for (const name of Object.keys(ORIGINAL) as Array<keyof typeof ORIGINAL>) {
+    restore(name);
+  }
+});
 
 describe("parseOccupancy", () => {
   it("returns an empty snapshot for junk / empty input (never fabricates)", () => {
@@ -43,6 +76,13 @@ describe("parseOccupancy", () => {
     expect(status.isFull).toBe(true);
   });
 
+  it("does not mistake a NOT FULL status for a full garage", () => {
+    const d = parseOccupancy({
+      decks: [{ name: "Court", status: "NOT FULL" }],
+    }).decks[0];
+    expect(d.isFull).toBe(false);
+  });
+
   it("flags filling-up (75–89%) without marking it full", () => {
     const d = parseOccupancy({ decks: [{ name: "Court", capacity: 100, occupied: 80 }] }).decks[0];
     expect(d.percentFull).toBe(80);
@@ -66,5 +106,265 @@ describe("parseOccupancy", () => {
     expect(d.available).toBe(5);
     expect(d.occupied).toBe(295);
     expect(d.garageSlug).toBe("court-street-parking-garage-frederick");
+  });
+
+  it("keeps non-numeric placeholders null instead of turning them into zero", () => {
+    const d = parseOccupancy({
+      decks: [{
+        name: "Court Street Garage",
+        available: "N/A",
+        occupied: "unknown",
+        capacity: "--",
+        percent_full: "not reported",
+      }],
+    }).decks[0];
+
+    expect(d).toMatchObject({
+      available: null,
+      occupied: null,
+      capacity: null,
+      percentFull: null,
+      isFull: false,
+    });
+  });
+});
+
+describe("fetchParkingOccupancyFresh", () => {
+  beforeEach(() => {
+    process.env.PARKING_OCCUPANCY_URL =
+      "https://parking.example.test/occupancy";
+  });
+
+  it("accepts current JSON for a known garage and sends the optional key only upstream", async () => {
+    process.env.PARKING_OCCUPANCY_KEY = "licensed-test-key";
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        as_of: "2026-07-31T11:58:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: 400,
+          available: 12,
+        }],
+      }), {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      }),
+    );
+
+    const snapshot = await fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    });
+
+    expect(snapshot).toMatchObject({
+      asOf: "2026-07-31T11:58:00.000Z",
+      decks: [{
+        garageSlug: "court-street-parking-garage-frederick",
+        available: 12,
+        capacity: 400,
+      }],
+    });
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(init).toMatchObject({ cache: "no-store" });
+    expect(init?.headers).toMatchObject({
+      Accept: "application/json",
+      Authorization: "Bearer licensed-test-key",
+    });
+  });
+
+  it("accepts deck timestamps when the feed has no root timestamp", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        decks: [{
+          name: "Carroll Creek Deck",
+          available: 40,
+          updated: "2026-07-31T11:57:00.000Z",
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const snapshot = await fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    });
+
+    expect(snapshot.decks).toHaveLength(1);
+    expect(snapshot.decks[0].updated).toBe("2026-07-31T11:57:00.000Z");
+  });
+
+  it.each([
+    {
+      name: "HTML",
+      response: new Response("<html>not a feed</html>", {
+        headers: { "content-type": "text/html" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "an empty deck list",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "only unknown decks",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{ name: "Unrelated Lot", available: 20 }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "a known deck with placeholder occupancy",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: 400,
+          available: "N/A",
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "stale known-deck data",
+      response: new Response(JSON.stringify({
+        as_of: new Date(
+          NOW_MS - PARKING_OCCUPANCY_MAX_AGE_MS - 1,
+        ).toISOString(),
+        decks: [{ name: "Court Street Garage", available: 20 }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "stale",
+    },
+    {
+      name: "a current envelope containing a stale deck",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          available: 20,
+          updated: new Date(
+            NOW_MS - PARKING_OCCUPANCY_MAX_AGE_MS - 1,
+          ).toISOString(),
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "stale",
+    },
+    {
+      name: "a source timestamp too far in the future",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T12:03:00.000Z",
+        decks: [{ name: "Court Street Garage", available: 20 }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "stale",
+    },
+  ])("rejects $name without producing an empty success", async ({
+    response,
+    reason,
+  }) => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response);
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({
+      name: "ParkingOccupancyUnavailableError",
+      reason,
+    });
+  });
+
+  it("classifies an aborted fetch as a timeout without exposing the error", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(
+      new DOMException("licensed-test-key", "TimeoutError"),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({
+      name: "ParkingOccupancyUnavailableError",
+      reason: "timeout",
+      message: "Parking occupancy unavailable: timeout",
+    });
+  });
+
+  it("rejects a non-HTTPS endpoint before making a request", async () => {
+    process.env.PARKING_OCCUPANCY_URL =
+      "http://parking.example.test/occupancy";
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({ reason: "invalid-url" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("sanitizes a generic network failure", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(
+      new TypeError("fetch https://user:licensed-test-key@example.test failed"),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({
+      reason: "network",
+      message: "Parking occupancy unavailable: network",
+    });
+  });
+
+  it("classifies non-2xx responses without accepting their body", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ error: "secret upstream detail" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).rejects.toMatchObject({ reason: "http" });
+  });
+});
+
+describe("parking occupancy availability", () => {
+  it("requires explicit approval even when a URL was accidentally set", async () => {
+    process.env.PARKING_OCCUPANCY_URL =
+      "https://www.cityoffrederickmd.gov/161/Parking";
+
+    await expect(getParkingOccupancyResult()).resolves.toMatchObject({
+      status: "unavailable",
+      reason: "disabled",
+    });
+    await expect(getParkingOccupancy()).resolves.toEqual({
+      asOf: null,
+      decks: [],
+    });
+  });
+
+  it("reports a missing endpoint after explicit approval", async () => {
+    process.env.PARKING_OCCUPANCY_ENABLED = "1";
+
+    await expect(getParkingOccupancyResult()).resolves.toMatchObject({
+      status: "unavailable",
+      reason: "missing-url",
+    });
   });
 });

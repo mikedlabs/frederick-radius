@@ -1477,11 +1477,13 @@ sources:
       or a City-provided feed) is not yet confirmed, so url is null on
       purpose; (2) redistribution licensing is unconfirmed.
 
-      The APP-SIDE is already wired and DORMANT behind one flag: set
-      PARKING_OCCUPANCY_URL (optionally PARKING_OCCUPANCY_KEY) and the
-      runtime loader src/lib/integrations/parking-live.ts lights up the
-      /parking live badges and the /api/cron/parking-alerts fanout. Unset
-      = graceful no-op, no fabricated counts. (The predictive
+      The APP-SIDE is already wired and DORMANT behind an explicit approval
+      boundary. Set PARKING_OCCUPANCY_ENABLED=1 only after the endpoint and
+      redistribution terms are confirmed, then set PARKING_OCCUPANCY_URL
+      (optionally PARKING_OCCUPANCY_KEY). The runtime loader
+      src/lib/integrations/parking-live.ts then lights up the /parking live
+      badges and the /api/cron/parking-alerts fanout. Disabled = graceful
+      no-op, no fabricated counts. (The predictive
       /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
       batch-ingest mirror of that same model. pending_review by design.
 

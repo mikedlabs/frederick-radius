@@ -13,12 +13,13 @@ import { unstable_cache } from "next/cache";
  * are good ESTIMATES, not gate-counts. Treat them as "about this full," never as
  * an authoritative space-by-space ledger.
  *
- * The flag: set `PARKING_OCCUPANCY_URL` (a licensed ParkZen / City endpoint
- * returning the deck list) and the whole feature lights up — the /parking live
- * badges, the settings toggle, and the live-full push cron all key off this
- * one env var. Unset (the default), every path is a graceful no-op: we never
- * fabricate a count, exactly as `data/sources.yaml` (cof_parking_occupancy,
- * pending_review) and parking-garages.ts already promise.
+ * Activation is deliberately two-step because the source is still
+ * pending_review: `PARKING_OCCUPANCY_ENABLED=1` records the operator's explicit
+ * approval, while `PARKING_OCCUPANCY_URL` supplies the licensed endpoint.
+ * A stray City webpage URL must never activate the live badges or alert cron.
+ * Disabled (the default), every user-facing path is a graceful no-op: we never
+ * fabricate a count, exactly as `data/sources.yaml` and parking-garages.ts
+ * already promise.
  *
  * The parser is deliberately shape-tolerant: the exact ParkZen response is not
  * confirmed, so it reads a few common field aliases, derives the missing one of
@@ -31,6 +32,11 @@ import { unstable_cache } from "next/cache";
 export const GARAGE_FULL_THRESHOLD = 90;
 /** percent_full at/above which we show a "filling up" caution (but not full). */
 export const GARAGE_FILLING_THRESHOLD = 75;
+/** Maximum age accepted for an occupancy snapshot that may drive an alert. */
+export const PARKING_OCCUPANCY_MAX_AGE_MS = 10 * 60 * 1_000;
+
+const PARKING_OCCUPANCY_TIMEOUT_MS = 8_000;
+const PARKING_OCCUPANCY_FUTURE_TOLERANCE_MS = 2 * 60 * 1_000;
 
 export type GarageOccupancy = {
   /** Our canonical ParkingGarage.slug, or null when the feed name can't be
@@ -57,12 +63,38 @@ export type ParkingOccupancySnapshot = {
   decks: GarageOccupancy[];
 };
 
+export type ParkingOccupancyUnavailableReason =
+  | "disabled"
+  | "missing-url"
+  | "invalid-url"
+  | "timeout"
+  | "network"
+  | "http"
+  | "invalid-payload"
+  | "stale";
+
+export type ParkingOccupancyResult =
+  | {
+      status: "ok";
+      checkedAt: string;
+      snapshot: ParkingOccupancySnapshot;
+    }
+  | {
+      status: "unavailable";
+      checkedAt: string;
+      reason: ParkingOccupancyUnavailableReason;
+    };
+
 const EMPTY: ParkingOccupancySnapshot = { asOf: null, decks: [] };
 
-/** True when the live feed is configured. Drives whether the UI/toggle/cron do
- *  anything at all — the single flag for the whole feature. */
+/** Explicit operator approval. A URL by itself is not permission to run. */
+export function parkingFeedEnabled(): boolean {
+  return process.env.PARKING_OCCUPANCY_ENABLED === "1";
+}
+
+/** True only when both approval and the endpoint are present. */
 export function parkingFeedConfigured(): boolean {
-  return Boolean(process.env.PARKING_OCCUPANCY_URL);
+  return parkingFeedEnabled() && Boolean(process.env.PARKING_OCCUPANCY_URL);
 }
 
 // Feed deck name → our canonical garage slug. The feed names are unconfirmed,
@@ -84,7 +116,11 @@ function resolveGarageSlug(name: string): string | null {
 function num(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
-    const n = Number(v.replace(/[^0-9.-]/g, ""));
+    const cleaned = v.replace(/[^0-9.-]/g, "");
+    // Number("") is 0. Treat placeholders such as "N/A" and "unknown" as
+    // unavailable instead of accidentally declaring a garage full.
+    if (!/[0-9]/.test(cleaned)) return null;
+    const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   }
   return null;
@@ -94,7 +130,25 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+function statusSaysFull(status: string | null): boolean {
+  if (!status || /\b(?:not|isn't|is\s+not)\s+full\b/i.test(status)) {
+    return false;
+  }
+  return /\bfull\b/i.test(status);
+}
+
 type RawDeck = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function rawDeckList(raw: unknown): unknown[] | null {
+  if (Array.isArray(raw)) return raw;
+  if (!isRecord(raw)) return null;
+  const list = raw.decks ?? raw.garages ?? raw.lots ?? raw.data;
+  return Array.isArray(list) ? list : null;
+}
 
 /**
  * Pure normalizer — no fetch, no env. Accepts whatever the feed returns
@@ -102,10 +156,9 @@ type RawDeck = Record<string, unknown>;
  * typed snapshot, deriving counts where possible and never inventing them.
  */
 export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
-  const root = (raw ?? {}) as Record<string, unknown>;
-  const list: unknown =
-    Array.isArray(raw) ? raw : root.decks ?? root.garages ?? root.lots ?? root.data ?? [];
-  const decksRaw: RawDeck[] = Array.isArray(list) ? (list as RawDeck[]) : [];
+  const root = isRecord(raw) ? raw : {};
+  const list = rawDeckList(raw) ?? [];
+  const decksRaw: RawDeck[] = list.filter(isRecord);
 
   const decks: GarageOccupancy[] = decksRaw
     .map((d): GarageOccupancy => {
@@ -122,12 +175,14 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
       if (percentFull === null && capacity && occupied !== null) {
         percentFull = Math.round((occupied / capacity) * 100);
       }
-      if (percentFull !== null) percentFull = Math.max(0, Math.min(100, percentFull));
+      if (percentFull !== null && (percentFull < 0 || percentFull > 100)) {
+        percentFull = null;
+      }
       const status = str(d.status ?? d.state);
       const isFull =
         (percentFull !== null && percentFull >= GARAGE_FULL_THRESHOLD) ||
         (available !== null && available <= 0) ||
-        /\bfull\b/i.test(status ?? "");
+        statusSaysFull(status);
       const isFilling =
         !isFull && percentFull !== null && percentFull >= GARAGE_FILLING_THRESHOLD;
       return {
@@ -148,33 +203,212 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
   return { asOf: str(root.as_of ?? root.asOf ?? root.updated), decks };
 }
 
-async function fetchOccupancy(): Promise<ParkingOccupancySnapshot> {
-  const url = process.env.PARKING_OCCUPANCY_URL;
-  if (!url) return EMPTY;
-  try {
-    const headers: Record<string, string> = { "User-Agent": "frederick-radius" };
-    // Optional bearer/key for the licensed vendor endpoint.
-    if (process.env.PARKING_OCCUPANCY_KEY) {
-      headers.Authorization = `Bearer ${process.env.PARKING_OCCUPANCY_KEY}`;
+class ParkingOccupancyUnavailableError extends Error {
+  constructor(readonly reason: ParkingOccupancyUnavailableReason) {
+    super(`Parking occupancy unavailable: ${reason}`);
+    this.name = "ParkingOccupancyUnavailableError";
+  }
+}
+
+function fail(reason: ParkingOccupancyUnavailableReason): never {
+  throw new ParkingOccupancyUnavailableError(reason);
+}
+
+function timestampMs(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function assertFreshTimestamp(value: string, nowMs: number): void {
+  const parsed = timestampMs(value);
+  if (parsed === null) fail("invalid-payload");
+  if (
+    parsed > nowMs + PARKING_OCCUPANCY_FUTURE_TOLERANCE_MS ||
+    nowMs - parsed > PARKING_OCCUPANCY_MAX_AGE_MS
+  ) {
+    fail("stale");
+  }
+}
+
+function hasOccupancySignal(deck: GarageOccupancy): boolean {
+  const countSignal =
+    deck.available !== null ||
+    deck.occupied !== null ||
+    deck.percentFull !== null;
+  const statusSignal =
+    deck.status !== null &&
+    /\b(?:open|available|full|closed|filling)\b/i.test(deck.status);
+  return countSignal || statusSignal;
+}
+
+function validateSnapshot(
+  raw: unknown,
+  nowMs: number,
+): ParkingOccupancySnapshot {
+  const rows = rawDeckList(raw);
+  if (
+    !rows ||
+    rows.length === 0 ||
+    rows.some((row) => !isRecord(row))
+  ) {
+    fail("invalid-payload");
+  }
+
+  const parsed = parseOccupancy(raw);
+  const knownDecks = parsed.decks.filter(
+    (deck) => deck.garageSlug && hasOccupancySignal(deck),
+  );
+  if (knownDecks.length === 0) fail("invalid-payload");
+
+  for (const deck of knownDecks) {
+    if (
+      (deck.available !== null && deck.available < 0) ||
+      (deck.occupied !== null && deck.occupied < 0) ||
+      (deck.capacity !== null && deck.capacity <= 0) ||
+      (deck.capacity !== null &&
+        deck.available !== null &&
+        deck.available > deck.capacity) ||
+      (deck.capacity !== null &&
+        deck.occupied !== null &&
+        deck.occupied > deck.capacity)
+    ) {
+      fail("invalid-payload");
     }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return EMPTY;
-    return parseOccupancy(await res.json());
+  }
+
+  if (parsed.asOf) {
+    assertFreshTimestamp(parsed.asOf, nowMs);
+    // A current envelope must not conceal an individually stale deck.
+    for (const deck of knownDecks) {
+      if (deck.updated) assertFreshTimestamp(deck.updated, nowMs);
+    }
+  } else {
+    // Without a feed-level timestamp, every accepted deck must carry its own.
+    for (const deck of knownDecks) {
+      if (!deck.updated) fail("invalid-payload");
+      assertFreshTimestamp(deck.updated, nowMs);
+    }
+  }
+
+  return { asOf: parsed.asOf, decks: knownDecks };
+}
+
+type FetchOccupancyOptions = {
+  fetchImpl?: typeof fetch;
+  nowMs?: number;
+  timeoutMs?: number;
+};
+
+/**
+ * One strict upstream pull. It throws a sanitized typed error so a failed
+ * request is never stored by the successful-snapshot cache.
+ */
+export async function fetchParkingOccupancyFresh(
+  options: FetchOccupancyOptions = {},
+): Promise<ParkingOccupancySnapshot> {
+  const url = process.env.PARKING_OCCUPANCY_URL;
+  if (!url) fail("missing-url");
+  let endpoint: URL;
+  try {
+    endpoint = new URL(url);
   } catch {
-    // Any hiccup degrades to "no live data" — the UI/cron simply show/send
-    // nothing rather than a wrong or stale count.
-    return EMPTY;
+    fail("invalid-url");
+  }
+  if (endpoint.protocol !== "https:") fail("invalid-url");
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "User-Agent": "frederick-radius",
+  };
+  // Optional bearer/key for the licensed vendor endpoint.
+  if (process.env.PARKING_OCCUPANCY_KEY) {
+    headers.Authorization = `Bearer ${process.env.PARKING_OCCUPANCY_KEY}`;
+  }
+
+  let res: Response;
+  try {
+    res = await (options.fetchImpl ?? fetch)(endpoint, {
+      cache: "no-store",
+      headers,
+      signal: AbortSignal.timeout(
+        options.timeoutMs ?? PARKING_OCCUPANCY_TIMEOUT_MS,
+      ),
+    });
+  } catch (error) {
+    if (
+      error instanceof DOMException &&
+      (error.name === "AbortError" || error.name === "TimeoutError")
+    ) {
+      fail("timeout");
+    }
+    fail("network");
+  }
+
+  if (!res.ok) fail("http");
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json") && !contentType.includes("+json")) {
+    fail("invalid-payload");
+  }
+
+  let raw: unknown;
+  try {
+    raw = await res.json();
+  } catch {
+    fail("invalid-payload");
+  }
+  return validateSnapshot(raw, options.nowMs ?? Date.now());
+}
+
+/**
+ * Successful snapshots share a short cache across the parking surfaces.
+ * Rejections escape this boundary, so a network outage is never cached as a
+ * healthy empty feed.
+ */
+const getCachedParkingOccupancy = unstable_cache(
+  fetchParkingOccupancyFresh,
+  ["parking-occupancy-v2"],
+  {
+    revalidate: 60,
+    tags: ["parking-occupancy"],
+  },
+);
+
+export async function getParkingOccupancyResult(): Promise<ParkingOccupancyResult> {
+  const checkedAt = new Date().toISOString();
+  if (!parkingFeedEnabled()) {
+    return { status: "unavailable", checkedAt, reason: "disabled" };
+  }
+  if (!process.env.PARKING_OCCUPANCY_URL) {
+    return { status: "unavailable", checkedAt, reason: "missing-url" };
+  }
+  try {
+    return {
+      status: "ok",
+      checkedAt,
+      snapshot: await getCachedParkingOccupancy(),
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      checkedAt,
+      reason:
+        error instanceof ParkingOccupancyUnavailableError
+          ? error.reason
+          : "network",
+    };
   }
 }
 
 /**
- * Cached snapshot — short TTL so the /parking page and the alert cron share one
- * upstream call and never hammer the vendor. Returns EMPTY when dormant.
+ * Compatibility helper for user-facing surfaces. A failed or disabled live
+ * feed remains neutral: static garage facts still render, but no live count is
+ * invented.
  */
-export const getParkingOccupancy = unstable_cache(fetchOccupancy, ["parking-occupancy-v1"], {
-  revalidate: 60,
-  tags: ["parking-occupancy"],
-});
+export async function getParkingOccupancy(): Promise<ParkingOccupancySnapshot> {
+  const result = await getParkingOccupancyResult();
+  return result.status === "ok" ? result.snapshot : EMPTY;
+}
 
 /** Live occupancy keyed by our garage slug — for the /parking cards. Only
  *  matched, real decks land in the map; dormant ⇒ empty map. */

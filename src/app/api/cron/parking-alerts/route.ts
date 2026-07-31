@@ -8,19 +8,22 @@
  * run — at most once per ~3-hour block per deck (≈ one alert per fill episode),
  * while still allowing a fresh alert for a separate evening fill.
  *
- * Gated three ways, all graceful no-ops that return 200:
- *   - PARKING_OCCUPANCY_URL unset  → the feed is dormant (the default today;
+ * Gated three ways:
+ *   - PARKING_OCCUPANCY_ENABLED != 1 → the feed is dormant (the default today;
  *     Frederick's live counts live in the ParkZen-powered Park Frederick app,
  *     which needs a licensed endpoint — see src/lib/integrations/parking-live).
  *   - VAPID not configured         → push can't send.
  *   - no decks full                → nothing to fan out.
+ * A feed that was explicitly enabled but is missing, stale, malformed, or
+ * unreachable returns 503. It must not look like a healthy zero-deck pull.
  *
  * Auth: same CRON_SECRET bearer as the other cron paths.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
 import {
-  getParkingOccupancy,
+  getParkingOccupancyResult,
+  parkingFeedEnabled,
   parkingFeedConfigured,
 } from "@/lib/integrations/parking-live";
 import { fanoutToTopic } from "@/lib/push-fanout";
@@ -35,14 +38,46 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
+  if (!parkingFeedEnabled()) {
+    return NextResponse.json({
+      ok: true,
+      status: "disabled",
+      skipped: "PARKING_OCCUPANCY_ENABLED is not 1 (dormant)",
+    });
+  }
   if (!parkingFeedConfigured()) {
-    return NextResponse.json({ ok: true, skipped: "PARKING_OCCUPANCY_URL not set (dormant)" });
+    return NextResponse.json(
+      {
+        ok: false,
+        status: "unavailable",
+        reason: "missing-url",
+        decks_checked: 0,
+        fanouts: 0,
+        detail: [],
+      },
+      { status: 503 },
+    );
   }
   if (!configurePush()) {
     return NextResponse.json({ ok: true, skipped: "VAPID not configured" });
   }
 
-  const snap = await getParkingOccupancy();
+  const occupancy = await getParkingOccupancyResult();
+  if (occupancy.status === "unavailable") {
+    return NextResponse.json(
+      {
+        ok: false,
+        status: "unavailable",
+        reason: occupancy.reason,
+        checked_at: occupancy.checkedAt,
+        decks_checked: 0,
+        fanouts: 0,
+        detail: [],
+      },
+      { status: 503 },
+    );
+  }
+  const snap = occupancy.snapshot;
   const nameBySlug = new Map(PARKING_GARAGES.map((g) => [g.slug, g.name]));
 
   // Coarse fill-window for the dedupe key: date + 3-hour block (UTC). One alert
@@ -82,7 +117,10 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
+    ok: true,
+    status: "ok",
     ran_at: now.toISOString(),
+    source_as_of: snap.asOf,
     decks_checked: snap.decks.length,
     fanouts: results.length,
     detail: results,
