@@ -55,6 +55,7 @@ describe("FCPS RSS availability", () => {
     });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/syndication/rss.aspx");
     expect(String(fetchMock.mock.calls[0][0])).not.toContain("/news.rss");
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("parses closure, delay, and early-dismissal notices", async () => {

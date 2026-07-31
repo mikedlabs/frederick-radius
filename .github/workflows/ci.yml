@@ -98,3 +98,11 @@ jobs:
           --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+      - name: Keep chaos failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-browser-failure-traces
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

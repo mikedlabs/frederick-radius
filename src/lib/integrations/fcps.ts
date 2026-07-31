@@ -9,6 +9,7 @@
 // FCPS exposes its current news-summary RSS from the News page. The previous
 // /news.rss shortcut now returns 404.
 const DEFAULT_FEED = "https://www.fcps.org/syndication/rss.aspx?feed=datasummary&item_description=portlet_xml_summary&item_name=portlet_xml_title&item_pubdate=portlet_last_modified&key=%2FAAGY2FPAufgUrJw7OxqsYwSBXFdTp%2BBNc5BCpRcIw8jq5pyNj8YKVVG3nKyM4pYNB7knPKvIRZyPRd8wyu8lwgUC2E%3D&max_items=8&portal_id=74633453&serverid=74633369&target_object_id=74815149&userid=5&v=2.0";
+const FCPS_FETCH_TIMEOUT_MS = 5_000;
 
 export type FcpsStatus = "open" | "delayed" | "early_dismissal" | "closed" | "unknown";
 
@@ -91,6 +92,7 @@ export async function getFcpsAlertsResult(): Promise<FcpsAlertsResult> {
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/rss+xml, application/xml, text/xml" },
+      signal: AbortSignal.timeout(FCPS_FETCH_TIMEOUT_MS),
       next: { revalidate: 600 },
     });
     if (!res.ok) return { data: [], available: false };

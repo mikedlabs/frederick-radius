@@ -89,6 +89,70 @@ describe("event source circuit", () => {
     expect(work).toHaveBeenCalledTimes(2);
   });
 
+  it("restores the prior circuit and stale-good value after caller cancellation", async () => {
+    let now = 1_000;
+    const circuit = new EventSourceCircuitRegistry({
+      baseCooldownMs: 100,
+      maxCooldownMs: 1_000,
+      jitterRatio: 0,
+      now: () => now,
+    });
+    const cancellableOptions = {
+      classify: (result: Result | { state: "cancelled"; items: string[] }) =>
+        result.state === "ok"
+          ? "success" as const
+          : result.state === "cancelled"
+            ? "cancelled" as const
+            : result.state === "disabled"
+              ? "neutral" as const
+              : "failure" as const,
+      fallback: (): Result => ({ state: "failed", items: [] }),
+    };
+
+    await circuit.run(
+      "feed:test",
+      async () => ({ state: "ok" as const, items: ["last good"] }),
+      cancellableOptions,
+    );
+    const cancelled = await circuit.run(
+      "feed:test",
+      async () => ({ state: "cancelled" as const, items: [] }),
+      cancellableOptions,
+    );
+
+    expect(cancelled).toMatchObject({
+      value: { state: "ok", items: ["last good"] },
+      phase: "closed",
+      attempted: true,
+      degraded: true,
+      servedStale: true,
+    });
+    expect(circuit.snapshot("feed:test")).toEqual({
+      phase: "closed",
+      failures: 0,
+      nextProbeAtMs: null,
+      hasLastGood: true,
+    });
+
+    await circuit.run(
+      "feed:recovering",
+      async () => ({ state: "failed" as const, items: [] }),
+      cancellableOptions,
+    );
+    now = 1_100;
+    await circuit.run(
+      "feed:recovering",
+      async () => ({ state: "cancelled" as const, items: [] }),
+      cancellableOptions,
+    );
+    expect(circuit.snapshot("feed:recovering")).toEqual({
+      phase: "open",
+      failures: 1,
+      nextProbeAtMs: 1_100,
+      hasLastGood: false,
+    });
+  });
+
   it("shares one in-flight half-open probe across concurrent callers", async () => {
     let now = 1_000;
     const circuit = new EventSourceCircuitRegistry({

@@ -87,9 +87,14 @@ describe("assembleRaw — assembly seam", () => {
     // The shared live-fetch seam owns Ticketmaster music so warm-events can
     // reuse the same request for the unified and 90-day cache products.
     expect(fetchLiveTicketmasterMusicResult).toHaveBeenCalledTimes(1);
-    expect(getLiveEvents).toHaveBeenCalledWith(60, {
-      includeTicketmaster: false,
-    });
+    expect(getLiveEvents).toHaveBeenCalledWith(
+      60,
+      expect.objectContaining({
+        includeTicketmaster: false,
+        signal: expect.any(AbortSignal),
+        readMode: "public",
+      }),
+    );
   });
 
   it("keeps the public lane a strict subset of the unified set", async () => {

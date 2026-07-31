@@ -97,6 +97,9 @@ describe("scanner source availability", () => {
       asOfBasis: "retrieval",
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    const directSignal = fetchMock.mock.calls[0][1]?.signal;
+    expect(directSignal).toBeInstanceOf(AbortSignal);
+    expect(fetchMock.mock.calls[1][1]?.signal).toBe(directSignal);
   });
 
   it("accepts the direct page's explicit quiet-board sentinel without falling back", async () => {

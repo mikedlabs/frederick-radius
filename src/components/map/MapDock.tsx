@@ -143,6 +143,8 @@ export type MapDockProps = {
   setQ: SetState<string>;
   searchMatches: SearchResult[];
   searchPending: boolean;
+  searchUnavailable: boolean;
+  retrySearch: () => void;
   searchOpeningId: string | null;
   pickSearch: (r: SearchResult) => void;
   /** Honest origin attached to map-search distances. */
@@ -362,6 +364,7 @@ export default function MapDock(props: MapDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
+  const [searchKeyboardOpen, setSearchKeyboardOpen] = useState(false);
   const [searchSelection, setSearchSelection] = useState({
     query: props.q,
     index: -1,
@@ -427,6 +430,33 @@ export default function MapDock(props: MapDockProps) {
     const observer = new ResizeObserver(sizePane);
     observer.observe(host);
     return () => observer.disconnect();
+  }, []);
+
+  // Keep the thumb-positioned search stable through the initiating tap. Move
+  // it to the top shelf only after the visual viewport confirms that a
+  // software keyboard actually reduced the usable screen.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let baselineHeight = viewport.height;
+    const updateKeyboardState = () => {
+      const searchFocused =
+        searchWrapRef.current?.contains(document.activeElement) ?? false;
+      if (!searchFocused) {
+        baselineHeight = Math.max(baselineHeight, viewport.height);
+        setSearchKeyboardOpen(false);
+        return;
+      }
+      setSearchKeyboardOpen(baselineHeight - viewport.height > 120);
+    };
+    viewport.addEventListener("resize", updateKeyboardState);
+    viewport.addEventListener("scroll", updateKeyboardState);
+    window.addEventListener("orientationchange", updateKeyboardState);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardState);
+      viewport.removeEventListener("scroll", updateKeyboardState);
+      window.removeEventListener("orientationchange", updateKeyboardState);
+    };
   }, []);
 
   // Keep later scope changes in sync with the camera and readout. The explicit
@@ -1000,12 +1030,20 @@ export default function MapDock(props: MapDockProps) {
     pane === null &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
+    !props.searchUnavailable &&
     props.searchPending &&
+    visibleSearchMatches.length === 0;
+  const searchUnavailableVisible =
+    pane === null &&
+    searchPanelOpen &&
+    props.q.trim().length >= 2 &&
+    props.searchUnavailable &&
     visibleSearchMatches.length === 0;
   const searchEmptyVisible =
     pane === null &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
+    !props.searchUnavailable &&
     !props.searchPending &&
     visibleSearchMatches.length === 0;
   const activeSearchIndex =
@@ -1065,6 +1103,7 @@ export default function MapDock(props: MapDockProps) {
         data-map-dock
         data-pane={pane ?? undefined}
         data-search-open={pane === null && searchPanelOpen ? "true" : undefined}
+        data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
         {/* The only persistent map choices: search and Map options. */}
@@ -1145,7 +1184,9 @@ export default function MapDock(props: MapDockProps) {
                   searchResultsVisible ? SEARCH_RESULTS_ID : undefined
                 }
                 aria-describedby={
-                  searchLoadingVisible || searchEmptyVisible
+                  searchLoadingVisible ||
+                  searchUnavailableVisible ||
+                  searchEmptyVisible
                     ? SEARCH_FEEDBACK_ID
                     : undefined
                 }
@@ -1292,6 +1333,42 @@ export default function MapDock(props: MapDockProps) {
                   className="h-4 w-4 animate-spin motion-reduce:animate-none"
                 />
                 <span>Searching Radius…</span>
+              </div>
+            )}
+            {searchUnavailableVisible && (
+              <div
+                className="dock-search-results dock-search-empty"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div
+                  id={SEARCH_FEEDBACK_ID}
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <p className="dock-search-empty-title">
+                    Map search didn’t finish.
+                  </p>
+                  <p className="dock-search-empty-copy">
+                    Your query is still here. Try it again, or ask Radius.
+                  </p>
+                </div>
+                <div className="dock-search-empty-actions">
+                  <button type="button" onClick={props.retrySearch}>
+                    Try again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      flushMapSearchUrl();
+                      closeSearchPanel();
+                      router.push(`/ask?q=${encodeURIComponent(props.q.trim())}`);
+                    }}
+                  >
+                    Ask Radius
+                  </button>
+                </div>
               </div>
             )}
             {searchEmptyVisible && (

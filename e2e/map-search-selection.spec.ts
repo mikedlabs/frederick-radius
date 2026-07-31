@@ -59,6 +59,50 @@ test.describe("map search selection", () => {
     await expect(search).toHaveAttribute("aria-expanded", "false");
   });
 
+  test("a trailing space cannot block a later Back query", async ({ page }) => {
+    await page.route("**/api/search?**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results: [] }),
+      });
+    });
+    await page.route("**/api/map/search-fallback", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: false,
+          action: "suggest",
+          temporary: true,
+          retryable: false,
+          reason: "disabled",
+        }),
+      });
+    });
+    await page.goto("/map?q=starting%20point", {
+      waitUntil: "domcontentloaded",
+    });
+
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await search.fill("coffee ");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("q"))
+      .toBe("coffee");
+
+    await page.evaluate(() => {
+      window.history.pushState(
+        null,
+        "",
+        "/map?q=Market%20Street%20Boba%20Beans",
+      );
+    });
+    await expect(search).toHaveValue("Market Street Boba Beans");
+
+    await page.goBack();
+    await expect(search).toHaveValue("coffee");
+  });
+
   test("the map owns one search field instead of repeating it in the header", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
@@ -129,7 +173,16 @@ test.describe("map search selection", () => {
       page.locator('[data-map-search-result="place:market-street-boba-beans"]'),
     ).toBeVisible();
 
-    await page.locator("canvas.mapboxgl-canvas").click({ position: { x: 195, y: 500 } });
+    // Pan the visible map above the bottom search sheet. A bare click can
+    // legitimately select a town or pin at that coordinate; a drag exercises
+    // the dismiss-before-pan contract without opening map content.
+    const canvas = page.locator("canvas.mapboxgl-canvas");
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + 195, box!.y + 300);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 240, box!.y + 300, { steps: 4 });
+    await page.mouse.up();
     await expect(search).toHaveValue("Market Street Boba Beans");
     await expect(
       page.locator('[data-map-search-result="place:market-street-boba-beans"]'),
@@ -243,6 +296,37 @@ test.describe("map search selection", () => {
 
     await expect(page).toHaveURL(/show=parking/);
     await expect(page.locator(".dock-search-results")).toHaveCount(0);
+  });
+
+  test("keeps valid Radius results when walking-time refinement fails", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.sessionStorage.setItem(
+        "fr_geo_v1",
+        JSON.stringify({
+          lng: -77.4106,
+          lat: 39.4143,
+          accuracy: 20,
+          timestamp: Date.now(),
+        }),
+      );
+    });
+    let matrixRequests = 0;
+    await page.route("**/api/travel-matrix", async (route) => {
+      matrixRequests += 1;
+      await route.abort("failed");
+    });
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await search.fill("coffee nearby");
+    const localResult = page.locator(
+      '[data-map-search-result="place:market-street-boba-beans"]',
+    );
+    await expect(localResult).toBeVisible();
+    await expect.poll(() => matrixRequests).toBeGreaterThan(0);
+
+    await expect(localResult).toBeVisible();
+    await expect(page.getByText("Map search didn’t finish.")).toHaveCount(0);
   });
 
   test("falls back to a temporary county map result without pretending Radius verified it", async ({ page }) => {

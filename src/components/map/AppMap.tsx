@@ -555,6 +555,7 @@ export default function AppMap({
   showSearchControls = true,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  const isBrowseMap = Boolean(dock);
   const routeSearchParams = useSearchParams();
   const routeSearch = routeSearchParams.toString();
   const standardPreview = isMapboxStandardPreviewEnabled(routeSearch);
@@ -588,7 +589,7 @@ export default function AppMap({
   const [shortLandscapeViewport, setShortLandscapeViewport] = useState(
     () => typeof window !== "undefined" && window.innerHeight < 520 && window.innerWidth > window.innerHeight,
   );
-  const countyCuratedClusters = Boolean(dock) && !compactSubjectMap;
+  const countyCuratedClusters = isBrowseMap && !compactSubjectMap;
   const curatedClusters = countyCuratedClusters || compactSubjectMap;
   const curatedClusterRadius = compactSubjectMap
     ? COMPACT_CURATED_CLUSTER_RADIUS
@@ -818,13 +819,13 @@ export default function AppMap({
     () => new Set(initialAmenityGroups ?? []),
   );
   useEffect(() => {
-    if (!dock) return;
+    if (!isBrowseMap) return;
     const url = new URL(window.location.href);
     const active = [...amenityGroups].sort();
     if (active.length > 0) url.searchParams.set("amenity", active.join(","));
     else url.searchParams.delete("amenity");
     window.history.replaceState(window.history.state, "", url.toString());
-  }, [amenityGroups, dock]);
+  }, [amenityGroups, isBrowseMap]);
   // Whether a dock pane is open — mirrored onto the host container so
   // CSS can hide the zoom corner furniture while the dock is expanded.
   const [dockPaneOpen, setDockPaneOpen] = useState(false);
@@ -851,7 +852,7 @@ export default function AppMap({
     // Phone browse exposes only the always-visible Locate action. Pointer
     // movement should not wake parent React state and rebuild the full map
     // tree when there is no fading desktop rail to reveal.
-    if (!dock || compactMapViewport) return;
+    if (!isBrowseMap || compactMapViewport) return;
     const now = window.performance.now();
     if (
       now - edgeToolsLastWakeRef.current < 300 &&
@@ -868,7 +869,7 @@ export default function AppMap({
       edgeToolsIdleTimerRef.current = null;
       setEdgeToolsAwake(false);
     }, 5_000);
-  }, [compactMapViewport, dock]);
+  }, [compactMapViewport, isBrowseMap]);
   useEffect(() => {
     wakeMapEdgeTools();
     return () => {
@@ -908,16 +909,54 @@ export default function AppMap({
     if (typeof window === "undefined") return "";
     return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
   });
+  const pendingLocalQueryRef = useRef<string | null>(null);
+  const setMapQuery = useCallback(
+    (updater: string | ((current: string) => string)) => {
+      setQ((current) => {
+        const next =
+          typeof updater === "function" ? updater(current) : updater;
+        // MapDock serializes a trimmed query into the URL. Track that exact
+        // representation so a harmless trailing space cannot leave route/back
+        // synchronization blocked forever.
+        pendingLocalQueryRef.current = next.trim();
+        return next;
+      });
+    },
+    [],
+  );
   // Next keeps recently visited route segments in its client cache. Returning
   // from a full place page can therefore revive this map with its prior local
   // state even though the exact return URL includes a query. Treat the router
   // URL as authoritative whenever that route snapshot changes so the visible
   // search field and the shareable map state cannot drift apart.
   useEffect(() => {
-    setQ((current) => (current === routeQuery ? current : routeQuery));
+    const liveRouteQuery = (
+      new URLSearchParams(window.location.search).get("q") ?? ""
+    ).slice(0, 160);
+    const pendingLocal = pendingLocalQueryRef.current;
+    if (pendingLocal !== null) {
+      if (liveRouteQuery !== pendingLocal) {
+        // The address bar moved somewhere else (Back, returnTo, or an
+        // explicit map command). That is a real navigation, not the stale
+        // router snapshot from our debounced local write.
+        pendingLocalQueryRef.current = null;
+      } else if (routeQuery === pendingLocal) {
+        pendingLocalQueryRef.current = null;
+      } else {
+        // Native history synchronization is asynchronous. Do not let the
+        // previous URL value overwrite a newer phrase while the 240ms
+        // shareable-query debounce is still catching up.
+        return;
+      }
+    }
+    setQ((current) =>
+      current === liveRouteQuery ? current : liveRouteQuery,
+    );
   }, [routeQuery]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
+  const [searchUnavailableQuery, setSearchUnavailableQuery] = useState("");
+  const [searchAttempt, setSearchAttempt] = useState(0);
   const [searchOpeningId, setSearchOpeningId] = useState<string | null>(null);
   const searchRequestRef = useRef(0);
   const searchSessionRef = useRef<string | null>(null);
@@ -941,14 +980,14 @@ export default function AppMap({
   const deepLinkAmenityAppliedRef = useRef(false);
   const [selectionUrlReady, setSelectionUrlReady] = useState(false);
   useEffect(() => {
-    if (!dock || !selectionUrlReady) return;
+    if (!isBrowseMap || !selectionUrlReady) return;
     replaceMapUrl((params) => {
       if (selectedSlug) params.set("place", selectedSlug);
       else params.delete("place");
       if (selectedEvent) params.set("event", selectedEvent.slug);
       else params.delete("event");
     });
-  }, [dock, selectedEvent, selectedSlug, selectionUrlReady]);
+  }, [isBrowseMap, selectedEvent, selectedSlug, selectionUrlReady]);
   // Pin peek — the compact bottom card that rises when a curated pin is
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
   // cramped popup into a real card you can act on without leaving the map.
@@ -1115,7 +1154,7 @@ export default function AppMap({
   useEffect(() => {
     // Only the full browse map needs a minute-by-minute public read. Embeds do
     // not poll unless they were explicitly given a live pin.
-    if (!dock && foodTruckPins.length === 0) return;
+    if (!isBrowseMap && foodTruckPins.length === 0) return;
     let active = true;
     const refresh = async () => {
       try {
@@ -1137,7 +1176,10 @@ export default function AppMap({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [dock, foodTruckPins.length]);
+  // BrowseMapClient rebuilds its descriptive `dock` object when shareable URL
+  // state changes. Depend on its stable presence, not object identity, or each
+  // camera/query URL update restarts this poll and can create a request loop.
+  }, [foodTruckPins.length, isBrowseMap]);
   useEffect(() => {
     if (currentFoodTruckPins.length === 0) return;
     const timer = window.setInterval(() => setFoodTruckClock(Date.now()), 60_000);
@@ -1421,12 +1463,12 @@ export default function AppMap({
   );
 
   useEffect(() => {
-    if (!dock) return;
+    if (!isBrowseMap) return;
     const clearForSearch = () => clearMapSelection();
     window.addEventListener("fr:focus-map-search", clearForSearch);
     return () =>
       window.removeEventListener("fr:focus-map-search", clearForSearch);
-  }, [clearMapSelection, dock]);
+  }, [clearMapSelection, isBrowseMap]);
 
   // 3D relief while browsing the drone archive. The aerial layer is the
   // one mode where the county's terrain IS the content, so toggling it
@@ -1484,7 +1526,7 @@ export default function AppMap({
   // Expand the composite `roads` alias into explicit state so turning one
   // member back off cannot be undone by a stale alias on the next reload.
   useEffect(() => {
-    if (!dock) return;
+    if (!isBrowseMap) return;
     const url = new URL(window.location.href);
     const shown = new Set(
       (url.searchParams.get("show") ?? "")
@@ -1504,7 +1546,7 @@ export default function AppMap({
     if (shown.size > 0) url.searchParams.set("show", [...shown].join(","));
     else url.searchParams.delete("show");
     window.history.replaceState(window.history.state, "", url.toString());
-  }, [dock, showCivic, showIncidents, showRotorcraft, showTraffic]);
+  }, [isBrowseMap, showCivic, showIncidents, showRotorcraft, showTraffic]);
 
   // An explicitly selected public-essential layer is the foreground task.
   // Keep its clusters/icons above the always-on place dots; otherwise the
@@ -2504,6 +2546,10 @@ export default function AppMap({
     // A result from the previous phrase must never remain tappable while this
     // phrase waits for its debounce or network response.
     setSearchMatches([]);
+    setSearchUnavailableQuery("");
+    // A retry uses the same phrase, so the prior settled marker would otherwise
+    // make the empty-state copy flash before the request begins.
+    if (term.length >= 2) setSearchSettledQuery("");
     if (term.length < 2) {
       setSearchSettledQuery(term);
       searchSessionRef.current = null;
@@ -2525,11 +2571,15 @@ export default function AppMap({
         const response = await fetch(`/api/search?${params.toString()}`, {
           signal: ctrl.signal,
         });
-        const body = (response.ok
-          ? await response.json()
-          : { results: [] }) as { results?: SearchResult[] };
+        if (!response.ok) {
+          throw new Error(`Radius search returned HTTP ${response.status}`);
+        }
+        const body = (await response.json()) as { results?: SearchResult[] };
         if (requestId !== searchRequestRef.current) return;
-        const local = Array.isArray(body.results) ? body.results : [];
+        if (!Array.isArray(body.results)) {
+          throw new Error("Radius search returned an invalid response");
+        }
+        const local = body.results;
 
         if (local.length > 0) {
           setSearchMatches(local);
@@ -2546,64 +2596,69 @@ export default function AppMap({
             : [];
           if (routedCandidates.length < 2) return;
 
-          // Let the local results paint first and avoid a Matrix request for
-          // every intermediate keystroke during normal typing.
-          await new Promise<void>((resolve) => {
-            const delay = window.setTimeout(resolve, 250);
-            ctrl.signal.addEventListener(
-              "abort",
-              () => {
-                window.clearTimeout(delay);
-                resolve();
-              },
-              { once: true },
-            );
-          });
-          if (ctrl.signal.aborted || requestId !== searchRequestRef.current) return;
+          try {
+            // Let the local results paint first and avoid a Matrix request for
+            // every intermediate keystroke during normal typing.
+            await new Promise<void>((resolve) => {
+              const delay = window.setTimeout(resolve, 250);
+              ctrl.signal.addEventListener(
+                "abort",
+                () => {
+                  window.clearTimeout(delay);
+                  resolve();
+                },
+                { once: true },
+              );
+            });
+            if (ctrl.signal.aborted || requestId !== searchRequestRef.current) return;
 
-          const matrixResponse = await fetch("/api/travel-matrix", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: ctrl.signal,
-            body: JSON.stringify({
-              profile: "walking",
-              origin: userLoc,
-              destinations: routedCandidates.map((result) => ({
-                lng: result.lng,
-                lat: result.lat,
-              })),
-            }),
-          });
-          const matrix = (matrixResponse.ok
-            ? await matrixResponse.json()
-            : null) as {
-              ok?: boolean;
-              legs?: Array<{ destinationIndex: number; minutes: number | null }>;
-            } | null;
-          if (
-            !matrix?.ok ||
-            !Array.isArray(matrix.legs) ||
-            requestId !== searchRequestRef.current
-          ) {
-            return;
-          }
-          const minutesById = new globalThis.Map<string, number>();
-          for (const leg of matrix.legs) {
-            const result = routedCandidates[leg.destinationIndex];
-            if (result && leg.minutes != null) {
-              minutesById.set(result.id, leg.minutes);
+            const matrixResponse = await fetch("/api/travel-matrix", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: ctrl.signal,
+              body: JSON.stringify({
+                profile: "walking",
+                origin: userLoc,
+                destinations: routedCandidates.map((result) => ({
+                  lng: result.lng,
+                  lat: result.lat,
+                })),
+              }),
+            });
+            const matrix = (matrixResponse.ok
+              ? await matrixResponse.json()
+              : null) as {
+                ok?: boolean;
+                legs?: Array<{ destinationIndex: number; minutes: number | null }>;
+              } | null;
+            if (
+              !matrix?.ok ||
+              !Array.isArray(matrix.legs) ||
+              requestId !== searchRequestRef.current
+            ) {
+              return;
             }
+            const minutesById = new globalThis.Map<string, number>();
+            for (const leg of matrix.legs) {
+              const result = routedCandidates[leg.destinationIndex];
+              if (result && leg.minutes != null) {
+                minutesById.set(result.id, leg.minutes);
+              }
+            }
+            setSearchMatches(
+              local.map((result) => ({
+                ...result,
+                travel_minutes: minutesById.get(result.id),
+              })),
+            );
+          } catch {
+            // Walking time is an optional refinement. A Matrix outage must
+            // never erase the valid Radius results already on screen.
           }
-          setSearchMatches(
-            local.map((result) => ({
-              ...result,
-              travel_minutes: minutesById.get(result.id),
-            })),
-          );
           return;
         }
 
-        if (!dock || term.length < 3) {
+        if (!isBrowseMap || term.length < 3) {
           setSearchSettledQuery(term);
           return;
         }
@@ -2646,6 +2701,7 @@ export default function AppMap({
           ? await fallbackResponse.json()
           : null) as {
             ok?: boolean;
+            retryable?: boolean;
             attribution?: string;
             suggestions?: Array<{
               mapboxId: string;
@@ -2656,15 +2712,24 @@ export default function AppMap({
               addedTimeMinutes?: number;
             }>;
           } | null;
-        if (
-          !fallback?.ok ||
-          !Array.isArray(fallback.suggestions) ||
-          requestId !== searchRequestRef.current
-        ) {
-          if (requestId === searchRequestRef.current) {
-            setSearchSettledQuery(term);
+        if (requestId !== searchRequestRef.current) return;
+        if (!fallbackResponse.ok || !fallback) {
+          throw new Error(
+            `Backup map search returned HTTP ${fallbackResponse.status}`,
+          );
+        }
+        if (!fallback.ok) {
+          // A disabled optional Mapbox enhancement does not invalidate the
+          // already-completed Radius search. A retryable upstream failure does:
+          // never translate an outage into a confident zero-result claim.
+          if (fallback.retryable) {
+            throw new Error("Backup map search is temporarily unavailable");
           }
+          setSearchSettledQuery(term);
           return;
+        }
+        if (!Array.isArray(fallback.suggestions)) {
+          throw new Error("Backup map search returned an invalid response");
         }
         searchSessionStartedRef.current = true;
         setSearchMatches(
@@ -2691,10 +2756,12 @@ export default function AppMap({
         setSearchSettledQuery(term);
       } catch (error) {
         if (
+          !ctrl.signal.aborted &&
           (error as { name?: string })?.name !== "AbortError" &&
           requestId === searchRequestRef.current
         ) {
           setSearchMatches([]);
+          setSearchUnavailableQuery(term);
           setSearchSettledQuery(term);
         }
       }
@@ -2703,7 +2770,7 @@ export default function AppMap({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [dock, q, userLoc]);
+  }, [isBrowseMap, q, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -2753,7 +2820,7 @@ export default function AppMap({
           return;
         }
         const { lng, lat } = body.result.coordinates;
-        setQ("");
+        setMapQuery("");
         setSearchMatches([]);
         searchSessionRef.current = null;
         searchSessionStartedRef.current = false;
@@ -2785,20 +2852,13 @@ export default function AppMap({
       }
       return;
     }
-    // Selecting a result dismisses the search tray, but the query remains part
-    // of the exact map state carried into a PlaceSheet/full detail. Reassert it
-    // synchronously because unrelated URL effects can still be settling while
-    // the user chooses a result.
-    if (q.trim()) {
-      replaceMapUrl((params) => params.set("q", q.trim()));
-    }
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
     if (layer) {
       if (!activeOverlays.includes(layer)) {
         writeActiveOverlays([...activeOverlays, layer]);
       }
-      setQ("");
+      setMapQuery("");
       return;
     }
     // Resident-shaped search commands should act on this map immediately.
@@ -2846,14 +2906,17 @@ export default function AppMap({
         setShowTrails(requestedShow.has("trails"));
         setShowCivic(requestedShow.has("civic") || roadsRequested);
 
-        const current = new URL(window.location.href);
-        current.searchParams.delete("q");
-        if (amenityParam) {
-          current.searchParams.set("amenity", amenityParam);
-        } else current.searchParams.delete("amenity");
-        if (showParam) current.searchParams.set("show", showParam);
-        else current.searchParams.delete("show");
-        window.history.replaceState(window.history.state, "", current);
+        // Commit one final URL through Next's native-history bridge. A
+        // preceding query-only update can otherwise settle after this command
+        // and put the old amenity back in the address bar even though the map
+        // already shows the new layer.
+        replaceMapUrl((params) => {
+          params.delete("q");
+          if (amenityParam) params.set("amenity", amenityParam);
+          else params.delete("amenity");
+          if (showParam) params.set("show", showParam);
+          else params.delete("show");
+        });
         if (/\bnear\s+me\b/i.test(q)) {
           if (userLoc) {
             cameraIntentRef.current = true;
@@ -2869,9 +2932,16 @@ export default function AppMap({
             goNearMe();
           }
         }
-        setQ("");
+        setMapQuery("");
         return;
       }
+    }
+    // Selecting a place or event dismisses the search tray, but the query
+    // remains part of the exact map state carried into its detail. Reassert it
+    // only after handling in-place map commands, whose final URL deliberately
+    // clears the query.
+    if (q.trim()) {
+      replaceMapUrl((params) => params.set("q", q.trim()));
     }
     // A place that's on this map focuses it; anything else (events,
     // towns, categories, places outside the loaded set) navigates.
@@ -2916,7 +2986,7 @@ export default function AppMap({
       const slug = r.id.replace(/^municipality:/, "");
       const town = MUNICIPALITIES.find((candidate) => candidate.slug === slug);
       if (town) {
-        setQ("");
+        setMapQuery("");
         cameraIntentRef.current = true;
 
         try {
@@ -5460,12 +5530,14 @@ export default function AppMap({
             eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
             q={q}
-            setQ={setQ}
+            setQ={setMapQuery}
             searchMatches={searchMatches}
             searchPending={
               q.trim().length >= 2 &&
               searchSettledQuery !== q.trim()
             }
+            searchUnavailable={searchUnavailableQuery === q.trim()}
+            retrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
             searchDistanceOriginLabel={userLoc ? "from you" : "from map center"}

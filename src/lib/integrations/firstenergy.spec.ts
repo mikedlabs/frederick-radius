@@ -98,6 +98,10 @@ describe("FirstEnergy KUBRA outages", () => {
     expect(String(fetchMock.mock.calls[2][0])).toBe(
       "https://kubra.io/data/current-123/public/reports/md_report.json",
     );
+    const signals = fetchMock.mock.calls.map((call) => call[1]?.signal);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[1]).toBe(signals[0]);
+    expect(signals[2]).toBe(signals[0]);
   });
 
   it("treats a zero-outage Frederick record as available", async () => {

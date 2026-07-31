@@ -58,7 +58,7 @@ import CravingStrip from "@/components/now/CravingStrip";
 import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import PageChapter from "@/components/ui/PageChapter";
-import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
+import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 
@@ -447,13 +447,17 @@ function OpenPlaceLead({
 }
 
 /** Keep the external food-truck feeds off Today's critical rendering path.
- * The generic guide row paints immediately; a stored or freshly assembled
- * schedule upgrades it to the next published stop when available. */
+ * The generic guide row paints immediately; the cron-built stored schedule
+ * upgrades it to the next published stop when available. Today never falls
+ * through to five live publisher feeds: that belongs on the dedicated board,
+ * not inside a collapsed part of the front-door render. */
 async function TodayLocalGuidesWithSchedule({ now }: { now: Date }) {
   let nextStop: ReturnType<typeof nextPublishedFoodTruckStop> = null;
   try {
-    const schedule = await getFoodTruckSchedule(now);
-    nextStop = nextPublishedFoodTruckStop(schedule.stops, now);
+    const schedule = await getStoredFoodTruckSchedule(now);
+    nextStop = schedule
+      ? nextPublishedFoodTruckStop(schedule.stops, now)
+      : null;
   } catch {
     // The live pin and local roster paths remain useful if a feed is unavailable.
   }

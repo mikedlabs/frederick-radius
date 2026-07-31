@@ -651,7 +651,11 @@ export default function EventsExplorer({
   // full page stays one tap away and every anchor stays real).
   // Modified clicks and unknown slugs fall through to navigation.
   return (
-    <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
+    <div
+      data-events-interaction-ready={urlReady ? "true" : "false"}
+      data-events-complete={dataComplete ? "true" : "false"}
+    >
+      <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
       {/* The masthead-dock — the almanac nameplate, one filter doorway, the
           mono count line, and the display controls. What, When, and Where stay
           inside the filter sheet instead of occupying the results horizon.
@@ -1089,7 +1093,8 @@ export default function EventsExplorer({
         </div>
       )}
       </div>
-    </EventSheetBoundary>
+      </EventSheetBoundary>
+    </div>
   );
 }
 

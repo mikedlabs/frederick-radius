@@ -68,6 +68,7 @@ export async function GET(request: Request) {
     getLiveEvents(60, {
       includeTicketmaster: false,
       signal: liveDeadline.signal,
+      readMode: "probe",
     }),
     LIVE_FEED_DEADLINE_MS + LIVE_FEED_ABORT_SETTLE_MS,
   );
