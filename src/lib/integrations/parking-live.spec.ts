@@ -8,6 +8,7 @@ import {
   GARAGE_FULL_THRESHOLD,
   PARKING_OCCUPANCY_MAX_AGE_MS,
   PARKING_OCCUPANCY_MAX_BYTES,
+  PARKING_OCCUPANCY_MAX_COUNT,
   PARKING_OCCUPANCY_MAX_FIELD_LENGTH,
   PARKING_OCCUPANCY_MAX_ROWS,
   type ParkingOccupancySnapshot,
@@ -86,6 +87,7 @@ describe("parseOccupancy", () => {
       decks: [{ name: "Court", status: "NOT FULL" }],
     }).decks[0];
     expect(d.isFull).toBe(false);
+    expect(d.availabilityState).toBe("unknown");
   });
 
   it("keeps an explicitly closed garage separate from full and available", () => {
@@ -98,6 +100,7 @@ describe("parseOccupancy", () => {
       }],
     }).decks[0];
     expect(d).toMatchObject({
+      availabilityState: "closed",
       isClosed: true,
       isFull: false,
       isFilling: false,
@@ -109,9 +112,39 @@ describe("parseOccupancy", () => {
       decks: [{ name: "Court", status: "SENSOR OFFLINE" }],
     }).decks[0];
     expect(d).toMatchObject({
+      availabilityState: "unknown",
       isClosed: false,
       isFull: false,
       isFilling: false,
+    });
+  });
+
+  it("uses exact normalized states without turning negations into claims", () => {
+    const [filling, open, notClosed, notAvailable] = parseOccupancy({
+      decks: [
+        { name: "Court", status: "FILLING_UP" },
+        { name: "Church", status: "OPEN" },
+        { name: "Patrick", status: "NOT CLOSED" },
+        { name: "All Saints", status: "NOT AVAILABLE", available: 40 },
+      ],
+    }).decks;
+
+    expect(filling.availabilityState).toBe("filling");
+    expect(filling.isFilling).toBe(true);
+    expect(open.availabilityState).toBe("open");
+    expect(notClosed.availabilityState).toBe("unknown");
+    expect(notAvailable.availabilityState).toBe("unknown");
+  });
+
+  it("keeps occupied-only data without capacity in the unknown state", () => {
+    const d = parseOccupancy({
+      decks: [{ name: "Court", occupied: 120 }],
+    }).decks[0];
+    expect(d).toMatchObject({
+      available: null,
+      occupied: 120,
+      capacity: null,
+      availabilityState: "unknown",
     });
   });
 
@@ -120,7 +153,21 @@ describe("parseOccupancy", () => {
     expect(d.percentFull).toBe(80);
     expect(d.isFull).toBe(false);
     expect(d.isFilling).toBe(true);
+    expect(d.availabilityState).toBe("filling");
     expect(GARAGE_FULL_THRESHOLD).toBeGreaterThan(80);
+  });
+
+  it("treats occupancy as a ratio without rewriting explicit percent fields", () => {
+    const [ratio, explicitPercent] = parseOccupancy({
+      decks: [
+        { name: "Court", occupancy: 0.8 },
+        { name: "Church", percent_full: 1 },
+      ],
+    }).decks;
+    expect(ratio.percentFull).toBe(80);
+    expect(ratio.availabilityState).toBe("filling");
+    expect(explicitPercent.percentFull).toBe(1);
+    expect(explicitPercent.availabilityState).toBe("available");
   });
 
   it("leaves unknown counts null rather than guessing, and keeps unmatched decks", () => {
@@ -157,6 +204,7 @@ describe("parseOccupancy", () => {
       capacity: null,
       percentFull: null,
       isFull: false,
+      availabilityState: "unknown",
     });
   });
 });
@@ -268,7 +316,49 @@ describe("fetchParkingOccupancyFresh", () => {
       fetchImpl,
       nowMs: NOW_MS,
     })).resolves.toMatchObject({
-      decks: [{ isClosed: true, isFull: false, isFilling: false }],
+      decks: [{
+        availabilityState: "closed",
+        isClosed: true,
+        isFull: false,
+        isFilling: false,
+      }],
+    });
+  });
+
+  it.each([
+    {
+      name: "OPEN with no count",
+      row: { name: "Court Street Garage", status: "OPEN" },
+      state: "open",
+    },
+    {
+      name: "FILLING with no count",
+      row: { name: "Court Street Garage", status: "FILLING" },
+      state: "filling",
+    },
+    {
+      name: "occupied-only with no capacity",
+      row: { name: "Court Street Garage", occupied: 120 },
+      state: "unknown",
+    },
+  ])("preserves $name without inventing availability", async ({ row, state }) => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [row],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchParkingOccupancyFresh({
+      fetchImpl,
+      nowMs: NOW_MS,
+    })).resolves.toMatchObject({
+      decks: [{
+        available: null,
+        availabilityState: state,
+      }],
     });
   });
 
@@ -352,6 +442,67 @@ describe("fetchParkingOccupancyFresh", () => {
           available: 100,
           occupied: 300,
           percent_full: 10,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "a fractional garage count",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{ name: "Court Street Garage", available: 1.5 }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "an implausibly large garage capacity",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          capacity: PARKING_OCCUPANCY_MAX_COUNT + 1,
+          available: 20,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "an implausibly large available count",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          available: PARKING_OCCUPANCY_MAX_COUNT + 1,
+        }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "a count written in scientific notation",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{ name: "Court Street Garage", available: "1e3" }],
+      }), {
+        headers: { "content-type": "application/json" },
+      }),
+      reason: "invalid-payload",
+    },
+    {
+      name: "a positive count paired with NOT AVAILABLE",
+      response: new Response(JSON.stringify({
+        as_of: "2026-07-31T11:59:00.000Z",
+        decks: [{
+          name: "Court Street Garage",
+          available: 40,
+          status: "NOT AVAILABLE",
         }],
       }), {
         headers: { "content-type": "application/json" },
@@ -541,6 +692,7 @@ describe("parking occupancy availability", () => {
       capacity: 400,
       percentFull: 94,
       status: "OPEN",
+      availabilityState: "full",
       isClosed: false,
       isFull: true,
       isFilling: false,

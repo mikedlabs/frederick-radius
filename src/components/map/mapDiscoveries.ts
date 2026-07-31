@@ -314,7 +314,7 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
       anchor,
       input.parking,
       950,
-      (parking) => !parking.isClosed,
+      (parking) => !parking.isClosed && !parking.isFull,
     );
     const transit = nearest(anchor, input.transitStops, 700);
 

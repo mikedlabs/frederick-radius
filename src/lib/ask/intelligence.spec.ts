@@ -4,27 +4,24 @@ import { parkingStatusForAsk } from "./intelligence";
 describe("parkingStatusForAsk", () => {
   it("describes an explicitly closed garage as closed", () => {
     expect(parkingStatusForAsk({
-      isClosed: true,
-      isFull: true,
-      isFilling: true,
+      availabilityState: "closed",
     })).toBe("closed");
   });
 
   it("keeps the remaining live states distinct", () => {
     expect(parkingStatusForAsk({
-      isClosed: false,
-      isFull: true,
-      isFilling: false,
+      availabilityState: "full",
     })).toBe("full");
     expect(parkingStatusForAsk({
-      isClosed: false,
-      isFull: false,
-      isFilling: true,
+      availabilityState: "filling",
     })).toBe("filling");
     expect(parkingStatusForAsk({
-      isClosed: false,
-      isFull: false,
-      isFilling: false,
+      availabilityState: "available",
     })).toBe("available");
+  });
+
+  it("does not describe status-only OPEN or incomplete counts as available", () => {
+    expect(parkingStatusForAsk({ availabilityState: "open" })).toBe("open");
+    expect(parkingStatusForAsk({ availabilityState: "unknown" })).toBe("unknown");
   });
 });

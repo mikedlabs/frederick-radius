@@ -37,11 +37,21 @@ export const PARKING_OCCUPANCY_MAX_AGE_MS = 10 * 60 * 1_000;
 export const PARKING_OCCUPANCY_MAX_BYTES = 64 * 1_024;
 export const PARKING_OCCUPANCY_MAX_ROWS = 25;
 export const PARKING_OCCUPANCY_MAX_FIELD_LENGTH = 256;
+/** Frederick's public decks are far smaller; this rejects corrupt/hostile counts. */
+export const PARKING_OCCUPANCY_MAX_COUNT = 10_000;
 
 const PARKING_OCCUPANCY_TIMEOUT_MS = 8_000;
 const PARKING_OCCUPANCY_FUTURE_TOLERANCE_MS = 2 * 60 * 1_000;
 const PARKING_COUNT_TOLERANCE_RATIO = 0.02;
 const PARKING_PERCENT_TOLERANCE_POINTS = 3;
+
+export type ParkingAvailabilityState =
+  | "closed"
+  | "full"
+  | "filling"
+  | "available"
+  | "open"
+  | "unknown";
 
 export type GarageOccupancy = {
   /** Our canonical ParkingGarage.slug, or null when the feed name can't be
@@ -55,11 +65,13 @@ export type GarageOccupancy = {
   percentFull: number | null;
   /** Raw status string from the feed (e.g. "OPEN", "FULL"), when present. */
   status: string | null;
+  /** Honest normalized state. `open` does not claim a known free space count. */
+  availabilityState: ParkingAvailabilityState;
   /** Derived only from an explicit CLOSED/OUT-OF-SERVICE status. */
   isClosed: boolean;
-  /** Derived: at/over the full threshold, zero spaces, or a FULL status. */
+  /** Derived: at/over the full threshold, zero spaces, or an exact FULL state. */
   isFull: boolean;
-  /** Derived: at/over the filling threshold but not yet full. */
+  /** Derived: exact FILLING state or numeric threshold, but not full/closed. */
   isFilling: boolean;
   /** ISO timestamp the feed last updated this deck, when present. */
   updated: string | null;
@@ -120,37 +132,87 @@ function resolveGarageSlug(name: string): string | null {
   return null;
 }
 
-function num(v: unknown): number | null {
+function strictNumber(v: unknown, allowPercentSuffix = false): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
-    const cleaned = v.replace(/[^0-9.-]/g, "");
-    // Number("") is 0. Treat placeholders such as "N/A" and "unknown" as
-    // unavailable instead of accidentally declaring a garage full.
-    if (!/[0-9]/.test(cleaned)) return null;
+    let cleaned = v.trim().replace(/,/g, "");
+    if (allowPercentSuffix && cleaned.endsWith("%")) {
+      cleaned = cleaned.slice(0, -1).trim();
+    }
+    // Do not fish numbers out of arbitrary strings. In particular, scientific
+    // notation and units must not silently become a different garage count.
+    if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(cleaned)) return null;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   }
   return null;
 }
 
+function count(v: unknown): number | null {
+  const parsed = strictNumber(v);
+  return parsed !== null &&
+    Number.isSafeInteger(parsed) &&
+    parsed >= 0 &&
+    parsed <= PARKING_OCCUPANCY_MAX_COUNT
+    ? parsed
+    : null;
+}
+
+function percent(v: unknown): number | null {
+  const parsed = strictNumber(v, true);
+  return parsed !== null && parsed >= 0 && parsed <= 100 ? parsed : null;
+}
+
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-function statusSaysFull(status: string | null): boolean {
-  if (!status || /\b(?:not|isn't|is\s+not)\s+full\b/i.test(status)) {
-    return false;
-  }
-  return /\bfull\b/i.test(status);
+function normalizeStatus(status: string | null): string {
+  return (status ?? "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function statusSaysClosed(status: string | null): boolean {
-  return Boolean(
-    status &&
-      /\b(?:closed|out[\s_-]*of[\s_-]*service)\b/i.test(
-        status,
-      ),
-  );
+function reportedState(status: string | null): Exclude<
+  ParkingAvailabilityState,
+  "available"
+> {
+  switch (normalizeStatus(status)) {
+    case "closed":
+    case "temporarily closed":
+    case "closed temporarily":
+    case "out of service":
+      return "closed";
+    case "full":
+    case "at capacity":
+      return "full";
+    case "filling":
+    case "filling up":
+    case "nearly full":
+      return "filling";
+    case "open":
+    case "available":
+      // A provider's OPEN/AVAILABLE status establishes operating state, not a
+      // positive free-space count. Keep it distinct from `available`.
+      return "open";
+    default:
+      // Exact states are deliberate: NOT CLOSED and NOT AVAILABLE stay unknown.
+      return "unknown";
+  }
+}
+
+function statusBlocksOccupancy(status: string | null): boolean {
+  return [
+    "not available",
+    "unavailable",
+    "offline",
+    "sensor offline",
+    "data unavailable",
+    "unknown",
+  ].includes(normalizeStatus(status));
 }
 
 type RawDeck = Record<string, unknown>;
@@ -200,33 +262,66 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
   const decks: GarageOccupancy[] = decksRaw
     .map((d): GarageOccupancy => {
       const name = str(d.name ?? d.deck ?? d.garage ?? d.lot ?? d.title) ?? "";
-      const capacity = num(d.capacity ?? d.total ?? d.spaces ?? d.spots);
-      let available = num(d.available ?? d.open ?? d.free ?? d.vacant ?? d.spaces_available);
-      let occupied = num(d.occupied ?? d.used ?? d.taken ?? d.filled);
+      const capacity = count(d.capacity ?? d.total ?? d.spaces ?? d.spots);
+      let available = count(d.available ?? d.open ?? d.free ?? d.vacant ?? d.spaces_available);
+      let occupied = count(d.occupied ?? d.used ?? d.taken ?? d.filled);
       if (capacity !== null) {
         if (available === null && occupied !== null) available = Math.max(0, capacity - occupied);
         if (occupied === null && available !== null) occupied = Math.max(0, capacity - available);
       }
-      let percentFull =
-        num(d.percent_full ?? d.percentFull ?? d.occupancy ?? d.occupancy_pct);
+      const percentSource =
+        d.percent_full !== undefined && d.percent_full !== null
+          ? "percent_full"
+          : d.percentFull !== undefined && d.percentFull !== null
+            ? "percentFull"
+            : d.occupancy !== undefined && d.occupancy !== null
+              ? "occupancy"
+              : "occupancy_pct";
+      const rawPercentValue =
+        d.percent_full ?? d.percentFull ?? d.occupancy ?? d.occupancy_pct;
+      let percentFull = percent(rawPercentValue);
+      const rawPercent = strictNumber(rawPercentValue, true);
+      const explicitlyPercent =
+        typeof rawPercentValue === "string" && rawPercentValue.trim().endsWith("%");
+      // Only the generic `occupancy` alias is commonly a 0–1 ratio. Fields
+      // explicitly named percent/pct remain on their stated 0–100 scale.
+      if (
+        percentSource === "occupancy" &&
+        !explicitlyPercent &&
+        percentFull !== null &&
+        rawPercent !== null &&
+        rawPercent <= 1
+      ) {
+        percentFull = rawPercent * 100;
+      }
       if (percentFull === null && capacity && occupied !== null) {
         percentFull = Math.round((occupied / capacity) * 100);
       }
-      if (percentFull !== null && (percentFull < 0 || percentFull > 100)) {
-        percentFull = null;
-      }
       const status = str(d.status ?? d.state);
-      const isClosed = statusSaysClosed(status);
-      const isFull =
-        !isClosed &&
-        ((percentFull !== null && percentFull >= GARAGE_FULL_THRESHOLD) ||
-          (available !== null && available <= 0) ||
-          statusSaysFull(status));
-      const isFilling =
-        !isClosed &&
-        !isFull &&
-        percentFull !== null &&
-        percentFull >= GARAGE_FILLING_THRESHOLD;
+      const stated = reportedState(status);
+      const availabilityState: ParkingAvailabilityState =
+        statusBlocksOccupancy(status)
+          ? "unknown"
+          : stated === "closed"
+          ? "closed"
+          : stated === "full" ||
+              (percentFull !== null && percentFull >= GARAGE_FULL_THRESHOLD) ||
+              (available !== null && available <= 0)
+            ? "full"
+            : stated === "filling" ||
+                (percentFull !== null &&
+                  percentFull >= GARAGE_FILLING_THRESHOLD)
+              ? "filling"
+              : (available !== null && available > 0) ||
+                  (percentFull !== null &&
+                    percentFull < GARAGE_FILLING_THRESHOLD)
+                ? "available"
+                : stated === "open"
+                  ? "open"
+                  : "unknown";
+      const isClosed = availabilityState === "closed";
+      const isFull = availabilityState === "full";
+      const isFilling = availabilityState === "filling";
       return {
         garageSlug: resolveGarageSlug(name),
         name,
@@ -235,6 +330,7 @@ export function parseOccupancy(raw: unknown): ParkingOccupancySnapshot {
         capacity,
         percentFull,
         status,
+        availabilityState,
         isClosed,
         isFull,
         isFilling,
@@ -279,10 +375,51 @@ function hasOccupancySignal(deck: GarageOccupancy): boolean {
     deck.available !== null ||
     deck.occupied !== null ||
     deck.percentFull !== null;
-  const statusSignal =
-    deck.status !== null &&
-    /\b(?:open|available|full|closed|filling)\b/i.test(deck.status);
+  const statusSignal = deck.availabilityState !== "unknown";
   return countSignal || statusSignal;
+}
+
+const COUNT_FIELD_GROUPS = [
+  ["capacity", "total", "spaces", "spots"],
+  ["available", "open", "free", "vacant", "spaces_available"],
+  ["occupied", "used", "taken", "filled"],
+] as const;
+const PERCENT_FIELDS = [
+  "percent_full",
+  "percentFull",
+  "occupancy",
+  "occupancy_pct",
+] as const;
+
+function selectedField(
+  row: RawDeck,
+  keys: readonly string[],
+): unknown {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null) return row[key];
+  }
+  return undefined;
+}
+
+function isNumericPlaceholder(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "string") return false;
+  return ["", "n/a", "na", "unknown", "unavailable", "--", "null"].includes(
+    value.trim().toLowerCase(),
+  );
+}
+
+function validateRawNumbers(row: RawDeck): void {
+  for (const keys of COUNT_FIELD_GROUPS) {
+    const value = selectedField(row, keys);
+    if (!isNumericPlaceholder(value) && count(value) === null) {
+      fail("invalid-payload");
+    }
+  }
+  const rawPercent = selectedField(row, PERCENT_FIELDS);
+  if (!isNumericPlaceholder(rawPercent) && percent(rawPercent) === null) {
+    fail("invalid-payload");
+  }
 }
 
 function validateDeckConsistency(deck: GarageOccupancy): void {
@@ -333,6 +470,16 @@ function assertSnapshotFreshForRead(
 ): ParkingOccupancySnapshot {
   if (snapshot.decks.length === 0) fail("invalid-payload");
   for (const deck of snapshot.decks) {
+    if (![
+      "closed",
+      "full",
+      "filling",
+      "available",
+      "open",
+      "unknown",
+    ].includes(deck.availabilityState)) {
+      fail("invalid-payload");
+    }
     if (!deck.updated) fail("invalid-payload");
     assertFreshTimestamp(deck.updated, nowMs);
   }
@@ -356,20 +503,17 @@ function validateSnapshot(
 
   for (const row of rows) {
     if (!isRecord(row)) fail("invalid-payload");
-    const rawPercent = num(
-      row.percent_full ??
-        row.percentFull ??
-        row.occupancy ??
-        row.occupancy_pct,
-    );
-    if (rawPercent !== null && (rawPercent < 0 || rawPercent > 100)) {
-      fail("invalid-payload");
-    }
+    validateRawNumbers(row);
   }
 
   const parsed = parseOccupancy(raw);
   const knownDecks = parsed.decks.filter((deck) => deck.garageSlug);
   if (knownDecks.length === 0) fail("invalid-payload");
+  // Explicit sensor/data-unavailable states invalidate the live snapshot.
+  // Their numeric fields may be stale and must not leak to map/Ask/alerts.
+  if (knownDecks.some((deck) => statusBlocksOccupancy(deck.status))) {
+    fail("invalid-payload");
+  }
   if (knownDecks.some((deck) => !hasOccupancySignal(deck))) {
     fail("invalid-payload");
   }
@@ -520,7 +664,7 @@ export async function fetchParkingOccupancyFresh(
  */
 const getCachedParkingOccupancy = unstable_cache(
   fetchParkingOccupancyFresh,
-  ["parking-occupancy-v3"],
+  ["parking-occupancy-v4"],
   {
     revalidate: 60,
     tags: ["parking-occupancy"],

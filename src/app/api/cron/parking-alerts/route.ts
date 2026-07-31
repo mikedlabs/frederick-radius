@@ -91,9 +91,11 @@ export async function GET(request: Request) {
     .filter(
       (d) =>
         d.garageSlug &&
+        d.availabilityState === "available" &&
         !d.isClosed &&
         !d.isFull &&
-        (d.available ?? 1) > 0,
+        d.available !== null &&
+        d.available > 0,
     )
     .map((d) => nameBySlug.get(d.garageSlug!) ?? d.name);
 
@@ -106,7 +108,7 @@ export async function GET(request: Request) {
         ? "is full"
         : d.percentFull !== null
           ? `is ${d.percentFull}% full`
-          : "is nearly full";
+          : "is full";
     const suggestions = withSpace.slice(0, 2);
     const body = suggestions.length === 1
       ? `Try ${suggestions[0]}. It still has room.`

@@ -85,12 +85,9 @@ export function shouldUseRadiusAgent(query: string, intent: AskIntent): boolean 
 }
 
 export function parkingStatusForAsk(
-  deck: Pick<GarageOccupancy, "isClosed" | "isFull" | "isFilling">,
-): "closed" | "full" | "filling" | "available" {
-  if (deck.isClosed) return "closed";
-  if (deck.isFull) return "full";
-  if (deck.isFilling) return "filling";
-  return "available";
+  deck: Pick<GarageOccupancy, "availabilityState">,
+): GarageOccupancy["availabilityState"] {
+  return deck.availabilityState;
 }
 
 function categoryName(slug: string): string {
@@ -340,7 +337,7 @@ export async function runRadiusAgent(
   });
 
   const checkParking = tool({
-    description: "Check licensed live downtown garage occupancy. Returns unavailable rather than guessing when the feed is not configured.",
+    description: "Check licensed live downtown garage occupancy. Returns unavailable rather than guessing when the feed is not configured. A garage status of open confirms operating state only, not free spaces; unknown must never be described as available.",
     inputSchema: z.object({}),
     execute: async () => {
       toolsUsed.add("parking");

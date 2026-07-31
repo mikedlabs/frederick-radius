@@ -158,6 +158,46 @@ describe("buildMapDiscoveries", () => {
     expect(finding.layers.parking).toBeUndefined();
   });
 
+  it("does not recommend a full garage as an event connection", () => {
+    const event: EventPin = {
+      slug: "full-garage-event",
+      title: "Creek concert",
+      starts_at: "2026-07-22T21:00:00.000Z",
+      venue_name: "Carroll Creek Amphitheater",
+      lng: origin.lng,
+      lat: origin.lat,
+      category: "music",
+    };
+    const fullGarage: ParkingPin = {
+      slug: "carroll-creek",
+      name: "Carroll Creek Garage",
+      address: "44 East Patrick Street",
+      lng: -77.4103,
+      lat: 39.4142,
+      available: 0,
+      percentFull: 100,
+      isClosed: false,
+      isFull: true,
+      isFilling: false,
+      updated: "2026-07-22T15:58:00.000Z",
+    };
+
+    const finding = buildMapDiscoveries(input({
+      events: [event],
+      parking: [fullGarage],
+      transitStops: [{
+        id: "100",
+        name: "Downtown Transit Center",
+        lng: -77.4104,
+        lat: 39.4142,
+      }],
+    }))[0];
+
+    expect(finding.points.map((point) => point.kind)).toEqual(["event", "transit"]);
+    expect(finding.summary).not.toContain("Carroll Creek Garage");
+    expect(finding.layers.parking).toBeUndefined();
+  });
+
   it("requires real supporting facts instead of turning every event into filler", () => {
     const event: EventPin = {
       slug: "remote-event",
