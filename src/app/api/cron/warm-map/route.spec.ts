@@ -71,9 +71,9 @@ vi.mock("@/lib/loaders/communityReports", () => ({
 
 import {
   GET,
-  MAP_FEED_DEADLINE_MS,
   maxDuration,
 } from "./route";
+import { MAP_FEED_DEADLINE_MS } from "./config";
 
 const request = () =>
   new Request("https://frederickradius.app/api/cron/warm-map");

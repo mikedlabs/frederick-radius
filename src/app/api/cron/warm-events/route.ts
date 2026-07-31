@@ -42,14 +42,16 @@ import {
 import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
 import { withDeadlineOutcome } from "@/lib/promise-deadline";
 import { syncEventArchiveBatch } from "@/lib/events/event-archive-batch";
+import {
+  EVENT_ARCHIVE_WARM_BUDGET_MS,
+  EVENT_WARM_BUDGET_MS,
+} from "./config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // The cron is the patient path: it can wait out the slow feeds (each
 // capped at the 8s per-feed timeout) so users never have to.
 export const maxDuration = 90;
-export const EVENT_WARM_BUDGET_MS = 72_000;
-export const EVENT_ARCHIVE_WARM_BUDGET_MS = 7_000;
 const ALERT_DEADLINE_MS = 8_000;
 
 function errMsg(reason: unknown): string {

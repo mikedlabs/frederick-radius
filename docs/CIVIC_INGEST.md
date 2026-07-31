@@ -28,8 +28,9 @@ the "ask Frederick" answer engine       ← town-aware: "Brunswick trash" → Br
    `config/municipal-civic-sources.json` with its official gov page(s)
    (e.g. a "Government / Departments" or "Trash & Recycling" page). The
    agent validates each URL at fetch time and logs failures.
-2. **Set the secret.** `ANTHROPIC_API_KEY` as a GitHub repo secret (the
-   workflow needs it).
+2. **Set the secret.** Add a standard workspace API key as
+   `ANTHROPIC_CIVIC_API_KEY` in GitHub's protected **Data Enrichment**
+   environment. Do not use an Anthropic Admin API key.
 3. **Run it.** `npm run ingest:civic` locally (writes the JSON), or let
    `.github/workflows/ingest-civic.yml` run it **daily** and commit the
    refresh. `npm run ingest:civic brunswick` does one town.

@@ -8,8 +8,11 @@
  * its happy hour, recurring specials, published hours, and exact commerce
  * anchors for menus, ordering, reservations, catering, and gift cards.
  *
- * Focused on food/drink by default (where this info matters and exists),
- * filtered to own-domain business sites (not gov/aggregator/social).
+ * Public places with no decision-useful Radius copy are read first, regardless
+ * of category. Once those gaps are covered, routine refreshes stay focused on
+ * food/drink (where this information matters and changes most often). Every
+ * batch remains bounded by the same configured limit and reads only own-domain
+ * business sites, never government, directory, marketplace, or social pages.
  * Adaptive fetch: tries a plain request first (most small-business sites
  * are readable), falls back to a headless render only when the static
  * HTML comes back too thin (JS-rendered). Incremental: skips anything
@@ -19,6 +22,7 @@
  *       npm run ingest:business -- --limit=200   (bigger batch)
  *       npm run ingest:business ayse-meze-frederick   (one place, by slug)
  *       npm run ingest:business -- --force        (re-fetch even fresh ones)
+ *       npm run ingest:business -- --plan         (show the queue; spend $0)
  * Needs: ANTHROPIC_API_KEY. Scheduled by .github/workflows/ingest-business-info.yml.
  *
  * Never fabricates — the shared extractor omits anything not on the page.
@@ -39,12 +43,29 @@ import {
 import {
   isTrustedBusinessWebsiteRedirect,
   needsRenderedBusinessSnapshot,
+  preferredBusinessWebsiteUrls,
 } from "./lib/business-info-source";
-import { getPlaceBySlug, publicPlaces } from "@/lib/loaders/places";
+import {
+  isRoutineBusinessInfoType,
+  prioritizeBusinessInfoCandidates,
+} from "./lib/business-info-priority";
+import {
+  hashSourceContent,
+  sourceFingerprintMatches,
+} from "./lib/source-content-fingerprint";
+import { publicPlaceBySlug } from "@/lib/loaders/places";
+import { isDestinationCategory } from "@/lib/relevance";
+import {
+  decisionCopyCounts,
+  hasUsefulDecisionCopy,
+  type CoveragePlace,
+} from "@/lib/quality/coverage";
 
 const OUT = resolve("src/data/business-info.json");
 const ENR = resolve("src/data/places-enrichment.json");
+const PUBLIC = resolve("src/data/places-client.json");
 const CFG = resolve("config/business-info.json");
+const BUSINESS_EXTRACTOR_VERSION = "business-deep-info-v1";
 
 type Enrichment = Record<
   string,
@@ -69,7 +90,35 @@ type Record_ = Info & {
   commerce_links?: ExtractedBusinessCommerceLink[];
   /** Backward compatibility for records written before deterministic anchors. */
   reservations_url?: string;
-  source: { url: string; fetchedAt: string };
+  source?: {
+    url: string;
+    fetchedAt: string;
+    /** SHA-256 of the normalized text successfully processed by Claude. */
+    contentHash?: string;
+    /** Bump when the extraction instructions materially change. */
+    extractorVersion?: string;
+  };
+};
+type PublicPlace = CoveragePlace & {
+  category?: string;
+  feature_score?: number;
+  google_rating_count?: number;
+  hidden_gem?: boolean;
+  local_favorite?: boolean;
+  primary_type?: string;
+};
+type QueueCandidate = {
+  slug: string;
+  website: string;
+  displayName: string;
+  primaryType?: string;
+  hasUsefulCopy: boolean;
+  hasExistingSource: boolean;
+  hasDecisionFact: boolean;
+  fetchedAt?: string;
+  importance?: number;
+  routineRefresh: boolean;
+  explicitRequest?: boolean;
 };
 
 const SHAPE =
@@ -99,12 +148,20 @@ async function fetchAdaptive(
   url: string,
   minChars: number,
 ): Promise<PageSnapshot | null> {
-  const plain = await fetchPageSnapshot(url, { maxChars: 16_000 });
-  if (!needsRenderedBusinessSnapshot(plain, minChars)) {
-    return plain;
+  let fallback: PageSnapshot | null = null;
+  for (const candidateUrl of preferredBusinessWebsiteUrls(url)) {
+    const plain = await fetchPageSnapshot(candidateUrl, { maxChars: 16_000 });
+    if (!needsRenderedBusinessSnapshot(plain, minChars)) {
+      return plain;
+    }
+    const rendered = await fetchPageSnapshot(candidateUrl, {
+      render: true,
+      maxChars: 16_000,
+    });
+    if (rendered) return rendered;
+    fallback ??= plain;
   }
-  const rendered = await fetchPageSnapshot(url, { render: true, maxChars: 16_000 });
-  return rendered ?? plain;
+  return fallback;
 }
 
 function cleanExtractedInfo(value: unknown): Info {
@@ -134,60 +191,163 @@ function cleanExtractedInfo(value: unknown): Info {
   };
 }
 
+function isAllowedWebsite(url: string, cfg: Cfg): boolean {
+  if (!/^https?:/.test(url)) return false;
+  const domain = domainOf(url);
+  return Boolean(
+    domain && !cfg.excludeDomains.some((excluded) => domain.includes(excluded)),
+  );
+}
+
+function routineType(
+  place: Pick<QueueCandidate, "primaryType"> & { category?: string },
+  cfg: Cfg,
+): boolean {
+  return isRoutineBusinessInfoType(
+    place.primaryType,
+    place.category,
+    cfg.typeIncludes,
+  );
+}
+
+function newerRecord(current: Record_ | undefined, next: Record_): Record_ {
+  if (!current) return next;
+  const currentTime = Date.parse(current.source?.fetchedAt ?? "");
+  const nextTime = Date.parse(next.source?.fetchedAt ?? "");
+  if (Number.isNaN(currentTime)) return next;
+  if (Number.isNaN(nextTime)) return current;
+  return nextTime > currentTime ? next : current;
+}
+
+function placeImportance(place: PublicPlace): number {
+  const editorial = place.feature_score ?? 0;
+  const popularity = Math.log10((place.google_rating_count ?? 0) + 1) * 2;
+  const local = place.local_favorite ? 2 : 0;
+  const discovery = place.hidden_gem ? 1 : 0;
+  const destination = isDestinationCategory(place.category) ? 5 : 0;
+  return editorial + popularity + local + discovery + destination;
+}
+
 async function main() {
-  // Fail fast + clear if the key is missing/invalid/out-of-credit, so a
-  // bad CI run shows one actionable line instead of a buried stack trace.
-  if (!(await preflightKey())) return;
   const positional = process.argv[2];
   const only = positional && !positional.startsWith("--") ? positional : undefined;
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const force = process.argv.includes("--force");
+  const planOnly = process.argv.includes("--plan");
 
   const cfg = JSON.parse(readFileSync(CFG, "utf8")) as Cfg;
   const enr = JSON.parse(readFileSync(ENR, "utf8")) as Enrichment;
+  const publicRows = JSON.parse(readFileSync(PUBLIC, "utf8")) as PublicPlace[];
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, Record_>;
   const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : cfg.defaultLimit;
-  const publicSlugs = new Set(publicPlaces().map((place) => place.slug));
+  if (!Number.isFinite(limit) || limit < 1) {
+    throw new Error("--limit must be a positive whole number");
+  }
 
-  const eligible = Object.entries(enr).filter(([slug, r]) => {
-    if (only && slug !== only) return false;
-    if (!r.website || !/^https?:/.test(r.website)) return false;
-    const d = domainOf(r.website);
-    if (!d || cfg.excludeDomains.some((x) => d.includes(x))) return false;
-    // Scheduled batches spend model calls only on a place that survives the
-    // canonical public loader. Legacy aliases remain eligible when they
-    // resolve to a public place; excluded, out-of-county, or removed rows do
-    // not consume the bounded daily budget. An explicit one-slug run remains
-    // available for investigation.
-    if (!only) {
-      const place = getPlaceBySlug(slug);
-      if (!place || !publicSlugs.has(place.slug)) return false;
-    }
-    if (only) return true;
-    return cfg.typeIncludes.some((t) => (r.primary_type ?? "").includes(t));
+  const requestedSlug = only
+    ? publicPlaceBySlug(only)?.slug ?? only
+    : undefined;
+  const copyCounts = decisionCopyCounts(publicRows);
+
+  // Old extraction runs sometimes wrote a folded/legacy slug. Treat those
+  // records as evidence already read for the surviving place, so a duplicate
+  // alias cannot spend a second model call.
+  const existingByCanonical = new Map<string, Record_>();
+  for (const [slug, info] of Object.entries(existing)) {
+    const canonical = publicPlaceBySlug(slug)?.slug ?? slug;
+    existingByCanonical.set(
+      canonical,
+      newerRecord(existingByCanonical.get(canonical), info),
+    );
+  }
+
+  const eligible: QueueCandidate[] = publicRows.flatMap((place) => {
+    if (requestedSlug && place.slug !== requestedSlug) return [];
+    if (!place.website || !isAllowedWebsite(place.website, cfg)) return [];
+    const prior = existingByCanonical.get(place.slug);
+    return [{
+      slug: place.slug,
+      website: place.website,
+      displayName: place.name,
+      primaryType: place.primary_type,
+      hasUsefulCopy: hasUsefulDecisionCopy(place, copyCounts),
+      hasExistingSource: Boolean(prior?.source?.url),
+      hasDecisionFact: Boolean(prior?.known_for?.trim()),
+      fetchedAt: prior?.source?.fetchedAt,
+      importance: placeImportance(place),
+      routineRefresh: routineType(
+        { primaryType: place.primary_type, category: place.category },
+        cfg,
+      ),
+      explicitRequest: Boolean(only),
+    }];
   });
 
-  const cutoff = Date.now() - cfg.refreshDays * 86_400_000;
-  const todo = eligible
-    .filter(([slug]) => {
-      if (force || only) return true;
-      const e = existing[slug];
-      return !e || !e.source?.fetchedAt || Date.parse(e.source.fetchedAt) < cutoff;
-    })
-    .slice(0, limit);
+  // Preserve the old one-slug diagnostic for a non-public enrichment row.
+  // Scheduled work never reaches this branch and remains tied to the exact
+  // canonical public artifact.
+  if (only && eligible.length === 0) {
+    const row = enr[only];
+    if (row?.website && isAllowedWebsite(row.website, cfg)) {
+      const prior = existing[only];
+      eligible.push({
+        slug: only,
+        website: row.website,
+        displayName: row.display_name ?? only,
+        primaryType: row.primary_type,
+        hasUsefulCopy: false,
+        hasExistingSource: Boolean(prior?.source?.url),
+        hasDecisionFact: Boolean(prior?.known_for?.trim()),
+        fetchedAt: prior?.source?.fetchedAt,
+        importance: 0,
+        routineRefresh: true,
+        explicitRequest: true,
+      });
+    }
+  }
 
-  console.log(
-    `${eligible.length} eligible food/drink businesses; ${todo.length} to read this run (limit ${limit}).`,
+  const todo = prioritizeBusinessInfoCandidates(eligible, {
+    force: force || Boolean(only),
+    limit,
+    refreshDays: cfg.refreshDays,
+  });
+  const reasonCounts = Object.fromEntries(
+    [...new Set(todo.map((row) => row.priorityReason))].map((reason) => [
+      reason,
+      todo.filter((row) => row.priorityReason === reason).length,
+    ]),
   );
+  console.log(
+    `${eligible.length} eligible official sites; ${todo.length} selected ` +
+      `(limit ${limit}; ${JSON.stringify(reasonCounts)}).`,
+  );
+  if (planOnly) {
+    for (const row of todo) {
+      console.log(`  ${row.priorityReason}\t${row.slug}\t${row.website}`);
+    }
+    console.log("\nPlan only. No pages fetched and no model calls made.");
+    return;
+  }
 
   let updated = 0;
-  for (const [slug, r] of todo) {
+  let unchanged = 0;
+  let modelReady: boolean | undefined;
+  const ensureModelReady = async (): Promise<boolean> => {
+    if (modelReady !== undefined) return modelReady;
+    // Delay the paid liveness ping until a changed payload actually needs the
+    // model. A fully unchanged batch therefore makes zero Anthropic calls.
+    modelReady = await preflightKey();
+    return modelReady;
+  };
+
+  for (const candidate of todo) {
+    const { slug } = candidate;
     const snapshot = await fetchAdaptive(
-      r.website!,
+      candidate.website,
       cfg.renderFallbackMinChars,
     );
     if (!snapshot) {
-      console.log(`  ✗ ${slug}: unreadable (${domainOf(r.website!)})`);
+      console.log(`  ✗ ${slug}: unreadable (${domainOf(candidate.website)})`);
       continue;
     }
     const finalDomain = domainOf(snapshot.finalUrl);
@@ -198,14 +358,55 @@ async function main() {
       console.log(`  ✗ ${slug}: redirected to excluded source (${finalDomain})`);
       continue;
     }
-    if (!isTrustedBusinessWebsiteRedirect(r.website!, snapshot.finalUrl)) {
+    if (!isTrustedBusinessWebsiteRedirect(candidate.website, snapshot.finalUrl)) {
       console.log(
         `  ✗ ${slug}: redirected to unrelated source (${finalDomain})`,
       );
       continue;
     }
+    const contentHash = hashSourceContent(snapshot.text);
+    const prior = existingByCanonical.get(slug);
+    if (
+      sourceFingerprintMatches(
+        prior?.source
+          ? {
+              contentHash: prior.source.contentHash,
+              finalUrl: prior.source.url,
+              extractorVersion: prior.source.extractorVersion,
+            }
+          : undefined,
+        {
+          contentHash,
+          finalUrl: snapshot.finalUrl,
+          extractorVersion: BUSINESS_EXTRACTOR_VERSION,
+        },
+      )
+    ) {
+      const commerceLinks = classifyOfficialCommerceLinks(
+        snapshot.links,
+        snapshot.finalUrl,
+      );
+      const refreshed: Record_ = {
+        ...(prior ?? {}),
+        name: candidate.displayName,
+        ...(commerceLinks.length ? { commerce_links: commerceLinks } : {}),
+        source: {
+          url: snapshot.finalUrl,
+          fetchedAt: nowISO(),
+          contentHash,
+          extractorVersion: BUSINESS_EXTRACTOR_VERSION,
+        },
+      };
+      existing[slug] = refreshed;
+      existingByCanonical.set(slug, refreshed);
+      unchanged += 1;
+      console.log(`  = ${slug}: source unchanged; Claude skipped`);
+      continue;
+    }
+
+    if (!(await ensureModelReady())) break;
     const extracted = await extractJson<unknown>(
-      `Business: ${r.display_name ?? slug} (Frederick County, MD).\n${SHAPE}`,
+      `Business: ${candidate.displayName} (Frederick County, MD).\n${SHAPE}`,
       snapshot.text,
     );
     const info = cleanExtractedInfo(extracted);
@@ -213,6 +414,23 @@ async function main() {
       snapshot.links,
       snapshot.finalUrl,
     );
+    if (extracted === null) {
+      // A failed model response must never advance the content fingerprint or
+      // replace previously reviewed facts. Deterministic anchors may still be
+      // refreshed, but the stale source timestamp remains so the next run
+      // retries Claude instead of waiting another refresh window.
+      if (commerceLinks.length) {
+        const preserved: Record_ = {
+          ...(prior ?? {}),
+          name: candidate.displayName,
+          commerce_links: commerceLinks,
+        };
+        existing[slug] = preserved;
+        existingByCanonical.set(slug, preserved);
+      }
+      console.log(`  – ${slug}: extraction incomplete; source will retry`);
+      continue;
+    }
     const has =
       info.known_for ||
       info.happy_hour ||
@@ -221,15 +439,34 @@ async function main() {
       info.notable ||
       commerceLinks.length;
     if (!has) {
-      console.log(`  – ${slug}: nothing extractable`);
+      const checked: Record_ = {
+        name: candidate.displayName,
+        source: {
+          url: snapshot.finalUrl,
+          fetchedAt: nowISO(),
+          contentHash,
+          extractorVersion: BUSINESS_EXTRACTOR_VERSION,
+        },
+      };
+      existing[slug] = checked;
+      existingByCanonical.set(slug, checked);
+      updated++;
+      console.log(`  – ${slug}: nothing extractable; source fingerprint stored`);
       continue;
     }
-    existing[slug] = {
+    const next: Record_ = {
       ...info,
-      name: r.display_name,
+      name: candidate.displayName,
       ...(commerceLinks.length ? { commerce_links: commerceLinks } : {}),
-      source: { url: snapshot.finalUrl, fetchedAt: nowISO() },
+      source: {
+        url: snapshot.finalUrl,
+        fetchedAt: nowISO(),
+        contentHash,
+        extractorVersion: BUSINESS_EXTRACTOR_VERSION,
+      },
     };
+    existing[slug] = next;
+    existingByCanonical.set(slug, next);
     updated++;
     const tags = [
       info.happy_hour ? "happy-hour" : null,
@@ -244,7 +481,8 @@ async function main() {
 
   writeFileSync(OUT, JSON.stringify(existing, null, 2) + "\n");
   console.log(
-    `\nDone. ${updated} updated, ${Object.keys(existing).length} total → src/data/business-info.json`,
+    `\nDone. ${updated} updated, ${unchanged} unchanged source(s) skipped, ` +
+      `${Object.keys(existing).length} total → src/data/business-info.json`,
   );
 }
 

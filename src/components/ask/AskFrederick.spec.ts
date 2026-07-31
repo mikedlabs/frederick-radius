@@ -83,6 +83,7 @@ describe("Ask Radius nearby context", () => {
     // Owner: a bare "pizza" wants pizza NEAR you — ask for an area first.
     expect(queryIsLocalDiscovery("pizza")).toBe(true);
     expect(queryIsLocalDiscovery("where can I get good coffee")).toBe(true);
+    expect(queryIsLocalDiscovery("Where should I eat tonight?")).toBe(true);
     expect(queryIsLocalDiscovery("breweries")).toBe(true);
     expect(queryIsLocalDiscovery("Where can I rent a bicycle?")).toBe(true);
     expect(queryIsLocalDiscovery("Where can I find a bike repair stand?")).toBe(true);

@@ -122,15 +122,13 @@ export type SourceScoutQueryRun = {
   responseTime: string | number | null;
   apiReportedCredits: number | null;
   candidates: ScoutCandidate[];
-  error:
-    | {
-        code: string;
-        message: string;
-        status: number | null;
-        retryAfter: string | null;
-        requestId: string | null;
-      }
-    | null;
+  error: {
+    code: string;
+    message: string;
+    status: number | null;
+    retryAfter: string | null;
+    requestId: string | null;
+  } | null;
 };
 
 export type SourceScoutReport = {
@@ -268,9 +266,7 @@ function requireStringArray(value: unknown, path: string): string[] {
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array.`);
   }
-  return value.map((entry, index) =>
-    requireString(entry, `${path}[${index}]`),
-  );
+  return value.map((entry, index) => requireString(entry, `${path}[${index}]`));
 }
 
 function requireSearchDepth(value: unknown, path: string): TavilySearchDepth {
@@ -280,15 +276,14 @@ function requireSearchDepth(value: unknown, path: string): TavilySearchDepth {
     value !== "basic" &&
     value !== "advanced"
   ) {
-    throw new Error(
-      `${path} must be ultra-fast, fast, basic, or advanced.`,
-    );
+    throw new Error(`${path} must be ultra-fast, fast, basic, or advanced.`);
   }
   return value;
 }
 
 function validateConfig(value: unknown): SourceScoutConfig {
-  if (!isObject(value)) throw new Error("Source Scout config must be an object.");
+  if (!isObject(value))
+    throw new Error("Source Scout config must be an object.");
   if (value.version !== 1) {
     throw new Error("Source Scout config version must be 1.");
   }
@@ -346,10 +341,7 @@ function validateConfig(value: unknown): SourceScoutConfig {
       720,
     ),
   };
-  if (
-    limits.maxAttemptedCreditsPerDay >
-    limits.maxAttemptedCreditsPerMonth
-  ) {
+  if (limits.maxAttemptedCreditsPerDay > limits.maxAttemptedCreditsPerMonth) {
     throw new Error(
       "limits.maxAttemptedCreditsPerDay cannot exceed limits.maxAttemptedCreditsPerMonth.",
     );
@@ -368,7 +360,8 @@ function validateConfig(value: unknown): SourceScoutConfig {
     const path = `profiles[${profileIndex}]`;
     if (!isObject(rawProfile)) throw new Error(`${path} must be an object.`);
     const id = requireString(rawProfile.id, `${path}.id`);
-    if (profileIds.has(id)) throw new Error(`Duplicate Source Scout profile: ${id}.`);
+    if (profileIds.has(id))
+      throw new Error(`Duplicate Source Scout profile: ${id}.`);
     profileIds.add(id);
     if (!Array.isArray(rawProfile.queries) || rawProfile.queries.length === 0) {
       throw new Error(`${path}.queries must be a non-empty array.`);
@@ -503,7 +496,10 @@ function cacheKeyFor(
 }
 
 function normalizeHost(host: string): string {
-  return host.toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
+  return host
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.$/, "");
 }
 
 function sourceDomain(url: string): string | null {
@@ -524,10 +520,7 @@ function isBlockedSource(
   blockedDomains: readonly string[],
 ): boolean {
   const host = sourceDomain(url);
-  return (
-    !host ||
-    blockedDomains.some((domain) => domainMatches(host, domain))
-  );
+  return !host || blockedDomains.some((domain) => domainMatches(host, domain));
 }
 
 function toScoutCandidates(
@@ -634,7 +627,9 @@ function isUsageBucket(value: unknown): value is UsageBucket {
   );
 }
 
-function isUsageBucketMap(value: unknown): value is Record<string, UsageBucket> {
+function isUsageBucketMap(
+  value: unknown,
+): value is Record<string, UsageBucket> {
   return (
     isObject(value) &&
     Object.values(value).every((bucket) => isUsageBucket(bucket))
@@ -659,11 +654,7 @@ async function readUsageLedger(
     }
     throw new Error("invalid schema");
   } catch (error) {
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return emptyUsageLedger(generatedAt);
     }
     throw new Error(
@@ -735,9 +726,7 @@ async function acquireRunLock(
     } catch {
       try {
         const details = await stat(lockPath);
-        stale =
-          details.mtimeMs <=
-          now.getTime() - staleMinutes * 60 * 1000;
+        stale = details.mtimeMs <= now.getTime() - staleMinutes * 60 * 1000;
       } catch {
         stale = true;
       }
@@ -749,13 +738,11 @@ async function acquireRunLock(
       );
     }
     await unlink(lockPath).catch((error: unknown) => {
-      if (
-        !(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "ENOENT"
-        )
-      ) {
+      if (!(
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      )) {
         throw error;
       }
     });
@@ -769,10 +756,7 @@ async function acquireRunLock(
   return async () => {
     try {
       const parsed = JSON.parse(await readFile(lockPath, "utf8")) as unknown;
-      if (
-        !isObject(parsed) ||
-        parsed.ownerToken !== ownerToken
-      ) {
+      if (!isObject(parsed) || parsed.ownerToken !== ownerToken) {
         return;
       }
     } catch (error) {
@@ -786,13 +770,11 @@ async function acquireRunLock(
       throw error;
     }
     await unlink(lockPath).catch((error: unknown) => {
-      if (
-        !(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "ENOENT"
-        )
-      ) {
+      if (!(
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      )) {
         throw error;
       }
     });
@@ -824,9 +806,7 @@ function plannedRun(
   };
 }
 
-function safeError(
-  error: unknown,
-): NonNullable<SourceScoutQueryRun["error"]> {
+function safeError(error: unknown): NonNullable<SourceScoutQueryRun["error"]> {
   if (error instanceof TavilySearchError) {
     return {
       code: error.code,
@@ -848,13 +828,24 @@ function safeError(
 function isTerminalApiError(error: SourceScoutQueryRun["error"]): boolean {
   return Boolean(
     error &&
-      [
-        "configuration",
-        "unauthorized",
-        "rate_limited",
-        "plan_limit_exceeded",
-        "payg_limit_exceeded",
-      ].includes(error.code),
+    [
+      "configuration",
+      "unauthorized",
+      "rate_limited",
+      "plan_limit_exceeded",
+      "payg_limit_exceeded",
+    ].includes(error.code),
+  );
+}
+
+export function sourceScoutReportHasSuccessfulRetrieval(
+  report: SourceScoutReport,
+): boolean {
+  const hasTerminalError = report.queries.some(({ error }) =>
+    isTerminalApiError(error),
+  );
+  return (
+    !hasTerminalError && report.summary.fetched + report.summary.cached > 0
   );
 }
 
@@ -892,13 +883,11 @@ export async function runSourceScout(
   }
 
   const planned = profiles.flatMap((profile) =>
-    profile.queries
-      .slice(0, profile.maxQueriesPerRun)
-      .map((query) => ({
-        profile,
-        query,
-        queryText: renderQuery(query.text, now),
-      })),
+    profile.queries.slice(0, profile.maxQueriesPerRun).map((query) => ({
+      profile,
+      query,
+      queryText: renderQuery(query.text, now),
+    })),
   );
   const report: SourceScoutReport = {
     schemaVersion: 1,
@@ -921,10 +910,8 @@ export async function runSourceScout(
       usageTimezone: "UTC",
       dailyKey,
       monthlyKey,
-      maxAttemptedCreditsPerDay:
-        config.limits.maxAttemptedCreditsPerDay,
-      maxAttemptedCreditsPerMonth:
-        config.limits.maxAttemptedCreditsPerMonth,
+      maxAttemptedCreditsPerDay: config.limits.maxAttemptedCreditsPerDay,
+      maxAttemptedCreditsPerMonth: config.limits.maxAttemptedCreditsPerMonth,
       dailyAttemptedCreditsBefore: null,
       dailyAttemptedCreditsAfter: null,
       monthlyAttemptedCreditsBefore: null,
@@ -963,14 +950,10 @@ export async function runSourceScout(
     const ledger = await readUsageLedger(usagePath, generatedAt);
     const dayBefore = usageBucket(ledger.days, dailyKey);
     const monthBefore = usageBucket(ledger.months, monthlyKey);
-    report.budget.dailyAttemptedCreditsBefore =
-      dayBefore.attemptedCredits;
-    report.budget.dailyAttemptedCreditsAfter =
-      dayBefore.attemptedCredits;
-    report.budget.monthlyAttemptedCreditsBefore =
-      monthBefore.attemptedCredits;
-    report.budget.monthlyAttemptedCreditsAfter =
-      monthBefore.attemptedCredits;
+    report.budget.dailyAttemptedCreditsBefore = dayBefore.attemptedCredits;
+    report.budget.dailyAttemptedCreditsAfter = dayBefore.attemptedCredits;
+    report.budget.monthlyAttemptedCreditsBefore = monthBefore.attemptedCredits;
+    report.budget.monthlyAttemptedCreditsAfter = monthBefore.attemptedCredits;
 
     const search = dependencies.search ?? searchTavilyCandidates;
     let terminalApiFailure = false;
@@ -991,16 +974,13 @@ export async function runSourceScout(
         queryRun.requestId = cached.result.requestId;
         queryRun.responseTime = cached.result.responseTime;
         queryRun.apiReportedCredits = cached.result.credits;
-        queryRun.candidates = toScoutCandidates(
-          cached.result.candidates,
-          {
-            profile,
-            query,
-            queryText,
-            observedAt: cached.fetchedAt,
-            blockedDomains: config.blockedDomains,
-          },
-        );
+        queryRun.candidates = toScoutCandidates(cached.result.candidates, {
+          profile,
+          query,
+          queryText,
+          observedAt: cached.fetchedAt,
+          blockedDomains: config.blockedDomains,
+        });
         report.budget.cacheHits += 1;
         report.summary.cached += 1;
         report.summary.candidates += queryRun.candidates.length;
@@ -1016,8 +996,7 @@ export async function runSourceScout(
       const dayUsage = usageBucket(ledger.days, dailyKey);
       const monthUsage = usageBucket(ledger.months, monthlyKey);
       if (
-        report.budget.requestsMade + 1 >
-          config.limits.maxRequestsPerRun ||
+        report.budget.requestsMade + 1 > config.limits.maxRequestsPerRun ||
         report.budget.creditsCommitted + estimatedCredits >
           config.limits.maxCreditsPerRun ||
         dayUsage.attemptedCredits + estimatedCredits >
@@ -1036,13 +1015,11 @@ export async function runSourceScout(
       report.budget.creditsCommitted += estimatedCredits;
       ledger.days[dailyKey] = {
         attemptedRequests: dayUsage.attemptedRequests + 1,
-        attemptedCredits:
-          dayUsage.attemptedCredits + estimatedCredits,
+        attemptedCredits: dayUsage.attemptedCredits + estimatedCredits,
       };
       ledger.months[monthlyKey] = {
         attemptedRequests: monthUsage.attemptedRequests + 1,
-        attemptedCredits:
-          monthUsage.attemptedCredits + estimatedCredits,
+        attemptedCredits: monthUsage.attemptedCredits + estimatedCredits,
       };
       ledger.updatedAt = generatedAt;
       report.budget.dailyAttemptedCreditsAfter =
@@ -1054,9 +1031,7 @@ export async function runSourceScout(
       try {
         const result = await search(queryText, {
           allowedDomains:
-            query.allowedDomains.length > 0
-              ? query.allowedDomains
-              : undefined,
+            query.allowedDomains.length > 0 ? query.allowedDomains : undefined,
           searchDepth: profile.searchDepth,
           maxResults: config.limits.maxResultsPerQuery,
           timeoutMs: config.limits.requestTimeoutMs,
@@ -1080,8 +1055,7 @@ export async function runSourceScout(
         }
 
         const ttlHours =
-          profile.cacheTtlHours ??
-          config.limits.defaultCacheTtlHours;
+          profile.cacheTtlHours ?? config.limits.defaultCacheTtlHours;
         cache.entries[cacheKey] = {
           cacheKey,
           fetchedAt: generatedAt,
@@ -1118,11 +1092,26 @@ export async function runSourceScout(
 export function parseSourceScoutCliArgs(
   args: readonly string[],
 ): SourceScoutCliArgs {
+  const inlineProfiles = args
+    .filter((argument) => argument.startsWith("--profile="))
+    .map((argument) => argument.slice("--profile=".length));
   const profileIndexes = args.flatMap((argument, index) =>
     argument === "--profile" ? [index] : [],
   );
-  if (profileIndexes.length > 1) {
+  if (profileIndexes.length + inlineProfiles.length > 1) {
     throw new Error("--profile may be provided only once.");
+  }
+
+  if (inlineProfiles.length === 1) {
+    const profileId = inlineProfiles[0];
+    if (!profileId) {
+      throw new Error("--profile requires a profile id.");
+    }
+    return {
+      live: args.includes("--live"),
+      confirmed: args.includes("--confirm"),
+      profileId,
+    };
   }
 
   const profileIndex = profileIndexes[0];
@@ -1153,9 +1142,7 @@ async function main(): Promise<void> {
     loadEnvironment({ path: resolve(".env.local"), quiet: true });
   }
   if (live && !process.env.TAVILY_API_KEY) {
-    throw new Error(
-      "TAVILY_API_KEY is required for a live Source Scout run.",
-    );
+    throw new Error("TAVILY_API_KEY is required for a live Source Scout run.");
   }
   const result = await runSourceScout({ live, confirmed, profileId });
   const { report } = result;
@@ -1166,7 +1153,9 @@ async function main(): Promise<void> {
   );
   if (!live) {
     console.log("Plan only. No API requests or files were written.");
-    console.log("Use --live --confirm after reviewing config/source-scout.json.");
+    console.log(
+      "Use --live --confirm after reviewing config/source-scout.json.",
+    );
     return;
   }
   console.log(
@@ -1175,6 +1164,11 @@ async function main(): Promise<void> {
   );
   console.log(`Review report: ${result.reportPath}`);
   console.log("No public app data was changed.");
+  if (!sourceScoutReportHasSuccessfulRetrieval(report)) {
+    throw new Error(
+      "Source Scout did not complete a usable provider retrieval. Review the uploaded report for authentication, plan, rate-limit, or budget errors.",
+    );
+  }
 }
 
 const isEntrypoint =

@@ -2,9 +2,24 @@ import { describe, expect, it } from "vitest";
 import {
   isTrustedBusinessWebsiteRedirect,
   needsRenderedBusinessSnapshot,
+  preferredBusinessWebsiteUrls,
 } from "../scripts/lib/business-info-source";
 
 describe("business-info source trust", () => {
+  it("prefers HTTPS while retaining a legacy HTTP fallback", () => {
+    expect(
+      preferredBusinessWebsiteUrls("http://www.example.com/menu"),
+    ).toEqual([
+      "https://www.example.com/menu",
+      "http://www.example.com/menu",
+    ]);
+    expect(
+      preferredBusinessWebsiteUrls("https://example.com/menu"),
+    ).toEqual(["https://example.com/menu"]);
+    expect(preferredBusinessWebsiteUrls("ftp://example.com/menu")).toEqual([]);
+    expect(preferredBusinessWebsiteUrls("not a URL")).toEqual([]);
+  });
+
   it("allows protocol, www, and same-site subdomain redirects", () => {
     expect(
       isTrustedBusinessWebsiteRedirect(

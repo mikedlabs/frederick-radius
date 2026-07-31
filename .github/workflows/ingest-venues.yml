@@ -3,7 +3,8 @@ name: Ingest venue events
 # Captures lineups from venues that only post on their own site
 # (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
 # extraction agent, refreshes src/data/venue-events.json, commits.
-# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
+# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
+# Data Enrichment environment. Never use an Anthropic Admin API key here.
 # Configure: config/venue-sources.json
 
 on:
@@ -21,8 +22,9 @@ concurrency:
 
 jobs:
   ingest:
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    environment: Production
+    environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
@@ -33,13 +35,43 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Verify optional Firecrawl fallback
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
+        run: |
+          case "$FIRECRAWL_FETCH_FALLBACK" in
+            0) ;;
+            1)
+              if [ -z "$FIRECRAWL_API_KEY" ]; then
+                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Data Enrichment environment has no key."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error title=Invalid Firecrawl setting::FIRECRAWL_FETCH_FALLBACK must be 0 or 1."
+              exit 1
+              ;;
+          esac
+          case "$FIRECRAWL_FALLBACK_MAX_REQUESTS" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+              exit 1
+              ;;
+          esac
+          if [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -lt 1 ] || [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 20 ]; then
+            echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+            exit 1
+          fi
       - name: Extract venue events
         id: extract
         continue-on-error: true
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
         run: npm run ingest:venues
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.
@@ -73,5 +105,5 @@ jobs:
         if: ${{ always() && steps.extract.outcome != 'success' }}
         run: |
           echo "The deterministic venue feeds were allowed to refresh, but at least one model-assisted source could not run."
-          echo "Check ANTHROPIC_API_KEY and the extraction log above."
+          echo "Check ANTHROPIC_VENUE_EVENTS_API_KEY in the Data Enrichment environment and the extraction log above."
           exit 1

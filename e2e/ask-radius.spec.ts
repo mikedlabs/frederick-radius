@@ -56,6 +56,9 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.goto("/ask");
     await submit(page, "one source");
     await expect(page.getByText("1 source answer.")).toBeVisible();
+    await expect(
+      page.locator('[data-ask-composer-dock="sticky"]'),
+    ).toBeVisible();
     await expect(page.getByText("Source 1", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Browse tools" })).toBeVisible();
@@ -65,7 +68,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("Source 3", { exact: true })).toHaveCount(0);
     await page.locator("summary").filter({ hasText: "Sources behind this answer" }).click();
     await expect(page.getByText("Source 2", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Show all 3 sources" }).click();
+    await page.getByRole("button", { name: "Show all 2 sources" }).click();
     await expect(page.getByText("Source 3", { exact: true })).toBeVisible();
 
     await submit(page, "zero sources");
@@ -79,6 +82,11 @@ test.describe("Ask Radius deterministic workspace", () => {
         route,
         answer({
           answer: "Here is a simple two-stop plan.",
+          presentation: {
+            layout: "plan",
+            summary: "Here is a simple two-stop plan.",
+            detail: null,
+          },
           plan: {
             title: "Downtown date night",
             summary: "Dinner followed by a show.",
@@ -170,6 +178,11 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "slow response");
+    const composer = page.getByRole("textbox", { name: "Ask Radius" });
+    await expect(composer).toHaveAttribute("readonly", "");
+    await expect(page.getByRole("button", { name: "Cancel" })).toContainText(
+      "Stop",
+    );
     await expect(
       page.getByText("Radius is checking current local data and sources."),
     ).toBeVisible();
@@ -179,6 +192,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     ).toBeVisible();
     release();
     await expect(page.getByText("The delayed answer arrived.")).toBeVisible();
+    await expect(composer).not.toHaveAttribute("readonly");
   });
 
   test("lets the user cancel a slow request and retry it", async ({ page }) => {
@@ -199,11 +213,15 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "cancel this request");
+    await expect.poll(() => calls).toBe(1);
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
       page.getByText(
-        "That request was canceled. Your question is still here if you want to try again.",
+        "That request was canceled, and your question is still here if you want to try again.",
       ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Try again", exact: true }),
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Try again", exact: true }).click();
@@ -212,7 +230,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     releaseFirst();
   });
 
-  test("keeps only the newest overlapping response", async ({ page }) => {
+  test("keeps a canceled response from replacing the next answer", async ({ page }) => {
     let releaseFirst!: () => void;
     const firstGate = new Promise<void>((resolve) => {
       releaseFirst = resolve;
@@ -229,10 +247,14 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "first request");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(
+      page.getByText(
+        "That request was canceled, and your question is still here if you want to try again.",
+      ),
+    ).toBeVisible();
     await page.getByRole("textbox", { name: "Ask Radius" }).fill("second request");
-    await page.locator('form[aria-label="Ask Radius"]').evaluate((form) => {
-      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    });
+    await page.getByRole("textbox", { name: "Ask Radius" }).press("Enter");
     await expect(page.getByText("Current second answer.")).toBeVisible();
     releaseFirst();
     await page.waitForTimeout(150);
@@ -264,9 +286,239 @@ test.describe("Ask Radius deterministic workspace", () => {
     await submit(page, "Where can I get coffee near me?");
     const chooser = page.locator("#ask-area-chooser");
     await expect(chooser).toBeFocused();
+    await chooser.press("Escape");
+    const areaTrigger = page.getByRole("button", { name: /Search area:/ });
+    await expect(areaTrigger).toBeFocused();
+    await areaTrigger.click();
+    await expect(chooser).toBeFocused();
     await page.getByLabel("Choose a town").selectOption("urbana");
     await expect(page.getByText("Urbana coffee answer.")).toBeVisible();
     expect(requestBody.scope).toBe("town:urbana");
+  });
+
+  test("keeps the answered composer compact while its area chooser opens below it", async ({
+    page,
+  }) => {
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer: Array.from(
+            { length: 90 },
+            () => "This answer has useful local detail.",
+          ).join(" "),
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, "What is happening tonight?");
+    const dock = page.locator('[data-ask-composer-dock="sticky"]');
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const readingPosition = await page.evaluate(() => window.scrollY);
+    expect(readingPosition).toBeGreaterThan(100);
+    await dock.getByRole("button", { name: /Search area:/ }).click();
+    await expect(page.locator("#ask-area-chooser")).toBeVisible();
+    await expect(dock.locator("#ask-area-chooser")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Search area" })).toBeVisible();
+    await expect
+      .poll(async () =>
+        Math.abs((await page.evaluate(() => window.scrollY)) - readingPosition),
+      )
+      .toBeLessThanOrEqual(2);
+  });
+
+  test("asks a first-time visitor for an area before the dinner shortcut runs", async ({
+    page,
+  }) => {
+    let calls = 0;
+    await page.route("**/api/ask", async (route) => {
+      calls += 1;
+      await fulfill(route, answer({ answer: "Dinner answer." }));
+    });
+
+    await page.goto("/ask");
+    await page.getByRole("button", { name: "Dinner tonight" }).click();
+    await expect(page.locator("#ask-area-chooser")).toBeVisible();
+    expect(calls).toBe(0);
+    await page.getByLabel("Choose a town").selectOption("frederick");
+    await expect(page.getByText("Dinner answer.")).toBeVisible();
+    expect(calls).toBe(1);
+  });
+
+  test("does not treat a saved home as the user's current location", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:home-muni:v1", "frederick");
+    });
+    let calls = 0;
+    await page.route("**/api/ask", async (route) => {
+      calls += 1;
+      await fulfill(route, answer({ answer: "Nearest answer." }));
+    });
+
+    await page.goto("/ask");
+    await expect(
+      page.getByRole("button", {
+        name: "Search area: Ranked from Frederick City. Change area.",
+      }),
+    ).toBeVisible();
+    await submit(page, "Where is the closest restroom near me?");
+    await expect(page.locator("#ask-area-chooser")).toBeVisible();
+    expect(calls).toBe(0);
+  });
+
+  for (const shortcut of [
+    {
+      label: "Dinner tonight",
+      query: "Where should I eat tonight?",
+    },
+    {
+      label: "What is on tonight?",
+      query: "What is worth doing tonight?",
+    },
+  ]) {
+    test(`${shortcut.label} uses home as a ranking fallback without hard-filtering it`, async ({ page }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("fr:home-muni:v1", "frederick");
+      });
+      let requestBody: { query?: string; scope?: string } = {};
+      await page.route("**/api/ask", async (route) => {
+        requestBody = route.request().postDataJSON() as typeof requestBody;
+        await fulfill(route, answer({ answer: "Scoped shortcut answer." }));
+      });
+
+      await page.goto("/ask");
+      await expect(
+        page.getByRole("button", {
+          name: "Search area: Ranked from Frederick City. Change area.",
+        }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: shortcut.label }).click();
+      await expect(page.getByText("Scoped shortcut answer.")).toBeVisible();
+
+      expect(requestBody.query).toBe(shortcut.query);
+      expect(requestBody).not.toHaveProperty("scope");
+    });
+  }
+
+  test("hydrates a saved home area without changing the server-rendered tree", async ({
+    page,
+  }) => {
+    const hydrationErrors: string[] = [];
+    page.on("console", (message) => {
+      if (
+        message.type() === "error" &&
+        /hydration failed|server rendered text didn't match/i.test(message.text())
+      ) {
+        hydrationErrors.push(message.text());
+      }
+    });
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:home-muni:v1", "frederick");
+    });
+
+    await page.goto("/ask");
+    await expect(
+      page.getByRole("button", {
+        name: "Search area: Ranked from Frederick City. Change area.",
+      }),
+    ).toBeVisible();
+    expect(hydrationErrors).toEqual([]);
+  });
+
+  test("uses the saved home fallback for an initial local question link", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:home-muni:v1", "frederick");
+    });
+    let requestBody: { query?: string; scope?: string } = {};
+    await page.route("**/api/ask", async (route) => {
+      requestBody = route.request().postDataJSON() as typeof requestBody;
+      await fulfill(route, answer({ answer: "Home-ranked coffee answer." }));
+    });
+
+    await page.goto("/ask?q=coffee");
+    await expect(page.getByText("Home-ranked coffee answer.")).toBeVisible();
+    await expect(page.locator("#ask-area-chooser")).toHaveCount(0);
+    expect(requestBody.query).toBe("coffee");
+    expect(requestBody).not.toHaveProperty("scope");
+    await page.getByRole("button", { name: /Search area:/ }).click();
+    await page
+      .getByRole("dialog", { name: "Search area" })
+      .getByRole("button", { name: "Whole county" })
+      .click();
+    await expect(page.getByText("Update it for Whole county.")).toBeVisible();
+  });
+
+  test("passive location hydration preserves a town-scoped question link", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:scope:v1", "town:urbana");
+      window.sessionStorage.setItem(
+        "fr_geo_v1",
+        JSON.stringify({
+          lng: -77.4105,
+          lat: 39.4143,
+          accuracy: 18,
+          timestamp: Date.now(),
+        }),
+      );
+    });
+    let requestBody: { query?: string; scope?: string } = {};
+    await page.route("**/api/ask", async (route) => {
+      requestBody = route.request().postDataJSON() as typeof requestBody;
+      await fulfill(route, answer({ answer: "Urbana-scoped coffee answer." }));
+    });
+
+    await page.goto("/ask?q=coffee");
+    await expect(page.getByText("Urbana-scoped coffee answer.")).toBeVisible();
+    expect(requestBody.scope).toBe("town:urbana");
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("fr:scope:v1")))
+      .toBe("town:urbana");
+  });
+
+  test("lets a fresh device fix outrank the saved home town", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:home-muni:v1", "brunswick");
+      window.sessionStorage.setItem(
+        "fr_geo_v1",
+        JSON.stringify({
+          lng: -77.4105,
+          lat: 39.4143,
+          accuracy: 18,
+          timestamp: Date.now(),
+        }),
+      );
+    });
+    let requestBody: {
+      query?: string;
+      scope?: string;
+      lat?: number;
+      lng?: number;
+    } = {};
+    await page.route("**/api/ask", async (route) => {
+      requestBody = route.request().postDataJSON() as typeof requestBody;
+      await fulfill(route, answer({ answer: "Downtown-first answer." }));
+    });
+
+    await page.goto("/ask");
+    await expect(
+      page.getByRole("button", {
+        name: "Search area: Near your location. Change area.",
+      }),
+    ).toBeVisible();
+    await submit(page, "Where should I eat tonight?");
+    await expect(page.getByText("Downtown-first answer.")).toBeVisible();
+    expect(requestBody).toMatchObject({
+      scope: "nearme",
+      lat: 39.4143,
+      lng: -77.4105,
+    });
   });
 
   test("keeps the latest self-contained question through share, refresh, and Back", async ({ page }) => {
@@ -295,7 +547,8 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("Answer for Find dinner downtown")).toBeVisible();
     await submit(page, "closer");
     const contextual = "Find dinner downtown. Follow-up: closer";
-    await expect(page.getByText(`Answer for ${contextual}`)).toBeVisible();
+    await expect(page.getByText("Follow-up: closer")).toBeVisible();
+    await expect.poll(() => queries.at(-1)).toBe(contextual);
     expect(new URL(page.url()).searchParams.get("q")).toBe(contextual);
 
     await page.getByRole("button", { name: "Share question" }).click();
@@ -310,11 +563,11 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.getByRole("link", { name: "Source 1", exact: true }).click();
     await page.waitForURL("**/about");
     await page.goBack();
-    await expect(page.getByText(`Answer for ${contextual}`)).toBeVisible();
+    await expect(page.getByText("Follow-up: closer")).toBeVisible();
     expect(queries).toHaveLength(callsBeforeBack);
 
     await page.reload();
-    await expect(page.getByText(`Answer for ${contextual}`)).toBeVisible();
+    await expect(page.getByText("Follow-up: closer")).toBeVisible();
     expect(queries.at(-1)).toBe(contextual);
   });
 

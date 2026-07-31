@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   pageOwnsPrimarySearch,
+  shouldShowGlobalLocation,
   shouldShowGlobalMobileSearch,
   topBarFindTarget,
 } from "./TopBar";
@@ -19,6 +20,12 @@ describe("TopBar search ownership", () => {
     expect(topBarFindTarget("/map")).toBe("map");
     expect(topBarFindTarget("/today")).toBe("global");
     expect(topBarFindTarget("/compass")).toBe("global");
+  });
+
+  it("lets the Ask composer own its location scope", () => {
+    expect(shouldShowGlobalLocation("/ask")).toBe(false);
+    expect(shouldShowGlobalLocation("/ask/history")).toBe(false);
+    expect(shouldShowGlobalLocation("/today")).toBe(true);
   });
 
   it.each(["/today", "/events", "/pulse", "/access", "/places/gravel-and-grind"])(

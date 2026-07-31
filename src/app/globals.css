@@ -369,6 +369,46 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
   user-select: none;
 }
 
+/* Ask Radius is a local decision instrument, not a generic chat bubble.
+   Every entry point shares this control boundary and whole-composer focus
+   state so the user always knows where typing will go. */
+.ask-composer {
+  border: 1px solid var(--app-control-border);
+  box-shadow: var(--app-edge), var(--app-elev-1);
+  transition:
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.ask-composer:focus-within {
+  border-color: var(--app-brand);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--app-brand) 16%, transparent),
+    var(--app-elev-2);
+}
+
+.ask-composer :is(input, textarea):focus-visible {
+  outline: none;
+}
+
+.ask-composer-submit:not(:disabled) {
+  box-shadow:
+    0 6px 16px -8px color-mix(in srgb, var(--app-brand-press) 80%, transparent),
+    var(--app-hi);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-composer,
+  .ask-composer-submit {
+    transition: none;
+  }
+
+  .ask-composer-submit svg {
+    animation: none;
+  }
+}
+
 /* iOS Safari auto-zooms the page whenever a focused form control has a
    font-size below 16px — the jarring jump you get tapping a search box or
    feedback field. On touch devices, hold every input/textarea/select at

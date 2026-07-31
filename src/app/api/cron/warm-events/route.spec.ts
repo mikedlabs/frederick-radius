@@ -38,10 +38,10 @@ vi.mock("@sentry/nextjs", () => ({
 }));
 
 import {
-  EVENT_WARM_BUDGET_MS,
   GET,
   maxDuration,
 } from "./route";
+import { EVENT_WARM_BUDGET_MS } from "./config";
 
 const request = () =>
   new Request("https://frederickradius.app/api/cron/warm-events");

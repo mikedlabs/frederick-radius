@@ -46,6 +46,26 @@ describe("askFrederick structured answers", () => {
     expect(result.answer).not.toContain("Starbucks");
   });
 
+  it("understands a complete coffee-and-bike request written in ordinary language", async () => {
+    const result = await askFrederick(
+      "Where can I get coffee and browse bikes near downtown Frederick?",
+      {
+        origin: { lng: -77.40955, lat: 39.42165 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+        canShowDistance: true,
+      },
+    );
+
+    expect(result.status).toBe("matches");
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0]).toMatchObject({
+      slug: "gravel-and-grind-frederick",
+      name: "Gravel & Grind",
+    });
+    expect(result.answer).not.toContain("Starbucks");
+  });
+
   it("returns evidence and proximity for a local place answer", async () => {
     const result = await askFrederick(
       "Where can I get a breakfast sandwich near me?",

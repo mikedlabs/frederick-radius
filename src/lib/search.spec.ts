@@ -233,6 +233,28 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
     expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
   });
 
+  it("does not treat the action verb in a natural compound request as another concept", () => {
+    const { hits } = qualifiedSearch(
+      "Where can I get coffee and browse bikes near downtown Frederick?",
+      12,
+      undefined,
+      {
+        origin: gravelAndGrind,
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+        canShowDistance: true,
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+    const lead = hits.find((hit) => hit.type === "place");
+    expect(lead?.type === "place" ? lead.conceptCoverage : null).toEqual({
+      matched: 2,
+      total: 2,
+    });
+  });
+
   it("uses location for an ordinary relevant query without requiring the word nearest", () => {
     const places = qualifiedSearch("coffee", 12, undefined, {
       origin: gravelAndGrind,

@@ -4,12 +4,13 @@ name: Ingest municipal civic data
 # each town's configured gov page(s), refreshes src/data/municipal-civic.json
 # with source + freshness, and commits the result. Daily + manual.
 #
-# Uses the ANTHROPIC_API_KEY secret in the GitHub Production environment.
+# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
+# Data Enrichment environment. Never use an Anthropic Admin API key here.
 # Configure which pages to read in: config/municipal-civic-sources.json
 
 on:
   schedule:
-    - cron: "0 8 * * *" # daily 08:00 UTC
+    - cron: "30 8 * * *" # daily 08:30 UTC, after business extraction
   workflow_dispatch: {} # run on demand from the Actions tab
 
 permissions:
@@ -22,8 +23,9 @@ concurrency:
 
 jobs:
   ingest:
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    environment: Production
+    environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
@@ -33,18 +35,48 @@ jobs:
           node-version: 22
       - name: Verify extractor secret
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_CIVIC_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error title=Missing ANTHROPIC_API_KEY::Add the Actions secret to the GitHub Production environment before running municipal civic extraction."
+            echo "::error title=Missing civic extractor key::Add ANTHROPIC_CIVIC_API_KEY to the GitHub Data Enrichment environment."
             exit 1
           fi
       - run: npm ci
-      - name: Extract civic data
+      - name: Verify optional Firecrawl fallback
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
+        run: |
+          case "$FIRECRAWL_FETCH_FALLBACK" in
+            0) ;;
+            1)
+              if [ -z "$FIRECRAWL_API_KEY" ]; then
+                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Data Enrichment environment has no key."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error title=Invalid Firecrawl setting::FIRECRAWL_FETCH_FALLBACK must be 0 or 1."
+              exit 1
+              ;;
+          esac
+          case "$FIRECRAWL_FALLBACK_MAX_REQUESTS" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+              exit 1
+              ;;
+          esac
+          if [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -lt 1 ] || [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 20 ]; then
+            echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+            exit 1
+          fi
+      - name: Extract civic data
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_CIVIC_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
         run: npm run ingest:civic
       - name: Open review PR
         uses: peter-evans/create-pull-request@v6

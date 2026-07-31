@@ -13,6 +13,27 @@ function normalizedHostname(url: string): string | null {
 }
 
 /**
+ * Prefer encrypted first-party evidence even when an old provider record
+ * still carries an http:// homepage. Keep the original URL as a compatibility
+ * fallback because a small number of legacy sites genuinely do not serve TLS.
+ */
+export function preferredBusinessWebsiteUrls(url: string): string[] {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return [];
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return [];
+  if (parsed.protocol === "https:") return [parsed.toString()];
+
+  const original = parsed.toString();
+  parsed.protocol = "https:";
+  const preferred = parsed.toString();
+  return preferred === original ? [original] : [preferred, original];
+}
+
+/**
  * A business-info fetch may follow an HTTP-to-HTTPS redirect, add/remove www,
  * or land on a subdomain owned by the source site. It must not silently cross to
  * an unrelated host, where another business's prose and commerce links could

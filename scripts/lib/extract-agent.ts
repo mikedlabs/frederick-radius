@@ -34,6 +34,10 @@ const DEFAULT_MODEL = process.env.EXTRACT_MODEL || "claude-haiku-4-5-20251001";
 const UA = "FrederickRadius/1.0 (+civic data ingest)";
 const DEFAULT_FIRECRAWL_FALLBACK_LIMIT = 6;
 const ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT = 20;
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const DEFAULT_ANTHROPIC_RETRIES = 2;
+const DEFAULT_ANTHROPIC_RETRY_DELAY_MS = 750;
+const MAX_ANTHROPIC_RETRY_DELAY_MS = 15_000;
 
 function htmlToText(html: string, maxChars: number): string {
   return html
@@ -555,6 +559,268 @@ export async function extractJson<T = unknown>(
   }
 }
 
+export type AnthropicProviderFailureKind =
+  | "authentication"
+  | "rate-limit"
+  | "provider"
+  | "request"
+  | "timeout"
+  | "network"
+  | "response";
+
+/**
+ * A request-level Anthropic failure. Civic ingestion treats these as run
+ * failures rather than silently preserving old data and reporting green.
+ */
+export class AnthropicProviderError extends Error {
+  readonly kind: AnthropicProviderFailureKind;
+  readonly status: number | null;
+  readonly attempts: number;
+  readonly responseBody: string;
+
+  constructor(
+    message: string,
+    options: {
+      kind: AnthropicProviderFailureKind;
+      status?: number | null;
+      attempts: number;
+      responseBody?: string;
+      cause?: unknown;
+    },
+  ) {
+    super(message, { cause: options.cause });
+    this.name = "AnthropicProviderError";
+    this.kind = options.kind;
+    this.status = options.status ?? null;
+    this.attempts = options.attempts;
+    this.responseBody = options.responseBody ?? "";
+  }
+}
+
+type AnthropicRequestOptions = {
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  maxRetries?: number;
+  maxRetryDelayMs?: number;
+  /** Test seam. Production callers use a real bounded delay. */
+  sleepImpl?: (delayMs: number) => Promise<void>;
+};
+
+function isRetryableAnthropicStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function anthropicFailureKind(status: number): AnthropicProviderFailureKind {
+  if (status === 401 || status === 403) return "authentication";
+  if (status === 429) return "rate-limit";
+  if (status >= 500 && status <= 599) return "provider";
+  return "request";
+}
+
+function retryAfterDelayMs(
+  retryAfter: string | null,
+  fallbackMs: number,
+  maxDelayMs: number,
+): number | null {
+  if (!retryAfter) return Math.min(fallbackMs, maxDelayMs);
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    const requestedDelayMs = Math.ceil(seconds * 1_000);
+    return requestedDelayMs <= maxDelayMs ? requestedDelayMs : null;
+  }
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isFinite(retryAt)) {
+    const requestedDelayMs = Math.max(0, retryAt - Date.now());
+    return requestedDelayMs <= maxDelayMs ? requestedDelayMs : null;
+  }
+  return Math.min(fallbackMs, maxDelayMs);
+}
+
+async function responseText(response: Response): Promise<string> {
+  try {
+    return (await response.text()).slice(0, 500);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Send one Anthropic Messages request with a deliberately narrow retry
+ * policy. Authentication, malformed requests, timeouts, and network errors
+ * are never retried. Only provider/rate-limit statuses are retried, and
+ * Retry-After is respected within a hard delay ceiling.
+ */
+async function requestAnthropicMessage(
+  apiKey: string,
+  body: Record<string, unknown>,
+  options: AnthropicRequestOptions = {},
+): Promise<Response> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  const maxRetries = Math.max(
+    0,
+    Math.min(options.maxRetries ?? DEFAULT_ANTHROPIC_RETRIES, 4),
+  );
+  const maxRetryDelayMs = Math.max(
+    0,
+    Math.min(
+      options.maxRetryDelayMs ?? MAX_ANTHROPIC_RETRY_DELAY_MS,
+      MAX_ANTHROPIC_RETRY_DELAY_MS,
+    ),
+  );
+  const sleepImpl =
+    options.sleepImpl ??
+    ((delayMs: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
+
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    let response: Response;
+    try {
+      response = await fetchImpl(ANTHROPIC_MESSAGES_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } catch (error) {
+      const timedOut =
+        ctrl.signal.aborted ||
+        (error instanceof Error && error.name === "AbortError");
+      throw new AnthropicProviderError(
+        timedOut
+          ? `Anthropic request timed out after ${timeoutMs}ms`
+          : "Anthropic request could not reach the service",
+        {
+          kind: timedOut ? "timeout" : "network",
+          attempts: attempt,
+          cause: error,
+        },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Only an actual 2xx response is accepted. Redirects and every 4xx/5xx
+    // remain failures even if a caller supplied a custom fetch implementation.
+    if (response.status >= 200 && response.status <= 299) return response;
+
+    const bodyText = await responseText(response);
+    const canRetry =
+      isRetryableAnthropicStatus(response.status) &&
+      attempt <= maxRetries;
+    if (!canRetry) {
+      throw new AnthropicProviderError(
+        `Anthropic request failed with HTTP ${response.status}`,
+        {
+          kind: anthropicFailureKind(response.status),
+          status: response.status,
+          attempts: attempt,
+          responseBody: bodyText,
+        },
+      );
+    }
+
+    const fallbackDelayMs =
+      DEFAULT_ANTHROPIC_RETRY_DELAY_MS * 2 ** (attempt - 1);
+    const delayMs = retryAfterDelayMs(
+      response.headers.get("retry-after"),
+      fallbackDelayMs,
+      maxRetryDelayMs,
+    );
+    if (delayMs === null) {
+      throw new AnthropicProviderError(
+        `Anthropic requested a retry delay beyond the ${maxRetryDelayMs}ms run ceiling`,
+        {
+          kind: anthropicFailureKind(response.status),
+          status: response.status,
+          attempts: attempt,
+          responseBody: bodyText,
+        },
+      );
+    }
+    console.log(
+      `  – Claude HTTP ${response.status}; retrying in ${delayMs}ms ` +
+        `(attempt ${attempt + 1}/${maxRetries + 1})`,
+    );
+    await sleepImpl(delayMs);
+  }
+
+  throw new AnthropicProviderError("Anthropic retry policy exhausted", {
+    kind: "provider",
+    attempts: maxRetries + 1,
+  });
+}
+
+/**
+ * Strict extraction for scheduled jobs whose provider failures must turn the
+ * run red. A valid 2xx model response may still return null when it contains
+ * no usable JSON; HTTP/auth/network/transport failures throw.
+ */
+export async function extractJsonStrict<T = unknown>(
+  instructions: string,
+  content: string,
+  opts: {
+    model?: string;
+    maxTokens?: number;
+    /** Test seam. Production callers use the process environment. */
+    apiKey?: string;
+  } & AnthropicRequestOptions = {},
+): Promise<T | null> {
+  const apiKey = opts.apiKey ?? API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+  const preamble =
+    "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
+    "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
+    "dates, prices, or hours. If you can't find something, omit it. When a requested field contains " +
+    "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
+    "If nothing applies, return an empty result.\n\n";
+
+  const response = await requestAnthropicMessage(
+    apiKey,
+    {
+      model: opts.model || DEFAULT_MODEL,
+      max_tokens: opts.maxTokens ?? 1500,
+      messages: [
+        {
+          role: "user",
+          content: `${preamble}${instructions}\n\nPAGE TEXT:\n${content}`,
+        },
+      ],
+    },
+    opts,
+  );
+
+  let data: { content?: { text?: string }[] };
+  try {
+    data = (await response.json()) as { content?: { text?: string }[] };
+  } catch (error) {
+    throw new AnthropicProviderError(
+      "Anthropic returned an unreadable success response",
+      {
+        kind: "response",
+        status: response.status,
+        attempts: 1,
+        cause: error,
+      },
+    );
+  }
+  const raw = data.content?.[0]?.text ?? "";
+  const match = raw.match(/[[{][\s\S]*[\]}]/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as T;
+  } catch {
+    console.log("  ✗ Claude returned non-JSON");
+    return null;
+  }
+}
+
 /**
  * Extract structured JSON from an IMAGE using Claude vision. Some venues
  * publish their calendar only as a graphic (e.g. a Wix-hosted PNG), with
@@ -674,6 +940,10 @@ export async function preflightKey(
     failInCi?: boolean;
     fetchImpl?: typeof fetch;
     timeoutMs?: number;
+    maxRetries?: number;
+    maxRetryDelayMs?: number;
+    /** Test seam. Production callers use a real bounded delay. */
+    sleepImpl?: (delayMs: number) => Promise<void>;
     /** Test seam. Production callers use the process environment. */
     apiKey?: string;
   } = {},
@@ -691,49 +961,65 @@ export async function preflightKey(
   }
   // Cheap liveness ping so an INVALID or out-of-credit key reports
   // precisely, instead of failing 60 times mid-run.
-  const ctrl = new AbortController();
-  const timeoutMs = options.timeoutMs ?? 10_000;
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const r = await (options.fetchImpl ?? fetch)(
-      "https://api.anthropic.com/v1/messages",
+    await requestAnthropicMessage(
+      apiKey,
       {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          max_tokens: 1,
-          messages: [{ role: "user", content: "ping" }],
-        }),
-        signal: ctrl.signal,
+        model: DEFAULT_MODEL,
+        max_tokens: 1,
+        messages: [{ role: "user", content: "ping" }],
+      },
+      {
+        fetchImpl: options.fetchImpl,
+        timeoutMs: options.timeoutMs ?? 10_000,
+        maxRetries: options.maxRetries,
+        maxRetryDelayMs: options.maxRetryDelayMs,
+        sleepImpl: options.sleepImpl,
       },
     );
-    if (r.status === 401) {
-      return failPreflight("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n", resolved);
-    }
-    if (r.status === 429) {
-      return failPreflight("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n", resolved);
-    }
-    if (!r.ok && r.status !== 400) {
-      return failPreflight(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`, resolved);
-    }
     console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
     return true;
   } catch (error) {
-    const timedOut =
-      ctrl.signal.aborted
-      || (error instanceof Error && error.name === "AbortError");
+    if (error instanceof AnthropicProviderError) {
+      if (error.status === 401 || error.status === 403) {
+        return failPreflight(
+          `\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP ${error.status}). ` +
+            "The key is wrong, revoked, or cannot access this workspace.\n",
+          resolved,
+        );
+      }
+      if (error.status === 429) {
+        return failPreflight(
+          "\n✗ ANTHROPIC_API_KEY works but is out of credit or still rate-limited " +
+            `after ${error.attempts} attempt(s) (HTTP 429).\n`,
+          resolved,
+        );
+      }
+      if (error.kind === "timeout") {
+        return failPreflight(
+          `\n✗ Anthropic API preflight timed out after ${
+            options.timeoutMs ?? 10_000
+          }ms. Model-assisted sources were not refreshed.\n`,
+          resolved,
+        );
+      }
+      if (error.kind === "network") {
+        return failPreflight(
+          "\n✗ Anthropic API preflight could not reach the service. " +
+            "Model-assisted sources were not refreshed.\n",
+          resolved,
+        );
+      }
+      return failPreflight(
+        `\n✗ Anthropic API preflight failed (HTTP ${
+          error.status ?? "unknown"
+        }) after ${error.attempts} attempt(s). Model-assisted sources were not refreshed.\n`,
+        resolved,
+      );
+    }
     return failPreflight(
-      timedOut
-        ? `\n✗ Anthropic API preflight timed out after ${timeoutMs}ms. Model-assisted sources were not refreshed.\n`
-        : "\n✗ Anthropic API preflight could not reach the service. Model-assisted sources were not refreshed.\n",
+      "\n✗ Anthropic API preflight failed unexpectedly. Model-assisted sources were not refreshed.\n",
       resolved,
     );
-  } finally {
-    clearTimeout(timer);
   }
 }

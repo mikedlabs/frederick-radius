@@ -9,14 +9,14 @@ Both tools produce review evidence. Neither tool publishes to the app, edits can
 
 ## Which Radius problems they solve
 
-| Radius problem | Best tool | Safe outcome |
-| --- | --- | --- |
-| An official page is JavaScript-heavy, blocks a normal request, or produces unusable HTML | Firecrawl fallback | Retrieve one reviewed public page after native fetch and Playwright fail, while retaining requested/final URL provenance. |
-| Radius does not know the first-party source for a venue, menu, accessibility detail, food-truck schedule, or civic update | Tavily Source Scout | Return a small, domain-constrained list of original publisher URLs for operator review. |
-| A known first-party page silently changes an event time, transit document, food-truck roster, or public notice | Source Watch with Firecrawl | Record a bounded change candidate and content hash; a person verifies the original page before any data change. |
-| A curated business may have closed or moved | Tavily closure detector | Produce a review queue with supporting source URLs. It never edits the closure registry. |
-| A normal event or civic ingestion page fails after the native and rendered paths are exhausted | Firecrawl fallback | Recover a candidate snapshot offline without adding provider latency to a user's visit. |
-| Radius lacks useful local facts for original decision copy | Both, in sequence | Tavily finds the first-party source; Firecrawl can retrieve it; a reviewer records facts and Radius writes original copy rather than copying publisher prose. |
+| Radius problem                                                                                                            | Best tool                   | Safe outcome                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An official page is JavaScript-heavy, blocks a normal request, or produces unusable HTML                                  | Firecrawl fallback          | Retrieve one reviewed public page after native fetch and Playwright fail, while retaining requested/final URL provenance.                                     |
+| Radius does not know the first-party source for a venue, menu, accessibility detail, food-truck schedule, or civic update | Tavily Source Scout         | Return a small, domain-constrained list of original publisher URLs for operator review.                                                                       |
+| A known first-party page silently changes an event time, transit document, food-truck roster, or public notice            | Source Watch with Firecrawl | Record a bounded change candidate and content hash; a person verifies the original page before any data change.                                               |
+| A curated business may have closed or moved                                                                               | Tavily closure detector     | Produce a review queue with supporting source URLs. It never edits the closure registry.                                                                      |
+| A normal event or civic ingestion page fails after the native and rendered paths are exhausted                            | Firecrawl fallback          | Recover a candidate snapshot offline without adding provider latency to a user's visit.                                                                       |
+| Radius lacks useful local facts for original decision copy                                                                | Both, in sequence           | Tavily finds the first-party source; Firecrawl can retrieve it; a reviewer records facts and Radius writes original copy rather than copying publisher prose. |
 
 They do **not** repair GitHub Actions billing, reconcile a dirty branch, apply
 database migrations, repopulate `radius_search_documents`, eliminate a
@@ -74,17 +74,27 @@ Do not commit full downloaded pages or provider responses to the application dat
 
 1. Add or edit only reviewed public URLs in `config/source-watch.json`. The script intentionally has no arbitrary URL command-line override.
 2. Review the configured per-run and monthly limits.
-3. Run:
+3. Preview one exact allowlisted source for no provider cost:
 
    ```sh
-   npx tsx scripts/source-watch.ts
+   npm run source:watch -- --source=weinberg-performances
    ```
 
-4. Inspect the candidate observations and timestamped report under `scripts/reports/source-watch/`.
-5. Confirm the entity identity, read the original page, and check whether another authoritative source agrees.
-6. Move an accepted fact through the existing Radius review path and open a normal data PR. Run the relevant provenance, copy, data-quality, and application tests before merging.
+4. After reviewing the plan, run the one-source pilot:
 
-Source Watch checks exact pages only. Do not turn it into a broad domain crawl or use Firecrawl Map/Crawl as an unattended shortcut.
+   ```sh
+   npm run source:watch -- --live --confirm --source=weinberg-performances
+   ```
+
+5. Inspect the candidate observations and timestamped report under `scripts/reports/source-watch/`.
+6. Confirm the entity identity, read the original page, and check whether another authoritative source agrees.
+7. Move an accepted fact through the existing Radius review path and open a normal data PR. Run the relevant provenance, copy, data-quality, and application tests before merging.
+
+Source Watch plans by default. A live run requires both `--live` and
+`--confirm`. `--source` accepts only ids already present in the reviewed
+allowlist; it cannot accept an arbitrary URL. Source Watch checks exact pages
+only. Do not turn it into a broad domain crawl or use Firecrawl Map/Crawl as an
+unattended shortcut.
 
 Source URLs are HTTPS by default and must resolve to public targets. Localhost,
 private, link-local, and reserved network addresses are rejected. A source that
@@ -109,14 +119,21 @@ without allowing two healthy runs to overlap.
    npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --profile <id> --live --confirm
    ```
 
-4. A deliberately approved full capped run is:
+4. Use the dedicated one-request profile when verifying a new key or provider
+   response:
+
+   ```sh
+   npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --profile provider-smoke --live --confirm
+   ```
+
+5. A deliberately approved full capped run is:
 
    ```sh
    npx tsx --tsconfig tsconfig.json scripts/source-scout.ts -- --live --confirm
    ```
 
-5. Review `scripts/reports/source-scout-latest.json`. The reusable provider cache is `scripts/reports/source-scout-cache.json`. Neither artifact retains Tavily content snippets.
-6. Reject directories, copied pages, wrong-location matches, old articles, and unsupported snippets. Add a promising exact source to the appropriate Radius registry or to Source Watch for verification.
+6. Review `scripts/reports/source-scout-latest.json`. The reusable provider cache is `scripts/reports/source-scout-cache.json`. Neither artifact retains Tavily content snippets.
+7. Reject directories, copied pages, wrong-location matches, old articles, and unsupported snippets. Add a promising exact source to the appropriate Radius registry or to Source Watch for verification.
 
 Source Scout never writes to `src/data`. A search result becomes useful only after Radius verifies the original source and matches it to the correct canonical entity.
 
@@ -156,21 +173,48 @@ The unattended REST tools use:
 - `FIRECRAWL_API_KEY` for `scripts/lib/firecrawl-rest.ts`;
 - `TAVILY_API_KEY` for `scripts/lib/tavily-search.ts`.
 
-For local use, place keys in `.env.local`. Never commit them, print them, place them in client code, or prefix them with `NEXT_PUBLIC_`. If a GitHub workflow is added later, store each key as a GitHub Actions environment or repository secret. These tools do not need Vercel production secrets unless they are deliberately moved into a server-side Vercel job.
+For local use, place keys in `.env.local`. Never commit them, print them, place
+them in client code, or prefix them with `NEXT_PUBLIC_`. For the manual GitHub
+pilot, add both keys as secrets in the repository's `Production` environment.
+They do not belong in Vercel because neither provider is in a user request
+path.
 
 An OAuth-backed MCP connection is different. It represents an interactive user's consent inside Codex or another connected client. A scheduled GitHub Action cannot borrow that session, and an OAuth cookie or token must never be copied into the repository. Unattended Source Watch and Source Scout runs require their provider API keys.
 
 ## Rollout
 
-1. Clear any GitHub billing or Actions block before relying on automation.
-2. Land the adapters and their tests without scheduling either tool.
-3. Start with a very small Source Watch allowlist and one Source Scout profile.
-4. Run the zero-cost Scout plan, then manually approve a capped live run.
-5. Compare every candidate with the original page and measure false positives, useful findings, credits, and Firecrawl calls.
-6. Add a manual GitHub workflow that uploads ignored reports as artifacts. Keep canonical data writes disabled.
-7. Consider a low-frequency schedule only after several reviewed runs stay inside budget and produce trustworthy candidates.
+The manual workflow is `.github/workflows/source-intelligence.yml`. It has
+read-only repository permission, never commits or publishes, uploads review
+reports for 14 days, and persists only the provider cache, attempted-credit
+ledger, and Firecrawl comparison hashes between runs.
+
+1. Revoke any provider key previously pasted into chat, logs, or a URL.
+2. Add fresh `TAVILY_API_KEY` and `FIRECRAWL_API_KEY` secrets to the GitHub
+   `Production` environment.
+3. Run **Source intelligence pilot** with `tavily-plan`. This costs nothing and
+   writes nothing.
+4. For the first intentional live run, choose one reviewed profile or source,
+   check `confirm_live`, and check `initialize_state`. The latter creates the
+   first persistent budget ledger or comparison baseline.
+5. On later runs, leave `initialize_state` off. The workflow fails closed if
+   the relevant prior state cannot be restored, preventing an unnoticed budget
+   reset or lost Firecrawl baseline.
+6. Download the review artifact, open every original publisher URL, and measure
+   useful findings, false positives, and provider credits. Nothing in the
+   artifact is approved app data.
+7. Keep `FIRECRAWL_FETCH_FALLBACK=0` while evaluating Source Watch. After the
+   Firecrawl pilot is reliable, set the GitHub environment variable to `1` and
+   keep `FIRECRAWL_FALLBACK_MAX_REQUESTS=6` to enable the bounded fallback in
+   the existing business, venue, and civic ingestion workflows.
+8. Consider a low-frequency schedule only after several reviewed runs stay
+   inside budget and produce trustworthy candidates.
 
 Expand by source type, not by crawling the whole county. Structured feeds and existing official integrations remain preferable even when a provider can scrape the same information.
+
+GitHub Actions caches are branch-scoped. Run live pilots from `main`; do not
+initialize a second ledger from a feature branch. Provider account limits
+remain the outer safety net because local runs and the separate closure
+detector do not share GitHub's cached ledger.
 
 ## Rollback
 

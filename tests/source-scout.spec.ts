@@ -1,9 +1,4 @@
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +6,7 @@ import {
   loadSourceScoutConfig,
   parseSourceScoutCliArgs,
   runSourceScout,
+  sourceScoutReportHasSuccessfulRetrieval,
   type SourceScoutConfig,
 } from "../scripts/source-scout";
 
@@ -68,9 +64,9 @@ afterEach(async () => {
   vi.restoreAllMocks();
   const { rm } = await import("node:fs/promises");
   await Promise.all(
-    temporaryDirectories.splice(0).map((path) =>
-      rm(path, { recursive: true, force: true }),
-    ),
+    temporaryDirectories
+      .splice(0)
+      .map((path) => rm(path, { recursive: true, force: true })),
   );
 });
 
@@ -88,12 +84,24 @@ describe("Radius Source Scout", () => {
       maxResultsPerQuery: 5,
     });
     expect(config.profiles.map((profile) => profile.id)).toEqual([
+      "provider-smoke",
       "official-civic-mdot",
       "official-new-events",
       "menus-reservations-accessibility",
       "food-truck-schedules",
       "unresolved-source-recovery",
     ]);
+    expect(
+      config.profiles.find((profile) => profile.id === "provider-smoke"),
+    ).toMatchObject({
+      searchDepth: "basic",
+      maxQueriesPerRun: 1,
+      queries: [
+        {
+          allowedDomains: ["cityoffrederickmd.gov"],
+        },
+      ],
+    });
     const openQueries = config.profiles
       .flatMap((profile) => profile.queries)
       .filter((query) => query.allowedDomains.length === 0);
@@ -226,9 +234,7 @@ describe("Radius Source Scout", () => {
     const persistedReport = JSON.parse(
       await readFile(result.reportPath, "utf8"),
     );
-    const persistedCache = JSON.parse(
-      await readFile(result.cachePath, "utf8"),
-    );
+    const persistedCache = JSON.parse(await readFile(result.cachePath, "utf8"));
     expect(persistedReport.reviewOnly).toBe(true);
     expect(persistedCache.reviewOnly).toBe(true);
     expect(JSON.stringify(persistedReport)).not.toContain(
@@ -237,12 +243,12 @@ describe("Radius Source Scout", () => {
     expect(JSON.stringify(persistedCache)).not.toContain(
       "Content for first source",
     );
-    expect(
-      persistedReport.queries[0].candidates[0],
-    ).not.toHaveProperty("content");
-    expect(
-      Object.values(persistedCache.entries)[0],
-    ).not.toHaveProperty("result.candidates.0.content");
+    expect(persistedReport.queries[0].candidates[0]).not.toHaveProperty(
+      "content",
+    );
+    expect(Object.values(persistedCache.entries)[0]).not.toHaveProperty(
+      "result.candidates.0.content",
+    );
     const usage = JSON.parse(await readFile(result.usagePath, "utf8"));
     expect(usage).toMatchObject({
       schemaVersion: 1,
@@ -369,10 +375,12 @@ describe("Radius Source Scout", () => {
       ]),
     );
     const search = vi.fn(async () => {
-      throw new (await import("../scripts/lib/tavily-search")).TavilySearchError(
-        "Plan usage limit reached.",
-        { code: "plan_limit_exceeded", status: 432 },
-      );
+      throw new (
+        await import("../scripts/lib/tavily-search")
+      ).TavilySearchError("Plan usage limit reached.", {
+        code: "plan_limit_exceeded",
+        status: 432,
+      });
     });
 
     const result = await runSourceScout(
@@ -394,6 +402,7 @@ describe("Radius Source Scout", () => {
       requestsMade: 1,
       creditsCommitted: 1,
     });
+    expect(sourceScoutReportHasSuccessfulRetrieval(result.report)).toBe(false);
   });
 
   it("rejects a missing profile value before doing any work", () => {
@@ -403,6 +412,11 @@ describe("Radius Source Scout", () => {
     expect(() => parseSourceScoutCliArgs(["--profile"])).toThrow(
       "--profile requires a profile id",
     );
+    expect(parseSourceScoutCliArgs(["--profile=test-profile"])).toMatchObject({
+      profileId: "test-profile",
+      live: false,
+      confirmed: false,
+    });
   });
 
   it("persists failed attempts and blocks a later run at the daily ceiling", async () => {
@@ -514,6 +528,9 @@ describe("Radius Source Scout", () => {
 
     expect(successfulSearch).toHaveBeenCalledOnce();
     expect(recovered.report.queries[0]?.status).toBe("fetched");
+    expect(sourceScoutReportHasSuccessfulRetrieval(recovered.report)).toBe(
+      true,
+    );
     await expect(readFile(lockPath, "utf8")).rejects.toThrow();
   });
 });
