@@ -279,6 +279,16 @@ describe("getRecentIngestRuns", () => {
         error: null,
       },
       {
+        source_slug: "visit-frederick-snapshot",
+        status: "ok",
+        started_at: now,
+        ended_at: now,
+        records_in: 29,
+        records_upserted: 29,
+        records_failed: 0,
+        error: null,
+      },
+      {
         source_slug: "frederick_county_calendar",
         status: "ok",
         started_at: "2026-01-01T00:00:00.000Z",
@@ -307,6 +317,9 @@ describe("getRecentIngestRuns", () => {
         source: "event-archive",
         stale: false,
       }),
+    ]));
+    expect(runs).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: "visit-frederick-snapshot" }),
     ]));
   });
 });

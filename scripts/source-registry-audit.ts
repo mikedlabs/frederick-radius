@@ -20,6 +20,8 @@ type SourceRow = {
   id: string;
   status: string;
   collection?: Collection;
+  evidence_aliases?: string[];
+  rows_required?: boolean;
   transform_file?: string | null;
 };
 
@@ -30,7 +32,6 @@ export const REQUIRED_ACTIVE: Record<string, Collection> = {
   osm_overpass: "runtime",
   // Event spine and high-value direct ingests.
   dfp_events: "runtime",
-  visit_frederick: "runtime",
   frederick_keys: "runtime",
   ticketmaster: "runtime",
   fcpl_libraries: "workflow",
@@ -57,7 +58,10 @@ const REQUIRED_POLICY_GATED = [
   "frederick_county_arcgis",
   "fc_open_data_hub",
   "fc_parks_trails",
+  "visit_frederick",
 ] as const;
+
+const VISIT_FREDERICK_PENDING_ID = "visit_frederick";
 
 const COUNTY_APPROVAL_GATED = FREDERICK_COUNTY_APPROVAL_GATED_SOURCE_IDS;
 const COUNTY_PUBLIC_RUNTIME = FREDERICK_COUNTY_PUBLIC_RUNTIME_SOURCE_IDS;
@@ -105,6 +109,29 @@ export function auditSourceRows(
       issues.push(`${id}: policy-gated adapter is missing from the manifest`);
     } else if (!["pending_approval", "pending_review"].includes(row.status)) {
       issues.push(`${id}: policy-gated adapter must stay pending, found ${row.status}`);
+    }
+  }
+  const visitFrederick = byId.get(VISIT_FREDERICK_PENDING_ID);
+  if (visitFrederick) {
+    if (visitFrederick.status !== "pending_approval") {
+      issues.push(
+        `${VISIT_FREDERICK_PENDING_ID}: written factual-reuse permission is not documented; source must stay pending_approval`,
+      );
+    }
+    if (visitFrederick.collection) {
+      issues.push(
+        `${VISIT_FREDERICK_PENDING_ID}: dormant approval-gated source must not declare collection`,
+      );
+    }
+    if ((visitFrederick.evidence_aliases?.length ?? 0) > 0) {
+      issues.push(
+        `${VISIT_FREDERICK_PENDING_ID}: dormant approval-gated source must not require evidence aliases`,
+      );
+    }
+    if (visitFrederick.rows_required) {
+      issues.push(
+        `${VISIT_FREDERICK_PENDING_ID}: dormant approval-gated source must not require evidence rows`,
+      );
     }
   }
   for (const id of COUNTY_PUBLIC_RUNTIME) {

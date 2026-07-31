@@ -1356,9 +1356,9 @@
     "id": "visit_frederick",
     "name": "Visit Frederick Events",
     "owner": "Tourism Council of Frederick County",
-    "status": "active",
-    "collection": "runtime",
-    "refreshCadence": "hourly",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "on_demand (after written factual-reuse permission)",
     "manifestLastSuccess": null,
     "evidenceAliases": [],
     "rowsRequired": false

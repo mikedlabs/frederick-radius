@@ -85,6 +85,8 @@ describe("Firecrawl REST adapter", () => {
       url: requestedUrl,
       formats: ["markdown", "links"],
       onlyMainContent: true,
+      skipTlsVerification: false,
+      timeout: 1_000,
     });
 
     expect(result).toEqual({
@@ -130,6 +132,84 @@ describe("Firecrawl REST adapter", () => {
     });
   });
 
+  it("can request raw source content without converting an RSS feed", async () => {
+    const requestedUrl = "https://example.com/events.rss";
+    const xml = "<?xml version=\"1.0\"?><rss><channel></channel></rss>";
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              rawHtml: xml,
+              metadata: {
+                url: requestedUrl,
+                statusCode: 200,
+                contentType: "application/rss+xml",
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+
+    const result = await fetchFirecrawlPage(requestedUrl, {
+      apiKey: "fc-test-secret",
+      fetchImpl,
+      outputFormat: "rawHtml",
+      onlyMainContent: false,
+      maxAgeMs: 7_200_000,
+      proxy: "basic",
+    });
+
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      url: requestedUrl,
+      formats: ["rawHtml"],
+      onlyMainContent: false,
+      skipTlsVerification: false,
+      timeout: 19_500,
+      maxAge: 7_200_000,
+      storeInCache: true,
+      proxy: "basic",
+    });
+    expect(result).toMatchObject({
+      requestedUrl,
+      finalUrl: requestedUrl,
+      text: xml,
+      markdown: "",
+      rawHtml: xml,
+    });
+  });
+
+  it("uses Firecrawl's current enhanced proxy name when explicitly requested", async () => {
+    const requestedUrl = "https://example.com/protected";
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            markdown: "Verified public page",
+            metadata: { url: requestedUrl },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await fetchFirecrawlPage(requestedUrl, {
+      apiKey: "fc-test-secret",
+      fetchImpl,
+      proxy: "enhanced",
+    });
+
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      url: requestedUrl,
+      proxy: "enhanced",
+    });
+  });
+
   it("bounds hung requests with the configured timeout", async () => {
     vi.useFakeTimers();
     const fetchImpl = vi.fn(
@@ -160,17 +240,16 @@ describe("Firecrawl REST adapter", () => {
       async (
         _url: string | URL | Request,
         init?: RequestInit,
-      ): Promise<Response> =>
-        ({
-          ok: true,
-          status: 200,
-          text: async () =>
-            await new Promise<string>((_resolve, reject) => {
-              init?.signal?.addEventListener("abort", () => {
-                reject(new DOMException("aborted", "AbortError"));
-              });
-            }),
-        }) as Response,
+      ): Promise<Response> => {
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            init?.signal?.addEventListener("abort", () => {
+              controller.error(new DOMException("aborted", "AbortError"));
+            });
+          },
+        });
+        return new Response(stream, { status: 200 });
+      },
     );
 
     const request = fetchFirecrawlPage("https://example.com", {
@@ -184,6 +263,78 @@ describe("Firecrawl REST adapter", () => {
     });
     await vi.advanceTimersByTimeAsync(25);
     await rejection;
+  });
+
+  it("rejects a response that exceeds the configured byte ceiling", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ success: true, data: { markdown: "large" } }), {
+        status: 200,
+        headers: { "Content-Length": "2048" },
+      }),
+    );
+
+    await expect(
+      fetchFirecrawlPage("https://example.com", {
+        apiKey: "fc-test-secret",
+        fetchImpl,
+        maxResponseBytes: 1_024,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+  });
+
+  it("can require Firecrawl to report the final source URL", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { markdown: "Public page", metadata: { statusCode: 200 } },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      fetchFirecrawlPage("https://example.com", {
+        apiKey: "fc-test-secret",
+        fetchImpl,
+        requireReportedFinalUrl: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+      message: "Firecrawl did not report the final source URL.",
+    });
+  });
+
+  it("does not accept sourceURL alone as strict final-URL evidence", async () => {
+    const requestedUrl = "https://example.com/events.rss";
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            rawHtml: "<?xml version=\"1.0\"?><rss><channel /></rss>",
+            metadata: {
+              sourceURL: requestedUrl,
+              statusCode: 200,
+              contentType: "application/rss+xml",
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      fetchFirecrawlPage(requestedUrl, {
+        apiKey: "fc-test-secret",
+        fetchImpl,
+        outputFormat: "rawHtml",
+        requireReportedFinalUrl: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+      message: "Firecrawl did not report the final source URL.",
+    });
   });
 
   it("returns clear HTTP errors without exposing the API key", async () => {

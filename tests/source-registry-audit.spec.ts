@@ -11,6 +11,8 @@ type SourceRow = {
   id: string;
   status: string;
   collection?: "pipeline" | "runtime" | "workflow";
+  evidence_aliases?: string[];
+  rows_required?: boolean;
   transform_file?: string | null;
 };
 
@@ -33,6 +35,30 @@ describe("source registry audit", () => {
       mount_athletics: "runtime",
       fcc_athletics: "runtime",
     });
+  });
+
+  it("keeps Visit Frederick dormant until written factual-reuse approval is documented", () => {
+    const visitFrederick = manifestRows().find(
+      (row) => row.id === "visit_frederick",
+    );
+
+    expect(visitFrederick).toMatchObject({ status: "pending_approval" });
+    expect(visitFrederick?.collection).toBeUndefined();
+    expect(visitFrederick?.evidence_aliases).toBeUndefined();
+    expect(visitFrederick?.rows_required).toBeUndefined();
+  });
+
+  it("rejects Visit Frederick evidence requirements while approval is pending", () => {
+    const rows = manifestRows().map((row) =>
+      row.id === "visit_frederick"
+        ? { ...row, evidence_aliases: ["visit-frederick-snapshot"], rows_required: true }
+        : row,
+    );
+
+    expect(auditSourceRows(rows)).toEqual(expect.arrayContaining([
+      "visit_frederick: dormant approval-gated source must not require evidence aliases",
+      "visit_frederick: dormant approval-gated source must not require evidence rows",
+    ]));
   });
 
   it.each([

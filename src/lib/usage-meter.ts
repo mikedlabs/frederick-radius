@@ -24,7 +24,98 @@ export type PaidUpstream =
   | "mapbox_isochrone"
   | "mapbox_search_box"
   | "mapbox_static"
-  | "google_routes_matrix";
+  | "google_routes_matrix"
+  | "firecrawl_visit_frederick";
+
+export type UsageReservation = {
+  reserved: boolean;
+  count: number;
+};
+
+export type UsageIntervalLease = {
+  acquired: boolean;
+};
+
+/**
+ * Own one sliding refresh interval across concurrent serverless workers.
+ *
+ * The stable sentinel row stores an expiry minute, not a billable count.
+ * PostgreSQL's clock and one conditional UPSERT make acquisition atomic even
+ * when deliveries straddle a wall-clock bucket. It is deliberately
+ * fail-closed: without the database, a scheduled worker keeps the last
+ * durable snapshot rather than racing another fetch.
+ */
+export async function reserveUsageIntervalLease(
+  namespace: "visit_frederick_refresh",
+  intervalMs: number,
+): Promise<UsageIntervalLease | null> {
+  if (
+    !Number.isSafeInteger(intervalMs) ||
+    intervalMs < 60_000
+  ) {
+    return null;
+  }
+  const leaseKey = `lease:${namespace}`;
+  try {
+    const sql = getSql();
+    if (!sql) return null;
+    const rows = await sql<Array<{ count: number | string }>>`
+      insert into usage_counters (day, upstream, count)
+      values (
+        date '1970-01-01',
+        ${leaseKey},
+        floor(
+          extract(
+            epoch from (
+              now() + (${intervalMs} * interval '1 millisecond')
+            )
+          ) / 60
+        )::integer
+      )
+      on conflict (day, upstream)
+      do update set count = excluded.count
+      where usage_counters.count <=
+        floor(extract(epoch from now()) / 60)::integer
+      returning count
+    `;
+    return { acquired: rows.length > 0 };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Atomically reserve one paid call under a hard daily ceiling.
+ *
+ * Unlike best-effort metering, this fails closed: a caller must not spend when
+ * the database is unavailable, the counter table is missing, or the cap is
+ * already exhausted. The INSERT ... ON CONFLICT predicate makes concurrent
+ * serverless workers share one real limit instead of racing process memory.
+ */
+export async function reserveDailyUsage(
+  upstream: PaidUpstream,
+  limit: number,
+): Promise<UsageReservation | null> {
+  if (!Number.isSafeInteger(limit) || limit <= 0) return null;
+  try {
+    const sql = getSql();
+    if (!sql) return null;
+    const rows = await sql<Array<{ count: number | string }>>`
+      insert into usage_counters (day, upstream, count)
+      values ((now() at time zone 'America/New_York')::date, ${upstream}, 1)
+      on conflict (day, upstream)
+      do update set count = usage_counters.count + 1
+      where usage_counters.count < ${limit}
+      returning count
+    `;
+    const count = Number(rows[0]?.count);
+    return rows.length > 0 && Number.isSafeInteger(count)
+      ? { reserved: true, count }
+      : { reserved: false, count: limit };
+  } catch {
+    return null;
+  }
+}
 
 export function meterUsage(upstream: PaidUpstream, increment = 1): void {
   try {

@@ -185,7 +185,7 @@ sources:
     contact: https://www.openstreetmap.org/copyright
     status: active
     collection: runtime
-    last_validated: 2026-07-23
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/overpass.ts
@@ -1540,21 +1540,22 @@ sources:
     url: https://www.visitfrederick.org/event/rss/
     endpoint_type: rss
     format: rss
-    refresh_cadence: hourly
-    license: public publisher RSS; link and attribution retained
+    refresh_cadence: on_demand (after written factual-reuse permission)
+    license: publisher factual reuse awaiting documented written permission
     contact: https://www.visitfrederick.org
-    status: active
-    collection: runtime
-    last_validated: 2026-07-23
+    status: pending_approval
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/visitfrederick.ts
     notes: |
-      Active keyless Simpleview RSS integration. The feed supplies dates but
-      not reliable clock times or coordinates, so the adapter uses all-day
-      semantics and town-level placement until the linked official detail
-      page supplies valid Event JSON-LD. Source links and Visit Frederick
-      attribution remain on every row.
+      The bounded snapshot route and fixed-URL Firecrawl recovery are
+      activation-ready but deliberately unscheduled. Do not set
+      VISIT_FREDERICK_FACTS_REUSE_APPROVED=1, add a Vercel cron, or require
+      Visit Frederick evidence rows until written permission for factual reuse
+      is documented. The prepared path stores factual event fields only,
+      retains publisher links and attribution, and does not mirror publisher
+      prose or images.
 
   # Local sports schedules. These are separate from the general campus
   # event feeds and run through the purpose-built local-sports adapter.

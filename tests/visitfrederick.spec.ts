@@ -136,8 +136,15 @@ describe("normalizeVisitFrederickRss", () => {
     expect(normalizeVisitFrederickRss("<html>not rss</html>", NOW)).toEqual([]);
   });
 
-  it("stamps at the partner tier (curated destination-marketing feed)", () => {
-    expect(stampEventProvenance({ slug: "x", source: "visit-frederick" }).confidence).toBe("partner");
+  it("stamps the publisher's public RSS as verified without implying a partnership", () => {
+    const provenance = stampEventProvenance({
+      slug: "x",
+      source: "visit-frederick",
+    });
+    expect(provenance.confidence).toBe("verified");
+    expect(provenance.license).toBe(
+      "Publisher event RSS; factual fields only; publisher terms apply",
+    );
   });
 
   it("parses the captured live feed fixture into valid, area-placed rows", () => {

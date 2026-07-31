@@ -1,11 +1,17 @@
 # Radius Source Intelligence
 
-Source Intelligence has two operator-only tools:
+Source Intelligence has two operator-only tools and one prepared, approval-
+gated background recovery:
 
 - **Source Watch** checks a small, reviewed list of exact public pages for meaningful changes. It uses `scripts/source-watch.ts`, the allowlist and cost policy in `config/source-watch.json`, and the REST adapter in `scripts/lib/firecrawl-rest.ts`.
 - **Source Scout** searches for possible sources when Radius has a known data gap. It uses `scripts/source-scout.ts`, the profiles and limits in `config/source-scout.json`, and the REST adapter in `scripts/lib/tavily-search.ts`.
+- **Visit Frederick recovery** is activation-ready for one fixed event RSS URL, but is deliberately unscheduled until written factual-reuse permission is documented. If activated, it tries the publisher feed directly first, reserves one of at most 12 app-side Firecrawl recovery attempts per Eastern day only after a safe transient failure, and writes a factual-only Blob snapshot.
 
-Both tools produce review evidence. Neither tool publishes to the app, edits canonical place or event data, or answers a user directly.
+The operator tools produce review evidence. They do not publish to the app,
+edit canonical place or event data, or answer a user directly. The prepared
+Visit Frederick recovery stays dormant and publishes nothing until approval is
+documented. If activated, it may publish normalized event facts from the same
+reviewed publisher feed, but never publisher prose or images.
 
 ## Which Radius problems they solve
 
@@ -148,8 +154,8 @@ The tracked configuration files are the authority for budgets:
 
 Keep Firecrawl to one exact-page scrape per configured observation. Keep Tavily searches narrow and use cached results before spending another credit. Stop with a partial report when a limit is reached. Do not add an environment variable or command-line option that silently raises a tracked cap.
 
-The shared extraction engine uses native fetch or Playwright first. Firecrawl is
-an opt-in fallback only when native retrieval fails:
+The shared operator extraction engine uses native fetch or Playwright first.
+Firecrawl is an opt-in fallback only when native retrieval fails:
 
 - `FIRECRAWL_FETCH_FALLBACK=1` enables it.
 - `FIRECRAWL_FALLBACK_MAX_REQUESTS` sets the per-process ceiling, defaulting to
@@ -161,6 +167,20 @@ an opt-in fallback only when native retrieval fails:
 Both `requestedUrl` and `finalUrl` are retained on refreshed venue and civic
 source records. The API key is never included in the usage summary or source
 data.
+
+The separate Visit Frederick route is not controlled by the operator per-
+process limit. It is activation-ready but must remain unscheduled while the
+source ledger says `pending_approval` and
+`VISIT_FREDERICK_FACTS_REUSE_APPROVED=0`. Its code accepts no URL input and,
+if approved and activated, requests only
+`https://www.visitfrederick.org/event/rss/`, requires the provider to report
+that exact reviewed HTTPS destination, disables provider cache reuse and TLS
+skipping, and reserves an atomic database counter before each paid attempt.
+The ceiling is 12 app-side recovery attempts per Eastern day and cannot be
+raised with an environment variable. This counter is not a provider-credit
+meter; Firecrawl's dashboard remains the billing authority. Public routes read
+the resulting bounded Blob snapshot only after activation; they never call
+Visit Frederick or Firecrawl.
 
 The separate closure detector remains review-only. `--limit` accepts only a positive whole number no higher than its hard 125-request ceiling. Long-tail selection requires both `--all` and `--confirm-all`; confirmation never raises the immutable 125-request / 125-credit run ceiling. It reserves an attempt before each request and stops on authentication, rate, plan, or billing errors.
 
@@ -176,8 +196,11 @@ The unattended REST tools use:
 For local use, place keys in `.env.local`. Never commit them, print them, place
 them in client code, or prefix them with `NEXT_PUBLIC_`. For the manual GitHub
 pilot, add both keys as secrets in the repository's `Production` environment.
-They do not belong in Vercel because neither provider is in a user request
-path.
+`TAVILY_API_KEY` does not belong in Vercel. A Vercel `FIRECRAWL_API_KEY` does
+not activate Visit Frederick collection by itself. The fixed-URL route remains
+unscheduled and `VISIT_FREDERICK_FACTS_REUSE_APPROVED` remains `0` until
+written permission is documented; no provider key is ever available to client
+code or a visitor request path.
 
 An OAuth-backed MCP connection is different. It represents an interactive user's consent inside Codex or another connected client. A scheduled GitHub Action cannot borrow that session, and an OAuth cookie or token must never be copied into the repository. Unattended Source Watch and Source Scout runs require their provider API keys.
 

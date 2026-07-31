@@ -43,10 +43,10 @@ describe("place provenance (data brief 4.1)", () => {
       expect(allowed.has(row.confidence)).toBe(true);
       seen.add(row.confidence);
     }
-    // The dataset spans the trust ladder: curated seeds, the DFP partner
-    // set, Google-verified rows, and the discovery tail.
+    // The current dataset spans curated, verified publisher/API rows, and the
+    // discovery tail. Partner remains reserved for documented relationships.
     expect(seen.has("curated")).toBe(true);
-    expect(seen.has("partner")).toBe(true);
+    expect(seen.has("partner")).toBe(false);
     expect(seen.has("verified")).toBe(true);
     expect(seen.has("scraped")).toBe(true);
   });
@@ -54,7 +54,7 @@ describe("place provenance (data brief 4.1)", () => {
   it("maps each source to its trust tier", () => {
     expect(stampPlaceProvenance({ slug: "x", source: "seed" }).confidence).toBe("curated");
     expect(stampPlaceProvenance({ slug: "x", source: "manual" }).confidence).toBe("curated");
-    expect(stampPlaceProvenance({ slug: "x", source: "dfp" }).confidence).toBe("partner");
+    expect(stampPlaceProvenance({ slug: "x", source: "dfp" }).confidence).toBe("verified");
     expect(stampPlaceProvenance({ slug: "x", source: "google" }).confidence).toBe("verified");
     expect(stampPlaceProvenance({ slug: "x", source: "fc-gis" }).confidence).toBe("verified");
     // The discovery tail: no source field means scraped, never a guess.
@@ -119,8 +119,8 @@ describe("event provenance (data brief 4.1, event side)", () => {
 
   it("maps event sources to their trust tiers", () => {
     expect(stampEventProvenance({ slug: "x", source: "seed" }).confidence).toBe("curated");
-    expect(stampEventProvenance({ slug: "x", source: "dfp" }).confidence).toBe("partner");
-    expect(stampEventProvenance({ slug: "x", source: "celebrate" }).confidence).toBe("partner");
+    expect(stampEventProvenance({ slug: "x", source: "dfp" }).confidence).toBe("verified");
+    expect(stampEventProvenance({ slug: "x", source: "celebrate" }).confidence).toBe("verified");
     expect(stampEventProvenance({ slug: "x", source: "county" }).confidence).toBe("verified");
     expect(stampEventProvenance({ slug: "x", source: "ticketmaster" }).confidence).toBe("verified");
     expect(stampEventProvenance({ slug: "x", source: "bandsintown" }).confidence).toBe("verified");

@@ -103,7 +103,7 @@ describe("liveToCardEvent", () => {
     // The feed's real source flows through since the provenance work;
     // the old hardcoded "manual" let live rows claim curated trust.
     expect(card.source).toBe("celebrate");
-    expect(card.confidence).toBe("partner");
+    expect(card.confidence).toBe("verified");
     expect(card.is_recurring).toBe(false);
     expect(card.category_name).toBe("Galleries"); // resolved via CATEGORY_BY_SLUG, fallback-safe
   });

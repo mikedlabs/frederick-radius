@@ -9,10 +9,11 @@
  *
  * The confidence ladder, per the decision record:
  *   curated : a person at Frederick Radius placed or reviewed this row.
- *   partner : a partner organization's vetted feed (Downtown Frederick
- *              Partnership and, later, Visit Frederick).
- *   verified: an authoritative API confirms the listing (Google Places,
- *              county GIS).
+ *   partner : an explicitly partnered organization's vetted feed. Public
+ *              publisher pages alone never qualify.
+ *   verified: the source itself publishes the listing, or an authoritative
+ *              API/government dataset confirms it. This does not imply that
+ *              the source endorses or partners with Frederick Radius.
  *   scraped : discovered programmatically and not yet reviewed by a
  *              person or confirmed by an authority. The OSM and discovery
  *              tail. Renders, but never leads a curated surface.
@@ -58,14 +59,14 @@ type SourceMeta = {
 };
 
 /**
- * Per source trust and license registry. `discovered` is the synthetic
+ * Per source trust and usage-basis registry. `discovered` is the synthetic
  * source for rows that arrived through programmatic discovery with no
  * source field of their own (the 1,000 row tail in places-discovered).
  */
 const SOURCE_REGISTRY: Record<string, SourceMeta> = {
   seed:       { license: "First party editorial",                          confidence: "curated" },
   manual:     { license: "First party editorial",                          confidence: "curated" },
-  dfp:        { license: "Public listings from Downtown Frederick Partnership", confidence: "partner" },
+  dfp:        { license: "Publisher listing facts; publisher terms apply",  confidence: "verified" },
   google:     { license: "Google Places API terms",                        confidence: "verified" },
   arcgis:     { license: "Government GIS source; item-specific terms apply", confidence: "verified" },
   "fc-gis":   { license: "Government GIS source; item-specific terms apply", confidence: "verified" },
@@ -159,19 +160,19 @@ export const PROVENANCE_FIELDS = [
 /**
  * Event source registry (4.1, event side). The trust mapping follows the
  * decision record and the Phase 4 source table: first party editorial is
- * curated; organization and venue feeds are partner; the county
- * government calendar and ticketed listings (Ticketmaster, Bandsintown)
- * are verified; anything unrecognized is scraped, never a guess.
+ * curated; a publisher's own calendar is verified without implying a
+ * partnership; government and licensed API feeds are verified; anything
+ * unrecognized is scraped, never a guess.
  */
 const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   seed:             { license: "First party editorial",                          confidence: "curated" },
   manual:           { license: "First party editorial",                          confidence: "curated" },
-  dfp:              { license: "Public listings, Downtown Frederick Partnership", confidence: "partner" },
-  celebrate:        { license: "Public calendar, Celebrate Frederick",            confidence: "partner" },
-  hood:             { license: "Public calendar, Hood College",                   confidence: "partner" },
-  "visit-frederick": { license: "Public listings, Visit Frederick",               confidence: "partner" },
-  weinberg:         { license: "Public calendar, Weinberg Center",                confidence: "partner" },
-  delaplaine:       { license: "Public calendar, Delaplaine Arts Center",         confidence: "partner" },
+  dfp:              { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  celebrate:        { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  hood:             { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  "visit-frederick": { license: "Publisher event RSS; factual fields only; publisher terms apply", confidence: "verified" },
+  weinberg:         { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  delaplaine:       { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
   county:           { license: "Frederick County government calendar",           confidence: "verified" },
   fcpl:             { license: "Frederick County Public Libraries calendar",     confidence: "verified" },
   fcvfra:           { license: "Frederick County Volunteer Fire & Rescue Assoc.", confidence: "verified" },
@@ -180,16 +181,16 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   "mount-airy":     { license: "Town of Mount Airy calendar",                    confidence: "verified" },
   thurmont:         { license: "Town of Thurmont calendar",                      confidence: "verified" },
   parks:            { license: "Frederick County Parks & Recreation calendar",   confidence: "verified" },
-  "heritage-frederick": { license: "Public calendar, Heritage Frederick",         confidence: "partner" },
-  monocacy:         { license: "Public calendar, Monocacy Brewing",               confidence: "partner" },
+  "heritage-frederick": { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  monocacy:         { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
   msd:              { license: "Maryland School for the Deaf calendar",          confidence: "verified" },
   mdcc:             { license: "Maryland Deaf Community Center calendar",        confidence: "verified" },
   "mount-st-marys": { license: "Mount St. Mary's University calendar",           confidence: "verified" },
   isf:              { license: "Islamic Society of Frederick public calendar",   confidence: "verified" },
-  elc:              { license: "Public calendar, Evangelical Lutheran Church",    confidence: "partner" },
-  "civil-war-med":  { license: "Public calendar, National Museum of Civil War Medicine", confidence: "partner" },
-  "maryland-ensemble": { license: "Public calendar, Maryland Ensemble Theatre",  confidence: "partner" },
-  catoctin:         { license: "Public calendar, Catoctin Land Trust",            confidence: "partner" },
+  elc:              { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  "civil-war-med":  { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  "maryland-ensemble": { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
+  catoctin:         { license: "Publisher calendar facts; publisher terms apply", confidence: "verified" },
   fcc:              { license: "Frederick Community College calendar",           confidence: "verified" },
   ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
