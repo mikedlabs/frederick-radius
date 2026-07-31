@@ -54,6 +54,12 @@ import {
 // Ticketmaster/Bandsintown abort pattern; on timeout the fetch rejects,
 // the per-feed try/catch swallows it, and that source degrades to [].
 const FEED_FETCH_TIMEOUT_MS = 8_000;
+// County's CivicPlus RSS host is usually quick but occasionally crosses the
+// five-second visitor budget. Public reads keep the shorter cutoff so a slow
+// municipal host cannot hold an event page open. The isolated health probe
+// already owns a fifteen-second outer deadline, so it can use the normal
+// source budget and avoid recording a false outage for a merely slow refresh.
+const COUNTY_PUBLIC_FEED_TIMEOUT_MS = 5_000;
 // Google Calendar's Frederick Fair feed is currently about 3.2 MB once
 // decoded. Next's Data Cache rejects any item over 2 MB, so raw calendar
 // bodies must never be stored there. Five MB leaves real headroom for that
@@ -1120,13 +1126,18 @@ async function fetchRssFeed(
   feed: FeedSpec,
   windowDays: number,
   parentSignal?: AbortSignal,
+  timeoutOverrideMs?: number,
 ): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   // CivicPlus' county host has produced 10-second connect timeouts in
   // production. Stop before the platform socket timeout so the caught,
   // health-aware fallback wins and no RSC request inherits a runtime error.
-  const timeoutMs = feed.source === "county" ? 5_000 : FEED_FETCH_TIMEOUT_MS;
+  const timeoutMs =
+    timeoutOverrideMs ??
+    (feed.source === "county"
+      ? COUNTY_PUBLIC_FEED_TIMEOUT_MS
+      : FEED_FETCH_TIMEOUT_MS);
   const deadline = createAbortDeadline(timeoutMs, parentSignal);
   try {
     const res = await fetch(feed.url, {
@@ -2084,13 +2095,19 @@ async function fetchFeedOnce(
   feed: FeedSpec,
   windowDays: number,
   parentSignal?: AbortSignal,
+  readMode: LiveEventReadMode = "public",
 ): Promise<FeedFetchResult> {
   if (feed.source === "county") {
     // A cancelable read cannot enter the persistent county cache fill.
     // Otherwise a caller-owned deadline could cancel work shared by a later
     // event-page render.
     if (parentSignal) {
-      return fetchRssFeed(feed, windowDays, parentSignal);
+      return fetchRssFeed(
+        feed,
+        windowDays,
+        parentSignal,
+        readMode === "probe" ? FEED_FETCH_TIMEOUT_MS : undefined,
+      );
     }
     // Vitest calls the raw integration outside Next's request/cache context.
     // Keep that diagnostic path real rather than throwing Next's
@@ -2231,7 +2248,7 @@ async function fetchFeed(
   // request-scoped session map, where an operational deadline could otherwise
   // cancel or reuse a visitor-facing fill.
   if (readMode === "probe") {
-    return fetchFeedOnce(feed, windowDays, options.signal);
+    return fetchFeedOnce(feed, windowDays, options.signal, readMode);
   }
 
   const publicFetch = async (
@@ -2245,7 +2262,12 @@ async function fetchFeed(
     const outcome = await publicEventSourceCircuits.run(
       circuitKey,
       async () => {
-        const result = await fetchFeedOnce(feed, sharedWindowDays, signal);
+        const result = await fetchFeedOnce(
+          feed,
+          sharedWindowDays,
+          signal,
+          readMode,
+        );
         return signal?.aborted
           ? { ...result, ok: false, aborted: true }
           : result;

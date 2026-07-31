@@ -36,6 +36,28 @@ describe("partitionWant", () => {
     expect(open.map((c) => c.slug)).toEqual(["landmark", "quiet"]);
   });
 
+  it("keeps intent fit ahead of proximity for a recognized category", () => {
+    const { open } = partitionWant([
+      cand({
+        slug: "near-boba",
+        distance_m: 50,
+        feature_score: 10,
+        intent_fit_tier: 0,
+      }),
+      cand({
+        slug: "actual-coffee-shop",
+        distance_m: 700,
+        feature_score: 5,
+        intent_fit_tier: 3,
+      }),
+    ]);
+
+    expect(open.map((candidate) => candidate.slug)).toEqual([
+      "actual-coffee-shop",
+      "near-boba",
+    ]);
+  });
+
   it("closing-soon still counts as open", () => {
     const { open } = partitionWant([
       cand({ slug: "soon", open_status: { state: "closing-soon", closesAt: "21:30" } }),
@@ -389,6 +411,22 @@ describe("buildWantAnswer context", () => {
     expect(answer?.hero?.confidence).toBeUndefined();
     expect(answer?.hero?.fact).toBe("Hours not posted");
     expect(answer?.also.every((row) => row.confidence == null)).toBe(true);
+  });
+
+  it("keeps boba out of the generic coffee answer's lead choices", () => {
+    const answer = buildWantAnswer(
+      "coffee",
+      null,
+      null,
+      new Date("2030-07-28T17:00:00.000Z"),
+    );
+    const leadChoices = [answer?.hero, ...(answer?.also ?? [])]
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+    expect(leadChoices).toHaveLength(5);
+    expect(
+      leadChoices.every((row) => !/\b(?:boba|bubble tea|tea emporium)\b/i.test(row.name)),
+    ).toBe(true);
   });
 
   it("answers movies with both local cinemas and their official showtime actions", () => {

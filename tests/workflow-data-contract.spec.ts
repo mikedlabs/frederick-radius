@@ -10,6 +10,10 @@ function workflowText(name: string): string {
 }
 
 type WorkflowDocument = {
+  concurrency?: {
+    group?: string;
+    "cancel-in-progress"?: boolean;
+  };
   permissions?: {
     contents?: string;
     "pull-requests"?: string;
@@ -46,6 +50,39 @@ describe("scheduled data workflow contracts", () => {
 
     expect(identityBuild).toBeGreaterThan(-1);
     expect(hoursPull).toBeGreaterThan(identityBuild);
+  });
+
+  it("puts an inspectable hours-change manifest and current scorecard in every steward PR", () => {
+    const workflow = workflowText("data-steward.yml");
+    const clientBuild = workflow.indexOf("run: npm run build:client-places");
+    const scorecard = workflow.indexOf("run: npm run coverage:scorecard");
+    const review = workflow.indexOf("run: npm run review:hours-refresh");
+    const openPr = workflow.indexOf("uses: peter-evans/create-pull-request@v6");
+
+    expect(clientBuild).toBeGreaterThan(-1);
+    expect(scorecard).toBeGreaterThan(clientBuild);
+    expect(review).toBeGreaterThan(scorecard);
+    expect(openPr).toBeGreaterThan(review);
+    expect(workflow).toContain("id: hours-review");
+    expect(workflow).toContain(
+      "steps.hours-review.outputs.review_required == 'true'",
+    );
+    expect(workflow).toContain("docs/hours-refresh-review.md");
+    expect(workflow).toContain(
+      'cat docs/hours-refresh-review.md >> "$GITHUB_STEP_SUMMARY"',
+    );
+    expect(workflow).toContain(
+      "Public additions: ${{ steps.hours-review.outputs.public_additions }}",
+    );
+    expect(workflow).toContain(
+      "Public removals: ${{ steps.hours-review.outputs.public_removals }}",
+    );
+    expect(workflow).toContain(
+      "Newly closed provider statuses: ${{ steps.hours-review.outputs.newly_closed }}",
+    );
+    expect(workflow).toContain(
+      "- [ ] I checked every public addition and removal in the manifest.",
+    );
   });
 
   it("rebuilds canonical identities for direct local refresh commands", () => {
@@ -167,6 +204,17 @@ describe("scheduled data workflow contracts", () => {
 
     expect(copyBoundary).toBeGreaterThan(-1);
     expect(extraction).toBeGreaterThan(copyBoundary);
+  });
+
+  it("isolates rollback-capable production canaries by trigger type", () => {
+    const workflow = parse(
+      workflowText("production-canary.yml"),
+    ) as WorkflowDocument;
+
+    expect(workflow.concurrency).toEqual({
+      group: "production-apex-canary-${{ github.event_name }}",
+      "cancel-in-progress": true,
+    });
   });
 
   it("grants explicit write permissions to every workflow that opens a PR", () => {

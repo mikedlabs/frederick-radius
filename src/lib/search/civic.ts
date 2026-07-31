@@ -149,11 +149,15 @@ export function isHighConfidenceCivicIntent(
  */
 const EXPLICIT_DEPARTMENT_INTENT =
   /\b(?:government|county office|city office|department|agency|official|who (?:do|should) i call|phone number|contact|report|request|apply|complaint|permit|licen[cs]e|vote|voting|election|ballot|potholes?|public works|road (?:closure|maintenance|repair)|street (?:repair|light|sign)|sidewalk|snow plow|trash (?:pickup|collection|schedule)|garbage (?:pickup|collection|schedule)|recycl(?:e|ing) (?:pickup|collection|schedule|bin)|missed (?:trash|garbage|recycling)|water (?:bill|service|outage|leak)|sewer (?:bill|service|backup)|utility bill|property tax|tax bill|zoning|code enforcement|ordinance|public records?|foia|mpia|jury duty|animal control|stray (?:dog|cat|animal)|lost pet|dangerous animal|dog licen[cs]e|parking (?:ticket|meter|permit)|bus (?:route|schedule)|transit (?:route|schedule|service)|police|crime report|fire department|fire and rescue|ems|health department|vaccine|vaccination|senior services|aging services)\b/i;
+const UNAMBIGUOUS_DEPARTMENT_SHORTCUT = /^(?:dmv|mva)$/i;
 
 export function shouldShowDepartmentAnswers(
   query: string,
   directAnswers: readonly CivicActionResult[],
 ): boolean {
   if (isHighConfidenceCivicIntent(query, directAnswers)) return false;
-  return EXPLICIT_DEPARTMENT_INTENT.test(query);
+  return (
+    UNAMBIGUOUS_DEPARTMENT_SHORTCUT.test(query.trim()) ||
+    EXPLICIT_DEPARTMENT_INTENT.test(query)
+  );
 }

@@ -1,12 +1,138 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   HIGH_VALUE_SOURCE_ENDPOINTS,
+  MARC_SOURCE_ENDPOINTS,
+  aggregateFeedHealthBySource,
   probeFeedEndpoint,
   probeFeedEndpoints,
+  runtimeSourceProbeGate,
   type FeedHealthEndpoint,
+  type FeedHealthResult,
 } from "./feed-health";
 
 describe("scheduled feed-health probes", () => {
+  it("maps every MARC endpoint to one runtime ledger source", () => {
+    expect(MARC_SOURCE_ENDPOINTS).toHaveLength(4);
+    expect(
+      new Set(MARC_SOURCE_ENDPOINTS.map((endpoint) => endpoint.sourceId)),
+    ).toEqual(new Set(["mta_marc_rt"]));
+  });
+
+  it("aggregates a multi-endpoint source into one all-or-failed result", () => {
+    const healthy: FeedHealthResult[] = MARC_SOURCE_ENDPOINTS.map((endpoint) => ({
+      ...endpoint,
+      status: 200,
+      ok: true,
+      skipped: false,
+    }));
+    expect(aggregateFeedHealthBySource(healthy)).toEqual([{
+      sourceId: "mta_marc_rt",
+      outcome: "success",
+      endpointCount: 4,
+      error: null,
+    }]);
+
+    healthy[2] = { ...healthy[2], ok: false, status: 503 };
+    expect(aggregateFeedHealthBySource(healthy)).toEqual([{
+      sourceId: "mta_marc_rt",
+      outcome: "failure",
+      endpointCount: 4,
+      error: "One or more bounded runtime source health probes failed.",
+    }]);
+  });
+
+  it("keeps fully configuration-gated sources out of failure evidence", () => {
+    expect(aggregateFeedHealthBySource([{
+      group: "NPS",
+      sourceId: "nps",
+      url: "https://example.test/nps",
+      status: "SKIP",
+      ok: false,
+      skipped: true,
+      critical: false,
+    }])).toEqual([{
+      sourceId: "nps",
+      outcome: "skipped",
+      endpointCount: 1,
+      error: null,
+    }]);
+  });
+
+  it("fails an HTTP-only monitor for critical and systemic runtime outages", () => {
+    const result = (
+      sourceId: string,
+      ok: boolean,
+      critical = false,
+    ): FeedHealthResult => ({
+      group: sourceId,
+      sourceId,
+      url: `https://example.test/${sourceId}`,
+      status: ok ? 200 : 503,
+      ok,
+      skipped: false,
+      critical,
+    });
+
+    const oneOptionalFailure = [
+      result("traffic", false),
+      result("weather", true),
+      result("events", true),
+      result("water", true),
+    ];
+    expect(
+      runtimeSourceProbeGate(
+        aggregateFeedHealthBySource(oneOptionalFailure),
+        oneOptionalFailure,
+      ),
+    ).toMatchObject({ blocking: false, healthy: 3, failed: 1 });
+
+    const criticalFailure = [
+      result("marc", false, true),
+      result("weather", true),
+    ];
+    expect(
+      runtimeSourceProbeGate(
+        aggregateFeedHealthBySource(criticalFailure),
+        criticalFailure,
+      ),
+    ).toMatchObject({
+      blocking: true,
+      reason: "critical-source",
+      criticalFailed: ["marc"],
+    });
+
+    const systemicFailure = [
+      result("traffic", false),
+      result("weather", false),
+      result("events", false),
+      result("water", true),
+    ];
+    expect(
+      runtimeSourceProbeGate(
+        aggregateFeedHealthBySource(systemicFailure),
+        systemicFailure,
+      ),
+    ).toMatchObject({
+      blocking: true,
+      reason: "systemic-outage",
+      configured: 4,
+      healthy: 1,
+      failed: 3,
+    });
+
+    const skippedOnly: FeedHealthResult[] = [{
+      ...result("nps", false),
+      status: "SKIP",
+      skipped: true,
+    }];
+    expect(
+      runtimeSourceProbeGate(
+        aggregateFeedHealthBySource(skippedOnly),
+        skippedOnly,
+      ),
+    ).toMatchObject({ blocking: false, configured: 0 });
+  });
+
   it("covers the high-value active Frederick sources", () => {
     const sourceIds = new Set(
       HIGH_VALUE_SOURCE_ENDPOINTS.map((endpoint) => endpoint.sourceId),
@@ -176,5 +302,50 @@ describe("scheduled feed-health probes", () => {
       endpoints.map((endpoint) => endpoint.group),
     );
     expect(results.every((result) => result.ok)).toBe(true);
+  });
+
+  it("does not start queued requests after the route-wide deadline", async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn<typeof fetch>((_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        const fail = () => reject(new DOMException("aborted", "AbortError"));
+        if (signal?.aborted) fail();
+        else signal?.addEventListener("abort", fail, { once: true });
+      })
+    );
+    const endpoints: FeedHealthEndpoint[] = Array.from(
+      { length: 4 },
+      (_, index) => ({
+        group: `bounded-${index}`,
+        sourceId: `source-${index}`,
+        url: `https://example.test/${index}`,
+        critical: false,
+        method: "GET",
+      }),
+    );
+    endpoints[1] = {
+      ...endpoints[1],
+      authHeader: { env: "QUEUED_TEST_KEY", name: "x-api-key" },
+    };
+
+    const pending = probeFeedEndpoints(endpoints, {
+      concurrency: 1,
+      env: {},
+      fetchImpl,
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    controller.abort();
+    const results = await pending;
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(4);
+    expect(results.every((result) => !result.ok)).toBe(true);
+    expect(results[1]).toMatchObject({
+      status: "SKIP",
+      skipped: true,
+      note: "QUEUED_TEST_KEY is not configured",
+    });
   });
 });

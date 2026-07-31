@@ -2,6 +2,7 @@ import type {
   GoogleAuthorAttribution,
   GooglePhotoAttribution,
 } from "@/lib/integrations/google-places";
+import GoogleAuthorAvatar from "@/components/place/GoogleAuthorAvatar";
 
 export const GOOGLE_REVIEW_SELECTION_DISCLOSURE =
   "Review selection: 4–5 stars and 40–240 characters; routine logistics topics are deprioritized, then higher ratings and concise length.";
@@ -50,9 +51,7 @@ function AuthorLink({ author, showAvatar = false }: { author: GoogleAuthorAttrib
   const content = (
     <>
       {showAvatar && avatar ? (
-        // Google supplies this short-lived author avatar with the photo credit.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatar} alt="" width={20} height={20} className="h-5 w-5 rounded-full object-cover" />
+        <GoogleAuthorAvatar src={avatar} />
       ) : null}
       <span>{name}</span>
     </>

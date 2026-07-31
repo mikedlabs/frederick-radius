@@ -9,17 +9,45 @@ const segment = path.join(
 
 describe("event detail transient-failure contract", () => {
   it("keeps timeouts distinct from true 404s and offers recovery", () => {
-    const source = readFileSync(path.join(segment, "error.tsx"), "utf8");
+    const boundary = readFileSync(path.join(segment, "error.tsx"), "utf8");
+    const page = readFileSync(path.join(segment, "page.tsx"), "utf8");
+    const recovery = readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/event/EventLookupRecovery.tsx",
+      ),
+      "utf8",
+    );
 
-    expect(source).toContain("This event could not be confirmed yet.");
-    expect(source).toContain("onClick={reset}");
-    expect(source).toContain('href="/events"');
-    expect(source).toContain("Sentry.captureException(error)");
+    expect(recovery).toContain("This event could not be confirmed yet.");
+    expect(recovery).toContain("window.location.reload()");
+    expect(recovery).toContain('href="/events"');
+    expect(boundary).toContain("<EventLookupRecovery onRetry={reset} />");
+    expect(boundary).toContain("Sentry.captureException(error)");
+
+    // Known source outages must return the Radius-owned recovery screen as a
+    // normal page response instead of throwing into a 500 boundary.
+    expect(page).toContain("isOperationalEventResolutionError(error)");
+    expect(page).toContain("noStore();");
+    expect(page).toContain("return <EventLookupRecovery />");
   });
 
   it("does not add a loading boundary that would turn unknown slugs into soft 404s", () => {
     expect(() =>
       readFileSync(path.join(segment, "loading.tsx"), "utf8"),
     ).toThrow();
+  });
+
+  it("keeps operational event aggregation out of document metadata", () => {
+    const source = readFileSync(path.join(segment, "page.tsx"), "utf8");
+    const metadataBody = source.match(
+      /export async function generateMetadata[\s\S]*?\n}\n\nexport default async function EventPage/,
+    )?.[0];
+
+    expect(metadataBody).toBeTruthy();
+    expect(metadataBody).toContain("resolveEventMetadataBySlug(slug)");
+    expect(metadataBody).not.toContain("resolveEventPageBySlug(slug)");
+    expect(metadataBody).toContain('title: "Event in Frederick County"');
+    expect(metadataBody).toContain("robots: { index: false, follow: false }");
   });
 });

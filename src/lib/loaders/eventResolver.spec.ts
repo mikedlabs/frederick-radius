@@ -1,12 +1,33 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import {
+  EVENT_ARCHIVE_HEAD_START_MS,
   EVENT_DEEP_LINK_TIMEOUT_MS,
   EventResolutionTimeoutError,
   EventResolutionUnavailableError,
   eventFromUnifiedSnapshot,
+  isOperationalEventResolutionError,
+  resolveEventMetadataBySlugWithSources,
   resolveEventPageBySlugWithSources,
 } from "./eventResolver";
+
+describe("isOperationalEventResolutionError", () => {
+  it("recognizes only the event source states the page can recover from", () => {
+    expect(
+      isOperationalEventResolutionError(
+        new EventResolutionTimeoutError(["live"]),
+      ),
+    ).toBe(true);
+    expect(
+      isOperationalEventResolutionError(
+        new EventResolutionUnavailableError(["unified"]),
+      ),
+    ).toBe(true);
+    expect(isOperationalEventResolutionError(new Error("render bug"))).toBe(
+      false,
+    );
+  });
+});
 
 function event(slug: string): EventWithMeta {
   return {
@@ -59,6 +80,70 @@ function sources(
     ...overrides,
   };
 }
+
+describe("resolveEventMetadataBySlugWithSources", () => {
+  it("returns a safe miss when the durable metadata lookup times out", async () => {
+    vi.useFakeTimers();
+    try {
+      let archiveSignal: AbortSignal | undefined;
+      const loaders = sources({
+        archive: vi.fn((_slug, context) => {
+          archiveSignal = context.signal;
+          return new Promise<null>(() => undefined);
+        }),
+      });
+      const pending = resolveEventMetadataBySlugWithSources(
+        "new-event-2026-08-01",
+        loaders,
+      );
+
+      await vi.advanceTimersByTimeAsync(EVENT_ARCHIVE_HEAD_START_MS);
+
+      await expect(pending).resolves.toBeNull();
+      expect(archiveSignal?.aborted).toBe(true);
+      expect(loaders.unified).not.toHaveBeenCalled();
+      expect(loaders.live).not.toHaveBeenCalled();
+      expect(loaders.ingested).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("contains an unavailable archive instead of rejecting document metadata", async () => {
+    const loaders = sources({
+      archive: vi.fn(async () => {
+        throw new Error("archive unavailable");
+      }),
+    });
+
+    await expect(
+      resolveEventMetadataBySlugWithSources(
+        "new-event-2026-08-01",
+        loaders,
+      ),
+    ).resolves.toBeNull();
+    expect(loaders.unified).not.toHaveBeenCalled();
+    expect(loaders.live).not.toHaveBeenCalled();
+    expect(loaders.ingested).not.toHaveBeenCalled();
+  });
+
+  it("still returns rich metadata input from the durable archive", async () => {
+    const retained = event("ethics-commission-meeting-2026-08-11");
+    const loaders = sources({
+      archive: vi.fn(async () => ({
+        id: "identity-metadata",
+        canonicalSlug: retained.slug,
+        event: retained,
+        tombstoned: false,
+        lastSeenAt: "2026-07-31T16:00:00.000Z",
+      })),
+    });
+
+    await expect(
+      resolveEventMetadataBySlugWithSources(retained.slug, loaders),
+    ).resolves.toEqual({ event: retained, kind: "archive" });
+  });
+});
 
 describe("resolveEventPageBySlugWithSources", () => {
   it("resolves the exact incident URL from the durable archive without rebuilding event feeds", async () => {
@@ -166,6 +251,28 @@ describe("resolveEventPageBySlugWithSources", () => {
     expect(persist).toHaveBeenCalledWith(visible, [
       visible.slug,
       visible.slug,
+    ]);
+  });
+
+  it("uses a stored official event when the unified assembly is still cold", async () => {
+    const retained = event("ethics-commission-meeting-2026-08-11");
+    const loaders = sources({
+      unified: vi.fn(
+        () => new Promise<EventWithMeta | null>(() => undefined),
+      ),
+      ingested: vi.fn(async () => retained),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        retained.slug,
+        new Date("2026-07-31T16:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toEqual({ event: retained, kind: "ingested" });
+    expect(loaders.persist).toHaveBeenCalledWith(retained, [
+      retained.slug,
+      retained.slug,
     ]);
   });
 

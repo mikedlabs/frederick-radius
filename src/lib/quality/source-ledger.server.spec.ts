@@ -155,4 +155,89 @@ describe("server source ledger evidence", () => {
       queries.some((query) => query.includes("FROM feed_snapshots")),
     ).toBe(false);
   });
+
+  it("does not mistake a successful availability probe for published data", async () => {
+    const sql = vi.fn((parts: TemplateStringsArray) => {
+      const query = parts.join("?");
+      if (query.includes("feed_source_health")) return Promise.resolve([]);
+      if (query.includes("FROM ingest_runs")) {
+        return Promise.resolve([{
+          source: "mta_marc_rt",
+          latest_started_at: "2026-07-28T11:55:00.000Z",
+          latest_ended_at: "2026-07-28T11:55:01.000Z",
+          latest_status: "ok",
+          latest_records_in: null,
+          latest_records_failed: 0,
+          latest_error: null,
+          operational_started_at: null,
+          operational_ended_at: null,
+          operational_status: null,
+          operational_records_in: null,
+          operational_records_failed: null,
+          operational_error: null,
+          success_started_at: null,
+          success_ended_at: null,
+          success_records_in: null,
+        }]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    const ledger = await getSourceHealthLedger({
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      strictDatabaseEvidence: true,
+    });
+
+    expect(ledger.find((row) => row.id === "mta_marc_rt")).toMatchObject({
+      state: "unknown",
+      lastPublishedAt: null,
+      lastSuccessAt: null,
+      recordCount: null,
+      evidenceKinds: ["reachability_probe"],
+    });
+  });
+
+  it("does not let a later reachability success hide a parser failure", async () => {
+    const sql = vi.fn((parts: TemplateStringsArray) => {
+      const query = parts.join("?");
+      if (query.includes("feed_source_health")) return Promise.resolve([]);
+      if (query.includes("FROM ingest_runs")) {
+        return Promise.resolve([{
+          source: "mta_marc_rt",
+          latest_started_at: "2026-07-28T11:55:00.000Z",
+          latest_ended_at: "2026-07-28T11:55:01.000Z",
+          latest_status: "ok",
+          latest_records_in: null,
+          latest_records_failed: 0,
+          latest_error: null,
+          operational_started_at: "2026-07-28T11:50:00.000Z",
+          operational_ended_at: "2026-07-28T11:50:01.000Z",
+          operational_status: "error",
+          operational_records_in: 0,
+          operational_records_failed: 1,
+          operational_error: "Parser rejected the response.",
+          success_started_at: "2026-07-28T10:00:00.000Z",
+          success_ended_at: "2026-07-28T10:00:01.000Z",
+          success_records_in: 12,
+        }]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    const ledger = await getSourceHealthLedger({
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      strictDatabaseEvidence: true,
+    });
+
+    expect(ledger.find((row) => row.id === "mta_marc_rt")).toMatchObject({
+      state: "failing",
+      lastAttemptAt: "2026-07-28T11:50:00.000Z",
+      lastAttemptOutcome: "failure",
+      lastPublishedAt: "2026-07-28T10:00:01.000Z",
+      latestError: "Parser rejected the response.",
+      evidenceKinds: ["ingest_run", "reachability_probe"],
+    });
+  });
 });

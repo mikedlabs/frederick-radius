@@ -128,6 +128,103 @@ export function finishIngestRunStrict(
   return updateIngestRun(runId, result, options);
 }
 
+export type SourceProbeRunResult = {
+  sourceSlug: string;
+  outcome: "success" | "failure";
+  error?: string | null;
+};
+
+function safeProbeError(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const clean = value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return null;
+  return clean.length > 240 ? `${clean.slice(0, 237)}...` : clean;
+}
+
+/**
+ * Persist one completed row per runtime source in one bounded database write.
+ * A failure wins if duplicate inputs disagree. Successful probes deliberately
+ * store a null record count: endpoint availability is not a claim about how
+ * many business, event, or alert records the source currently publishes.
+ */
+export async function recordSourceProbeResultsStrict(
+  results: readonly SourceProbeRunResult[],
+  attemptedAt: string,
+  options: StrictRunLogOptions = {},
+): Promise<number> {
+  if (!Number.isFinite(Date.parse(attemptedAt))) {
+    throw new Error("Source probe evidence needs a valid timestamp.");
+  }
+
+  const bySource = new Map<string, SourceProbeRunResult>();
+  for (const result of results) {
+    const sourceSlug = result.sourceSlug.trim();
+    if (!sourceSlug) continue;
+    const existing = bySource.get(sourceSlug);
+    if (!existing || result.outcome === "failure") {
+      bySource.set(sourceSlug, {
+        sourceSlug,
+        outcome: result.outcome,
+        error:
+          result.outcome === "failure"
+            ? safeProbeError(result.error) ??
+              "The fresh runtime source health probe failed."
+            : null,
+      });
+    }
+  }
+
+  const normalized = [...bySource.values()];
+  if (normalized.length === 0) return 0;
+
+  const sql = getSql();
+  if (!sql) return 0;
+  const sourceSlugs = normalized.map((result) => result.sourceSlug);
+  const statuses = normalized.map((result) =>
+    result.outcome === "success" ? "ok" : "error"
+  );
+  // Null is the durable discriminator for an availability-only probe. It
+  // applies to both outcomes: neither a reachable endpoint nor a failed HTTP
+  // check says how many validated rows Radius actually parsed or published.
+  const recordsIn = normalized.map(() => null);
+  const recordsFailed = normalized.map((result) =>
+    result.outcome === "success" ? 0 : 1
+  );
+  const errors = normalized.map((result) => result.error ?? null);
+  const query = sql`
+    INSERT INTO ingest_runs (
+      source_slug,
+      started_at,
+      ended_at,
+      status,
+      records_in,
+      records_upserted,
+      records_failed,
+      error
+    )
+    SELECT probe.source_slug,
+           ${attemptedAt}::timestamptz,
+           now(),
+           probe.status,
+           probe.records_in,
+           0,
+           probe.records_failed,
+           probe.error
+    FROM unnest(
+      ${sourceSlugs}::text[],
+      ${statuses}::text[],
+      ${recordsIn}::integer[],
+      ${recordsFailed}::integer[],
+      ${errors}::text[]
+    ) AS probe(source_slug, status, records_in, records_failed, error)
+  ` as unknown as CancelableQuery<unknown>;
+  await waitForRunLogQuery(query, options.signal);
+  return normalized.length;
+}
+
 /**
  * Persist one completed failure row per named runtime source.
  *
@@ -141,35 +238,12 @@ export async function recordSourceProbeFailuresStrict(
   sourceSlugs: readonly string[],
   attemptedAt: string,
 ): Promise<number> {
-  const unique = [...new Set(
-    sourceSlugs.map((source) => source.trim()).filter(Boolean),
-  )];
-  if (unique.length === 0) return 0;
-  if (!Number.isFinite(Date.parse(attemptedAt))) {
-    throw new Error("Source probe failure evidence needs a valid timestamp.");
-  }
-  const sql = getSql();
-  if (!sql) return 0;
-  await sql`
-    INSERT INTO ingest_runs (
-      source_slug,
-      started_at,
-      ended_at,
-      status,
-      records_in,
-      records_upserted,
-      records_failed,
-      error
-    )
-    SELECT failed.source_slug,
-           ${attemptedAt}::timestamptz,
-           now(),
-           'error',
-           0,
-           0,
-           1,
-           'The fresh runtime feed check failed.'
-    FROM unnest(${unique}::text[]) AS failed(source_slug)
-  `;
-  return unique.length;
+  return recordSourceProbeResultsStrict(
+    sourceSlugs.map((sourceSlug) => ({
+      sourceSlug,
+      outcome: "failure" as const,
+      error: "The fresh runtime feed check failed.",
+    })),
+    attemptedAt,
+  );
 }

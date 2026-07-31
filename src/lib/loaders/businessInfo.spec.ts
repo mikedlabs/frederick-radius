@@ -122,6 +122,36 @@ describe("business-info commerce links", () => {
     expect(commerceLinksFromBusinessInfo("example", info)).toEqual([]);
   });
 
+  it("shows one strongest action when menu and order share a destination", () => {
+    const info: BusinessInfo = {
+      commerce_links: [
+        {
+          type: "menu",
+          url: "https://www.example.com/order/?source=popup",
+          anchor_text: "View menu",
+          source_url: "https://example.com/",
+        },
+        {
+          type: "order",
+          url: "https://example.com/order",
+          anchor_text: "Order online",
+          source_url: "https://example.com/",
+        },
+      ],
+      source: {
+        url: "https://example.com/",
+        fetchedAt: "2026-07-31T12:00:00.000Z",
+      },
+    };
+
+    expect(commerceLinksFromBusinessInfo("example", info)).toMatchObject([
+      {
+        type: "order",
+        url: "https://example.com/order",
+      },
+    ]);
+  });
+
   it("supports a commerce-only record without inventing a business-fact source", () => {
     const info: BusinessInfo = {
       commerce_links: [

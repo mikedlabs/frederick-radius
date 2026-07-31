@@ -1,10 +1,17 @@
+import {
+  classifyEventDetailResult,
+  eventDetailGateSummary,
+  eventDetailPathsFromHtml,
+  mapWithConcurrency,
+} from "./lib/prod-audit-events.mjs";
+
 /**
  * Production acceptance canary — tests the apex URL after promotion.
  *
  * A green Vercel build is not proof that the public alias moved or that the
  * installed-app contract still points at the current product. This script
  * checks the real front door, primary routes, manifest, stable deep links,
- * one current event deep link, and the deploy SHA embedded in /sw.js.
+ * every rendered event deep link, and the deploy SHA embedded in /sw.js.
  *
  * Manual:
  *   BASE_URL=https://frederickradius.app \
@@ -26,6 +33,7 @@ const USER_AGENT = "frederick-radius-production-canary/2";
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CORE_ROUTES = ["/today", "/events", "/map"];
 const STABLE_PLACE_PATH = "/places/brewers-alley-frederick";
+const EVENT_LINK_CONCURRENCY = 4;
 
 let failures = 0;
 const checkedPages = new Map();
@@ -155,19 +163,6 @@ function manifestHref(html) {
   return "/manifest.webmanifest";
 }
 
-function currentEventPath(html) {
-  const decoded = html
-    .replace(/&quot;/g, '"')
-    .replace(/\\u002f/gi, "/")
-    .replace(/\\\//g, "/");
-  const matches = decoded.matchAll(/\/events\/([a-z0-9][a-z0-9-]{2,})/gi);
-  for (const match of matches) {
-    const slug = match[1].toLowerCase();
-    if (slug !== "browse" && slug !== "calendar") return `/events/${slug}`;
-  }
-  return null;
-}
-
 // Photo policy: curated, attributed place media is allowed. Raw Wikimedia
 // sources on decision cards are not; those bypass the app's media review.
 const uncontrolledImgs = (html) =>
@@ -237,8 +232,7 @@ async function run() {
     bad(`manifest contract failed: ${error.message}`);
   }
 
-  // A stable place catches dynamic-route/build regressions. A current event is
-  // discovered from the actual board so the canary never pins an expired slug.
+  // A stable place catches dynamic-route/build regressions.
   for (const path of [STABLE_PLACE_PATH]) {
     try {
       const result = await request(path, { accept: "text/html" });
@@ -248,20 +242,69 @@ async function run() {
     }
   }
 
-  try {
-    const events = checkedPages.get("/events");
-    const path = currentEventPath(events?.body || "");
-    check(
-      Boolean(path),
-      `found a current event deep link (${path})`,
-      "/events did not expose a representative event deep link",
-    );
-    if (path) {
-      const result = await request(path, { accept: "text/html" });
-      healthyHtml(path, result);
+  // Follow every actual event anchor published by Today and Events. Extracting
+  // href attributes (rather than searching the full Next document for slug-like
+  // text) avoids crawling the serialized client payload or tucked inventory.
+  // A source outage may render the event-specific Radius recovery screen only
+  // if the route still fulfills its successful HTML response contract. Every
+  // 5xx is a deployment failure, even when its body contains branded recovery
+  // copy. Stale 404s and foreign responses fail as well.
+  const eventPaths = new Set();
+  for (const surface of ["/today", "/events"]) {
+    const html = checkedPages.get(surface)?.body || "";
+    for (const path of eventDetailPathsFromHtml(html, BASE)) {
+      eventPaths.add(path);
     }
-  } catch (error) {
-    bad(`event deep-link check failed: ${error.message}`);
+  }
+  check(
+    eventPaths.size > 0,
+    `found ${eventPaths.size} rendered event deep link(s)`,
+    "Today and Events did not expose a rendered event deep link",
+  );
+  const eventResults = await mapWithConcurrency(
+    [...eventPaths],
+    EVENT_LINK_CONCURRENCY,
+    async (path) => {
+      try {
+        return {
+          path,
+          result: await request(path, { accept: "text/html" }),
+          error: null,
+        };
+      } catch (error) {
+        return { path, result: null, error };
+      }
+    },
+  );
+  const eventStates = [];
+  for (const { path, result, error } of eventResults) {
+    if (error || !result) {
+      bad(`${path} event deep-link fetch failed: ${error?.message || "unknown error"}`);
+      continue;
+    }
+    assertNoBetaRedirect(path, result);
+    const state = classifyEventDetailResult(result, BASE);
+    eventStates.push(state);
+    if (state.kind === "healthy") {
+      ok(`${path} is a healthy event detail`);
+    } else if (state.kind === "recovery") {
+      note(`${path} returned the Radius event recovery state`);
+    } else {
+      bad(`${path} event detail failed: ${state.reason}`);
+    }
+  }
+  if (eventStates.length > 0) {
+    const gate = eventDetailGateSummary(eventStates);
+    check(
+      gate.healthy > 0,
+      `${gate.healthy} event detail(s) rendered real event content`,
+      "all rendered event links fell back to recovery or failure",
+    );
+    check(
+      gate.recovery <= gate.allowedRecoveries,
+      `event recovery stayed within budget (${gate.recovery}/${gate.total})`,
+      `event recovery exceeded budget (${gate.recovery}/${gate.total}; allowed ${gate.allowedRecoveries})`,
+    );
   }
 
   // /sw.js is intentionally versioned by VERCEL_GIT_COMMIT_SHA. Cache-bust

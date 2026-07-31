@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { qualifiedSearchIndex, searchIndex } from "./index";
+import { findDepartments } from "@/data/departments";
 
 describe("deterministic map search actions", () => {
   it.each([
@@ -8,6 +9,8 @@ describe("deterministic map search actions", () => {
     ["drinking water", "/map?amenity=water"],
     ["dog bags", "/map?amenity=dog"],
     ["public Wi-Fi", "/map?amenity=wifi"],
+    ["EV", "/map?amenity=ev"],
+    ["ATM near me", "/map?q=ATM"],
     ["power outlets", "/map?amenity=outlet"],
     ["parking", "/map?show=parking"],
     ["bus stops", "/map?show=transit"],
@@ -45,6 +48,47 @@ describe("deterministic map search actions", () => {
     expect(searchIndex("trash pickup schedule", 8, []).some((result) => result.href === "/map?amenity=trash")).toBe(false);
     expect(searchIndex("river water levels", 8, []).some((result) => result.href === "/map?amenity=water")).toBe(false);
     expect(searchIndex("power outage", 8, []).some((result) => result.href === "/map?amenity=outlet")).toBe(false);
+  });
+
+  it("does not turn short utility nouns into unrelated quick actions", () => {
+    const er = qualifiedSearchIndex("ER", 10, []).results;
+    const ev = qualifiedSearchIndex("EV", 10, []).results;
+    const ups = qualifiedSearchIndex("UPS", 10, []).results;
+
+    expect(er[0]?.href).toBe("/emergency");
+    expect(er.slice(0, 10).some((result) => result.href === "/tonight")).toBe(false);
+    expect(er.slice(0, 10).some((result) => /erica/i.test(result.title))).toBe(false);
+    expect(ev[0]?.href).toBe("/map?amenity=ev");
+    expect(ev.slice(0, 10).some((result) => result.href === "/events")).toBe(false);
+    expect(ups[0]?.href).toBe("/shipping");
+    expect(ups).toHaveLength(1);
+  });
+
+  it("routes ATM to live map search without presenting banks as confirmed ATMs", () => {
+    const results = qualifiedSearchIndex("ATM", 10, []).results;
+    expect(results[0]).toMatchObject({
+      id: "action:map-atm",
+      href: "/map?q=ATM",
+    });
+    expect(results.some((result) => result.type === "place")).toBe(false);
+  });
+
+  it("routes DMV to the verified state MVA contact without catalog padding", () => {
+    expect(findDepartments("DMV", 2)[0]).toMatchObject({
+      slug: "state-mva",
+      jurisdiction: "state",
+    });
+    expect(qualifiedSearchIndex("DMV", 10, []).results).toEqual([]);
+  });
+
+  it("answers Wi-Fi with the live amenity control instead of place-name noise", () => {
+    const results = qualifiedSearchIndex("WiFi", 10, []).results;
+
+    expect(results[0]).toMatchObject({
+      id: "action:map-wifi",
+      href: "/map?amenity=wifi",
+    });
+    expect(results.some((result) => result.type === "place")).toBe(false);
   });
 
   it("keeps an explicit planning request on the tonight planner", () => {

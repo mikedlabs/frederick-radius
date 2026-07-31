@@ -53,11 +53,16 @@ import {
   hashSourceContent,
   sourceFingerprintMatches,
 } from "./lib/source-content-fingerprint";
+import { businessInfoSourceKind } from "./lib/business-info-source-policy";
 import {
   BUSINESS_INFO_SHAPE,
   cleanExtractedBusinessInfo,
   type ExtractedBusinessInfo,
 } from "./lib/business-info-copy";
+import {
+  mergeBusinessInfoCommerceEvidence,
+  mergeBusinessInfoRefresh,
+} from "./lib/business-info-refresh";
 import { publicPlaceBySlug } from "@/lib/loaders/places";
 import { isDestinationCategory } from "@/lib/relevance";
 import {
@@ -148,11 +153,13 @@ async function fetchAdaptive(
   return fallback;
 }
 
-function isAllowedWebsite(url: string, cfg: Cfg): boolean {
+function isAllowedWebsite(url: string, businessName: string, cfg: Cfg): boolean {
   if (!/^https?:/.test(url)) return false;
   const domain = domainOf(url);
   return Boolean(
-    domain && !cfg.excludeDomains.some((excluded) => domain.includes(excluded)),
+    domain &&
+      businessInfoSourceKind(url, businessName) === "business_website" &&
+      !cfg.excludeDomains.some((excluded) => domain.includes(excluded)),
   );
 }
 
@@ -220,7 +227,10 @@ async function main() {
 
   const eligible: QueueCandidate[] = publicRows.flatMap((place) => {
     if (requestedSlug && place.slug !== requestedSlug) return [];
-    if (!place.website || !isAllowedWebsite(place.website, cfg)) return [];
+    if (
+      !place.website ||
+      !isAllowedWebsite(place.website, place.name, cfg)
+    ) return [];
     const prior = existingByCanonical.get(place.slug);
     return [{
       slug: place.slug,
@@ -245,7 +255,10 @@ async function main() {
   // canonical public artifact.
   if (only && eligible.length === 0) {
     const row = enr[only];
-    if (row?.website && isAllowedWebsite(row.website, cfg)) {
+    if (
+      row?.website &&
+      isAllowedWebsite(row.website, row.display_name ?? only, cfg)
+    ) {
       const prior = existing[only];
       eligible.push({
         slug: only,
@@ -275,7 +288,7 @@ async function main() {
     ]),
   );
   console.log(
-    `${eligible.length} eligible official sites; ${todo.length} selected ` +
+    `${eligible.length} eligible business sites; ${todo.length} selected ` +
       `(limit ${limit}; ${JSON.stringify(reasonCounts)}).`,
   );
   if (planOnly) {
@@ -321,6 +334,15 @@ async function main() {
       );
       continue;
     }
+    if (
+      businessInfoSourceKind(snapshot.finalUrl, candidate.displayName) !==
+      "business_website"
+    ) {
+      console.log(
+        `  ✗ ${slug}: final host is not bound to this business (${finalDomain})`,
+      );
+      continue;
+    }
     const contentHash = hashSourceContent(snapshot.text);
     const prior = existingByCanonical.get(slug);
     if (
@@ -343,16 +365,15 @@ async function main() {
         snapshot.links,
         snapshot.finalUrl,
       );
-      const refreshed: Record_ = {
-        ...(prior ?? {}),
+      const refreshed: Record_ = mergeBusinessInfoCommerceEvidence(prior, {
         name: candidate.displayName,
-        ...(commerceLinks.length ? { commerce_links: commerceLinks } : {}),
-        source: {
-          url: snapshot.finalUrl,
-          fetchedAt: nowISO(),
-          contentHash,
-          extractorVersion: BUSINESS_EXTRACTOR_VERSION,
-        },
+        commerceLinks,
+      });
+      refreshed.source = {
+        url: snapshot.finalUrl,
+        fetchedAt: nowISO(),
+        contentHash,
+        extractorVersion: BUSINESS_EXTRACTOR_VERSION,
       };
       existing[slug] = refreshed;
       existingByCanonical.set(slug, refreshed);
@@ -375,7 +396,7 @@ async function main() {
     }
     for (const dropped of cleanup.dropped) {
       console.log(
-        `  - ${slug}: ${dropped.field} withheld by voice gate ` +
+        `  - ${slug}: ${dropped.field} withheld by data/copy gate ` +
           `(${dropped.rules.join(", ")})`,
       );
     }
@@ -389,11 +410,10 @@ async function main() {
       // refreshed, but the stale source timestamp remains so the next run
       // retries Claude instead of waiting another refresh window.
       if (commerceLinks.length) {
-        const preserved: Record_ = {
-          ...(prior ?? {}),
+        const preserved: Record_ = mergeBusinessInfoCommerceEvidence(prior, {
           name: candidate.displayName,
-          commerce_links: commerceLinks,
-        };
+          commerceLinks,
+        });
         existing[slug] = preserved;
         existingByCanonical.set(slug, preserved);
       }
@@ -408,32 +428,34 @@ async function main() {
       info.notable ||
       commerceLinks.length;
     if (!has) {
-      const checked: Record_ = {
+      const checked: Record_ = mergeBusinessInfoRefresh(prior, {
         name: candidate.displayName,
+        info: {},
+        commerceLinks,
         source: {
           url: snapshot.finalUrl,
           fetchedAt: nowISO(),
           contentHash,
           extractorVersion: BUSINESS_EXTRACTOR_VERSION,
         },
-      };
+      });
       existing[slug] = checked;
       existingByCanonical.set(slug, checked);
       updated++;
       console.log(`  – ${slug}: nothing extractable; source fingerprint stored`);
       continue;
     }
-    const next: Record_ = {
-      ...info,
+    const next: Record_ = mergeBusinessInfoRefresh(prior, {
       name: candidate.displayName,
-      ...(commerceLinks.length ? { commerce_links: commerceLinks } : {}),
+      info,
+      commerceLinks,
       source: {
         url: snapshot.finalUrl,
         fetchedAt: nowISO(),
         contentHash,
         extractorVersion: BUSINESS_EXTRACTOR_VERSION,
       },
-    };
+    });
     existing[slug] = next;
     existingByCanonical.set(slug, next);
     updated++;

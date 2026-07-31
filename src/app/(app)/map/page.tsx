@@ -326,6 +326,13 @@ async function clientDedupeProjection() {
 export default function MapPage() {
   return (
     <>
+      {/* Keep the page's semantic identity outside the useSearchParams
+          boundary. MapModeGate resolves its branch after hydration, so a
+          heading inside BrowseMode or RadiusMode is absent from the raw HTML
+          that crawlers and reader tools receive. sr-only preserves the
+          full-screen map layout while exposing one stable page heading in
+          both the server response and the hydrated document. */}
+      <h1 className="sr-only">Frederick County map</h1>
       {/* Mapbox preconnects live HERE, not in the root layout: the map is
           the only surface that talks to these origins, and eager global
           preconnects competed with the LCP asset on every other route
@@ -412,7 +419,6 @@ async function RadiusMode() {
     }));
   return (
     <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
-      <h1 className="sr-only">Frederick County map: places within reach</h1>
       <PageBloom variant="cool" />
       {/* Mode toggle is handed to RadiusBuilder, which renders it in two
           places: a modest floating copy over the collapsed map (always
@@ -432,7 +438,6 @@ async function RadiusMode() {
 function BrowseMode() {
   return (
     <div className="relative -mx-4 sm:-mx-5 lg:ml-0">
-      <h1 className="sr-only">Frederick County map</h1>
       <Suspense
         fallback={
           <div

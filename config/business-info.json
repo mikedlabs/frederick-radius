@@ -7,11 +7,12 @@
   ],
   "excludeDomains": [
     "facebook.com", "instagram.com", "twitter.com", "x.com", "yelp.com",
-    "tripadvisor", "doordash", "ubereats", "grubhub", "toasttab", "google.com",
+    "tripadvisor", "doordash", "ubereats", "grubhub", "toasttab", "opentable.com", "resy.com", "google.com",
     "wheree.com", "goto-where.com", "menu-world.com", "findmenuworld.com",
     "menus.fyi", "restaurantguru.com", "allmenus.com", "menupix.com",
     "sirved.com", "usarestaurants.info", "restaurantji.com", "loc8nearme.com",
     "mapquest.com", "yellowpages.com", "chamberofcommerce.com", "businessyab.com",
+    "bringfido.com", "songkick.com", "eventbrite.com", "foursquare.com",
     "cityoffrederick", "visitfrederick.org", "nps.gov", "dnr.maryland",
     "maryland.gov", ".gov", "linktr.ee"
   ],

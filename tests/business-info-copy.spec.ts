@@ -112,6 +112,74 @@ describe("business-info public copy cleanup", () => {
     });
   });
 
+  it("drops sentinel happy hour values and menu items posing as specials", () => {
+    const result = cleanExtractedBusinessInfo({
+      happy_hour: "Not specified on page",
+      specials: [
+        "Caprese Burger",
+        "Nashville Hot Chicken Pizza",
+        "Margarita",
+      ],
+    });
+
+    expect(result.info).toEqual({});
+    expect(result.dropped).toEqual([
+      { field: "happy_hour", rules: ["invalid schedule"] },
+      { field: "specials", rules: ["not a recurring offer"] },
+    ]);
+  });
+
+  it("requires a real schedule before treating a weekly deal as happy hour", () => {
+    const result = cleanExtractedBusinessInfo({
+      happy_hour: "Wednesday: $8 Smoked Bourbon",
+      specials: ["Wednesday: $8 Smoked Bourbon"],
+    });
+
+    expect(result.info).toEqual({
+      specials: ["Wednesday: $8 Smoked Bourbon"],
+    });
+    expect(result.dropped).toContainEqual({
+      field: "happy_hour",
+      rules: ["invalid schedule"],
+    });
+  });
+
+  it("rejects contradictory and dynamic hours instead of freezing them", () => {
+    const contradictory = cleanExtractedBusinessInfo({
+      hours_text: "Open everyday 11:00am-8:00pm (closed on Sundays)",
+    });
+    const dynamic = cleanExtractedBusinessInfo({
+      hours_text:
+        "Open today 12:00 pm-6:00 pm. Closed Thanksgiving and Christmas.",
+    });
+
+    expect(contradictory.info.hours_text).toBeUndefined();
+    expect(contradictory.dropped).toContainEqual({
+      field: "hours_text",
+      rules: ["contradictory weekly schedule"],
+    });
+    expect(dynamic.info.hours_text).toBeUndefined();
+    expect(dynamic.dropped).toContainEqual({
+      field: "hours_text",
+      rules: ["dynamic today value"],
+    });
+  });
+
+  it.each([
+    "Today: 8 AM to 10 PM",
+    "Today - 8 AM to 10 PM",
+    "Today’s hours are 8 AM to 10 PM",
+    "The kitchen closes today at 9 PM",
+  ])("rejects same-day hours form %s", (hours_text) => {
+    const result = cleanExtractedBusinessInfo({ hours_text });
+
+    expect(result.info.hours_text).toBeUndefined();
+    expect(result.dropped).toContainEqual({
+      field: "hours_text",
+      rules: ["dynamic today value"],
+    });
+  });
+
   it("omits oversized schedule facts instead of publishing partial facts", () => {
     const oversizedHappyHour = `Friday 4-6 p.m. ${"x".repeat(
       BUSINESS_INFO_FACT_LIMITS.happyHourChars,
@@ -141,7 +209,7 @@ describe("business-info public copy cleanup", () => {
     const result = cleanExtractedBusinessInfo({
       specials: Array.from(
         { length: BUSINESS_INFO_FACT_LIMITS.specials + 4 },
-        (_, index) => `Special ${index + 1}`,
+        (_, index) => `Monday special ${index + 1}`,
       ),
     });
 
@@ -149,7 +217,7 @@ describe("business-info public copy cleanup", () => {
       BUSINESS_INFO_FACT_LIMITS.specials,
     );
     expect(result.info.specials?.at(-1)).toBe(
-      `Special ${BUSINESS_INFO_FACT_LIMITS.specials}`,
+      `Monday special ${BUSINESS_INFO_FACT_LIMITS.specials}`,
     );
   });
 

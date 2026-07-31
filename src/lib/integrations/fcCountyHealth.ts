@@ -9,7 +9,18 @@ export type CountyHealthEndpoint = {
   url: string;
   critical: false;
   method: "GET";
+  maxBodyBytes: number;
+  contentType: RegExp;
+  bodyPattern: RegExp;
+  accept: string;
 };
+
+const COUNTY_JSON_PROBE = {
+  maxBodyBytes: 4_096,
+  contentType: /json/i,
+  bodyPattern: /"features"\s*:/i,
+  accept: "application/json",
+} as const;
 
 function queryUrl(base: string, outFields: string): string {
   const url = new URL(base);
@@ -33,6 +44,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_snow_command: [{
     group: "County snow operations",
@@ -43,6 +55,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_parks_assets: [
     {
@@ -54,6 +67,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
       ),
       critical: false,
       method: "GET",
+      ...COUNTY_JSON_PROBE,
     },
     {
       group: "County park amenities",
@@ -64,6 +78,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
       ),
       critical: false,
       method: "GET",
+      ...COUNTY_JSON_PROBE,
     },
   ],
   fc_high_water: [
@@ -76,6 +91,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
       ),
       critical: false,
       method: "GET",
+      ...COUNTY_JSON_PROBE,
     },
     {
       group: "County flood warning signs",
@@ -86,6 +102,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
       ),
       critical: false,
       method: "GET",
+      ...COUNTY_JSON_PROBE,
     },
     {
       group: "County past water rescues",
@@ -96,6 +113,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
       ),
       critical: false,
       method: "GET",
+      ...COUNTY_JSON_PROBE,
     },
   ],
   fc_food_truck_roster: [{
@@ -104,6 +122,10 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     url: "https://health.frederickcountymd.gov/695/Mobile-UnitsFood-Trucks",
     critical: false,
     method: "GET",
+    maxBodyBytes: 4_096,
+    contentType: /html|text/i,
+    bodyPattern: /Mobile Units|Food Trucks/i,
+    accept: "text/html",
   }],
   fc_municipal_boundaries: [{
     group: "County municipal boundaries",
@@ -114,6 +136,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_county_parks: [{
     group: "County park points",
@@ -124,6 +147,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_park_trails: [{
     group: "County park trails",
@@ -134,6 +158,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_historic_cemeteries: [{
     group: "County historic cemeteries",
@@ -144,6 +169,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   fc_recreation_locations: [{
     group: "County recreation locations",
@@ -154,6 +180,7 @@ const ENDPOINTS_BY_SOURCE: Readonly<
     ),
     critical: false,
     method: "GET",
+    ...COUNTY_JSON_PROBE,
   }],
   // The legacy maps.frederickcountymd.gov host is currently dead. Keep the
   // source permission-gated, but do not add a health probe that would turn a

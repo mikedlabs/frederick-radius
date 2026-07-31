@@ -156,7 +156,7 @@ describe("GET /api/cron/event-archive", () => {
     );
   });
 
-  it("updates cancelled and postponed identities without archiving other hidden lanes", async () => {
+  it("archives every linked civic lane while excluding private bookings", async () => {
     const scheduled = {
       ...publicCard,
       status: "scheduled",
@@ -175,19 +175,33 @@ describe("GET /api/cron/event-archive", () => {
     };
     const hiddenMeeting = {
       slug: "planning-commission-2026-08-11",
+      title: "Planning Commission Meeting",
       source: "city-frederick",
       source_id: "meeting-0811",
       status: "scheduled",
     };
+    const privateBooking = {
+      slug: "private-pavilion-rental-2026-08-12",
+      title: "Private Pavilion Rental",
+      source: "county",
+      source_id: "rental-0812",
+      status: "scheduled",
+    };
     mocks.assembleUnifiedEvents.mockResolvedValue({
-      unified: [scheduled, cancelled, postponed, hiddenMeeting],
+      unified: [
+        scheduled,
+        cancelled,
+        postponed,
+        hiddenMeeting,
+        privateBooking,
+      ],
       publicEvents: [scheduled],
       sourceHealth: { degraded: false, unavailable: [] },
     });
     mocks.syncEventArchiveBatch.mockResolvedValue({
       complete: true,
-      accepted: 3,
-      upserted: 1,
+      accepted: 4,
+      upserted: 2,
       ignoredLifecycleOnly: 2,
       tombstoned: 0,
       batches: 1,
@@ -201,7 +215,7 @@ describe("GET /api/cron/event-archive", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.syncEventArchiveBatch).toHaveBeenCalledWith(
-      [scheduled, cancelled, postponed],
+      [scheduled, hiddenMeeting, cancelled, postponed],
       expect.objectContaining({
         successfulSources: ["celebrate"],
       }),
@@ -210,15 +224,15 @@ describe("GET /api/cron/event-archive", () => {
       "archive-run-1",
       expect.objectContaining({
         status: "ok",
-        records_in: 3,
-        records_upserted: 1,
+        records_in: 4,
+        records_upserted: 2,
         records_failed: 0,
       }),
       { signal: expect.any(AbortSignal) },
     );
     expect(body.archive).toMatchObject({
-      accepted: 3,
-      upserted: 1,
+      accepted: 4,
+      upserted: 2,
       ignored_lifecycle_only: 2,
       complete: true,
     });
@@ -364,6 +378,58 @@ describe("GET /api/cron/event-archive", () => {
           { source: "celebrate", source_uid: "publisher-uid-44" },
         ],
       }),
+    );
+  });
+
+  it("reports cleanup rejection without claiming the event rows were incomplete", async () => {
+    mocks.syncEventArchiveBatch.mockResolvedValue({
+      complete: false,
+      recordsComplete: true,
+      accepted: 1,
+      upserted: 1,
+      ignoredLifecycleOnly: 0,
+      tombstoned: 0,
+      batches: 1,
+      truncated: false,
+      timedOut: false,
+      tombstonesEnabled: true,
+      failure: {
+        stage: "tombstone",
+        reason: "rejected",
+        code: "40001",
+      },
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      ok: false,
+      status: "partial",
+      failures: ["archive-cleanup"],
+      archive: {
+        accepted: 1,
+        upserted: 1,
+        records_complete: true,
+        complete: false,
+        timed_out: false,
+        failure: {
+          stage: "tombstone",
+          reason: "rejected",
+          code: "40001",
+        },
+      },
+    });
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      expect.objectContaining({
+        status: "partial",
+        records_upserted: 1,
+        records_failed: 1,
+        error: "Archive checks failed: archive-cleanup.",
+      }),
+      { signal: expect.any(AbortSignal) },
     );
   });
 

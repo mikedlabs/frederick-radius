@@ -11,6 +11,7 @@ vi.mock("@/lib/db/client", () => ({
 
 import {
   recordSourceProbeFailuresStrict,
+  recordSourceProbeResultsStrict,
   startIngestRunStrict,
 } from "./run-log";
 
@@ -47,6 +48,31 @@ describe("runtime source failure evidence", () => {
       recordSourceProbeFailuresStrict([], "2026-07-28T09:05:00.000Z"),
     ).resolves.toBe(0);
     expect(mocks.getSql).not.toHaveBeenCalled();
+  });
+
+  it("writes one completed result per source and lets failure win duplicates", async () => {
+    await expect(
+      recordSourceProbeResultsStrict(
+        [
+          { sourceSlug: "marc", outcome: "success" },
+          { sourceSlug: " nps ", outcome: "success" },
+          {
+            sourceSlug: "marc",
+            outcome: "failure",
+            error: "one endpoint failed",
+          },
+        ],
+        "2026-07-28T09:05:00.000Z",
+      ),
+    ).resolves.toBe(2);
+
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+    const call = mocks.sql.mock.calls[0];
+    expect(call).toContainEqual(["marc", "nps"]);
+    expect(call).toContainEqual(["error", "ok"]);
+    expect(call).toContainEqual([null, null]);
+    expect(call).toContainEqual([1, 0]);
+    expect(call).toContainEqual(["one endpoint failed", null]);
   });
 });
 

@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
 import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
-import { resolveEventPageBySlug } from "@/lib/loaders/eventResolver";
+import {
+  isOperationalEventResolutionError,
+  resolveEventMetadataBySlug,
+  resolveEventPageBySlug,
+  type ResolvedEventPage,
+} from "@/lib/loaders/eventResolver";
+import EventLookupRecovery from "@/components/event/EventLookupRecovery";
+import * as Sentry from "@sentry/nextjs";
 /**
  * Event detail resolves the hand-authored static seed first
  * (getEventBySlug over EVENT_BY_SLUG); on a miss it falls back to the
@@ -65,6 +73,7 @@ import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
 import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
 import { eventHasTrustworthyEnd } from "@/lib/events/format";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -140,14 +149,26 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   if (!RESOLVABLE_SLUG.test(slug)) notFound();
-  const resolution = await resolveEventPageBySlug(slug);
-  // notFound() HERE, not just in the page body: metadata resolves before
-  // the response streams, so the 404 status actually reaches the wire. A
-  // body-only notFound() ships the not-found UI under a 200 — a soft 404
-  // Google indexes (June-9 deep audit P0-2). Resolution mirrors the page
-  // exactly (seed, then the cached visible union, then deep-link fallbacks), so
-  // a source timeout cannot make a currently visible event temporarily 404.
-  if (!resolution) notFound();
+  const resolution = await resolveEventMetadataBySlug(slug);
+  // Metadata intentionally reads only editorial seed data and the bounded
+  // durable archive. A newly published event may not have reached that archive
+  // yet, and a transient archive failure is not proof the event is missing.
+  // Return conservative metadata and let the blocking page body make the
+  // authoritative hit / honest 404 / recoverable-unavailable decision.
+  if (!resolution) {
+    return {
+      title: "Event in Frederick County",
+      description:
+        "Check event timing, location, and source information for Frederick County.",
+      robots: { index: false, follow: false },
+      openGraph: {
+        title: "Event in Frederick County",
+        description:
+          "Check event timing, location, and source information for Frederick County.",
+        type: "article",
+      },
+    };
+  }
   const event = resolution.event;
   const blurb = eventBlurb(event).slice(0, 160);
   const canonicalSlug =
@@ -168,7 +189,24 @@ export async function generateMetadata(
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!RESOLVABLE_SLUG.test(slug)) notFound();
-  const resolution = await resolveEventPageBySlug(slug);
+  let resolution: ResolvedEventPage | null;
+  try {
+    resolution = await resolveEventPageBySlug(slug);
+  } catch (error) {
+    if (!isOperationalEventResolutionError(error)) throw error;
+
+    // A provider outage is a known, recoverable product state. Returning the
+    // event-scoped recovery view here keeps the response successful and useful;
+    // throwing would make Next stamp a 500 on otherwise intentional UI. Never
+    // retain this transient state in the route's five-minute ISR cache.
+    noStore();
+    Sentry.captureMessage("event-detail: served source-unavailable recovery", {
+      level: "warning",
+      tags: { surface: "event-detail", recovery: "source-unavailable" },
+      extra: { slug, sources: error.sources },
+    });
+    return <EventLookupRecovery />;
+  }
   if (!resolution) notFound();
   // Owner notice override (src/data/event-notices.json): a hand-confirmed
   // cancellation must beat whatever the source row says — the Alive @ Five
@@ -327,10 +365,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
           <li aria-hidden>·</li>
           <li>
-            {physicalAttendance ? (
+            {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
               <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
             ) : (
-              <span>Online</span>
+              <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
             )}
           </li>
         </ol>

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { qualifiedSearch, search } from "./search";
 import type { Event } from "@/data/events";
+import { coffeeIntentTier } from "@/lib/category-ranking";
 
 /**
  * Guards the natural-language relevance of the shared search core, which the
@@ -191,7 +192,7 @@ describe("qualifiedSearch — strict daily-utility categories", () => {
     ).toBe(true);
   });
 
-  it("returns no places for ATM when the catalog has no ATM evidence", () => {
+  it("does not treat a bank record as proof of an ATM", () => {
     const { hits, meta } = qualifiedSearch(
       "Where is the nearest ATM?",
       12,
@@ -204,6 +205,73 @@ describe("qualifiedSearch — strict daily-utility categories", () => {
 
     expect(meta.qualifiers.strictPlaceKind).toBe("atm");
     expect(places).toEqual([]);
+  });
+});
+
+describe("search — short utility intents do not leak prefix coincidences", () => {
+  it("keeps ER's first ten results on emergency care", () => {
+    const top = search("ER", 10);
+    expect(top[0]).toMatchObject({ type: "page", page: { href: "/emergency" } });
+    expect(
+      top.every((hit) =>
+        hit.type === "page"
+          ? hit.page.href === "/emergency"
+          : hit.type === "place" &&
+            /\b(?:hospital|emergency room|emergency department)\b/i.test(
+              `${hit.place.name} ${hit.place.short_blurb ?? ""}`,
+            ),
+      ),
+    ).toBe(true);
+    expect(
+      top.some(
+        (hit) => hit.type === "place" && /\burgent care\b/i.test(hit.place.name),
+      ),
+    ).toBe(false);
+    expect(top.some((hit) => hit.type === "place" && /erica/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("keeps EV's first ten results on explicit charging evidence", () => {
+    const top = search("EV", 10);
+    expect(top.length).toBeGreaterThan(0);
+    expect(
+      top.every(
+        (hit) =>
+          hit.type === "place" &&
+          /\bev\b.*\bcharg/i.test(
+            `${hit.place.name} ${hit.place.short_blurb ?? ""}`,
+          ),
+      ),
+    ).toBe(true);
+    expect(top.some((hit) => hit.type === "place" && /evangelical/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("answers UPS with the shipping guide and no padded place rows", () => {
+    const top = search("UPS", 10);
+    expect(top).toEqual([
+      expect.objectContaining({
+        type: "page",
+        page: expect.objectContaining({ href: "/shipping" }),
+      }),
+    ]);
+  });
+});
+
+describe("search — generic coffee means a coffee destination", () => {
+  it("fills the first ten with dedicated coffee matches, not boba or incidental coffee", () => {
+    const topPlaces = search("coffee", 10).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+    expect(topPlaces).toHaveLength(10);
+    expect(topPlaces.every((place) => coffeeIntentTier(place) === 3)).toBe(true);
+    expect(topPlaces.some((place) => /boba|tea emporium/i.test(place.name))).toBe(false);
+  });
+
+  it("preserves a specific boba search", () => {
+    const top = search("boba", 5);
+    expect(top[0]).toMatchObject({
+      type: "place",
+      place: { slug: "market-street-boba-beans" },
+    });
   });
 });
 

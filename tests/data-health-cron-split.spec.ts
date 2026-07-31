@@ -17,6 +17,8 @@ describe("data-health cron phases", () => {
 
     expect(schedules.get("/api/cron/data-health-feeds"))
       .toBe("5 */2 * * *");
+    expect(schedules.get("/api/cron/runtime-source-health"))
+      .toBe("43 */2 * * *");
     expect(schedules.get("/api/cron/data-health-retention"))
       .toBe("10 9 * * *");
     expect(schedules.get("/api/cron/data-health"))

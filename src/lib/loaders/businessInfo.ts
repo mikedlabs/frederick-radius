@@ -4,6 +4,10 @@ import {
   detectProvider,
   isCommerceSearchLink,
 } from "@/lib/commerce/links";
+import {
+  commerceDestinationKey,
+  dedupeCommerceDestinations,
+} from "@/lib/commerce/canonical";
 import type {
   CommerceLink,
   CommerceLinkType,
@@ -131,7 +135,8 @@ export function commerceLinksFromBusinessInfo(
     url.hash = "";
     const provider = detectProvider(url.toString());
     if (isCommerceSearchLink({ provider, url: url.toString() })) return;
-    const key = `${type}::${url.toString()}`;
+    const key = commerceDestinationKey(url.toString());
+    if (!key) return;
     if (seen.has(key)) return;
     const typeCount = typeCounts.get(type) ?? 0;
     const typeLimit = type === "menu" ? 4 : 1;
@@ -156,7 +161,7 @@ export function commerceLinksFromBusinessInfo(
   // The extractor preserves classified anchors in score order. Keep one
   // action for each commerce type, but retain a few meaningfully different
   // official menu documents (main, kids, brunch, drinks) on the detail page.
-  for (const raw of info.commerce_links ?? []) {
+  for (const raw of dedupeCommerceDestinations(info.commerce_links ?? [])) {
     if (
       !raw ||
       typeof raw !== "object" ||

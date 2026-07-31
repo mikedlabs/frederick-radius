@@ -11,7 +11,7 @@ const FEED_DIAGNOSTIC =
 const RETENTION_DIAGNOSTIC =
   /^Retention tasks failed: (?:feed_snapshots|push_log|nfc_events|community_reports)(?:, (?:feed_snapshots|push_log|nfc_events|community_reports))*\.$/;
 const EVENT_ARCHIVE_DIAGNOSTIC =
-  /^Archive checks failed: (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-incomplete|archive-truncated)(?:, (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-incomplete|archive-truncated))*\.$/;
+  /^Archive checks failed: (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-cleanup|archive-incomplete|archive-truncated)(?:, (?:source-read|unified-events|unified-partial|live-events|live-partial|live-empty|no-public-events|no-archivable-events|archive-write|archive-cleanup|archive-incomplete|archive-truncated))*\.$/;
 
 /**
  * Worker error columns can eventually contain arbitrary provider or database

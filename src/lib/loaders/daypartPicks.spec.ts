@@ -27,4 +27,27 @@ describe("buildDaypartRows", () => {
         .every((pick) => pick.fact === "Likely open"),
     ).toBe(true);
   });
+
+  it("starts the morning coffee shelf with coffee destinations, not boba", () => {
+    const rows = buildDaypartRows(new Date("2026-07-31T12:00:00.000Z"));
+    const coffee = rows.find((row) => row.category === "coffee");
+
+    expect(coffee?.picks.length).toBeGreaterThan(0);
+    expect(
+      coffee?.picks.every(
+        (pick) => !/\b(?:boba|bubble tea|tea emporium)\b/i.test(pick.name),
+      ),
+    ).toBe(true);
+    expect(coffee?.picks[0]?.name).not.toMatch(/\b(?:starbucks|dunkin'?|wawa)\b/i);
+  });
+
+  it("keeps lodging records out of the breakfast bakery shelf", () => {
+    const rows = buildDaypartRows(new Date("2026-07-31T12:00:00.000Z"));
+    const bakery = rows.find((row) => row.category === "bakery");
+
+    expect(bakery?.picks.length).toBeGreaterThan(0);
+    expect(
+      bakery?.picks.every((pick) => !/\b(?:bed and breakfast|b&b|inn)\b/i.test(pick.name)),
+    ).toBe(true);
+  });
 });

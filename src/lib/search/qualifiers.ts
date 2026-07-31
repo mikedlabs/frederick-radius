@@ -17,6 +17,7 @@ export type SearchQualifierPlace = {
   primary_type?: string;
   short_blurb?: string;
   description?: string;
+  search_aliases?: string[];
   known_for?: string[];
   field_note_tip?: string;
   municipality?: string;
@@ -175,7 +176,11 @@ export function matchesSearchQualifiers(
         ? exactFields.includes("pharmacy") || exactFields.includes("drugstore")
         : qualifiers.strictPlaceKind === "gas-station"
           ? exactFields.includes("gas-station") || exactFields.includes("fuel")
-          : exactFields.includes("atm");
+          : exactFields.includes("atm") ||
+            /\b(?:atms?|cash machines?)\b/i.test([
+              place.name,
+              ...(place.search_aliases ?? []),
+            ].join(" "));
     if (!matches) return false;
     if (qualifiers.openNow && !isOpenNow(place.open_status)) return false;
   } else if (qualifiers.categoryKey === "playground") {

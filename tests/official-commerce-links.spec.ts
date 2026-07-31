@@ -215,6 +215,84 @@ describe("official-site commerce-link extraction", () => {
     ]);
   });
 
+  it("does not turn Wheel Base's pickup product category into an order action", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://www.wheelbasebikes.com/product-list/car-racks-1215/pickup-rv-spare-tire-mount-1218/",
+            text: "Pickup/RV/Spare-Tire Mount",
+          },
+        ],
+        "https://www.wheelbasebikes.com/",
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not attach a generic civic reservation department to a park", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://www.recreater.com/298/Reservations",
+            text: "Reservations",
+          },
+        ],
+        "https://www.recreater.com/192/Dog-Parks",
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses commerce actions when the source itself is a directory", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://www.bringfido.com/user/reservations/",
+            text: "Reservations",
+          },
+        ],
+        "https://www.bringfido.com/attraction/12519",
+      ),
+    ).toEqual([]);
+  });
+
+  it("preserves a vetted entity-specific provider action", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://order.toasttab.com/online/jojosrestauranttaphouse",
+            text: "Order online",
+          },
+        ],
+        "https://order.toasttab.com/online/jojosrestauranttaphouse",
+      ),
+    ).toEqual([
+      {
+        type: "order",
+        url: "https://order.toasttab.com/online/jojosrestauranttaphouse",
+        anchor_text: "Order online",
+        source_url:
+          "https://order.toasttab.com/online/jojosrestauranttaphouse",
+      },
+    ]);
+  });
+
+  it("rejects a generic provider reservation-management page", () => {
+    expect(
+      classifyOfficialCommerceLinks(
+        [
+          {
+            url: "https://www.opentable.com/my/reservations",
+            text: "Reservations",
+          },
+        ],
+        "https://www.opentable.com/my/reservations",
+      ),
+    ).toEqual([]);
+  });
+
   it("rejects unrelated directories even when their anchor text says menu", () => {
     const links = classifyOfficialCommerceLinks(
       [

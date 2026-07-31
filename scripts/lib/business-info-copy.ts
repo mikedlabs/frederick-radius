@@ -12,7 +12,7 @@ export type BusinessInfoCopyCleanup = {
   info: ExtractedBusinessInfo;
   rewritten: Array<"known_for" | "notable">;
   dropped: Array<{
-    field: "known_for" | "notable";
+    field: keyof ExtractedBusinessInfo;
     rules: string[];
   }>;
 };
@@ -40,6 +40,9 @@ export const BUSINESS_INFO_SHAPE =
   `game-changing, leverage, robust, holistic, ecosystem, bucket list, unforgettable, tucked away, one-stop shop, ` +
   `effortless, reimagined, immersive, revolutionary, or destination. ` +
   `Do not return URLs; links are collected directly from real page anchors. ` +
+  `Omit unknown, not published, and not specified values instead of repeating those labels. ` +
+  `Hours must describe a reusable weekly schedule, never a dynamic "open today" state. ` +
+  `Specials must be recurring offers with a day, cadence, time, or discount; do not list ordinary menu items as specials. ` +
   `Never invent prices, times, services, or dishes. If nothing applies, return {}.`;
 
 const PROSE_FIELDS = ["known_for", "notable"] as const;
@@ -57,17 +60,68 @@ function normalizeBoundedFact(
   return normalized;
 }
 
-function normalizeSpecials(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
+const SENTINEL_FACT = /^(?:n\/?a|none|unknown|not (?:available|listed|published|specified)(?: on (?:the )?page)?|no (?:hours|happy hour|specials?)(?: (?:available|listed|published|specified))?)\.?$/i;
+const DAY_SIGNAL = /\b(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|weekdays?|weekends?|daily|every\s*day)\b/i;
+const TIME_RANGE = /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\s*(?:-|\u2013|\u2014|to|through)\s*\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b/i;
+const RECURRING_SPECIAL = /\b(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|daily|weekly|every|birthday|month|nights?|nightly)\b/i;
+const OFFER_SIGNAL = /(?:[$%]\s*\d|\d\s*%|\b(?:free|half[- ]price|off|discount|deal|special)\b)/i;
+
+function isSentinelFact(value: string): boolean {
+  return SENTINEL_FACT.test(value.trim());
+}
+
+function isDynamicHours(value: string): boolean {
+  // A durable weekly schedule must never freeze a request-time status. This
+  // intentionally rejects every standalone "today" form, including
+  // "Today: 8 AM to 10 PM", "Today - Closed", and "closes today".
+  return /\btoday(?:['’]s)?\b/i.test(value);
+}
+
+function hasContradictoryWeeklyHours(value: string): boolean {
+  if (!/\b(?:every\s*day|everyday|daily|7\s+days?\s+a\s+week)\b/i.test(value)) {
+    return false;
+  }
+  return (
+    /\bclosed\b[^.;]{0,24}\b(?:mon|tue|wed|thu|fri|sat|sun)(?:day)?s?\b/i.test(
+      value,
+    ) ||
+    /\b(?:mon|tue|wed|thu|fri|sat|sun)(?:day)?s?\b[^.;]{0,24}\bclosed\b/i.test(
+      value,
+    )
+  );
+}
+
+function isUsableHappyHour(value: string): boolean {
+  if (isSentinelFact(value) || !DAY_SIGNAL.test(value)) return false;
+  return TIME_RANGE.test(value) || /\ball\s+day\b/i.test(value);
+}
+
+function isUsableSpecial(value: string): boolean {
+  if (isSentinelFact(value)) return false;
+  return (
+    RECURRING_SPECIAL.test(value) &&
+    (OFFER_SIGNAL.test(value) || TIME_RANGE.test(value))
+  );
+}
+
+function normalizeSpecials(value: unknown): {
+  specials?: string[];
+  rejected: number;
+} {
+  if (!Array.isArray(value)) return { rejected: 0 };
 
   const result: string[] = [];
   const seen = new Set<string>();
+  let rejected = 0;
   for (const candidate of value) {
     const normalized = normalizeBoundedFact(
       candidate,
       BUSINESS_INFO_FACT_LIMITS.specialChars,
     );
-    if (!normalized) continue;
+    if (!normalized || !isUsableSpecial(normalized)) {
+      rejected += 1;
+      continue;
+    }
     const key = normalized.toLocaleLowerCase("en-US");
     if (seen.has(key)) continue;
     seen.add(key);
@@ -75,7 +129,10 @@ function normalizeSpecials(value: unknown): string[] | undefined {
     if (result.length === BUSINESS_INFO_FACT_LIMITS.specials) break;
   }
 
-  return result.length > 0 ? result : undefined;
+  return {
+    ...(result.length > 0 ? { specials: result } : {}),
+    rejected,
+  };
 }
 
 /**
@@ -137,15 +194,36 @@ export function cleanExtractedBusinessInfo(
     raw.hours_text,
     BUSINESS_INFO_FACT_LIMITS.hoursTextChars,
   );
-  const specials = normalizeSpecials(raw.specials);
+  const normalizedSpecials = normalizeSpecials(raw.specials);
 
-  const info: ExtractedBusinessInfo = {
-    ...(happyHour ? { happy_hour: happyHour } : {}),
-    ...(specials?.length ? { specials } : {}),
-    ...(hoursText ? { hours_text: hoursText } : {}),
-  };
+  const info: ExtractedBusinessInfo = {};
   const rewritten: BusinessInfoCopyCleanup["rewritten"] = [];
   const dropped: BusinessInfoCopyCleanup["dropped"] = [];
+
+  if (happyHour) {
+    if (isUsableHappyHour(happyHour)) info.happy_hour = happyHour;
+    else dropped.push({ field: "happy_hour", rules: ["invalid schedule"] });
+  }
+  if (normalizedSpecials.specials?.length) {
+    info.specials = normalizedSpecials.specials;
+  }
+  if (normalizedSpecials.rejected > 0) {
+    dropped.push({
+      field: "specials",
+      rules: ["not a recurring offer"],
+    });
+  }
+  if (hoursText) {
+    const rules = [
+      ...(isSentinelFact(hoursText) ? ["sentinel value"] : []),
+      ...(isDynamicHours(hoursText) ? ["dynamic today value"] : []),
+      ...(hasContradictoryWeeklyHours(hoursText)
+        ? ["contradictory weekly schedule"]
+        : []),
+    ];
+    if (rules.length) dropped.push({ field: "hours_text", rules });
+    else info.hours_text = hoursText;
+  }
 
   for (const field of PROSE_FIELDS) {
     const source = text(field);

@@ -5,6 +5,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { isRecommendable } from "@/lib/relevance";
+import { coffeeIntentTier, isChainName } from "@/lib/category-ranking";
 
 /**
  * Server loader for /today's "Right now, around here" section: the daypart's
@@ -61,11 +62,22 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
           place.category === need.category &&
           isRecommendable(place),
       );
-      const confirmed = eligible.filter((place) => isOpenNow(place.open_status));
+      // Preserve the loader's quality order inside each relevance/locality
+      // bucket. Generic Coffee should start with independent coffee shops and
+      // roasters, then chains and cafés; a boba or incidental-coffee record
+      // remains in the inventory but cannot lead on feature score alone.
+      const intentRanked = need.category === "coffee"
+        ? [...eligible].sort(
+            (a, b) =>
+              coffeeIntentTier(b) - coffeeIntentTier(a) ||
+              Number(isChainName(a.name)) - Number(isChainName(b.name)),
+          )
+        : eligible;
+      const confirmed = intentRanked.filter((place) => isOpenNow(place.open_status));
       const confidence = confirmed.length > 0 ? "confirmed" : "likely";
       const picks = confirmed.length > 0
         ? confirmed
-        : eligible.filter((place) => likelySlugs.has(place.slug));
+        : intentRanked.filter((place) => likelySlugs.has(place.slug));
 
       return picks.slice(0, 4).map((place) => ({
         slug: place.slug,

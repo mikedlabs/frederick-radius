@@ -38,6 +38,7 @@ import {
   EVENT_ARCHIVE_SOURCE_BUDGET_MS,
   EVENT_ARCHIVE_WRITE_BUDGET_MS,
 } from "./config";
+import { classifyEvent } from "@/lib/events/classify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +62,7 @@ type ArchiveFailure =
   | "no-public-events"
   | "no-archivable-events"
   | "archive-write"
+  | "archive-cleanup"
   | "archive-incomplete"
   | "archive-truncated";
 
@@ -147,6 +149,17 @@ export async function GET(request: Request) {
 
   const publicEvents =
     unified?.status === "fulfilled" ? unified.value.publicEvents : [];
+  // Civic meetings and town reminders have first-party detail links on the
+  // Events page even though they are intentionally excluded from public
+  // discovery. Archive every route-bearing lane so a transient calendar
+  // outage cannot break a link Radius itself rendered.
+  const utilityEvents =
+    unified?.status === "fulfilled"
+      ? unified.value.unified.filter((event) => {
+          const lane = classifyEvent(event);
+          return lane === "civic_meeting" || lane === "town_reminder";
+        })
+      : [];
   // Cancelled and postponed rows are intentionally absent from public
   // discovery, but an event Radius previously published still needs its
   // durable record updated. The archive writer refuses to create a brand-new
@@ -159,7 +172,11 @@ export async function GET(request: Request) {
             || event.status === "postponed",
         )
       : [];
-  const archiveEvents = [...publicEvents, ...lifecycleEvents];
+  const archiveEvents = [
+    ...publicEvents,
+    ...utilityEvents,
+    ...lifecycleEvents,
+  ];
   if (
     unified?.status === "fulfilled"
     && unified.value.sourceHealth.degraded
@@ -220,11 +237,24 @@ export async function GET(request: Request) {
     failures.add("archive-write");
   }
   if (archive) {
+    const recordsComplete =
+      archive.recordsComplete
+      ?? (!archive.truncated
+        && !archive.timedOut
+        && archive.upserted + archive.ignoredLifecycleOnly
+          === archive.accepted);
     if (archive.accepted === 0) failures.add("no-archivable-events");
-    if (archive.timedOut) failures.add("archive-write");
+    if (archive.failure?.stage === "tombstone") {
+      failures.add("archive-cleanup");
+    } else if (
+      archive.failure?.stage === "upsert"
+      || (archive.timedOut && !archive.failure)
+    ) {
+      failures.add("archive-write");
+    }
     if (archive.truncated) failures.add("archive-truncated");
     if (
-      !archive.complete
+      !recordsComplete
       || archive.upserted + archive.ignoredLifecycleOnly
         !== archive.accepted
     ) {
@@ -289,12 +319,19 @@ export async function GET(request: Request) {
           accepted: archive.accepted,
           upserted: archive.upserted,
           ignored_lifecycle_only: archive.ignoredLifecycleOnly,
+          records_complete:
+            archive.recordsComplete
+            ?? (!archive.truncated
+              && !archive.timedOut
+              && archive.upserted + archive.ignoredLifecycleOnly
+                === archive.accepted),
           tombstoned: archive.tombstoned,
           batches: archive.batches,
           complete: archive.complete,
           truncated: archive.truncated,
           timed_out: archive.timedOut,
           tombstones_enabled: archive.tombstonesEnabled,
+          failure: archive.failure ?? null,
         }
       : null,
     timing_ms: {

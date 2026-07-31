@@ -22,7 +22,9 @@ describe("expandQuery", () => {
     // "banking" must not fire the bank rule; "showroom" must not fire "a show".
     expect(expandQuery("banking").cats).toEqual([]);
     expect(expandQuery("showroom").cats).toEqual([]);
-    expect(expandQuery("bank").cats).toContain("services");
+    const bank = expandQuery("bank");
+    expect(bank.terms).toContain("bank");
+    expect(bank.cats).not.toContain("services");
   });
 
   it("still matches multi-word needs as phrases inside a sentence", () => {

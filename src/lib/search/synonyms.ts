@@ -60,7 +60,10 @@ const RULES: SynonymRule[] = [
   // ── Errands ──────────────────────────────────────────────────────────
   {
     say: ["bank", "atm", "credit union", "cash machine", "deposit a check"],
-    cats: ["services"],
+    // `services` is a broad catch-all, not a banking category. Expanding ATM
+    // to the whole bucket found the right banks and then padded the page with
+    // salons, funeral homes, auto shops, and every other service business.
+    // Topic evidence keeps bank records discoverable without that leakage.
     terms: ["bank", "credit union", "savings", "financial", "atm", "m&t", "truist", "pnc"],
   },
   {

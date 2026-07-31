@@ -111,6 +111,11 @@ describe("shouldShowDepartmentAnswers", () => {
     expect(shouldShowDepartmentAnswers(query, searchCivicActions(query))).toBe(true);
   });
 
+  it("shows the verified MVA department answer for a bare DMV shortcut", () => {
+    expect(shouldShowDepartmentAnswers("DMV", [])).toBe(true);
+    expect(shouldShowDepartmentAnswers("MVA", [])).toBe(true);
+  });
+
   it.each([
     "how do I register to vote",
     "food permit",

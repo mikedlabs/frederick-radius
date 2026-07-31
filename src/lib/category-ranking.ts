@@ -23,12 +23,94 @@ const CHAIN_RE =
 /** Tea/boba/tearoom records living under the broad "coffee" category —
  *  legitimate, but demoted from Best matches so they don't dominate. */
 const LOOSE_RE = /\b(tea ?rooms?|tea house|boba|bubble tea|emporium)\b/i;
+const COFFEE_NON_DESTINATION_RE = /\b(?:office only|warehouse only|wholesale only)\b/i;
+const DEDICATED_COFFEE_TYPES = new Set([
+  "coffee_shop",
+  "coffee_roastery",
+]);
+const CAFE_COFFEE_TYPES = new Set([
+  "cafe",
+  "bakery",
+  "pastry_shop",
+]);
+const INCIDENTAL_COFFEE_TYPES = new Set([
+  "asian_restaurant",
+  "bistro",
+  "deli",
+  "food",
+  "greek_restaurant",
+  "restaurant",
+  "tea_store",
+]);
+const DEDICATED_COFFEE_NAME_RE =
+  /\b(coffee(?:house| shop)?|espresso|roast(?:er|ery|ing)?)\b/i;
+const DEDICATED_COFFEE_BLURB_RE =
+  /\b(?:coffee bar|coffee roaster(?:y)?|roaster\b|roasts? (?:its|their|coffee|beans)|house[- ]roasted|on[- ]site roaster|roasted on[- ]site|pour[- ]overs?)\b/i;
+const LOOSE_COFFEE_NAME_RE = /\b(?:boba|bubble tea|tea)\b/i;
 
 export function isChainName(name: string): boolean {
   return CHAIN_RE.test(name);
 }
 export function isLooseCategory(name: string): boolean {
   return LOOSE_RE.test(name);
+}
+
+/**
+ * How directly a place answers a generic coffee request.
+ *
+ * The imported `coffee` bucket intentionally remains broad enough to retain
+ * cafés, bakeries, tea sellers, and restaurants that happen to serve coffee.
+ * That is useful inventory, but it is not a useful ranking tier. A person who
+ * asks only for coffee expects a coffee shop or roaster before a boba counter
+ * or a restaurant with coffee on the menu. Specific boba/tea searches do not
+ * use this helper, so those businesses still lead their own noun.
+ */
+export function coffeeIntentTier(place: {
+  name: string;
+  category?: string;
+  primary_type?: string;
+  subcategories?: string[];
+  tags?: string[];
+  short_blurb?: string;
+}): 0 | 1 | 2 | 3 {
+  const primaryType = place.primary_type?.toLowerCase() ?? "";
+  const exactTypes = new Set(
+    [primaryType, ...(place.subcategories ?? []), ...(place.tags ?? [])]
+      .map((value) => value.toLowerCase().replace(/[ -]+/g, "_")),
+  );
+  if (
+    isLooseCategory(place.name) ||
+    (LOOSE_COFFEE_NAME_RE.test(place.name) &&
+      !DEDICATED_COFFEE_NAME_RE.test(place.name)) ||
+    COFFEE_NON_DESTINATION_RE.test(place.name) ||
+    primaryType === "tea_store"
+  ) {
+    return 0;
+  }
+  if (
+    DEDICATED_COFFEE_TYPES.has(primaryType) ||
+    exactTypes.has("coffee_shop") ||
+    exactTypes.has("coffeeshop") ||
+    exactTypes.has("coffee_roastery") ||
+    exactTypes.has("coffee")
+  ) {
+    return 3;
+  }
+  // A restaurant that says it serves coffee is still a restaurant for a
+  // generic coffee decision. Primary role beats incidental blurb language.
+  if (primaryType && INCIDENTAL_COFFEE_TYPES.has(primaryType)) return 1;
+  if (CAFE_COFFEE_TYPES.has(primaryType)) return 2;
+  if (DEDICATED_COFFEE_NAME_RE.test(place.name)) return 3;
+  if (DEDICATED_COFFEE_BLURB_RE.test(place.short_blurb ?? "")) return 3;
+  return place.category === "coffee" ? 2 : 1;
+}
+
+/** Signed lift used by text search. Today uses the tier itself as a stable
+ * relevance bucket before distance/quality, while global search needs the
+ * same judgment expressed inside its existing numeric score. */
+export function coffeeIntentScore(place: Parameters<typeof coffeeIntentTier>[0]): number {
+  const tier = coffeeIntentTier(place);
+  return tier === 3 ? 10 : tier === 2 ? 4 : tier === 1 ? -6 : -12;
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
