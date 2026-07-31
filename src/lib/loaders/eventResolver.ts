@@ -6,6 +6,7 @@ import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { hasActionableAttendance } from "@/lib/events/attendance";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import { easternDayKey } from "@/lib/tz";
 import {
   archivedEventBySlug,
   persistEventIdentity,
@@ -97,6 +98,33 @@ type EventLookupOutcome =
   | { status: "error"; error: unknown };
 
 const LOOKUP_TIMEOUT = Symbol("event-lookup-timeout");
+
+/**
+ * Clean live and ingested event slugs end in their Eastern calendar day. A
+ * valid past day is useful routing evidence after the durable archive has
+ * supplied a definitive miss: the direct live reader only contains events
+ * whose start is still ahead, so asking it to rebuild every provider cannot
+ * recover that URL. The unified snapshot still runs because a multi-day event
+ * can have a past start and remain underway; the ingested reader keeps its
+ * historical occurrences.
+ */
+function eventSlugDay(slug: string): string | null {
+  const candidate = slug.match(/-(\d{4}-\d{2}-\d{2})(?:-\d+)?$/)?.[1];
+  if (!candidate) return null;
+  const parsed = new Date(`${candidate}T12:00:00.000Z`);
+  if (
+    !Number.isFinite(parsed.getTime())
+    || parsed.toISOString().slice(0, 10) !== candidate
+  ) {
+    return null;
+  }
+  return candidate;
+}
+
+function isPastDatedEventSlug(slug: string, now: Date): boolean {
+  const day = eventSlugDay(slug);
+  return day !== null && day < easternDayKey(now);
+}
 
 export class EventResolutionTimeoutError extends Error {
   readonly sources: AsyncEventSource[];
@@ -254,7 +282,19 @@ export async function resolveEventPageBySlugWithSources(
   // because the durable archive has not warmed yet. The shared snapshot is
   // normally already hot after /events or /api/events/browse; the same hard
   // page deadline still bounds a cold lookup.
-  for (const source of ["unified", "live", "ingested"] as const) {
+  // Once the archive has answered definitively, a past-dated slug cannot be
+  // recovered by `live`: that reader's provider adapters discard events whose
+  // start is before now. Keep unified in the race for ongoing multi-day rows
+  // and ingested for retained historical occurrences, but do not make an old
+  // shared link pay for a countywide live-feed fanout that cannot match it.
+  // An archive timeout/error deliberately keeps the original all-source path,
+  // so unavailable durable storage is never disguised as a 404.
+  const directSources: readonly DirectEventSource[] =
+    archive.status === "miss" && isPastDatedEventSlug(slug, now)
+      ? ["unified", "ingested"]
+      : ["unified", "live", "ingested"];
+
+  for (const source of directSources) {
     if (Date.now() >= deadline || controller.signal.aborted) break;
     pending.set(
       source,
