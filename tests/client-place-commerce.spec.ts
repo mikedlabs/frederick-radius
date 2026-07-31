@@ -29,6 +29,7 @@ describe("client place commerce artifact", () => {
     const supplemental = commerceLinksFromBusinessInfo(
       "business-info-only",
       {
+        name: "Business Info Only",
         commerce_links: [
           {
             type: "reservation",

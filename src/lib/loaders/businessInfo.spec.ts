@@ -8,6 +8,7 @@ import {
 describe("business-info commerce links", () => {
   it("normalizes an official reservation URL without claiming verification", () => {
     const info: BusinessInfo = {
+      name: "Example Restaurant",
       reservations_url: "https://example.com/reservations",
       source: {
         url: "https://example.com",
@@ -30,6 +31,7 @@ describe("business-info commerce links", () => {
 
   it("rejects non-web reservation links", () => {
     const info: BusinessInfo = {
+      name: "Example Restaurant",
       reservations_url: "javascript:alert(1)",
       source: {
         url: "https://example.com",
@@ -42,6 +44,7 @@ describe("business-info commerce links", () => {
 
   it("keeps distinct menu documents while limiting other action types", () => {
     const info: BusinessInfo = {
+      name: "Example Restaurant",
       commerce_links: [
         {
           type: "menu",
@@ -101,6 +104,7 @@ describe("business-info commerce links", () => {
 
   it("rejects unsafe and provider-search links from generated records", () => {
     const info = {
+      name: "Example Restaurant",
       commerce_links: [
         {
           type: "menu",
@@ -124,6 +128,7 @@ describe("business-info commerce links", () => {
 
   it("shows one strongest action when menu and order share a destination", () => {
     const info: BusinessInfo = {
+      name: "Example Restaurant",
       commerce_links: [
         {
           type: "menu",
@@ -154,6 +159,7 @@ describe("business-info commerce links", () => {
 
   it("supports a commerce-only record without inventing a business-fact source", () => {
     const info: BusinessInfo = {
+      name: "Example Restaurant",
       commerce_links: [
         {
           type: "menu",
@@ -178,6 +184,67 @@ describe("business-info commerce links", () => {
         notes: "Published on the business's official website.",
       },
     ]);
+  });
+
+  it("withholds stored links when the crawl source is a third-party profile", () => {
+    for (const [sourceUrl, name] of [
+      [
+        "https://local.yahoo.com/info/example-restaurant/",
+        "Example Restaurant",
+      ],
+      [
+        "https://web.frederickchamber.org/Restaurants/Example-Restaurant-42",
+        "Example Restaurant",
+      ],
+      [
+        "https://epicbend.com/cacique-in-frederick/",
+        "Cacique Frederick",
+      ],
+      [
+        "https://www.frederickschild.com/5-places-to-sip-a-healthy-smoothie-in-frederick-county/",
+        "Vitality Protein Smoothie Bar",
+      ],
+      [
+        "https://ffm.org/farmers/stone-hearth-bakery",
+        "Stone Hearth Bakery",
+      ],
+    ]) {
+      const info: BusinessInfo = {
+        name,
+        commerce_links: [
+          {
+            type: "menu",
+            url: "https://example.com/menu",
+            source_url: sourceUrl,
+          },
+        ],
+        commerce_source: {
+          url: sourceUrl,
+          checkedAt: "2026-07-29T12:00:00.000Z",
+        },
+      };
+
+      expect(commerceLinksFromBusinessInfo("example", info)).toEqual([]);
+    }
+  });
+
+  it("withholds a third-party anchor source inside an otherwise valid crawl", () => {
+    const info: BusinessInfo = {
+      name: "Example Restaurant",
+      commerce_links: [
+        {
+          type: "menu",
+          url: "https://example.com/menu",
+          source_url: "https://www.yelp.com/biz/example-restaurant",
+        },
+      ],
+      commerce_source: {
+        url: "https://example.com/",
+        checkedAt: "2026-07-29T12:00:00.000Z",
+      },
+    };
+
+    expect(commerceLinksFromBusinessInfo("example", info)).toEqual([]);
   });
 
   it("exposes the reservation links already present in the feed", () => {

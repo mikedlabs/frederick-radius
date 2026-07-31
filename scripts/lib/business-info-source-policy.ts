@@ -104,10 +104,17 @@ const REVIEWED_SITE_HOSTS = [
 const REVIEWED_BUSINESS_HOST_BINDINGS: Readonly<
   Record<string, readonly string[]>
 > = {
+  "baltcoffee.com": ["baltimore coffee and tea co inc"],
+  "bjsrestaurants.com": ["bjs restaurant brewhouse"],
+  "cafe-nola.com": ["cafe nola"],
   "fredcoffeeco.com": [
     "frederick coffee co cafe",
     "frederick coffee company",
   ],
+  "eatatwags.com": ["wags restaurant"],
+  "junobakery.com": ["juno bakery"],
+  "mythaifrederick.com": ["my thai"],
+  "pistarro.com": ["pistarros"],
   "uponmarket301.com": [
     "up on market",
     "up on market bistro inn",

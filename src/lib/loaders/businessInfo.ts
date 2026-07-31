@@ -13,6 +13,7 @@ import type {
   CommerceLinkType,
 } from "@/lib/commerce/types";
 import { deepCleanStrings } from "@/lib/format/text";
+import { businessInfoSourceKind } from "../../../scripts/lib/business-info-source-policy";
 
 /**
  * Business deep-info loader.
@@ -92,6 +93,18 @@ export function commerceLinksFromBusinessInfo(
 ): CommerceLink[] {
   if (!info) return [];
 
+  const businessName = info.name?.trim();
+  const isOwnedBusinessSource = (rawUrl: string | undefined): boolean =>
+    Boolean(
+      businessName &&
+        rawUrl &&
+        businessInfoSourceKind(rawUrl, businessName) === "business_website",
+    );
+  const commerceRecordSource = info.commerce_source?.url ?? info.source?.url;
+  const mayUseStoredCommerceLinks = isOwnedBusinessSource(
+    commerceRecordSource,
+  );
+
   const allowedTypes = new Set<BusinessInfoCommerceLink["type"]>([
     "menu",
     "order",
@@ -163,10 +176,12 @@ export function commerceLinksFromBusinessInfo(
   // official menu documents (main, kids, brunch, drinks) on the detail page.
   for (const raw of dedupeCommerceDestinations(info.commerce_links ?? [])) {
     if (
+      !mayUseStoredCommerceLinks ||
       !raw ||
       typeof raw !== "object" ||
       !allowedTypes.has(raw.type) ||
-      typeof raw.url !== "string"
+      typeof raw.url !== "string" ||
+      !isOwnedBusinessSource(raw.source_url)
     ) {
       continue;
     }
@@ -175,7 +190,9 @@ export function commerceLinksFromBusinessInfo(
 
   // Backward compatibility for the two records written before direct anchor
   // collection. It fills only when no deterministic reservation link exists.
-  add("reservation", info.reservations_url);
+  if (isOwnedBusinessSource(info.source?.url)) {
+    add("reservation", info.reservations_url);
+  }
   return links;
 }
 
