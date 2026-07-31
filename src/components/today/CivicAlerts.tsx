@@ -254,10 +254,19 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const [situation, roads, official, nps] = await traceTodayRender(
     "civic-alerts",
     Promise.all([
-      getCurrentSituationSnapshot(),
-      getRoadIntelligenceSnapshot(),
-      getOfficialCivicAlertsSnapshot(),
-      getNpsAlerts(),
+      traceTodayRender(
+        "civic-current-situation",
+        getCurrentSituationSnapshot(),
+      ),
+      traceTodayRender(
+        "civic-road-intelligence",
+        getRoadIntelligenceSnapshot(),
+      ),
+      traceTodayRender(
+        "civic-official-alerts",
+        getOfficialCivicAlertsSnapshot(),
+      ),
+      traceTodayRender("civic-nps-alerts", getNpsAlerts()),
     ]),
   );
   const weatherIsFresh =

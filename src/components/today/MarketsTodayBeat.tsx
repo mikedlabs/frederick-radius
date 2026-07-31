@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ShoppingBasket } from "lucide-react";
 import { marketsOpenToday } from "@/lib/markets-today";
 import { marketTimingAt } from "@/lib/today/on-now";
+import { traceTodayRender } from "@/lib/today/render-trace";
 
 /**
  * "Farmers markets today" — a slim, self-hiding almanac line. Frederick is farm
@@ -11,7 +12,10 @@ import { marketTimingAt } from "@/lib/today/on-now";
  * Maryland publishes with a real day + hours appear.
  */
 export default async function MarketsTodayBeat({ now }: { now: Date }) {
-  const markets = await marketsOpenToday(now);
+  const markets = await traceTodayRender(
+    "markets-today",
+    marketsOpenToday(now),
+  );
   const relevant = markets
     .map((market) => ({ market, timing: marketTimingAt(market.hours, now) }))
     .filter(({ timing }) => timing !== "earlier");
