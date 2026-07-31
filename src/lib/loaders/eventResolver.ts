@@ -3,7 +3,10 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import {
+  assembleUnifiedEvents,
+  type UnifiedEvents,
+} from "@/lib/loaders/unifiedEvents";
 import { hasActionableAttendance } from "@/lib/events/attendance";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import { easternDayKey } from "@/lib/tz";
@@ -74,7 +77,7 @@ const DEFAULT_SOURCES: EventResolverSources = {
     if (context.signal.aborted) return null;
     const result = await assembleUnifiedEvents(now);
     if (context.signal.aborted) return null;
-    return result.publicEvents.find((event) => event.slug === slug) ?? null;
+    return eventFromUnifiedSnapshot(slug, result);
   },
   ingested: (slug, context) =>
     context.signal.aborted
@@ -98,6 +101,37 @@ type EventLookupOutcome =
   | { status: "error"; error: unknown };
 
 const LOOKUP_TIMEOUT = Symbol("event-lookup-timeout");
+
+class UnifiedEventSnapshotDegradedError extends Error {
+  constructor(readonly unavailable: readonly string[]) {
+    super(
+      unavailable.length > 0
+        ? `Unified event snapshot is incomplete: ${unavailable.join(", ")}`
+        : "Unified event snapshot is incomplete.",
+    );
+    this.name = "UnifiedEventSnapshotDegradedError";
+  }
+}
+
+/**
+ * A hit remains useful even when another provider is degraded. An absent row,
+ * however, is only a definitive miss when the unified snapshot is healthy.
+ * Keeping this distinction at the source boundary prevents a partial calendar
+ * from turning a real event link into a 404.
+ */
+export function eventFromUnifiedSnapshot(
+  slug: string,
+  result: Pick<UnifiedEvents, "publicEvents" | "sourceHealth">,
+): EventWithMeta | null {
+  const event = result.publicEvents.find((candidate) => candidate.slug === slug);
+  if (event) return event;
+  if (result.sourceHealth.degraded) {
+    throw new UnifiedEventSnapshotDegradedError(
+      result.sourceHealth.unavailable,
+    );
+  }
+  return null;
+}
 
 /**
  * Clean live slugs end in their dashed Eastern calendar day; ingested slugs
@@ -298,8 +332,10 @@ export async function resolveEventPageBySlugWithSources(
   // shared link pay for a countywide live-feed fanout that cannot match it.
   // An archive timeout/error deliberately keeps the original all-source path,
   // so unavailable durable storage is never disguised as a 404.
+  const pastDatedLookup =
+    archive.status === "miss" && isPastDatedEventSlug(slug, now);
   const directSources: readonly DirectEventSource[] =
-    archive.status === "miss" && isPastDatedEventSlug(slug, now)
+    pastDatedLookup
       ? ["unified", "ingested"]
       : ["unified", "live", "ingested"];
 
@@ -344,6 +380,13 @@ export async function resolveEventPageBySlugWithSources(
   }
   controller.abort();
 
+  // A degraded unified miss already proves the optimized past lookup is
+  // incomplete. If the independent ingested read also hangs, report the known
+  // unavailable state rather than letting timeout precedence obscure it. A
+  // hit above still wins, and archive failures never enter this branch.
+  if (pastDatedLookup && failed.length > 0) {
+    throw new EventResolutionUnavailableError([...new Set(failed)]);
+  }
   if (timedOut.length > 0) {
     throw new EventResolutionTimeoutError([...new Set(timedOut)]);
   }

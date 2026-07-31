@@ -4,6 +4,7 @@ import {
   EVENT_DEEP_LINK_TIMEOUT_MS,
   EventResolutionTimeoutError,
   EventResolutionUnavailableError,
+  eventFromUnifiedSnapshot,
   resolveEventPageBySlugWithSources,
 } from "./eventResolver";
 
@@ -175,7 +176,15 @@ describe("resolveEventPageBySlugWithSources", () => {
       ends_at: "2026-08-31T21:00:00.000Z",
     };
     const loaders = sources({
-      unified: vi.fn(async () => ongoing),
+      unified: vi.fn(async (slug) =>
+        eventFromUnifiedSnapshot(slug, {
+          publicEvents: [ongoing],
+          sourceHealth: {
+            degraded: true,
+            unavailable: ["county calendar"],
+          },
+        }),
+      ),
       live: vi.fn(
         () => new Promise<EventWithMeta | null>(() => undefined),
       ),
@@ -188,6 +197,68 @@ describe("resolveEventPageBySlugWithSources", () => {
         loaders,
       ),
     ).resolves.toEqual({ event: ongoing, kind: "unified" });
+    expect(loaders.live).not.toHaveBeenCalled();
+  });
+
+  it("does not turn a degraded unified miss into a past-event 404", async () => {
+    vi.useFakeTimers();
+    try {
+      const loaders = sources({
+        unified: vi.fn(async (slug) =>
+          eventFromUnifiedSnapshot(slug, {
+            publicEvents: [],
+            sourceHealth: {
+              degraded: true,
+              unavailable: ["county calendar"],
+            },
+          }),
+        ),
+        ingested: vi.fn(
+          () => new Promise<EventWithMeta | null>(() => undefined),
+        ),
+        live: vi.fn(
+          () => new Promise<EventWithMeta | null>(() => undefined),
+        ),
+      });
+      const pending = resolveEventPageBySlugWithSources(
+        "frederick-farmers-market-2026-05-09",
+        new Date("2026-07-31T16:00:00.000Z"),
+        loaders,
+      );
+      const rejection = expect(pending).rejects.toMatchObject({
+        name: "EventResolutionUnavailableError",
+        sources: ["unified"],
+      } satisfies Partial<EventResolutionUnavailableError>);
+      await vi.advanceTimersByTimeAsync(EVENT_DEEP_LINK_TIMEOUT_MS);
+      await rejection;
+      expect(loaders.ingested).toHaveBeenCalledOnce();
+      expect(loaders.live).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("allows a healthy unified miss to become an honest past-event 404", async () => {
+    const loaders = sources({
+      unified: vi.fn(async (slug) =>
+        eventFromUnifiedSnapshot(slug, {
+          publicEvents: [],
+          sourceHealth: { degraded: false, unavailable: [] },
+        }),
+      ),
+      live: vi.fn(
+        () => new Promise<EventWithMeta | null>(() => undefined),
+      ),
+    });
+
+    await expect(
+      resolveEventPageBySlugWithSources(
+        "frederick-farmers-market-2026-05-09",
+        new Date("2026-07-31T16:00:00.000Z"),
+        loaders,
+      ),
+    ).resolves.toBeNull();
+    expect(loaders.ingested).toHaveBeenCalledOnce();
     expect(loaders.live).not.toHaveBeenCalled();
   });
 
