@@ -175,6 +175,7 @@ describe("GET /api/cron/data-health", () => {
     });
     mocks.getRecentIngestRuns.mockResolvedValue([
       healthyPhaseRun("data-health:feeds"),
+      healthyPhaseRun("event-archive"),
     ]);
     mocks.runTripwires.mockResolvedValue({ anomalies: [], checks: [] });
     mocks.deliverDataHealthReport.mockResolvedValue("skipped");
@@ -353,7 +354,7 @@ describe("GET /api/cron/data-health", () => {
     );
   });
 
-  it("is read-mostly and trusts only a recent completed feed-worker heartbeat", async () => {
+  it("is read-mostly and requires recent completed worker heartbeats", async () => {
     const response = await GET(request());
     const body = await response.json();
 
@@ -368,7 +369,46 @@ describe("GET /api/cron/data-health", () => {
       sources_checked: 12,
       snapshots_persisted: 12,
     });
+    expect(body.summary.gates).toContainEqual({
+      name: "event-archive",
+      green: true,
+    });
+    expect(body.phases.event_archive).toMatchObject({
+      green: true,
+      status: "ok",
+      events_seen: 12,
+      events_upserted: 12,
+    });
     expect(body.note).toContain("separately scheduled");
+  });
+
+  it("returns 503 when the archive worker has no current heartbeat", async () => {
+    mocks.getRecentIngestRuns.mockResolvedValue([
+      healthyPhaseRun("data-health:feeds"),
+    ]);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.summary.gates).toContainEqual({
+      name: "event-archive",
+      green: false,
+    });
+    expect(body.phases.event_archive).toMatchObject({
+      green: false,
+      status: null,
+    });
+    expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anomalies: expect.arrayContaining([
+          expect.objectContaining({
+            source: "event-archive",
+            kind: "tripwire_failed",
+          }),
+        ]),
+      }),
+    );
   });
 
   it("returns 503 and reports a missing feed-worker heartbeat", async () => {

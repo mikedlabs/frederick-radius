@@ -9,7 +9,10 @@ vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
 }));
 
-import { recordSourceProbeFailuresStrict } from "./run-log";
+import {
+  recordSourceProbeFailuresStrict,
+  startIngestRunStrict,
+} from "./run-log";
 
 describe("runtime source failure evidence", () => {
   beforeEach(() => {
@@ -44,5 +47,28 @@ describe("runtime source failure evidence", () => {
       recordSourceProbeFailuresStrict([], "2026-07-28T09:05:00.000Z"),
     ).resolves.toBe(0);
     expect(mocks.getSql).not.toHaveBeenCalled();
+  });
+});
+
+describe("strict ingest-run heartbeat cancellation", () => {
+  it("cancels a queued start write when the route deadline aborts", async () => {
+    let rejectQuery: (reason: unknown) => void = () => undefined;
+    const query = new Promise<never>((_resolve, reject) => {
+      rejectQuery = reject;
+    }) as Promise<never> & { cancel: ReturnType<typeof vi.fn> };
+    query.cancel = vi.fn(() => {
+      rejectQuery(new Error("cancelled by route deadline"));
+    });
+    mocks.getSql.mockReturnValue(mocks.sql);
+    mocks.sql.mockReturnValue(query);
+    const controller = new AbortController();
+
+    const heartbeat = startIngestRunStrict("event-archive", {
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(heartbeat).rejects.toThrow("route deadline");
+    expect(query.cancel).toHaveBeenCalledTimes(1);
   });
 });

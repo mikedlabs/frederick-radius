@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { IngestRunSummary } from "@/lib/quality/db-health";
 import {
   DATA_HEALTH_FEEDS_RUN,
+  EVENT_ARCHIVE_RUN,
   evaluateDataHealthPhase,
 } from "./data-health-phases";
 
@@ -87,6 +88,25 @@ describe("evaluateDataHealthPhase", () => {
 
     expect(state.anomaly?.detail).toContain("snapshot-persist");
     expect(state.anomaly?.detail).toContain("city-frederick");
+  });
+
+  it("keeps the dedicated archive worker's controlled failure actionable", () => {
+    const state = evaluateDataHealthPhase(
+      EVENT_ARCHIVE_RUN,
+      [
+        run({
+          source: EVENT_ARCHIVE_RUN,
+          status: "partial",
+          recordsFailed: 2,
+          error:
+            "Archive checks failed: live-partial, archive-incomplete.",
+        }),
+      ],
+      NOW,
+    );
+
+    expect(state.anomaly?.detail).toContain("live-partial");
+    expect(state.anomaly?.detail).toContain("archive-incomplete");
   });
 
   it("never copies an arbitrary worker error into an alert", () => {
