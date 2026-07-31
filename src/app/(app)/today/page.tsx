@@ -41,7 +41,7 @@ import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
-import TodayLocalGuides from "@/components/today/TodayLocalGuides";
+import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
@@ -407,9 +407,13 @@ export default async function HomePage() {
         className="today-disclosure mt-6 border-t pt-2"
       >
         <div className="space-y-5">
-          <Suspense fallback={<TodayLocalGuides />}>
-            <TodayLocalGuidesWithSchedule now={now} />
-          </Suspense>
+          <TodayLocalGuides
+            foodTruckGuide={
+              <Suspense fallback={<TodayFoodTruckGuide />}>
+                <TodayFoodTruckGuideWithSchedule now={now} />
+              </Suspense>
+            }
+          />
           <FromYourSaved />
           <Suspense fallback={null}>
             <WeekendPreview now={now} eventsPromise={eventsPromise} />
@@ -446,12 +450,10 @@ function OpenPlaceLead({
   return <DaypartNeeds rows={rows} note={note} />;
 }
 
-/** Keep the external food-truck feeds off Today's critical rendering path.
- * The generic guide row paints immediately; the cron-built stored schedule
- * upgrades it to the next published stop when available. Today never falls
- * through to five live publisher feeds: that belongs on the dedicated board,
- * not inside a collapsed part of the front-door render. */
-async function TodayLocalGuidesWithSchedule({ now }: { now: Date }) {
+/** Upgrade only the food-truck sentence from the cron-built snapshot. The row
+ * itself is already present in the Suspense fallback, so this bounded Blob read
+ * cannot hold up Today or trigger publisher fetches. */
+async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
   let nextStop: ReturnType<typeof nextPublishedFoodTruckStop> = null;
   try {
     const schedule = await getStoredFoodTruckSchedule(now);
@@ -459,10 +461,10 @@ async function TodayLocalGuidesWithSchedule({ now }: { now: Date }) {
       ? nextPublishedFoodTruckStop(schedule.stops, now)
       : null;
   } catch {
-    // The live pin and local roster paths remain useful if a feed is unavailable.
+    // The immediate roster door remains useful if the stored snapshot is unavailable.
   }
   return (
-    <TodayLocalGuides
+    <TodayFoodTruckGuide
       nextFoodTruckStop={nextStop}
       asOf={now.toISOString()}
     />

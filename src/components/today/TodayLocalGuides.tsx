@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Beer, CalendarDays, ChevronRight, Radio, Truck } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Beer, CalendarDays, ChevronRight, Radio, Truck, type LucideIcon } from "lucide-react";
 import { BREWERIES } from "@/data/beers";
 import { FOOD_TRUCKS } from "@/data/food-trucks";
 import {
@@ -84,20 +84,59 @@ export function foodTruckGuideCopy(
   };
 }
 
-/**
- * One compact secondary shelf for Frederick's specialty guides.
- *
- * These are useful doors, but they should never compete with the actual
- * headline of the day. Verified business marks provide recognition without
- * turning the Today page into two more promotional cards.
- */
-export default function TodayLocalGuides({
-  nextFoodTruckStop = null,
-  asOf,
+function GuideRow({
+  href,
+  title,
+  detail,
+  marks,
+  Icon,
+  divided = false,
 }: {
+  href: string;
+  title: string;
+  detail: string;
+  marks: Mark[];
+  Icon: LucideIcon;
+  divided?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="tap-44 group flex min-h-[68px] items-center gap-3 px-3 py-2.5"
+      style={{ borderTop: divided ? "1px solid var(--app-border)" : undefined }}
+    >
+      <MarkStack marks={marks} label={`${title} business marks`} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+          <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.1} />
+          {title}
+        </span>
+        <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {detail}
+        </span>
+      </span>
+      <ChevronRight
+        aria-hidden
+        className="h-4 w-4 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5 group-hover:opacity-70"
+        strokeWidth={2.25}
+      />
+    </Link>
+  );
+}
+
+/** The food-truck row owns only the lightweight live-pin read. A server
+ * schedule can upgrade its copy through props, but an unavailable schedule
+ * never delays this useful roster door. */
+export type TodayFoodTruckGuideProps = {
   nextFoodTruckStop?: TodayFoodTruckStopSummary | null;
   asOf?: string;
-} = {}) {
+};
+
+export function TodayFoodTruckGuide({
+  nextFoodTruckStop = null,
+  asOf,
+}: TodayFoodTruckGuideProps = {}) {
   const [liveTruckCount, setLiveTruckCount] = useState(0);
 
   useEffect(() => {
@@ -122,66 +161,51 @@ export default function TodayLocalGuides({
     };
   }, []);
 
-  const foodTruck = foodTruckGuideCopy(
-    liveTruckCount,
-    nextFoodTruckStop,
-    asOf,
-  );
-  const rows = [
-    {
-      href: foodTruck.href,
-      title: "Food trucks",
-      detail: foodTruck.detail,
-      marks: FOOD_TRUCK_PREVIEW,
-      Icon:
+  const foodTruck = foodTruckGuideCopy(liveTruckCount, nextFoodTruckStop, asOf);
+  return (
+    <GuideRow
+      href={foodTruck.href}
+      title="Food trucks"
+      detail={foodTruck.detail}
+      marks={FOOD_TRUCK_PREVIEW}
+      Icon={
         foodTruck.state === "live"
           ? Radio
           : foodTruck.state === "scheduled"
             ? CalendarDays
-            : Truck,
-    },
-    {
-      href: "/beer",
-      title: "Frederick beer",
-      detail: `Browse ${BREWERIES.length} breweries and current taproom listings.`,
-      marks: BREWERY_PREVIEW,
-      Icon: Beer,
-    },
-  ];
+            : Truck
+      }
+    />
+  );
+}
 
+/**
+ * One compact secondary shelf for Frederick's specialty guides.
+ *
+ * These are useful doors, but they should never compete with the actual
+ * headline of the day. Verified business marks provide recognition without
+ * turning the Today page into two more promotional cards.
+ */
+export default function TodayLocalGuides({
+  foodTruckGuide,
+}: {
+  foodTruckGuide?: ReactNode;
+} = {}) {
   return (
     <section className="mt-6" aria-label="Local guides">
       <div
         className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
-        {rows.map(({ href, title, detail, marks, Icon }, index) => (
-          <Link
-            key={href}
-            href={href}
-            prefetch={false}
-            className="tap-44 group flex min-h-[68px] items-center gap-3 px-3 py-2.5"
-            style={{
-              borderTop: index === 0 ? undefined : "1px solid var(--app-border)",
-            }}
-          >
-            <MarkStack marks={marks} label={`${title} business marks`} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.1} />
-                {title}
-              </span>
-              <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                {detail}
-              </span>
-            </span>
-            <ChevronRight
-              aria-hidden
-              className="h-4 w-4 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5 group-hover:opacity-70"
-              strokeWidth={2.25}
-            />
-          </Link>
-        ))}
+        {foodTruckGuide ?? <TodayFoodTruckGuide />}
+        <GuideRow
+          href="/beer"
+          title="Frederick beer"
+          detail={`Browse ${BREWERIES.length} breweries and current taproom listings.`}
+          marks={BREWERY_PREVIEW}
+          Icon={Beer}
+          divided
+        />
       </div>
     </section>
   );

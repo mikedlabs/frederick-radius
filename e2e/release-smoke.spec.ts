@@ -31,6 +31,10 @@ const EXPECTED_NAVIGATION_ABORTS = [
   // be in flight when the user opens a result or leaves its sheet.
   /^\/api\/search$/,
   /^\/api\/places\/map-card\//,
+  // The calm map probes this optional live layer so its options door can show
+  // honest availability. Leaving the map may cancel that no-store request;
+  // it carries no user state and LiveRotorcraft already fails soft.
+  /^\/api\/aviation\/rotorcraft$/,
 ];
 
 const VIEWPORTS = [

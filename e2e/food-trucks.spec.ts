@@ -80,6 +80,9 @@ test("a vendor claim opens with the selected truck already filled in", async ({ 
 
 test("Today gives food trucks an honest live-or-preview entry", async ({ page }) => {
   await page.goto("/today");
+  await page
+    .getByRole("button", { name: "More for today", exact: true })
+    .click();
   const card = page.getByRole("link", { name: /Food trucks|food truck.*live/i });
   await expect(card).toBeVisible();
   await expect(card).toHaveAttribute(

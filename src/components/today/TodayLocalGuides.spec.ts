@@ -1,7 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import TodayLocalGuides, { foodTruckGuideCopy } from "./TodayLocalGuides";
+import TodayLocalGuides, {
+  TodayFoodTruckGuide,
+  foodTruckGuideCopy,
+  type TodayFoodTruckGuideProps,
+} from "./TodayLocalGuides";
 
 const NEXT = {
   truckName: "The Alley Wagon",
@@ -35,5 +39,19 @@ describe("TodayLocalGuides hierarchy", () => {
 
     expect(html).toContain('aria-label="Local guides"');
     expect(html).not.toMatch(/<h[1-6][^>]*>\s*Local guides\s*<\/h[1-6]>/);
+  });
+
+  it("turns a stored next stop into a direct schedule route with useful copy", () => {
+    const html = renderToStaticMarkup(
+      createElement<TodayFoodTruckGuideProps>(TodayFoodTruckGuide, {
+        nextFoodTruckStop: NEXT,
+        asOf: AS_OF,
+      }),
+    );
+
+    expect(html).toContain('href="/food-trucks#this-week"');
+    expect(html).toContain(
+      "Next: The Alley Wagon at Steinhardt Brewing, today at 4pm.",
+    );
   });
 });

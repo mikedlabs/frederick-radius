@@ -13,6 +13,11 @@ test.describe("deliberate map result areas", () => {
 
     const canvas = page.locator("canvas.mapboxgl-canvas");
     await expect(canvas).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
     await expect(
       page.getByRole("button", { name: "Show results here" }),
     ).toHaveCount(0);
@@ -61,6 +66,11 @@ test.describe("deliberate map result areas", () => {
 
     const canvas = page.locator("canvas.mapboxgl-canvas");
     await expect(canvas).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     if (!box) return;

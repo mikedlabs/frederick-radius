@@ -75,7 +75,7 @@ test("Events calendar overflow link navigates instead of opening a detail sheet"
   }).first();
   await comingUp.getByRole("button", { name: "Show more" }).click();
   const calendarLink = comingUp.getByRole("link", {
-    name: /more on the calendar/,
+    name: /more on the calendar/i,
   });
   await expect(calendarLink).toBeVisible({ timeout: 20_000 });
   await calendarLink.click();
