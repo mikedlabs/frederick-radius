@@ -1,0 +1,134 @@
+name: Apify venue retrieval pilot
+
+# Manual, review-only test of one exact first-party venue page. This workflow
+# cannot write repository content or publish provider output to Radius.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Exact reviewed venue page"
+        required: true
+        type: choice
+        default: weinberg-performances
+        options:
+          - weinberg-performances
+          - sky-stage-calendar
+          - jojos-events
+      confirm_live:
+        description: "Run one paid Actor request (hard cap: $0.25)"
+        required: true
+        type: boolean
+        default: false
+      initialize_state:
+        description: "Allow missing ledger initialization only after checking Apify account usage"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apify-venue-retrieval-pilot
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: APIFY_TOKEN
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore Apify pilot budget state
+        id: apify-state
+        uses: actions/cache/restore@v4
+        with:
+          path: scripts/reports/apify-venue-pilot/state.json
+          key: apify-venue-pilot-state-${{ github.run_id }}
+          restore-keys: |
+            apify-venue-pilot-state-
+
+      - name: Show zero-cost exact-page plan
+        env:
+          PILOT_SOURCE: ${{ inputs.source }}
+        run: |
+          set -o pipefail
+          npm run pilot:apify-venues -- --source="$PILOT_SOURCE" 2>&1 | tee apify-venue-pilot.log
+
+      - name: Keep live budget state on main
+        if: ${{ inputs.confirm_live && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error title=Live pilots run from main only::Choose the main branch so the persistent charge ledger cannot split across branch-scoped caches."
+          exit 1
+
+      - name: Protect the persistent charge ledger
+        if: ${{ inputs.confirm_live && !inputs.initialize_state }}
+        env:
+          RESTORED_STATE_KEY: ${{ steps.apify-state.outputs.cache-matched-key }}
+        run: |
+          if [ -z "$RESTORED_STATE_KEY" ] || [ ! -f scripts/reports/apify-venue-pilot/state.json ]; then
+            echo "::error title=Apify budget state was not restored::Check initialize_state only after verifying the Apify account's current usage. Otherwise recover the prior state before spending."
+            exit 1
+          fi
+
+      - name: Warn when initializing the advisory ledger
+        if: ${{ inputs.confirm_live && inputs.initialize_state && steps.apify-state.outputs.cache-matched-key == '' }}
+        run: |
+          echo "::warning title=Verify Apify account usage::GitHub caches are evictable. The $0.25 provider cap is authoritative per run; the Apify account spending limit is authoritative across runs."
+
+      - name: Run one capped Apify venue retrieval
+        if: ${{ inputs.confirm_live }}
+        env:
+          PILOT_SOURCE: ${{ inputs.source }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: |
+          if [ -z "$APIFY_TOKEN" ]; then
+            echo "::error title=Missing APIFY_TOKEN::Add the token to the dedicated APIFY_TOKEN GitHub environment."
+            exit 1
+          fi
+          set -o pipefail
+          npm run pilot:apify-venues -- --live --confirm --source="$PILOT_SOURCE" 2>&1 | tee -a apify-venue-pilot.log
+
+      - name: Add operator result to job summary
+        if: always()
+        run: |
+          {
+            echo "## Apify venue retrieval pilot"
+            echo
+            echo "Review evidence only. No Radius data was published."
+            echo
+            echo '```text'
+            cat apify-venue-pilot.log 2>/dev/null || echo "No pilot output was produced."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload private review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apify-venue-pilot-${{ inputs.source }}-${{ github.run_id }}
+          path: |
+            apify-venue-pilot.log
+            scripts/reports/apify-venue-pilot/apify-venue-pilot-*.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Save Apify pilot budget state
+        if: ${{ always() && inputs.confirm_live }}
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/reports/apify-venue-pilot/state.json
+          key: apify-venue-pilot-state-${{ github.run_id }}

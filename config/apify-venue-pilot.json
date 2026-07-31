@@ -1,0 +1,38 @@
+{
+  "_doc": "A review-only Apify pilot for three exact first-party venue pages that are difficult to retrieve reliably. The pilot never follows discovered links, publishes events, edits canonical data, or accepts arbitrary URLs. Its Actor input is locked to one page and one result in code. The per-run provider charge cap is authoritative; the monthly ledger is a conservative operator guard backed by an evictable GitHub cache, so Apify account limits remain the authoritative cross-run control.",
+  "version": 1,
+  "mode": "candidate-only",
+  "limits": {
+    "maxSourcesPerRun": 1,
+    "maxRunsPerMonth": 4,
+    "maxChargeUsdPerRun": 0.25,
+    "maxReservedChargeUsdPerMonth": 1,
+    "timeoutMs": 240000
+  },
+  "sources": [
+    {
+      "id": "weinberg-performances",
+      "venueSlug": "weinberg-center",
+      "name": "Weinberg Center performances",
+      "url": "https://weinbergcenter.org/performances/",
+      "purpose": "Measure whether Apify returns usable event text when the first-party page rejects a normal request.",
+      "rightsPosture": "Private retrieval-quality review only; retain the Weinberg URL as the source and do not republish descriptions or artwork."
+    },
+    {
+      "id": "sky-stage-calendar",
+      "venueSlug": "sky-stage",
+      "name": "Sky Stage calendar",
+      "url": "https://www.skystagefrederick.com/project/calendar/",
+      "purpose": "Measure whether Apify can see useful text in the first-party JavaScript calendar widget.",
+      "rightsPosture": "Private retrieval-quality review only; retain the Frederick Arts Council venue URL as the source and do not republish descriptions or media."
+    },
+    {
+      "id": "jojos-events",
+      "venueSlug": "jojos",
+      "name": "JoJo's events",
+      "url": "https://jojosrestauranttaphouse.com/events.php",
+      "purpose": "Measure whether Apify returns a stable event snapshot from the venue's custom first-party page.",
+      "rightsPosture": "Private retrieval-quality review only; retain the venue URL as the source and do not scrape its social accounts."
+    }
+  ]
+}
