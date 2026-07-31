@@ -189,7 +189,11 @@ export async function getPulsePointIncidentsResult(): Promise<PulsePointIncident
   try {
     const res = await fetch(
       `https://web.pulsepoint.org/DB/giba.php?agency_id=${encodeURIComponent(id)}`,
-      { headers: { Accept: "application/json" }, next: { revalidate: 60 } }
+      {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(5_000),
+        next: { revalidate: 60 },
+      },
     );
     if (!res.ok) return { data: [], available: false, configured: true };
     const env = (await res.json().catch(() => null)) as

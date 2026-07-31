@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "./events";
 import {
   compactUnifiedEvents,
   hydrateUnifiedEvents,
+  withAbortableTimeout,
   type UnifiedEvents,
 } from "./unifiedEvents";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function event(
   title: string,
@@ -67,5 +72,43 @@ describe("unified event cache payload", () => {
     const fullBytes = JSON.stringify(result).length;
     const compactBytes = JSON.stringify(compactUnifiedEvents(result)).length;
     expect(compactBytes).toBeLessThan(fullBytes * 0.55);
+  });
+});
+
+describe("abortable event source deadlines", () => {
+  it("aborts underlying work before returning the timeout fallback", async () => {
+    vi.useFakeTimers();
+    let sourceSignal: AbortSignal | undefined;
+
+    const result = withAbortableTimeout(
+      (signal) => {
+        sourceSignal = signal;
+        return new Promise<string>(() => undefined);
+      },
+      8_000,
+      "fallback",
+    );
+
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    await expect(result).resolves.toBe("fallback");
+    expect(sourceSignal?.aborted).toBe(true);
+  });
+
+  it("does not abort work that finishes before the deadline", async () => {
+    vi.useFakeTimers();
+    let sourceSignal: AbortSignal | undefined;
+
+    const result = withAbortableTimeout(
+      async (signal) => {
+        sourceSignal = signal;
+        return "events";
+      },
+      8_000,
+      "fallback",
+    );
+
+    await expect(result).resolves.toBe("events");
+    expect(sourceSignal?.aborted).toBe(false);
   });
 });

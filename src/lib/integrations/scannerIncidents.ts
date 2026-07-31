@@ -30,6 +30,7 @@ const DIRECT_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** Lagged public fallback (UMD news-apps RSS mirror), only if the direct page
  *  is unreachable. */
 const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
+const SCANNER_FETCH_TIMEOUT_MS = 6_000;
 const DIRECT_PAGE_MARKER_RE = /\bLatest Incidents\s*:/i;
 const DIRECT_EMPTY_MARKER_RE =
   /\bNew incident log started\.\s*This will start populating soon\./i;
@@ -194,11 +195,15 @@ function successfulScannerResult(
   };
 }
 
-async function fetchFromSlack(): Promise<ScannerIncidentsResult> {
+async function fetchFromSlack(signal: AbortSignal): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(
       `https://slack.com/api/conversations.history?channel=${encodeURIComponent(channel())}&limit=80`,
-      { headers: { Authorization: `Bearer ${token()}` }, next: { revalidate: 60 } },
+      {
+        headers: { Authorization: `Bearer ${token()}` },
+        signal,
+        next: { revalidate: 60 },
+      },
     );
     if (!res.ok) return { data: [], available: false, source: "slack" };
     const data = (await res.json()) as { ok?: boolean; messages?: SlackMessage[] };
@@ -244,9 +249,12 @@ function decodeEntities(s: string): string {
  * description = "LOCATION, Bldg:… Radio: 9C Units: E31". We split those into
  * the parts the shared allowlist expects, then classify.
  */
-async function fetchFromRss(): Promise<ScannerIncidentsResult> {
+async function fetchFromRss(signal: AbortSignal): Promise<ScannerIncidentsResult> {
   try {
-    const res = await fetch(RSS_URL, { next: { revalidate: 60 } });
+    const res = await fetch(RSS_URL, {
+      signal,
+      next: { revalidate: 60 },
+    });
     if (!res.ok) return { data: [], available: false, source: "rss" };
     const xml = await res.text();
     if (!/<(?:rss|feed)\b/i.test(xml)) {
@@ -307,10 +315,11 @@ function directTimestamp(line: string, clock: string): number | null {
  * unreachable — so a real fetch failure falls back, but a genuinely quiet
  * window doesn't show stale data.
  */
-async function fetchFromDirect(): Promise<ScannerIncidentsResult> {
+async function fetchFromDirect(signal: AbortSignal): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(DIRECT_URL, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      signal,
       next: { revalidate: 60 },
     });
     if (!res.ok) return { data: [], available: false, source: "direct" };
@@ -360,13 +369,17 @@ async function fetchFromDirect(): Promise<ScannerIncidentsResult> {
 /** Live from frederickscanner.com directly; a configured Slack token or the
  *  lagged RSS mirror only stand in if the direct page is unreachable. */
 export async function loadScannerIncidentsResult(): Promise<ScannerIncidentsResult> {
-  const direct = await fetchFromDirect();
+  // Direct → optional Slack → RSS is one fallback chain, so it gets one shared
+  // deadline. A dead primary cannot consume a fresh timeout and then hand two
+  // more full waits to its fallbacks.
+  const signal = AbortSignal.timeout(SCANNER_FETCH_TIMEOUT_MS);
+  const direct = await fetchFromDirect(signal);
   if (direct.available) return direct;
   if (scannerConfigured()) {
-    const slack = await fetchFromSlack();
+    const slack = await fetchFromSlack(signal);
     if (slack.available) return slack;
   }
-  return fetchFromRss();
+  return fetchFromRss(signal);
 }
 
 /**

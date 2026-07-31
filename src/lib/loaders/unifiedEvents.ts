@@ -149,6 +149,30 @@ function withTimeout<T>(
     () => clearTimeout(timer),
   );
 }
+
+/**
+ * A timeout must stop the work, not merely stop awaiting it. Without this,
+ * abandoned fetches can keep a streamed route open after its fallback has
+ * rendered, so the browser never reaches `DOMContentLoaded`.
+ */
+export function withAbortableTimeout<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+  fallback: T,
+  onFailure?: () => void,
+): Promise<T> {
+  const controller = new AbortController();
+  return withTimeout(
+    Promise.resolve().then(() => work(controller.signal)),
+    ms,
+    fallback,
+    () => {
+      controller.abort();
+      onFailure?.();
+    },
+  );
+}
+
 // A single slow/hanging events upstream can't stall the board past this.
 const FEED_MS = 8000;
 
@@ -275,11 +299,20 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // The unified assembly owns Ticketmaster as a separately monitored
     // adapter below. Excluding it from this municipal-feed fanout prevents the
     // same Discovery request from running twice on every cold assembly.
-    withTimeout(getLiveEvents(60, { includeTicketmaster: false }), FEED_MS, {
-      events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
-      sources_succeeded: [] as string[],
-      sources_failed: [] as string[],
-    }, markUnavailable("municipal calendars")),
+    withAbortableTimeout(
+      (signal) =>
+        getLiveEvents(60, {
+          includeTicketmaster: false,
+          signal,
+        }),
+      FEED_MS,
+      {
+        events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
+        sources_succeeded: [] as string[],
+        sources_failed: [] as string[],
+      },
+      markUnavailable("municipal calendars"),
+    ),
     // Keep the independent adapters under a hard fanout cap. Their individual
     // deadlines still apply; this prevents a cold board from opening every
     // ticketing, destination, sports, and venue connection simultaneously.

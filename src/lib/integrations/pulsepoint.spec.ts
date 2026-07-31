@@ -45,13 +45,15 @@ describe("PulsePoint availability", () => {
   it("does not turn an upstream failure into a false all-clear", async () => {
     process.env.PULSEPOINT_AGENCY_ID = "test-agency";
     process.env.PULSEPOINT_ENABLED = "1";
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
+    const fetchMock = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
 
     await expect(getPulsePointIncidentsResult()).resolves.toEqual({
       data: [],
       available: false,
       configured: true,
     });
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("keeps the incident-array compatibility wrapper fail-soft", async () => {

@@ -11,6 +11,7 @@ const STORMCENTER_ID = "6c715f0e-bbec-465f-98cc-0b81623744be";
 const VIEW_ID = "5ed3ddf1-3a6f-4cfd-8957-eba54b5baaad";
 const API_ROOT = `${KUBRA}/stormcenter/api/v1/stormcenters/${STORMCENTER_ID}/views/${VIEW_ID}`;
 const CURRENT_STATE_URL = `${API_ROOT}/currentState?preview=false`;
+const FIRSTENERGY_FETCH_TIMEOUT_MS = 6_000;
 export const FIRSTENERGY_OUTAGE_MAP_URL = "https://outages-mdwv.firstenergycorp.com/";
 
 export type OutageRow = {
@@ -108,9 +109,14 @@ function asOfIso(value: CurrentState["updatedAt"]): string | undefined {
  * deployment's public configuration instead of pinning a stale report URL.
  */
 export async function getFrederickOutagesResult(): Promise<FrederickOutagesResult> {
+  // One deadline covers all three dependent KUBRA reads. If the first call
+  // consumes the budget, the configuration/report calls fail immediately
+  // instead of turning one optional status tile into a long request chain.
+  const signal = AbortSignal.timeout(FIRSTENERGY_FETCH_TIMEOUT_MS);
   try {
     const stateResponse = await fetch(CURRENT_STATE_URL, {
       headers: { Accept: "application/json" },
+      signal,
       next: { revalidate: 300 },
     });
     if (!stateResponse.ok) return { data: EMPTY, available: false };
@@ -127,7 +133,11 @@ export async function getFrederickOutagesResult(): Promise<FrederickOutagesResul
 
     const configResponse = await fetch(
       `${API_ROOT}/configuration/${deploymentId}?preview=false`,
-      { headers: { Accept: "application/json" }, next: { revalidate: 86_400 } },
+      {
+        headers: { Accept: "application/json" },
+        signal,
+        next: { revalidate: 86_400 },
+      },
     );
     if (!configResponse.ok) {
       return { data: EMPTY, available: false, asOf: asOfIso(state.updatedAt) };
@@ -142,6 +152,7 @@ export async function getFrederickOutagesResult(): Promise<FrederickOutagesResul
 
     const reportResponse = await fetch(`${KUBRA}/${dataPath}/${source}`, {
       headers: { Accept: "application/json" },
+      signal,
       next: { revalidate: 300 },
     });
     if (!reportResponse.ok) {
