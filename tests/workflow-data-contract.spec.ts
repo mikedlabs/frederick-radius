@@ -139,13 +139,16 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
-  it("does not schedule the non-persisting paid business-status reporter", () => {
+  it("schedules the explicitly gated paid business-status reporter", () => {
     const vercel = JSON.parse(
       readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"),
-    ) as { crons?: Array<{ path?: string }> };
+    ) as { crons?: Array<{ path?: string; schedule?: string }> };
 
-    expect(vercel.crons ?? []).not.toContainEqual(
-      expect.objectContaining({ path: "/api/cron/business-status" }),
+    expect(vercel.crons ?? []).toContainEqual(
+      expect.objectContaining({
+        path: "/api/cron/business-status",
+        schedule: "0 7 * * *",
+      }),
     );
     expect(vercel.crons ?? []).toContainEqual(
       expect.objectContaining({ path: "/api/cron/hours-refresh" }),

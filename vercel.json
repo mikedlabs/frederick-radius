@@ -77,6 +77,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/business-status",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/radius-search",
       "schedule": "30 8 * * *"
     },

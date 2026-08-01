@@ -9,6 +9,7 @@ import {
 
 const schedules = new Map([
   ["/api/cron/hours-refresh", "0 8 * * *"],
+  ["/api/cron/business-status", "0 7 * * *"],
 ]);
 
 describe("data-tool activation status", () => {
@@ -45,6 +46,32 @@ describe("data-tool activation status", () => {
     expect(status).toMatchObject({
       status: "active",
       schedule: "0 8 * * *",
+      missing: [],
+    });
+  });
+
+  it("reports the paid business-status cron and its explicit spend gate", () => {
+    const disabled = classifyDataTools({}, schedules).find(
+      (tool) => tool.id === "business-status",
+    );
+    expect(disabled).toMatchObject({
+      status: "disabled",
+      gate: "BUSINESS_STATUS_CRON",
+      schedule: "0 7 * * *",
+      missing: [],
+    });
+
+    const active = classifyDataTools(
+      {
+        BUSINESS_STATUS_CRON: "1",
+        CRON_SECRET: "configured",
+        GOOGLE_PLACES_API_KEY: "configured",
+      },
+      schedules,
+    ).find((tool) => tool.id === "business-status");
+    expect(active).toMatchObject({
+      status: "active",
+      schedule: "0 7 * * *",
       missing: [],
     });
   });

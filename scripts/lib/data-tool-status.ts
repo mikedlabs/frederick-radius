@@ -128,6 +128,14 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     ],
   },
   {
+    id: "business-status",
+    label: "Google business-status audit",
+    scope: "vercel",
+    vercelPath: "/api/cron/business-status",
+    gate: { env: "BUSINESS_STATUS_CRON" },
+    requirements: [CRON_REQUIREMENT, { env: "GOOGLE_PLACES_API_KEY" }],
+  },
+  {
     id: "radius-search",
     label: "Radius search index refresh",
     scope: "vercel",
