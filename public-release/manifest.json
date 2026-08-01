@@ -1,0 +1,106 @@
+{
+  "manifestVersion": 1,
+  "project": "Frederick Radius",
+  "artifact": "public-project-hub",
+  "policy": {
+    "documentationOnly": true,
+    "allowProductionSource": false,
+    "allowProductionData": false,
+    "allowMedia": false,
+    "allowWorkflows": false,
+    "allowGitMetadata": false
+  },
+  "files": [
+    {
+      "source": "templates/README.md",
+      "destination": "README.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 2922,
+      "sha256": "ad4d6a57dd3e7c8c0dfd88678783f7974c83f1726655a2328b190399f54cb1e3"
+    },
+    {
+      "source": "templates/LICENSE",
+      "destination": "LICENSE",
+      "mediaType": "text/plain; charset=utf-8",
+      "bytes": 2447,
+      "sha256": "02e9aa8c81fb553cd17df0ee1b62c05b72d2e62a5e05343d5e4d2f01160856a5"
+    },
+    {
+      "source": "templates/SECURITY.md",
+      "destination": "SECURITY.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 1769,
+      "sha256": "b1ccaf463b07a0443b6197f95ef3389e424618803606e771d37f074fe5621676"
+    },
+    {
+      "source": "templates/CONTRIBUTING.md",
+      "destination": "CONTRIBUTING.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 2186,
+      "sha256": "842044923ebfe8141a6cf3ee1f291c3a11e10032f27f435cee5b54231c1753a9"
+    },
+    {
+      "source": "templates/CODE_OF_CONDUCT.md",
+      "destination": "CODE_OF_CONDUCT.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 1333,
+      "sha256": "2e4dcaeba05b697ee0c54b48455b433779980cf42611a5843a5af7567b12e18e"
+    },
+    {
+      "source": "templates/SUPPORT.md",
+      "destination": "SUPPORT.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 1846,
+      "sha256": "56f3f7fd817995693773dad4bb615ed86b968f71f0b15b050c2cc4028bfdd736"
+    },
+    {
+      "source": "templates/THIRD_PARTY_NOTICES.md",
+      "destination": "THIRD_PARTY_NOTICES.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 1141,
+      "sha256": "b2fa504907ab904fe7c4733e7038bb26403dceb6042e6a84b836cd4039b6170b"
+    },
+    {
+      "source": "templates/docs/ARCHITECTURE.md",
+      "destination": "docs/ARCHITECTURE.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 2841,
+      "sha256": "937a5bb94182f6cd69f7eb0525d2e5751799feb178abf3b508b3f8da83904697"
+    },
+    {
+      "source": "templates/docs/DATA_BOUNDARIES.md",
+      "destination": "docs/DATA_BOUNDARIES.md",
+      "mediaType": "text/markdown; charset=utf-8",
+      "bytes": 2680,
+      "sha256": "d9b9b93802c89e32e0fefa5203089af21ec1f604b41c3400ad8da67b6b56fca5"
+    },
+    {
+      "source": "templates/.github/ISSUE_TEMPLATE/bug_report.yml",
+      "destination": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "mediaType": "application/yaml; charset=utf-8",
+      "bytes": 2110,
+      "sha256": "3d519f3c47d1514995f32e6b210ec8898abb70b5629d92f59987eb02610568b1"
+    },
+    {
+      "source": "templates/.github/ISSUE_TEMPLATE/feature_request.yml",
+      "destination": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "mediaType": "application/yaml; charset=utf-8",
+      "bytes": 1835,
+      "sha256": "863569cb7cafd31faee97a106f5c464b6b34398db387c19096d627b419f249a8"
+    },
+    {
+      "source": "templates/.github/ISSUE_TEMPLATE/config.yml",
+      "destination": ".github/ISSUE_TEMPLATE/config.yml",
+      "mediaType": "application/yaml; charset=utf-8",
+      "bytes": 46,
+      "sha256": "8b09e7df09fc7534371988062769ee427af2954a02c04c763e8a8005be0f2be4"
+    },
+    {
+      "source": "templates/.gitignore",
+      "destination": ".gitignore",
+      "mediaType": "text/plain; charset=utf-8",
+      "bytes": 260,
+      "sha256": "07404019c7bfaf261279f29f328de7909dfc90c9d59b5eacabee37506556a037"
+    }
+  ]
+}
