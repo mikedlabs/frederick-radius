@@ -1,15 +1,13 @@
 name: Enrich places (Google)
 
-# Monthly refresh of the CURATED editorial places against Google Places
-# → src/data/places-enrichment.json. Cost-bounded by design: the script
-# defaults to curated-only (~51 places, ~$2), only writes with
-# --live --confirm, and honors a --max-cost hard cap. A missing key fails
-# before installation so a green run always means enrichment actually ran.
+# Manual refresh of the curated editorial places against Google Places.
+# The former monthly schedule is paused because the configured GitHub secret
+# currently resolves empty (tracked in #1468). Restore the schedule only after
+# a cost-capped main-branch run proves the credential path. The script defaults
+# to curated-only, only writes with --live --confirm, and enforces a $10 cap.
 # DFP's long tail is enriched on demand elsewhere.
 
 on:
-  schedule:
-    - cron: "0 6 1 * *" # 1st of each month, 06:00 UTC
   workflow_dispatch: {}
 
 permissions: {}
