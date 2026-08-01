@@ -104,6 +104,16 @@ function includesAll(text: string, values: string[]): boolean {
   return values.every((value) => text.includes(value));
 }
 
+function usesAction(step: WorkflowStep, action: string): boolean {
+  return step.uses?.startsWith(`${action}@`) ?? false;
+}
+
+function expectImmutableAction(step: WorkflowStep | undefined, action: string) {
+  expect(step?.uses).toMatch(
+    new RegExp(`^${action.replace("/", "\\/")}@[0-9a-f]{40}$`),
+  );
+}
+
 describe("manual Source Intelligence workflow", () => {
   it("is manual-only, read-only, production-scoped, and non-overlapping", () => {
     const workflow = loadWorkflow();
@@ -287,17 +297,21 @@ describe("manual Source Intelligence workflow", () => {
   it("uploads review evidence briefly and has no publishing path", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
-    const artifact = steps.find(
-      (step) => step.uses === "actions/upload-artifact@v4",
+    const artifact = steps.find((step) =>
+      usesAction(step, "actions/upload-artifact"),
     );
 
     expect(artifact).toBeDefined();
+    expectImmutableAction(artifact, "actions/upload-artifact");
     expect(artifact?.if).toBe("always()");
     expect(artifact?.with?.path).toContain("scripts/reports");
     expect(artifact?.with?.["retention-days"]).toBeGreaterThanOrEqual(1);
     expect(artifact?.with?.["retention-days"]).toBeLessThanOrEqual(14);
 
-    const checkout = steps.find((step) => step.uses === "actions/checkout@v4");
+    const checkout = steps.find((step) =>
+      usesAction(step, "actions/checkout"),
+    );
+    expectImmutableAction(checkout, "actions/checkout");
     expect(checkout?.with?.["persist-credentials"]).toBe(false);
 
     const serialized = JSON.stringify(workflow).toLowerCase();
@@ -319,17 +333,21 @@ describe("manual Source Intelligence workflow", () => {
   it("persists the review cache and usage ledgers across ephemeral runners", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
-    const restore = steps.find(
-      (step) => step.uses === "actions/cache/restore@v4",
+    const restore = steps.find((step) =>
+      usesAction(step, "actions/cache/restore"),
     );
-    const save = steps.find((step) => step.uses === "actions/cache/save@v4");
+    const save = steps.find((step) =>
+      usesAction(step, "actions/cache/save"),
+    );
 
     expect(restore).toBeDefined();
+    expectImmutableAction(restore, "actions/cache/restore");
     expect(restore?.id).toBe("source-state");
     expect(restore?.with?.path).toContain("scripts/reports");
     expect(restore?.with?.["restore-keys"]).toContain("source-intelligence-");
 
     expect(save).toBeDefined();
+    expectImmutableAction(save, "actions/cache/save");
     expect(save?.if).toContain("always()");
     expect(save?.with?.path).toContain("scripts/reports");
     expect(save?.with?.key).toContain("source-intelligence-");

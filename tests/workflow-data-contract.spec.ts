@@ -35,6 +35,24 @@ type WorkflowDocument = {
 };
 
 describe("scheduled data workflow contracts", () => {
+  it("pins every external workflow action to an immutable commit", () => {
+    const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
+      /\.ya?ml$/.test(name),
+    );
+
+    for (const name of workflowNames) {
+      const actionUses = workflowText(name).matchAll(
+        /^\s*uses:\s*([^\s#]+)@([^\s#]+)/gm,
+      );
+      for (const [, action, revision] of actionUses) {
+        expect(
+          revision,
+          `${name} must pin ${action} to an immutable commit`,
+        ).toMatch(/^[0-9a-f]{40}$/);
+      }
+    }
+  });
+
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
     const workflow = workflowText("data-steward.yml");
 
