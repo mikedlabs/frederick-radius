@@ -4,6 +4,10 @@ import { useCallback, useSyncExternalStore } from "react";
 import { ensurePersistentStorage } from "@/lib/persistence";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import {
+  cancelPendingReturnBridgeValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
+import {
   SAVED_TRANSIT_BUSES_KEY,
   parseSavedTransitBuses,
   transitBusWatchId,
@@ -98,6 +102,12 @@ function writeSavedBuses(buses: SavedTransitBus[]): boolean {
   return persistent;
 }
 
+export function shouldSignalSavedTransitBus(
+  result: Pick<SavedBusToggleResult, "saved" | "limitReached">,
+): boolean {
+  return result.saved && !result.limitReached;
+}
+
 export function useSavedTransitBuses(): {
   buses: SavedTransitBus[];
   toggle: (
@@ -123,6 +133,11 @@ export function useSavedTransitBuses(): {
     const persistent = result.limitReached
       ? !storageBlocked
       : writeSavedBuses(result.buses);
+    if (shouldSignalSavedTransitBus(result)) {
+      signalReturnBridgeValue("transit-bus");
+    } else if (!result.saved && result.buses.length === 0) {
+      cancelPendingReturnBridgeValue("transit-bus");
+    }
     return { ...result, persistent };
   }, []);
   const remove = useCallback((bus: TransitBusRef) => {
@@ -132,7 +147,9 @@ export function useSavedTransitBuses(): {
     if (next.length === current.length) {
       return { removed: false, persistent: !storageBlocked };
     }
-    return { removed: true, persistent: writeSavedBuses(next) };
+    const persistent = writeSavedBuses(next);
+    if (next.length === 0) cancelPendingReturnBridgeValue("transit-bus");
+    return { removed: true, persistent };
   }, []);
 
   return { buses, toggle, remove };

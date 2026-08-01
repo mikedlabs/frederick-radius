@@ -150,7 +150,25 @@ describe("getLiveCardEventBySlug", () => {
     expect(mocks.fetchSquarespaceVenueEvents).not.toHaveBeenCalled();
   });
 
-  it("returns a fast provider hit without waiting for a never-settling source", async () => {
+  it("refuses provider fanout when visitor network access is disabled", async () => {
+  await expect(
+    getLiveCardEventBySlug("unarchived-show-2026-08-02", 90, {
+      allowNetwork: false,
+    }),
+  ).rejects.toMatchObject({
+    name: "LiveEventLookupIncompleteError",
+    sources: ["live-network-disabled"],
+  });
+
+  expect(mocks.getCachedLiveEvents).not.toHaveBeenCalled();
+  expect(mocks.fetchTicketmasterSports).not.toHaveBeenCalled();
+  expect(mocks.fetchBandsintownForArtists).not.toHaveBeenCalled();
+  expect(mocks.fetchVisitFrederick).not.toHaveBeenCalled();
+  expect(mocks.fetchFrederickKeys).not.toHaveBeenCalled();
+  expect(mocks.fetchSquarespaceVenueEvents).not.toHaveBeenCalled();
+});
+
+it("returns a fast provider hit without waiting for a never-settling source", async () => {
     const fast = liveEvent("fast", "Fast Match");
     const slug = liveCleanSlug(fast);
     const controller = new AbortController();

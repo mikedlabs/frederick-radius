@@ -5,6 +5,14 @@ import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
 import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
+import {
+  isInstallPromptSuppressedPath,
+  isStandalone,
+} from "@/lib/pwa-display";
+import {
+  currentReturnBridgeState,
+  openReturnBridge,
+} from "@/lib/return-bridge";
 import { toast } from "sonner";
 
 /**
@@ -86,6 +94,17 @@ export default function MyRadiusButton({
   async function onClick() {
     if (busy) return;
     const wasFollowed = renderedFollowed;
+    const returnState = currentReturnBridgeState();
+    const modalOpen = Boolean(
+      document.querySelector('[role="dialog"][aria-modal="true"]'),
+    );
+    const offerKeepAction =
+      !wasFollowed
+      && !isStandalone()
+      && !returnState.completed
+      && returnState.valueKind === null
+      && isInstallPromptSuppressedPath(window.location.pathname)
+      && !modalOpen;
     setOptimisticFollowed(!wasFollowed);
     setBusy(true);
     try {
@@ -99,7 +118,13 @@ export default function MyRadiusButton({
       if (nowFollowed) {
         toast.success(`Saved · ${name}`, {
           description: authed ? undefined : "On this device. Sign in to keep saves everywhere.",
-          action: { label: "Undo", onClick: () => void toggle() },
+          duration: offerKeepAction ? 7000 : undefined,
+          action: offerKeepAction
+            ? { label: "Keep handy", onClick: openReturnBridge }
+            : { label: "Undo", onClick: () => void toggle() },
+          cancel: offerKeepAction
+            ? { label: "Undo", onClick: () => void toggle() }
+            : undefined,
         });
       } else {
         toast(`Removed from Saved · ${name}`, {

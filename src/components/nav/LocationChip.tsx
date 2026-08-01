@@ -16,10 +16,10 @@ import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, ty
  * "near me", the whole county, or one town. Before UX-02 the town rows just
  * NAVIGATED to /m/<slug> — a jump away, not a lens you apply in place. Now a
  * town row SETS the scope and router.refresh()es, so the surfaces that read
- * scope (the list answers, the Today masthead, and — as their adapters land —
- * the map and events board) re-rank around it without leaving the page. The
- * town guide is still one tap away as a secondary "Open guide" row, so the old
- * destination is never lost.
+ * scope (the list answers and Today's open-place decision, plus the map and
+ * events board) re-rank around it without leaving the page. Countywide Today
+ * modules stay explicitly labeled as such. The town guide is still one tap
+ * away as a secondary "Open guide" row, so the old destination is never lost.
  *
  * The chip label always reflects the current scope, so a tap is never dead
  * even on a surface whose adapter hasn't shipped yet: you can see the lens

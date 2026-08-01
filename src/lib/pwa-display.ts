@@ -46,16 +46,6 @@ export function isIosSafari(): boolean {
   return isIosSafariUserAgent(window.navigator.userAgent);
 }
 
-/** Automatic acquisition prompts wait for both a return session and real use. */
-export function canOfferInstallAutomatically(sessions: number, interactions: number): boolean {
-  return sessions >= 2 && interactions >= 2;
-}
-
-/** A malformed or expired timestamp must never become a permanent dismissal. */
-export function isInstallCooldownActive(notBefore: unknown, now = Date.now()): boolean {
-  return typeof notBefore === "number" && Number.isFinite(notBefore) && notBefore > now;
-}
-
 /** Keep acquisition UI away from focused work and persistent mobile action docks. */
 export function isInstallPromptSuppressedPath(pathname: string): boolean {
   return pathname === "/map"

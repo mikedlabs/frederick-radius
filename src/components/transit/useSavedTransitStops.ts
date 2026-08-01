@@ -4,6 +4,10 @@ import { useCallback, useSyncExternalStore } from "react";
 import { ensurePersistentStorage } from "@/lib/persistence";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
 import {
+  cancelPendingReturnBridgeValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
+import {
   SAVED_TRANSIT_STOPS_KEY,
   parseSavedTransitStops,
   toggleSavedTransitStop,
@@ -118,6 +122,11 @@ export function useSavedTransitStops(): {
     const persistent = result.limitReached
       ? !storageBlocked
       : writeSavedStops(result.stops);
+    if (result.saved && persistent && !result.limitReached) {
+      signalReturnBridgeValue("transit-stop");
+    } else if (!result.saved && result.stops.length === 0) {
+      cancelPendingReturnBridgeValue("transit-stop");
+    }
     return { ...result, persistent };
   }, []);
   const remove = useCallback((stop: Pick<TransitStopRef, "id">) => {
@@ -126,7 +135,9 @@ export function useSavedTransitStops(): {
     if (next.length === current.length) {
       return { removed: false, persistent: !storageBlocked };
     }
-    return { removed: true, persistent: writeSavedStops(next) };
+    const persistent = writeSavedStops(next);
+    if (next.length === 0) cancelPendingReturnBridgeValue("transit-stop");
+    return { removed: true, persistent };
   }, []);
 
   return { stops, toggle, remove };

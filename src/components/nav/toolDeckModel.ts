@@ -127,6 +127,7 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
     toolIds: [
       "saved",
       "settings",
+      "keep-radius",
       "notifications",
       "mark-a-spot",
       "add-event",

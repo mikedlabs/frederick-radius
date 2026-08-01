@@ -23,7 +23,8 @@ describe("GET /api/cron/spatial-places", () => {
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.RADIUS_POSTGIS_SYNC = "1";
     mocks.syncSpatialPlaceMirror.mockResolvedValue({
-      upserted: 1610,
+      checked: 1610,
+      upserted: 12,
       retired: 2,
       audit: {
         current: true,
@@ -58,7 +59,9 @@ describe("GET /api/cron/spatial-places", () => {
       enabled: true,
       healthy: true,
       current: true,
-      upserted: 1610,
+      checked: 1610,
+      changed: 12,
+      upserted: 12,
       retired: 2,
       place_count: 1610,
     });

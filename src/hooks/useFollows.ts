@@ -5,6 +5,10 @@ import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
 import { businessTopic } from "@/lib/push-topics";
 import {
+  cancelPendingReturnBridgeValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
+import {
   clearFollowsSync,
   hasCompletedFollowsSync,
   markFollowsSyncComplete,
@@ -92,6 +96,19 @@ export function toggleSlug(
   if (wasFollowed) next.delete(slug);
   else next.add(slug);
   return { next, wasFollowed };
+}
+
+export function shouldCancelPlaceReturnBridgeAfterDelete(
+  wasFollowed: boolean,
+  live: ReadonlySet<string> | null,
+  slug: string,
+): boolean {
+  return (
+    wasFollowed
+    && live !== null
+    && !live.has(slug)
+    && live.size === 0
+  );
 }
 
 /* ----------------------------------------------------------------------
@@ -282,6 +299,17 @@ export function useToggleFollow(slug: string, source?: string) {
     })
       .then((r) => {
         if (!r.ok) throw new Error("follow write failed");
+        if (
+          shouldCancelPlaceReturnBridgeAfterDelete(
+            wasFollowed,
+            remoteStore,
+            slug,
+          )
+        ) {
+          cancelPendingReturnBridgeValue("place");
+        } else if (!wasFollowed && remoteStore?.has(slug)) {
+          signalReturnBridgeValue("place");
+        }
         // Only mirror the push topic once the follow actually persisted, so a
         // reverted (failed) follow never leaves a dangling biz:<slug> topic.
         void syncFollowPushTopic(slug, !wasFollowed);

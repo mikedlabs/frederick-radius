@@ -61,6 +61,7 @@ import PageChapter from "@/components/ui/PageChapter";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
+import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 
 /**
  * Now — the daily briefing.
@@ -68,10 +69,10 @@ import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming"
  * Spine (top to bottom — matches the render below):
  *
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
- *   2. Decision lead  → one answer: a qualified event, otherwise the existing
- *                       location-aware open-place shelf
+ *   2. Decision lead  → the location-aware open-place shelf, which is the
+ *                       first Today answer that follows the shared town lens
  *   3. Ask / Browse   → secondary routes for a more specific need
- *   4. What's on      → the rest of today's public program
+ *   4. What's on      → a qualified event feature + today's public program
  *   5. Available      → scheduled local utilities and tomorrow's next move
  *   6. More           → secondary local guides and saved places, collapsed
  *
@@ -179,23 +180,13 @@ export default async function HomePage() {
         ? "It is a hot one, so cool-down picks lead."
         : null;
 
-  // Exactly one decision lead sits below the weather. The useful place answer
-  // paints immediately while the shared event promise resolves; if a sourced
-  // draw is live, all-day, or close enough to act on, the streamed result
-  // promotes that event into the same slot. A quiet or far-ahead program keeps
-  // the location-aware place answer, so external calendars never block the
-  // shell or leave a blank first move.
+  // Keep the location-aware answer mounted on every render. LocationChip's
+  // shared town lens is applied by DaypartNeeds through /api/want; replacing
+  // this component with an event headline made a town change look completely
+  // inert on any day with a promoted draw. Events still get their editorial
+  // feature, but inside the explicitly countywide What's-on program below.
   const decisionLead = (
-    <Suspense
-      fallback={<OpenPlaceLead rows={daypartRows} note={daypartNote} />}
-    >
-      <TodayDecisionLead
-        eventsPromise={eventsPromise}
-        now={now}
-        rows={daypartRows}
-        note={daypartNote}
-      />
-    </Suspense>
+    <OpenPlaceLead rows={daypartRows} note={daypartNote} />
   );
 
   // These are useful today, but not all of them are live: a first pitch,
@@ -305,6 +296,7 @@ export default async function HomePage() {
             <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
               {frame.title}
             </h1>
+            <TodayScopeStatus />
           </header>
         );
       })()}
@@ -342,8 +334,8 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
-      {/* One evidence-backed first move: a qualified event when it earns the
-          headliner, otherwise the location-aware open-place answer. */}
+      {/* One town-aware first move. It stays mounted so a LocationChip change
+          immediately re-ranks this answer instead of only changing the chip. */}
       {decisionLead}
 
       {/* One decision index: ask a specific question or open the category
@@ -503,10 +495,9 @@ function easternStartHour(iso: string): number {
   );
 }
 
-/** The one today-program derivation, read by BOTH the page headliner and the
- *  What's-on program. Pure and cheap: the two Suspense regions await the SAME
- *  shared events promise and call this on its single resolved value, so they
- *  can never disagree about which event is the headliner or which rows remain. */
+/** The one today-program derivation, read by the What's-on program for both
+ *  its feature and remaining rows. Keeping those decisions together means the
+ *  selected feature can never be repeated in the timeline below it. */
 function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"], now: Date) {
   const todayAll = publicEvents
     .filter((e) => isEventToday(e.starts_at, now))
@@ -540,36 +531,6 @@ function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"]
     remainingAlsoToday: withoutTodayFeature(feature, alsoToday),
     remainingEarlierToday: withoutTodayFeature(feature, earlierToday),
   };
-}
-
-/** The one decision slot below weather. A real draw can replace the immediate
- *  open-place fallback only when it passes both the existing editorial filter
- *  and the actionability window. Routine programming, utility events, quiet
- *  days, far-ahead evening listings, and failed/empty feeds all leave the
- *  useful place answer in this slot. */
-async function TodayDecisionLead({
-  eventsPromise,
-  now,
-  rows,
-  note,
-}: {
-  eventsPromise: EventsPromise;
-  now: Date;
-  rows: DaypartRows;
-  note: string | null;
-}) {
-  let feature: ReturnType<typeof deriveTodayProgram>["feature"] = null;
-  try {
-    const { publicEvents } = await eventsPromise;
-    feature = deriveTodayProgram(publicEvents, now).feature;
-  } catch {
-    // The place answer is already independently useful. A failed event fanout
-    // must not turn the first decision into an error boundary.
-  }
-  if (feature && shouldPromoteTodayHeadliner(feature, now)) {
-    return <TonightHeadline event={feature} now={now} />;
-  }
-  return <OpenPlaceLead rows={rows} note={note} />;
 }
 
 /** One line of the day program: mono time column (the visible sort key),
@@ -737,6 +698,13 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             Some live calendars didn&rsquo;t answer, so today&rsquo;s list may be incomplete.
           </p>
         )}
+        {/* A real draw can still earn the editorial feature, but it belongs to
+            the explicitly countywide event program. It must never displace the
+            town-aware place answer above or make the shared town control feel
+            inert. The program array below already removes this exact feature. */}
+        {featureIsPromoted && feature ? (
+          <TonightHeadline event={feature} now={now} embedded />
+        ) : null}
         {program.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
             {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
