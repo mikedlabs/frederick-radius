@@ -16,6 +16,7 @@ import {
   decisionCopyCounts,
   hasUsefulDecisionCopy,
 } from "@/lib/quality/coverage";
+import { isDirectoryTemplateBlurb } from "./lib/audit-copy";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
 import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 
@@ -130,8 +131,10 @@ function main() {
   );
 
   // 7. PUBLIC COPY
-  const placeholder = dec.filter((p) => /^[\w &/'-]+ in [\w .'-]+\.$/.test(p.short_blurb || "")).length;
   const blurbCounts = decisionCopyCounts(dec);
+  const directoryTemplates = dec.filter((place) =>
+    isDirectoryTemplateBlurb(place, blurbCounts),
+  ).length;
   const usefulDescriptions = dec.filter((place) =>
     hasUsefulDecisionCopy(place, blurbCounts),
   );
@@ -172,7 +175,11 @@ function main() {
     unprovenancedDescriptions.length,
     unprovenancedDescriptions.length ? "🔴" : "🟢",
   );
-  F("Placeholder blurbs", placeholder, placeholder > 800 ? "🟠" : "🟢");
+  F(
+    "Directory-template blurbs",
+    directoryTemplates,
+    directoryTemplates > 0 ? "🟠" : "🟢",
+  );
   F("Orphan enrichment rows (no place)", orphanEnr.length, orphanEnr.length > 200 ? "🟠" : "🟢");
   F("Duplicate raw slugs", dupSlugs.length, dupSlugs.length ? "🔴" : "🟢");
   console.log(

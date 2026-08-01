@@ -77,6 +77,13 @@ function lifecycleWriter() {
 }
 
 describe("event archive batch", () => {
+  it("does not invent a verification date from an undated event's start", () => {
+    const undated = event("undated-curated-event", "undated-curated");
+    undated.last_verified_at = null;
+
+    expect(prepareEventArchiveRows([undated]).rows).toEqual([]);
+  });
+
   it("keeps publisher identity stable when a title edit changes the slug", () => {
     const old = prepareEventArchiveRows([
       event(

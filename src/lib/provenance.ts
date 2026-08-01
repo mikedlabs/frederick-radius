@@ -206,22 +206,41 @@ export type EventProvenanceInput = {
    * slug, this must survive copy edits and route changes. */
   source_id?: string;
   source_url?: string | null;
-  last_verified_at?: string;
+  last_verified_at?: string | null;
+};
+
+export type EventProvenance = Omit<
+  Provenance,
+  "source" | "source_url" | "last_verified_at"
+> & {
+  source_url: string | null;
+  /** Null means the source or editor did not record a verification time. */
+  last_verified_at: string | null;
 };
 
 /** Event side of the stamp. Prefer a publisher UID; older/curated records that
  * do not carry one retain the namespaced-slug fallback. */
 export function stampEventProvenance(
   e: EventProvenanceInput,
-  verifiedAt?: string,
-): Omit<Provenance, "source" | "source_url"> & { source_url: string | null } {
+  verifiedAt?: string | null,
+): EventProvenance {
   const meta = EVENT_SOURCE_REGISTRY[e.source ?? ""] ?? FALLBACK_META;
+  const rowVerifiedAt =
+    e.last_verified_at?.trim() &&
+    Number.isFinite(Date.parse(e.last_verified_at))
+      ? e.last_verified_at
+      : null;
+  const candidate = verifiedAt ?? rowVerifiedAt;
+  const lastVerifiedAt =
+    candidate?.trim() && Number.isFinite(Date.parse(candidate))
+      ? candidate
+      : null;
   return {
     source_id: e.source_id?.trim() || `slug:${e.slug}`,
     source_url: e.source_url ?? null,
     license: meta.license,
     confidence: meta.confidence,
-    first_seen_at: e.last_verified_at ?? PROVENANCE_BACKFILL_EPOCH,
-    last_verified_at: verifiedAt ?? e.last_verified_at ?? PROVENANCE_BACKFILL_EPOCH,
+    first_seen_at: rowVerifiedAt ?? PROVENANCE_BACKFILL_EPOCH,
+    last_verified_at: lastVerifiedAt,
   };
 }
