@@ -22,16 +22,25 @@ This release closes the remaining production findings from the Frederick Radius 
 - A failed reconciliation reports safe mismatch counts without exposing place payloads.
 - Existing last-known-good map and nearby behavior remains available when a refresh fails.
 
+## Return Bridge review closure
+
+- Reselecting the current town no longer creates a false saved-value signal.
+- Resetting preferences withdraws an unshown home-area signal.
+- A failed authenticated unfollow no longer clears the place signal; cleanup occurs only after a successful delete leaves the latest shared store empty.
+- An in-session transit-bus save still qualifies when durable browser storage is blocked.
+- A real saved value supersedes a pending social or return timer, so the offer reflects what the person actually did.
+- Focused regression coverage locks the offer priority, home-area change, authenticated follow cleanup, and blocked-storage transit behavior.
+
 ## Automation
 
 - The long-lived `data-snapshots` branch again contains the Vercel ignored-build helper, so generated snapshot commits do not create false preview-build failures.
 - Temporary release-patch tooling was removed before review; only product code, tests, configuration, and this release record remain.
 
-## Verification completed before commit
+## Verification completed before protected CI
 
-- focused event resolver, live-event, spatial mirror, and cron-route regression tests
+- focused event resolver, live-event, spatial mirror, cron-route, Return Bridge, follow-toggle, and transit-save regression tests
 - TypeScript
-- ESLint on every changed reliability file
+- ESLint on every changed reliability and Return Bridge file
 - full production build, including repository data gates and static generation
 
 The protected pull request must still pass the repository's normal CI, style, browser-chaos, deployment, and production verification checks before merge.
