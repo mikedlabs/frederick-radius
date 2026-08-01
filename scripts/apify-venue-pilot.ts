@@ -604,7 +604,7 @@ export async function runApifyVenuePilot(
           ...baseReport.provider,
           runId: snapshot.runId,
           datasetId: snapshot.datasetId,
-          consoleRunUrl: `https://console.apify.com/storage/runs/${snapshot.runId}`,
+          consoleRunUrl: `https://console.apify.com/actors/runs/${snapshot.runId}`,
           ...(snapshot.usageTotalUsd === undefined
             ? {}
             : { usageTotalUsd: snapshot.usageTotalUsd }),

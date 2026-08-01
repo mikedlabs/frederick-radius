@@ -156,6 +156,7 @@ describe("Apify venue pilot runs", () => {
         actor: "apify/website-content-crawler",
         runId: "runABC123",
         datasetId: "datasetABC123",
+        consoleRunUrl: "https://console.apify.com/actors/runs/runABC123",
         usageTotalUsd: 0.006,
       },
       budget: {

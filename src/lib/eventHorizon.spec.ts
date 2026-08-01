@@ -41,6 +41,15 @@ describe("horizonOf — live gate", () => {
     expect(horizonOf(started, bounds(["featured"]))).toBe("live");
   });
 
+  it("keeps a zero-duration feed row live for the assumed two-hour runtime", () => {
+    const start = NOW - HOUR;
+    const zeroDuration = ev("brunch", start, start);
+    expect(horizonOf(zeroDuration, bounds())).toBe("live");
+    expect(
+      horizonOf(zeroDuration, { ...bounds(), now: start + 2 * HOUR + 1 }),
+    ).toBeNull();
+  });
+
   it("a not-yet-started event today is 'today', not live", () => {
     expect(horizonOf(ev("soon", NOW + 3 * HOUR, NOW + 5 * HOUR), bounds())).toBe("today");
   });

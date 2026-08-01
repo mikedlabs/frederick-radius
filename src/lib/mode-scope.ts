@@ -15,6 +15,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import type { Mode } from "@/hooks/useMode";
 import type { EventScope, ClosureScope } from "@/lib/mode-defaults";
 import { defaultsFor } from "@/lib/mode-defaults";
+import { isUpcomingEvent } from "@/lib/events/visible";
 
 /** "Downtown" is a 1-mile radius around FREDERICK_CENTER — the same
  *  ring the existing Radius surface already uses. We reuse it instead
@@ -59,9 +60,12 @@ export function scopeEvents(
   now: Date,
 ): EventWithMeta[] {
   const { startMs, endMs } = eventWindowFor(scope, now);
+  const windowStart = new Date(startMs);
   const filtered = events.filter((e) => {
     const t = +new Date(e.starts_at);
-    if (t < startMs || t > endMs) return false;
+    // Overlap, not future-start-only: keep something already underway at the
+    // beginning of the selected window, but still reject events already over.
+    if (!Number.isFinite(t) || t > endMs || !isUpcomingEvent(e, windowStart)) return false;
     if (scope === "weekend-downtown") {
       // Downtown gate: only events whose geom (or whose venue point
       // when geom is the venue's coords) sits inside the 1-mile ring
