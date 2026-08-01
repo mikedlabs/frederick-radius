@@ -14,9 +14,7 @@ concurrency:
 
 jobs:
   apply:
-    if: >-
-      github.event.pull_request.head.ref == 'agent/full-production-hardening-2026-08-01' &&
-      !contains(github.event.pull_request.head.sha, '[hardening-applied]')
+    if: github.event.pull_request.head.ref == 'agent/full-production-hardening-2026-08-01'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -30,26 +28,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Execute the reviewed one-shot patch
-        shell: bash
-        run: |
-          python3 <<'RUNNER'
-          from pathlib import Path
-
-          workflow = Path(
-              ".github/workflows/agent-apply-production-hardening.yml"
-          ).read_text()
-          marker = "          python3 <<'PY'\n"
-          start = workflow.index(marker) + len(marker)
-          end = workflow.index("\n          PY\n", start)
-          raw = workflow[start:end]
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in raw.splitlines()
-          )
-          exec(compile(script, "production-hardening-patch", "exec"))
-          RUNNER
-
+      - name: Apply reviewed production patch
+        run: python3 scripts/agent-production-hardening.py
       - name: Install dependencies
         run: npm ci
       - name: Targeted regression tests
@@ -83,6 +63,7 @@ jobs:
         run: |
           rm .github/workflows/agent-apply-production-hardening.yml
           rm .github/workflows/agent-pr-apply-production-hardening.yml
+          rm scripts/agent-production-hardening.py
           git config user.name "frederick-radius-bot"
           git config user.email "bot@frederickradius.app"
           git add -A
