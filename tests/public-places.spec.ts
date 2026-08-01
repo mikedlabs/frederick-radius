@@ -143,6 +143,43 @@ describe("canonicalBusinessStatusRefreshCandidates", () => {
       expect(candidateSlugs.has(place.slug)).toBe(false);
     }
   });
+
+  it("keeps future or invalid manual closures eligible for provider recheck", () => {
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    try {
+      MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+        status: "closed_temporarily",
+        effective_at: "2099-01-01",
+        review_after: "2099-01-31",
+        source: "https://example.com/official-closure",
+        note: "Test-only future closure.",
+      };
+      expect(
+        canonicalBusinessStatusRefreshCandidates(
+          new Date("2026-08-01T12:00:00Z"),
+        ).some((row) => row.slug === providerClosedSlug),
+      ).toBe(true);
+
+      MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+        status: "closed_permanently",
+        effective_at: "2026-07-31",
+        review_after: "2026-08-31",
+        source: "not-a-url",
+        note: "",
+      };
+      expect(
+        canonicalBusinessStatusRefreshCandidates(
+          new Date("2026-08-01T12:00:00Z"),
+        ).some((row) => row.slug === providerClosedSlug),
+      ).toBe(true);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
+  });
 });
 
 describe("publicPlaceBySlug (canonical resolve)", () => {

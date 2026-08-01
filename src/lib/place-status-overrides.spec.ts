@@ -6,6 +6,7 @@ import {
   hasValidManualPlaceStatusEvidence,
   isManualPlaceOperationalCorrection,
   isManualPlaceStatusReviewCurrent,
+  MANUAL_PLACE_STATUS_OVERRIDES,
   type ManualPlaceStatusOverride,
   manualPlaceStatusOverride,
 } from "@/lib/place-status-overrides";
@@ -95,18 +96,73 @@ describe("manual place status overrides", () => {
     ).toBe(false);
   });
 
+  it("does not activate a closure before its effective date", () => {
+    const slug = "future-test-closure";
+    MANUAL_PLACE_STATUS_OVERRIDES[slug] = {
+      status: "closed_temporarily",
+      effective_at: "2099-01-01",
+      review_after: "2099-01-31",
+      source: "https://example.com/official-closure",
+      note: "Test-only future closure.",
+    };
+    try {
+      expect(
+        activeManualPlaceStatusOverride(
+          slug,
+          new Date("2026-08-01T12:00:00Z"),
+        ),
+      ).toBeUndefined();
+    } finally {
+      delete MANUAL_PLACE_STATUS_OVERRIDES[slug];
+    }
+  });
+
+  it("does not activate a closure without valid evidence", () => {
+    const slug = "invalid-test-closure";
+    MANUAL_PLACE_STATUS_OVERRIDES[slug] = {
+      status: "closed_permanently",
+      effective_at: "2026-07-31",
+      review_after: "2026-08-31",
+      source: "not-a-url",
+      note: "",
+    };
+    try {
+      expect(
+        activeManualPlaceStatusOverride(
+          slug,
+          new Date("2026-08-01T12:00:00Z"),
+        ),
+      ).toBeUndefined();
+    } finally {
+      delete MANUAL_PLACE_STATUS_OVERRIDES[slug];
+    }
+  });
+
   it("surfaces a missed review without treating its date as an automatic reopening", () => {
+    const slug = "past-review-test-closure";
+    const override: ManualPlaceStatusOverride = {
+      status: "closed_temporarily",
+      effective_at: "2026-07-04",
+      review_after: "2026-07-22",
+      source: "https://example.com/official-closure",
+      note: "Closed until further notice.",
+    };
     expect(
       isManualPlaceStatusReviewCurrent(
-        {
-          status: "closed_temporarily",
-          effective_at: "2026-07-04",
-          review_after: "2026-07-22",
-          source: "https://example.com/official-closure",
-          note: "Closed until further notice.",
-        },
+        override,
         new Date("2026-07-23T12:00:00Z"),
       ),
     ).toBe(false);
+    MANUAL_PLACE_STATUS_OVERRIDES[slug] = override;
+    try {
+      expect(
+        activeManualPlaceStatusOverride(
+          slug,
+          new Date("2026-07-23T12:00:00Z"),
+        ),
+      ).toEqual(override);
+    } finally {
+      delete MANUAL_PLACE_STATUS_OVERRIDES[slug];
+    }
   });
 });

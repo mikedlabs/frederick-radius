@@ -109,13 +109,14 @@ export function activeManualPlaceStatusOverride(
   now: Date = new Date(),
 ): ManualPlaceStatusOverride | undefined {
   const override = manualPlaceStatusOverride(slug);
-  if (!override) return undefined;
-  if (isManualPlaceClosureOverride(override)) return override;
-  if (!hasValidManualPlaceStatusEvidence(override)) return undefined;
+  if (!override || !hasValidManualPlaceStatusEvidence(override)) {
+    return undefined;
+  }
 
   const today = now.toISOString().slice(0, 10);
-  return override.effective_at <= today &&
-    isManualPlaceStatusReviewCurrent(override, now)
+  if (override.effective_at > today) return undefined;
+  if (isManualPlaceClosureOverride(override)) return override;
+  return isManualPlaceStatusReviewCurrent(override, now)
     ? override
     : undefined;
 }

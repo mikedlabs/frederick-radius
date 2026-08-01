@@ -25,7 +25,6 @@ import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import {
   activeManualPlaceStatusOverride,
   isManualPlaceClosureOverride,
-  manualPlaceStatusOverride,
 } from "@/lib/place-status-overrides";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
@@ -1515,7 +1514,7 @@ export function canonicalBusinessStatusRefreshCandidates(
     .filter(
       (place) =>
         !isManualPlaceClosureOverride(
-          manualPlaceStatusOverride(place.slug),
+          activeManualPlaceStatusOverride(place.slug, now),
         ),
     )
     .filter((place) => !isKnownClosed(place.name))
