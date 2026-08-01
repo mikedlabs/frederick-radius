@@ -39,18 +39,22 @@ describe("scheduled data workflow contracts", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
     );
+    let checkedActions = 0;
 
     for (const name of workflowNames) {
       const actionUses = workflowText(name).matchAll(
-        /^\s*uses:\s*([^\s#]+)@([^\s#]+)/gm,
+        /^\s*(?:-\s*)?uses:\s*([^\s#]+)@([^\s#]+)/gm,
       );
       for (const [, action, revision] of actionUses) {
+        checkedActions += 1;
         expect(
           revision,
           `${name} must pin ${action} to an immutable commit`,
         ).toMatch(/^[0-9a-f]{40}$/);
       }
     }
+
+    expect(checkedActions).toBeGreaterThan(0);
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
