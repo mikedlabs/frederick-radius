@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   isRateLimited: vi.fn(),
   getPlaceDetails: vi.fn(),
   resolveAndEnrich: vi.fn(),
+  activeManualPlaceStatusOverride: vi.fn(),
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -36,6 +37,12 @@ vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
   resolveAndEnrich: mocks.resolveAndEnrich,
 }));
+vi.mock("@/lib/place-status-overrides", () => ({
+  activeManualPlaceStatusOverride: mocks.activeManualPlaceStatusOverride,
+  isManualPlaceClosureOverride: (override: { status?: string } | undefined) =>
+    override?.status === "closed_temporarily" ||
+    override?.status === "closed_permanently",
+}));
 
 import { GET } from "@/app/api/place/[slug]/enrich/route";
 
@@ -60,6 +67,7 @@ describe("GET /api/place/[slug]/enrich", () => {
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.getPlaceDetails.mockResolvedValue(null);
+    mocks.activeManualPlaceStatusOverride.mockReturnValue(undefined);
   });
 
   it("rejects a foreign request before a paid Google call", async () => {
@@ -119,6 +127,38 @@ describe("GET /api/place/[slug]/enrich", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     expect(mocks.getPlaceDetails).toHaveBeenCalledWith("ChIJtest", "basic");
     expect((await response.json()).hours).toEqual(["Monday: 9:00 AM – 5:00 PM"]);
+  });
+
+  it("does not spend on a place with a manual safety closure", async () => {
+    mocks.activeManualPlaceStatusOverride.mockReturnValue({
+      status: "closed_temporarily",
+    });
+
+    const response = await GET(request(), context);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ photos: [], hours: [] });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("keeps an operational correction refreshable without leaking a false closure", async () => {
+    mocks.activeManualPlaceStatusOverride.mockReturnValue({
+      status: "operational",
+    });
+    mocks.getPlaceDetails.mockResolvedValue({
+      photo_names: [],
+      weekday_hours: [],
+      business_status: "CLOSED_TEMPORARILY",
+      has_hours: false,
+      google_place_id: "ChIJtest",
+      photo_attributions: [],
+    });
+
+    const response = await GET(request(), context);
+    const body = await response.json();
+
+    expect(mocks.getPlaceDetails).toHaveBeenCalledWith("ChIJtest", "basic");
+    expect(body.status).toBe("OPERATIONAL");
   });
 
   it("requests rich Google context only for an explicit experience request", async () => {

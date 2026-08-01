@@ -10,8 +10,9 @@
  *
  * Serverless storage is read-only at request time, so this is a local or
  * CI script (the pattern used by dedup and copy:scores), not a runtime
- * writer. The loader applies the override; isOperational then suppresses
- * anything Google reports closed.
+ * writer. The loader applies the provider result after exact, reviewed manual
+ * status evidence. Manual closures stay suppressed; operational corrections
+ * remain refreshable so the provider can eventually repair a false closure.
  *
  * Usage: GOOGLE_PLACES_API_KEY=... npm run refresh:business-status -- --limit 100
  */

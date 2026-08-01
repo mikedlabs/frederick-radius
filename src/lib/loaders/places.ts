@@ -22,7 +22,11 @@ import {
 } from "@/lib/provenance";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
-import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
+import {
+  activeManualPlaceStatusOverride,
+  isManualPlaceClosureOverride,
+  manualPlaceStatusOverride,
+} from "@/lib/place-status-overrides";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
@@ -1095,7 +1099,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
     mayPublishVisitabilityHours(p.slug, hours, now);
-  const manualStatus = manualPlaceStatusOverride(p.slug);
+  const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
     enriched.google_place_id,
@@ -1367,10 +1371,13 @@ function visitorScore(p: PlaceCardData, now: Date): number {
  * Radius page regressed by consuming the raw PLACES array directly.
  */
 export function isOperational(p: Place): boolean {
-  // A slug-keyed human safety override wins over Google until a person
-  // reviews/removes it. This is deliberately exact (not a name denylist), so a
-  // temporary storm closure cannot suppress an unrelated same-name place.
-  if (manualPlaceStatusOverride(p.slug)) return false;
+  // A slug-keyed, source-backed human decision wins over Google during its
+  // reviewed window. Safety closures stay active after a missed review;
+  // operational corrections expire instead of asserting that a place is open
+  // forever. Exact slugs prevent either decision affecting a same-name place.
+  const manualStatus = activeManualPlaceStatusOverride(p.slug);
+  if (manualStatus?.status === "operational") return true;
+  if (isManualPlaceClosureOverride(manualStatus)) return false;
   if (isKnownClosed(p.name)) return false; // manual override of last resort
   const acceptedIdentity = acceptedEnrichmentIdentity(p);
   const refreshedStatus = refreshedBusinessStatus(
@@ -1495,15 +1502,22 @@ export function canonicalPlaceRefreshIdentities(): PlaceRefreshIdentity[] {
  *
  * This intentionally differs from publicPlaces(): a place hidden only because
  * an accepted provider profile says it is closed remains eligible so a later
- * reopening can be discovered. Human safety decisions still win, and every
- * other public-catalog quality boundary remains in force.
+ * reopening can be discovered. Human safety closures still win, while a
+ * reviewed operational correction remains in the rotation so the provider
+ * can eventually repair its status. Every other public-catalog quality
+ * boundary remains in force.
  */
 export function canonicalBusinessStatusRefreshCandidates(
   now: Date = new Date(),
 ): Place[] {
   return BASE_PLACES
     .filter((place) => !SUPPRESSED_JUNK_SLUGS.has(place.slug))
-    .filter((place) => !manualPlaceStatusOverride(place.slug))
+    .filter(
+      (place) =>
+        !isManualPlaceClosureOverride(
+          manualPlaceStatusOverride(place.slug),
+        ),
+    )
     .filter((place) => !isKnownClosed(place.name))
     .filter(
       (place) =>

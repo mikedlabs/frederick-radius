@@ -35,6 +35,9 @@ import { isGooglePlaceId } from "@/lib/provenance";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { PlaceDescriptionEntry } from "@/lib/loaders/placeDescriptions";
 import {
+  hasValidManualPlaceStatusEvidence,
+  isManualPlaceClosureOverride,
+  isManualPlaceOperationalCorrection,
   isManualPlaceStatusReviewCurrent,
   MANUAL_PLACE_STATUS_OVERRIDES,
 } from "@/lib/place-status-overrides";
@@ -273,15 +276,33 @@ const GATES: Gate[] = [
     audit: "operational status",
     run: () => {
       const entries = Object.entries(MANUAL_PLACE_STATUS_OVERRIDES);
+      const today = new Date().toISOString().slice(0, 10);
       const stale = entries.filter(([, override]) =>
         !isManualPlaceStatusReviewCurrent(override),
       );
       const sourceSlugs = new Set(SOURCE_PLACES.map((place) => place.slug));
       const unmatched = entries.filter(([slug]) => !sourceSlugs.has(slug));
+      const invalidEvidence = entries.filter(
+        ([, override]) => !hasValidManualPlaceStatusEvidence(override),
+      );
+      const futureEffective = entries.filter(
+        ([, override]) => override.effective_at > today,
+      );
+      const closures = entries.filter(([, override]) =>
+        isManualPlaceClosureOverride(override),
+      );
+      const operationalCorrections = entries.filter(([, override]) =>
+        isManualPlaceOperationalCorrection(override),
+      );
       return {
-        pass: stale.length === 0 && unmatched.length === 0,
-        observed: `${stale.length} stale; ${unmatched.length} unmatched of ${entries.length} manual status override${entries.length === 1 ? "" : "s"}`,
-        expect: "0 overrides past review_after or missing from source places",
+        pass:
+          stale.length === 0 &&
+          unmatched.length === 0 &&
+          invalidEvidence.length === 0 &&
+          futureEffective.length === 0,
+        observed: `${stale.length} stale; ${unmatched.length} unmatched; ${invalidEvidence.length} invalid evidence records; ${futureEffective.length} future-effective of ${entries.length} manual status overrides (${closures.length} closures; ${operationalCorrections.length} operational corrections)`,
+        expect:
+          "0 overrides past review_after, missing from source places, lacking valid HTTPS evidence, or effective in the future",
       };
     },
   },

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Place } from "@/data/places";
 import { isOperational, publicPlaceBySlug } from "@/lib/loaders/places";
 import {
+  activeManualPlaceStatusOverride,
+  hasValidManualPlaceStatusEvidence,
+  isManualPlaceOperationalCorrection,
   isManualPlaceStatusReviewCurrent,
+  type ManualPlaceStatusOverride,
   manualPlaceStatusOverride,
 } from "@/lib/place-status-overrides";
 
@@ -33,6 +37,62 @@ describe("manual place status overrides", () => {
       updated_at: "2026-07-15",
     };
     expect(isOperational(unrelated)).toBe(true);
+  });
+
+  it("keeps first-party operational corrections explicit and time-bounded", () => {
+    const corrections = [
+      {
+        slug: "green-health-docs",
+        source:
+          "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
+      },
+      {
+        slug: "saxbys-at-mount-st-marys-university-emmitsburg",
+        source:
+          "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
+      },
+    ];
+
+    for (const expected of corrections) {
+      const override = manualPlaceStatusOverride(expected.slug);
+      expect(isManualPlaceOperationalCorrection(override)).toBe(true);
+      expect(override?.source).toBe(expected.source);
+      expect(hasValidManualPlaceStatusEvidence(override!)).toBe(true);
+      expect(
+        activeManualPlaceStatusOverride(
+          expected.slug,
+          new Date("2026-08-01T12:00:00Z"),
+        )?.status,
+      ).toBe("operational");
+      expect(
+        activeManualPlaceStatusOverride(
+          expected.slug,
+          new Date("2026-08-16T12:00:00Z"),
+        ),
+      ).toBeUndefined();
+      expect(publicPlaceBySlug(expected.slug)).toBeDefined();
+    }
+  });
+
+  it("rejects malformed or non-HTTPS evidence", () => {
+    expect(
+      hasValidManualPlaceStatusEvidence({
+        status: "operational",
+        effective_at: "2026-02-30",
+        review_after: "2026-08-15",
+        source: "http://example.com/not-secure",
+        note: "Test evidence.",
+      }),
+    ).toBe(false);
+    expect(
+      hasValidManualPlaceStatusEvidence({
+        status: "maybe-open",
+        effective_at: "2026-07-31",
+        review_after: "2026-08-15",
+        source: "https://example.com/official-location",
+        note: "Test evidence.",
+      } as unknown as ManualPlaceStatusOverride),
+    ).toBe(false);
   });
 
   it("surfaces a missed review without treating its date as an automatic reopening", () => {

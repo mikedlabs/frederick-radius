@@ -84,6 +84,34 @@ describe("canonicalBusinessStatusRefreshCandidates", () => {
     ).toBe(true);
   });
 
+  it("keeps a reviewed operational correction public and eligible for recheck", () => {
+    const place = PLACES.find((row) => row.slug === providerClosedSlug);
+    expect(place).toBeDefined();
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+      status: "operational",
+      effective_at: "2026-07-26",
+      review_after: "2099-08-02",
+      source: "https://example.com/official-location",
+      note: "Test-only first-party operational correction.",
+    };
+    try {
+      expect(isOperational(place!)).toBe(true);
+      expect(publicPlaceBySlug(providerClosedSlug)).toBeDefined();
+      expect(
+        canonicalBusinessStatusRefreshCandidates().some(
+          (row) => row.slug === providerClosedSlug,
+        ),
+      ).toBe(true);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
+  });
+
   it("excludes manual safety closures and the known-closed denylist", () => {
     const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
     MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {

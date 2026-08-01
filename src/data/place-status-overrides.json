@@ -1,1 +1,16 @@
-{}
+{
+  "green-health-docs": {
+    "status": "operational",
+    "effective_at": "2026-07-31",
+    "review_after": "2026-08-15",
+    "source": "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
+    "note": "The official Maryland locations page lists the Frederick clinic at 304 Delaware Road and offers appointment scheduling."
+  },
+  "saxbys-at-mount-st-marys-university-emmitsburg": {
+    "status": "operational",
+    "effective_at": "2026-07-31",
+    "review_after": "2026-08-15",
+    "source": "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
+    "note": "Mount St. Mary's official campus dining page lists Saxbys Cafe with current daily hours and mobile ordering."
+  }
+}
