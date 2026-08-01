@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  canOfferInstallAutomatically,
-  isInstallCooldownActive,
   isInstallPromptSuppressedPath,
   isIosDevice,
   isIosSafariUserAgent,
@@ -42,19 +40,6 @@ describe("iOS Safari detection", () => {
 });
 
 describe("install prompt policy", () => {
-  it("waits for a return session and actual interaction", () => {
-    expect(canOfferInstallAutomatically(1, 20)).toBe(false);
-    expect(canOfferInstallAutomatically(2, 1)).toBe(false);
-    expect(canOfferInstallAutomatically(2, 2)).toBe(true);
-  });
-
-  it("treats only a valid future timestamp as an active cooldown", () => {
-    const now = Date.parse("2026-07-22T14:00:00Z");
-    expect(isInstallCooldownActive(now + 1, now)).toBe(true);
-    expect(isInstallCooldownActive(now, now)).toBe(false);
-    expect(isInstallCooldownActive("never", now)).toBe(false);
-  });
-
   it("stays off focused routes and pages with persistent action docks", () => {
     expect(isInstallPromptSuppressedPath("/map")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask")).toBe(true);

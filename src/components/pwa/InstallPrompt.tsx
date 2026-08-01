@@ -1,26 +1,183 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Download, ExternalLink, Share, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Check,
+  ChevronRight,
+  Copy,
+  Download,
+  ExternalLink,
+  Share2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
+import { safeReturnLink, type ReturnBridgeValueKind } from "@/lib/return-bridge";
+
+function promptTitle(valueKind: ReturnBridgeValueKind | null): string {
+  if (valueKind === "transit-stop") return "Keep this stop easy to find";
+  if (valueKind === "transit-bus") return "Find this bus again";
+  if (valueKind === "home-area") return "Keep your Frederick guide handy";
+  if (valueKind === "place" || valueKind === "event" || valueKind === "radius") {
+    return "Keep what you saved";
+  }
+  return "Keep Frederick Radius handy";
+}
+
+async function copyLink(url: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      return true;
+    }
+  } catch {
+    // Some embedded browsers expose Clipboard but reject it. Use the selection fallback.
+  }
+  let input: HTMLTextAreaElement | null = null;
+  try {
+    input = document.createElement("textarea");
+    input.value = url;
+    input.readOnly = true;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    input?.remove();
+  }
+}
 
 /**
- * A small return-path to the field guide, shown only after someone has used
- * the product and come back. It never pretends iOS can install itself:
- * browser chrome owns Add to Home Screen, so the guide shows exact steps.
+ * One non-blocking return path. Automatic offers stay out of focused map and
+ * detail work; a deliberate Saved/Compass/Settings action can always open it.
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
-  const { show, ios, iosSafari, prompting, promptInstall, dismiss } = useInstallPrompt();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const [blockingModalOpen, setBlockingModalOpen] = useState(false);
+  const {
+    show,
+    surface,
+    valueKind,
+    embeddedApp,
+    manual,
+    prompting,
+    promptInstall,
+    dismiss,
+    acknowledgeInstalled,
+    completeAlternative,
+    recordOfferShown,
+  } = useInstallPrompt();
 
-  if (!show || isInstallPromptSuppressedPath(pathname)) return null;
+  const suppressed = isInstallPromptSuppressedPath(pathname) && !manual;
+  const visible = show && !suppressed && !blockingModalOpen;
+  // `show` starts false for SSR and turns true only after the client platform
+  // check, so reading this capability here cannot create hydration drift.
+  const canShare = visible && typeof navigator.share === "function";
+
+  useEffect(() => {
+    if (visible) recordOfferShown();
+  }, [recordOfferShown, visible]);
+
+  useEffect(() => {
+    const update = () => {
+      setBlockingModalOpen(
+        Boolean(document.querySelector('[role="dialog"][aria-modal="true"]')),
+      );
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ["aria-modal", "role"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !manual) return;
+    const active = document.activeElement;
+    returnFocusRef.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      dismiss();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKeyDown);
+      const returnTo = returnFocusRef.current;
+      returnFocusRef.current = null;
+      const modalNowOpen = document.querySelector(
+        '[role="dialog"][aria-modal="true"]',
+      );
+      if (returnTo?.isConnected && !modalNowOpen) {
+        returnTo.focus({ preventScroll: true });
+      }
+    };
+  }, [dismiss, manual, visible]);
+
+  if (!visible) return null;
+
+  const currentLink = () =>
+    safeReturnLink(window.location.href) || "https://frederickradius.app/today";
+
+  const handleCopy = async () => {
+    if (!(await copyLink(currentLink()))) {
+      toast.error("The link could not be copied. Try your browser's Share menu.");
+      return;
+    }
+    toast.success("Frederick Radius link copied.");
+    completeAlternative("copy");
+  };
+
+  const handleShare = async () => {
+    if (!navigator.share) {
+      await handleCopy();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: "Frederick Radius",
+        text: "Keep this Frederick Radius link handy.",
+        url: currentLink(),
+      });
+      completeAlternative("share");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      await handleCopy();
+    }
+  };
+
+  const embedded = surface === "embedded-ios" || surface === "embedded-android";
+  const manualInstall =
+    surface === "ios-safari"
+    || surface === "ios-chrome"
+    || surface === "ios-browser"
+    || surface === "mobile-browser";
 
   return (
     <aside
-      aria-labelledby="install-title"
+      ref={panelRef}
+      aria-labelledby="keep-radius-title"
+      aria-live="polite"
+      data-return-bridge
+      data-surface={surface}
       className="pop-in fixed z-[var(--z-prompt)] mx-auto max-w-sm overflow-y-auto overscroll-contain rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
         left: "max(0.75rem, env(safe-area-inset-left, 0px))",
@@ -33,9 +190,10 @@ export default function InstallPrompt() {
       }}
     >
       <button
+        ref={closeButtonRef}
         type="button"
         onClick={dismiss}
-        aria-label="Close install reminder"
+        aria-label={manual ? "Close Keep Radius" : "Dismiss Keep Radius"}
         className="tactile-interactive absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
       >
@@ -47,62 +205,18 @@ export default function InstallPrompt() {
 
         <div className="min-w-0 flex-1">
           <p
-            id="install-title"
+            id="keep-radius-title"
             className="font-sans text-[15px] font-semibold leading-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Keep Frederick Radius handy
+            {promptTitle(valueKind)}
           </p>
 
-          {ios && iosSafari ? (
+          {surface === "native" ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Safari requires one short system step before Frederick Radius can appear on your Home Screen.
-              </p>
-
-              <ol
-                id="install-ios-steps"
-                className="mt-3 space-y-2 rounded-[var(--app-radius-md)] border p-3 text-[12px] leading-relaxed"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-subtle)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                <li className="flex gap-2">
-                  <Share className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  <span>Tap Safari&rsquo;s <strong>Share</strong> button.</span>
-                </li>
-                <li className="pl-6">Choose <strong>Add to Home Screen</strong>.</li>
-                <li className="pl-6">Keep <strong>Open as Web App</strong> on, then tap <strong>Add</strong>.</li>
-              </ol>
-            </>
-          ) : ios ? (
-            <>
-              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                This page is open inside another app or browser. Open it in Safari before adding it to your Home Screen.
-              </p>
-
-              <ol
-                className="mt-3 space-y-2 rounded-[var(--app-radius-md)] border p-3 text-[12px] leading-relaxed"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-subtle)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                <li className="flex gap-2">
-                  <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  <span>Use this browser&rsquo;s menu and choose <strong>Open in Safari</strong>.</span>
-                </li>
-                <li className="pl-6">In Safari, tap <strong>Share</strong>.</li>
-                <li className="pl-6">Choose <strong>Add to Home Screen</strong>.</li>
-              </ol>
-            </>
-          ) : (
-            <>
-              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Add the guide to your home screen so it opens in its own window and is easy to find again.
+                Add Radius to your Home Screen for one-tap access to your saved
+                places and live local tools.
               </p>
               <Button
                 onClick={promptInstall}
@@ -111,23 +225,149 @@ export default function InstallPrompt() {
                 className="mt-3"
                 iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
               >
-                {prompting ? "Opening…" : "Add to home screen"}
+                {prompting ? "Opening…" : "Add to Home Screen"}
               </Button>
             </>
+          ) : surface === "ios-safari" ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                In Safari, tap Share, choose Add to Home Screen, keep Open as Web
+                App on, then tap Add.
+              </p>
+              <Step icon={<Share2 className="h-4 w-4" aria-hidden />}>
+                Share <ChevronRight className="inline h-3 w-3" aria-hidden />
+                Add to Home Screen
+                <ChevronRight className="inline h-3 w-3" aria-hidden /> Add
+              </Step>
+            </>
+          ) : surface === "ios-chrome" ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                In Chrome, tap Share beside the address bar, choose Add to Home
+                Screen, then tap Add.
+              </p>
+              <Step icon={<Share2 className="h-4 w-4" aria-hidden />}>
+                Share <ChevronRight className="inline h-3 w-3" aria-hidden />
+                Add to Home Screen
+                <ChevronRight className="inline h-3 w-3" aria-hidden /> Add
+              </Step>
+            </>
+          ) : surface === "ios-browser" ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Open this browser&rsquo;s Share menu and look for Add to Home Screen.
+                If it is missing, open this page in Safari.
+              </p>
+              <Step icon={<Share2 className="h-4 w-4" aria-hidden />}>
+                Share <ChevronRight className="inline h-3 w-3" aria-hidden />
+                Add to Home Screen
+              </Step>
+            </>
+          ) : embedded ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                This page is open inside {embeddedApp}. Use its menu to open the
+                page in your phone&rsquo;s browser, or save the link now.
+              </p>
+              <Step icon={<ExternalLink className="h-4 w-4" aria-hidden />}>
+                Open in browser, then add Radius to your Home Screen.
+              </Step>
+            </>
+          ) : surface === "mobile-browser" ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Open this browser&rsquo;s menu and choose Install app or Add to Home
+                Screen. You can also save the link below.
+              </p>
+              <Step icon={<Download className="h-4 w-4" aria-hidden />}>
+                Browser menu
+                <ChevronRight className="inline h-3 w-3" aria-hidden /> Install app
+              </Step>
+            </>
+          ) : (
+            <div className="mt-3 flex items-center gap-3">
+              <Image
+                src="/brand/return-bridge-qr.svg"
+                alt="QR code for Frederick Radius"
+                width={96}
+                height={96}
+                className="rounded-[var(--app-radius-sm)] border bg-white p-1"
+                style={{ borderColor: "var(--app-border)" }}
+              />
+              <p className="text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Scan with your phone, bookmark this page with Command-D or
+                Control-D, or copy the link.
+              </p>
+            </div>
           )}
 
-          <div className="mt-2.5 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {manualInstall ? (
+              <button
+                type="button"
+                onClick={acknowledgeInstalled}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold"
+                style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                I added it
+              </button>
+            ) : null}
+            {canShare ? (
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                <Share2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Share link
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              Copy link
+            </button>
             <button
               type="button"
               onClick={dismiss}
-              className="tap-44 inline-flex min-h-11 items-center px-1 text-meta-lg font-semibold transition active:opacity-70"
+              className="inline-flex min-h-11 items-center px-2 text-[12px] font-semibold"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Not now
+              {manual ? "Close" : "Not now"}
             </button>
           </div>
         </div>
       </div>
     </aside>
+  );
+}
+
+function Step({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="mt-3 flex items-center gap-2 rounded-[var(--app-radius-md)] border p-3 text-[12px] leading-relaxed"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-subtle)",
+        color: "var(--app-ink-2)",
+      }}
+    >
+      <span className="shrink-0" style={{ color: "var(--app-brand)" }}>
+        {icon}
+      </span>
+      <span>{children}</span>
+    </div>
   );
 }

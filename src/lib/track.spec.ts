@@ -10,6 +10,9 @@ describe("Starter Plausible event budget", () => {
     expect(PLAUSIBLE_GOAL_EVENTS.has("search_pick")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("ask_answer")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("pulse_item_open")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("keep_radius_offer")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("keep_radius_success")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("pwa_launch")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("map_ready")).toBe(false);
     expect(PLAUSIBLE_GOAL_EVENTS.has("moment_spotlight_view")).toBe(false);
   });

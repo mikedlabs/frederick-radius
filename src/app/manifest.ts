@@ -44,5 +44,28 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: "Events", url: "/events", short_name: "Events" },
       { name: "Saved", url: "/my-radius", short_name: "Saved" },
     ],
+    screenshots: [
+      {
+        src: "/brand/examples/ui-today-mobile.webp",
+        sizes: "780x1440",
+        type: "image/webp",
+        form_factor: "narrow",
+        label: "Today in Frederick County",
+      },
+      {
+        src: "/brand/examples/ui-map-mobile.webp",
+        sizes: "780x1688",
+        type: "image/webp",
+        form_factor: "narrow",
+        label: "Explore Frederick County on the live map",
+      },
+      {
+        src: "/brand/examples/ui-compass-mobile.webp",
+        sizes: "780x1688",
+        type: "image/webp",
+        form_factor: "narrow",
+        label: "Open Frederick Radius tools from Compass",
+      },
+    ],
   };
 }
