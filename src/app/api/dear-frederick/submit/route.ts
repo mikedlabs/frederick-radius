@@ -1,7 +1,7 @@
 /**
  * /api/dear-frederick/submit — a member of the public submits a letter scan.
  *
- *   POST { image, signature?, contact?, note? }
+ *   POST { image, publicationConsent, signature?, contact?, note? }
  *        → stores the scan in Blob and inserts one PENDING
  *          dear_frederick_submissions row for the owner to review in
  *          /admin/dear-frederick. Nothing is published from here: approval is a
@@ -29,6 +29,7 @@ import {
   parseLetterScanDataUrl,
   type ParsedLetterScan,
 } from "@/lib/dear-frederick/letter-scan";
+import { letterScanStoragePath } from "@/lib/dear-frederick/consent";
 import {
   isRateLimited,
   isSameOriginMutationRequest,
@@ -52,8 +53,7 @@ const SUBMIT_RATE_WINDOW_SECONDS = 60 * 60;
 
 type ValidLetterScan = Extract<ParsedLetterScan, { status: "valid" }>;
 type UploadedScan =
-  | { ok: true; url: string }
-  | { ok: false; error: "scan-storage-unavailable" };
+  { ok: true; url: string } | { ok: false; error: "scan-storage-unavailable" };
 
 function clip(v: unknown, max: number): string | null {
   if (typeof v !== "string") return null;
@@ -68,11 +68,15 @@ async function uploadScan(scan: ValidLetterScan): Promise<UploadedScan> {
     return { ok: false, error: "scan-storage-unavailable" };
   }
   try {
-    const { url } = await put(`dear-frederick-scans/${randomUUID()}.${scan.extension}`, scan.bytes, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: scan.contentType,
-    });
+    const { url } = await put(
+      letterScanStoragePath(randomUUID(), scan.extension),
+      scan.bytes,
+      {
+        access: "public",
+        addRandomSuffix: false,
+        contentType: scan.contentType,
+      },
+    );
     return { ok: true, url };
   } catch {
     return { ok: false, error: "scan-storage-unavailable" };
@@ -82,14 +86,30 @@ async function uploadScan(scan: ValidLetterScan): Promise<UploadedScan> {
 export async function POST(req: NextRequest) {
   // 1. Same-origin: reject a cross-site or header-forged POST outright.
   if (!isSameOriginMutationRequest(req)) {
-    return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore() });
+    return NextResponse.json(
+      { error: "forbidden-origin" },
+      { status: 403, headers: noStore() },
+    );
   }
 
   // 2. Rate-limit before reading a multi-megabyte body or touching Blob/Postgres.
-  if (await isRateLimited(req, "dear-frederick-submit", SUBMIT_RATE_LIMIT, SUBMIT_RATE_WINDOW_SECONDS)) {
+  if (
+    await isRateLimited(
+      req,
+      "dear-frederick-submit",
+      SUBMIT_RATE_LIMIT,
+      SUBMIT_RATE_WINDOW_SECONDS,
+    )
+  ) {
     return NextResponse.json(
       { error: "rate-limited" },
-      { status: 429, headers: { ...noStore(), "Retry-After": String(SUBMIT_RATE_WINDOW_SECONDS) } },
+      {
+        status: 429,
+        headers: {
+          ...noStore(),
+          "Retry-After": String(SUBMIT_RATE_WINDOW_SECONDS),
+        },
+      },
     );
   }
 
@@ -98,23 +118,48 @@ export async function POST(req: NextRequest) {
   if (!rawBody.ok) {
     return NextResponse.json(
       { error: rawBody.error },
-      { status: rawBody.error === "body-too-large" ? 413 : 400, headers: noStore() },
+      {
+        status: rawBody.error === "body-too-large" ? 413 : 400,
+        headers: noStore(),
+      },
     );
   }
-  if (typeof rawBody.value !== "object" || rawBody.value === null || Array.isArray(rawBody.value)) {
-    return NextResponse.json({ error: "invalid-body" }, { status: 400, headers: noStore() });
+  if (
+    typeof rawBody.value !== "object" ||
+    rawBody.value === null ||
+    Array.isArray(rawBody.value)
+  ) {
+    return NextResponse.json(
+      { error: "invalid-body" },
+      { status: 400, headers: noStore() },
+    );
   }
   const body = rawBody.value as Record<string, unknown>;
 
-  // 4. Image validation: the scan is required and must be a genuine image.
+  // 4. Explicit rights/publication permission is required. The browser's
+  // checkbox is helpful copy; this server check is the actual boundary.
+  if (body.publicationConsent !== true) {
+    return NextResponse.json(
+      { error: "publication-consent-required" },
+      { status: 400, headers: noStore() },
+    );
+  }
+
+  // 5. Image validation: the scan is required and must be a genuine image.
   const scan = parseLetterScanDataUrl(body.image);
   if (scan.status === "absent") {
-    return NextResponse.json({ error: "scan-required" }, { status: 400, headers: noStore() });
+    return NextResponse.json(
+      { error: "scan-required" },
+      { status: 400, headers: noStore() },
+    );
   }
   if (scan.status === "invalid") {
     return NextResponse.json(
       { error: scan.error },
-      { status: scan.error === "scan-too-large" ? 413 : 400, headers: noStore() },
+      {
+        status: scan.error === "scan-too-large" ? 413 : 400,
+        headers: noStore(),
+      },
     );
   }
 
@@ -122,16 +167,22 @@ export async function POST(req: NextRequest) {
   const contact = clip(body.contact, 200);
   const note = clip(body.note, 4000);
 
-  // 5. Fail closed: no database means we cannot record the submission.
+  // 6. Fail closed: no database means we cannot record the submission.
   const db = getDb();
   if (!db) {
-    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
+    return NextResponse.json(
+      { error: "database-unavailable" },
+      { status: 503, headers: noStore() },
+    );
   }
 
-  // 6. Fail closed: no Blob means we cannot store the scan (the whole point).
+  // 7. Fail closed: no Blob means we cannot store the scan (the whole point).
   const uploaded = await uploadScan(scan);
   if (!uploaded.ok) {
-    return NextResponse.json({ error: "scan-storage-unavailable" }, { status: 503, headers: noStore() });
+    return NextResponse.json(
+      { error: "scan-storage-unavailable" },
+      { status: 503, headers: noStore() },
+    );
   }
 
   try {
@@ -146,6 +197,9 @@ export async function POST(req: NextRequest) {
     // Blob and Postgres cannot share a transaction. If the insert fails,
     // compensate so the public upload is not left unreferenced.
     await deleteLetterScan(uploaded.url);
-    return NextResponse.json({ error: "insert-failed" }, { status: 500, headers: noStore() });
+    return NextResponse.json(
+      { error: "insert-failed" },
+      { status: 500, headers: noStore() },
+    );
   }
 }
