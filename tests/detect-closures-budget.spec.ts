@@ -208,12 +208,12 @@ describe("closure detector budget controls", () => {
     expect(existsSync(join(path, "closure-detector.lock"))).toBe(false);
   });
 
-  it("reuses cache unless an intentional refresh is confirmed", async () => {
+  it("reuses cache while advancing limited runs to the next uncached target", async () => {
     const path = reportsDir();
     const options = liveOptions(path);
     const firstSearch = vi.fn(async () => "No closure evidence found.");
     await runClosureDetector(options, { env, search: firstSearch, sleep: noSleep });
-    const secondSearch = vi.fn(async () => "must not run");
+    const secondSearch = vi.fn(async () => "No closure evidence found.");
     const second = await runClosureDetector(options, {
       env,
       search: secondSearch,
@@ -229,10 +229,13 @@ describe("closure detector budget controls", () => {
       { env, search: refreshSearch, sleep: noSleep },
     );
 
-    expect(second).toMatchObject({ attemptedRequests: 0, cacheHits: 1 });
-    expect(plan).toMatchObject({ attemptedRequests: 0, cacheHits: 1 });
+    expect(second).toMatchObject({ attemptedRequests: 1, cacheHits: 1 });
+    expect(plan).toMatchObject({ attemptedRequests: 0, cacheHits: 2 });
     expect(refresh).toMatchObject({ attemptedRequests: 1, cacheHits: 0 });
-    expect(secondSearch).not.toHaveBeenCalled();
+    expect(secondSearch).toHaveBeenCalledOnce();
+    expect(secondSearch.mock.calls[0]?.[0]).not.toBe(
+      firstSearch.mock.calls[0]?.[0],
+    );
     expect(refreshSearch).toHaveBeenCalledOnce();
   });
 

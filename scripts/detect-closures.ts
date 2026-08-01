@@ -116,6 +116,7 @@ function readRawCache(path: string): Record<string, string> {
 
 export type ClosureDetectorCliOptions = {
   onlySlug?: string;
+  /** Maximum uncached provider attempts; cached evaluations do not consume it. */
   limit?: number;
   live: boolean;
   confirmed: boolean;
@@ -557,7 +558,6 @@ function targetsFor(options: ClosureDetectorCliOptions) {
     siteHost: p.website ? host(p.website) : "",
   }));
   if (options.onlySlug) t = t.filter((x) => x.slug === options.onlySlug);
-  if (options.limit) t = t.slice(0, options.limit);
   return t;
 }
 
@@ -672,6 +672,10 @@ export async function runClosureDetector(
   const dailyKey = generatedAt.slice(0, 10);
   const monthlyKey = generatedAt.slice(0, 7);
   const targets = targetsFor(options);
+  const requestLimit = Math.min(
+    options.limit ?? MAX_CLOSURE_REQUESTS_PER_RUN,
+    MAX_CLOSURE_REQUESTS_PER_RUN,
+  );
 
   if (options.rescore) {
     if (!existsSync(paths.rawPath)) {
@@ -739,7 +743,7 @@ export async function runClosureDetector(
     );
     const plannedRequests = Math.min(
       uncachedTargets,
-      MAX_CLOSURE_REQUESTS_PER_RUN,
+      requestLimit,
       MAX_CLOSURE_CREDITS_PER_RUN,
       dailyRemaining,
       monthlyRemaining,
@@ -790,7 +794,7 @@ export async function runClosureDetector(
   }
   console.log(
     `Checking ${targets.length} place(s) via ${provider}. ` +
-      `At most ${MAX_CLOSURE_REQUESTS_PER_RUN} uncached requests can be attempted.\n`,
+      `At most ${requestLimit} uncached requests can be attempted.\n`,
   );
 
   const releaseLock = acquireExclusiveLock(
@@ -832,6 +836,14 @@ export async function runClosureDetector(
           candidate ? `cached candidate (${candidate.confidence})` : "cached",
         );
         continue;
+      }
+
+      if (attemptedRequests >= requestLimit) {
+        console.log("skipped (--limit request ceiling)");
+        console.warn(
+          `Closure-detector request limit stopped this run at ${attemptedRequests} uncached request(s).`,
+        );
+        break;
       }
 
       const attemptAt = clock();
