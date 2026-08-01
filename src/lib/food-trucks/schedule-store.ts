@@ -147,6 +147,17 @@ export async function writeFoodTruckSchedule(
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return { stored: false, preservedPrevious: Boolean(previous), reason: "Blob storage is not configured" };
   }
+  const allSourcesFailed =
+    next.sources.length > 0 && next.sources.every((source) => !source.ok);
+  if (allSourcesFailed) {
+    return {
+      stored: false,
+      preservedPrevious: Boolean(previous),
+      reason: previous
+        ? "All sources failed; the last valid schedule was kept"
+        : "All sources failed; no schedule was stored",
+    };
+  }
   const hasFailedSource = next.sources.some((source) => !source.ok);
   if (hasFailedSource && next.stops.length === 0 && (previous?.stops.length ?? 0) > 0) {
     return { stored: false, preservedPrevious: true, reason: "Sources degraded; the last valid schedule was kept" };

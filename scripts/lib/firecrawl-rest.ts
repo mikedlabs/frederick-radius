@@ -71,6 +71,7 @@ export type FirecrawlRestErrorCode =
   | "TIMEOUT"
   | "NETWORK_ERROR"
   | "HTTP_ERROR"
+  | "TARGET_HTTP_ERROR"
   | "INVALID_RESPONSE";
 
 export class FirecrawlRestError extends Error {
@@ -87,6 +88,32 @@ export class FirecrawlRestError extends Error {
     this.code = code;
     this.status = options.status;
   }
+}
+
+/**
+ * Require Firecrawl to explicitly report that the fetched target returned a
+ * successful HTTP status. The provider API's own 200 response only confirms
+ * that the scrape request completed; it does not prove the source page was
+ * successfully retrieved.
+ */
+export function assertSuccessfulFirecrawlTargetStatus(
+  metadata: Record<string, unknown>,
+): number {
+  const status = metadata.statusCode;
+  if (typeof status !== "number" || !Number.isInteger(status)) {
+    throw new FirecrawlRestError(
+      "INVALID_RESPONSE",
+      "Firecrawl did not report an integer target HTTP status.",
+    );
+  }
+  if (status < 200 || status > 299) {
+    throw new FirecrawlRestError(
+      "TARGET_HTTP_ERROR",
+      `Firecrawl reached a page reporting HTTP ${status}.`,
+      { status },
+    );
+  }
+  return status;
 }
 
 type FirecrawlResponseBody = {

@@ -12,9 +12,7 @@ on:
     - cron: "30 9 * * *"
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: ingest-venue-events
@@ -22,25 +20,26 @@ concurrency:
 
 jobs:
   ingest:
-    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
     environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: npm ci
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Verify optional Firecrawl fallback
+      - name: Require venue extraction configuration
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
           FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
         run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error title=Missing ANTHROPIC_VENUE_EVENTS_API_KEY::Add the standard API key to the Data Enrichment environment before running venue extraction."
+            exit 1
+          fi
           case "$FIRECRAWL_FETCH_FALLBACK" in
             0) ;;
             1)
@@ -64,6 +63,16 @@ jobs:
             echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
             exit 1
           fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
       - name: Extract venue events
         id: extract
         continue-on-error: true
@@ -81,29 +90,58 @@ jobs:
         run: |
           npm run style:lint
           npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
-      # Generated event rows affect every discovery surface. Keep the data diff
-      # behind the same human-review and CI boundary as application code.
-      - name: Open review PR
-        if: ${{ always() && steps.verify.outcome == 'success' }}
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: bot/venue-event-refresh
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh venue events (automated)"
-          title: "data: refresh venue events"
-          body: |
-            Automated venue-event extraction refresh.
+      - name: Stage exact review files
+        if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          install -D -m 0644 src/data/venue-events.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-events.json"
+          install -D -m 0644 src/data/venue-event-source-state.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-state.json"
 
-            The workflow ran the Radius copy/provenance checks before opening
-            this PR. Review event times, source links, and unexpected row-count
-            changes before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+      - name: Upload isolated review artifact
+        if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: venue-event-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/automated-pr-output
+          if-no-files-found: error
+          retention-days: 1
       - name: Enforce complete venue extraction
         if: ${{ always() && steps.extract.outcome != 'success' }}
         run: |
           echo "The deterministic venue feeds were allowed to refresh, but at least one model-assisted source could not run."
           echo "Check ANTHROPIC_VENUE_EVENTS_API_KEY in the Data Enrichment environment and the extraction log above."
           exit 1
+
+  publish:
+    needs: ingest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: venue-event-review-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/venue-event-refresh
+      allowed_paths: |
+        src/data/venue-events.json
+        src/data/venue-event-source-state.json
+      commit_message: "data: refresh venue events (automated)"
+      title: "data: refresh venue events"
+      body: |
+        Automated venue-event extraction refresh.
+
+        The workflow ran the Radius copy/provenance checks before opening
+        this PR. Review event times, source links, and unexpected row-count
+        changes before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getCachedLiveEvents: vi.fn(),
   withLiveEventFetchSession: vi.fn(),
   syncEventArchiveBatch: vi.fn(),
+  preflightEventArchive: vi.fn(),
   startIngestRunStrict: vi.fn(),
   finishIngestRunStrict: vi.fn(),
   captureMessage: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("@/lib/integrations/ical-live", () => ({
 }));
 vi.mock("@/lib/events/event-archive-batch", () => ({
   syncEventArchiveBatch: mocks.syncEventArchiveBatch,
+  preflightEventArchive: mocks.preflightEventArchive,
 }));
 vi.mock("@/lib/ingest/run-log", () => ({
   startIngestRunStrict: mocks.startIngestRunStrict,
@@ -69,6 +71,10 @@ describe("GET /api/cron/event-archive", () => {
     );
     mocks.startIngestRunStrict.mockResolvedValue("archive-run-1");
     mocks.finishIngestRunStrict.mockResolvedValue(undefined);
+    mocks.preflightEventArchive.mockResolvedValue({
+      ready: true,
+      missing: [],
+    });
     mocks.assembleUnifiedEvents.mockResolvedValue({
       unified: [publicCard],
       publicEvents: [publicCard],
@@ -154,6 +160,66 @@ describe("GET /api/cron/event-archive", () => {
       },
       { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("fails before source reads when the archive migration is incomplete", async () => {
+    mocks.preflightEventArchive.mockResolvedValue({
+      ready: false,
+      missing: ["event_tombstones.last_snapshot"],
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+    expect(mocks.getCachedLiveEvents).not.toHaveBeenCalled();
+    expect(mocks.syncEventArchiveBatch).not.toHaveBeenCalled();
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      {
+        status: "error",
+        records_in: 0,
+        records_upserted: 0,
+        records_failed: 1,
+        error: "Archive checks failed: schema-not-ready.",
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(body).toMatchObject({
+      ok: false,
+      status: "error",
+      archive_attempted: false,
+      failures: ["schema-not-ready"],
+      schema: {
+        ready: false,
+        missing: ["event_tombstones.last_snapshot"],
+      },
+    });
+  });
+
+  it("keeps a bounded database code when the archive schema check rejects", async () => {
+    mocks.preflightEventArchive.mockRejectedValue(
+      Object.assign(new Error("private connection detail"), {
+        code: "57P03",
+      }),
+    );
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      failures: ["schema-not-ready"],
+      schema: {
+        ready: false,
+        check: "rejected",
+        error_code: "57P03",
+        missing: [],
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain("private connection detail");
+    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
   });
 
   it("archives every linked civic lane while excluding private bookings", async () => {
@@ -461,6 +527,66 @@ describe("GET /api/cron/event-archive", () => {
         truncated: true,
       },
     });
+  });
+
+  it("records missing archive rows instead of counting only failure labels", async () => {
+    mocks.assembleUnifiedEvents.mockResolvedValue({
+      unified: Array.from({ length: 850 }, (_, index) => ({
+        ...publicCard,
+        slug: `event-${index}`,
+        source_id: `publisher-${index}`,
+      })),
+      publicEvents: Array.from({ length: 850 }, (_, index) => ({
+        ...publicCard,
+        slug: `event-${index}`,
+        source_id: `publisher-${index}`,
+      })),
+      sourceHealth: { degraded: false, unavailable: [] },
+    });
+    mocks.syncEventArchiveBatch.mockResolvedValue({
+      complete: false,
+      recordsComplete: false,
+      accepted: 850,
+      upserted: 802,
+      ignoredLifecycleOnly: 0,
+      tombstoned: 0,
+      batches: 4,
+      retries: 1,
+      truncated: false,
+      timedOut: false,
+      tombstonesEnabled: false,
+      failure: {
+        stage: "upsert",
+        reason: "rejected",
+        code: "40001",
+      },
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      status: "partial",
+      failures: ["archive-write", "archive-incomplete"],
+      archive: {
+        accepted: 850,
+        upserted: 802,
+        retries: 1,
+        records_failed: 48,
+        failure: { code: "40001" },
+      },
+    });
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      expect.objectContaining({
+        status: "partial",
+        records_in: 850,
+        records_upserted: 802,
+        records_failed: 48,
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
   });
 
   it("never returns 200 when the success heartbeat cannot finish", async () => {

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Maximum official websites to check"
+        description: "Maximum official websites to check (1-200)"
         required: false
         default: "80"
       slug:
@@ -23,9 +23,7 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: refresh-official-commerce-links
@@ -33,13 +31,19 @@ concurrency:
 
 jobs:
   refresh:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    permissions:
+      contents: read
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -65,8 +69,8 @@ jobs:
               exit 1
               ;;
           esac
-          if [ "$REFRESH_LIMIT" -lt 1 ]; then
-            echo "::error title=Invalid refresh limit::The limit must be at least one."
+          if [ "$REFRESH_LIMIT" -lt 1 ] || [ "$REFRESH_LIMIT" -gt 200 ]; then
+            echo "::error title=Invalid refresh limit::The limit must be between 1 and 200."
             exit 1
           fi
           args=(--limit="$REFRESH_LIMIT" --concurrency=2)
@@ -83,21 +87,50 @@ jobs:
             args+=(--force)
           fi
           npm run refresh:commerce-links -- "${args[@]}"
-      - name: Open review PR when links changed
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: bot/official-commerce-link-refresh
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh official commerce links"
-          title: "data: refresh official restaurant links"
-          body: |
-            Deterministic refresh of menu, ordering, reservation, catering, and
-            gift-card links found as exact anchors on official business sites.
+      - name: Stage exact commerce-link output
+        run: |
+          set -euo pipefail
+          install -D -m 0644 \
+            src/data/business-info.json \
+            "$RUNNER_TEMP/official-commerce-link-output/src/data/business-info.json"
 
-            No AI extraction, third-party directory crawl, menu-item scraping,
-            price ingestion, or POS sync was used. Review the source URLs and
-            direct actions before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+      - name: Upload exact commerce-link output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: official-commerce-link-output-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/official-commerce-link-output
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: refresh
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: official-commerce-link-output-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/official-commerce-link-refresh
+      allowed_paths: src/data/business-info.json
+      commit_message: "data: refresh official commerce links"
+      title: "data: refresh official restaurant links"
+      body: |
+        Deterministic refresh of menu, ordering, reservation, catering, and
+        gift-card links found as exact anchors on official business sites.
+
+        No AI extraction, third-party directory crawl, menu-item scraping,
+        price ingestion, or POS sync was used. Review the source URLs and
+        direct actions before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

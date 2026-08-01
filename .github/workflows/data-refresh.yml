@@ -1,18 +1,15 @@
 name: data-refresh
 
-# Daily refresh of every active data source. Raw and clean output are
-# committed to the data-snapshots branch, force pushed, so the main
-# branch history stays small. On any failure this opens an issue and
-# fires a repository_dispatch so the diagnose-failure command can run.
+# A previous bounded snapshot seeds each daily run so one upstream failure
+# cannot erase the last-known-good normalized data. Fetching, publication, and
+# issue mutation are isolated into separate least-privilege jobs.
 
 on:
   schedule:
     - cron: "0 10 * * *" # 10:00 UTC, about 6 AM Eastern
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-  issues: write
+permissions: {}
 
 concurrency:
   group: data-refresh
@@ -20,72 +17,228 @@ concurrency:
 
 jobs:
   refresh:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      restore_outcome: ${{ steps.restore.outcome }}
+      fetch_outcome: ${{ steps.fetch.outcome }}
+      finalization_outcome: ${{ steps.finalization.outcome }}
+      artifact_outcome: ${{ steps.snapshot-artifact.outcome }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout trusted pipeline code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Checkout the last-known-good snapshot
+        id: prior-snapshot
+        continue-on-error: true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: data-snapshots
+          path: .last-good-snapshot
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Restore bounded last-known-good state
+        id: restore
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          SNAPSHOT_CHECKOUT_OUTCOME: ${{ steps.prior-snapshot.outcome }}
+        run: |
+          set -o pipefail
+          {
+            set -euo pipefail
+            if [ "$SNAPSHOT_CHECKOUT_OUTCOME" != "success" ]; then
+              echo "The data-snapshots branch could not be checked out."
+              exit 1
+            fi
+            test -s .last-good-snapshot/data/sources.yaml
+            mkdir -p data
+            if [ -d .last-good-snapshot/data/clean ]; then
+              cp -R .last-good-snapshot/data/clean data/clean
+            fi
+            if [ -d .last-good-snapshot/data/raw ]; then
+              cp -R .last-good-snapshot/data/raw data/raw
+            fi
+            install -m 0600 .last-good-snapshot/data/sources.yaml /tmp/frederick-radius-prior-sources.yaml
+            rm -rf .last-good-snapshot
+          } 2>&1 | tee restore-state.log
+        shell: bash
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        if: ${{ steps.restore.outcome == 'success' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
+        if: ${{ steps.restore.outcome == 'success' }}
         run: npm ci
 
-      - name: Run the worker
+      - name: Run the read-only worker
         id: fetch
+        if: ${{ steps.restore.outcome == 'success' }}
         continue-on-error: true
         run: |
           set -o pipefail
           npm run pipeline:fetch 2>&1 | tee pipeline-run.log
+        env:
+          PRIOR_SOURCE_MANIFEST: /tmp/frederick-radius-prior-sources.yaml
+          PIPELINE_FINALIZATION_MARKER: /tmp/frederick-radius-pipeline-finalized.json
 
-      - name: Commit snapshots to data-snapshots
-        # Always run, even on partial failure: the raw responses are
-        # what diagnose-failure needs to inspect drift.
-        if: always()
+      - name: Require a finalized pipeline state
+        id: finalization
+        if: ${{ always() && steps.restore.outcome == 'success' }}
+        continue-on-error: true
         run: |
-          git config user.name "frederick-radius-bot"
-          git config user.email "bot@frederickradius.app"
-          git checkout --orphan data-snapshots
-          git rm -rf --cached . >/dev/null 2>&1 || true
-          git add -f data/raw data/clean data/sources.yaml
-          git commit -m "data snapshot $(date -u +%Y-%m-%dT%H:%MZ)" || echo "nothing to commit"
-          git push -f origin data-snapshots
+          set -euo pipefail
+          test -s /tmp/frederick-radius-pipeline-finalized.json
+          node -e 'const value=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); if (value.finalized !== true) process.exit(1)' /tmp/frederick-radius-pipeline-finalized.json
 
-      - name: Open an issue and dispatch diagnosis on failure
-        if: steps.fetch.outcome == 'failure'
-        uses: actions/github-script@v7
+      - name: Stage the bounded snapshot artifact
+        if: ${{ always() && steps.restore.outcome == 'success' && steps.finalization.outcome == 'success' }}
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/pipeline-snapshot
+        run: |
+          set -euo pipefail
+          install -D -m 0644 data/sources.yaml "$ARTIFACT_ROOT/data/sources.yaml"
+          for directory in data/clean data/raw; do
+            [ -d "$directory" ] || continue
+            while IFS= read -r -d '' file; do
+              install -D -m 0644 "$file" "$ARTIFACT_ROOT/$file"
+            done < <(find "$directory" -type f -print0)
+          done
+
+      - name: Upload the bounded snapshot artifact
+        id: snapshot-artifact
+        if: ${{ always() && steps.restore.outcome == 'success' && steps.finalization.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pipeline-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pipeline-snapshot
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Save diagnostic logs for the reporter
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pipeline-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            restore-state.log
+            pipeline-run.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  publish:
+    needs: refresh
+    if: ${{ needs.refresh.outputs.restore_outcome == 'success' && needs.refresh.outputs.finalization_outcome == 'success' && needs.refresh.outputs.artifact_outcome == 'success' }}
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/publish-data-snapshot.yml
+    with:
+      artifact: pipeline-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+
+  report:
+    needs: [refresh, publish]
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout trusted issue lifecycle code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download worker logs
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pipeline-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: workflow-logs
+
+      - name: Download snapshot publisher log
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: snapshot-publisher-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: workflow-logs
+
+      - name: Update the single refresh health issue
+        id: lifecycle
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RESTORE_OUTCOME: ${{ needs.refresh.outputs.restore_outcome }}
+          FETCH_OUTCOME: ${{ needs.refresh.outputs.fetch_outcome }}
+          FINALIZATION_OUTCOME: ${{ needs.refresh.outputs.finalization_outcome }}
+          ARTIFACT_OUTCOME: ${{ needs.refresh.outputs.artifact_outcome }}
+          PUBLISH_OUTCOME: ${{ needs.publish.result }}
         with:
           script: |
             const fs = require('fs');
+            const lifecycle = require('./scripts/lib/automated-data-issue.cjs');
+            const outcomes = {
+              restore: process.env.RESTORE_OUTCOME,
+              fetch: process.env.FETCH_OUTCOME,
+              finalization: process.env.FINALIZATION_OUTCOME,
+              artifact: process.env.ARTIFACT_OUTCOME,
+              publish: process.env.PUBLISH_OUTCOME,
+            };
+            const healthy = Object.values(outcomes).every((value) => value === 'success');
+            core.setOutput('healthy', healthy ? 'true' : 'false');
+            if (healthy) {
+              await lifecycle.closeRecovered({
+                github,
+                context,
+                family: 'refresh',
+                recoveryMessage: 'The daily data refresh and bounded snapshot publication completed successfully.',
+              });
+              return;
+            }
+            const selectedLog = outcomes.restore !== 'success'
+              ? 'restore-state.log'
+              : outcomes.fetch !== 'success'
+                ? 'pipeline-run.log'
+                : outcomes.finalization !== 'success'
+                  ? 'pipeline-run.log'
+                : 'snapshot-publish.log';
             let log = '';
-            try { log = fs.readFileSync('pipeline-run.log', 'utf8').slice(-6000); } catch (e) {}
+            try { log = fs.readFileSync(`workflow-logs/${selectedLog}`, 'utf8').slice(-6000); } catch (error) {}
+            const failedStage = outcomes.restore !== 'success'
+              ? 'restore the last-known-good snapshot'
+              : outcomes.fetch !== 'success'
+                ? 'refresh one or more pipeline sources'
+                : outcomes.finalization !== 'success'
+                  ? 'finalize a monotonic pipeline state'
+                  : outcomes.artifact !== 'success'
+                    ? 'stage the bounded snapshot artifact'
+                    : 'publish the validated snapshot branch';
             const body = [
-              'The daily data refresh reported one or more failing sources.',
+              `The daily data refresh could not ${failedStage}.`,
               '',
-              'Worker output (tail):',
-              '```',
-              log,
-              '```',
+              `Outcomes: restore=${outcomes.restore}; fetch=${outcomes.fetch}; finalization=${outcomes.finalization}; artifact=${outcomes.artifact}; publish=${outcomes.publish}.`,
               '',
-              'Run the diagnose-failure command in AGENTS.md for each failing source.',
+              log ? 'Worker output (tail):' : 'No worker log was available for this failure stage.',
+              ...(log ? ['```', log, '```'] : []),
+              '',
+              'A failed source keeps its last-known-good normalized output while successful sources may still advance. If publication is rejected, the previous complete snapshot remains in place.',
             ].join('\n');
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Data refresh failure ${new Date().toISOString().slice(0, 10)}`,
-              body,
-              labels: ['data-pipeline', 'automated'],
-            });
-            await github.rest.repos.createDispatchEvent({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              event_type: 'diagnose-failure',
-              client_payload: { run_id: context.runId },
-            });
+            await lifecycle.upsertFailure({ github, context, family: 'refresh', body });
 
-      - name: Fail the job if the worker failed
-        if: steps.fetch.outcome == 'failure'
+      - name: Fail the workflow when refresh health is degraded
+        if: ${{ steps.lifecycle.outputs.healthy != 'true' }}
         run: exit 1

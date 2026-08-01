@@ -135,6 +135,9 @@ export type SourceScoutReport = {
   schemaVersion: 1;
   reviewOnly: true;
   noPublicWrites: true;
+  provider: {
+    name: "tavily";
+  };
   generatedAt: string;
   mode: "plan" | "live";
   selectedProfile: string | null;
@@ -893,6 +896,9 @@ export async function runSourceScout(
     schemaVersion: 1,
     reviewOnly: true,
     noPublicWrites: true,
+    provider: {
+      name: "tavily",
+    },
     generatedAt,
     mode: live ? "live" : "plan",
     selectedProfile: options.profileId ?? null,

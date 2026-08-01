@@ -33,6 +33,11 @@ export type LiveIncidentSignal = {
 
 export type LiveIncidentSnapshot = {
   items: LiveIncidentSignal[];
+  /** Public reports returned by the privacy-filtered Scanner board. */
+  reportedCount: number;
+  /** Public reports outside this safe, travel-impact map projection. */
+  notShownCount: number;
+  /** Public reports with a safe coordinate, before the response-size cap. */
   totalCount: number;
   corroboratedCount: number;
   chartAvailable: boolean;
@@ -107,13 +112,25 @@ export function buildLiveIncidentSnapshotFromFusion(
   chartAvailable: boolean,
   now: string | number | Date,
   scannerAvailable?: boolean,
+  reportedCount?: number,
 ): LiveIncidentSnapshot {
   const snapshotTime = resolvedNow(now);
+  const totalCount = fusion.incidents.length;
+  const safeReportedCount = Math.max(
+    totalCount,
+    Math.floor(
+      typeof reportedCount === "number" && Number.isFinite(reportedCount)
+        ? reportedCount
+        : totalCount,
+    ),
+  );
   return {
     items: fusion.incidents
       .slice(0, DEFAULT_LIVE_INCIDENT_LIMIT)
       .map(toPublicSignal),
-    totalCount: fusion.incidents.length,
+    reportedCount: safeReportedCount,
+    notShownCount: safeReportedCount - totalCount,
+    totalCount,
     corroboratedCount: fusion.incidents.filter(
       (incident) => incident.status === "corroborated",
     ).length,

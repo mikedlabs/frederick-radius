@@ -3,18 +3,16 @@ name: Enrich places (Google)
 # Monthly refresh of the CURATED editorial places against Google Places
 # → src/data/places-enrichment.json. Cost-bounded by design: the script
 # defaults to curated-only (~51 places, ~$2), only writes with
-# --live --confirm, and honors a --max-cost hard cap. Skips cleanly (no
-# red run) when GOOGLE_PLACES_API_KEY is unset, so it stays quiet until
-# the key exists. DFP's long tail is enriched on demand elsewhere.
+# --live --confirm, and honors a --max-cost hard cap. A missing key fails
+# before installation so a green run always means enrichment actually ran.
+# DFP's long tail is enriched on demand elsewhere.
 
 on:
   schedule:
     - cron: "0 6 1 * *" # 1st of each month, 06:00 UTC
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: enrich-curated-places
@@ -22,22 +20,32 @@ concurrency:
 
 jobs:
   enrich:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Require Google enrichment configuration
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+        run: |
+          if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
+            echo "::error title=Missing GOOGLE_PLACES_API_KEY::Add the repository secret before running curated-place enrichment."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
       - run: npm ci
       - name: Enrich curated places (cost-capped)
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-        run: |
-          if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
-            echo "GOOGLE_PLACES_API_KEY not set — skipping enrichment."
-            exit 0
-          fi
-          npm run enrich -- --live --confirm --max-cost 10
+        run: npm run enrich -- --live --confirm --max-cost 10
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 
@@ -48,21 +56,57 @@ jobs:
         continue-on-error: true
         run: npm run gates -- --fail-high
 
-      - name: Open review PR
-        uses: peter-evans/create-pull-request@v6
+      - name: Stage exact enrichment outputs
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/curated-place-enrichment-output"
+          install -D -m 0644 src/data/places-enrichment.json "$root/src/data/places-enrichment.json"
+          install -D -m 0644 src/data/place-refresh-identities.json "$root/src/data/place-refresh-identities.json"
+          install -D -m 0644 src/data/places-client.json "$root/src/data/places-client.json"
+          install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
+          install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
+      - name: Upload exact enrichment outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          branch: bot/curated-place-enrichment
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh Google enrichment for curated places (automated)"
-          title: "data: refresh curated place enrichment"
-          body: |
-            Cost-capped monthly Google enrichment refresh for curated places.
+          name: curated-place-enrichment-output
+          path: ${{ runner.temp }}/curated-place-enrichment-output
+          if-no-files-found: error
+          retention-days: 1
 
-            The workflow rebuilt the public place snapshot and enforced
-            critical data gates. High-severity coverage debt is reported in the
-            workflow without blocking an incremental review PR. Review closures,
-            hours, contact details, and photo attribution before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+  publish:
+    needs: enrich
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: curated-place-enrichment-output
+      base_sha: ${{ github.sha }}
+      branch: bot/curated-place-enrichment
+      allowed_paths: |
+        src/data/places-enrichment.json
+        src/data/place-refresh-identities.json
+        src/data/places-client.json
+        src/data/places-client-hours.json
+        src/data/event-venue-photo-credits.json
+      commit_message: "data: refresh Google enrichment for curated places (automated)"
+      title: "data: refresh curated place enrichment"
+      body: |
+        Cost-capped monthly Google enrichment refresh for curated places.
+
+        The workflow rebuilt the public place snapshot and enforced
+        critical data gates. High-severity coverage debt is reported in the
+        workflow without blocking an incremental review PR. Review closures,
+        hours, contact details, and photo attribution before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

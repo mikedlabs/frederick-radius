@@ -329,6 +329,87 @@ test.describe("map search selection", () => {
     await expect(page.getByText("Map search didn’t finish.")).toHaveCount(0);
   });
 
+  test("global ATM search hands off to Map without returning the same map action", async ({ page }) => {
+    const searchRequests: string[] = [];
+    let fallbackRequests = 0;
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/search") searchRequests.push(url.toString());
+    });
+    await page.route("**/api/map/search-fallback", async (route) => {
+      const body = route.request().postDataJSON() as {
+        action: "suggest" | "retrieve";
+        q?: string;
+      };
+      if (body.action === "suggest") {
+        fallbackRequests += 1;
+        expect(body.q).toBe("ATM");
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          action: "suggest",
+          temporary: true,
+          provider: "Mapbox",
+          attribution: "Map data © Mapbox",
+          suggestions: [
+            {
+              mapboxId: "test-atm",
+              name: "Downtown ATM",
+              featureType: "poi",
+              fullAddress: "Frederick, Maryland 21701",
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await page
+      .getByRole("button", { name: "Ask or find across Frederick County" })
+      .click();
+    await page
+      .getByRole("searchbox", { name: "Ask or find across Frederick County" })
+      .fill("ATM");
+
+    const results = page.getByRole("list", { name: "Search results" });
+    await expect(results.getByText("Find nearby ATMs")).toBeVisible();
+    const open = results.getByRole("link", { name: "Open", exact: true });
+    await expect(open).toHaveAttribute("href", "/map?q=ATM");
+    await open.click();
+
+    await expect(page).toHaveURL(/\/map\?q=ATM$/, { timeout: 20_000 });
+    const mapSearch = page.getByRole("combobox", { name: "Search this map" });
+    await expect(mapSearch).toHaveValue("ATM", { timeout: 20_000 });
+    // Shared queries restore without covering the map. Focusing the field is
+    // the deliberate reveal step for the already-fetched provider result.
+    await mapSearch.focus();
+    await expect
+      .poll(() =>
+        searchRequests.some((raw) => {
+          const url = new URL(raw);
+          return (
+            url.searchParams.get("origin") === "map" &&
+            url.searchParams.get("q") === "ATM" &&
+            Boolean(url.searchParams.get("lat")) &&
+            Boolean(url.searchParams.get("lng"))
+          );
+        }),
+      )
+      .toBe(true);
+    await expect
+      .poll(() => fallbackRequests)
+      .toBeGreaterThan(0);
+    await expect(
+      page.locator('[data-map-search-result="mapbox:test-atm"]'),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.locator('[data-map-search-result="action:map-atm"]'),
+    ).toHaveCount(0);
+  });
+
   test("falls back to a temporary county map result without pretending Radius verified it", async ({ page }) => {
     await page.route("**/api/search?**", async (route) => {
       await route.fulfill({

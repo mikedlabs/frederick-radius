@@ -1,7 +1,49 @@
-import { describe, it, expect } from "vitest";
-import { cleanSpot, dedupeCalls, hourOf, roadKey } from "./scannerPatterns";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import {
+  cleanSpot,
+  dedupeCalls,
+  fetchPageRecordsResult,
+  hourOf,
+  roadKey,
+} from "./scannerPatterns";
 import type { PatternRecord } from "./scannerPatterns";
 import trafficCounts from "@/data/traffic-counts.json";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("scanner page availability", () => {
+  it("rejects an unrelated 200 page as unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("<html><p>Service temporarily unavailable.</p></html>"),
+      ),
+    );
+
+    await expect(fetchPageRecordsResult()).resolves.toEqual({
+      data: [],
+      available: false,
+    });
+  });
+
+  it("accepts the board's explicit empty sentinel as a quiet success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          "<b>Latest Incidents:</b><p>New incident log started. This will start populating soon.</p>",
+        ),
+      ),
+    );
+
+    await expect(fetchPageRecordsResult()).resolves.toEqual({
+      data: [],
+      available: true,
+    });
+  });
+});
 
 describe("cleanSpot — road-level hotspot key", () => {
   it("drops the house-range block number down to the road", () => {

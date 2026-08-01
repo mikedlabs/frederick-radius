@@ -33,7 +33,7 @@ import FromYourSaved from "@/components/today/FromYourSaved";
 // reorder makes the divider unnecessary.
 
 import { eventDateBlock } from "@/lib/loaders/events";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isValidCoord } from "@/lib/geo";
@@ -149,16 +149,15 @@ export const revalidate = 300;
 export default async function HomePage() {
   const now = new Date();
 
-  // ONE unified public event set — created here but intentionally NOT awaited.
-  // The static page chrome (sky, headline, and dated local notes) must
-  // paint on the first byte; each event-dependent region below awaits THIS one
-  // shared promise inside its own <Suspense> boundary, so a cold ISR miss
-  // streams the rail in progressively instead of blocking the whole shell on
-  // the slowest feed. The promise resolves once even though several regions
-  // await it (assembleUnifiedEvents is itself unstable_cache-wrapped, and a
-  // single awaited promise yields one result). (Audit: unified-events
-  // cold-miss streaming gap.)
-  const eventsPromise = assembleUnifiedEvents(now);
+  // ONE bounded snapshot read, created here but intentionally NOT awaited.
+  // The expensive live-feed fan-out belongs to the warm/archive crons, never a
+  // visitor request. Suspense can stream UI, but it cannot end a serverless
+  // invocation while an async subtree is still working; starting the live
+  // assembly here therefore let one pathological feed parser hold /today open
+  // for the full 300-second platform timeout. The durable archive is the
+  // last-known-good copy of that same unified set. Its read cancels after
+  // 650ms, falls back to curated rows, and carries an honest degraded signal.
+  const eventsPromise = loadTodayEventSnapshot(now);
 
   // WEATHER-CONDITIONAL COMPOSITION — the page already knows the sky; let it
   // reshape the answer, not just the headline. A wet hour sits the golden-hour
@@ -426,7 +425,7 @@ export default async function HomePage() {
 // await + derivation off HomePage into these <Suspense>-bounded children is
 // what lets the static chrome paint before the feeds resolve.
 
-type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+type EventsPromise = ReturnType<typeof loadTodayEventSnapshot>;
 type DaypartRows = ReturnType<typeof buildDaypartRows>;
 
 /** The non-event first move is already a live, location-aware answer. Keeping

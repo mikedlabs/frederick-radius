@@ -11,9 +11,7 @@ on:
     - cron: "0 8 1 * *" # 1st of each month, 08:00 UTC
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: build-marc-schedule
@@ -21,28 +19,63 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
       - run: npm ci
       - name: Rebuild MARC schedule from GTFS
         run: npm run build:marc-schedule
-      - name: Open review PR
-        uses: peter-evans/create-pull-request@v6
+      - name: Stage exact MARC output
+        run: |
+          set -euo pipefail
+          install -D -m 0644 \
+            src/data/marc-schedule.json \
+            "$RUNNER_TEMP/marc-schedule-output/src/data/marc-schedule.json"
+      - name: Upload exact MARC output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          branch: bot/marc-schedule-refresh
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh MARC schedule from GTFS (automated)"
-          title: "data: refresh MARC schedule"
-          body: |
-            Automated MARC GTFS schedule refresh.
+          name: marc-schedule-output
+          path: ${{ runner.temp }}/marc-schedule-output
+          if-no-files-found: error
+          retention-days: 1
 
-            Review the feed date and Brunswick Line service-window changes
-            before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+  publish:
+    needs: build
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: marc-schedule-output
+      base_sha: ${{ github.sha }}
+      branch: bot/marc-schedule-refresh
+      allowed_paths: src/data/marc-schedule.json
+      commit_message: "data: refresh MARC schedule from GTFS (automated)"
+      title: "data: refresh MARC schedule"
+      body: |
+        Automated MARC GTFS schedule refresh.
+
+        Review the feed date and Brunswick Line service-window changes
+        before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

@@ -13,7 +13,12 @@ export type LiveLayerHealthStatus =
  */
 export type LiveLayerHealth = {
   status: LiveLayerHealthStatus;
+  /** Rows that can be rendered by the layer. */
   count: number;
+  /** Public source rows before safe placement/filtering, when available. */
+  reportedCount?: number;
+  /** Public source rows outside this layer's safe display projection. */
+  notShownCount?: number;
   source: string;
   /** ISO time supplied by the source or fetch boundary. */
   timestamp: string | null;
@@ -21,6 +26,8 @@ export type LiveLayerHealth = {
 
 export type LiveLayerHealthInput = {
   count?: number;
+  reportedCount?: number;
+  notShownCount?: number;
   source: string;
   timestamp?: string | Date | null;
   disabled?: boolean;
@@ -39,6 +46,17 @@ export function liveLayerHealth(
   input: LiveLayerHealthInput,
 ): LiveLayerHealth {
   const count = Math.max(0, Math.floor(input.count ?? 0));
+  const reportedCount =
+    input.reportedCount === undefined
+      ? undefined
+      : Math.max(count, Math.floor(input.reportedCount));
+  const notShownCount =
+    input.notShownCount === undefined && reportedCount === undefined
+      ? undefined
+      : Math.max(
+          0,
+          Math.floor(input.notShownCount ?? (reportedCount ?? count) - count),
+        );
   const timestamp = isoTimestamp(input.timestamp);
   let status: LiveLayerHealthStatus;
 
@@ -60,6 +78,8 @@ export function liveLayerHealth(
   return {
     status,
     count,
+    ...(reportedCount === undefined ? {} : { reportedCount }),
+    ...(notShownCount === undefined ? {} : { notShownCount }),
     source: input.source,
     timestamp,
   };

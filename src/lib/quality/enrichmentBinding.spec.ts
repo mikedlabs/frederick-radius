@@ -8,6 +8,7 @@ import {
 } from "./enrichmentBinding";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 // The composed base set — curated SEED places + the DFP scrape + discovery.
 // The raw JSON files alone miss the hand-authored seeds (tabu-frederick,
@@ -18,9 +19,11 @@ import { haversineMeters } from "@/lib/geo";
 import { isGooglePlaceId } from "@/lib/provenance";
 import {
   decoratePlace,
+  hoursRefreshForAcceptedIdentity,
   isOperational,
   publicPlaceBySlug,
 } from "@/lib/loaders/places";
+import { parseGoogleHours } from "@/lib/googleHours";
 
 type Ov = {
   fold?: Record<string, string>;
@@ -183,7 +186,7 @@ describe("Google identity promotion", () => {
     expect(decorated.google_rating_count).toBeGreaterThan(0);
   });
 
-  it("withholds provider facts when a valid canonical ID disagrees with a similar-name enrichment", () => {
+  it("withholds mismatched enrichment without suppressing a canonical-bound hours refresh", () => {
     const slug = "frederick-health-hospital";
     const canonical = publicPlaceBySlug(slug);
     const enrichment = (
@@ -199,12 +202,40 @@ describe("Google identity promotion", () => {
     expect(enrichment?.google_place_id).not.toBe(canonical!.google_place_id);
     expect(enrichment?.display_name).toContain("Emergency Department");
 
-    const decorated = decoratePlace(canonical!);
+    const refresh = (
+      HOURS_REFRESH_RAW as unknown as Record<
+        string,
+        {
+          place_id?: string;
+          weekday_hours?: string[];
+          refreshed_at: string;
+        }
+      >
+    )[slug];
+    const acceptedRefresh = hoursRefreshForAcceptedIdentity(
+      refresh,
+      canonical!.google_place_id,
+    );
+    if (refresh) {
+      expect(refresh.place_id).toBe(canonical!.google_place_id);
+      expect(acceptedRefresh).toBe(refresh);
+    }
+    const now = acceptedRefresh
+      ? new Date(acceptedRefresh.refreshed_at)
+      : new Date("2026-05-20T16:06:58.803Z");
+    const decorated = decoratePlace(canonical!, undefined, now);
     expect(decorated.google_place_id).toBe(canonical!.google_place_id);
     expect(decorated.google_rating).toBeUndefined();
     expect(decorated.google_rating_count).toBeUndefined();
     expect(decorated.google_photo_url).toBeUndefined();
-    expect(decorated.hours).toBe(canonical!.hours);
+    expect(decorated.hours).toEqual(
+      acceptedRefresh?.weekday_hours
+        ? parseGoogleHours(acceptedRefresh.weekday_hours)
+        : canonical!.hours,
+    );
+    expect(decorated.hours_updated_at).toBe(
+      acceptedRefresh?.refreshed_at,
+    );
     expect(decorated.phone).toBe(canonical!.phone);
     expect(decorated.website).toBe(canonical!.website);
     expect(decorated.geom).toEqual(canonical!.geom);

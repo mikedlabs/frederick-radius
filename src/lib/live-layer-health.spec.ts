@@ -58,4 +58,24 @@ describe("live layer health envelope", () => {
       timestamp: null,
     });
   });
+
+  it("preserves reports that could not be placed on the map", () => {
+    expect(
+      liveLayerHealth({
+        count: 0,
+        reportedCount: 2,
+        notShownCount: 2,
+        source: "FrederickScanner",
+        timestamp: "2026-07-23T15:59:00Z",
+        now: NOW,
+      }),
+    ).toEqual({
+      status: "empty",
+      count: 0,
+      reportedCount: 2,
+      notShownCount: 2,
+      source: "FrederickScanner",
+      timestamp: "2026-07-23T15:59:00.000Z",
+    });
+  });
 });

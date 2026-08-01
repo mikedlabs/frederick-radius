@@ -4,6 +4,7 @@ import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { cutAtWordBoundary } from "@/lib/slug";
 import { parseICalResult } from "@/lib/ingest/parser";
+import { safeIngestWriteError } from "@/lib/ingest/write-outcome";
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic"] },
@@ -229,7 +230,7 @@ category_slug: cat?.slug ?? "community",
         upserted++;
       } catch (err) {
         failed++;
-        firstWriteError ??= err instanceof Error ? err.message : String(err);
+        firstWriteError ??= safeIngestWriteError(err);
       }
     }
 

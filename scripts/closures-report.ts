@@ -9,7 +9,10 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN_CLOSED_CANONICAL } from "@/lib/integrations/closures";
-import { MANUAL_PLACE_STATUS_OVERRIDES } from "@/lib/place-status-overrides";
+import {
+  isManualPlaceClosureOverride,
+  MANUAL_PLACE_STATUS_OVERRIDES,
+} from "@/lib/place-status-overrides";
 import { PLACES } from "@/data/places";
 
 type ClosureRow = {
@@ -31,6 +34,10 @@ for (const c of KNOWN_CLOSED_CANONICAL) {
 }
 
 for (const [slug, override] of Object.entries(MANUAL_PLACE_STATUS_OVERRIDES)) {
+  // Source-backed operational corrections protect against provider false
+  // closures. They are reviewed status evidence, not suppressed businesses,
+  // and must never inflate the closure count.
+  if (!isManualPlaceClosureOverride(override)) continue;
   const place = PLACES.find((candidate) => candidate.slug === slug);
   rows.push({
     name: place?.name ?? slug,

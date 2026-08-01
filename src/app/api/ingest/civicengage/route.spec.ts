@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   revalidateTag: vi.fn(),
   startIngestRun: vi.fn(),
   finishIngestRun: vi.fn(),
+  checkEventSchemaReadiness: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -33,6 +34,9 @@ vi.mock("@/lib/ingest/upsert", () => ({
 vi.mock("@/lib/ingest/run-log", () => ({
   startIngestRun: mocks.startIngestRun,
   finishIngestRun: mocks.finishIngestRun,
+}));
+vi.mock("@/lib/ingest/event-schema-readiness", () => ({
+  checkEventSchemaReadiness: mocks.checkEventSchemaReadiness,
 }));
 vi.mock("../_auth", () => ({
   verifyCronAuth: mocks.verifyCronAuth,
@@ -81,6 +85,10 @@ describe("GET /api/ingest/civicengage", () => {
         : "run-testville",
     );
     mocks.finishIngestRun.mockResolvedValue(undefined);
+    mocks.checkEventSchemaReadiness.mockResolvedValue({
+      ready: true,
+      missing: [],
+    });
     mocks.parseICalResult.mockImplementation((body: string) => ({
       valid: true,
       events: [{ uid: `event-${catIdFrom(body)}` }],
@@ -157,6 +165,49 @@ describe("GET /api/ingest/civicengage", () => {
       feeds: { requested: 3, fetched: 3, failed: 0 },
       records: { processed: 3, failed: 0 },
       stats: { rawUnchanged: 3, normUpserted: 0 },
+    });
+  });
+
+  it("fails once before fetching when a required event migration is missing", async () => {
+    mocks.checkEventSchemaReadiness.mockResolvedValue({
+      ready: false,
+      missing: [
+        "ingested_events.hero_image",
+        "ingested_events.hero_image_alt",
+      ],
+    });
+
+    const result = await GET(request());
+    const body = await result.json();
+
+    expect(result.status).toBe(503);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(mocks.upsertEvent).not.toHaveBeenCalled();
+    expect(mocks.startIngestRun).toHaveBeenCalledOnce();
+    expect(mocks.startIngestRun).toHaveBeenCalledWith(
+      "civicengage:aggregate",
+    );
+    expect(mocks.finishIngestRun).toHaveBeenCalledWith("run-aggregate", {
+      status: "error",
+      records_in: 0,
+      records_upserted: 0,
+      records_failed: 1,
+      error:
+        "Event ingest schema is not ready: missing ingested_events.hero_image, ingested_events.hero_image_alt.",
+    });
+    expect(body).toMatchObject({
+      status: "error",
+      totalParsed: 0,
+      totalChanged: 0,
+      schema: {
+        ready: false,
+        missing: [
+          "ingested_events.hero_image",
+          "ingested_events.hero_image_alt",
+        ],
+        error_code: null,
+      },
+      cache: { invalidated: false },
     });
   });
 

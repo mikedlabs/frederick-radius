@@ -60,6 +60,16 @@ function steps(): WorkflowStep[] {
   return Object.values(workflow().jobs ?? {}).flatMap((job) => job.steps ?? []);
 }
 
+function usesAction(step: WorkflowStep, action: string): boolean {
+  return step.uses?.startsWith(`${action}@`) ?? false;
+}
+
+function expectImmutableAction(step: WorkflowStep | undefined, action: string) {
+  expect(step?.uses).toMatch(
+    new RegExp(`^${action.replace("/", "\\/")}@[0-9a-f]{40}$`),
+  );
+}
+
 describe("manual Apify venue pilot workflow", () => {
   it("is manual-only, read-only, non-overlapping, and separately protected", () => {
     const parsed = workflow();
@@ -141,19 +151,20 @@ describe("manual Apify venue pilot workflow", () => {
 
   it("restores a persistent ledger, protects first initialization, and retains evidence briefly", () => {
     const allSteps = steps();
-    const restore = allSteps.find(
-      (step) => step.uses === "actions/cache/restore@v4",
+    const restore = allSteps.find((step) =>
+      usesAction(step, "actions/cache/restore"),
     );
     const guard = allSteps.find((step) =>
       step.run?.includes("budget state was not restored"),
     );
-    const save = allSteps.find(
-      (step) => step.uses === "actions/cache/save@v4",
+    const save = allSteps.find((step) =>
+      usesAction(step, "actions/cache/save"),
     );
-    const artifact = allSteps.find(
-      (step) => step.uses === "actions/upload-artifact@v4",
+    const artifact = allSteps.find((step) =>
+      usesAction(step, "actions/upload-artifact"),
     );
 
+    expectImmutableAction(restore, "actions/cache/restore");
     expect(restore?.with?.path).toBe(
       "scripts/reports/apify-venue-pilot/state.json",
     );
@@ -164,10 +175,12 @@ describe("manual Apify venue pilot workflow", () => {
       "Apify account spending limit is authoritative across runs",
     );
     expect(save?.if).toContain("confirm_live");
+    expectImmutableAction(save, "actions/cache/save");
     expect(save?.with?.path).toBe(
       "scripts/reports/apify-venue-pilot/state.json",
     );
     expect(artifact?.if).toBe("always()");
+    expectImmutableAction(artifact, "actions/upload-artifact");
     expect(artifact?.with?.["retention-days"]).toBe(7);
     expect(String(artifact?.with?.path)).toContain(
       "scripts/reports/apify-venue-pilot",

@@ -123,14 +123,17 @@ function SeriesDateRow({
   );
 }
 
-export const revalidate = 300;
-// NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
-// OPEN set (live-feed events resolve at request time), so the route can't
-// use dynamicParams=false like places does — and with a loading boundary,
-// Next 16 prerenders a fallback shell that ships HTTP 200 for ANY slug
-// before notFound() can run, which indexed dead event URLs as soft 404s
-// (June-9 deep audit P0-2). Blocking render = honest status codes; the
-// page is ISR-cached so only the first hit per slug pays the resolution.
+// Event slugs are an open set and a provider outage has a first-class recovery
+// response. Keep the segment request-rendered so the conditional noStore()
+// below runs in request scope. During on-demand ISR generation, Next 16 turns
+// that same call into a DYNAMIC_SERVER_USAGE bailout and sends a 500 instead
+// of the recovery UI. The resolver's provider fetches and durable archive are
+// still cached independently, so this does not rebuild every upstream source.
+export const dynamic = "force-dynamic";
+// NOTE: this segment deliberately has NO loading.tsx. With a loading boundary,
+// Next 16 can stream HTTP 200 for ANY slug before notFound() runs, which indexed
+// dead event URLs as soft 404s (June-9 deep audit P0-2). Blocking render keeps
+// true misses as honest 404 responses.
 
 export async function generateStaticParams() {
   return EVENTS.map((e) => ({ slug: e.slug }));
@@ -197,8 +200,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
     // A provider outage is a known, recoverable product state. Returning the
     // event-scoped recovery view here keeps the response successful and useful;
-    // throwing would make Next stamp a 500 on otherwise intentional UI. Never
-    // retain this transient state in the route's five-minute ISR cache.
+    // throwing would make Next stamp a 500 on otherwise intentional UI. The
+    // request-rendered segment ensures this transient state is never cached.
     noStore();
     Sentry.captureMessage("event-detail: served source-unavailable recovery", {
       level: "warning",

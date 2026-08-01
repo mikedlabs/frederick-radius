@@ -105,6 +105,27 @@ describe("GET /api/search map fast path", () => {
     expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
   });
 
+  it("lets map ATM searches fall through to the live provider", async () => {
+    const response = await GET(request("ATM"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.results).toEqual([]);
+    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+  });
+
+  it("preserves the ATM handoff in global search", async () => {
+    const response = await GET(request("ATM", "global"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.results[0]).toMatchObject({
+      id: "action:map-atm",
+      href: "/map?q=ATM",
+    });
+    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+  });
+
   it("labels honest base results when live event enrichment rejects", async () => {
     mocks.assembleUnifiedEvents.mockRejectedValue(
       new Error("Live event assembly unavailable"),

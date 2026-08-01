@@ -13,9 +13,7 @@ on:
     - cron: "30 8 * * *" # daily 08:30 UTC, after business extraction
   workflow_dispatch: {} # run on demand from the Actions tab
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: ingest-municipal-civic
@@ -23,14 +21,20 @@ concurrency:
 
 jobs:
   ingest:
-    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
     environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
       - name: Verify extractor secret
@@ -78,19 +82,47 @@ jobs:
           FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
           FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
         run: npm run ingest:civic
-      - name: Open review PR
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: bot/municipal-civic-refresh
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh municipal civic (automated)"
-          title: "data: refresh municipal civic information"
-          body: |
-            Automated municipal-source extraction refresh.
 
-            Review source links, effective dates, and any changed instructions
-            before merging. CI runs on this PR before the data can reach users.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+      - name: Stage exact review files
+        run: |
+          set -euo pipefail
+          install -D -m 0644 src/data/municipal-civic.json "$RUNNER_TEMP/automated-pr-output/src/data/municipal-civic.json"
+
+      - name: Upload isolated review artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: municipal-civic-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/automated-pr-output
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: ingest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: municipal-civic-review-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/municipal-civic-refresh
+      allowed_paths: src/data/municipal-civic.json
+      commit_message: "data: refresh municipal civic (automated)"
+      title: "data: refresh municipal civic information"
+      body: |
+        Automated municipal-source extraction refresh.
+
+        Review source links, effective dates, and any changed instructions
+        before merging. CI runs on this PR before the data can reach users.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

@@ -12,6 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnvironment } from "dotenv";
 import {
+  assertSuccessfulFirecrawlTargetStatus,
   fetchFirecrawlPage,
   FirecrawlRestError,
   validateFirecrawlPublicUrl,
@@ -110,6 +111,9 @@ export type SourceWatchCandidate = {
 export type SourceWatchReport = {
   schemaVersion: 1;
   kind: "candidate-only";
+  provider: {
+    name: "firecrawl";
+  };
   generatedAt: string;
   notice: string;
   budget: {
@@ -511,17 +515,6 @@ export function sanitizeSourceWatchLinks(
   return [...sanitized];
 }
 
-function reportedStatusCode(
-  metadata: Record<string, unknown>,
-): number | undefined {
-  const value = metadata.statusCode;
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  if (typeof value === "string" && /^\d{3}$/.test(value)) {
-    return Number(value);
-  }
-  return undefined;
-}
-
 function safeErrorMessage(error: unknown): string {
   const message =
     error instanceof Error ? error.message : "Unknown source error";
@@ -722,24 +715,22 @@ export async function runSourceWatch(
 
     for (const source of config.sources) {
       const previous = state.observations[source.id];
+      let observedFinalUrl: string | undefined;
       try {
         const snapshot = await fetchPage(source.url, {
           timeoutMs: config.limits.timeoutMs,
           allowHttp: source.httpException !== undefined,
+          requireReportedFinalUrl: true,
+          // Keep each allowlisted source to the single credit reserved above.
+          proxy: "basic",
         });
-        const statusCode = reportedStatusCode(snapshot.metadata);
-        if (statusCode === 404 || statusCode === 410) {
-          throw new FirecrawlRestError(
-            "HTTP_ERROR",
-            `Firecrawl reached a page reporting HTTP ${statusCode}.`,
-            { status: statusCode },
-          );
-        }
+        observedFinalUrl = snapshot.finalUrl;
         if (!isExpectedFinalHost(source.url, snapshot.finalUrl)) {
           throw new Error(
             `Unexpected cross-host redirect to ${snapshot.finalUrl}; candidate was not accepted.`,
           );
         }
+        assertSuccessfulFirecrawlTargetStatus(snapshot.metadata);
 
         const currentHash = hashSourceWatchContent(snapshot.markdown);
         const status = classifySourceWatchHash(
@@ -784,8 +775,13 @@ export async function runSourceWatch(
       } catch (error) {
         const httpStatus =
           error instanceof FirecrawlRestError ? error.status : undefined;
-        const status: "removed" | "error" =
-          httpStatus === 404 || httpStatus === 410 ? "removed" : "error";
+        const targetWasRemoved =
+          error instanceof FirecrawlRestError &&
+          error.code === "TARGET_HTTP_ERROR" &&
+          (httpStatus === 404 || httpStatus === 410);
+        const status: "removed" | "error" = targetWasRemoved
+          ? "removed"
+          : "error";
         summary[status] += 1;
         const errorCode =
           error instanceof FirecrawlRestError ? error.code : "SOURCE_REJECTED";
@@ -801,7 +797,9 @@ export async function runSourceWatch(
           source,
           status,
           checkedAt,
-          finalUrl: previous?.finalUrl,
+          // Preserve a provider-reported redirect for review without accepting
+          // it into the last-known-good observation state.
+          finalUrl: observedFinalUrl ?? previous?.finalUrl,
           previousHash: previous?.contentHash,
           errorCode,
           httpStatus,
@@ -817,6 +815,9 @@ export async function runSourceWatch(
     const report: SourceWatchReport = {
       schemaVersion: 1,
       kind: "candidate-only",
+      provider: {
+        name: "firecrawl",
+      },
       generatedAt: checkedAt,
       notice:
         "Review candidates only. A detected page change is not verified truth and nothing in this report is published automatically.",

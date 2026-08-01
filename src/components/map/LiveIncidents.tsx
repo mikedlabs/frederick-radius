@@ -123,6 +123,8 @@ export default function LiveIncidents({
             liveLayerHealth({
               source: "FrederickScanner",
               count: d.items.length,
+              reportedCount: d.reportedCount,
+              notShownCount: d.notShownCount,
               unavailable: d.scannerAvailable === false,
               timestamp:
                 d.items

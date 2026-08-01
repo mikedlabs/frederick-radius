@@ -20,9 +20,7 @@ on:
     - cron: "17 9 * * *"
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: data-steward
@@ -30,13 +28,26 @@ concurrency:
 
 jobs:
   steward:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      review_required: ${{ steps.hours-review.outputs.review_required }}
+      public_additions: ${{ steps.hours-review.outputs.public_additions }}
+      public_removals: ${{ steps.hours-review.outputs.public_removals }}
+      newly_closed: ${{ steps.hours-review.outputs.newly_closed }}
+      reopenings: ${{ steps.hours-review.outputs.reopenings }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -135,46 +146,34 @@ jobs:
         continue-on-error: true
         run: npm run gates -- --fail-high
 
-      # On any change, open (or update) a PR so a human reviews the data
-      # diff before it merges. Never pushes straight to a content branch.
-      - name: Open PR on changes
-        uses: peter-evans/create-pull-request@v6
+      # Move only the reviewed output boundary into runner storage. The
+      # credentialed publisher receives no generator worktree or source keys.
+      - name: Stage exact core outputs
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/data-steward-core-output
+        run: |
+          set -euo pipefail
+          for path in \
+            src/data/place-refresh-identities.json \
+            src/data/places-hours-refresh.json \
+            src/data/places-client.json \
+            src/data/places-client-hours.json \
+            src/data/event-venue-photo-credits.json \
+            docs/coverage-scorecard.md \
+            docs/hours-refresh-review.md
+          do
+            install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
+          done
+
+      - name: Upload exact core outputs
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          branch: bot/data-steward
-          base: ${{ github.ref_name }}
-          commit-message: "data: nightly steward refresh (automated)"
-          title: "data: nightly steward refresh"
-          body: |
-            Automated nightly refresh from the data-steward workflow.
-
-            Ran: build:place-refresh-identities, refresh:hours,
-            build:client-places, coverage:scorecard, the hours-change review,
-            and the data-quality gates. The rolling
-            hours snapshot includes Google's latest business status for each
-            refreshed identity. Transit refresh runs in its own independent job.
-            Critical gates block this PR; existing high-severity coverage debt
-            remains visible without blocking an incremental refresh. Review the
-            diff before merging.
-
-            Hours change review:
-            - Manual review required: ${{ steps.hours-review.outputs.review_required }}
-            - Public additions: ${{ steps.hours-review.outputs.public_additions }}
-            - Public removals: ${{ steps.hours-review.outputs.public_removals }}
-            - Newly closed provider statuses: ${{ steps.hours-review.outputs.newly_closed }}
-            - Reopenings: ${{ steps.hours-review.outputs.reopenings }}
-
-            Read `docs/hours-refresh-review.md` before merging. Public additions,
-            removals, and new closure transitions are never hidden inside the
-            generated JSON diff.
-
-            Review checklist:
-            - [ ] I checked every public addition and removal in the manifest.
-            - [ ] I verified each newly closed public place against a current first-party or official source.
-            - [ ] I confirmed the coverage gain and unmatched-row count are reasonable.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+          name: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/data-steward-core-output
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Write core refresh summary
         if: ${{ always() }}
@@ -208,13 +207,20 @@ jobs:
   # database availability. A failure in the place-data job cannot stop the
   # rolling GTFS snapshot from reaching a reviewable PR.
   transit:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -228,18 +234,116 @@ jobs:
       - name: Validate transit snapshot
         run: npm test -- tests/transit-static-snapshot.spec.ts
 
-      - name: Open transit PR on changes
-        uses: peter-evans/create-pull-request@v6
+      - name: Stage exact transit outputs
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/data-steward-transit-output
+        run: |
+          set -euo pipefail
+          for path in \
+            src/data/transit.json \
+            src/data/transit-network.json \
+            src/data/transit-trips.json
+          do
+            install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
+          done
+
+      - name: Upload exact transit outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          branch: bot/transit-steward
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh Frederick TransIT GTFS"
-          title: "data: refresh Frederick TransIT GTFS"
-          body: |
-            Automated refresh from Frederick County TransIT's public Passio
-            static GTFS feed. The committed snapshot freshness and network
-            consistency tests passed. Review the diff before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+          name: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/data-steward-transit-output
+          if-no-files-found: error
+          retention-days: 1
+
+  steward-publish:
+    needs: steward
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/data-steward
+      allowed_paths: |
+        src/data/place-refresh-identities.json
+        src/data/places-hours-refresh.json
+        src/data/places-client.json
+        src/data/places-client-hours.json
+        src/data/event-venue-photo-credits.json
+        docs/coverage-scorecard.md
+        docs/hours-refresh-review.md
+      commit_message: "data: nightly steward refresh (automated)"
+      title: "data: nightly steward refresh"
+      body: |
+        Automated nightly refresh from the data-steward workflow.
+
+        Ran: build:place-refresh-identities, refresh:hours,
+        build:client-places, coverage:scorecard, the hours-change review,
+        and the data-quality gates. The rolling
+        hours snapshot includes Google's latest business status for each
+        refreshed identity. Transit refresh runs in its own independent job.
+        Critical gates block this PR; existing high-severity coverage debt
+        remains visible without blocking an incremental refresh. Review the
+        diff before merging.
+
+        Hours change review:
+        - Manual review required: ${{ needs.steward.outputs.review_required }}
+        - Public additions: ${{ needs.steward.outputs.public_additions }}
+        - Public removals: ${{ needs.steward.outputs.public_removals }}
+        - Newly closed provider statuses: ${{ needs.steward.outputs.newly_closed }}
+        - Reopenings: ${{ needs.steward.outputs.reopenings }}
+
+        Read `docs/hours-refresh-review.md` before merging. Public additions,
+        removals, and new closure transitions are never hidden inside the
+        generated JSON diff.
+
+        Review checklist:
+        - [ ] I checked every public addition and removal in the manifest.
+        - [ ] I verified each newly closed public place against a current first-party or official source.
+        - [ ] I confirmed the coverage gain and unmatched-row count are reasonable.
+
+  transit-publish:
+    needs: transit
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/transit-steward
+      allowed_paths: |
+        src/data/transit.json
+        src/data/transit-network.json
+        src/data/transit-trips.json
+      commit_message: "data: refresh Frederick TransIT GTFS"
+      title: "data: refresh Frederick TransIT GTFS"
+      body: |
+        Automated refresh from Frederick County TransIT's public Passio
+        static GTFS feed. The committed snapshot freshness and network
+        consistency tests passed. Review the diff before merging.
+
+  steward-checks:
+    needs: steward-publish
+    if: ${{ needs.steward-publish.outputs.pr_operation == 'created' || needs.steward-publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.steward-publish.outputs.pr_branch }}
+      head_sha: ${{ needs.steward-publish.outputs.pr_head_sha }}
+
+  transit-checks:
+    needs: transit-publish
+    if: ${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.transit-publish.outputs.pr_branch }}
+      head_sha: ${{ needs.transit-publish.outputs.pr_head_sha }}

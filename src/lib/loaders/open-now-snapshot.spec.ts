@@ -1,17 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { betaOpenNowSnapshot } from "@/lib/loaders/betaPulse";
 import {
+  buildOpenNowSnapshot,
   countOpenNow,
   getOpenNowSnapshot,
   openNowHighlights,
+  publicPlaceBySlug,
 } from "@/lib/loaders/places";
+import type { PlaceCardData } from "@/lib/loaders/places";
 
 const NOW = new Date("2026-07-29T14:00:00-04:00");
-const NON_LEISURE_OFFENDERS = [
-  "odin-crossfit",
-  "artistangle-gallery",
-  "ppr-strategies",
-] as const;
+
+function openCandidate(
+  slug: string,
+  name: string,
+  category: string,
+  primaryType?: string,
+): PlaceCardData {
+  return {
+    slug,
+    name,
+    category,
+    primary_type: primaryType,
+    source: "manual",
+    feature_score: 5,
+    open_status: {
+      state: "open",
+      closesAt: "18:00",
+      closingSoon: false,
+    },
+  } as PlaceCardData;
+}
+
+const NON_LEISURE = [
+  openCandidate("odin-crossfit", "Odin CrossFit", "wellness", "gym"),
+  openCandidate("artistangle-gallery", "ArtistAngle Gallery", "shopping", "store"),
+  openCandidate("ppr-strategies", "PPR Strategies", "services", "consultant"),
+];
+
+const LEISURE = [
+  openCandidate("test-kitchen", "Test Kitchen", "restaurant"),
+  openCandidate("test-museum", "Test Museum", "museum"),
+  openCandidate("test-market", "Test Market", "market"),
+];
 
 describe("county open-now snapshot", () => {
   it("drives every county count from one untruncated population and instant", () => {
@@ -29,13 +60,23 @@ describe("county open-now snapshot", () => {
   });
 
   it("keeps non-leisure inventory searchable without promoting it as a pick", () => {
-    const snapshot = getOpenNowSnapshot(NOW);
+    for (const { slug } of NON_LEISURE) {
+      expect(
+        publicPlaceBySlug(slug),
+        `${slug} should remain in the public searchable catalog`,
+      ).toBeDefined();
+    }
+
+    const snapshot = buildOpenNowSnapshot(
+      [...NON_LEISURE, ...LEISURE],
+      NOW,
+    );
     const inventorySlugs = new Set(snapshot.places.map(({ slug }) => slug));
     const proofSlugs = new Set(
       snapshot.worthConsidering.map(({ slug }) => slug),
     );
 
-    for (const slug of NON_LEISURE_OFFENDERS) {
+    for (const { slug } of NON_LEISURE) {
       expect(inventorySlugs.has(slug), `${slug} should remain in inventory`).toBe(
         true,
       );
@@ -46,8 +87,8 @@ describe("county open-now snapshot", () => {
   });
 
   it("selects a stable, module-diverse proof instead of three directory rows", () => {
-    const first = getOpenNowSnapshot(NOW).worthConsidering;
-    const second = getOpenNowSnapshot(NOW).worthConsidering;
+    const first = buildOpenNowSnapshot(LEISURE, NOW).worthConsidering;
+    const second = buildOpenNowSnapshot(LEISURE, NOW).worthConsidering;
 
     expect(second).toEqual(first);
     expect(first).toHaveLength(3);

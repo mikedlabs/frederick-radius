@@ -1,73 +1,154 @@
 name: freshness-check
 
-# Weekly check that every active source is updating as often as it
-# claims. A source can fetch without error yet stop changing upstream;
-# this catches that case, which the daily error check cannot.
+# Daily verification catches sources that fetch successfully while quietly
+# returning frozen payloads. Checking and issue mutation use separate tokens.
 
 on:
   schedule:
-    - cron: "0 11 * * 1" # Mondays, 11:00 UTC
+    - cron: "0 11 * * *" # after the daily snapshot refresh
   workflow_dispatch: {}
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 jobs:
-  freshness:
+  check:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      manifest_outcome: ${{ steps.manifest.outcome }}
+      freshness_outcome: ${{ steps.fresh.outcome }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout trusted freshness code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Checkout the latest snapshot manifest
+        id: snapshot
+        continue-on-error: true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: data-snapshots
+          path: .latest-snapshot
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Load the latest pipeline manifest
+        id: manifest
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          SNAPSHOT_OUTCOME: ${{ steps.snapshot.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$SNAPSHOT_OUTCOME" != "success" ]; then
+            echo "The data-snapshots branch could not be checked out." | tee manifest-load.log
+            exit 1
+          fi
+          install -m 0600 .latest-snapshot/data/sources.yaml /tmp/frederick-radius-sources.yaml
+          rm -rf .latest-snapshot
+          echo "Loaded the latest pipeline source manifest." | tee manifest-load.log
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        if: ${{ steps.manifest.outcome == 'success' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
+        if: ${{ steps.manifest.outcome == 'success' }}
         run: npm ci
-
-      - name: Load the latest pipeline manifest
-        run: |
-          git fetch origin data-snapshots --depth=1
-          git show origin/data-snapshots:data/sources.yaml > /tmp/frederick-radius-sources.yaml
 
       - name: Check freshness
         id: fresh
+        if: ${{ steps.manifest.outcome == 'success' }}
         continue-on-error: true
         env:
-          SOURCE_MANIFEST: /tmp/frederick-radius-sources.yaml
+          # Cadence and ownership come from the trusted current branch. The
+          # generated snapshot contributes timestamps only, so an older
+          # snapshot cannot silently restore stale monitoring policy.
+          SOURCE_STATE_MANIFEST: /tmp/frederick-radius-sources.yaml
         run: |
           set -o pipefail
           npm run pipeline:freshness 2>&1 | tee freshness.log
 
-      - name: Open an issue for stale sources
-        if: steps.fresh.outcome == 'failure'
-        uses: actions/github-script@v7
+      - name: Save freshness logs for the reporter
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: freshness-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            manifest-load.log
+            freshness.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  report:
+    needs: check
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout trusted issue lifecycle code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download freshness logs
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: freshness-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: workflow-logs
+
+      - name: Update the single freshness issue
+        id: lifecycle
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          MANIFEST_OUTCOME: ${{ needs.check.outputs.manifest_outcome }}
+          FRESHNESS_OUTCOME: ${{ needs.check.outputs.freshness_outcome }}
         with:
           script: |
             const fs = require('fs');
+            const lifecycle = require('./scripts/lib/automated-data-issue.cjs');
+            const manifestHealthy = process.env.MANIFEST_OUTCOME === 'success';
+            const freshnessHealthy = process.env.FRESHNESS_OUTCOME === 'success';
+            const healthy = manifestHealthy && freshnessHealthy;
+            core.setOutput('healthy', healthy ? 'true' : 'false');
+            if (healthy) {
+              await lifecycle.closeRecovered({
+                github,
+                context,
+                family: 'freshness',
+                recoveryMessage: 'All pipeline-managed sources are within their declared snapshot and change cadence.',
+              });
+              return;
+            }
+            const selected = manifestHealthy ? 'freshness.log' : 'manifest-load.log';
             let log = '';
-            try { log = fs.readFileSync('freshness.log', 'utf8').slice(-6000); } catch (e) {}
+            try { log = fs.readFileSync(`workflow-logs/${selected}`, 'utf8').slice(-6000); } catch (error) {}
             const body = [
-              'One or more active sources are past their declared refresh cadence.',
+              manifestHealthy
+                ? 'One or more pipeline-managed sources are outside their declared snapshot or change cadence.'
+                : 'The freshness monitor could not load the latest validated pipeline manifest.',
               '',
-              '```',
-              log,
-              '```',
+              log ? 'Monitor output (tail):' : 'No monitor log was available.',
+              ...(log ? ['```', log, '```'] : []),
               '',
-              'A stale source usually means the upstream feed stopped updating or the manifest cadence is wrong. Confirm with the owner, then either fix the source or correct refresh_cadence in data/sources.yaml.',
+              'Confirm the source response and its declared cadence before changing the policy.',
             ].join('\n');
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Stale data sources ${new Date().toISOString().slice(0, 10)}`,
-              body,
-              labels: ['data-pipeline', 'automated', 'stale-source'],
-            });
+            await lifecycle.upsertFailure({ github, context, family: 'freshness', body });
 
-      - name: Fail the job if anything is stale
-        if: steps.fresh.outcome == 'failure'
+      - name: Fail the workflow when freshness is degraded
+        if: ${{ steps.lifecycle.outputs.healthy != 'true' }}
         run: exit 1

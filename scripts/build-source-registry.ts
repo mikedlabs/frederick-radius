@@ -29,6 +29,8 @@ type ManifestRow = {
   status?: unknown;
   collection?: unknown;
   refresh_cadence?: unknown;
+  snapshot_cadence?: unknown;
+  change_cadence?: unknown;
   last_success?: unknown;
   evidence_aliases?: unknown;
   rows_required?: unknown;
@@ -46,6 +48,8 @@ const SOURCE_NAME_COLLATOR = new Intl.Collator("en-US", {
 });
 const REFRESH_CADENCE =
   /^(?:realtime|hourly|daily|weekly|monthly|quarterly|yearly|on_demand)(?:\s*\([^)]*\))?$/;
+const MONITORED_CADENCE =
+  /^(?:realtime|hourly|daily|weekly|monthly|quarterly|yearly)$/;
 
 function scalar(value: unknown): string | null {
   if (typeof value === "string") {
@@ -79,6 +83,16 @@ export function buildSourceRegistryArtifact(text: string): SourceRegistryArtifac
     }
     if (!REFRESH_CADENCE.test(refreshCadence)) {
       throw new Error(`${id}: unsupported refresh_cadence "${refreshCadence}".`);
+    }
+    for (const [field, value] of [
+      ["snapshot_cadence", row.snapshot_cadence],
+      ["change_cadence", row.change_cadence],
+    ] as const) {
+      if (value === undefined) continue;
+      const cadence = scalar(value);
+      if (!cadence || !MONITORED_CADENCE.test(cadence)) {
+        throw new Error(`${id}: unsupported ${field} "${String(value)}".`);
+      }
     }
     const collection = scalar(row.collection);
     if (

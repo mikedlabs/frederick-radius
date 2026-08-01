@@ -4,8 +4,9 @@
  * Every 15 minutes it appends any public incidents not yet stored (the live
  * feed keeps ~1h, so 15-min runs overlap and the unique dedupe_key drops the
  * repeats). No-op until the FredScanner feed is configured AND the
- * scanner_incidents table is migrated — both fail soft. Auth: the same
- * CRON_SECRET bearer as the other crons.
+ * scanner_incidents table is migrated. Missing or incomplete persistence is a
+ * failing cron result, while the public scanner reader still degrades safely.
+ * Auth: the same CRON_SECRET bearer as the other crons.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -23,6 +24,14 @@ export async function GET(request: Request) {
     seen: 0,
     inserted: 0,
     complete: false,
+    reason: "archive_operation_failed" as const,
   }));
-  return NextResponse.json({ ran_at: new Date().toISOString(), ...result });
+  return NextResponse.json(
+    {
+      ok: result.complete,
+      ran_at: new Date().toISOString(),
+      ...result,
+    },
+    { status: result.complete ? 200 : 503 },
+  );
 }

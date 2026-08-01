@@ -156,6 +156,26 @@ describe("food-truck schedule cache validation", () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
+  it("does not publish an empty snapshot when every source failed", async () => {
+    const failed = {
+      ...valid,
+      stops: [],
+      sources: [{ id: "source", name: "Source", ok: false }],
+    } as unknown as FoodTruckScheduleSnapshot;
+
+    await expect(
+      writeFoodTruckSchedule(
+        failed,
+        valid as unknown as FoodTruckScheduleSnapshot,
+      ),
+    ).resolves.toMatchObject({
+      stored: false,
+      preservedPrevious: true,
+      reason: expect.stringContaining("All sources failed"),
+    });
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
   it("cancels a chunked stream that exceeds the schedule cap", async () => {
     let pulls = 0;
     let cancelled = false;

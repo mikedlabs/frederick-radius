@@ -18,8 +18,13 @@ export async function GET(request: Request) {
 
   const previous = await readStoredFoodTruckSchedule();
   const schedule = await buildFoodTruckSchedule(new Date());
-  const write = await writeFoodTruckSchedule(schedule, previous);
   const allSourcesFailed = schedule.sources.every((source) => !source.ok);
+  const write = await writeFoodTruckSchedule(schedule, previous).catch(() => ({
+    stored: false,
+    preservedPrevious: Boolean(previous),
+    reason: "The schedule could not be written to durable storage",
+  }));
+  const persistenceFailed = !write.stored;
 
   if (write.stored) {
     revalidatePath("/food-trucks");
@@ -29,11 +34,13 @@ export async function GET(request: Request) {
 
   return NextResponse.json(
     {
-      ok: !allSourcesFailed,
+      ok: !allSourcesFailed && !persistenceFailed,
       stops: schedule.stops.length,
       sources: schedule.sources,
       storage: write,
     },
-    { status: allSourcesFailed ? 502 : 200 },
+    {
+      status: allSourcesFailed ? 502 : persistenceFailed ? 503 : 200,
+    },
   );
 }

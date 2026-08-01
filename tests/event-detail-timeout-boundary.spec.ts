@@ -26,8 +26,12 @@ describe("event detail transient-failure contract", () => {
     expect(boundary).toContain("Sentry.captureException(error)");
 
     // Known source outages must return the Radius-owned recovery screen as a
-    // normal page response instead of throwing into a 500 boundary.
+    // normal page response instead of throwing into a 500 boundary. The route
+    // must be explicitly request-rendered: conditional noStore() during an ISR
+    // render is itself a DYNAMIC_SERVER_USAGE error in Next 16.
     expect(page).toContain("isOperationalEventResolutionError(error)");
+    expect(page).toContain('export const dynamic = "force-dynamic"');
+    expect(page).not.toContain("export const revalidate = 300");
     expect(page).toContain("noStore();");
     expect(page).toContain("return <EventLookupRecovery />");
   });

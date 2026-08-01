@@ -12,6 +12,7 @@
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "audit:pages": "tsx --tsconfig tsconfig.json scripts/page-quality-audit.ts",
     "feed:health": "tsx --tsconfig tsconfig.json scripts/feed-health.ts",
+    "status:data-tools": "tsx --tsconfig tsconfig.json scripts/data-tool-status.ts",
     "maintain:feed-snapshots": "tsx --tsconfig tsconfig.json scripts/compact-feed-snapshots.ts",
     "audit:vendor-media": "tsx --tsconfig tsconfig.json scripts/audit-vendor-media.ts",
     "lint:zindex": "node scripts/check-zindex.mjs",

@@ -1,0 +1,274 @@
+name: Publish validated data snapshot
+
+# The fetch job never receives write credentials. This isolated reusable job
+# accepts only bounded pipeline artifacts, validates their path and size, and
+# updates the dedicated data-snapshots branch without executing repository code.
+
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        required: true
+        type: string
+      base_sha:
+        description: Exact trusted main revision whose source configuration generated the artifact
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout the current snapshot branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: data-snapshots
+          path: snapshot-worktree
+          fetch-depth: 1
+
+      - name: Validate the trusted base revision
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          case "$BASE_SHA" in
+            *[!0-9a-f]*|'') echo "base_sha must be a lowercase commit SHA"; exit 1 ;;
+          esac
+          if [ "${#BASE_SHA}" -ne 40 ]; then
+            echo "base_sha must contain exactly 40 hexadecimal characters"
+            exit 1
+          fi
+
+      - name: Refuse snapshot generated from a stale main revision
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GENERATED_FROM_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const expected = process.env.GENERATED_FROM_SHA;
+            const branch = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            });
+            if (branch.data.commit.sha !== expected) {
+              core.setFailed(`Main moved while the snapshot was generated. Expected ${expected}; found ${branch.data.commit.sha}. Retry from current main.`);
+            }
+
+      - name: Checkout the trusted source configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.base_sha }}
+          path: trusted-base
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download exact snapshot artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ runner.temp }}/pipeline-snapshot
+
+      - name: Validate and install the bounded snapshot
+        id: validate
+        continue-on-error: true
+        working-directory: snapshot-worktree
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/pipeline-snapshot
+          PRIOR_MANIFEST: ${{ github.workspace }}/snapshot-worktree/data/sources.yaml
+          TRUSTED_MANIFEST: ${{ github.workspace }}/trusted-base/data/sources.yaml
+          CANDIDATE_MANIFEST: ${{ runner.temp }}/pipeline-snapshot/data/sources.yaml
+          CANDIDATE_CLEAN_ROOT: ${{ runner.temp }}/pipeline-snapshot/data/clean
+        run: |
+          set -o pipefail
+          {
+            set -euo pipefail
+            if find "$ARTIFACT_ROOT" -type l -print -quit | grep -q .; then
+              echo "Snapshot artifact contains a symbolic link."
+              exit 1
+            fi
+            test -s "$ARTIFACT_ROOT/data/sources.yaml"
+            grep -Eq '^sources:[[:space:]]*$' "$ARTIFACT_ROOT/data/sources.yaml"
+            if ! find "$ARTIFACT_ROOT/data/clean" -type f -print -quit | grep -q .; then
+              echo "Snapshot artifact has no normalized last-known-good data."
+              exit 1
+            fi
+            total=0
+            while IFS= read -r -d '' file; do
+              path=${file#"$ARTIFACT_ROOT/"}
+              case "$path" in
+                data/sources.yaml) limit=1048576 ;;
+                data/clean/*.json|data/clean/*.geojson) limit=36700160 ;;
+                data/raw/*/*.json) limit=36700160 ;;
+                data/raw/*/*.invalid.txt) limit=262144 ;;
+                *) echo "Unexpected snapshot path: $path"; exit 1 ;;
+              esac
+              if [[ ! "$path" =~ ^data/(sources\.yaml|clean/[A-Za-z0-9_-]+\.(json|geojson)|raw/[A-Za-z0-9_-]+/[0-9]{4}-[0-9]{2}-[0-9]{2}\.(json|invalid\.txt|schema-error\.json|http-error\.json|body-limit\.json))$ ]]; then
+                echo "Unsafe snapshot path: $path"
+                exit 1
+              fi
+              size=$(stat -c '%s' "$file")
+              if [ "$size" -gt "$limit" ]; then
+                echo "Snapshot file exceeds its bounded size: $path"
+                exit 1
+              fi
+              total=$((total + size))
+              if [ "$total" -gt 83886080 ]; then
+                echo "Snapshot artifact exceeds the 80 MB publication boundary."
+                exit 1
+              fi
+              case "$path" in
+                *.json|*.geojson)
+                  node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' "$file"
+                  ;;
+              esac
+            done < <(find "$ARTIFACT_ROOT" -type f -print0)
+
+            # Parse all three manifests with Ruby's standard safe YAML loader.
+            # Candidate configuration must exactly match the trusted main
+            # revision; only the four worker-owned health fields may change.
+          ruby -ryaml -rdate -rtime - "$TRUSTED_MANIFEST" "$PRIOR_MANIFEST" "$CANDIDATE_MANIFEST" "$CANDIDATE_CLEAN_ROOT" <<'RUBY'
+          STATE_FIELDS = %w[last_success last_validated last_changed last_payload_sha256].freeze
+
+          def load_manifest(path)
+            value = YAML.safe_load(
+              File.read(path),
+              permitted_classes: [Date, Time],
+              permitted_symbols: [],
+              aliases: false,
+            )
+            raise "#{path} is not a manifest object" unless value.is_a?(Hash)
+            raise "#{path} has no sources array" unless value['sources'].is_a?(Array)
+            value
+          end
+
+          def source_rows(manifest, path)
+            rows = manifest.fetch('sources')
+            raise "#{path} has no source rows" if rows.empty?
+            unless rows.all? { |row| row.is_a?(Hash) && row['id'].is_a?(String) && row['id'].match?(/\A[A-Za-z0-9_-]+\z/) }
+              raise "#{path} contains an invalid source row"
+            end
+            ids = rows.map { |row| row.fetch('id') }
+            raise "#{path} contains duplicate source ids" unless ids.uniq.length == ids.length
+            rows.to_h { |row| [row.fetch('id'), row] }
+          end
+
+          def parse_time(value)
+            return nil if value.nil?
+            Time.parse(value.to_s)
+          rescue ArgumentError
+            nil
+          end
+
+          trusted_path, prior_path, candidate_path, clean_root = ARGV
+          trusted_manifest = load_manifest(trusted_path)
+          prior_manifest = load_manifest(prior_path)
+          candidate_manifest = load_manifest(candidate_path)
+          trusted = source_rows(trusted_manifest, trusted_path)
+          prior = source_rows(prior_manifest, prior_path)
+          candidate = source_rows(candidate_manifest, candidate_path)
+
+          trusted_top_level = trusted_manifest.reject { |key, _value| key == 'sources' }
+          candidate_top_level = candidate_manifest.reject { |key, _value| key == 'sources' }
+          raise 'Candidate manifest changed trusted top-level configuration' unless candidate_top_level == trusted_top_level
+          raise 'Candidate manifest changed the trusted source set' unless candidate.keys.sort == trusted.keys.sort
+
+          trusted.each do |id, trusted_row|
+            candidate_row = candidate.fetch(id)
+            trusted_config = trusted_row.reject { |key, _value| STATE_FIELDS.include?(key) }
+            candidate_config = candidate_row.reject { |key, _value| STATE_FIELDS.include?(key) }
+            raise "#{id} changed trusted source configuration" unless candidate_config == trusted_config
+          end
+
+          prior.each do |id, previous|
+            next_row = candidate[id]
+            next unless next_row && previous['last_success']
+            previous_time = parse_time(previous['last_success'])
+            next_time = parse_time(next_row['last_success'])
+            if previous_time && (!next_time || next_time < previous_time)
+              raise "#{id} regressed last_success from #{previous['last_success']} to #{next_row['last_success'].inspect}"
+            end
+          end
+
+          expected = candidate.values
+            .select { |row| row['status'] == 'active' && row['collection'] == 'pipeline' }
+            .map { |row| row.fetch('id') }
+            .sort
+          raise 'Candidate manifest has no active pipeline sources' if expected.empty?
+          expected.each do |id|
+            raise "#{id} has no valid last_success in the candidate manifest" unless parse_time(candidate.fetch(id)['last_success'])
+          end
+
+          actual = Dir.children(clean_root)
+            .select { |name| File.file?(File.join(clean_root, name)) && name.match?(/\.(?:json|geojson)\z/) }
+            .map { |name| File.basename(name, File.extname(name)) }
+            .sort
+          unless actual.uniq.length == actual.length && actual == expected
+            raise "Normalized outputs do not match active pipeline sources. Expected #{expected.join(', ')}; found #{actual.join(', ')}"
+          end
+          RUBY
+
+            unexpected=$(git ls-files | grep -Ev '^data/(sources\.yaml|clean/|raw/)' || true)
+            if [ -n "$unexpected" ]; then
+              echo "The snapshot branch contains unexpected tracked files:"
+              printf '%s\n' "$unexpected"
+              exit 1
+            fi
+
+            git rm -r --ignore-unmatch data
+            while IFS= read -r -d '' file; do
+              path=${file#"$ARTIFACT_ROOT/"}
+              install -D -m 0644 "$file" "$path"
+            done < <(find "$ARTIFACT_ROOT" -type f -print0)
+            git add -f data
+            changed=$(git status --porcelain=v1 | sed -E 's/^.. //' | grep -Ev '^data/' || true)
+            if [ -n "$changed" ]; then
+              echo "Snapshot publication changed files outside data/:"
+              printf '%s\n' "$changed"
+              exit 1
+            fi
+          } 2>&1 | tee "$RUNNER_TEMP/snapshot-publish.log"
+
+      - name: Commit and publish the snapshot
+        id: commit
+        if: ${{ steps.validate.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: snapshot-worktree
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          set -o pipefail
+          {
+            set -euo pipefail
+            current_main=$(git ls-remote --refs origin refs/heads/main | cut -f1)
+            if [ "$current_main" != "$BASE_SHA" ]; then
+              echo "Main moved during snapshot validation. Retry the refresh so stale data cannot replace the current snapshot."
+              exit 1
+            fi
+            git config user.name "frederick-radius-bot"
+            git config user.email "bot@frederickradius.app"
+            if git diff --cached --quiet; then
+              echo "Snapshot is unchanged."
+              exit 0
+            fi
+            git commit -m "data snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push origin HEAD:data-snapshots
+          } 2>&1 | tee -a "$RUNNER_TEMP/snapshot-publish.log"
+
+      - name: Save the publisher log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: snapshot-publisher-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/snapshot-publish.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail when snapshot publication was rejected
+        if: ${{ steps.validate.outcome != 'success' || steps.commit.outcome != 'success' }}
+        run: exit 1

@@ -72,5 +72,18 @@ sources:
         base.replace("refresh_cadence: hourly", "refresh_cadence: houryl"),
       ),
     ).toThrow('county: unsupported refresh_cadence "houryl".');
+    expect(() =>
+      buildSourceRegistryArtifact(`${base}    snapshot_cadence: dayly\n`),
+    ).toThrow('county: unsupported snapshot_cadence "dayly".');
+    expect(() =>
+      buildSourceRegistryArtifact(`${base}    change_cadence: houryl\n`),
+    ).toThrow('county: unsupported change_cadence "houryl".');
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base}    snapshot_cadence: "daily (best effort)"\n`,
+      ),
+    ).toThrow(
+      'county: unsupported snapshot_cadence "daily (best effort)".',
+    );
   });
 });
