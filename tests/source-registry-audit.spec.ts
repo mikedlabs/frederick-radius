@@ -13,6 +13,8 @@ type SourceRow = {
   collection?: "pipeline" | "runtime" | "workflow";
   evidence_aliases?: string[];
   rows_required?: boolean;
+  snapshot_cadence?: string;
+  change_cadence?: string;
   transform_file?: string | null;
 };
 
@@ -24,6 +26,22 @@ function manifestRows(): SourceRow[] {
 describe("source registry audit", () => {
   it("accepts the checked-in manifest", () => {
     expect(auditSourceRows(manifestRows())).toEqual([]);
+  });
+
+  it("fails closed on unsupported snapshot and change cadences", () => {
+    const rows = manifestRows();
+    rows[0] = {
+      ...rows[0],
+      snapshot_cadence: "daily (best effort)",
+      change_cadence: "on_demand",
+    };
+
+    expect(auditSourceRows(rows)).toEqual(
+      expect.arrayContaining([
+        `${rows[0]?.id}: unsupported snapshot_cadence=daily (best effort)`,
+        `${rows[0]?.id}: unsupported change_cadence=on_demand`,
+      ]),
+    );
   });
 
   it("contracts every mounted local-information adapter as active runtime data", () => {

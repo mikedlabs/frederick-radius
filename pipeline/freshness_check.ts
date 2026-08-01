@@ -1,12 +1,12 @@
 /**
- * Weekly freshness check.
+ * Daily freshness check.
  *
  * It flags any active source whose last_success is missing or older
- * than its declared refresh_cadence allows. The intent is to catch a
- * source that quietly stopped updating even though fetches still
- * succeed, which a daily error check would miss.
+ * than its declared snapshot_cadence (or refresh_cadence fallback) allows.
+ * The intent is to catch a source that quietly stopped updating even though
+ * fetches still succeed, which a daily error check would miss.
  *
- * Exit code is non zero when anything is stale, so the weekly Action
+ * Exit code is non zero when anything is stale, so the scheduled Action
  * can open issues.
  */
 
@@ -27,6 +27,7 @@ const MAX_AGE_HOURS: Record<string, number> = {
   daily: 36,
   weekly: 240,
   monthly: 960,
+  quarterly: 2400,
   yearly: 9600,
 };
 
@@ -35,8 +36,15 @@ type Row = {
   status: string;
   collection?: "pipeline" | "runtime" | "workflow";
   refresh_cadence: string;
+  snapshot_cadence?: string;
+  change_cadence?: string;
   last_success: string | null;
+  last_changed?: string | null;
 };
+
+function baseCadence(value: string): string {
+  return value.trim().split(/\s+/, 1)[0] ?? "";
+}
 
 function main(): void {
   const doc = parse(readFileSync(MANIFEST, "utf8")) as { sources: Row[] };
@@ -53,8 +61,13 @@ function main(): void {
 
   for (const row of managed) {
     // on_demand sources are not scheduled, so freshness does not apply.
-    const limit = MAX_AGE_HOURS[row.refresh_cadence];
-    if (limit === undefined) continue;
+    const cadence = row.snapshot_cadence ?? baseCadence(row.refresh_cadence);
+    if (cadence === "on_demand") continue;
+    const limit = MAX_AGE_HOURS[cadence];
+    if (limit === undefined) {
+      stale.push(`${row.id}: unsupported snapshot cadence ${cadence}`);
+      continue;
+    }
 
     if (!row.last_success) {
       stale.push(`${row.id}: never succeeded`);
@@ -62,7 +75,24 @@ function main(): void {
     }
     const ageHours = (Date.now() - new Date(row.last_success).getTime()) / 3_600_000;
     if (!Number.isFinite(ageHours) || ageHours > limit) {
-      stale.push(`${row.id}: last success ${row.last_success}, cadence ${row.refresh_cadence}, age ${ageHours.toFixed(1)}h exceeds ${limit}h`);
+      stale.push(`${row.id}: last success ${row.last_success}, snapshot cadence ${cadence}, age ${ageHours.toFixed(1)}h exceeds ${limit}h`);
+    }
+
+    if (row.change_cadence) {
+      const changeLimit = MAX_AGE_HOURS[row.change_cadence];
+      if (changeLimit === undefined) {
+        stale.push(`${row.id}: unsupported change cadence ${row.change_cadence}`);
+      } else if (!row.last_changed) {
+        stale.push(`${row.id}: payload change has never been recorded`);
+      } else {
+        const changeAgeHours =
+          (Date.now() - new Date(row.last_changed).getTime()) / 3_600_000;
+        if (!Number.isFinite(changeAgeHours) || changeAgeHours > changeLimit) {
+          stale.push(
+            `${row.id}: payload unchanged since ${row.last_changed}, change cadence ${row.change_cadence}, age ${changeAgeHours.toFixed(1)}h exceeds ${changeLimit}h`,
+          );
+        }
+      }
     }
   }
 
@@ -72,7 +102,7 @@ function main(): void {
     process.exitCode = 1;
   } else {
     console.log(
-      `All ${managed.length} pipeline-managed sources are within their refresh cadence. ` +
+      `All ${managed.length} pipeline-managed sources are within their snapshot policy. ` +
       `${active.length - managed.length} runtime/workflow sources are outside this manifest timestamp check and must be verified in their owning monitors.`,
     );
   }

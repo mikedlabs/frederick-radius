@@ -3,6 +3,10 @@ import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { archiveJsonText } from "@/lib/events/archive-json";
+import {
+  checkEventSchemaReadiness,
+  type EventSchemaReadiness,
+} from "@/lib/ingest/event-schema-readiness";
 
 type JsonValue =
   | null
@@ -41,6 +45,8 @@ export type EventArchiveBatchResult = {
   truncated: boolean;
   timedOut: boolean;
   tombstonesEnabled: boolean;
+  /** Number of safe, idempotent retries after a transient database rejection. */
+  retries: number;
   failure: EventArchiveBatchFailure | null;
 };
 
@@ -91,6 +97,7 @@ export type EventArchiveBatchOptions = {
   batchSize?: number;
   deadlineMs?: number;
   graceMs?: number;
+  maxTransientRetries?: number;
 };
 
 type InternalEventArchiveBatchOptions = EventArchiveBatchOptions & {
@@ -104,6 +111,24 @@ export const EVENT_ARCHIVE_BATCH_SIZE = 200;
 export const EVENT_ARCHIVE_MAX_EVENTS = 1_200;
 export const EVENT_ARCHIVE_DEADLINE_MS = 6_000;
 export const EVENT_ARCHIVE_TOMBSTONE_GRACE_MS = 36 * 60 * 60_000;
+export const EVENT_ARCHIVE_MAX_TRANSIENT_RETRIES = 1;
+
+const TRANSIENT_DATABASE_CODES = new Set([
+  "40001", // serialization_failure
+  "40P01", // deadlock_detected
+  "55P03", // lock_not_available / lock timeout
+  "08000",
+  "08001",
+  "08003",
+  "08004",
+  "08006",
+  "08007",
+  "08P01",
+  "53300", // too_many_connections
+  "57P01",
+  "57P02",
+  "57P03",
+]);
 
 function clampInteger(
   value: number | undefined,
@@ -531,6 +556,20 @@ function safeFailureCode(error: unknown): string | null {
     : null;
 }
 
+function isTransientDatabaseFailure(error: unknown): boolean {
+  const code = safeFailureCode(error);
+  return code !== null && TRANSIENT_DATABASE_CODES.has(code);
+}
+
+/** Fail before source assembly when migration 0038 is not fully deployed. */
+export async function preflightEventArchive(): Promise<EventSchemaReadiness> {
+  const sql = getSql();
+  if (!sql) {
+    return { ready: false, missing: ["database.connection"] };
+  }
+  return checkEventSchemaReadiness(sql, "event-archive");
+}
+
 async function beforeDeadline<T>(
   promise: Promise<T>,
   deadlineAt: number,
@@ -605,7 +644,14 @@ export async function syncEventArchiveBatchWithWriter(
   let upserted = 0;
   let ignoredLifecycleOnly = 0;
   let batches = 0;
+  let retries = 0;
   let failure: EventArchiveBatchFailure | null = null;
+  const maxTransientRetries = clampInteger(
+    options.maxTransientRetries,
+    EVENT_ARCHIVE_MAX_TRANSIENT_RETRIES,
+    0,
+    2,
+  );
 
   for (let offset = 0; offset < prepared.rows.length; offset += batchSize) {
     if (clock() >= deadlineAt) {
@@ -617,11 +663,26 @@ export async function syncEventArchiveBatchWithWriter(
       break;
     }
     const batch = prepared.rows.slice(offset, offset + batchSize);
-    const outcome = await beforeDeadline(
-      writer.upsert(batch, { deadlineAt }),
-      deadlineAt,
-      clock,
-    );
+    let outcome: BatchDeadlineOutcome<EventArchiveBatchWriteResult>;
+    let transientAttempts = 0;
+    do {
+      outcome = await beforeDeadline(
+        writer.upsert(batch, { deadlineAt }),
+        deadlineAt,
+        clock,
+      );
+      if (
+        outcome.status === "rejected"
+        && isTransientDatabaseFailure(outcome.error)
+        && transientAttempts < maxTransientRetries
+        && clock() < deadlineAt
+      ) {
+        transientAttempts += 1;
+        retries += 1;
+        continue;
+      }
+      break;
+    } while (true);
     if (outcome.status !== "fulfilled") {
       failure = {
         stage: "upsert",
@@ -637,6 +698,16 @@ export async function syncEventArchiveBatchWithWriter(
     upserted += written.upserted;
     ignoredLifecycleOnly += written.ignoredLifecycleOnly;
     batches++;
+    if (
+      written.upserted + written.ignoredLifecycleOnly !== batch.length
+    ) {
+      failure = {
+        stage: "upsert",
+        reason: "rejected",
+        code: "incomplete-batch",
+      };
+      break;
+    }
   }
 
   const recordsComplete =
@@ -701,6 +772,7 @@ export async function syncEventArchiveBatchWithWriter(
     truncated: prepared.truncated,
     timedOut: failure?.reason === "timed_out",
     tombstonesEnabled,
+    retries,
     failure,
   };
 }

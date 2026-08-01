@@ -322,6 +322,32 @@ describe("ingestICal", () => {
     );
   });
 
+  it("redacts credentials from the first shared calendar write error", async () => {
+    const { db, onConflictDoUpdate } = fakeDb();
+    onConflictDoUpdate.mockRejectedValueOnce(
+      new Error(
+        "event insert failed DATABASE_URL=postgres://radius:do-not-log@example.test/radius",
+      ),
+    );
+    mocks.getDb.mockReturnValue(db);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(SAMPLE, { status: 200 })),
+    );
+
+    const result = await ingestICal({
+      source_slug: "test_calendar",
+      url: "https://events.example/calendar.ics",
+      defaultMunicipality: "frederick",
+      defaultVenueLatLng: { lng: -77.4109, lat: 39.4137 },
+    });
+
+    expect(result.status).toBe("error");
+    expect(result.error).toContain("event insert failed DATABASE_URL=[redacted]");
+    expect(result.error).not.toContain("do-not-log");
+    expect(result.error).not.toContain("postgres://");
+  });
+
   it("aborts a hung calendar fetch at the source-scoped timeout", async () => {
     vi.useFakeTimers();
     const { db } = fakeDb();

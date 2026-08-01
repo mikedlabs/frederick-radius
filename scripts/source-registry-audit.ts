@@ -22,8 +22,13 @@ type SourceRow = {
   collection?: Collection;
   evidence_aliases?: string[];
   rows_required?: boolean;
+  snapshot_cadence?: string;
+  change_cadence?: string;
   transform_file?: string | null;
 };
+
+const MONITORED_CADENCE =
+  /^(?:realtime|hourly|daily|weekly|monthly|quarterly|yearly)$/;
 
 export const REQUIRED_ACTIVE: Record<string, Collection> = {
   // Business/place spine.
@@ -80,6 +85,14 @@ export function auditSourceRows(
     }
     if (seen.has(row.id)) issues.push(`${row.id}: duplicate id`);
     seen.add(row.id);
+    for (const [field, cadence] of [
+      ["snapshot_cadence", row.snapshot_cadence],
+      ["change_cadence", row.change_cadence],
+    ] as const) {
+      if (cadence !== undefined && !MONITORED_CADENCE.test(cadence)) {
+        issues.push(`${row.id}: unsupported ${field}=${cadence}`);
+      }
+    }
     if (row.status !== "active") {
       if (row.collection) issues.push(`${row.id}: non-active row declares collection=${row.collection}`);
       continue;
