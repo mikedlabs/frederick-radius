@@ -16,6 +16,7 @@ import {
   type ArchivedEventIdentity,
   type PersistedEventIdentity,
 } from "@/lib/events/event-identity";
+import { servedEventBySlug } from "@/lib/events/served-event-snapshot";
 
 export type EventResolutionKind =
   | "seed"
@@ -171,7 +172,11 @@ function isPastDatedEventSlug(slug: string, now: Date): boolean {
 
 const PRODUCTION_PAGE_SOURCES: EventResolverSources = {
   ...DEFAULT_SOURCES,
-  unified: async () => null,
+  // A discovery surface may have published this event moments ago. Reuse its
+  // exact in-process board snapshot without calling assembleUnifiedEvents or
+  // starting another countywide provider fanout. The durable archive remains
+  // authoritative across instances and after this short-lived snapshot ages.
+  unified: async (slug) => servedEventBySlug(slug),
   live: (slug, context) => {
     if (context.signal.aborted) return Promise.resolve(null);
     const hasDatedRoutingEvidence =
