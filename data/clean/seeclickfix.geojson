@@ -6,6 +6,138 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.37804005617457,
+          39.454514773932836
+        ]
+      },
+      "properties": {
+        "external_id": "22390870",
+        "summary": "Roadway General Request",
+        "description": "Hi, I would like to report a traffic safety concern at the stop sign where Waterside Court meets River Run Road. Vehicles are legally parked near the stop sign, but they block the view of oncoming tra",
+        "address": "River Run Rd & Waterside Ct Frederick, MD, 21701, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-07-31T19:30:59.000Z",
+        "url": "https://seeclickfix.com/issues/22390870",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.589840114857,
+          39.418413918195
+        ]
+      },
+      "properties": {
+        "external_id": "22389275",
+        "summary": "Roadway Pavement Maintenance",
+        "description": "Road cracking and disintegrating",
+        "address": "6800 Hunt Valley Ct Middletown, MD, 21769, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Pavement Maintenance",
+        "reported_at": "2026-07-31T17:21:18.000Z",
+        "url": "https://seeclickfix.com/issues/22389275",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.45284412183773,
+          39.36815370962825
+        ]
+      },
+      "properties": {
+        "external_id": "22388629",
+        "summary": "Roadway General Request",
+        "description": "Trash bags thrown on the side of the roadway.",
+        "address": "4900 Eleanor Dr Frederick, Maryland, 21703",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Roadway General Request",
+        "reported_at": "2026-07-31T16:23:18.000Z",
+        "url": "https://seeclickfix.com/issues/22388629",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.64137059207225,
+          39.342329283574664
+        ]
+      },
+      "properties": {
+        "external_id": "22386259",
+        "summary": "Illegal Debris Removal",
+        "description": "Mattress thrown in the pull off again!!",
+        "address": "39.34233 -77.64137",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Illegal Debris Removal",
+        "reported_at": "2026-07-31T13:14:23.000Z",
+        "url": "https://seeclickfix.com/issues/22386259",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.30586919808103,
+          39.41837021374234
+        ]
+      },
+      "properties": {
+        "external_id": "22385671",
+        "summary": "Roadway Mowing Request",
+        "description": "Constituent stated that the section near their house in often missed in mowing, and it has been a debate on whether or not the section is to be maintained by Lake Linganore or DHO. Please investigate",
+        "address": "6736 Meadowlawn Cir New Market, Maryland, 21774",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-07-31T12:04:29.000Z",
+        "url": "https://seeclickfix.com/issues/22385671",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.43552349388393,
+          39.36497902019847
+        ]
+      },
+      "properties": {
+        "external_id": "22385657",
+        "summary": "Roadway Sign Maintenance",
+        "description": "Constituent stated that there is a four way stop near English Muffin Way and New Design that does not have stop lines. Requesting information on if this is code, or if the lines are to be painted. AW",
+        "address": "English Muffin Way Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-07-31T12:02:05.000Z",
+        "url": "https://seeclickfix.com/issues/22385657",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.51442461158823,
           39.42994822042054
         ]
@@ -262,160 +394,6 @@
         "category": "Roadway Tree Maintenance",
         "reported_at": "2026-07-30T12:11:56.000Z",
         "url": "https://seeclickfix.com/issues/22375942",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.49013469437608,
-          39.30182437628581
-        ]
-      },
-      "properties": {
-        "external_id": "22370974",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Constituent at 5139 Doubs Rd said this roadway still getting washed even though culvert has been worked on. The rain runoff continues to wash road out. Wondering if anything can be done to remedy this",
-        "address": "5139 Doubs Rd Adamstown, Maryland, 21710",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-07-29T18:48:41.000Z",
-        "url": "https://seeclickfix.com/issues/22370974",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.35330423216955,
-          39.3961514647992
-        ]
-      },
-      "properties": {
-        "external_id": "22368957",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Constituent would like if someone were to come out and speak with her regarding the drainage near her property address. States flooding keeps occurring and washing away stone. AW",
-        "address": "8931 Baltimore Rd Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-07-29T16:21:00.000Z",
-        "url": "https://seeclickfix.com/issues/22368957",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.32461113358131,
-          39.38267973473607
-        ]
-      },
-      "properties": {
-        "external_id": "22368942",
-        "summary": "Roadway Tree Maintenance",
-        "description": "There is a low hanging branch from a tree in the Frederick County right of way that is interfering with the use of my driveway. It brushs the top of cars and vans. The tree was trimmed a possibly a co",
-        "address": "9805 Vista Ridge Ct Ijamsville, Maryland, 21754",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-07-29T16:19:47.000Z",
-        "url": "https://seeclickfix.com/issues/22368942",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.54151492265123,
-          39.40640923790793
-        ]
-      },
-      "properties": {
-        "external_id": "22368674",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "Paving of this road has resulted in uneven pavement transition from the driveway to the Old Middletown Rd. Constituent is wondering if paving crew can resolve this issue.",
-        "address": "6313 Old Middletown Rd Middletown, Maryland, 21769",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-07-29T16:00:59.000Z",
-        "url": "https://seeclickfix.com/issues/22368674",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.48421996249084,
-          39.371708494028866
-        ]
-      },
-      "properties": {
-        "external_id": "22368647",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Roll up sign stand damaged at S Renn Road - Weight restriction sign. Please investigate and repair/replace if it is our sign.",
-        "address": "S Renn Rd Frederick, Maryland, 21703",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-07-29T15:59:21.000Z",
-        "url": "https://seeclickfix.com/issues/22368647",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.54024263356824,
-          39.36718088329895
-        ]
-      },
-      "properties": {
-        "external_id": "22368026",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Ditch does not drain rainwater away.",
-        "address": "5009 Jane Ct Jefferson, Maryland, 21755",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-07-29T15:13:57.000Z",
-        "url": "https://seeclickfix.com/issues/22368026",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.34522810082196,
-          39.40890494957903
-        ]
-      },
-      "properties": {
-        "external_id": "22366417",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "After every rain I get a giant puddle at the end of my driveway that syas there for days.",
-        "address": "6340 Knollwood Dr Frederick, Maryland, 21701",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-07-29T13:15:17.000Z",
-        "url": "https://seeclickfix.com/issues/22366417",
         "source": "seeclickfix"
       }
     }
