@@ -110,6 +110,9 @@ export type SourceWatchCandidate = {
 export type SourceWatchReport = {
   schemaVersion: 1;
   kind: "candidate-only";
+  provider: {
+    name: "firecrawl";
+  };
   generatedAt: string;
   notice: string;
   budget: {
@@ -722,11 +725,14 @@ export async function runSourceWatch(
 
     for (const source of config.sources) {
       const previous = state.observations[source.id];
+      let observedFinalUrl: string | undefined;
       try {
         const snapshot = await fetchPage(source.url, {
           timeoutMs: config.limits.timeoutMs,
           allowHttp: source.httpException !== undefined,
+          requireReportedFinalUrl: true,
         });
+        observedFinalUrl = snapshot.finalUrl;
         const statusCode = reportedStatusCode(snapshot.metadata);
         if (statusCode === 404 || statusCode === 410) {
           throw new FirecrawlRestError(
@@ -801,7 +807,9 @@ export async function runSourceWatch(
           source,
           status,
           checkedAt,
-          finalUrl: previous?.finalUrl,
+          // Preserve a provider-reported redirect for review without accepting
+          // it into the last-known-good observation state.
+          finalUrl: observedFinalUrl ?? previous?.finalUrl,
           previousHash: previous?.contentHash,
           errorCode,
           httpStatus,
@@ -817,6 +825,9 @@ export async function runSourceWatch(
     const report: SourceWatchReport = {
       schemaVersion: 1,
       kind: "candidate-only",
+      provider: {
+        name: "firecrawl",
+      },
       generatedAt: checkedAt,
       notice:
         "Review candidates only. A detected page change is not verified truth and nothing in this report is published automatically.",

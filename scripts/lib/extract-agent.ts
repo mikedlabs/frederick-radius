@@ -189,6 +189,7 @@ async function fetchFirecrawlFallback(
   try {
     const snapshot = await fetchFirecrawlPage(url, {
       allowHttp: opts.firecrawlAllowHttp === true,
+      requireReportedFinalUrl: true,
     });
     if (
       !isAllowedRedirectHost(

@@ -182,8 +182,12 @@ describe("Source Watch candidate runs", () => {
     expect(fetchPage).toHaveBeenCalledOnce();
     expect(fetchPage).toHaveBeenCalledWith(
       "https://source-4.example.test/events",
-      expect.objectContaining({ timeoutMs: 1_000 }),
+      expect.objectContaining({
+        timeoutMs: 1_000,
+        requireReportedFinalUrl: true,
+      }),
     );
+    expect(result.report.provider).toEqual({ name: "firecrawl" });
     expect(result.report.sourcesChecked).toEqual([
       {
         id: "official-source-4",
@@ -353,6 +357,7 @@ describe("Source Watch candidate runs", () => {
     expect(result.report.candidates[0]).toMatchObject({
       status: "error",
       errorCode: "SOURCE_REJECTED",
+      finalUrl: "https://unrelated.example.test/copied-page",
     });
     expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(false);
   });

@@ -119,6 +119,38 @@ describe("fetchPageSnapshot", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects a Firecrawl fallback that omits its explicit final URL", async () => {
+    vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
+    const target = "https://example.com/dynamic-events";
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request): Promise<Response> => {
+        if (String(input) !== "https://api.firecrawl.dev/v2/scrape") {
+          return new Response("", { status: 403 });
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              markdown: "# Upcoming\n\nUnverified provider response",
+              metadata: { sourceURL: target, statusCode: 200 },
+            },
+          }),
+          { status: 200 },
+        );
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPageSnapshot(target)).resolves.toBeNull();
+    expect(getFirecrawlFallbackUsage()).toMatchObject({
+      attempted: 1,
+      succeeded: 0,
+      failed: 1,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("does not spend a Firecrawl request when the fallback switch is off", async () => {
     vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "0");
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
