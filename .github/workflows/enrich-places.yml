@@ -34,11 +34,11 @@ jobs:
             echo "::error title=Missing GOOGLE_PLACES_API_KEY::Add the repository secret before running curated-place enrichment."
             exit 1
           fi
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
       - run: npm ci
@@ -66,7 +66,7 @@ jobs:
           install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
           install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
       - name: Upload exact enrichment outputs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: curated-place-enrichment-output
           path: ${{ runner.temp }}/curated-place-enrichment-output
