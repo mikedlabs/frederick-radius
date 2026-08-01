@@ -46,8 +46,8 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-01T04:41:30.642Z
-    last_success: 2026-08-01T04:41:30.642Z
+    last_validated: 2026-08-01T11:17:02.557Z
+    last_success: 2026-08-01T11:17:02.557Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -69,8 +69,8 @@ sources:
     contact: https://chart.maryland.gov
     status: active
     collection: pipeline
-    last_validated: 2026-08-01T04:41:31.005Z
-    last_success: 2026-08-01T04:41:31.005Z
+    last_validated: 2026-08-01T11:17:03.356Z
+    last_success: 2026-08-01T11:17:03.356Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
@@ -93,8 +93,8 @@ sources:
     contact: https://seeclickfix.com
     status: active
     collection: pipeline
-    last_validated: 2026-08-01T04:41:31.648Z
-    last_success: 2026-08-01T04:41:31.648Z
+    last_validated: 2026-08-01T11:17:03.785Z
+    last_success: 2026-08-01T11:17:03.785Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -121,15 +121,15 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-01T04:41:33.061Z
-    last_success: 2026-08-01T04:41:33.061Z
+    last_validated: 2026-08-01T11:17:05.311Z
+    last_success: 2026-08-01T11:17:05.311Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
       Two step API. The worker reads the points response, follows
       properties.forecast, then stores the forecast periods.
-    last_changed: 2026-08-01T04:41:33.061Z
-    last_payload_sha256: 7b8147fcdf8c4fc90f29b2f06caeb1fbecdb575a48bc8f652882f4d779778d56
+    last_changed: 2026-08-01T11:17:05.311Z
+    last_payload_sha256: 9caf915078764e809dc5109097635bb0fb6c1cfa3c4e31fb1e42bfa5f477f5f5
 
   - id: nws_alerts
     name: National Weather Service Active Alerts, Frederick County
@@ -143,8 +143,8 @@ sources:
     contact: https://www.weather.gov/disclaimer
     status: active
     collection: pipeline
-    last_validated: 2026-08-01T04:41:33.467Z
-    last_success: 2026-08-01T04:41:33.467Z
+    last_validated: 2026-08-01T11:17:05.639Z
+    last_success: 2026-08-01T11:17:05.639Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
