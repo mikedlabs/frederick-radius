@@ -6,7 +6,7 @@
       "label": "Town Hall",
       "phone": "301-834-7500",
       "address": "1 West Potomac St., Brunswick, MD 21716",
-      "hours": "Mon - Fri 8:00 a.m. - 4:30 p.m."
+      "hours": "Monday - Friday 8:00 a.m. - 4:30 p.m."
     },
     "publicWorks": {
       "label": "Public Works",
@@ -15,7 +15,9 @@
     },
     "source": {
       "url": "https://brunswickmd.gov/publicworks",
-      "fetchedAt": "2026-05-31T17:38:12.952Z"
+      "requestedUrl": "https://brunswickmd.gov/publicworks",
+      "finalUrl": "https://brunswickmd.gov/publicworks",
+      "fetchedAt": "2026-08-01T10:16:27.713Z"
     }
   },
   "thurmont": {
@@ -27,18 +29,25 @@
       "address": "615 East Main Street, PO Box 17, Thurmont, MD 21788",
       "hours": "Monday-Friday 8AM-4PM"
     },
+    "permits": {
+      "label": "Permits & Zoning",
+      "website": "https://www.thurmont.com/2143/Government"
+    },
     "police": {
       "label": "Police (non-emergency)",
-      "website": "https://www.thurmont.md.gov/government/police-department"
+      "website": "https://www.thurmont.com/2143/Government"
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
-      "phone": "301-271-7313",
-      "schedule": "Curbside recycling pickup every other Friday by 6:00 a.m.; curbside grass clippings pickup Mondays by 6:00 a.m. (April-November in paper bags)"
+      "phone": "301-600-2960",
+      "website": "https://www.frederickcountymd.gov",
+      "schedule": "Curbside recycling pickup is scheduled for every other Friday, with bins required to be out by 6 a.m. on pickup day."
     },
     "source": {
       "url": "https://www.thurmont.com/2143/Government",
-      "fetchedAt": "2026-05-31T17:38:16.865Z"
+      "requestedUrl": "https://www.thurmont.com/2143/Government",
+      "finalUrl": "https://www.thurmont.com/2143/Government",
+      "fetchedAt": "2026-08-01T10:16:30.986Z"
     }
   },
   "middletown": {
@@ -47,18 +56,23 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-371-6171",
-      "address": "31 West Main Street, Middletown, MD 21769"
+      "address": "31 West Main Street, Middletown, MD 21769",
+      "website": "https://www.middletown.md.us/"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-371-6171",
+      "schedule": "Yard debris pickup occurs on Tuesdays with branches bundled and no more than four feet long and four inches in diameter."
     },
     "permits": {
-      "label": "Permits & Zoning"
-    },
-    "utilities": {
-      "label": "Water / Utilities",
+      "label": "Permits & Zoning",
       "phone": "301-371-6171"
     },
     "source": {
       "url": "https://www.middletown.md.us/",
-      "fetchedAt": "2026-05-31T17:38:19.279Z"
+      "requestedUrl": "https://www.middletown.md.us/",
+      "finalUrl": "https://www.middletown.md.us/",
+      "fetchedAt": "2026-08-01T10:16:33.849Z"
     }
   },
   "walkersville": {
@@ -72,7 +86,9 @@
     },
     "source": {
       "url": "https://www.walkersvillemd.gov/",
-      "fetchedAt": "2026-05-31T17:38:21.407Z"
+      "requestedUrl": "https://www.walkersvillemd.gov/",
+      "finalUrl": "https://www.walkersvillemd.gov/",
+      "fetchedAt": "2026-08-01T10:16:35.662Z"
     }
   },
   "emmitsburg": {
@@ -81,22 +97,19 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-600-6300",
-      "website": "http://www.emmitsburgmd.gov"
-    },
-    "publicWorks": {
-      "label": "Public Works"
-    },
-    "utilities": {
-      "label": "Water / Utilities"
+      "website": "https://www.emmitsburgmd.gov"
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-600-6300",
-      "schedule": "Household trash collection is on Monday of every week. If Monday falls on a holiday, garbage is typically picked up on the following day."
+      "website": "https://www.emmitsburgmd.gov/residents/null/trash/index.php",
+      "schedule": "Household trash collection is on Monday of every week; if Monday falls on a holiday, garbage is typically picked up on the following day."
     },
     "source": {
       "url": "https://www.emmitsburgmd.gov/",
-      "fetchedAt": "2026-05-31T17:38:24.947Z"
+      "requestedUrl": "https://www.emmitsburgmd.gov/",
+      "finalUrl": "https://www.emmitsburgmd.gov/",
+      "fetchedAt": "2026-08-01T10:16:38.669Z"
     }
   },
   "new-market": {
@@ -104,13 +117,19 @@
     "name": "New Market",
     "townHall": {
       "label": "Town Hall",
-      "phone": "301-865-5544",
       "address": "40 South Alley, P.O. Box 27, New Market, Maryland 21774",
-      "hours": "8 AM - 4 PM Monday - Friday"
+      "hours": "Monday–Friday 8 a.m.–4 p.m.; Saturday and Sunday closed",
+      "website": "https://www.townofnewmarket.org/"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "website": "https://www.townofnewmarket.org/"
     },
     "source": {
       "url": "https://www.townofnewmarket.org/contacts-directory",
-      "fetchedAt": "2026-05-31T17:38:28.006Z"
+      "requestedUrl": "https://www.townofnewmarket.org/contacts-directory",
+      "finalUrl": "https://www.townofnewmarket.org/contacts-directory",
+      "fetchedAt": "2026-08-01T10:16:42.053Z"
     }
   },
   "mount-airy": {
@@ -119,17 +138,23 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-829-1424",
-      "hours": "Monday-Friday 8:30 a.m. - 5:00 p.m.",
-      "address": "110 S. Main Street, P.O. Box 50, Mount Airy, MD 21771"
+      "address": "110 S. Main Street, P.O. Box 50, Mount Airy, MD 21771",
+      "hours": "Monday-Friday 8:30 a.m. - 5:00 p.m."
+    },
+    "permits": {
+      "label": "Permits & Zoning",
+      "website": "https://mountairymd.gov/27/Government-Services"
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-829-1424",
-      "schedule": "Trash collected every Tuesday for Carroll County premises and every Friday for Frederick County premises and the Nottingham Subdivision. Recycling collected every other Wednesday for Frederick County and every Wednesday for Carroll County."
+      "schedule": "Trash is collected every Tuesday for Carroll County premises and every Friday for Frederick County premises and the Nottingham Subdivision. Frederick County recyclables are collected every other Wednesday and Carroll County recyclables are collected every Wednesday."
     },
     "source": {
       "url": "https://mountairymd.gov/27/Government-Services",
-      "fetchedAt": "2026-05-31T17:38:33.739Z"
+      "requestedUrl": "https://mountairymd.gov/27/Government-Services",
+      "finalUrl": "https://mountairymd.gov/27/Government-Services",
+      "fetchedAt": "2026-08-01T10:16:46.716Z"
     }
   },
   "myersville": {
@@ -138,12 +163,14 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-293-4281",
-      "address": "301 Main Street, P.O. Box 295 Myersville, MD 21773",
+      "address": "301 Main Street, P.O. Box 295, Myersville, MD 21773",
       "hours": "Monday - Friday 8:00am - 4:00pm"
     },
     "source": {
       "url": "https://myersville.org/government",
-      "fetchedAt": "2026-05-31T17:38:35.279Z"
+      "requestedUrl": "https://myersville.org/government",
+      "finalUrl": "https://myersville.org/government",
+      "fetchedAt": "2026-08-01T10:16:48.019Z"
     }
   },
   "woodsboro": {
@@ -190,22 +217,25 @@
   "rosemont": {
     "slug": "rosemont",
     "name": "Rosemont",
-    "townHall": {
-      "label": "Town Hall",
-      "phone": "240-353-3988"
-    },
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-600-2960",
-      "schedule": "Spring bulk trash pickup April 13-15; recycling drop-off at Brunswick Public Works Monday-Friday 8am-3pm"
+      "website": "https://health.frederickcountymd.gov/",
+      "schedule": "Recycling and yard waste materials may be dropped off at Brunswick Public Works (600 Petersville Road) Monday through Friday from 8am to 3pm."
     },
     "utilities": {
       "label": "Water / Utilities",
       "phone": "301-600-2187"
     },
+    "police": {
+      "label": "Police (non-emergency)",
+      "phone": "1-410-260-8888"
+    },
     "source": {
       "url": "https://sites.google.com/site/rosemontmd/home",
-      "fetchedAt": "2026-05-31T17:38:58.845Z"
+      "requestedUrl": "https://sites.google.com/site/rosemontmd/home",
+      "finalUrl": "https://sites.google.com/site/rosemontmd/home",
+      "fetchedAt": "2026-08-01T10:17:12.612Z"
     }
   }
 }
