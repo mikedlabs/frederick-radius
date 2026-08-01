@@ -211,9 +211,15 @@ describe("closure detector budget controls", () => {
   it("reuses cache while advancing limited runs to the next uncached target", async () => {
     const path = reportsDir();
     const options = liveOptions(path);
-    const firstSearch = vi.fn(async () => "No closure evidence found.");
+    const firstSearch = vi.fn(async (query: string) => {
+      void query;
+      return "No closure evidence found.";
+    });
     await runClosureDetector(options, { env, search: firstSearch, sleep: noSleep });
-    const secondSearch = vi.fn(async () => "No closure evidence found.");
+    const secondSearch = vi.fn(async (query: string) => {
+      void query;
+      return "No closure evidence found.";
+    });
     const second = await runClosureDetector(options, {
       env,
       search: secondSearch,
@@ -223,7 +229,10 @@ describe("closure detector budget controls", () => {
       ...parseClosureDetectorArgs(["--limit", "1"]),
       reportsDir: path,
     });
-    const refreshSearch = vi.fn(async () => "Fresh result.");
+    const refreshSearch = vi.fn(async (query: string) => {
+      void query;
+      return "Fresh result.";
+    });
     const refresh = await runClosureDetector(
       { ...options, refreshCache: true },
       { env, search: refreshSearch, sleep: noSleep },
