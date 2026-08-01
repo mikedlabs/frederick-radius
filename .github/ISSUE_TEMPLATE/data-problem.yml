@@ -1,0 +1,44 @@
+name: Data problem
+description: Report a missing, stale, duplicated, mislocated, or unsupported Frederick County record.
+title: "[Data] "
+labels: [data-review]
+body:
+  - type: input
+    id: record
+    attributes:
+      label: Place, event, route, alert, or source
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: Problem type
+      options:
+        - Missing
+        - Stale
+        - Duplicate
+        - Wrong town or coordinates
+        - Wrong date or time
+        - Source unavailable
+        - Copy or attribution problem
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What Radius currently shows
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Best available source
+      description: Include the direct source URL and the date it was checked. Do not treat social posts or scanner traffic as confirmed facts without attribution.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Proposed correction or review needed
+    validations:
+      required: true

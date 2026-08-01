@@ -4,7 +4,9 @@ name: Automated PR checks
 # approval. Data generators call this tiny, isolated workflow after their
 # allowlisted PR branch changes. It receives no source API secrets, does not
 # check out or execute repository code, and can only start the existing CI and
-# style workflows on a bot/* branch.
+# style workflows on a bot/* branch. automated-pr-status-bridge.yml validates
+# the completed jobs again and attaches their conclusions to the PR merge SHA
+# evaluated by the strict main-branch ruleset.
 
 on:
   workflow_call:
