@@ -6,6 +6,7 @@ import {
   type PageAnchor,
 } from "./official-commerce-links";
 import {
+  assertSuccessfulFirecrawlTargetStatus,
   fetchFirecrawlPage,
   FirecrawlRestError,
 } from "./firecrawl-rest";
@@ -202,6 +203,7 @@ async function fetchFirecrawlFallback(
       console.log(`  ✗ ${url} (Firecrawl fallback: CROSS_HOST_REDIRECT)`);
       return null;
     }
+    assertSuccessfulFirecrawlTargetStatus(snapshot.metadata);
     const text = snapshot.text.replace(/\s+/g, " ").trim().slice(0, maxChars);
     if (!text) {
       usage.failed += 1;

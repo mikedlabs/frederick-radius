@@ -238,11 +238,10 @@ describe("Source Watch candidate runs", () => {
         return snapshot(url, "A materially changed official page");
       }
       if (round === 2 && index === 4) {
-        throw new FirecrawlRestError(
-          "HTTP_ERROR",
-          "Firecrawl request failed with HTTP 404.",
-          { status: 404 },
-        );
+        return {
+          ...snapshot(url, "Not found page"),
+          metadata: { title: "Not found", statusCode: 404 },
+        };
       }
       if (round === 2 && index === 5) {
         throw new FirecrawlRestError(
@@ -362,6 +361,96 @@ describe("Source Watch candidate runs", () => {
     expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(false);
   });
 
+  it("classifies a cross-host 404 as rejected evidence, not a removal", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const fetchPage = vi.fn(async (url: string) => ({
+      ...snapshot(url, "Unrelated not-found page"),
+      finalUrl: "https://unrelated.example.test/not-found",
+      metadata: { title: "Not found", statusCode: 404 },
+    }));
+
+    const result = await runSourceWatch({
+      config: testConfig(10),
+      reportDirectory,
+      fetchPage,
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+
+    expect(result.report.summary).toMatchObject({ removed: 0, error: 10 });
+    expect(result.report.candidates[0]).toMatchObject({
+      status: "error",
+      errorCode: "SOURCE_REJECTED",
+      finalUrl: "https://unrelated.example.test/not-found",
+    });
+  });
+
+  it.each([
+    ["401", 401, "TARGET_HTTP_ERROR", 401],
+    ["403", 403, "TARGET_HTTP_ERROR", 403],
+    ["429", 429, "TARGET_HTTP_ERROR", 429],
+    ["500", 500, "TARGET_HTTP_ERROR", 500],
+    ["missing", undefined, "INVALID_RESPONSE", undefined],
+    ["non-integer", "200", "INVALID_RESPONSE", undefined],
+  ] as const)(
+    "rejects a same-host %s target status instead of accepting content",
+    async (_label, statusCode, expectedCode, expectedHttpStatus) => {
+      const reportDirectory = await mkdtemp(
+        join(tmpdir(), "radius-source-watch-"),
+      );
+      const fetchPage = vi.fn(async (url: string) => ({
+        ...snapshot(url, "Provider error body"),
+        metadata:
+          statusCode === undefined
+            ? { title: "No target status" }
+            : { title: "Rejected target status", statusCode },
+      }));
+
+      const result = await runSourceWatch({
+        config: testConfig(10),
+        reportDirectory,
+        fetchPage,
+        now: () => new Date("2026-07-29T12:00:00.000Z"),
+      });
+
+      expect(result.report.summary).toMatchObject({ removed: 0, error: 10 });
+      expect(result.report.candidates[0]).toMatchObject({
+        status: "error",
+        errorCode: expectedCode,
+        httpStatus: expectedHttpStatus,
+      });
+      expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(false);
+    },
+  );
+
+  it("does not mistake a provider-endpoint 404 for a removed source", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const fetchPage = vi.fn(async () => {
+      throw new FirecrawlRestError(
+        "HTTP_ERROR",
+        "Firecrawl request failed with HTTP 404.",
+        { status: 404 },
+      );
+    });
+
+    const result = await runSourceWatch({
+      config: testConfig(10),
+      reportDirectory,
+      fetchPage,
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+
+    expect(result.report.summary).toMatchObject({ removed: 0, error: 10 });
+    expect(result.report.candidates[0]).toMatchObject({
+      status: "error",
+      errorCode: "HTTP_ERROR",
+      httpStatus: 404,
+    });
+  });
+
   it("treats a successful Firecrawl envelope reporting 404 as removed", async () => {
     const reportDirectory = await mkdtemp(
       join(tmpdir(), "radius-source-watch-"),
@@ -388,7 +477,7 @@ describe("Source Watch candidate runs", () => {
     });
     expect(result.report.candidates[0]).toMatchObject({
       status: "removed",
-      errorCode: "HTTP_ERROR",
+      errorCode: "TARGET_HTTP_ERROR",
       httpStatus: 404,
     });
   });
