@@ -161,11 +161,17 @@ export function prepareEventArchiveRows(
       Number.isFinite(rawEndsAt.getTime()) && rawEndsAt >= startsAt
         ? rawEndsAt.toISOString()
         : null;
-    const verifiedAt = Number.isFinite(
-      Date.parse(event.last_verified_at),
-    )
-      ? event.last_verified_at
-      : startsAt.toISOString();
+    // The archive column is explicitly `verified_at`; an event start time is
+    // not a substitute. Keep undated curated rows available through their
+    // synchronous seed loader, but do not manufacture trust evidence merely
+    // to fit a non-null database column.
+    if (
+      !event.last_verified_at ||
+      !Number.isFinite(Date.parse(event.last_verified_at))
+    ) {
+      continue;
+    }
+    const verifiedAt = event.last_verified_at;
     const row: EventArchiveBatchRow = {
       source,
       source_uid: sourceUid,

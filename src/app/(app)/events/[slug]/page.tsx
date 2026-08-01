@@ -582,7 +582,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {event.organizer && (
               <span>by {event.organizer}</span>
             )}
-            <FreshnessChip iso={event.last_verified_at} />
+            <FreshnessChip iso={event.last_verified_at ?? undefined} />
           </div>
           {communicationAccess.length > 0 && (
             <div

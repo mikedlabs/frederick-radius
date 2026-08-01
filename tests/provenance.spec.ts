@@ -132,4 +132,26 @@ describe("event provenance (data brief 4.1, event side)", () => {
     expect(stampEventProvenance({ slug: "x", source: "seed" }).source_url).toBeNull();
     expect(stampEventProvenance({ slug: "x", source: "dfp", source_url: "https://a.b" }).source_url).toBe("https://a.b");
   });
+
+  it("keeps a missing event verification date explicit", () => {
+    expect(
+      stampEventProvenance({ slug: "undated", source: "seed" })
+        .last_verified_at,
+    ).toBeNull();
+    expect(
+      stampEventProvenance({
+        slug: "dated",
+        source: "manual",
+        last_verified_at: "2026-07-29T12:00:00.000Z",
+      }).last_verified_at,
+    ).toBe("2026-07-29T12:00:00.000Z");
+  });
+
+  it("does not add a cohort verification date to an undated curated row", () => {
+    const raw = upcomingEvents(new Date("2026-06-10T12:00:00Z")).find(
+      (event) => !event.last_verified_at,
+    );
+    expect(raw).toBeDefined();
+    expect(getEventBySlug(raw!.slug)?.last_verified_at).toBeNull();
+  });
 });
