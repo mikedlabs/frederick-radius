@@ -1,0 +1,235 @@
+name: Attach automated PR checks
+
+# Data publishers create review PRs with the repository token. GitHub holds
+# their native pull_request workflows for approval, so the publisher dispatches
+# the same secret-free CI and style workflows on the exact bot commit. This
+# bridge copies those real job conclusions to GitHub's synthetic PR merge
+# commit, which is the revision evaluated by the strict main-branch ruleset.
+#
+# No generated code is checked out or executed here. Before a status is
+# written, the bot branch, head SHA, changed paths, current main revision, and
+# open PR are all revalidated through the API.
+
+on:
+  workflow_run:
+    workflows: [CI, style]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  attach:
+    if: >-
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      startsWith(github.event.workflow_run.head_branch, 'bot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate the bot PR and attach its real job results
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = run.head_branch;
+            const headSha = run.head_sha;
+
+            const mainRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            const mainSha = mainRef.data.object.sha;
+
+            const allowedByBranch = {
+              'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+              'bot/data-steward': [
+                'docs/coverage-scorecard.md',
+                'docs/hours-refresh-review.md',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-hours-refresh.json',
+              ],
+              'bot/transit-steward': [
+                'src/data/transit-network.json',
+                'src/data/transit-trips.json',
+                'src/data/transit.json',
+              ],
+              'bot/curated-place-enrichment': [
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-enrichment.json',
+              ],
+              'bot/business-info-refresh': [
+                'src/data/business-info.json',
+                'src/data/descriptions.json',
+              ],
+              'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
+              'bot/venue-event-refresh': [
+                'src/data/venue-event-source-state.json',
+                'src/data/venue-events.json',
+              ],
+              'bot/google-photo-attribution-backfill': [
+                'docs/coverage-scorecard.md',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-enrichment.json',
+              ],
+              'bot/official-commerce-link-refresh': ['src/data/business-info.json'],
+            };
+
+            const allowlist = allowedByBranch[branch];
+            if (!allowlist || !/^[0-9a-f]{40}$/.test(headSha || '')) {
+              core.setFailed(`Refusing an unexpected automated branch or head: ${String(branch)}`);
+              return;
+            }
+            if (run.head_repository?.full_name !== `${owner}/${repo}`) {
+              core.setFailed('Automated status bridging is limited to same-repository branches.');
+              return;
+            }
+
+            const pulls = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              base: 'main',
+              head: `${owner}:${branch}`,
+              per_page: 10,
+            });
+            if (pulls.data.length !== 1) {
+              core.setFailed(`Expected one open PR for ${branch}; found ${pulls.data.length}.`);
+              return;
+            }
+            const pull = pulls.data[0];
+            if (pull.head.sha !== headSha || pull.head.repo?.full_name !== `${owner}/${repo}`) {
+              core.setFailed('The workflow result no longer matches the open PR head.');
+              return;
+            }
+
+            const comparison = await github.rest.repos.compareCommitsWithBasehead({
+              owner,
+              repo,
+              basehead: `${mainSha}...${headSha}`,
+              per_page: 100,
+            });
+            if (comparison.data.behind_by !== 0) {
+              core.setFailed(`The bot PR is behind main by ${comparison.data.behind_by} commit(s). Regenerate it.`);
+              return;
+            }
+            const changed = (comparison.data.files || []).map((file) => file.filename);
+            const unexpected = changed.filter((path) => !allowlist.includes(path));
+            if (changed.length === 0 || unexpected.length > 0) {
+              core.setFailed(`The bot PR changed files outside its allowlist: ${unexpected.join(', ') || 'no changed files'}`);
+              return;
+            }
+
+            const recentRuns = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: run.workflow_id,
+              branch,
+              event: 'workflow_dispatch',
+              per_page: 100,
+            });
+            const latestForHead = recentRuns.data.workflow_runs.find(
+              (candidate) => candidate.head_sha === headSha,
+            );
+            if (
+              !latestForHead ||
+              latestForHead.id !== run.id ||
+              latestForHead.run_attempt !== run.run_attempt ||
+              latestForHead.status !== 'completed'
+            ) {
+              core.setFailed('A newer workflow run or attempt exists for this bot commit.');
+              return;
+            }
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+              owner,
+              repo,
+              run_id: run.id,
+              attempt_number: run.run_attempt,
+              per_page: 100,
+            });
+            const expectedJobs = run.name === 'CI'
+              ? ['verify', 'Required browser chaos']
+              : run.name === 'style'
+                ? ['style-lint']
+                : [];
+            if (expectedJobs.length === 0) {
+              core.setFailed(`Unexpected workflow name: ${String(run.name)}`);
+              return;
+            }
+
+            let mergeSha = null;
+            for (let attempt = 0; attempt < 12; attempt += 1) {
+              const current = await github.rest.pulls.get({ owner, repo, pull_number: pull.number });
+              if (
+                current.data.head.sha !== headSha ||
+                current.data.base.ref !== 'main' ||
+                current.data.base.sha !== mainSha
+              ) {
+                core.setFailed('The PR changed while its check results were being attached.');
+                return;
+              }
+              if (/^[0-9a-f]{40}$/.test(current.data.merge_commit_sha || '')) {
+                mergeSha = current.data.merge_commit_sha;
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+            if (!mergeSha) {
+              core.setFailed('GitHub did not produce a merge revision for the automated PR.');
+              return;
+            }
+
+            const mergeCommit = await github.rest.git.getCommit({ owner, repo, commit_sha: mergeSha });
+            const mergeParents = mergeCommit.data.parents.map((parent) => parent.sha);
+            if (mergeParents[0] !== mainSha || mergeParents[1] !== headSha) {
+              core.setFailed('The PR merge revision does not combine the validated main and bot commits.');
+              return;
+            }
+
+            for (const contextName of expectedJobs) {
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: mergeSha,
+                state: 'error',
+                context: contextName,
+                description: 'Automated-data result is being validated',
+                target_url: run.html_url,
+              });
+            }
+
+            for (const contextName of expectedJobs) {
+              const job = jobs.find((candidate) => candidate.name === contextName);
+              if (!job || !job.completed_at) {
+                core.setFailed(`The ${run.name} run did not contain a completed ${contextName} job.`);
+                return;
+              }
+              const state = job.conclusion === 'success'
+                ? 'success'
+                : job.conclusion === 'failure'
+                  ? 'failure'
+                  : 'error';
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: mergeSha,
+                state,
+                context: contextName,
+                description: state === 'success'
+                  ? 'Passed in the trusted automated-data gate'
+                  : `Automated-data gate concluded: ${job.conclusion || 'unknown'}`,
+                target_url: job.html_url,
+              });
+              core.info(`${contextName}: ${state} -> ${mergeSha}`);
+            }
