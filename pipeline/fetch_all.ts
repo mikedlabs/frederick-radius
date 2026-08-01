@@ -11,18 +11,27 @@
  * validation, so the GitHub Action can open an issue.
  */
 
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
 import type { ZodType } from "zod";
 import type { TransformResult } from "./lib/normalize";
+import {
+  fetchTextWithRetry,
+  SourceBodyLimitError,
+  SourceHttpError,
+} from "./lib/fetch_source";
+import {
+  prunePipelineArtifacts,
+  type CleanFormat,
+} from "./lib/artifact_retention";
+import { normalizedRowCount } from "./lib/output_policy";
+import { seedPriorSourceState } from "./lib/source_state";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = join(ROOT, "data", "sources.yaml");
-
-const FETCH_TIMEOUT_MS = 30_000;
-const MAX_ATTEMPTS = 3;
 
 type SourceRow = {
   id: string;
@@ -34,6 +43,7 @@ type SourceRow = {
   format?: string;
   schema_file?: string | null;
   transform_file?: string | null;
+  rows_required?: boolean;
 };
 
 function today(): string {
@@ -44,39 +54,6 @@ function getByPath(obj: unknown, path: string): unknown {
   return path
     .split(".")
     .reduce<unknown>((acc, key) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined), obj);
-}
-
-async function fetchTextWithRetry(url: string): Promise<string> {
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-    try {
-      const res = await fetch(url, {
-        signal: ctrl.signal,
-        headers: {
-          // NWS and several civic feeds reject requests without a
-          // descriptive User-Agent, so identify the project.
-          "User-Agent": "Frederick Radius data pipeline (miked@madproductions.io)",
-          Accept: "application/json, application/geo+json;q=0.9, */*;q=0.5",
-        },
-      });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Return the body as text. The caller decides whether it parses
-      // as JSON, so a non JSON block or redirect page is still captured
-      // for diagnose-failure rather than thrown away here.
-      return await res.text();
-    } catch (err) {
-      clearTimeout(timer);
-      lastErr = err;
-      if (attempt < MAX_ATTEMPTS) {
-        // Exponential backoff: 1s, then 2s, before the final attempt.
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
-      }
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 function tryParseJson(text: string): unknown | undefined {
@@ -107,7 +84,14 @@ function summarizeZodError(
     .join("\n");
 }
 
-async function processSource(row: SourceRow): Promise<{ ok: boolean; reason?: string }> {
+async function processSource(
+  row: SourceRow,
+): Promise<{
+  ok: boolean;
+  reason?: string;
+  payloadHash?: string;
+  outputFormat?: CleanFormat;
+}> {
   // Resolve a two step API when resolve_json_path is set. The points
   // response names the real forecast URL; we follow it before storing.
   let fetchUrl = row.url;
@@ -122,18 +106,18 @@ async function processSource(row: SourceRow): Promise<{ ok: boolean; reason?: st
 
   const body = await fetchTextWithRetry(fetchUrl);
 
-  // Step 3: always save the raw response before validating, so bad data
-  // is never silently dropped and diagnose-failure can inspect it, even
-  // when the upstream returns an HTML block or redirect page instead of
-  // JSON.
+  // Step 3: preserve bounded diagnostic bodies for invalid or schema-drifted
+  // responses. A date-stamped successful raw payload is written only after
+  // validation and normalization complete, so retention never mistakes a
+  // failed refresh for the latest known-good source response.
   const rawDir = join(ROOT, "data", "raw", row.id);
   mkdirSync(rawDir, { recursive: true });
   const parsed = tryParseJson(body);
   if (parsed === undefined) {
-    writeFileSync(join(rawDir, `${today()}.invalid.txt`), body.slice(0, 200_000));
+    const boundedBody = Buffer.from(body).subarray(0, 200_000).toString("utf8");
+    writeFileSync(join(rawDir, `${today()}.invalid.txt`), boundedBody);
     return { ok: false, reason: "response was not JSON, raw body saved for diagnose-failure" };
   }
-  writeFileSync(join(rawDir, `${today()}.json`), JSON.stringify(parsed, null, 2));
   const raw = parsed;
 
   // Step 4: validate. On failure, log the diff and continue. The raw
@@ -141,6 +125,7 @@ async function processSource(row: SourceRow): Promise<{ ok: boolean; reason?: st
   const validator = await loadModule<{ schema: ZodType }>(`pipeline/schemas_ts/${row.id}.ts`);
   const result = validator.schema.safeParse(raw);
   if (!result.success) {
+    writeFileSync(join(rawDir, `${today()}.schema-error.json`), body);
     console.error(`[${row.id}] schema validation failed:`);
     console.error(summarizeZodError(result.error.issues));
     return { ok: false, reason: "schema validation failed" };
@@ -149,16 +134,41 @@ async function processSource(row: SourceRow): Promise<{ ok: boolean; reason?: st
   // Step 5: transform and write normalized output.
   const mod = await loadModule<{ transform: (raw: unknown) => TransformResult }>(`transforms/${row.id}.ts`);
   const out = mod.transform(result.data);
+  if (row.rows_required) {
+    const count = normalizedRowCount(out);
+    if (count === null) {
+      return {
+        ok: false,
+        reason: "rows_required is set but the normalized output has no countable row boundary",
+      };
+    }
+    if (count === 0) {
+      return {
+        ok: false,
+        reason: "normalized output was empty for a rows_required source; last-known-good data retained",
+      };
+    }
+  }
   const cleanDir = join(ROOT, "data", "clean");
   mkdirSync(cleanDir, { recursive: true });
   const ext = out.format === "geojson" ? "geojson" : "json";
-  writeFileSync(join(cleanDir, `${row.id}.${ext}`), JSON.stringify(out.data, null, 2));
+  const serialized = JSON.stringify(out.data, null, 2);
+  writeFileSync(join(cleanDir, `${row.id}.${ext}`), serialized);
+  writeFileSync(join(rawDir, `${today()}.json`), JSON.stringify(parsed, null, 2));
 
-  return { ok: true };
+  return {
+    ok: true,
+    payloadHash: createHash("sha256").update(serialized).digest("hex"),
+    outputFormat: ext,
+  };
 }
 
 async function main(): Promise<void> {
   const doc = parseDocument(readFileSync(MANIFEST, "utf8"));
+  const seeded = seedPriorSourceState(doc, process.env.PRIOR_SOURCE_MANIFEST);
+  if (seeded > 0) {
+    console.log(`Seeded prior health state for ${seeded} source(s) from the previous snapshot.`);
+  }
   const sources = doc.get("sources") as { items: unknown[] };
   const rows: SourceRow[] = (sources?.items ?? []).map((n) => (n as { toJSON: () => SourceRow }).toJSON());
 
@@ -179,6 +189,7 @@ async function main(): Promise<void> {
   );
 
   const failures: string[] = [];
+  const successfulFormats = new Map<string, CleanFormat>();
   for (const row of managed) {
     if (!row.schema_file || !row.transform_file) {
       console.error(
@@ -192,6 +203,14 @@ async function main(): Promise<void> {
       const r = await processSource(row);
       if (r.ok) {
         console.log(`[${row.id}] ok`);
+        if (r.outputFormat) successfulFormats.set(row.id, r.outputFormat);
+        const previousHash = getRowField(doc, row.id, "last_payload_sha256");
+        if (typeof r.payloadHash === "string" && r.payloadHash !== previousHash) {
+          setRowField(doc, row.id, "last_changed", stamp);
+        }
+        if (typeof r.payloadHash === "string") {
+          setRowField(doc, row.id, "last_payload_sha256", r.payloadHash);
+        }
         setRowField(doc, row.id, "last_validated", stamp);
         setRowField(doc, row.id, "last_success", stamp);
       } else {
@@ -200,14 +219,56 @@ async function main(): Promise<void> {
         failures.push(row.id);
       }
     } catch (err) {
-      console.error(`[${row.id}] fetch error: ${err instanceof Error ? err.message : String(err)}`);
+      if (err instanceof SourceHttpError) {
+        const rawDir = join(ROOT, "data", "raw", row.id);
+        mkdirSync(rawDir, { recursive: true });
+        writeFileSync(
+          join(rawDir, `${today()}.http-error.json`),
+          JSON.stringify(err.diagnostic, null, 2),
+        );
+        console.error(
+          `[${row.id}] fetch error: ${err.message}; bounded response details saved for diagnosis`,
+        );
+      } else if (err instanceof SourceBodyLimitError) {
+        const rawDir = join(ROOT, "data", "raw", row.id);
+        mkdirSync(rawDir, { recursive: true });
+        writeFileSync(
+          join(rawDir, `${today()}.body-limit.json`),
+          JSON.stringify(err.diagnostic, null, 2),
+        );
+        console.error(
+          `[${row.id}] fetch error: ${err.message}; response metadata saved for diagnosis`,
+        );
+      } else {
+        console.error(`[${row.id}] fetch error: ${err instanceof Error ? err.message : String(err)}`);
+      }
       failures.push(row.id);
     }
   }
 
+  prunePipelineArtifacts({
+    dataRoot: join(ROOT, "data"),
+    managedSourceIds: new Set(managed.map((row) => row.id)),
+    successfulFormats,
+    today: today(),
+  });
+
   // Step 6: persist last_validated and last_success. parseDocument keeps
   // comments and formatting, so the manifest stays human readable.
   writeFileSync(MANIFEST, doc.toString());
+  const finalizationMarker = process.env.PIPELINE_FINALIZATION_MARKER;
+  if (finalizationMarker) {
+    mkdirSync(dirname(finalizationMarker), { recursive: true });
+    writeFileSync(
+      finalizationMarker,
+      JSON.stringify({
+        finalized: true,
+        managedSources: managed.length,
+        failedSources: failures,
+        completedAt: new Date().toISOString(),
+      }),
+    );
+  }
 
   if (failures.length > 0) {
     console.error(`\n${failures.length} source(s) failed: ${failures.join(", ")}`);
@@ -226,6 +287,17 @@ function setRowField(doc: ReturnType<typeof parseDocument>, id: string, key: str
       return;
     }
   }
+}
+
+function getRowField(
+  doc: ReturnType<typeof parseDocument>,
+  id: string,
+  key: string,
+): unknown {
+  const sources = doc.get("sources") as {
+    items: { get: (k: string) => unknown }[];
+  };
+  return sources.items.find((node) => node.get("id") === id)?.get(key);
 }
 
 main();

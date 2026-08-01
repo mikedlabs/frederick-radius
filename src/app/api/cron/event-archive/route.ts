@@ -21,7 +21,10 @@ import {
   getCachedLiveEvents,
   withLiveEventFetchSession,
 } from "@/lib/integrations/ical-live";
-import { syncEventArchiveBatch } from "@/lib/events/event-archive-batch";
+import {
+  preflightEventArchive,
+  syncEventArchiveBatch,
+} from "@/lib/events/event-archive-batch";
 import {
   finishIngestRunStrict,
   startIngestRunStrict,
@@ -54,6 +57,7 @@ type SourceRead = readonly [
 
 type ArchiveFailure =
   | "source-read"
+  | "schema-not-ready"
   | "unified-events"
   | "unified-partial"
   | "live-events"
@@ -70,6 +74,48 @@ function failureSummary(failures: readonly ArchiveFailure[]): string | null {
   return failures.length > 0
     ? `Archive checks failed: ${failures.join(", ")}.`
     : null;
+}
+
+function safeSchemaErrorCode(error: unknown): string | null {
+  const candidate =
+    typeof error === "object" && error !== null
+      ? typeof (error as { code?: unknown }).code === "string"
+        ? (error as { code: string }).code
+        : typeof (error as { name?: unknown }).name === "string"
+          ? (error as { name: string }).name
+          : null
+      : null;
+  return candidate && /^[A-Za-z0-9_.-]{1,64}$/.test(candidate)
+    ? candidate
+    : null;
+}
+
+type SchemaOutcome =
+  | { status: "fulfilled"; value: Awaited<ReturnType<typeof preflightEventArchive>> }
+  | { status: "rejected"; errorCode: string | null }
+  | { status: "timed_out" };
+
+function preflightBeforeDeadline(
+  promise: ReturnType<typeof preflightEventArchive>,
+  deadlineMs: number,
+): Promise<SchemaOutcome> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const guarded = promise.then<SchemaOutcome, SchemaOutcome>(
+    (value) => ({ status: "fulfilled", value }),
+    (error: unknown) => ({
+      status: "rejected",
+      errorCode: safeSchemaErrorCode(error),
+    }),
+  );
+  const deadline = new Promise<SchemaOutcome>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ status: "timed_out" }),
+      deadlineMs,
+    );
+  });
+  return Promise.race([guarded, deadline]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 async function runHeartbeat<T>(
@@ -119,6 +165,62 @@ export async function GET(request: Request) {
       heartbeat_recorded: false,
       archive_attempted: false,
       failures: ["heartbeat-start"],
+      timing_ms: {
+        total: Date.now() - startedAt,
+      },
+    }, { status: 503 });
+  }
+
+  const schemaOutcome = await preflightBeforeDeadline(
+    preflightEventArchive(),
+    EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS,
+  );
+  const schema =
+    schemaOutcome.status === "fulfilled"
+      ? schemaOutcome.value
+      : { ready: false as const, missing: [] as string[] };
+  const schemaErrorCode =
+    schemaOutcome.status === "rejected"
+      ? schemaOutcome.errorCode
+      : schemaOutcome.status === "timed_out"
+        ? "timed_out"
+        : null;
+  if (!schema.ready) {
+    const failureList: ArchiveFailure[] = ["schema-not-ready"];
+    const finish = await runHeartbeat(
+      request.signal,
+      (signal) =>
+        finishIngestRunStrict(runId, {
+          status: "error",
+          records_in: 0,
+          records_upserted: 0,
+          records_failed: 1,
+          error: failureSummary(failureList),
+        }, { signal }),
+    );
+    const heartbeatRecorded = finish.status === "fulfilled";
+    Sentry.captureMessage("event-archive: schema is not ready", {
+      level: "warning",
+      extra: {
+        heartbeatRecorded,
+        schemaCheck: schemaOutcome.status,
+        schemaErrorCode,
+        missing: schema.missing,
+      },
+    });
+    return NextResponse.json({
+      ok: false,
+      phase: "event-archive",
+      status: "error",
+      heartbeat_recorded: heartbeatRecorded,
+      archive_attempted: false,
+      failures: failureList,
+      schema: {
+        ready: false,
+        check: schemaOutcome.status,
+        error_code: schemaErrorCode,
+        missing: schema.missing,
+      },
       timing_ms: {
         total: Date.now() - startedAt,
       },
@@ -264,6 +366,21 @@ export async function GET(request: Request) {
 
   const failureList = [...failures];
   const recordsUpserted = archive?.upserted ?? 0;
+  const archiveRecordsProcessed = archive
+    ? archive.upserted + archive.ignoredLifecycleOnly
+    : 0;
+  const archiveRecordsMissing = archive
+    ? Math.max(0, archive.accepted - archiveRecordsProcessed)
+      + (archive.truncated
+        ? Math.max(0, archiveEvents.length - archive.accepted)
+        : 0)
+    : archiveEvents.length;
+  // `records_failed` is a row count, not merely the number of failure labels.
+  // Keep at least one count for operational-only failures such as cleanup.
+  const recordsFailed = Math.max(
+    failureList.length,
+    archiveRecordsMissing,
+  );
   const status: IngestRunResult["status"] =
     failureList.length === 0
       ? "ok"
@@ -277,7 +394,7 @@ export async function GET(request: Request) {
         status,
         records_in: archiveEvents.length,
         records_upserted: recordsUpserted,
-        records_failed: failureList.length,
+        records_failed: recordsFailed,
         error: failureSummary(failureList),
       }, { signal }),
   );
@@ -327,6 +444,8 @@ export async function GET(request: Request) {
                 === archive.accepted),
           tombstoned: archive.tombstoned,
           batches: archive.batches,
+          retries: archive.retries ?? 0,
+          records_failed: archiveRecordsMissing,
           complete: archive.complete,
           truncated: archive.truncated,
           timed_out: archive.timedOut,

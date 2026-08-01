@@ -20,6 +20,12 @@ import {
 } from "@/lib/ingest/geocode";
 import { fcvfraMapListing, FCVFRA_SOURCE_DOMAIN } from "@/lib/ingest/fcvfra";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
+import {
+  safeIngestWriteError,
+  summarizeIngestWriteFailures,
+  type IngestWriteStatus,
+} from "@/lib/ingest/write-outcome";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -71,14 +77,53 @@ export async function GET(req: NextRequest) {
   const dry = req.nextUrl.searchParams.get("dry") === "1";
 
   const sql = getSql();
-  if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
+  if (!sql && !dry) {
+    return Response.json({
+      ok: false,
+      status: "error",
+      dry,
+      error: "no database",
+    }, { status: 503 });
+  }
 
   const t0 = Date.now();
   const routeDeadlineAt = t0 + ROUTE_DEADLINE_MS;
   // obs-2: record this run so a silent partial failure (feed half-fetched,
   // geocoder down) is visible in ingest_runs instead of only showing up when
-  // counts visibly drop. Fail-soft (no-op without a DB / on dry run).
+  // counts visibly drop. Dry runs do not write a heartbeat; non-dry runs
+  // already failed above when the database was unavailable.
   const runId = !dry && sql ? await startIngestRun(FCVFRA_SOURCE_DOMAIN) : null;
+  if (!dry && sql) {
+    let missing: string[] = [];
+    let schemaError: string | undefined;
+    try {
+      const readiness = await checkEventSchemaReadiness(sql, "civic-ingest");
+      missing = readiness.missing;
+      if (!readiness.ready) {
+        schemaError =
+          `Event ingest schema is not ready: missing ${missing.join(", ")}.`;
+      }
+    } catch (error) {
+      schemaError =
+        `Event ingest schema check failed: ${safeIngestWriteError(error)}`;
+    }
+    if (schemaError) {
+      await finishIngestRun(runId, {
+        status: "error",
+        records_in: 0,
+        records_upserted: 0,
+        records_failed: 1,
+        error: schemaError,
+      });
+      return Response.json({
+        ok: false,
+        status: "error",
+        dry,
+        error: schemaError,
+        schema: { ready: false, missing },
+      }, { status: 503 });
+    }
+  }
   const html = await fetchListing();
   if (!html) {
     await finishIngestRun(runId, { status: "error", error: "listing fetch failed" });
@@ -100,14 +145,16 @@ export async function GET(req: NextRequest) {
   const stats: UpsertStats = emptyStats();
   const perMunicipality: Record<string, number> = {};
   let failed = 0;
+  let firstWriteError: string | undefined;
 
   for (const { event, municipality, category } of mapped) {
     perMunicipality[municipality] = (perMunicipality[municipality] ?? 0) + 1;
     if (dry || !sql) continue;
     try {
       await upsertEvent(sql, { sourceDomain: FCVFRA_SOURCE_DOMAIN, municipality, category }, event, stats);
-    } catch {
+    } catch (error) {
       failed++;
+      firstWriteError ??= safeIngestWriteError(error);
     }
   }
 
@@ -140,27 +187,45 @@ export async function GET(req: NextRequest) {
   const geocodeDegradedReason =
     geocode?.status === "degraded" ? geocode.degradedReason : undefined;
   const geocodeError = geocode?.error;
+  const writeOutcome = summarizeIngestWriteFailures({
+    attempted: dry ? 0 : mapped.length,
+    failed,
+    firstError: firstWriteError,
+  });
+  let runStatus: IngestWriteStatus = writeOutcome.status;
+  if (writeOutcome.status === "error") {
+    runStatus = "error";
+  } else if (geocodeDegraded || writeOutcome.status === "partial") {
+    runStatus = "partial";
+  }
+  const runError = [
+    writeOutcome.error,
+    geocodeDegraded
+      ? `geocode degraded: ${geocodeDegradedReason}${
+          geocodeError ? ` (${safeIngestWriteError(geocodeError)})` : ""
+        }`
+      : undefined,
+  ]
+    .filter((error): error is string => Boolean(error))
+    .join("; ") || undefined;
   await finishIngestRun(runId, {
-    status: geocodeDegraded ? "partial" : "ok",
+    status: runStatus,
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
     records_failed: failed,
-    error: geocodeDegraded
-      ? `geocode degraded: ${geocodeDegradedReason}${
-          geocodeError ? ` (${geocodeError})` : ""
-        }`
-      : undefined,
+    error: runError,
   });
 
   // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
   // /events, and /map pick up the new fire-company events immediately.
-  if (!dry && sql) {
+  if (!dry && sql && stats.normUpserted > 0) {
     revalidateTag("ingested-events", "max");
     revalidateTag("events", "max");
   }
 
   return Response.json({
-    ok: true,
+    ok: dry || runStatus === "ok",
+    status: dry ? "ok" : runStatus,
     dry,
     mapped: mapped.length,
     failed,
@@ -170,5 +235,7 @@ export async function GET(req: NextRequest) {
     geocode,
     duration_ms: Date.now() - t0,
     finishedAt: new Date().toISOString(),
+  }, {
+    status: !dry && runStatus === "error" ? 502 : 200,
   });
 }

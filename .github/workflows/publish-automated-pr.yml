@@ -1,0 +1,170 @@
+name: Publish automated data PR
+
+# The caller's scraper or generator never receives write credentials. It uploads
+# exact output files, and this fresh job validates and publishes only those
+# files. No repository script, package install, model call, or source fetch runs
+# in this credentialed boundary.
+
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        required: true
+        type: string
+      base_sha:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+      allowed_paths:
+        required: true
+        type: string
+      commit_message:
+        required: true
+        type: string
+      title:
+        required: true
+        type: string
+      body:
+        required: true
+        type: string
+    outputs:
+      pr_branch:
+        value: ${{ jobs.publish.outputs.pr_branch }}
+      pr_operation:
+        value: ${{ jobs.publish.outputs.pr_operation }}
+      pr_head_sha:
+        value: ${{ jobs.publish.outputs.pr_head_sha }}
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_branch: ${{ steps.review_pr.outputs.pull-request-branch }}
+      pr_operation: ${{ steps.review_pr.outputs.pull-request-operation }}
+      pr_head_sha: ${{ steps.review_pr.outputs.pull-request-head-sha }}
+    steps:
+      - name: Refuse output generated from a stale main revision
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          GENERATED_FROM_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const expected = process.env.GENERATED_FROM_SHA;
+            if (!/^[0-9a-f]{40}$/.test(expected || '')) {
+              core.setFailed('The generator did not provide a valid base commit.');
+              return;
+            }
+            const branch = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            });
+            if (branch.data.commit.sha !== expected) {
+              core.setFailed(`Main moved while data was generated. Expected ${expected}; found ${branch.data.commit.sha}. Retry from the current main branch.`);
+            }
+
+      - name: Checkout a clean main worktree
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.base_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download exact generated outputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ runner.temp }}/automated-pr-output
+
+      - name: Validate the artifact boundary
+        env:
+          ALLOWED_PATHS: ${{ inputs.allowed_paths }}
+          AUTOMATED_PR_BRANCH: ${{ inputs.branch }}
+          ARTIFACT_ROOT: ${{ runner.temp }}/automated-pr-output
+        run: |
+          set -euo pipefail
+          case "$AUTOMATED_PR_BRANCH" in
+            bot/*) ;;
+            *) echo "Unexpected automated PR branch: $AUTOMATED_PR_BRANCH"; exit 1 ;;
+          esac
+          if find "$ARTIFACT_ROOT" -type l -print -quit | grep -q .; then
+            echo "Artifact contains a symbolic link."
+            exit 1
+          fi
+          mapfile -t expected < <(printf '%s\n' "$ALLOWED_PATHS" | sed '/^[[:space:]]*$/d' | sort -u)
+          mapfile -t actual < <(cd "$ARTIFACT_ROOT" && find . -type f -print | sed 's#^./##' | sort -u)
+          if [ "${#expected[@]}" -eq 0 ] || [ "${#actual[@]}" -eq 0 ]; then
+            echo "Artifact and allowlist must both contain files."
+            exit 1
+          fi
+          if ! diff -u <(printf '%s\n' "${expected[@]}") <(printf '%s\n' "${actual[@]}"); then
+            echo "Artifact files do not exactly match the reviewed allowlist."
+            exit 1
+          fi
+          total=0
+          for path in "${expected[@]}"; do
+            case "$path" in
+              /*|*..*|*[!A-Za-z0-9._/-]*) echo "Unsafe artifact path: $path"; exit 1 ;;
+            esac
+            size=$(stat -c '%s' "$ARTIFACT_ROOT/$path")
+            if [ "$size" -gt 15728640 ]; then
+              echo "Artifact file is larger than 15 MB: $path"
+              exit 1
+            fi
+            total=$((total + size))
+            if [ "$total" -gt 41943040 ]; then
+              echo "Artifact is larger than the 40 MB review limit."
+              exit 1
+            fi
+            if [[ "$path" == *.json ]]; then
+              node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' "$ARTIFACT_ROOT/$path"
+            fi
+            install -D -m 0644 "$ARTIFACT_ROOT/$path" "$GITHUB_WORKSPACE/$path"
+          done
+          mapfile -t changed < <(git status --porcelain=v1 | sed -E 's/^.. //' | sort -u)
+          for path in "${changed[@]}"; do
+            if ! printf '%s\n' "${expected[@]}" | grep -Fqx -- "$path"; then
+              echo "Unexpected worktree change: $path"
+              exit 1
+            fi
+          done
+
+      - name: Recheck main immediately before publication
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          GENERATED_FROM_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const expected = process.env.GENERATED_FROM_SHA;
+            const branch = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            });
+            if (branch.data.commit.sha !== expected) {
+              core.setFailed('Main moved during artifact validation. Retry the generator so its output cannot overwrite newer reviewed data.');
+            }
+
+      - name: Open or update the review PR
+        id: review_pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: ${{ inputs.branch }}
+          base: main
+          add-paths: ${{ inputs.allowed_paths }}
+          commit-message: ${{ inputs.commit_message }}
+          title: ${{ inputs.title }}
+          body: ${{ inputs.body }}
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

@@ -21,6 +21,10 @@
 # rows_required is reserved for baseline datasets whose successful normalized
 # output cannot validly be empty. Do not use it for alerts, incidents, events,
 # seasonal schedules, or on-demand work where zero rows can be an honest result.
+# Pipeline rows may set snapshot_cadence when the stored backup is refreshed at
+# a different rate from the upstream or request-time adapter.
+# change_cadence is reserved for feeds whose normalized payload is expected to
+# change within a known window. It detects a frozen-but-still-200 upstream.
 
 version: 1
 
@@ -36,6 +40,7 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: weekly
+    snapshot_cadence: daily
     license: open, attribution requested
     contact: https://www.openbrewerydb.org
     status: active
@@ -56,6 +61,7 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
     license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
     contact: https://chart.maryland.gov
     status: active
@@ -77,6 +83,7 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
     license: public read access
     contact: https://seeclickfix.com
     status: active
@@ -100,6 +107,8 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
+    change_cadence: daily
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active
@@ -120,6 +129,7 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active

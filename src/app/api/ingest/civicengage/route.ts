@@ -18,6 +18,7 @@ import {
 } from "@/lib/ingest/parser";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
 import { verifyCronAuth } from "../_auth";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
 
@@ -98,6 +99,20 @@ function feedUrl(domain: string, catID: number): string {
 
 function sourceRunSlug(src: Source): string {
   return `civicengage:${src.domain}`;
+}
+
+function safeErrorCode(error: unknown): string | null {
+  const candidate =
+    typeof error === "object" && error !== null
+      ? typeof (error as { code?: unknown }).code === "string"
+        ? (error as { code: string }).code
+        : typeof (error as { name?: unknown }).name === "string"
+          ? (error as { name: string }).name
+          : null
+      : null;
+  return candidate && /^[A-Za-z0-9_.-]{1,64}$/.test(candidate)
+    ? candidate
+    : null;
 }
 
 function remainingMs(deadlineAt: number): number {
@@ -456,6 +471,60 @@ export async function GET(req: NextRequest) {
       (!only ||
         source.municipality.toLowerCase() === only.toLowerCase()),
   );
+
+  if (!dry && sql) {
+    let missing: string[] = [];
+    let preflightError: string | null = null;
+    try {
+      const readiness = await checkEventSchemaReadiness(sql, "civic-ingest");
+      missing = readiness.missing;
+    } catch (error) {
+      preflightError = safeErrorCode(error) ?? "schema-check-failed";
+    }
+
+    if (missing.length > 0 || preflightError) {
+      const detail = preflightError
+        ? `Event ingest schema check failed (${preflightError}).`
+        : `Event ingest schema is not ready: missing ${missing.join(", ")}.`;
+      const failureRunSlug =
+        only && list.length === 1
+          ? sourceRunSlug(list[0])
+          : AGGREGATE_RUN_SLUG;
+      const failureRunId = await startIngestRun(failureRunSlug);
+      await finishIngestRun(failureRunId, {
+        status: "error",
+        records_in: 0,
+        records_upserted: 0,
+        records_failed: 1,
+        error: detail,
+      });
+      return Response.json({
+        dry,
+        status: "error",
+        sources: list.length,
+        totalParsed: 0,
+        totalDuplicates: 0,
+        totalChanged: 0,
+        totalFailed: 0,
+        perSource: {},
+        schema: {
+          ready: false,
+          missing,
+          error_code: preflightError,
+        },
+        cache: { invalidated: false },
+        geocode: {
+          status: "not_run",
+          mode: "separate_schedule",
+          scheduled: false,
+        },
+        deadlineReached: false,
+        duration_ms: Date.now() - startedAt,
+        finishedAt: new Date().toISOString(),
+      }, { status: 503 });
+    }
+  }
+
   // A source-scoped manual run must not overwrite the daily all-source
   // heartbeat with an artificially green aggregate.
   const aggregateRunId =

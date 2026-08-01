@@ -22,6 +22,12 @@ import {
 } from "@/lib/ingest/geocode";
 import { fcplMapFeed, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
+import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
+import {
+  safeIngestWriteError,
+  summarizeIngestWriteFailures,
+  type IngestWriteStatus,
+} from "@/lib/ingest/write-outcome";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -75,13 +81,52 @@ export async function GET(req: NextRequest) {
   const only = req.nextUrl.searchParams.get("only");
 
   const sql = getSql();
-  if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
+  if (!sql && !dry) {
+    return Response.json({
+      ok: false,
+      status: "error",
+      dry,
+      error: "no database",
+    }, { status: 503 });
+  }
 
   const t0 = Date.now();
   const routeDeadlineAt = t0 + ROUTE_DEADLINE_MS;
   // obs-2: record this run so a silent partial failure is visible in
-  // ingest_runs. Fail-soft (no-op without a DB / on dry run).
+  // ingest_runs. Dry runs do not write a heartbeat; non-dry runs already
+  // failed above when the database was unavailable.
   const runId = !dry && sql ? await startIngestRun(FCPL_SOURCE_DOMAIN) : null;
+  if (!dry && sql) {
+    let missing: string[] = [];
+    let schemaError: string | undefined;
+    try {
+      const readiness = await checkEventSchemaReadiness(sql, "civic-ingest");
+      missing = readiness.missing;
+      if (!readiness.ready) {
+        schemaError =
+          `Event ingest schema is not ready: missing ${missing.join(", ")}.`;
+      }
+    } catch (error) {
+      schemaError =
+        `Event ingest schema check failed: ${safeIngestWriteError(error)}`;
+    }
+    if (schemaError) {
+      await finishIngestRun(runId, {
+        status: "error",
+        records_in: 0,
+        records_upserted: 0,
+        records_failed: 1,
+        error: schemaError,
+      });
+      return Response.json({
+        ok: false,
+        status: "error",
+        dry,
+        error: schemaError,
+        schema: { ready: false, missing },
+      }, { status: 503 });
+    }
+  }
   const feed = await fetchFeed();
   if (!feed) {
     await finishIngestRun(runId, { status: "error", error: "feed fetch failed" });
@@ -106,6 +151,7 @@ export async function GET(req: NextRequest) {
   const perMunicipality: Record<string, number> = {};
   let failed = 0;
   let budgetStopped = 0;
+  let firstWriteError: string | undefined;
 
   // Bounded-concurrency upserts with a hard time budget. The old strictly
   // sequential loop scaled linearly with the feed and outgrew maxDuration
@@ -128,8 +174,9 @@ export async function GET(req: NextRequest) {
         if (dry || !sql) return;
         try {
           await upsertEvent(sql, { sourceDomain: FCPL_SOURCE_DOMAIN, municipality, category }, event, stats);
-        } catch {
+        } catch (error) {
           failed++;
+          firstWriteError ??= safeIngestWriteError(error);
         }
       }),
     );
@@ -165,20 +212,36 @@ export async function GET(req: NextRequest) {
   const geocodeDegradedReason =
     geocode?.status === "degraded" ? geocode.degradedReason : undefined;
   const geocodeError = geocode?.error;
-  const runError =
+  const attemptedWrites = dry ? 0 : mapped.length - budgetStopped;
+  const writeOutcome = summarizeIngestWriteFailures({
+    attempted: attemptedWrites,
+    failed,
+    firstError: firstWriteError,
+  });
+  const runErrors = [
     budgetStopped > 0
       ? `time budget: stopped with ${budgetStopped} of ${mapped.length} rows remaining`
-      : geocodeDegraded
-        ? `geocode degraded: ${geocodeDegradedReason}${
-            geocodeError ? ` (${geocodeError})` : ""
-          }`
-        : undefined;
+      : undefined,
+    writeOutcome.error,
+    geocodeDegraded
+      ? `geocode degraded: ${geocodeDegradedReason}${
+          geocodeError ? ` (${safeIngestWriteError(geocodeError)})` : ""
+        }`
+      : undefined,
+  ].filter((error): error is string => Boolean(error));
+  const runError = runErrors.join("; ") || undefined;
+  let runStatus: IngestWriteStatus = writeOutcome.status;
+  if (budgetStopped > 0 || writeOutcome.status === "error") {
+    runStatus = "error";
+  } else if (geocodeDegraded || writeOutcome.status === "partial") {
+    runStatus = "partial";
+  }
 
   await finishIngestRun(runId, {
     // A budget stop is loud, not "ok": the admin ingest_runs board must show
     // that rows were left on the table (the silent version of this cost two
     // months of library coverage).
-    status: budgetStopped > 0 ? "error" : geocodeDegraded ? "partial" : "ok",
+    status: runStatus,
     error: runError,
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
@@ -187,13 +250,14 @@ export async function GET(req: NextRequest) {
 
   // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
   // /events, and /map pick up the new library programs immediately.
-  if (!dry && sql) {
+  if (!dry && sql && stats.normUpserted > 0) {
     revalidateTag("ingested-events", "max");
     revalidateTag("events", "max");
   }
 
   return Response.json({
-    ok: true,
+    ok: dry || runStatus === "ok",
+    status: dry ? "ok" : runStatus,
     dry,
     feed_records: feed.length,
     mapped: mapped.length,
@@ -204,5 +268,7 @@ export async function GET(req: NextRequest) {
     geocode,
     duration_ms: Date.now() - t0,
     finishedAt: new Date().toISOString(),
+  }, {
+    status: !dry && runStatus === "error" ? 502 : 200,
   });
 }

@@ -259,6 +259,125 @@ describe("event archive batch", () => {
         reason: "rejected",
         code: "TypeError",
       },
+      retries: 0,
+    });
+    expect(sink.upsert).toHaveBeenCalledOnce();
+  });
+
+  it("retries one idempotent batch after a transient database rejection", async () => {
+    const transient = Object.assign(new Error("serialization retry"), {
+      code: "40001",
+    });
+    const sink = writer({
+      upsert: vi
+        .fn()
+        .mockRejectedValueOnce(transient)
+        .mockImplementation(async (rows) => ({
+          upserted: rows.length,
+          ignoredLifecycleOnly: 0,
+        })),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {},
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: true,
+      recordsComplete: true,
+      upserted: 1,
+      retries: 1,
+      failure: null,
+    });
+    expect(sink.upsert).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a bounded transient failure after the retry ceiling", async () => {
+    const transient = Object.assign(new Error("private database detail"), {
+      code: "40P01",
+    });
+    const sink = writer({
+      upsert: vi.fn().mockRejectedValue(transient),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {},
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: false,
+      recordsComplete: false,
+      upserted: 0,
+      retries: 1,
+      failure: {
+        stage: "upsert",
+        reason: "rejected",
+        code: "40P01",
+      },
+    });
+    expect(sink.upsert).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(result)).not.toContain(transient.message);
+  });
+
+  it("stops on an internally incomplete batch instead of claiming progress", async () => {
+    const sink = writer({
+      upsert: vi.fn(async () => ({
+        upserted: 0,
+        ignoredLifecycleOnly: 0,
+      })),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {},
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: false,
+      recordsComplete: false,
+      upserted: 0,
+      retries: 0,
+      failure: {
+        stage: "upsert",
+        reason: "rejected",
+        code: "incomplete-batch",
+      },
+    });
+  });
+
+  it("preserves a partial batch count for honest recovery telemetry", async () => {
+    const sink = writer({
+      upsert: vi.fn(async () => ({
+        upserted: 1,
+        ignoredLifecycleOnly: 0,
+      })),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [
+        event("first-event-2026-08-01", "publisher-1"),
+        event("second-event-2026-08-01", "publisher-2"),
+      ],
+      {},
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: false,
+      recordsComplete: false,
+      accepted: 2,
+      upserted: 1,
+      batches: 1,
+      failure: {
+        stage: "upsert",
+        reason: "rejected",
+        code: "incomplete-batch",
+      },
     });
   });
 

@@ -11,6 +11,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Bot-created pull requests use the repository token. GitHub holds their
+  # pull_request runs for manual approval, so the creating workflow explicitly
+  # dispatches these same secret-free gates on the allowlisted bot branch.
+  workflow_dispatch: {}
 
 # Cancel superseded runs on the same ref so a rapid push series doesn't
 # queue stale builds.
@@ -26,8 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
@@ -63,7 +69,7 @@ jobs:
           PW_PRODUCTION: "1"
       - name: Keep browser failure traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-browser-failure-traces
           path: test-results
@@ -79,8 +85,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
@@ -100,7 +108,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
       - name: Keep chaos failure traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: chaos-browser-failure-traces
           path: test-results

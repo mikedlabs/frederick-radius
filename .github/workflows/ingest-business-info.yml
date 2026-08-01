@@ -25,9 +25,7 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: ingest-business-info
@@ -35,8 +33,11 @@ concurrency:
 
 jobs:
   ingest:
-    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
     environment: "Data Enrichment"
     # Opt the JS actions into Node 24 now (GitHub forces it June 16 2026);
     # clears the Node-20 deprecation warning. Job-level env is valid YAML
@@ -44,8 +45,11 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Verify extractor secret
@@ -127,23 +131,50 @@ jobs:
       # business-info.json contains Radius-authored prose, so gate it here.
       - name: Verify Radius-authored copy
         run: npm run style:lint
-      # Extracted copy and specials are public product data, not an invisible
-      # cache. A review PR lets CI and a human inspect source drift before it
-      # changes recommendations.
-      - name: Open review PR
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: bot/business-info-refresh
-          base: ${{ github.ref_name }}
-          commit-message: "data: refresh business deep-info (automated)"
-          title: "data: refresh business information"
-          body: |
-            Automated business website extraction refresh.
+      - name: Stage exact review files
+        run: |
+          set -euo pipefail
+          install -D -m 0644 src/data/business-info.json "$RUNNER_TEMP/automated-pr-output/src/data/business-info.json"
+          install -D -m 0644 src/data/descriptions.json "$RUNNER_TEMP/automated-pr-output/src/data/descriptions.json"
 
-            The workflow ran the Radius copy checks before opening this PR.
-            Review source links, hours or specials, and generated description
-            candidates before merging.
-          labels: |
-            data-pipeline
-            automated
-          delete-branch: true
+      - name: Upload isolated review artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: business-info-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/automated-pr-output
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: ingest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: business-info-review-${{ github.run_id }}-${{ github.run_attempt }}
+      base_sha: ${{ github.sha }}
+      branch: bot/business-info-refresh
+      allowed_paths: |
+        src/data/business-info.json
+        src/data/descriptions.json
+      commit_message: "data: refresh business deep-info (automated)"
+      title: "data: refresh business information"
+      body: |
+        Automated business website extraction refresh.
+
+        The workflow ran the Radius copy checks before opening this PR.
+        Review source links, hours or specials, and generated description
+        candidates before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}
