@@ -402,6 +402,21 @@ export async function GET(request: Request) {
   const ok = status === "ok" && heartbeatRecorded;
 
   if (!ok) {
+    if (archive?.failure) {
+      // Sentry keeps the full operational context, while this bounded record
+      // leaves the safe SQLSTATE / failure stage in Vercel runtime logs for
+      // the next on-call pass. Never log source payloads or raw DB messages.
+      console.warn(JSON.stringify({
+        level: "warn",
+        message: "Event archive database phase did not complete.",
+        phase: EVENT_ARCHIVE_RUN,
+        stage: archive.failure.stage,
+        reason: archive.failure.reason,
+        code: archive.failure.code,
+        retries: archive.retries,
+        recordsComplete: archive.recordsComplete,
+      }));
+    }
     Sentry.captureMessage("event-archive: durable sync did not complete", {
       level: "warning",
       extra: {

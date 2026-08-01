@@ -728,24 +728,39 @@ export async function syncEventArchiveBatchWithWriter(
         code: null,
       };
     } else {
-      const outcome = await beforeDeadline(
-        writer.tombstoneMissing!(
-          seenSourceIdentities,
-          successfulSources,
-          {
-            deadlineAt,
-            now: new Date(startedAt),
-            graceMs: clampInteger(
-              options.graceMs,
-              EVENT_ARCHIVE_TOMBSTONE_GRACE_MS,
-              24 * 60 * 60_000,
-              30 * 24 * 60 * 60_000,
-            ),
-          },
-        ),
-        deadlineAt,
-        clock,
-      );
+      let outcome: BatchDeadlineOutcome<number>;
+      let transientAttempts = 0;
+      do {
+        outcome = await beforeDeadline(
+          writer.tombstoneMissing!(
+            seenSourceIdentities,
+            successfulSources,
+            {
+              deadlineAt,
+              now: new Date(startedAt),
+              graceMs: clampInteger(
+                options.graceMs,
+                EVENT_ARCHIVE_TOMBSTONE_GRACE_MS,
+                24 * 60 * 60_000,
+                30 * 24 * 60 * 60_000,
+              ),
+            },
+          ),
+          deadlineAt,
+          clock,
+        );
+        if (
+          outcome.status === "rejected"
+          && isTransientDatabaseFailure(outcome.error)
+          && transientAttempts < maxTransientRetries
+          && clock() < deadlineAt
+        ) {
+          transientAttempts += 1;
+          retries += 1;
+          continue;
+        }
+        break;
+      } while (true);
       if (outcome.status === "fulfilled") {
         tombstoned = outcome.value;
       } else {
