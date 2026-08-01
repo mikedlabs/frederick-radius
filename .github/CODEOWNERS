@@ -1,0 +1,4 @@
+# Frederick Radius currently has one repository owner. Keep workflow, data,
+# deployment, and public-copy changes visibly assigned even when no approval is
+# required by the solo-maintainer ruleset.
+* @mikedlabs

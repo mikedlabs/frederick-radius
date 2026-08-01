@@ -1,4 +1,4 @@
-name: discovery
+name: Discovery dry run
 
 # Weekly place-discovery dry run. The `discover` script spends $0 by
 # default: it builds the full query plan (discoverable taxonomy ×
@@ -7,11 +7,6 @@ name: discovery
 # This job surfaces those numbers each week so the owner can see the
 # discovery surface growing and decide when a live, cost-capped run is
 # worth it.
-#
-# TODO: wire a Claude review step (anthropics/claude-code-action@v1)
-# that reads the dry-run plan and recommends which categories/towns are
-# worth a `--live --confirm` pass, then opens a PR with the review.
-# Requires the ANTHROPIC_API_KEY secret (see docs/AGENTS_SCHEDULE.md).
 
 on:
   schedule:
@@ -20,6 +15,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: discovery-dry-run-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   discover:
@@ -64,3 +63,4 @@ jobs:
           name: discovery-plan
           path: discovery-plan.log
           if-no-files-found: ignore
+          retention-days: 14
