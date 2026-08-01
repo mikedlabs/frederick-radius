@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { buildPlan, decodeSpec } from "@/lib/integrations/planner";
+import {
+  buildPlan,
+  decodeSpec,
+  planOpenStateForWindow,
+} from "@/lib/integrations/planner";
 
 describe("buildPlan", () => {
   it("keeps an hours-unconfirmed food draft out of daytime errand categories", () => {
@@ -88,7 +92,7 @@ describe("buildPlan", () => {
     ).toBe(true);
   });
 
-  it("keeps a general draft inside the time budget without claiming unknown hours", () => {
+  it("keeps a general draft inside the time budget without a known-closed stop", () => {
     const start = new Date("2026-07-17T22:00:00.000Z");
     const plan = buildPlan({
       audience: "date",
@@ -101,13 +105,22 @@ describe("buildPlan", () => {
 
     expect(plan.stops.length).toBeGreaterThan(0);
     expect(plan.stops.every((stop) => stop.open !== "closed")).toBe(true);
-    expect(plan.stops.some((stop) => stop.open === "unknown")).toBe(true);
     expect(plan.stops.map((stop) => stop.place?.category)).not.toContain("shopping");
     expect(plan.stops.map((stop) => stop.place?.category)).not.toContain("playground");
 
     const last = plan.stops[plan.stops.length - 1];
     const end = new Date(last.at).getTime() + last.duration_min * 60_000;
     expect(end - start.getTime()).toBeLessThanOrEqual(4 * 60 * 60_000);
+  });
+
+  it("keeps an unconfirmed schedule visibly unknown", () => {
+    expect(
+      planOpenStateForWindow(
+        { hours: undefined, hours_verified: false },
+        new Date("2026-07-17T22:00:00.000Z"),
+        80,
+      ),
+    ).toBe("unknown");
   });
 
   it("does not use stale hours for a dated plan", () => {

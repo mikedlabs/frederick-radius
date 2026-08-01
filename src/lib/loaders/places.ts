@@ -1898,6 +1898,26 @@ export function selectOpenNowProofPicks(
 }
 
 /**
+ * Assemble the public snapshot from an already-confirmed-open population.
+ * Keeping this step pure lets the editorial proof contract be tested without
+ * pinning CI to whichever businesses happen to have fresh provider hours on a
+ * particular nightly data snapshot.
+ */
+export function buildOpenNowSnapshot(
+  open: readonly PlaceCardData[],
+  now: Date,
+  proofLimit = 3,
+): OpenNowSnapshot {
+  const places = [...open];
+  return {
+    asOf: now.toISOString(),
+    places,
+    worthConsidering: selectOpenNowProofPicks(places, proofLimit),
+    count: places.length,
+  };
+}
+
+/**
  * The canonical county-wide open-now snapshot. Every public county count,
  * the /beta proof, and /open-now consume this exact untruncated population
  * and its single as-of instant. The inventory includes every recommendable,
@@ -1914,12 +1934,7 @@ export function getOpenNowSnapshot(
   const places = rankPlaces({ origin, now })
     .filter(isRecommendable)
     .filter((place) => isOpenNow(place.open_status));
-  return {
-    asOf: now.toISOString(),
-    places,
-    worthConsidering: selectOpenNowProofPicks(places, proofLimit),
-    count: places.length,
-  };
+  return buildOpenNowSnapshot(places, now, proofLimit);
 }
 
 /**
