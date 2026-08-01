@@ -1,0 +1,65 @@
+name: Apply Return Bridge review fixes
+
+on:
+  push:
+    branches:
+      - agent/full-production-hardening-2026-08-01
+
+permissions:
+  contents: write
+
+concurrency:
+  group: return-bridge-review-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[review-fixes-applied]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/full-production-hardening-2026-08-01
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Apply reviewed fixes
+        run: python3 scripts/agent-return-bridge-review-fixes.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Focused regression tests
+        run: >-
+          npx vitest run
+          src/lib/return-bridge.spec.ts
+          tests/follows-toggle.spec.ts
+          src/components/transit/useSavedTransitBuses.spec.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint changed files
+        run: >-
+          npx eslint
+          src/components/settings/PreferencesPanel.tsx
+          src/components/transit/useSavedTransitBuses.ts
+          src/components/transit/useSavedTransitBuses.spec.ts
+          src/hooks/useFollows.ts
+          src/hooks/useInstallPrompt.ts
+          src/lib/return-bridge.ts
+          src/lib/return-bridge.spec.ts
+          src/lib/loaders/liveEvents.ts
+          tests/follows-toggle.spec.ts
+
+      - name: Commit verified fixes and remove one-shot tooling
+        shell: bash
+        run: |
+          rm .github/workflows/agent-apply-return-bridge-review.yml
+          rm scripts/agent-return-bridge-review-fixes.py
+          git config user.name "frederick-radius-bot"
+          git config user.email "bot@frederickradius.app"
+          git add -A
+          git commit -m "fix: close Return Bridge review edge cases [review-fixes-applied]"
+          git push origin HEAD:agent/full-production-hardening-2026-08-01
