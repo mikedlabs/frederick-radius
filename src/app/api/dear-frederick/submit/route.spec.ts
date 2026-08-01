@@ -26,15 +26,18 @@ vi.mock("@vercel/blob", () => ({ put: mocks.put }));
 import { POST } from "./route";
 
 function request(body: string = "{}") {
-  return new NextRequest("https://frederickradius.app/api/dear-frederick/submit", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: "https://frederickradius.app",
-      "x-forwarded-for": "198.51.100.42",
+  return new NextRequest(
+    "https://frederickradius.app/api/dear-frederick/submit",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://frederickradius.app",
+        "x-forwarded-for": "198.51.100.42",
+      },
+      body,
     },
-    body,
-  });
+  );
 }
 
 const VALID_SCAN = {
@@ -53,14 +56,17 @@ function fakeDb() {
 
 describe("/api/dear-frederick/submit guards", () => {
   const MANAGED_URL =
-    "https://store.public.blob.vercel-storage.com/dear-frederick-scans/letter.jpg";
+    "https://store.public.blob.vercel-storage.com/dear-frederick-scans/publication-v1/letter.jpg";
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Happy defaults; each test overrides the guard it exercises.
     mocks.isSameOriginMutationRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
-    mocks.readJsonBodyWithLimit.mockResolvedValue({ ok: true, value: { image: "data:..." } });
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { image: "data:...", publicationConsent: true },
+    });
     mocks.parseLetterScanDataUrl.mockReturnValue(VALID_SCAN);
     mocks.deleteLetterScan.mockResolvedValue(true);
     mocks.put.mockResolvedValue({ url: MANAGED_URL });
@@ -92,7 +98,10 @@ describe("/api/dear-frederick/submit guards", () => {
   });
 
   it("returns 413 when the body exceeds the size cap", async () => {
-    mocks.readJsonBodyWithLimit.mockResolvedValue({ ok: false, error: "body-too-large" });
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: false,
+      error: "body-too-large",
+    });
 
     const res = await POST(request());
 
@@ -101,11 +110,33 @@ describe("/api/dear-frederick/submit guards", () => {
   });
 
   it("returns 400 for malformed JSON and for a non-object body", async () => {
-    mocks.readJsonBodyWithLimit.mockResolvedValueOnce({ ok: false, error: "invalid-json" });
+    mocks.readJsonBodyWithLimit.mockResolvedValueOnce({
+      ok: false,
+      error: "invalid-json",
+    });
     expect((await POST(request())).status).toBe(400);
 
-    mocks.readJsonBodyWithLimit.mockResolvedValueOnce({ ok: true, value: [1, 2, 3] });
+    mocks.readJsonBodyWithLimit.mockResolvedValueOnce({
+      ok: true,
+      value: [1, 2, 3],
+    });
     expect((await POST(request())).status).toBe(400);
+  });
+
+  it("requires explicit publication permission before reading or storing a scan", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { image: "data:...", publicationConsent: false },
+    });
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: "publication-consent-required",
+    });
+    expect(mocks.parseLetterScanDataUrl).not.toHaveBeenCalled();
+    expect(mocks.put).not.toHaveBeenCalled();
   });
 
   it("requires a scan and rejects an invalid or oversize one", async () => {
@@ -114,10 +145,16 @@ describe("/api/dear-frederick/submit guards", () => {
     expect(missing.status).toBe(400);
     expect(await missing.json()).toMatchObject({ error: "scan-required" });
 
-    mocks.parseLetterScanDataUrl.mockReturnValueOnce({ status: "invalid", error: "scan-invalid" });
+    mocks.parseLetterScanDataUrl.mockReturnValueOnce({
+      status: "invalid",
+      error: "scan-invalid",
+    });
     expect((await POST(request())).status).toBe(400);
 
-    mocks.parseLetterScanDataUrl.mockReturnValueOnce({ status: "invalid", error: "scan-too-large" });
+    mocks.parseLetterScanDataUrl.mockReturnValueOnce({
+      status: "invalid",
+      error: "scan-too-large",
+    });
     expect((await POST(request())).status).toBe(413);
   });
 
@@ -139,7 +176,9 @@ describe("/api/dear-frederick/submit guards", () => {
     const res = await POST(request());
 
     expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ error: "scan-storage-unavailable" });
+    expect(await res.json()).toMatchObject({
+      error: "scan-storage-unavailable",
+    });
     expect(mocks.put).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
   });
@@ -149,7 +188,13 @@ describe("/api/dear-frederick/submit guards", () => {
     mocks.getDb.mockReturnValue(db);
     mocks.readJsonBodyWithLimit.mockResolvedValue({
       ok: true,
-      value: { image: "data:...", signature: "  A neighbor  ", contact: "me@example.com", note: "  hi  " },
+      value: {
+        image: "data:...",
+        publicationConsent: true,
+        signature: "  A neighbor  ",
+        contact: "me@example.com",
+        note: "  hi  ",
+      },
     });
 
     const res = await POST(request());
@@ -157,6 +202,9 @@ describe("/api/dear-frederick/submit guards", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
     expect(mocks.put).toHaveBeenCalledTimes(1);
+    expect(mocks.put.mock.calls[0]?.[0]).toMatch(
+      /^dear-frederick-scans\/publication-v1\/[0-9a-f-]+\.jpg$/,
+    );
     expect(insertMock).toHaveBeenCalledTimes(1);
     // Clipped/trimmed text fields and the stored Blob URL are persisted.
     expect(valuesMock).toHaveBeenCalledWith(

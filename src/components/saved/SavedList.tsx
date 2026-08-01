@@ -45,6 +45,7 @@ import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isEventToday } from "@/lib/eventWhenLabel";
+import { isUpcomingEvent } from "@/lib/events/visible";
 import Passport from "@/components/saved/Passport";
 import type { ReactNode } from "react";
 
@@ -525,8 +526,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     () =>
       events.filter((event) => {
         if (!isEventToday(event.starts_at, now)) return false;
-        const endMs = Date.parse(event.ends_at || event.starts_at);
-        return !Number.isFinite(endMs) || endMs >= now.getTime();
+        return isUpcomingEvent(event, now);
       }),
     [events, now],
   );
@@ -538,9 +538,8 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     const up: DecoratedEvent[] = [];
     const pa: DecoratedEvent[] = [];
     for (const e of events) {
-      const endMs = Date.parse(e.ends_at || e.starts_at);
-      if (!Number.isNaN(endMs) && endMs < now.getTime()) pa.push(e);
-      else up.push(e);
+      if (isUpcomingEvent(e, now)) up.push(e);
+      else pa.push(e);
     }
     up.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
     pa.sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));

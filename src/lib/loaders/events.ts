@@ -6,11 +6,12 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 // (which static-imports the ~12MB enrichment into the bundle).
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import { stampEventProvenance, type Provenance } from "@/lib/provenance";
+import { stampEventProvenance, type EventProvenance } from "@/lib/provenance";
 import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confidence";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { isUpcomingEvent } from "@/lib/events/visible";
 import {
   partitionEvents,
   logPlacementWarnings,
@@ -123,8 +124,8 @@ export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN !== "0";
  */
 const NEAR_TOWN_RADIUS_M = 16_000;
 
-export type EventWithMeta = Event &
-  Omit<Provenance, "source" | "source_url"> & {
+export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
+  EventProvenance & {
   distance_m?: number;
   /** How well we know the position. A distance is only ever stamped for
    *  "venue_match"/"exact_address"; "area"/"unknown" list without one. */
@@ -132,14 +133,6 @@ export type EventWithMeta = Event &
   category_name: string;
   municipality_name: string;
 };
-
-/**
- * Default verification date for seed/curated rows that don't carry
- * their own. The intent is "this season's editorial sweep" — bump
- * this constant when the editor re-walks the seed set so the UI
- * stops claiming stale data is fresh. Per-row dates always win.
- */
-const SEED_VERIFIED_AT = "2026-05-14T00:00:00Z";
 
 function decorate(e: Event, origin?: LngLat): EventWithMeta {
   const attendance_mode = eventAttendanceMode(e);
@@ -161,10 +154,10 @@ function decorate(e: Event, origin?: LngLat): EventWithMeta {
     geo_confidence,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
-    // Provenance (4.1, event side): stamped at the same boundary that
-    // cleans the description, so every event row carries the seven
-    // fields with the curated seed verification date.
-    ...stampEventProvenance(e, e.last_verified_at ?? SEED_VERIFIED_AT),
+    // Provenance (event side): keep a missing per-row verification date
+    // explicitly null. A cohort date is not evidence that this event was
+    // checked, and silently adding one made stale curated rows look fresh.
+    ...stampEventProvenance(e),
   };
 }
 
@@ -325,7 +318,7 @@ export function getEventSeries(slug: string, now: Date = new Date()): EventWithM
       (x) =>
         x.slug !== slug &&
         seriesKey(x) === key &&
-        new Date(x.ends_at) >= now
+        isUpcomingEvent(x, now)
     )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((x) => decorate(x));
@@ -351,14 +344,15 @@ export function eventsLive(now: Date = new Date()): EventWithMeta[] {
 }
 
 export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
-  // Rolling 24h window — absolute-time arithmetic so it's DST- and
-  // timezone-safe (the old setHours(getHours()+24) read server-local
-  // hours and could drift an hour across the DST switch).
+  // Current events plus starts in the rolling 24h window. Using the shared
+  // visibility rule matters at the boundary: a start-only 10 AM event gets
+  // its assumed runtime instead of disappearing at 10:00. Absolute-time
+  // arithmetic keeps the window DST- and timezone-safe.
   const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return EVENTS
     .filter((e) => {
       const s = new Date(e.starts_at);
-      return s >= now && s < end;
+      return Number.isFinite(s.getTime()) && s < end && isUpcomingEvent(e, now);
     })
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
@@ -389,14 +383,14 @@ export function eventsWeekend(now: Date = new Date()): EventWithMeta[] {
 
 export function eventsInMunicipality(slug: string, futureOnly = true, now: Date = new Date()): EventWithMeta[] {
   return EVENTS
-    .filter((e) => e.municipality === slug && (!futureOnly || new Date(e.ends_at) >= now))
+    .filter((e) => e.municipality === slug && (!futureOnly || isUpcomingEvent(e, now)))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
 
 export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -410,7 +404,7 @@ export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMe
  */
 export function civicUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS_CIVIC
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -457,7 +451,7 @@ export function nearTown(
   if (!m) return [];
   const centroid = m.centroid;
   return EVENTS
-    .filter((e) => e.municipality !== slug && new Date(e.ends_at) >= now)
+    .filter((e) => e.municipality !== slug && isUpcomingEvent(e, now))
     .map((e) => ({ e, near_m: haversineMeters(centroid, e.geom) }))
     .filter((x) => x.near_m <= NEAR_TOWN_RADIUS_M)
     .sort((a, b) =>

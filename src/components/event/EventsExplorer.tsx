@@ -41,7 +41,7 @@ import {
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
-import { isEventEnded } from "@/lib/eventWhenLabel";
+import { isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
 import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
@@ -51,7 +51,7 @@ import {
 } from "@/components/event/eventsExplorerLayout";
 import { compareForLead } from "@/lib/events/lead-rank";
 
-type TimeKey = "all" | "today" | "weekend" | "week";
+export type TimeKey = "all" | "today" | "weekend" | "week";
 
 // The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
 // lib/events/intents.ts (civic included — it's tucked in the rail, not
@@ -211,6 +211,43 @@ function dayKeyEastern(iso: string): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
+}
+
+/**
+ * Time-lens membership uses event overlap, not just a future start. The old
+ * `starts_at >= now` check made a 10 AM card disappear from Today/This week
+ * as soon as it began. Source feeds may omit or zero out an end, so the shared
+ * lifecycle rule supplies the same assumed runtime used by live badges.
+ */
+export function eventMatchesTimeWindow(
+  event: Pick<EventWithMeta, "starts_at" | "ends_at" | "is_all_day">,
+  time: TimeKey,
+  bounds: {
+    now: number;
+    next24: number;
+    weekendStart: number;
+    weekendEnd: number;
+  },
+): boolean {
+  const nowDate = new Date(bounds.now);
+  if (isEventEnded(event, nowDate)) return false;
+  if (time === "all") return true;
+
+  const start = Date.parse(event.starts_at);
+  if (!Number.isFinite(start)) return false;
+  const live = isEventLiveNow(event, nowDate);
+  if (time === "today") {
+    return live || (start >= bounds.now && start < bounds.next24);
+  }
+  if (time === "weekend") {
+    const weekendIsNow =
+      bounds.now >= bounds.weekendStart && bounds.now < bounds.weekendEnd;
+    return (
+      (live && weekendIsNow) ||
+      (start >= bounds.weekendStart && start < bounds.weekendEnd)
+    );
+  }
+  return live || (start >= bounds.now && start < bounds.now + 7 * 86_400_000);
 }
 
 // Chronological sort key. An IN-PROGRESS date-range listing (isRangeListing —
@@ -448,17 +485,14 @@ export default function EventsExplorer({
       // only, so tapping "today" at 11 PM listed the whole day's ended
       // events as if they were still worth your time. One gate here covers
       // every mode. (All-day events run to the end of their Eastern day.)
-      if (isEventEnded(e, new Date(now))) return false;
+      if (!eventMatchesTimeWindow(e, day ? "all" : time, {
+        now,
+        next24: +new Date(next24ISO),
+        weekendStart: +new Date(weekendStartISO),
+        weekendEnd: +new Date(weekendEndISO),
+      })) return false;
       // Day filter wins over time-window filters when both are set.
       if (day && dayKeyEastern(e.starts_at) !== day) return false;
-      const t = +new Date(e.starts_at);
-      if (!day && time === "today" && !(t >= now && t < +new Date(next24ISO))) return false;
-      if (
-        !day && time === "weekend" &&
-        !(t >= +new Date(weekendStartISO) && t < +new Date(weekendEndISO))
-      )
-        return false;
-      if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
       if (tod && eventDaypart(e) !== tod) return false;

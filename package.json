@@ -2,6 +2,7 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "next dev",
     "prebuild": "npm run build:source-registry && npm run audit:sources && npm run build:client-places && npm run audit:county-data && npm run gates",
@@ -31,6 +32,8 @@
     "test:e2e": "playwright test",
     "test:release": "BETA_PASSWORD=release-gate-sentinel PW_PRODUCTION=1 playwright test e2e/release-smoke.spec.ts e2e/event-link-release-contract.spec.ts e2e/topbar-destinations.spec.ts e2e/transit-rider.spec.ts e2e/deals-browser.spec.ts --project=chromium --workers=1 --retries=1",
     "test:map:webkit": "PW_WEBKIT=1 playwright test e2e/discovery-shell.spec.ts --project=webkit-mobile --workers=1",
+    "public:hub": "node scripts/public-project-hub.mjs",
+    "test:public-hub": "node --test tests/public-project-hub.test.mjs",
     "eval:ask": "tsx --tsconfig tsconfig.json scripts/eval-ask-radius.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "echo 'BLOCKED: migrations are applied BY HAND in the Supabase SQL editor. The drizzle journal is intentionally partial and schema.ts omits the raw-SQL ingestion tables + RLS, so drizzle-kit migrate would desync/drop production objects. See drizzle/README.md. To override deliberately, run drizzle-kit migrate directly.' && exit 1",
@@ -99,7 +102,6 @@
     "build:food-truck-marks": "tsx --tsconfig tsconfig.json scripts/build-food-truck-marks.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
-    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts",
     "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts",
     "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
     "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts",
@@ -145,6 +147,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",

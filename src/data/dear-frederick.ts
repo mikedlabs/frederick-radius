@@ -10,8 +10,8 @@
  *
  * Source scans and transcriptions pulled from the original dear-frederick
  * site (owner-provided, 2026-07); optimized copies live in
- * public/dear-frederick/. One letter is intentionally withheld
- * (published: false) pending an explicit editorial okay for the app.
+ * public/dear-frederick/. Unpublished submissions must never enter this static
+ * module or the public asset tree.
  */
 export type Letter = {
   number: number;
@@ -27,7 +27,7 @@ export type Letter = {
   signature: string;
   /** Best-effort date the letter carries (YYYY, YYYY-MM, or YYYY-MM-DD); null when none. */
   receivedOn: string | null;
-  /** Shown only when true. Withheld letters stay in the set but off the page. */
+  /** Shown only when true. Unpublished letters stay outside the source tree. */
   published: boolean;
   /** One plain sentence describing the scan, for image alt text. */
   alt: string;
@@ -146,29 +146,6 @@ export const LETTERS: readonly Letter[] = [
     ],
   },
   {
-    number: 6,
-    title: "Life's hard",
-    slug: "lifes-hard",
-    image: "/dear-frederick/06-lifes-hard.jpg",
-    width: 1142,
-    height: 1600,
-    orientation: "portrait",
-    signature: "Anonymous Discovery",
-    receivedOn: "2025-02-04",
-    published: false,
-    alt: "A handwritten letter expressing fear about the wider world and urging Frederick's community to reach out to its rural neighbors and stand together in hope.",
-    body: [
-      "2/4/2025",
-      "Dear Frederick,",
-      "Life's hard. There are things in the wider world that terrify me. I walk outside most days and wonder what will change. I know our community is fairly tightly knit for our location on the edge of the DC metro area. I wonder if that will be enough to defend against ICE Raids and nazi \"pride\" parades. We have to put our money where our mouth is, and not just in the city center. We need to reach out to the other rural parts of the county. To let them know they are not forgotten or barred from the safety nets this county affords its citizens. That the warmth of community, culture, art and food is for all, not just those who make it to downtown. We are better than what we see on the news.",
-      "Look out. Reach out. Love thy neighbor, and by doing such light candles into the darkness. Hope is bloodied knuckles and bruises, standing stubborn and firm against division and destruction.",
-      "I believe those of us in Frederick are truly good, and now is the time to act.",
-      "We will make it through this, and grow stronger for it.",
-      "Bittered, bloody hope.",
-      "Anonymous Discovery",
-    ],
-  },
-  {
     number: 7,
     title: "We have it all",
     slug: "we-have-it-all",
@@ -192,7 +169,9 @@ export const LETTERS: readonly Letter[] = [
 ];
 
 /** The letters that actually render, most recent (highest number) first. */
-export const PUBLISHED_LETTERS: readonly Letter[] = LETTERS.filter((l) => l.published)
+export const PUBLISHED_LETTERS: readonly Letter[] = LETTERS.filter(
+  (l) => l.published,
+)
   .slice()
   .sort((a, b) => b.number - a.number);
 

@@ -1,7 +1,7 @@
 import { NotebookPen, Tag } from "lucide-react";
 
 /**
- * FieldNoteTag — the small, legible "this place has VERIFIED local intel"
+ * FieldNoteTag — the small, legible "this place has source-linked local notes"
  * mark (the moat, surfaced). Echoes the FieldNotesCard heading grammar
  * (mono, uppercase, vermilion) shrunk to a chip so a browse card, the
  * place sheet, and the map popup all flag — at a glance — which places
@@ -21,7 +21,7 @@ export default function FieldNoteTag({
 }) {
   return (
     <span
-      title="Verified local intel on file: happy hour, a deal, parking, or an insider tip"
+      title="Source-linked local notes on file: happy hour, a deal, parking, or an insider tip"
       className={`inline-flex shrink-0 items-center gap-1 rounded-full font-mono font-semibold uppercase leading-none tracking-[0.1em] ${
         compact ? "px-1.5 py-[3px] text-[9px]" : "px-2 py-[3.5px] text-[9.5px]"
       } ${className}`}

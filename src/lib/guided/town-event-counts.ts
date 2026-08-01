@@ -9,6 +9,7 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
+import { isUpcomingEvent } from "@/lib/events/visible";
 
 /**
  * Per-municipality "what's on this week" counts for the town cards.
@@ -59,7 +60,7 @@ async function buildWeeklyPublicEventCounts(): Promise<Record<string, number>> {
     // thing to do this week.
     if (!isPublicEvent(e)) continue;
     const t = Date.parse(e.starts_at);
-    if (!Number.isFinite(t) || t < now.getTime() - 3_600_000 || t > weekEndMs) {
+    if (!Number.isFinite(t) || t > weekEndMs || !isUpcomingEvent(e, now)) {
       continue;
     }
     const muni = e.municipality;

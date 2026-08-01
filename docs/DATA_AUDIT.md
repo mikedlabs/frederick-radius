@@ -55,7 +55,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 
 - **Curated places catalog** — `src/data/places.ts` (~194 hand-written entries) + Supabase `places` table (seeded via `scripts/seed.ts`, `api/ingest/seed`) — hand-curated — the editorial core; last touched 2026-07-01.
 - **Discovered places (Google Places sweep)** — `scripts/discover-places.ts` → `src/data/discovered-candidates.json` (1,294) → `discovered-clean.json`/`discovered-enriched.json` (1,035) → `places-discovered.json` (1,077) — build-time, manual re-runs — pipeline: discover → enrich (`enrich-discovered.ts`) → merge (`merge-discovered.ts`).
-- **Google Places enrichment** — `src/lib/integrations/google-places.ts` (Places API v1, keyed) — runtime fetch, `revalidate: 86400` (24h) + build scripts `enrich-places.ts`, artifacts `places-enrichment.json` (2,386 rows), `places-photos.json` (3,009), `business-info.json` (36), `descriptions.json` (**empty**), `known-for.json` (5) — powers details/photos/hours/nearby.
+- **Google Places enrichment** — `src/lib/integrations/google-places.ts` (Places API v1, keyed) — runtime fetch, `revalidate: 86400` (24h) + build scripts `enrich-places.ts`, artifacts `places-enrichment.json` (2,386 rows), `business-info.json` (36), `descriptions.json` (**empty**), `known-for.json` (5) — powers details/photos/hours/nearby.
 - **Hours refresh** — cron `/api/cron/hours-refresh` (daily 08:00) walks Google-backed slugs on a 7-day hash cycle → `places-hours-refresh.json` (report-only; 1 row).
 - **Business status** — cron `/api/cron/business-status` (daily 07:00) compares Google `businessStatus` vs `is_operational`; **reports only, does not persist** (serverless can't write the repo).
 - **Human corrections** — `src/data/places-overrides.json` (fold/remove/patch, 4 top-level keys) — hand-curated, wins over normalizers by design (per CLAUDE.md).
@@ -118,7 +118,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 
 ## Imagery
 
-- **Google Place photos** — via `google-places.ts` → `places-photos.json` (3,009 refs), downloaded/optimized by `scripts/download-photos.ts`, `optimize-images.ts`.
+- **Google Place photos** — `google-places.ts` records exact per-photo source metadata; eligible images are fetched on demand through `/api/place-photo`, which is same-origin, rate-limited, and `no-store`. Google photo bytes are not copied into repository data or permanent Blob storage.
 - **Wikimedia Commons** — `wikimedia.ts` — town/history imagery with attribution.
 - **Mapillary** — `mapillary.ts` (keyed, `graph.mapillary.com/map_features`) — street-level imagery + trash-can/litter map features; tile fan-out is fail-soft (`allSettled`).
 - **Drone aerials** — `scripts/build-aerial-manifest.mjs` reads EXIF GPS/altitude/date from `public/images/seasons/{spring…winter}` → `aerial-manifest.json`; book/preview variants (`build-from-above-*.mjs`); `city-maps.ts` + `download-city-maps.ts`.

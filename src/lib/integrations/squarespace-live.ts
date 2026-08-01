@@ -30,6 +30,7 @@ import {
   eventAdapterOk,
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
+import { isEventWithinReadWindow } from "@/lib/events/visible";
 
 // Same ceiling as the iCal feeds — the unified assembly awaits all sources in
 // parallel, so one slow page must not hold the page hostage.
@@ -130,14 +131,18 @@ async function fetchVenue(
       const startMs = item.startDate;
       if (!title || typeof startMs !== "number" || !Number.isFinite(startMs)) continue;
       const start = new Date(startMs);
-      // Past-window guard mirrors upcomingVenueEvents (keep the last hour so a
-      // show that just started still shows), and clamp to the same horizon the
-      // iCal feeds honor so a date far out never leaks in.
-      if (start.getTime() < now.getTime() - 3_600_000 || start > horizon) continue;
       const end =
         typeof item.endDate === "number" && Number.isFinite(item.endDate) && item.endDate > startMs
           ? new Date(item.endDate)
           : undefined;
+      // Window by overlap after normalizing the end. A real two-hour show must
+      // stay in the source result for its full run, while a start-only row gets
+      // the shared two-hour assumed runtime.
+      if (!isEventWithinReadWindow(
+        { starts_at: start.toISOString(), ends_at: end?.toISOString() },
+        now,
+        horizon,
+      )) continue;
       const eventUrl = item.fullUrl && origin ? `${origin}${item.fullUrl}` : venue.squarespace;
       const description = descriptionFrom(item);
       out.push({

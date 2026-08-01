@@ -15,27 +15,57 @@
  *
  * The rule, stated once: an event is visible if it is happening now
  * (started, not yet ended) OR starts in the future. Equivalent to
- * `ends_at >= now` — once it's over, it's gone. Times are absolute
- * instants (ISO with offset), so this is timezone- and DST-safe with
- * no wall-clock arithmetic.
+ * a trustworthy end is still ahead. When a feed omits the end (or repeats
+ * the start as a zero-duration placeholder), the shared event lifecycle
+ * rule grants a short assumed runtime instead of making the card disappear
+ * the instant it begins. Times are absolute instants (ISO with offset), so
+ * this is timezone- and DST-safe with no wall-clock arithmetic.
  */
 
+import { isEventEnded } from "@/lib/eventWhenLabel";
+
 /** The minimum shape we need to judge visibility. */
-export type TimedEvent = { starts_at: string; ends_at?: string | null };
+export type TimedEvent = {
+  starts_at: string;
+  ends_at?: string | null;
+  is_all_day?: boolean;
+};
 
 /**
  * True if the event is live or still in the future as of `now`.
  *
- * `ends_at` is optional in some feed shapes; when it's missing or
- * unparseable we fall back to the start time, so a single-instant
- * event (start only) still drops once its start is in the past.
+ * A valid end later than the start is authoritative. Missing, invalid, and
+ * zero-duration ends use the shared lifecycle fallback (two hours for timed
+ * events; the full Eastern day for all-day events).
  */
 export function isUpcomingEvent(e: TimedEvent, now: Date = new Date()): boolean {
-  const nowMs = now.getTime();
-  const endMs = e.ends_at ? Date.parse(e.ends_at) : NaN;
-  if (Number.isFinite(endMs)) return endMs >= nowMs;
   const startMs = Date.parse(e.starts_at);
-  return Number.isFinite(startMs) && startMs >= nowMs;
+  if (!Number.isFinite(startMs)) return false;
+  const endMs = e.ends_at ? Date.parse(e.ends_at) : NaN;
+  if (Number.isFinite(endMs) && endMs > startMs) {
+    return endMs >= now.getTime();
+  }
+  return !isEventEnded(e, now);
+}
+
+/**
+ * Shared source-adapter window gate. Adapters must normalize an event's end
+ * before calling this: a row belongs in the read window when it has not really
+ * ended and its start is no later than the requested future horizon. This is
+ * deliberately overlap-based, not `start >= now`, so an in-progress event
+ * survives a source/cache refresh.
+ */
+export function isEventWithinReadWindow(
+  e: TimedEvent,
+  now: Date,
+  horizon: Date,
+): boolean {
+  const startMs = Date.parse(e.starts_at);
+  return (
+    Number.isFinite(startMs) &&
+    startMs <= horizon.getTime() &&
+    isUpcomingEvent(e, now)
+  );
 }
 
 /**

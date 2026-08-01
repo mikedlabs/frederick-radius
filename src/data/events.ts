@@ -110,10 +110,10 @@ export type Event = {
   /**
    * ISO date for when this event was last editorially verified. Live
    * rows get the feed fetch time; seed/curated rows can set their own
-   * date when an editor confirms them. If absent, the loader defaults
-   * to the seed cohort date so the UI never shows "unknown freshness."
+   * date when an editor confirms them. When absent, the loader preserves
+   * that absence rather than assigning a cohort-wide verification date.
    */
-  last_verified_at?: string;
+  last_verified_at?: string | null;
 };
 
 // Day 0 of the seed calendar is 2026-05-14, an Eastern civil date.
