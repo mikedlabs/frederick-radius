@@ -343,7 +343,7 @@ describe("scheduled data workflow contracts", () => {
       const allowlists = text.match(/\n\s+allowed_paths:/g) ?? [];
       const baseShas = text.match(/\n\s+base_sha: \$\{\{ github\.sha \}\}/g) ?? [];
       const artifactUploads = text.match(
-        /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/g,
+        /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g,
       ) ?? [];
       const mainGuards =
         text.match(/if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/g) ?? [];
@@ -385,7 +385,7 @@ describe("scheduled data workflow contracts", () => {
       publisherText.match(/peter-evans\/create-pull-request@/g),
     ).toHaveLength(1);
     expect(publisherText).toContain(
-      "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+      "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
     );
     expect(publisherText).toContain("persist-credentials: false");
     expect(publisherText).toContain("Refuse output generated from a stale main revision");
@@ -401,7 +401,7 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("contents: read");
     expect(dispatcher).toContain("['ci.yml', 'style.yml']");
     expect(dispatcher).toContain(
-      "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+      "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
     );
     expect(dispatcher).toContain("ref.data.object.sha !== expectedHead");
     expect(dispatcher).toContain("compareCommitsWithBasehead");
@@ -475,8 +475,8 @@ describe("scheduled data workflow contracts", () => {
     expect(ci).not.toMatch(mutableOfficialAction);
     expect(style).not.toMatch(mutableOfficialAction);
     expect(style).toContain("timeout-minutes: 15");
-    expect(ci).toContain("actions/checkout@11d5960a326750d5838078e36cf38b85af677262");
-    expect(style).toContain("actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020");
+    expect(ci).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
+    expect(style).toContain("actions/setup-node@820762786026740c76f36085b0efc47a31fe5020");
   });
 
   it("pins the scheduled discovery boundary and does not persist credentials", () => {
