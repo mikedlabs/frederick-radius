@@ -1,4 +1,4 @@
-name: data-steward
+name: Data steward
 
 # Nightly data steward. Probes the critical feeds (informational), then
 # runs the committed-artifact refresh scripts that keep the app's local

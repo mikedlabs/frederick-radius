@@ -1,4 +1,4 @@
-name: freshness-check
+name: Freshness check
 
 # Daily verification catches sources that fetch successfully while quietly
 # returning frozen payloads. Checking and issue mutation use separate tokens.
@@ -9,6 +9,10 @@ on:
   workflow_dispatch: {}
 
 permissions: {}
+
+concurrency:
+  group: freshness-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
