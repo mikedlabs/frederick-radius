@@ -85,6 +85,13 @@ __pycache__/
 .mockups/render/
 .mockups/*.built.html
 
+# Historical design explorations and generated review evidence are archived
+# outside the production repository. Their source scripts remain reproducible.
+/.mockups/
+/design-log/
+/design-review/probes/
+/public/brand/campaign/
+
 # Scratch render / audit / smoke scripts (agent + local Playwright runs)
 /_*.mjs
 /audit*.mjs
@@ -93,6 +100,15 @@ __pycache__/
 /.render-*.mjs
 .city-maps/
 audit-reports/
+
+# Generated data-review outputs. Keep the compact vendor rights manifest, but
+# regenerate these local reports instead of committing snapshots.
+/audit/chij-backfill-uncertain.json
+/audit/dfp-mash-followup.json
+/audit/dfp-mash-verification.json
+/audit/dfp-sample-50.json
+/audit/photo-twins.json
+/audit/suspected-duplicates.csv
 # Vendor media downloads are a local rights-review queue. The compact source
 # manifest is tracked; original website files are deliberately not deployed.
 /audit/vendor-media/downloads/
