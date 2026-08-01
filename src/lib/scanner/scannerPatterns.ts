@@ -19,7 +19,11 @@
  */
 import { unstable_cache } from "next/cache";
 import { gte } from "drizzle-orm";
-import { publicIncident, type PublicIncidentKind } from "@/lib/scanner/incidentFeed";
+import {
+  parseIncidentLine,
+  publicIncident,
+  type PublicIncidentKind,
+} from "@/lib/scanner/incidentFeed";
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
@@ -27,6 +31,9 @@ import trafficCounts from "@/data/traffic-counts.json";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
+const PAGE_MARKER_RE = /\bLatest Incidents\s*:/i;
+const EMPTY_BOARD_RE =
+  /\bNew incident log started\.\s*This will start populating soon\./i;
 /** How far back the archive read reaches. A year of local memory is plenty. */
 const ARCHIVE_DAYS = 365;
 
@@ -195,6 +202,12 @@ export type PatternRecord = {
   dateKey: string;
 };
 
+export type ScannerPageRecordsResult = {
+  data: PatternRecord[];
+  /** True only when the public board returned its expected dispatch shape. */
+  available: boolean;
+};
+
 const ET = "America/New_York";
 /** Hour of day (0–23) a UTC ms falls on in Eastern time. */
 function etHour(ms: number): number {
@@ -230,8 +243,9 @@ function etWallToMs(dateMDY: string, clock: string): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Read the public page's full rolling window into pattern records. */
-export async function fetchPageRecords(): Promise<PatternRecord[]> {
+/** Read the public page's full rolling window without confusing a provider
+ * failure with a genuinely quiet board. */
+export async function fetchPageRecordsResult(): Promise<ScannerPageRecordsResult> {
   try {
     const res = await fetch(SOURCE_URL, {
       headers: {
@@ -240,7 +254,7 @@ export async function fetchPageRecords(): Promise<PatternRecord[]> {
       },
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { data: [], available: false };
     const html = await res.text();
     const lines = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) =>
       m[1]
@@ -250,6 +264,16 @@ export async function fetchPageRecords(): Promise<PatternRecord[]> {
         .replace(/\s+/g, " ")
         .trim(),
     );
+    const hasDispatchLine = lines.some(
+      (line) =>
+        parseIncidentLine(line) !== null &&
+        /\bposted\s+\d{1,2}\/\d{1,2}\/\d{4}\b/i.test(line),
+    );
+    const hasValidEmptyBoard =
+      PAGE_MARKER_RE.test(html) && EMPTY_BOARD_RE.test(html);
+    if (!hasDispatchLine && !hasValidEmptyBoard) {
+      return { data: [], available: false };
+    }
 
     const out: PatternRecord[] = [];
     for (const line of lines) {
@@ -267,10 +291,15 @@ export async function fetchPageRecords(): Promise<PatternRecord[]> {
         dateKey: atMs !== null ? etDateKey(atMs) : "",
       });
     }
-    return out;
+    return { data: out, available: true };
   } catch {
-    return [];
+    return { data: [], available: false };
   }
+}
+
+/** Compatibility wrapper for aggregate scanner-pattern surfaces. */
+export async function fetchPageRecords(): Promise<PatternRecord[]> {
+  return (await fetchPageRecordsResult()).data;
 }
 
 /** Read the banked archive (empty when the DB is dormant / not migrated). */

@@ -60,6 +60,27 @@ describe("GET /api/cron/scanner-archive", () => {
     expect(body).toMatchObject({ ok: true, complete: true });
   });
 
+  it("returns 503 when neither scanner source could be read", async () => {
+    mocks.archiveScannerIncidents.mockResolvedValue({
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "source_unavailable",
+      sources: { page: false, live: false },
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      ok: false,
+      complete: false,
+      reason: "source_unavailable",
+      sources: { page: false, live: false },
+    });
+  });
+
   it("turns an unexpected archive failure into an observable 503", async () => {
     mocks.archiveScannerIncidents.mockRejectedValue(new Error("boom"));
 

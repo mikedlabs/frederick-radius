@@ -11,8 +11,8 @@
  */
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
-import { getScannerIncidents } from "@/lib/integrations/scannerIncidents";
-import { fetchPageRecords } from "@/lib/scanner/scannerPatterns";
+import { getScannerIncidentsResult } from "@/lib/integrations/scannerIncidents";
+import { fetchPageRecordsResult } from "@/lib/scanner/scannerPatterns";
 
 const ARCHIVE_BATCH_SIZE = 100;
 
@@ -45,7 +45,11 @@ export async function archiveScannerIncidents(): Promise<{
   seen: number;
   inserted: number;
   complete: boolean;
-  reason?: "database_unavailable" | "storage_write_failed";
+  reason?:
+    | "database_unavailable"
+    | "source_unavailable"
+    | "storage_write_failed";
+  sources?: { page: boolean; live: boolean };
 }> {
   const db = getDb();
   if (!db) {
@@ -63,10 +67,30 @@ export async function archiveScannerIncidents(): Promise<{
   // we keep the older rows it has since dropped. That's how the archive grows
   // past the page's 3-week ceiling. Also fold in the live 1h feed so a call
   // that's on the wire but not yet on the static page still lands.
-  const [page, live] = await Promise.all([
-    fetchPageRecords().catch(() => []),
-    getScannerIncidents().catch(() => []),
+  const [pageResult, liveResult] = await Promise.all([
+    fetchPageRecordsResult().catch(() => ({ data: [], available: false })),
+    getScannerIncidentsResult().catch(() => ({
+      data: [],
+      available: false,
+    })),
   ]);
+  const sources = {
+    page: pageResult.available,
+    live: liveResult.available,
+  };
+  if (!sources.page && !sources.live) {
+    // Append-only storage is deliberately untouched. Existing history remains
+    // the last good archive, and monitoring sees an incomplete source read.
+    return {
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "source_unavailable",
+      sources,
+    };
+  }
+  const page = pageResult.data;
+  const live = liveResult.data;
 
   const rows = dedupeArchiveRows<ScannerArchiveRow>([
     ...page
@@ -86,7 +110,9 @@ export async function archiveScannerIncidents(): Promise<{
       occurred_at: new Date(inc.at),
     })),
   ]);
-  if (rows.length === 0) return { seen: 0, inserted: 0, complete: true };
+  if (rows.length === 0) {
+    return { seen: 0, inserted: 0, complete: true, sources };
+  }
 
   let insertedCount = 0;
   for (const batch of chunkArchiveRows(rows)) {
@@ -105,9 +131,15 @@ export async function archiveScannerIncidents(): Promise<{
         inserted: insertedCount,
         complete: false,
         reason: "storage_write_failed",
+        sources,
       };
     }
   }
 
-  return { seen: rows.length, inserted: insertedCount, complete: true };
+  return {
+    seen: rows.length,
+    inserted: insertedCount,
+    complete: true,
+    sources,
+  };
 }
