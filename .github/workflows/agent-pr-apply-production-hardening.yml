@@ -1,0 +1,87 @@
+name: Apply production hardening from PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-production-hardening-pr-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.head.ref == 'agent/full-production-hardening-2026-08-01' &&
+      !contains(github.event.pull_request.head.sha, '[hardening-applied]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/full-production-hardening-2026-08-01
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Execute the reviewed one-shot patch
+        shell: bash
+        run: |
+          python3 <<'RUNNER'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path(
+              ".github/workflows/agent-apply-production-hardening.yml"
+          ).read_text()
+          marker = "          python3 <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY\n", start)
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, "production-hardening-patch", "exec"))
+          RUNNER
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Targeted regression tests
+        run: >-
+          npx vitest run
+          src/lib/loaders/eventResolver.spec.ts
+          src/lib/loaders/liveEvents.spec.ts
+          src/lib/spatial/place-mirror.spec.ts
+          src/app/api/cron/spatial-places/route.spec.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint changed code
+        run: >-
+          npx eslint
+          src/lib/loaders/eventResolver.ts
+          src/lib/loaders/eventResolver.spec.ts
+          src/lib/loaders/liveEvents.ts
+          src/lib/loaders/liveEvents.spec.ts
+          src/lib/spatial/place-mirror.ts
+          src/lib/spatial/place-mirror.spec.ts
+          src/app/api/cron/spatial-places/route.ts
+          src/app/api/cron/spatial-places/route.spec.ts
+          src/app/api/cron/warm-events/route.ts
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Commit verified changes
+        shell: bash
+        run: |
+          rm .github/workflows/agent-apply-production-hardening.yml
+          rm .github/workflows/agent-pr-apply-production-hardening.yml
+          git config user.name "frederick-radius-bot"
+          git config user.email "bot@frederickradius.app"
+          git add -A
+          git commit -m "fix: isolate event details and make spatial sync incremental [hardening-applied]"
+          git push origin HEAD:agent/full-production-hardening-2026-08-01
