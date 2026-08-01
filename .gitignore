@@ -90,7 +90,8 @@ __pycache__/
 /.mockups/
 /design-log/
 /design-review/probes/
-/public/brand/campaign/
+/public/brand/campaign/*
+!/public/brand/campaign/cartographic-ripple-background.png
 
 # Scratch render / audit / smoke scripts (agent + local Playwright runs)
 /_*.mjs
