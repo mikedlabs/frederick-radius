@@ -1,4 +1,4 @@
-name: data-refresh
+name: Data refresh
 
 # A previous bounded snapshot seeds each daily run so one upstream failure
 # cannot erase the last-known-good normalized data. Fetching, publication, and

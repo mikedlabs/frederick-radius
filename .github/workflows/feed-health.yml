@@ -1,4 +1,4 @@
-name: feed-health
+name: Feed health
 
 # Daily tripwire for the critical external feeds the app reads (transit
 # GTFS, county rec FeatureServer, city GIS, town homepages). The script
