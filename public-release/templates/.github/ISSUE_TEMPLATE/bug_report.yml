@@ -1,0 +1,65 @@
+name: Bug report
+description: Tell us about something broken, misleading, inaccessible, or difficult to use.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Frederick Radius. Public issues are visible to everyone. Remove personal information, credentials, private messages, and exact live location before submitting.
+  - type: input
+    id: page
+    attributes:
+      label: Page or feature
+      description: Share the Frederick Radius page URL or name the feature.
+      placeholder: https://frederickradius.app/...
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Describe the result you saw and why it was a problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Give the shortest repeatable path. Include the selected town or general area only when it affects the result.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Device and browser
+      description: "Example: iPhone 15, Safari 18 or Windows 11, Chrome 140."
+    validations:
+      required: false
+  - type: input
+    id: source
+    attributes:
+      label: Current source, if this is a data correction
+      description: Link to a first-party or official source that can be checked. Do not paste private or paywalled content.
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal information, credentials, private messages, and exact live location.
+          required: true
+        - label: This is not a security vulnerability. I will report security issues privately under SECURITY.md.
+          required: true
