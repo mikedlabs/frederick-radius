@@ -63,3 +63,4 @@ jobs:
           name: discovery-plan
           path: discovery-plan.log
           if-no-files-found: ignore
+          retention-days: 14
