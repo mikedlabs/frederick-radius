@@ -721,6 +721,8 @@ export async function runSourceWatch(
           timeoutMs: config.limits.timeoutMs,
           allowHttp: source.httpException !== undefined,
           requireReportedFinalUrl: true,
+          // Keep each allowlisted source to the single credit reserved above.
+          proxy: "basic",
         });
         observedFinalUrl = snapshot.finalUrl;
         if (!isExpectedFinalHost(source.url, snapshot.finalUrl)) {

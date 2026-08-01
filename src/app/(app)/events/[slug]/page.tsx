@@ -200,8 +200,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
     // A provider outage is a known, recoverable product state. Returning the
     // event-scoped recovery view here keeps the response successful and useful;
-    // throwing would make Next stamp a 500 on otherwise intentional UI. Never
-    // retain this transient state in the route's five-minute ISR cache.
+    // throwing would make Next stamp a 500 on otherwise intentional UI. The
+    // request-rendered segment ensures this transient state is never cached.
     noStore();
     Sentry.captureMessage("event-detail: served source-unavailable recovery", {
       level: "warning",

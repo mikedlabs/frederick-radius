@@ -185,6 +185,7 @@ describe("Source Watch candidate runs", () => {
       expect.objectContaining({
         timeoutMs: 1_000,
         requireReportedFinalUrl: true,
+        proxy: "basic",
       }),
     );
     expect(result.report.provider).toEqual({ name: "firecrawl" });
