@@ -143,3 +143,55 @@ test("normalizes an annotated refresh cadence only when no snapshot cadence exis
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("fails when generated snapshot state reports a far-future success", () => {
+  const dir = mkdtempSync(join(tmpdir(), "radius-freshness-future-"));
+  const policyManifest = join(dir, "policy.yaml");
+  const stateManifest = join(dir, "state.yaml");
+  const stale = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  writeFileSync(
+    policyManifest,
+    [
+      "sources:",
+      "  - id: mdot_chart",
+      "    status: active",
+      "    collection: pipeline",
+      "    refresh_cadence: hourly",
+      `    last_success: ${stale}`,
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    stateManifest,
+    [
+      "sources:",
+      "  - id: mdot_chart",
+      "    status: active",
+      "    collection: pipeline",
+      "    refresh_cadence: hourly",
+      "    last_success: 2099-01-01T00:00:00.000Z",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", "pipeline/freshness_check.ts"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          SOURCE_POLICY_MANIFEST: policyManifest,
+          SOURCE_STATE_MANIFEST: stateManifest,
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /snapshot state last_success .*future/);
+    assert.match(result.stderr, /age .* exceeds 3h/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
