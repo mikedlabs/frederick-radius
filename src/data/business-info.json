@@ -1175,7 +1175,15 @@
         "anchor_text": "Gift card",
         "source_url": "https://www.raremorsel.com/"
       }
-    ]
+    ],
+    "hours_text": "Sunday 12pm-7pm, Monday-Tuesday 11am-6pm, Wednesday closed, Thursday 11am-6pm, Friday 11am-7pm, Saturday 10am-7pm",
+    "known_for": "Rare Morsel is a chocolate and specialty foods shop offering ice cream, sorbet, frozen treats, and curated gift items.",
+    "source": {
+      "url": "https://www.raremorsel.com/",
+      "fetchedAt": "2026-08-01T09:51:18.724Z",
+      "contentHash": "bb0dd51448e3929ce7698243f78cbbcef71c077f6a5489c31f0a91c2ce5d64e0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "agave-137-tequila-bar-and-kitchen": {
     "name": "Agave 137 Tequila Bar and Kitchen",
@@ -1249,18 +1257,18 @@
         "source_url": "https://blackhogbbq.com/"
       },
       {
-        "type": "order",
-        "url": "http://blackhogbbq.com/order-online/",
-        "anchor_text": "Order Online",
-        "source_url": "https://blackhogbbq.com/"
-      },
-      {
         "type": "gift_card",
         "url": "https://www.toasttab.com/black-hog-bbq-middletown/giftcards",
         "anchor_text": "Purchase a Gift Card",
         "source_url": "https://blackhogbbq.com/"
       }
-    ]
+    ],
+    "source": {
+      "url": "https://blackhogbbq.com/",
+      "fetchedAt": "2026-08-01T09:48:09.091Z",
+      "contentHash": "d3ce05b69d0df625332279174626e0814643b10c0b28effc082649dafb42091c",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "ibiza-cafe": {
     "name": "Ibiza Cafe",
@@ -1275,7 +1283,15 @@
         "anchor_text": "Menu",
         "source_url": "https://www.theibizacafe.com/"
       }
-    ]
+    ],
+    "hours_text": "Monday closed; Tuesday-Sunday 9:00 AM - 5:00 PM",
+    "known_for": "Ibiza Cafe serves single origin coffees brewed as siphon or pour overs, along with hot teas, sandwiches, pastries, fresh waffles, and bubble teas.",
+    "source": {
+      "url": "https://www.theibizacafe.com/",
+      "fetchedAt": "2026-08-01T09:49:23.569Z",
+      "contentHash": "962b416bd386709a9b6a17213e4da58c2e7be5f07b46536f01919669f91e9ba4",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "7th-street-cafe": {
     "name": "7th Street Cafe",
@@ -1296,7 +1312,15 @@
         "anchor_text": "Order Online Now",
         "source_url": "https://www.7thstreetsandwich.com/"
       }
-    ]
+    ],
+    "hours_text": "Monday-Friday 7am-8pm, Saturday 8am-8pm, Sunday 8am-4pm",
+    "known_for": "Everything served is fresh and made in-house, including bread made daily in their bread room.",
+    "source": {
+      "url": "https://www.7thstreetsandwich.com/",
+      "fetchedAt": "2026-08-01T09:50:51.885Z",
+      "contentHash": "ff93ca7064b128994f97f1bc13c2bc1c03fe098f50edb487d75ba21bd6669a71",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "oscars-alehouse": {
     "name": "Oscar's Alehouse",
@@ -1311,7 +1335,17 @@
         "anchor_text": "Kid's Menu",
         "source_url": "https://www.oscarsalehouse.net/west"
       }
-    ]
+    ],
+    "happy_hour": "Sun-Fri 3-6pm",
+    "hours_text": "Mon 11am-9pm, Tue-Wed 11am-10pm, Thu-Fri-Sat 11am-11pm, Sun 10am-9pm (brunch from 10am-2pm)",
+    "known_for": "Oscar's Alehouse features a wood-burning grill that gives burgers, chicken, steak, and fish an oaky flavor, and rotates 36 craft beer drafts from breweries around the nation and local breweries.",
+    "notable": "The restaurant offers Sunday brunch from 10am to 2pm and maintains a family-friendly atmosphere suitable for various occasions.",
+    "source": {
+      "url": "https://www.oscarsalehouse.net/west",
+      "fetchedAt": "2026-08-01T09:48:14.084Z",
+      "contentHash": "e1494267366f5798e83ef6c5aa0cb27ba996ad33e1597d32fc04c56dad8697a0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "south-market-sandwich-co": {
     "name": "South Market Sandwich Co",
@@ -1326,7 +1360,16 @@
         "anchor_text": "Menu",
         "source_url": "https://southmarketsandwiches.com/"
       }
-    ]
+    ],
+    "hours_text": "Monday - Saturday: 8am - 4pm, Sunday: Closed",
+    "known_for": "South Market Sandwich Company makes sandwiches and offers free delivery to downtown Frederick Monday through Friday from 11am to 2:30pm.",
+    "notable": "Online ordering is available through their website and Uber Eats, and catering services are offered.",
+    "source": {
+      "url": "https://southmarketsandwiches.com/",
+      "fetchedAt": "2026-08-01T09:51:27.037Z",
+      "contentHash": "1043d88fd061462786cd6ad20d8777fb72c7566f6c536e6778386ac0f41e6512",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "the-perfect-blend-cafe": {
     "name": "The Perfect Blend Cafe",
@@ -1341,7 +1384,16 @@
         "anchor_text": "Order Online",
         "source_url": "https://theperfectblendfrederick.com/"
       }
-    ]
+    ],
+    "hours_text": "Mon-Fri 7AM-3PM, Sat 8AM-3PM, Sun Closed",
+    "known_for": "The Perfect Blend Cafe offers fresh coffee, teas, smoothies, sandwiches, paninis, wraps, and flatbreads made with Boar's Head delicatessen meats and cheese.",
+    "notable": "The cafe has outdoor seating and indoor seating in the building's entryway.",
+    "source": {
+      "url": "https://theperfectblendfrederick.com/",
+      "fetchedAt": "2026-08-01T09:50:47.789Z",
+      "contentHash": "39cfe34b5cd013a12ffdd3daea0687c588f74787f4dbb7b33d71c5bf88411319",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "charleys-restaurant": {
     "name": "Charley's Restaurant",
@@ -1501,13 +1553,28 @@
         "anchor_text": "menu pdf",
         "source_url": "https://www.tempodipasta.com/menu"
       }
-    ]
+    ],
+    "known_for": "Tempo Di Pasta serves Italian cuisine including panini and pasta dishes.",
+    "source": {
+      "url": "https://www.tempodipasta.com/",
+      "fetchedAt": "2026-08-01T09:49:17.483Z",
+      "contentHash": "79791077fd90daa778625493c9836d14c465953045110edc751df0974686a98d",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "bellisarios-pizza": {
     "name": "Bellisario's Pizza",
     "commerce_source": {
       "url": "https://bellisariospizza.com/",
       "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "hours_text": "Monday-Saturday: 11:00 AM–8:30 PM; Closed Sundays and Holidays",
+    "known_for": "Bellisario's Pizza has been locally owned since 2000 and serves pizza along with hoagies, calzones, and other Italian-style sandwiches.",
+    "source": {
+      "url": "https://bellisariospizza.com/",
+      "fetchedAt": "2026-08-01T09:51:25.447Z",
+      "contentHash": "d8d6fb1a8473ca883d83a1e8a6c6832e3a0d8b515bb7f42419883306aa5dc773",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
     }
   },
   "juno-bakery": {
@@ -1544,7 +1611,15 @@
         "anchor_text": "Order E-gift Card",
         "source_url": "https://www.eatatwags.com/"
       }
-    ]
+    ],
+    "hours_text": "Mon-Sat 11am-2am, Sun 12pm-9pm. Kitchen hours: Mon-Sat 11am-10pm, Sun 12pm-9pm.",
+    "known_for": "Wag's is known for burgers, fries, and happy hour offerings in Frederick.",
+    "source": {
+      "url": "https://www.eatatwags.com/",
+      "fetchedAt": "2026-08-01T09:49:20.099Z",
+      "contentHash": "214176012953c3b8d8310b810c69d68fb8c1133c68cce337d510a7dde4f5d42d",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "twin-bears-bakery": {
     "name": "Twin Bears Bakery",
@@ -1565,7 +1640,16 @@
         "anchor_text": "gift card online",
         "source_url": "https://twinbearsbakery.com/"
       }
-    ]
+    ],
+    "hours_text": "Wednesday–Sunday 6:00am–4:00pm; closed Monday–Tuesday",
+    "known_for": "Twin Bears Bakery specializes in naturally fermented sourdough bread and bagels, with their bakers trained at San Francisco Baking Institute using traditional techniques.",
+    "notable": "The bakery offers online preorders for bagel boxes and bread, and distributes through multiple channels including farmers markets, retail partners, and CSA programs.",
+    "source": {
+      "url": "https://twinbearsbakery.com/",
+      "fetchedAt": "2026-08-01T09:51:12.113Z",
+      "contentHash": "15a47e8ac633a55fd51b81c4afa83048fe5508b2f94cfd7e50e84870fa7e2458",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "the-spice-tea-exchange": {
     "name": "The Spice Tea Exchange",
@@ -1631,7 +1715,16 @@
         "anchor_text": "Menu & Pricing",
         "source_url": "https://fredicecream.com/"
       }
-    ]
+    ],
+    "hours_text": "Monday–Sunday 12 PM–9 PM",
+    "known_for": "Frederick Fudge & Ice Cream has been making Frederick sweeter for over 20 years by serving ice cream, fudge, and chocolate.",
+    "notable": "Wally, a third-generation mascot bear, greets customers outside the store and has been part of the business since June 20th, 2021.",
+    "source": {
+      "url": "https://fredicecream.com/",
+      "fetchedAt": "2026-08-01T09:51:03.738Z",
+      "contentHash": "5badc47d4ae8c5fe16e7cd2524a59542dd078f4fe12a12ad008dfe146283f033",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "candy-kitchen-6": {
     "name": "Candy Kitchen",
@@ -1671,7 +1764,16 @@
         "anchor_text": "Catering Menu",
         "source_url": "https://pistarro.com/"
       }
-    ]
+    ],
+    "happy_hour": "Mon-Fri 4-6pm: deals on cocktails, beer, sangria, house wine, old school pizzas, and snacks",
+    "hours_text": "Monday–Thursday: 11:30 AM to 9 PM; Friday–Saturday: 11:30 AM to 9:30 PM; Sunday: 10:00 AM to 9:00 PM",
+    "known_for": "Pistarros specializes in Neapolitan pizza.",
+    "source": {
+      "url": "https://pistarro.com/",
+      "fetchedAt": "2026-08-01T09:48:10.806Z",
+      "contentHash": "e97d240c8fff6436ff1e023f766608216b969ee552a20a9879d61e7bed4aa9de",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "shuckin-shack-oyster-bar": {
     "name": "Shuckin Shack Oyster Bar",
@@ -1719,6 +1821,12 @@
         "source_url": "https://jojosrestauranttaphouse.com/"
       },
       {
+        "type": "reservation",
+        "url": "https://tables.toasttab.com/restaurants/9f6dcf12-c5b2-4286-929e-09ab23b2b52e/findTime",
+        "anchor_text": "RESERVATIONS",
+        "source_url": "https://jojosrestauranttaphouse.com/"
+      },
+      {
         "type": "menu",
         "url": "https://jojosrestauranttaphouse.com/menu.php",
         "anchor_text": "MENU",
@@ -1730,7 +1838,16 @@
         "anchor_text": "GIFT CARDS",
         "source_url": "https://jojosrestauranttaphouse.com/"
       }
-    ]
+    ],
+    "hours_text": "Wed-Thu 11am-12am, Fri 11am-2am, Sat 10am-2am, Sun 10am-12am. Closed Mon-Tue.",
+    "known_for": "JoJo's Restaurant & Tap House offers both a restaurant with a semi-private dining room and a tap house side with over 30 rotating draft beers, cocktails, and wine.",
+    "notable": "The restaurant features a semi-private dining room for a quieter atmosphere, while the tap house side offers live music and sporting events on television.",
+    "source": {
+      "url": "https://jojosrestauranttaphouse.com/",
+      "fetchedAt": "2026-08-01T09:49:10.420Z",
+      "contentHash": "ba29c8dedd0713e53e0c8352a4039c435e0b4624f6aaa69372eda6d9b1828570",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "cucina-massi": {
     "name": "Cucina Massi",
@@ -1739,12 +1856,6 @@
       "checkedAt": "2026-07-29T12:40:47.382Z"
     },
     "commerce_links": [
-      {
-        "type": "menu",
-        "url": "https://www.cucinamassi.com/menus/",
-        "anchor_text": "Menus",
-        "source_url": "https://www.cucinamassi.com/"
-      },
       {
         "type": "menu",
         "url": "https://www.cucinamassi.com/menus",
@@ -1763,7 +1874,13 @@
         "anchor_text": "Private Events & Catering",
         "source_url": "https://www.cucinamassi.com/"
       }
-    ]
+    ],
+    "source": {
+      "url": "https://www.cucinamassi.com/",
+      "fetchedAt": "2026-08-01T09:51:09.550Z",
+      "contentHash": "26a5f351ccf59090d545f83a574050c38d56bdff23dcb96f72bc964d4d9bc547",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "hinzis-kitchen": {
     "name": "Hinzi's Kitchen",
@@ -1853,7 +1970,16 @@
         "anchor_text": "Gift Cards",
         "source_url": "https://www.bakehousemd.com/"
       }
-    ]
+    ],
+    "hours_text": "Wednesday - Sunday: 8:00am - 2:00pm (or sell out)",
+    "known_for": "Bakehouse makes croissants, pastries, and baked goods from a storefront in Downtown Frederick.",
+    "notable": "The storefront is located at 69 South Market Street in Downtown Frederick.",
+    "source": {
+      "url": "https://www.bakehousemd.com/",
+      "fetchedAt": "2026-08-01T09:49:18.789Z",
+      "contentHash": "3191bbfec24607ae01dadf562b0ae65c105a9170ad468cacaa70811bad32c3e2",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "rosatis-pizza-5": {
     "name": "Rosati's Pizza",
@@ -1874,13 +2000,29 @@
         "anchor_text": "Catering",
         "source_url": "https://www.rosatispizza.com/location/frederick-md"
       }
-    ]
+    ],
+    "hours_text": "Sunday - Thursday: 11am-9pm, Friday - Saturday: 11am-10pm",
+    "known_for": "Rosati's Pizza makes handcrafted pizzas and authentic Italian favorites using a family recipe passed down through generations.",
+    "notable": "The Frederick location offers carryout, delivery, and catering services.",
+    "source": {
+      "url": "https://www.rosatispizza.com/location/frederick-md",
+      "fetchedAt": "2026-08-01T09:48:02.952Z",
+      "contentHash": "41436ea87a543f509842fe722cb4fb77175c7b76ac93431c0e71113622db5c37",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "zoes-chocolate-company": {
     "name": "Zoe's Chocolate Company",
     "commerce_source": {
       "url": "https://zoeschocolate.com/",
       "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "known_for": "Zoe's Chocolate Company makes handcrafted, all-natural artisan chocolates continuing a three-generation family tradition that began when their great aunt and uncle sold hand-rolled chocolates from a pushcart in the early 1900s.",
+    "source": {
+      "url": "https://zoeschocolate.com/",
+      "fetchedAt": "2026-08-01T09:51:43.737Z",
+      "contentHash": "fb3dfae11970d2a8da4cea3031eb56b2a29002e7f87439ace2f15fa8e8cbeac3",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
     }
   },
   "bloom-asian-haus": {
@@ -1903,6 +2045,15 @@
     "commerce_source": {
       "url": "https://www.sumittra.com/",
       "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "hours_text": "Monday-Thursday 11am–2:30pm, 4:30–9pm; Friday 11am–2:30pm, 4:30–10pm; Saturday 12pm–10pm; Sunday and holidays 12pm–9pm",
+    "known_for": "Sumittra serves Thai fusion cuisine made with fresh ingredients, drawing on decades of the owner's family culinary tradition.",
+    "notable": "The restaurant is located in Downtown Frederick and has been operating there since 2011.",
+    "source": {
+      "url": "https://www.sumittra.com/",
+      "fetchedAt": "2026-08-01T09:49:25.079Z",
+      "contentHash": "371a1ad91f3bb8864677098067c55a28333254198cc7a181b3cde984191ddb11",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
     }
   },
   "hunan-gourmet-restaurant": {
@@ -2071,5 +2222,689 @@
         "source_url": "https://averysmarylandgrille.com/"
       }
     ]
+  },
+  "escape-this-frederick": {
+    "name": "Escape This Frederick",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://escapethisfrederick.com/gift-certificates/",
+        "anchor_text": "Gift Voucher",
+        "source_url": "https://escapethisfrederick.com/"
+      }
+    ],
+    "specials": [
+      "Wednesday: 20% off any game with promo code HUMPDAY"
+    ],
+    "hours_text": "Monday–Tuesday 12:00 PM–7:00 PM, Wednesday–Thursday 12:00 PM–8:00 PM, Friday 12:00 PM–10:00 PM, Saturday 11:00 AM–10:00 PM, Sunday 12:00 PM–7:00 PM",
+    "known_for": "Escape This Frederick operates six private escape rooms with puzzles and themed scenarios, and also offers virtual reality games.",
+    "notable": "The business is located in Monocacy Village Shopping Center with a free parking lot and hosts corporate team-building events, birthday parties, and other group outings.",
+    "source": {
+      "url": "https://escapethisfrederick.com/",
+      "fetchedAt": "2026-08-01T09:47:49.097Z",
+      "contentHash": "6b405b13d1ac8ec3f6726773cfe0d235177107c0642708246f185047502c587c",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "white-rabbit-gastropub": {
+    "name": "White Rabbit Gastropub",
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.whiterabbitgastropub.com/onlineordering",
+        "anchor_text": "Online Ordering",
+        "source_url": "https://www.whiterabbitgastropub.com/"
+      }
+    ],
+    "happy_hour": "All day Monday; Tue-Fri 3-6pm: $1 off full pours of beer, wine, and crowlers, plus $5 featured beers",
+    "notable": "Gluten-free pizza is available as a celiac-safe option, though cross-contamination is possible from shared fryers.",
+    "source": {
+      "url": "https://www.whiterabbitgastropub.com/",
+      "fetchedAt": "2026-08-01T09:47:57.214Z",
+      "contentHash": "c7f19dcde7c04e2028690dfb6ab361477a95dd23403c8e69a4c8641825d0cab1",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "yaneth-reyes-jewelry-llc": {
+    "name": "Yaneth Reyes Jewelry LLC",
+    "hours_text": "Tuesday-Friday: 10AM to 6PM, Saturday: 10AM to 7PM, Sunday: 11AM to 4PM",
+    "known_for": "Yaneth Reyes Jewelry specializes in custom jewelry design and also provides independent appraisal services and on-site jewelry repairs.",
+    "source": {
+      "url": "https://www.yanethreyes.com/",
+      "fetchedAt": "2026-08-01T09:48:01.377Z",
+      "contentHash": "4b00e654522623fc381fb8bb8e5f526598df699d6f7a8b802b5b8d92a41a37f0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "time-bomb-tattoos-curiosities": {
+    "name": "Time Bomb Tattoos Curiosities",
+    "hours_text": "Open 7 days a week",
+    "known_for": "Time Bomb Tattoos & Curiosities provides custom tattoos and piercings in Frederick, MD with award-winning artists who work with clients to create personalized designs.",
+    "notable": "The shop has a back room available for tattoo clients who prefer privacy during their procedure.",
+    "source": {
+      "url": "https://timebombtattoos.com/tattoos/",
+      "fetchedAt": "2026-08-01T09:48:05.832Z",
+      "contentHash": "86258e1337b16cc860d7d2bf37e26d0bb7a53f8299890f51fa69159954db0010",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "the-tire-mart-automotive": {
+    "name": "The Tire Mart Automotive",
+    "hours_text": "Mon-Fri 8:00 AM – 5:00 PM",
+    "known_for": "The Tire Mart has been serving Frederick since 1965 and provides tire sales and automotive repair services including brake repairs, wheel alignments, and engine diagnostics.",
+    "source": {
+      "url": "https://www.tiremart.biz/",
+      "fetchedAt": "2026-08-01T09:48:48.615Z",
+      "contentHash": "c11cb1cd10a4548818bf6449dc086eb7ce35ded64fcc4a7eb46a3dff84a3c4a0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "lazy-fish": {
+    "name": "Lazy Fish",
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://lazyfishsushi.com/-catering?source=pop_up&spot_id=113064&destination=catering&promotion=catering",
+        "anchor_text": "Catering Packages",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://lazyfishsushi.com/frederick-lazy-fish-catering",
+        "anchor_text": "Catering",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://lazyfishsushi.com/frederick-lazy-fish-reservations",
+        "anchor_text": "Reserve",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://lazyfishsushi.com/-reservations?source=pop_up&spot_id=113064&destination=reservations&promotion=reservations",
+        "anchor_text": "Book Table",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/lazy-fish-10-e-patrick-st",
+        "anchor_text": "Order Online",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://lazyfishsushi.com/frederick-lazy-fish-food-menu",
+        "anchor_text": "Menu",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://lazyfishsushi.com/frederick-lazy-fish-drink-menu",
+        "anchor_text": "Drinks",
+        "source_url": "https://lazyfishsushi.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/lazy-fish-10-e-patrick-st/giftcards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://lazyfishsushi.com/"
+      }
+    ],
+    "hours_text": "Mon-Thu: 11:30am-2:30pm, 4:30pm-9:00pm; Fri: 11:30am-2:30pm, 4:30pm-10:00pm; Sat: 12:00pm-10:00pm; Sun: 12:00pm-8:30pm",
+    "known_for": "Lazy Fish specializes in inventive sushi and Asian fusion dishes, led by Chef Pong who has 14 years of kitchen experience.",
+    "notable": "The restaurant is located upstairs in the historic district of downtown Frederick and offers catering services for events of all sizes.",
+    "source": {
+      "url": "https://lazyfishsushi.com/",
+      "fetchedAt": "2026-08-01T09:48:50.357Z",
+      "contentHash": "66fb06353dc22d540ce29040a016557e22738e399490ff5ef161bf070ebe1b68",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "colonial-jewelers": {
+    "name": "Colonial Jewelers",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.colonialjewelers.com/gift-ideas/gift-cards",
+        "source_url": "https://www.colonialjewelers.com/?srsltid=AfmBOooLpFrEv_Vsk5STcBDf2GJaH5ZCdhSvcv73mIT6FMQRLn5LZeOB"
+      }
+    ],
+    "hours_text": "Tuesday-Friday 10:00am-5:00pm, Thursday 10:00am-7:00pm, Saturday 10:00am-5:00pm, closed Sunday and Monday",
+    "known_for": "Colonial Jewelers is a fourth-generation family business with over 75 years of experience in the Frederick community that offers custom jewelry design, engagement and wedding jewelry, and jewelry repair services.",
+    "notable": "The business operates a full-service goldsmith shop on-site and offers a free lifetime warranty with every genuine diamond engagement ring.",
+    "source": {
+      "url": "https://www.colonialjewelers.com/?srsltid=AfmBOooLpFrEv_Vsk5STcBDf2GJaH5ZCdhSvcv73mIT6FMQRLn5LZeOB",
+      "fetchedAt": "2026-08-01T09:49:08.539Z",
+      "contentHash": "878c02c757fc17c4f8d4866e41cd7ea2e45909894f65c3d16336c2fd292c647b",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "spinners-pinball-arcade": {
+    "name": "Spinners Pinball Arcade",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/5YTRB85JEG1WH/order",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.spinnerspinball.org/"
+      }
+    ],
+    "hours_text": "Sunday 10 AM–10 PM, Monday 10 AM–10 PM, Tuesday 10 AM–10 PM, Wednesday 10 AM–10 PM, Thursday 10 AM–11 PM, Friday 10 AM–12 AM, Saturday 10 AM–12 AM",
+    "known_for": "Spinners is a nonprofit arcade in Frederick, Maryland offering unlimited all-day play on pinball machines, arcade games, skeeball, air hockey, and console gaming for a single admission price.",
+    "notable": "The arcade features Hercules, the world's largest pinball machine, and allows re-entry the same day with a hand stamp or wrist band.",
+    "source": {
+      "url": "https://www.spinnerspinball.org/",
+      "fetchedAt": "2026-08-01T09:49:13.111Z",
+      "contentHash": "9d35c84f1b9f74ecb1fbb356f8c2b392f468ac37154cc3a85363e22a05d3e80c",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "minuteman-press-12": {
+    "name": "Minuteman Press 12",
+    "hours_text": "Mon-Fri 9:00am-5:00pm; Sat-Sun Closed",
+    "known_for": "Minuteman Press provides digital printing, graphic design, direct mail services, promotional products, banners, and signs to the Frederick business community for over 30 years.",
+    "notable": "The business offers free print consultations, free quotes, and free delivery service.",
+    "source": {
+      "url": "https://minuteman.com/us/locations/md/frederick/",
+      "fetchedAt": "2026-08-01T09:49:22.119Z",
+      "contentHash": "393de274f5bf7c176f1d9910f5d471785d889618111aa6866239beb535facbdb",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "inbloom-jewelry": {
+    "name": "Inbloom Jewelry",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.inbloomjewelry.com/gift-card",
+        "anchor_text": "gift cards",
+        "source_url": "https://www.inbloomjewelry.com/"
+      }
+    ],
+    "hours_text": "Tues-Wed: 10am–5pm, Thursday: 12pm–6pm, Friday: 10am–5pm, Saturday: 10am–4pm",
+    "known_for": "InBloom Jewelry creates custom fine jewelry and transforms heirlooms using traditional metalsmithing techniques, led by award-winning designer Stacey Krantz.",
+    "notable": "Walk-ins are welcome, though appointments are prioritized.",
+    "source": {
+      "url": "https://www.inbloomjewelry.com/",
+      "fetchedAt": "2026-08-01T09:50:28.384Z",
+      "contentHash": "a20c7329cbcac00f55d91cf5d832129d9aa389340546974f0c59a214e2b79618",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "hispanos-sin-fronteras": {
+    "name": "Hispanos Sin Fronteras",
+    "hours_text": "Monday–Friday 8:00 a.m.–6:00 p.m.",
+    "known_for": "Hispanos Sin Fronteras helps Hispanic business owners achieve professional success in the United States by providing support from business conception through licensing, legal procedures, and business realization.",
+    "source": {
+      "url": "https://hispanossinfronteras.com/",
+      "fetchedAt": "2026-08-01T09:50:30.295Z",
+      "contentHash": "a3bf40d8e483b9550be1b381e02f09d24e4886be167832f285831aedb0fd9ca6",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "key-city-tattoo": {
+    "name": "Key City Tattoo",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/A2VWR8ZHXXSQR/order",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.keycitytattoos.com/"
+      }
+    ],
+    "hours_text": "Frederick location: Tues-Sat 12pm-8pm. Urbana location: Mon-Sat 11am-7pm.",
+    "known_for": "Key City Tattoo offers custom tattoo services at two locations in Frederick, Maryland, with multiple artists available at each shop.",
+    "notable": "Piercing services are available only at the Urbana location.",
+    "source": {
+      "url": "https://www.keycitytattoos.com/",
+      "fetchedAt": "2026-08-01T09:50:31.837Z",
+      "contentHash": "cd0e4240cf8547f7cfa153b003e827cf0c8206777a21dad19a3f267218adf8a6",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "common-market": {
+    "name": "Common Market",
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://www.commonmarket.coop/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.commonmarket.coop/shop/special-order/",
+        "anchor_text": "Special Order",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "order",
+        "url": "https://direct.chownow.com/order/14117/locations/42591",
+        "anchor_text": "7th St.",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.commonmarket.coop/shop/gift-cards/",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.commonmarket.coop/just-a-spoonful/common-market-co-op-at-the-park/",
+        "anchor_text": "Ball Park Menu",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.commonmarket.coop/departments/cafe-hotbar/",
+        "anchor_text": "SEE MENU HERE",
+        "source_url": "https://www.commonmarket.coop/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.commonmarket.coop/food/cafe-hotbar/",
+        "anchor_text": "View Café Menu",
+        "source_url": "https://www.commonmarket.coop/"
+      }
+    ],
+    "hours_text": "8am - 9pm Daily",
+    "known_for": "Common Market is a locally-owned grocery and cafe that partners with sustainable local farmers and producers within 200 miles to provide fresh, nutritious whole foods.",
+    "notable": "The cafe offers made-to-order grain bowls, sandwiches, soups, a salad bar, smoothies, coffee, and baked goods at two locations.",
+    "source": {
+      "url": "https://www.commonmarket.coop/",
+      "fetchedAt": "2026-08-01T09:50:35.402Z",
+      "contentHash": "a249f1c5a0c201c5907c29ba36dc611c81d0db01f5f9b077681cee9e0749f565",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "smoke-signals": {
+    "name": "Smoke Signals",
+    "known_for": "Smoke Signals carries the largest inventory of functional art glass in Maryland, representing over one hundred glass artists from across the United States and internationally.",
+    "source": {
+      "url": "https://www.smokesignalssmokeshop.com/",
+      "fetchedAt": "2026-08-01T09:50:37.122Z",
+      "contentHash": "c99aa3c08bc518a74298aa841b8169543c997f46ad3850e8131f4d39aaa2a1c3",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "crystal-forests-llc": {
+    "name": "Crystal Forests LLC",
+    "hours_text": "Monday 9:30am-3:00pm, Tuesday closed, Wednesday 10:00am-3:00pm, Thursday closed, Friday 10:00am-3:00pm, Saturday 10:00am-3:00pm, Sunday 9:30am-12:00pm",
+    "known_for": "Crystal Forests offers psychic readings, mediumship sessions to contact deceased loved ones, and past life regression hypnosis, with the practitioner having over 30 years of experience in psychic readings and 25 years in mediumship work.",
+    "notable": "The business is located at 141 West Patrick Street, Suite 207 in Frederick, Maryland, with ADA-compliant entrance and elevator access at the back of the building.",
+    "source": {
+      "url": "https://crystal-forests-llc.square.site/",
+      "fetchedAt": "2026-08-01T09:50:44.856Z",
+      "contentHash": "23921b37c7fb57bec002f9fdc3b251789a8aea64ae77d9b8f33f0c1ac0f063ab",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "cloud-jammer": {
+    "name": "Cloud Jammer",
+    "known_for": "Cloud Jammer sells vape products including e-juice, nicotine, glass pieces, vape mods, batteries, and accessories across multiple locations in Pennsylvania and Maryland since 2014.",
+    "source": {
+      "url": "https://www.cloud-jammervapes.com/",
+      "fetchedAt": "2026-08-01T09:50:46.051Z",
+      "contentHash": "035e52a08dfd837b1d0d932fa96efef44272e21a964eb91b3708b1a76e6dd780",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "k-town-takeout": {
+    "name": "K Town Takeout",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://k-towntakeout.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://k-towntakeout.com/"
+      }
+    ],
+    "known_for": "K-town TakeOut offers authentic Korean food, fresh sushi options, and takeout meals for busy professionals.",
+    "source": {
+      "url": "https://k-towntakeout.com/",
+      "fetchedAt": "2026-08-01T09:50:49.865Z",
+      "contentHash": "4b607305e91fb237255d6edd705a4d1b0cca9fe56ddd6e852241087d09edd3a3",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "maryland-ensemble-theatre": {
+    "name": "Maryland Ensemble Theatre",
+    "known_for": "Maryland Ensemble Theatre is a theater company in Frederick, Maryland that produces a mainstage season and offers education programs for adults, teens, and kids.",
+    "source": {
+      "url": "https://marylandensemble.org/",
+      "fetchedAt": "2026-08-01T09:50:55.727Z",
+      "contentHash": "a90c346b1ceb9e5fca06ebe4b2f49cba8e82c85eb4db27c7aedad8f69fa14562",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "shieldco": {
+    "name": "Shieldco",
+    "known_for": "ShieldCo Art creates custom metal signs and business logos in various materials including steel, aluminum, brass, and copper.",
+    "source": {
+      "url": "https://shieldcoart.com/contact/",
+      "fetchedAt": "2026-08-01T09:50:57.623Z",
+      "contentHash": "0ec395327d9cac76329315c847e655c64b0d7cc2808b0e373048ae83eb58ab2f",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "critters-reptiles-exotics": {
+    "name": "Critters Reptiles Exotics",
+    "known_for": "Critters, Reptiles & Exotics is an exotic pet store offering lizards, snakes, birds, rabbits, hamsters, guinea pigs, hedgehogs, chinchillas, sugar gliders, axolotls, and freshwater and saltwater fish for sale.",
+    "source": {
+      "url": "https://www.crepets.com/",
+      "fetchedAt": "2026-08-01T09:50:59.144Z",
+      "contentHash": "e99bf47bcecc4506c52b8525d9b5315c4e41cb99847b136d64e108c34da82a00",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "emporium-antiques": {
+    "name": "Emporium Antiques",
+    "known_for": "Emporium Antiques operates as one of the East Coast's largest antiques emporiums with nearly 100 juried dealers offering fine antiques, vintage, and mid-century items across 25,000 square feet in historic downtown Frederick.",
+    "notable": "The business has operated since 1988 in a building constructed in 1912.",
+    "source": {
+      "url": "https://emporiumantiques.com/",
+      "fetchedAt": "2026-08-01T09:51:05.588Z",
+      "contentHash": "e5fab17b201225c9443db70dbae022af8dd20dd2f6fabddb6c12193ac989c5a6",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "the-flying-barrel": {
+    "name": "The Flying Barrel",
+    "hours_text": "Monday 10:00am-4:00pm, Thursday 10:00am-4:00pm, Friday 10:00am-4:00pm, Saturday 10:00am-4:00pm, Sunday 11:00am-3:00pm. Closed Tuesday and Wednesday.",
+    "known_for": "The Flying Barrel provides a fully-equipped brew house where customers can make their own beer or wine batches up to 15 gallons with guidance from experienced instructors.",
+    "notable": "The shop offers a Beginners Special gift certificate option for those just starting out in homebrewing.",
+    "source": {
+      "url": "https://www.flyingbarrel.com/",
+      "fetchedAt": "2026-08-01T09:51:07.237Z",
+      "contentHash": "a4dd417c974630c5ffe0805edbb1e1056a24a03a54749b30209b88daf26adce5",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "chappelle-co": {
+    "name": "Chappelle Co",
+    "known_for": "Chappelle & Co. sells candles, home goods, apparel, stationery, and accessories from a retail location in Frederick, Maryland.",
+    "source": {
+      "url": "https://chappelleandco.com/",
+      "fetchedAt": "2026-08-01T09:51:20.068Z",
+      "contentHash": "7da46584404677ac77b7eafe3545c4266fe22f6a70fdf70268539497b2de6a12",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "edgeworks-knife-and-supply": {
+    "name": "Edgeworks Knife and Supply",
+    "hours_text": "Mon-Thurs: 10am-6pm ET, Fri-Sat: 10am-8pm ET, Sun: 12pm-5pm ET",
+    "known_for": "Edgeworks has been Maryland's source for fine cutlery, knives, and darts since 1993. The business offers professional sharpening services for all sorts of knives.",
+    "source": {
+      "url": "https://edgeworksonline.com/",
+      "fetchedAt": "2026-08-01T09:51:21.370Z",
+      "contentHash": "e247d3a84e4d9af70e82252db3fc3188ef915cf7008f8a31a48b2180f5380ea3",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "top-gun-collision": {
+    "name": "Top Gun Collision",
+    "hours_text": "Mon–Fri 8:00 AM – 5:00 PM, Sat–Sun Closed",
+    "known_for": "Top Gun Collision Experts provides collision repair services with I-CAR Gold Class certified technicians and accepts all insurance providers.",
+    "notable": "The business offers a lifetime warranty on all repairs and provides insurance claim assistance and coordination with major insurance providers.",
+    "source": {
+      "url": "https://www.topguncollisionrepair.com/",
+      "fetchedAt": "2026-08-01T09:51:23.356Z",
+      "contentHash": "6a3d2861d8ebdd6abc66b3e7b0ca59f346d3e8001000cd1078c414be22f7d3ad",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "tenth-ward-distilling-company": {
+    "name": "Tenth Ward Distilling Company",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.tenthwarddistilling.com/cocktail-bar-menu/",
+        "anchor_text": "COCKTAIL BAR MENU",
+        "source_url": "https://www.tenthwarddistilling.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/BMTY19HYDGWG6/order",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.tenthwarddistilling.com/"
+      }
+    ],
+    "known_for": "Tenth Ward Distilling Company is a woman-owned distillery and cocktail bar in downtown Frederick that specializes in non-traditional and unconventional spirits and canned cocktails.",
+    "notable": "The business is located at 55 East Patrick Street in what was formerly the Tenth Ward neighborhood of downtown Frederick.",
+    "source": {
+      "url": "https://www.tenthwarddistilling.com/",
+      "fetchedAt": "2026-08-01T09:51:28.645Z",
+      "contentHash": "a4baa8ae2671a4bc13e8fcbecb6f77271eb381660f4899beaa87113b6783c470",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "earthly-elements": {
+    "name": "Earthly Elements",
+    "hours_text": "Every day 12 to 6pm",
+    "known_for": "Earthly Elements carries a large variety of mineral specimens, crystals, gemstones, fossils, and metaphysical stones, as well as unique gifts.",
+    "source": {
+      "url": "https://www.earthlyrocks.com/",
+      "fetchedAt": "2026-08-01T09:51:29.888Z",
+      "contentHash": "3e95dfaea2f635c22d9d349811869656309af9260490010b11f26b0d58a984c8",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "verbena-salon-spa": {
+    "name": "Verbena Salon Spa",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.verbenasalonspa.com/gift-cards",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.verbenasalonspa.com/?srsltid=AfmBOorvkqSZvBYANIXwZISCCeZ3ZvfFWjZsEvSYfOmTfqJhrb0JkeIM"
+      }
+    ],
+    "specials": [
+      "20% off during birthday month (one-time use, cannot be combined with other discounts or packages)"
+    ],
+    "hours_text": "Sun-Wed 10am-6pm, Thu-Fri 10am-7pm, Sat 9am-6pm",
+    "known_for": "Verbena Salon & Spa offers facials, massages, body treatments, hair services, eyelash extensions, permanent makeup, nails, and waxing in historic downtown Frederick.",
+    "notable": "The salon relocated and expanded its hair services in 2019 and features ample parking in downtown Frederick.",
+    "source": {
+      "url": "https://www.verbenasalonspa.com/?srsltid=AfmBOorvkqSZvBYANIXwZISCCeZ3ZvfFWjZsEvSYfOmTfqJhrb0JkeIM",
+      "fetchedAt": "2026-08-01T09:51:32.433Z",
+      "contentHash": "24928d38bcd78245838833999bb3a7bae87845a8fd2a038a5cdfe84d48481a9f",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "wheel-base-bikes": {
+    "name": "Wheel Base Bikes",
+    "hours_text": "Mon-Sat: 10:00am - 6:00pm, Sun: Closed",
+    "known_for": "Wheel Base Bikes sells bicycles including road, mountain, commuter, comfort, cruiser, fitness, and hybrid models, along with parts and accessories.",
+    "source": {
+      "url": "https://www.wheelbasebikes.com/",
+      "fetchedAt": "2026-08-01T09:51:34.313Z",
+      "contentHash": "e28d6886fb7451c43991f547eace350fd48474064fe628007421a2c2bb13dff8",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "ar-workshop": {
+    "name": "Ar Workshop",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.arworkshop.com/tulsa/arw-gift-card/",
+        "anchor_text": "BUY GIFT CARDS",
+        "source_url": "https://www.arworkshop.com/frederick/"
+      }
+    ],
+    "source": {
+      "url": "https://www.arworkshop.com/frederick/",
+      "fetchedAt": "2026-08-01T09:51:37.622Z",
+      "contentHash": "c5a3a5cb06e65e5ff1b41df0ec46a7cac88c1947a485afcebe7f59b839c67258",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "the-original-popcorn-house": {
+    "name": "The Original Popcorn House",
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.originalpopcornhouse.com/contact",
+        "anchor_text": "Order Online",
+        "source_url": "https://www.originalpopcornhouse.com/"
+      }
+    ],
+    "known_for": "The business handcrafts gourmet popcorn using premium ingredients including Belgian chocolate, premium cheeses, and 100% pure coconut oil, with each batch carefully sifted for texture and flavor.",
+    "source": {
+      "url": "https://www.originalpopcornhouse.com/",
+      "fetchedAt": "2026-08-01T09:51:39.011Z",
+      "contentHash": "4d1bca43a9b9a12f17edd2a0cfa73865db7bf5abc82dabd95de5f4e643ddf01e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "embark-skateboard-shop": {
+    "name": "Embark Skateboard Shop",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://embarkskateshop.com/collections/gift-cards",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://embarkskateshop.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/EH3616BCAM47M/order",
+        "anchor_text": "DIGITAL GIFT CARDS",
+        "source_url": "https://embarkskateshop.com/"
+      }
+    ],
+    "hours_text": "Mon - Sat: 11am - 7pm, Sunday: 12pm - 5pm",
+    "known_for": "Embark Skateboard Shop sells skateboarding decks, trucks, wheels, bearings, and apparel, with Embark exclusive items and work from local and visiting artists displayed on a gallery wall.",
+    "source": {
+      "url": "https://embarkskateshop.com/",
+      "fetchedAt": "2026-08-01T09:51:40.617Z",
+      "contentHash": "8282b018f192279c03b222344a8b6687fbe659156253d145fb28c448b52d49c2",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "tire-pros-of-frederick": {
+    "name": "Tire Pros of Frederick",
+    "known_for": "Tire Pros of Frederick sells brand name tires and provides automotive service work with a reputation built on quality, affordability, and customer satisfaction.",
+    "source": {
+      "url": "https://www.tireprosoffrederick.com/",
+      "fetchedAt": "2026-08-01T09:51:41.895Z",
+      "contentHash": "638cee5e66cf30a1c01d02612da7d8042d23b0772a93b050e10c4ff724a6c51d",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "the-trail-house": {
+    "name": "The Trail House",
+    "hours_text": "Mon-Sat: 10am - 6pm, Sunday: 11am - 5pm",
+    "known_for": "The Trail House sells outdoor clothing, shoes, and gear for various outdoor activities.",
+    "notable": "The business is family-owned since 1984 and located in downtown Frederick.",
+    "source": {
+      "url": "https://www.trailhouse.com/",
+      "fetchedAt": "2026-08-01T09:51:44.936Z",
+      "contentHash": "5e35f50a096a87d3d0b572c9512af097fb6665295d5ba1f3f4d8399b5c74975f",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "recycles-bikes": {
+    "name": "Recycles Bikes",
+    "hours_text": "Monday-Friday by appointment, Saturday 11:00 AM–5:00 PM walk-in, Sunday closed. Online shopping available 24/7/365.",
+    "known_for": "ReCycles Bikes sells pre-owned bicycles that have been thoroughly rebuilt and inspected, backed by a lifetime tune-ups warranty.",
+    "notable": "Members earn 10% store credit on every purchase and receive free flat repair service.",
+    "source": {
+      "url": "https://recyclesbicycleshop.com/",
+      "fetchedAt": "2026-08-01T09:51:47.277Z",
+      "contentHash": "aee1fe490935af681ed0010fa5f13f71583e8ce4fc346b149d113653b5a1239a",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "happiness-is-balance-frederick-md": {
+    "name": "Happiness Is Balance Frederick MD",
+    "hours_text": "Mon 2:00 pm – 8:00 pm, Tue 2:00 pm – 8:00 pm, Wed by appointment, Thu by appointment, Fri 2:00 pm – 8:00 pm, Sat 10:00 am – 4:00 pm, Sun closed. By appointment only; no walk-ins.",
+    "known_for": "Happiness Is Balance offers massage therapy, personal training, life coaching, food education, situational awareness instruction, and firearms training.",
+    "notable": "The business requires a minimum 48-hour cancellation notice and charges 95% of the service fee for missed sessions.",
+    "source": {
+      "url": "https://happinessisbalance.net/",
+      "fetchedAt": "2026-08-01T09:51:49.414Z",
+      "contentHash": "d6222eb5ef3f8b17a8eacddd47d5f19eb8c52a1cc2a440bf4aaa5cd3fb3f46c5",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "bk-juices": {
+    "name": "Bk Juices",
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://www.bkjuicescafe.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.bkjuicescafe.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.bkjuicescafe.com/s/order",
+        "anchor_text": "Order Online",
+        "source_url": "https://www.bkjuicescafe.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/MLXT8WX9VET8K/order",
+        "anchor_text": "Gift card",
+        "source_url": "https://www.bkjuicescafe.com/"
+      }
+    ],
+    "hours_text": "Tuesday–Saturday 10:00 am–6:00 pm, Sunday 10:00 am–5:00 pm, closed Monday",
+    "known_for": "BK Juices makes fresh juices, smoothies, and juice cleanses designed to support health and wellness.",
+    "notable": "The business hosts recurring karaoke events called Sip & Sing that feature live music, mocktails, and lite fare.",
+    "source": {
+      "url": "https://www.bkjuicescafe.com/",
+      "fetchedAt": "2026-08-01T09:51:58.621Z",
+      "contentHash": "bbecdc1d74389a34e6b5df444b0720c91da0477c5ccabab1c6fceaf439c879b5",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "bentztown": {
+    "name": "Bentztown",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://bentztown.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://bentztown.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/bentz-town-south-bentz-street",
+        "anchor_text": "Online Ordering",
+        "source_url": "https://bentztown.com/"
+      }
+    ],
+    "happy_hour": "Sun-Fri 3-6pm: half off draft beer, cocktails, and wine by the glass, plus select starters",
+    "specials": [
+      "Line dancing every Wednesday 7:30-9:30pm",
+      "Live bluegrass jam every Thursday 7-9pm",
+      "Brunch Saturday and Sunday 10am-3pm"
+    ],
+    "hours_text": "Monday-Thursday 11am-10pm, Friday 11am-12am, Saturday 10am-12am, Sunday 10am-10pm",
+    "known_for": "Bentztown is a Southern-inspired restaurant and bar featuring live music performances, craft cocktails, and bourbon selections alongside Nashville-inspired food.",
+    "notable": "Bentztown offers a late-night menu on Friday and Saturday nights and can accommodate private events across multiple dedicated spaces.",
+    "source": {
+      "url": "https://bentztown.com/",
+      "fetchedAt": "2026-08-01T09:52:01.577Z",
+      "contentHash": "6b0357ce0f6239595dd2c08a345ce96fee6b60b25cbddcd94b56520bf37444ba",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "quartermasters-cigars": {
+    "name": "Quartermasters Cigars",
+    "hours_text": "Monday–Thursday 10am–9pm, Friday 10am–12am, Saturday 10am–10pm, Sunday 11am–7pm",
+    "known_for": "Quartermasters Cigars is a retailer of fine cigars, cigar accessories, and specialty tobaccos with a 1,780 square foot lounge and 1,100 square foot outside smoking patio.",
+    "notable": "The lounge includes seating for over 35 people indoors and 20 on the patio, with a pool table, high-speed wireless internet, outlets, and five flat screen televisions.",
+    "source": {
+      "url": "https://www.qc-cigars.com/",
+      "fetchedAt": "2026-08-01T09:52:11.849Z",
+      "contentHash": "a9efff1a9ce3d64d5aba13d764bd3e231307385df1d9302b3e2b97589b49c832",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   }
 }
