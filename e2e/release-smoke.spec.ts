@@ -35,6 +35,10 @@ const EXPECTED_NAVIGATION_ABORTS = [
   // honest availability. Leaving the map may cancel that no-store request;
   // it carries no user state and LiveRotorcraft already fails soft.
   /^\/api\/aviation\/rotorcraft$/,
+  // A place sheet can still be painting its optional static preview when the
+  // user follows the full-page link. Navigation cancels that image request;
+  // real HTTP failures remain covered by the response-status guard above.
+  /^\/api\/static-map$/,
 ];
 
 const VIEWPORTS = [
