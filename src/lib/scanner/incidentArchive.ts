@@ -5,8 +5,9 @@
  * appends any not yet stored, so the trend surfaces have a past to read. Only
  * the same de-identified public calls the map/feed show are ever written; the
  * unique dedupe_key stops the same call banking twice across cron cycles.
- * Fail-soft: no DB (dormant / not migrated) → a clean no-op, exactly like the
- * rest of the DB-backed features.
+ * The reader surfaces fail soft, but this scheduled writer reports unavailable
+ * storage as incomplete so deployment monitoring cannot mistake a no-op for a
+ * healthy archive.
  */
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
@@ -44,9 +45,17 @@ export async function archiveScannerIncidents(): Promise<{
   seen: number;
   inserted: number;
   complete: boolean;
+  reason?: "database_unavailable" | "storage_write_failed";
 }> {
   const db = getDb();
-  if (!db) return { seen: 0, inserted: 0, complete: true };
+  if (!db) {
+    return {
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "database_unavailable",
+    };
+  }
 
   // Bank the FULL public-page window (~3 weeks), not just the last hour. Every
   // run re-reads the whole page; the unique dedupe_key drops everything already
@@ -91,7 +100,12 @@ export async function archiveScannerIncidents(): Promise<{
     } catch {
       // Table not migrated yet / transient error. Stop after the first failed
       // batch so a degraded database cannot consume the whole cron window.
-      return { seen: rows.length, inserted: insertedCount, complete: false };
+      return {
+        seen: rows.length,
+        inserted: insertedCount,
+        complete: false,
+        reason: "storage_write_failed",
+      };
     }
   }
 

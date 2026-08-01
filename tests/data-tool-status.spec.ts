@@ -1,0 +1,97 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  activationFlagNames,
+  classifyDataTools,
+  renderDataToolStatus,
+} from "../scripts/lib/data-tool-status";
+
+const schedules = new Map([
+  ["/api/cron/hours-refresh", "0 8 * * *"],
+]);
+
+describe("data-tool activation status", () => {
+  it("distinguishes a disabled job from an enabled job missing requirements", () => {
+    const disabled = classifyDataTools({}, schedules).find(
+      (tool) => tool.id === "hours-refresh",
+    );
+    expect(disabled).toMatchObject({ status: "disabled", missing: [] });
+
+    const incomplete = classifyDataTools(
+      { HOURS_REFRESH_CRON: "1", CRON_SECRET: "configured" },
+      schedules,
+    ).find((tool) => tool.id === "hours-refresh");
+    expect(incomplete).toMatchObject({
+      status: "missing_configuration",
+      missing: [
+        "one of DATABASE_URL, POSTGRES_URL, SUPABASE_DB_URL",
+        "GOOGLE_PLACES_API_KEY",
+      ],
+    });
+  });
+
+  it("marks a fully configured scheduled job active", () => {
+    const status = classifyDataTools(
+      {
+        HOURS_REFRESH_CRON: "1",
+        CRON_SECRET: "configured",
+        DATABASE_URL: "configured",
+        GOOGLE_PLACES_API_KEY: "configured",
+      },
+      schedules,
+    ).find((tool) => tool.id === "hours-refresh");
+
+    expect(status).toMatchObject({
+      status: "active",
+      schedule: "0 8 * * *",
+      missing: [],
+    });
+  });
+
+  it("treats missing Vercel schedule wiring as missing configuration", () => {
+    const status = classifyDataTools(
+      {
+        HOURS_REFRESH_CRON: "1",
+        CRON_SECRET: "configured",
+        DATABASE_URL: "configured",
+        GOOGLE_PLACES_API_KEY: "configured",
+      },
+      new Map(),
+    ).find((tool) => tool.id === "hours-refresh");
+
+    expect(status).toMatchObject({
+      status: "missing_configuration",
+      missing: ["vercel.json:/api/cron/hours-refresh"],
+    });
+  });
+
+  it("never includes environment values in the text report", () => {
+    const secret = "never-print-this-secret-value";
+    const report = renderDataToolStatus(
+      classifyDataTools(
+        {
+          HOURS_REFRESH_CRON: "1",
+          CRON_SECRET: secret,
+          DATABASE_URL: secret,
+        },
+        schedules,
+      ),
+    );
+
+    expect(report).not.toContain(secret);
+    expect(report).toContain("GOOGLE_PLACES_API_KEY");
+  });
+
+  it("documents every supported activation flag in .env.example", () => {
+    const envExample = readFileSync(
+      resolve(process.cwd(), ".env.example"),
+      "utf8",
+    );
+    for (const flag of activationFlagNames()) {
+      expect(envExample, `${flag} must be documented`).toMatch(
+        new RegExp(`^${flag}=`, "m"),
+      );
+    }
+  });
+});

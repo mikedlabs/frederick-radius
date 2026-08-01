@@ -1,7 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { chunkArchiveRows, dedupeArchiveRows } from "./incidentArchive";
+import { describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({ getDb: vi.fn() }));
+
+vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
+
+import {
+  archiveScannerIncidents,
+  chunkArchiveRows,
+  dedupeArchiveRows,
+} from "./incidentArchive";
 
 describe("scanner archive batching", () => {
+  it("reports an unavailable database as an incomplete archive", async () => {
+    mocks.getDb.mockReturnValue(null);
+
+    await expect(archiveScannerIncidents()).resolves.toEqual({
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "database_unavailable",
+    });
+  });
+
   it("keeps only the first row for each incident key", () => {
     const rows = [
       { dedupe_key: "fire|Market St|1", value: "page" },
