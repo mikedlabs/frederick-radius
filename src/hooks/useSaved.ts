@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { ensurePersistentStorage } from "@/lib/persistence";
+import {
+  cancelPendingReturnBridgeValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
 
 const KEY = "fr:saved:v1";
 
@@ -80,6 +84,14 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
       ? items.filter((s) => !(s.type === type && s.id === id))
       : [...items, { type, id, saved_at: new Date().toISOString() }];
     write(next);
+    if (!exists && type !== "beer") signalReturnBridgeValue(type);
+    if (
+      exists
+      && type !== "beer"
+      && !next.some((item) => item.type === type)
+    ) {
+      cancelPendingReturnBridgeValue(type);
+    }
     if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
     }
@@ -93,6 +105,7 @@ export function addSaved(type: SavedRef["type"], id: string) {
   const items = read();
   if (items.some((s) => s.type === type && s.id === id)) return;
   write([...items, { type, id, saved_at: new Date().toISOString() }]);
+  if (type !== "beer") signalReturnBridgeValue(type);
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
     try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
   }

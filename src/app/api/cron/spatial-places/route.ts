@@ -23,6 +23,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       enabled: true,
       healthy: true,
+      checked: result.checked,
+      changed: result.upserted,
       upserted: result.upserted,
       retired: result.retired,
       current: result.audit.current,

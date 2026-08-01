@@ -72,6 +72,7 @@ import {
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
 import { mapEventSourcesWithConcurrency } from "@/lib/integrations/event-source-circuit";
+import { rememberServedEvents } from "@/lib/events/served-event-snapshot";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -554,5 +555,7 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   const isCurrent = Math.abs(now.getTime() - Date.now()) <= 300_000;
   if (!isCurrent) return assembleRaw(now);
 
-  return hydrateUnifiedEvents(await cachedAssemble());
+  const result = hydrateUnifiedEvents(await cachedAssemble());
+  rememberServedEvents(result.publicEvents);
+  return result;
 }

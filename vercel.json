@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/event-archive",
-      "schedule": "11 */2 * * *"
+      "schedule": "4,34 * * * *"
     },
     {
       "path": "/api/cron/warm-map",

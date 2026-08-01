@@ -22,7 +22,7 @@ describe("durable event archive schedule", () => {
     expect(schedules.get("/api/cron/warm-events"))
       .toBe("*/15 * * * *");
     expect(schedules.get("/api/cron/event-archive"))
-      .toBe("11 */2 * * *");
+      .toBe("4,34 * * * *");
     expect(warmRoute).not.toContain("syncEventArchiveBatch");
   });
 });

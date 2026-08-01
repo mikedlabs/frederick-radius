@@ -6,7 +6,9 @@
  * WHY THIS EXISTS
  * ---------------
  * /today + /events + /map read assembleUnifiedEvents (unstable_cache, 840s);
- * the /events/[slug] resolver reads getCachedLiveEvents (840s).
+ * the durable event-archive worker reads getCachedLiveEvents (840s).
+ * Visitor event details stay on seed/archive/database-only fallbacks and
+ * never start this provider fanout.
  * Those caches are LAZY: an expired cache can block up to ~8s awaiting the
  * slowest upstream feed. Their explicit version keys survive ordinary
  * deploys, so a release itself no longer creates a cold first-visitor window.
@@ -59,9 +61,10 @@ export async function GET(request: Request) {
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:
   //  - assembleUnifiedEvents → unified-events-v24   (/today, /events, /map)
-  //  - getCachedLiveEvents(90) → compact source pages (/events/[slug])
+  //  - getCachedLiveEvents(90) → durable event-archive source horizon
   // Each source page stays below the persistent-cache byte ceiling; warming
-  // the detail horizon prevents a visitor from paying its cold source read.
+  // the archive horizon keeps durable identity current without making a
+  // visitor pay for a cold source read.
   //
   // The two cache products have to remain distinct, but their cold fills do
   // not need two upstream waterfalls. This request-scoped session pulls

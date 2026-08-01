@@ -14,6 +14,7 @@ export type RadiusToolIcon =
   | "coffee"
   | "compass"
   | "dog"
+  | "download"
   | "history"
   | "landmark"
   | "map"
@@ -701,6 +702,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "settings",
         tone: "cool",
         keywords: ["settings", "home town", "preferences"],
+      },
+      {
+        id: "keep-radius",
+        label: "Keep Radius handy",
+        description: "Add Radius to this device or save a return link.",
+        href: "/settings#keep-radius",
+        icon: "download",
+        tone: "brand",
+        keywords: ["install", "home screen", "bookmark", "return", "app"],
       },
       {
         id: "notifications",

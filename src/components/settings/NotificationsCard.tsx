@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 import { isIos, isStandalone } from "@/lib/pwa-display";
+import { openReturnBridge } from "@/lib/return-bridge";
 import { getHomeMuni } from "@/lib/personalize";
 import {
   haptic,
@@ -564,7 +565,7 @@ function PushNotificationsCard() {
         </p>
         <button
           type="button"
-          onClick={() => window.dispatchEvent(new Event("fr:open-install"))}
+          onClick={openReturnBridge}
           className="tactile-interactive mt-3 inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] border px-3 text-[13px] font-semibold transition active:scale-[0.98]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
         >
