@@ -102,6 +102,12 @@ function writeSavedBuses(buses: SavedTransitBus[]): boolean {
   return persistent;
 }
 
+export function shouldSignalSavedTransitBus(
+  result: Pick<SavedBusToggleResult, "saved" | "limitReached">,
+): boolean {
+  return result.saved && !result.limitReached;
+}
+
 export function useSavedTransitBuses(): {
   buses: SavedTransitBus[];
   toggle: (
@@ -127,7 +133,7 @@ export function useSavedTransitBuses(): {
     const persistent = result.limitReached
       ? !storageBlocked
       : writeSavedBuses(result.buses);
-    if (result.saved && persistent && !result.limitReached) {
+    if (shouldSignalSavedTransitBus(result)) {
       signalReturnBridgeValue("transit-bus");
     } else if (!result.saved && result.buses.length === 0) {
       cancelPendingReturnBridgeValue("transit-bus");

@@ -20,6 +20,7 @@ import {
   recordReturnBridgeValue,
   returnBridgeOfferReason,
   returnBridgeSurface,
+  shouldReplaceReturnBridgeOffer,
   writeReturnBridgeState,
   type ReturnBridgeOfferReason,
   type ReturnBridgeState,
@@ -153,7 +154,19 @@ export function useInstallPrompt(): {
     }
 
     const schedule = (nextReason: ReturnBridgeOfferReason) => {
-      if (revealTimerRef.current || eligibleRef.current) return;
+      if (eligibleRef.current) return;
+      if (revealTimerRef.current) {
+        if (
+          !shouldReplaceReturnBridgeOffer(
+            revealReasonRef.current,
+            nextReason,
+          )
+        ) {
+          return;
+        }
+        clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
       revealReasonRef.current = nextReason;
       revealTimerRef.current = setTimeout(() => {
         revealTimerRef.current = null;

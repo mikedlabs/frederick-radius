@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { toggleSlug } from "@/hooks/useFollows";
+import {
+  shouldCancelPlaceReturnBridgeAfterDelete,
+  toggleSlug,
+} from "@/hooks/useFollows";
 
 /**
  * toggleSlug is the pure core of the optimistic follow path. The hook
@@ -39,5 +42,41 @@ describe("toggleSlug", () => {
     const added = toggleSlug(start, "sky-stage").next;
     const removed = toggleSlug(added, "sky-stage").next;
     expect([...removed].sort()).toEqual([...start].sort());
+  });
+});
+
+describe("place Return Bridge cleanup", () => {
+  it("cancels only after a successful delete leaves the latest store empty", () => {
+    expect(
+      shouldCancelPlaceReturnBridgeAfterDelete(
+        true,
+        new Set<string>(),
+        "brewers-alley",
+      ),
+    ).toBe(true);
+  });
+
+  it("preserves the signal when the delete failed or another follow remains", () => {
+    expect(
+      shouldCancelPlaceReturnBridgeAfterDelete(
+        true,
+        new Set<string>(["brewers-alley"]),
+        "brewers-alley",
+      ),
+    ).toBe(false);
+    expect(
+      shouldCancelPlaceReturnBridgeAfterDelete(
+        true,
+        new Set<string>(["sky-stage"]),
+        "brewers-alley",
+      ),
+    ).toBe(false);
+    expect(
+      shouldCancelPlaceReturnBridgeAfterDelete(
+        false,
+        new Set<string>(),
+        "brewers-alley",
+      ),
+    ).toBe(false);
   });
 });

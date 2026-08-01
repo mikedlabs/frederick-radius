@@ -277,10 +277,10 @@ export async function getLiveCardEventBySlug(
   slug: string,
   windowDays = 90,
   options: {
-  signal?: AbortSignal;
-  deadline?: number;
-  allowNetwork?: boolean;
-} = {},
+    signal?: AbortSignal;
+    deadline?: number;
+    allowNetwork?: boolean;
+  } = {},
 ): Promise<EventWithMeta | null> {
   if (
     options.signal?.aborted ||

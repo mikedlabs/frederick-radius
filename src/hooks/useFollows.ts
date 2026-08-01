@@ -98,6 +98,19 @@ export function toggleSlug(
   return { next, wasFollowed };
 }
 
+export function shouldCancelPlaceReturnBridgeAfterDelete(
+  wasFollowed: boolean,
+  live: ReadonlySet<string> | null,
+  slug: string,
+): boolean {
+  return (
+    wasFollowed
+    && live !== null
+    && !live.has(slug)
+    && live.size === 0
+  );
+}
+
 /* ----------------------------------------------------------------------
  * Shared remote-follow store. `null` means "not yet hydrated from
  * /api/follows" (distinct from "hydrated and empty"). Reads return a
@@ -275,9 +288,6 @@ export function useToggleFollow(slug: string, source?: string) {
     const current = remoteStore ?? new Set<string>();
     const { next, wasFollowed } = toggleSlug(current, slug);
     writeRemote(next);
-    if (wasFollowed && next.size === 0) {
-      cancelPendingReturnBridgeValue("place");
-    }
     track("save_place", { on: !wasFollowed, source: source ?? "place_detail", synced: true });
 
     void fetch("/api/follows", {
@@ -289,7 +299,15 @@ export function useToggleFollow(slug: string, source?: string) {
     })
       .then((r) => {
         if (!r.ok) throw new Error("follow write failed");
-        if (!wasFollowed && remoteStore?.has(slug)) {
+        if (
+          shouldCancelPlaceReturnBridgeAfterDelete(
+            wasFollowed,
+            remoteStore,
+            slug,
+          )
+        ) {
+          cancelPendingReturnBridgeValue("place");
+        } else if (!wasFollowed && remoteStore?.has(slug)) {
           signalReturnBridgeValue("place");
         }
         // Only mirror the push topic once the follow actually persisted, so a

@@ -33,6 +33,12 @@ export type ReturnBridgeState = {
 
 export type ReturnBridgeOfferReason = "value" | "social" | "return";
 
+const RETURN_BRIDGE_OFFER_PRIORITY: Record<ReturnBridgeOfferReason, number> = {
+  social: 1,
+  return: 2,
+  value: 3,
+};
+
 export type ReturnBridgeSurface =
   | "installed"
   | "native"
@@ -209,6 +215,23 @@ export function returnBridgeOfferReason(
   if (options.socialEntry && state.lastOfferAt === 0) return "social";
   if (state.sessions >= 2) return "return";
   return null;
+}
+
+export function shouldReplaceReturnBridgeOffer(
+  current: ReturnBridgeOfferReason | null,
+  next: ReturnBridgeOfferReason,
+): boolean {
+  return (
+    current === null
+    || RETURN_BRIDGE_OFFER_PRIORITY[next] > RETURN_BRIDGE_OFFER_PRIORITY[current]
+  );
+}
+
+export function shouldSignalHomeAreaValue(
+  previous: string | null,
+  next: string | null,
+): boolean {
+  return next !== null && next !== previous;
 }
 
 export function isEmbeddedBrowserUserAgent(userAgent: string): boolean {

@@ -37,6 +37,7 @@ import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
 import {
   cancelPendingReturnBridgeValue,
+  shouldSignalHomeAreaValue,
   signalReturnBridgeValue,
 } from "@/lib/return-bridge";
 
@@ -100,10 +101,13 @@ export default function PreferencesPanel() {
   }, []);
 
   const changeMuni = useCallback((slug: string | null) => {
+    const previous = getHomeMuni();
     haptic("light");
     setMuni(slug);
     setHomeMuni(slug);
-    if (slug && getHomeMuni() === slug) signalReturnBridgeValue("home-area");
+    if (shouldSignalHomeAreaValue(previous, slug)) {
+      signalReturnBridgeValue("home-area");
+    }
     if (!slug) cancelPendingReturnBridgeValue("home-area");
     setMuniEditing(false);
   }, []);
@@ -138,6 +142,7 @@ export default function PreferencesPanel() {
       return;
     haptic("medium");
     setHomeMuni(null);
+    cancelPendingReturnBridgeValue("home-area");
     setInterests([]);
     resetModeState();
     document.cookie = "fr_onboarded=; path=/; max-age=0; samesite=lax";

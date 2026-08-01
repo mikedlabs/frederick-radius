@@ -15,6 +15,8 @@ import {
   returnBridgeOfferReason,
   returnBridgeSurface,
   safeReturnLink,
+  shouldReplaceReturnBridgeOffer,
+  shouldSignalHomeAreaValue,
 } from "./return-bridge";
 
 const NOW = Date.parse("2026-07-31T16:00:00.000Z");
@@ -140,6 +142,22 @@ describe("Return Bridge state", () => {
 
     const shown = markReturnBridgeOfferShown(saved, NOW + 1);
     expect(clearPendingReturnBridgeValue(shown, "event")).toBe(shown);
+  });
+
+  it("only treats a changed non-empty home area as new value", () => {
+    expect(shouldSignalHomeAreaValue("frederick", "frederick")).toBe(false);
+    expect(shouldSignalHomeAreaValue(null, null)).toBe(false);
+    expect(shouldSignalHomeAreaValue("frederick", null)).toBe(false);
+    expect(shouldSignalHomeAreaValue("frederick", "brunswick")).toBe(true);
+    expect(shouldSignalHomeAreaValue(null, "brunswick")).toBe(true);
+  });
+
+  it("lets value offers replace lower-priority pending offers", () => {
+    expect(shouldReplaceReturnBridgeOffer("social", "value")).toBe(true);
+    expect(shouldReplaceReturnBridgeOffer("return", "value")).toBe(true);
+    expect(shouldReplaceReturnBridgeOffer("social", "return")).toBe(true);
+    expect(shouldReplaceReturnBridgeOffer("value", "social")).toBe(false);
+    expect(shouldReplaceReturnBridgeOffer("value", "value")).toBe(false);
   });
 });
 
