@@ -117,16 +117,16 @@ There are 50 empty town/kind cells in the committed baseline.
 
 ## Brewery media trust
 
-The beer guide tracks 17 breweries. Legacy first-party
-Google mirrors exist for 16, but those bytes
-do not carry the exact individual source metadata required by the current
-publishing policy and are never rendered directly.
+The beer guide tracks 17 breweries. Source photo
+candidates exist for 16; only candidates with
+exact individual source metadata pass the publishing policy and use the
+no-store photo transport.
 
 | Check | Count |
 | --- | ---: |
 | Exact-attribution photos publishable now | 16 |
-| Legacy candidates waiting for attribution | 0 |
-| Breweries without a legacy candidate | 1 |
+| Source candidates waiting for attribution | 0 |
+| Breweries without a source candidate | 1 |
 
 Preferred operator path: in GitHub Actions, run **Google photo attribution
 backfill** with a reviewed limit. The first 16 eligible candidates are the

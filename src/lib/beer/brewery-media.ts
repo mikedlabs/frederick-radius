@@ -1,5 +1,4 @@
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
-import LEGACY_PHOTO_RAW from "@/data/places-photos.json" with { type: "json" };
 import { BREWERIES } from "@/data/beers";
 import {
   publishableGooglePhotoAttribution,
@@ -23,7 +22,7 @@ export type BreweryPhotoMap = Readonly<
 
 export type BreweryMediaCoverage = {
   breweries: number;
-  legacyMirrorPresent: number;
+  photoCandidates: number;
   publishable: number;
   waitingForAttribution: number;
   noPhotoCandidate: number;
@@ -33,7 +32,6 @@ const ENRICHMENT = ENRICHMENT_RAW as Record<
   string,
   BreweryPhotoEnrichment
 >;
-const LEGACY_PHOTOS = LEGACY_PHOTO_RAW as Record<string, string>;
 
 function photoProxy(
   photoName: string,
@@ -56,11 +54,8 @@ function photoProxy(
  * Select a brewery image only when its Google photo resource has the exact
  * individual source metadata required by the shared publishing policy.
  *
- * `places-photos.json` is deliberately not a render source. Those URLs are
- * legacy first-party mirrors of Google bytes and carry no per-image
- * attribution record. The mirror is useful as an operator signal that a
- * visually reviewed candidate existed, but it cannot bypass the current
- * no-store transport and attribution rule.
+ * Photo resource names alone are deliberately not a render source. Publishing
+ * requires an exact per-image source record and the no-store transport below.
  */
 export function resolvePublishableBreweryPhoto(
   slug: string,
@@ -97,26 +92,27 @@ export function breweryPhotoMap(): BreweryPhotoMap {
 }
 
 export function breweryMediaCoverage(): BreweryMediaCoverage {
-  let legacyMirrorPresent = 0;
+  let photoCandidates = 0;
   let publishable = 0;
   let waitingForAttribution = 0;
 
   for (const brewery of BREWERIES) {
-    const hasLegacy = Boolean(LEGACY_PHOTOS[brewery.slug]);
+    const enrichment = ENRICHMENT[brewery.slug];
+    const hasCandidate = Boolean(enrichment?.photo_names?.length);
     const asset = resolvePublishableBreweryPhoto(
       brewery.slug,
-      ENRICHMENT[brewery.slug],
+      enrichment,
     );
-    if (hasLegacy) legacyMirrorPresent += 1;
+    if (hasCandidate) photoCandidates += 1;
     if (asset) publishable += 1;
-    if (hasLegacy && !asset) waitingForAttribution += 1;
+    if (hasCandidate && !asset) waitingForAttribution += 1;
   }
 
   return {
     breweries: BREWERIES.length,
-    legacyMirrorPresent,
+    photoCandidates,
     publishable,
     waitingForAttribution,
-    noPhotoCandidate: BREWERIES.length - legacyMirrorPresent,
+    noPhotoCandidate: BREWERIES.length - photoCandidates,
   };
 }

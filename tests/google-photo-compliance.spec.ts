@@ -1,7 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+function sourceFiles(path: URL): URL[] {
+  return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, path);
+    if (entry.isDirectory()) return sourceFiles(child);
+    return /\.(?:ts|tsx)$/.test(entry.name) ? [child] : [];
+  });
+}
 
 describe("Google photo storage guardrails", () => {
   it("keeps the photo transport no-store and free of permanent Blob writes", () => {
@@ -15,17 +23,24 @@ describe("Google photo storage guardrails", () => {
     expect(route).not.toContain('new Response("Too Many Requests"');
   });
 
-  it("leaves the legacy download command as a hard refusal", () => {
-    const script = read("scripts/download-photos.ts");
-    expect(script).toContain("Refusing to mirror Google Places photos.");
-    expect(script).not.toContain("@vercel/blob");
-    expect(script).not.toMatch(/\bput\s*\(/);
-  });
+  it("has no legacy mirror artifact, command, renderer, or loader", () => {
+    const root = new URL("../", import.meta.url);
+    expect(existsSync(new URL("src/data/places-photos.json", root))).toBe(false);
+    expect(existsSync(new URL("src/lib/places-photos.ts", root))).toBe(false);
+    expect(existsSync(new URL("scripts/download-photos.ts", root))).toBe(false);
+    expect(existsSync(new URL("docs/PHOTO_DOWNLOADER.md", root))).toBe(false);
 
-  it("does not select the legacy permanent Blob map for public place photos", () => {
-    const loader = read("src/lib/loaders/places.ts");
-    expect(loader).not.toContain('from "@/lib/places-photos"');
-    expect(loader).not.toContain("placePhotoBlob(");
+    const packageJson = JSON.parse(read("package.json")) as {
+      scripts?: Record<string, string>;
+    };
+    expect(packageJson.scripts?.["download:photos"]).toBeUndefined();
+
+    for (const file of sourceFiles(new URL("src/", root))) {
+      const source = readFileSync(file, "utf8");
+      expect(source, file.pathname).not.toMatch(
+        /places-photos(?:\.json)?|placePhotoBlob|legacyMirrorPresent/,
+      );
+    }
 
     const clientLoader = read("src/lib/loaders/places-client.ts");
     expect(clientLoader).toContain("withoutUnpublishableGooglePhoto");

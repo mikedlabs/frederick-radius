@@ -132,13 +132,9 @@ export const getWorthALookToday = unstable_cache(
     const STRIDE = 7;
     return rotatePickDistinct(pool, start, 6, STRIDE);
   },
-  // Cache key includes the current deployment hash so any data
-  // change (e.g. places-photos.json gaining downloaded Blob URLs)
-  // busts the cache automatically on deploy. Without this, the
-  // 60-minute revalidate window holds the OLD URLs even after a
-  // build that should have switched the loader to Blob — which is
-  // exactly what happened when this fix's PR was merged but /now
-  // kept serving slow proxy URLs.
+  // Cache key includes the current deployment hash so any data change busts
+  // the cache automatically on deploy. Without this, the 60-minute revalidate
+  // window can hold stale recommendations after a data-only release.
   // VERCEL_GIT_COMMIT_SHA is set on every Vercel build; falls back
   // to "dev" locally so the dev server still caches normally.
   // v2 applies the shared recommendation gate to private membership venues.

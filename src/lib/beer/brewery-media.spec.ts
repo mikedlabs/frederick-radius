@@ -48,16 +48,16 @@ describe("brewery media publishing", () => {
     ).toBeNull();
   });
 
-  it("keeps the legacy mirror inventory separate from publishable coverage", () => {
+  it("keeps unattributed source candidates separate from publishable coverage", () => {
     const coverage = breweryMediaCoverage();
     expect(coverage.breweries).toBe(17);
-    expect(coverage.legacyMirrorPresent).toBe(16);
+    expect(coverage.photoCandidates).toBe(16);
     expect(coverage.noPhotoCandidate).toBe(1);
     expect(coverage.publishable).toBeLessThanOrEqual(
-      coverage.legacyMirrorPresent,
+      coverage.photoCandidates,
     );
     expect(coverage.waitingForAttribution).toBe(
-      coverage.legacyMirrorPresent - coverage.publishable,
+      coverage.photoCandidates - coverage.publishable,
     );
   });
 });

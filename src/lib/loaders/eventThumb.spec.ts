@@ -100,11 +100,11 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
     expect(notBorrowed.hero_image).toBeUndefined();
   });
 
-  it("does not resurrect the legacy Carroll Creek Google-photo Blob for Alive @ Five", () => {
+  it("does not publish an unattributed Carroll Creek photo for Alive @ Five", () => {
     // The curated rows still link to the real venue. Its only image was a
-    // permanently mirrored Google Places photo, which the client loader now
-    // suppresses. Until the record has a compliant on-demand photo, the
-    // honest fallback plate is preferable to re-exposing that legacy Blob.
+    // non-publishable Google Places photo, which the client loader suppresses.
+    // Until the record has a compliant on-demand photo, the honest fallback
+    // plate is preferable to using unattributed media.
     const amphitheater = clientPlaces().find(
       (p) => p.slug === "carroll-creek-outdoor-amphitheater",
     );

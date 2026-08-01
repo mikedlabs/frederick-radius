@@ -39,7 +39,7 @@ export default function BeerPage() {
   // records intentionally omit the per-image attribution metadata required to
   // publish Google photos, so reading google_photo_url from those records made
   // every brewery fall back. This map uses only exact-attribution assets and
-  // never the legacy first-party Google mirrors.
+  // the no-store photo transport.
   const breweryPhotos = breweryPhotoMap();
 
   return (
