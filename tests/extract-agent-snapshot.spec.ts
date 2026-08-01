@@ -119,6 +119,83 @@ describe("fetchPageSnapshot", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects a Firecrawl fallback that omits its explicit final URL", async () => {
+    vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
+    const target = "https://example.com/dynamic-events";
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request): Promise<Response> => {
+        if (String(input) !== "https://api.firecrawl.dev/v2/scrape") {
+          return new Response("", { status: 403 });
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              markdown: "# Upcoming\n\nUnverified provider response",
+              metadata: { sourceURL: target, statusCode: 200 },
+            },
+          }),
+          { status: 200 },
+        );
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchPageSnapshot(target)).resolves.toBeNull();
+    expect(getFirecrawlFallbackUsage()).toMatchObject({
+      attempted: 1,
+      succeeded: 0,
+      failed: 1,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["401", 401],
+    ["403", 403],
+    ["429", 429],
+    ["500", 500],
+    ["missing", undefined],
+    ["non-integer", "200"],
+  ] as const)(
+    "rejects a Firecrawl fallback with a %s target status",
+    async (_label, statusCode) => {
+      vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
+      vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
+      const target = "https://example.com/dynamic-events";
+      const fetchMock = vi.fn(
+        async (input: string | URL | Request): Promise<Response> => {
+          if (String(input) !== "https://api.firecrawl.dev/v2/scrape") {
+            return new Response("", { status: 403 });
+          }
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                markdown: "Provider error body",
+                metadata:
+                  statusCode === undefined
+                    ? { url: target }
+                    : { url: target, statusCode },
+              },
+            }),
+            { status: 200 },
+          );
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(fetchPageSnapshot(target)).resolves.toBeNull();
+      expect(getFirecrawlFallbackUsage()).toMatchObject({
+        attempted: 1,
+        succeeded: 0,
+        failed: 1,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
+
   it("does not spend a Firecrawl request when the fallback switch is off", async () => {
     vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "0");
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
@@ -131,11 +208,12 @@ describe("fetchPageSnapshot", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects a cross-host Firecrawl redirect and preserves the run ceiling", async () => {
+  it("rejects a cross-host 404 before classifying target status", async () => {
     vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
     resetFirecrawlFallbackUsage(1);
     const target = "https://example.com/events";
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const fetchMock = vi.fn(
       async (input: string | URL | Request): Promise<Response> => {
         if (String(input) !== "https://api.firecrawl.dev/v2/scrape") {
@@ -146,7 +224,10 @@ describe("fetchPageSnapshot", () => {
             success: true,
             data: {
               markdown: "Copied event page",
-              metadata: { url: "https://unrelated.example/events" },
+              metadata: {
+                url: "https://unrelated.example/events",
+                statusCode: 404,
+              },
             },
           }),
           { status: 200 },
@@ -166,6 +247,9 @@ describe("fetchPageSnapshot", () => {
       failed: 1,
       deniedByLimit: 1,
     });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("CROSS_HOST_REDIRECT"),
+    );
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

@@ -182,7 +182,27 @@ meter; Firecrawl's dashboard remains the billing authority. Public routes read
 the resulting bounded Blob snapshot only after activation; they never call
 Visit Frederick or Firecrawl.
 
-The separate closure detector remains review-only. `--limit` accepts only a positive whole number no higher than its hard 125-request ceiling. Long-tail selection requires both `--all` and `--confirm-all`; confirmation never raises the immutable 125-request / 125-credit run ceiling. It reserves an attempt before each request and stops on authentication, rate, plan, or billing errors.
+The separate closure detector remains review-only. Its ordinary
+`npm run closures:detect` command is a zero-cost plan, even when a Tavily key
+exists. A provider request requires the operator to add both `--live` and
+`--confirm`. `--limit` accepts only a positive whole number no higher than the
+hard 10-request run ceiling. Long-tail selection separately requires both
+`--all` and `--confirm-all`; neither confirmation can raise the immutable
+10-credit run, 20-credit UTC-day, or 100-credit UTC-month ceilings. The script
+holds an exclusive fail-closed run lock, records each attempt in
+`scripts/reports/closure-usage.json` before making the request, counts failed
+attempts, reuses cached raw results, and stops on authentication, rate, plan,
+or billing errors. Add `--refresh` to the zero-cost plan to preview a fresh
+search of cached places, then repeat it with `--live --confirm` only when that
+spend is intentional. Tavily is fixed to basic search, so the app reserves one
+credit before each request and records provider-reported credits separately;
+the provider dashboard remains the billing authority. The review report never
+changes public place data.
+
+If a local process is interrupted and leaves `closure-detector.lock`, verify
+that no detector is still running before removing the lock manually. The tool
+does not auto-expire locks because a second paid run is riskier than a stale
+local lock.
 
 Neither provider belongs in the request path for Today, Search, Map, Events, or Ask Radius. Scheduled or operator runs must not add latency or provider cost to a user's visit.
 
@@ -235,9 +255,10 @@ ledger, and Firecrawl comparison hashes between runs.
 Expand by source type, not by crawling the whole county. Structured feeds and existing official integrations remain preferable even when a provider can scrape the same information.
 
 GitHub Actions caches are branch-scoped. Run live pilots from `main`; do not
-initialize a second ledger from a feature branch. Provider account limits
-remain the outer safety net because local runs and the separate closure
-detector do not share GitHub's cached ledger.
+initialize a second ledger from a feature branch. The closure detector keeps
+its own local persistent ledger, which is separate from the workflow cache.
+Preserve that file between intentional local runs. Provider account limits
+remain the outer safety net across machines and deleted local state.
 
 ## Rollback
 

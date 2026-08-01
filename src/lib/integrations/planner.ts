@@ -425,13 +425,40 @@ function availableForStop(
   durationMin: number,
   requireVerifiedHours: boolean,
 ): boolean {
-  const start = getOpenStatus(place.hours, { verified: place.hours_verified }, at).state;
-  const nearEnd = new Date(at.getTime() + Math.max(1, durationMin - 5) * 60_000);
-  const end = getOpenStatus(place.hours, { verified: place.hours_verified }, nearEnd).state;
-  const confirmedOpen = start === "open" && (end === "open" || end === "closing-soon");
-  if (confirmedOpen) return true;
-  if (start === "closed" || end === "closed") return false;
+  const state = planOpenStateForWindow(place, at, durationMin);
+  if (state === "open") return true;
+  if (state === "closed") return false;
   return !requireVerifiedHours;
+}
+
+/**
+ * Translate a place schedule into the planner's honest three-state label for
+ * the whole proposed stop. Unknown hours remain unknown; a confirmed opening
+ * must cover both arrival and the end of the visit.
+ */
+export function planOpenStateForWindow(
+  place: Pick<Place, "hours" | "hours_verified">,
+  at: Date,
+  durationMin: number,
+): PlanStop["open"] {
+  const start = getOpenStatus(
+    place.hours,
+    { verified: place.hours_verified },
+    at,
+  ).state;
+  const nearEnd = new Date(
+    at.getTime() + Math.max(1, durationMin - 5) * 60_000,
+  );
+  const end = getOpenStatus(
+    place.hours,
+    { verified: place.hours_verified },
+    nearEnd,
+  ).state;
+  if (start === "open" && (end === "open" || end === "closing-soon")) {
+    return "open";
+  }
+  if (start === "closed" || end === "closed") return "closed";
+  return "unknown";
 }
 
 /** Lay stops out on the clock from the start time. Pure. */
@@ -459,23 +486,9 @@ function schedule(
       : 90;
     const dur = o.event ? Math.max(15, Math.min(90, eventRemaining)) : durationFor(cat);
     const at = new Date(cursor).toISOString();
-    const scheduledState = o.place
-      ? getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(cursor)).state
-      : null;
-    const endState = o.place
-      ? getOpenStatus(
-          o.place.hours,
-          { verified: o.place.hours_verified },
-          new Date(cursor + Math.max(1, dur - 5) * 60_000),
-        ).state
-      : null;
     const openState: PlanStop["open"] = o.event
       ? o.openState
-      : scheduledState === "open" && (endState === "open" || endState === "closing-soon")
-        ? "open"
-        : scheduledState === "closed" || endState === "closed"
-          ? "closed"
-          : "unknown";
+      : planOpenStateForWindow(o.place!, new Date(cursor), dur);
     // A known-closed place never belongs in a ready-to-use plan. Do not spend
     // the user's time budget on it; the next valid stop keeps the same slot.
     if (openState === "closed") continue;

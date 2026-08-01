@@ -21,6 +21,8 @@ describe("GET /api/pulse/incidents", () => {
       roads: {
         live: {
           items: [],
+          reportedCount: 2,
+          notShownCount: 2,
           totalCount: 0,
           corroboratedCount: 0,
           chartAvailable: false,
@@ -38,6 +40,8 @@ describe("GET /api/pulse/incidents", () => {
     );
     await expect(response.json()).resolves.toEqual({
       items: [],
+      reportedCount: 2,
+      notShownCount: 2,
       totalCount: 0,
       corroboratedCount: 0,
       chartAvailable: false,

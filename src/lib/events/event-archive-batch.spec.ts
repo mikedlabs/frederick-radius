@@ -190,13 +190,48 @@ describe("event archive batch", () => {
       accepted: 1,
       upserted: 1,
       timedOut: false,
+      retries: 1,
       failure: {
         stage: "tombstone",
         reason: "rejected",
         code: "40001",
       },
     });
+    expect(sink.tombstoneMissing).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(result)).not.toContain(databaseError.message);
+  });
+
+  it("retries one idempotent tombstone cleanup after a transient database rejection", async () => {
+    const transient = Object.assign(new Error("cleanup lock contention"), {
+      code: "55P03",
+    });
+    const sink = writer({
+      tombstoneMissing: vi
+        .fn()
+        .mockRejectedValueOnce(transient)
+        .mockResolvedValue(2),
+    });
+
+    const result = await syncEventArchiveBatchWithWriter(
+      [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+      {
+        successfulSources: ["celebrate"],
+        seenSourceIdentities: [
+          { source: "celebrate", source_uid: "publisher-uid-44" },
+        ],
+      },
+      sink,
+    );
+
+    expect(result).toMatchObject({
+      complete: true,
+      recordsComplete: true,
+      upserted: 1,
+      tombstoned: 2,
+      retries: 1,
+      failure: null,
+    });
+    expect(sink.tombstoneMissing).toHaveBeenCalledTimes(2);
   });
 
   it("reports an actual tombstone deadline as a timeout", async () => {

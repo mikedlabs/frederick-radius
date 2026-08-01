@@ -137,6 +137,7 @@ describe("Radius Source Scout", () => {
 
     expect(result.wroteFiles).toBe(false);
     expect(result.report.mode).toBe("plan");
+    expect(result.report.provider).toEqual({ name: "tavily" });
     expect(result.report.queries[0]?.queryText).toContain("July 2026");
     expect(result.report.budget.requestsMade).toBe(0);
     expect(search).not.toHaveBeenCalled();
@@ -236,6 +237,7 @@ describe("Radius Source Scout", () => {
     );
     const persistedCache = JSON.parse(await readFile(result.cachePath, "utf8"));
     expect(persistedReport.reviewOnly).toBe(true);
+    expect(persistedReport.provider).toEqual({ name: "tavily" });
     expect(persistedCache.reviewOnly).toBe(true);
     expect(JSON.stringify(persistedReport)).not.toContain(
       "Content for first source",

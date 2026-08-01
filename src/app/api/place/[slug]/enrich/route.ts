@@ -29,7 +29,10 @@ import {
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
-import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
+import {
+  activeManualPlaceStatusOverride,
+  isManualPlaceClosureOverride,
+} from "@/lib/place-status-overrides";
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
 import { isValidCoord } from "@/lib/geo";
 import { patchRecord, type Overrides } from "@/lib/overrides";
@@ -90,11 +93,12 @@ async function enrichSlug(
   const p = rawPlace
     ? patchRecord(rawPlace, PLACE_OVERRIDES.patch)
     : undefined;
+  const manualStatus = activeManualPlaceStatusOverride(slug);
   if (
     !p ||
     !isValidCoord(p.geom) ||
     QUARANTINED.has(slug) ||
-    manualPlaceStatusOverride(slug)
+    isManualPlaceClosureOverride(manualStatus)
   ) {
     return EMPTY;
   }
@@ -129,7 +133,14 @@ async function enrichSlug(
     website: data.website,
     rating: data.rating,
     rating_count: data.user_rating_count,
-    status: data.business_status,
+    // A current first-party correction prevents a provider false-positive
+    // closure from leaking back into the client response. We still make the
+    // provider call so the record remains refreshable and its other fields can
+    // improve while Google catches up.
+    status:
+      manualStatus?.status === "operational"
+        ? "OPERATIONAL"
+        : data.business_status,
     photo_attributions: photoAttributions,
     google_maps_uri: data.google_maps_uri,
     editorial_summary: data.editorial_summary,

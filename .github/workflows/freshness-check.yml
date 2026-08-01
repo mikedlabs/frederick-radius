@@ -69,7 +69,10 @@ jobs:
         if: ${{ steps.manifest.outcome == 'success' }}
         continue-on-error: true
         env:
-          SOURCE_MANIFEST: /tmp/frederick-radius-sources.yaml
+          # Cadence and ownership come from the trusted current branch. The
+          # generated snapshot contributes timestamps only, so an older
+          # snapshot cannot silently restore stale monitoring policy.
+          SOURCE_STATE_MANIFEST: /tmp/frederick-radius-sources.yaml
         run: |
           set -o pipefail
           npm run pipeline:freshness 2>&1 | tee freshness.log

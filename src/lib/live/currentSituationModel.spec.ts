@@ -319,4 +319,26 @@ describe("buildCurrentSituationSnapshot", () => {
       .toEqual(["matched", "unmatched"]);
     expect(snapshot.roads.live.scannerAvailable).toBe(true);
   });
+
+  it("keeps public Scanner board activity visible without inventing road pins", () => {
+    const snapshot = buildCurrentSituationSnapshot({
+      sources: sources({
+        scanner: envelope<GeocodedIncident[]>("frederick-scanner", [], {
+          requiredForQuiet: false,
+          itemCount: 2,
+        }),
+      }),
+      roadFusion: EMPTY_FUSION,
+      now: NOW,
+    });
+
+    expect(snapshot.roads.live).toMatchObject({
+      items: [],
+      totalCount: 0,
+      reportedCount: 2,
+      notShownCount: 2,
+      scannerAvailable: true,
+    });
+    expect(snapshot.roads.live).not.toHaveProperty("allClear");
+  });
 });

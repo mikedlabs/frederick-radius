@@ -14,10 +14,21 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import {
+  FRESHNESS_FUTURE_SKEW_MS,
+  isFutureFreshnessTimestamp,
+  mergeFreshnessState,
+  type FreshnessSourceRow,
+} from "./lib/freshness_state";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MANIFEST =
-  process.env.SOURCE_MANIFEST ?? join(ROOT, "data", "sources.yaml");
+const CURRENT_MANIFEST = join(ROOT, "data", "sources.yaml");
+const POLICY_MANIFEST =
+  process.env.SOURCE_POLICY_MANIFEST ??
+  (process.env.SOURCE_STATE_MANIFEST
+    ? CURRENT_MANIFEST
+    : process.env.SOURCE_MANIFEST ?? CURRENT_MANIFEST);
+const STATE_MANIFEST = process.env.SOURCE_STATE_MANIFEST;
 
 // Maximum age in hours before a source is considered stale, with a
 // grace allowance so a slightly late refresh does not page anyone.
@@ -31,29 +42,43 @@ const MAX_AGE_HOURS: Record<string, number> = {
   yearly: 9600,
 };
 
-type Row = {
-  id: string;
-  status: string;
-  collection?: "pipeline" | "runtime" | "workflow";
-  refresh_cadence: string;
-  snapshot_cadence?: string;
-  change_cadence?: string;
-  last_success: string | null;
-  last_changed?: string | null;
-};
-
 function baseCadence(value: string): string {
   return value.trim().split(/\s+/, 1)[0] ?? "";
 }
 
 function main(): void {
-  const doc = parse(readFileSync(MANIFEST, "utf8")) as { sources: Row[] };
-  const active = doc.sources.filter((r) => r.status === "active");
+  const nowMs = Date.now();
+  const policy = parse(readFileSync(POLICY_MANIFEST, "utf8")) as {
+    sources: FreshnessSourceRow[];
+  };
+  const state = STATE_MANIFEST
+    ? (parse(readFileSync(STATE_MANIFEST, "utf8")) as {
+        sources: FreshnessSourceRow[];
+      })
+    : undefined;
+  const rows = state
+    ? mergeFreshnessState(policy.sources, state.sources, new Date(nowMs))
+    : policy.sources;
+  const active = rows.filter((r) => r.status === "active");
   const missingOwner = active.filter(
     (r) => !["pipeline", "runtime", "workflow"].includes(r.collection ?? ""),
   );
   const managed = active.filter((r) => r.collection === "pipeline");
   const stale: string[] = [];
+
+  // Generated state is untrusted observation data. The merge rejects a
+  // far-future value so it cannot replace an older policy timestamp; retain a
+  // visible failure as well so corruption is fixed instead of silently hidden.
+  for (const row of state?.sources ?? []) {
+    for (const field of ["last_success", "last_changed"] as const) {
+      const value = row[field];
+      if (isFutureFreshnessTimestamp(value, nowMs)) {
+        stale.push(
+          `${row.id}: snapshot state ${field} ${value} is more than ${FRESHNESS_FUTURE_SKEW_MS / 60_000}m in the future`,
+        );
+      }
+    }
+  }
 
   for (const row of missingOwner) {
     stale.push(`${row.id}: active source has no collection owner`);
@@ -73,8 +98,13 @@ function main(): void {
       stale.push(`${row.id}: never succeeded`);
       continue;
     }
-    const ageHours = (Date.now() - new Date(row.last_success).getTime()) / 3_600_000;
-    if (!Number.isFinite(ageHours) || ageHours > limit) {
+    const successTime = Date.parse(row.last_success);
+    const ageHours = (nowMs - successTime) / 3_600_000;
+    if (!Number.isFinite(successTime)) {
+      stale.push(`${row.id}: invalid last success ${row.last_success}`);
+    } else if (isFutureFreshnessTimestamp(row.last_success, nowMs)) {
+      stale.push(`${row.id}: last success ${row.last_success} is in the future`);
+    } else if (ageHours > limit) {
       stale.push(`${row.id}: last success ${row.last_success}, snapshot cadence ${cadence}, age ${ageHours.toFixed(1)}h exceeds ${limit}h`);
     }
 
@@ -85,9 +115,13 @@ function main(): void {
       } else if (!row.last_changed) {
         stale.push(`${row.id}: payload change has never been recorded`);
       } else {
-        const changeAgeHours =
-          (Date.now() - new Date(row.last_changed).getTime()) / 3_600_000;
-        if (!Number.isFinite(changeAgeHours) || changeAgeHours > changeLimit) {
+        const changedTime = Date.parse(row.last_changed);
+        const changeAgeHours = (nowMs - changedTime) / 3_600_000;
+        if (!Number.isFinite(changedTime)) {
+          stale.push(`${row.id}: invalid last changed ${row.last_changed}`);
+        } else if (isFutureFreshnessTimestamp(row.last_changed, nowMs)) {
+          stale.push(`${row.id}: last changed ${row.last_changed} is in the future`);
+        } else if (changeAgeHours > changeLimit) {
           stale.push(
             `${row.id}: payload unchanged since ${row.last_changed}, change cadence ${row.change_cadence}, age ${changeAgeHours.toFixed(1)}h exceeds ${changeLimit}h`,
           );

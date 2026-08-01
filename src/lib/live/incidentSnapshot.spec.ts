@@ -56,6 +56,8 @@ describe("buildLiveIncidentSnapshot", () => {
 
     expect(snapshot).toMatchObject({
       chartAvailable: true,
+      reportedCount: 1,
+      notShownCount: 0,
       totalCount: 1,
       corroboratedCount: 1,
       updatedAt: NOW,
@@ -99,6 +101,8 @@ describe("buildLiveIncidentSnapshot", () => {
 
     expect(snapshot).toEqual({
       items: [],
+      reportedCount: 0,
+      notShownCount: 0,
       totalCount: 0,
       corroboratedCount: 0,
       chartAvailable: false,
@@ -131,6 +135,8 @@ describe("buildLiveIncidentSnapshot", () => {
 
     expect(snapshot.items).toHaveLength(DEFAULT_LIVE_INCIDENT_LIMIT);
     expect(snapshot.totalCount).toBe(DEFAULT_LIVE_INCIDENT_LIMIT + 8);
+    expect(snapshot.reportedCount).toBe(DEFAULT_LIVE_INCIDENT_LIMIT + 8);
+    expect(snapshot.notShownCount).toBe(0);
     expect(snapshot.corroboratedCount).toBe(0);
   });
 });

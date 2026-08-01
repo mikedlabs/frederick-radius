@@ -1,7 +1,84 @@
-import { describe, expect, it } from "vitest";
-import { chunkArchiveRows, dedupeArchiveRows } from "./incidentArchive";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  fetchPageRecordsResult: vi.fn(),
+  getScannerIncidentsResult: vi.fn(),
+}));
+
+vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
+vi.mock("@/lib/scanner/scannerPatterns", () => ({
+  fetchPageRecordsResult: mocks.fetchPageRecordsResult,
+}));
+vi.mock("@/lib/integrations/scannerIncidents", () => ({
+  getScannerIncidentsResult: mocks.getScannerIncidentsResult,
+}));
+
+import {
+  archiveScannerIncidents,
+  chunkArchiveRows,
+  dedupeArchiveRows,
+} from "./incidentArchive";
 
 describe("scanner archive batching", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.fetchPageRecordsResult.mockResolvedValue({
+      data: [],
+      available: true,
+    });
+    mocks.getScannerIncidentsResult.mockResolvedValue({
+      data: [],
+      available: true,
+    });
+  });
+
+  it("reports an unavailable database as an incomplete archive", async () => {
+    mocks.getDb.mockReturnValue(null);
+
+    await expect(archiveScannerIncidents()).resolves.toEqual({
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "database_unavailable",
+    });
+  });
+
+  it("reports failed source reads instead of calling an outage a quiet board", async () => {
+    mocks.getDb.mockReturnValue({});
+    mocks.fetchPageRecordsResult.mockResolvedValue({
+      data: [],
+      available: false,
+    });
+    mocks.getScannerIncidentsResult.mockResolvedValue({
+      data: [],
+      available: false,
+    });
+
+    await expect(archiveScannerIncidents()).resolves.toEqual({
+      seen: 0,
+      inserted: 0,
+      complete: false,
+      reason: "source_unavailable",
+      sources: { page: false, live: false },
+    });
+  });
+
+  it("accepts an explicitly available empty source as a quiet complete run", async () => {
+    mocks.getDb.mockReturnValue({});
+    mocks.getScannerIncidentsResult.mockResolvedValue({
+      data: [],
+      available: false,
+    });
+
+    await expect(archiveScannerIncidents()).resolves.toEqual({
+      seen: 0,
+      inserted: 0,
+      complete: true,
+      sources: { page: true, live: false },
+    });
+  });
+
   it("keeps only the first row for each incident key", () => {
     const rows = [
       { dedupe_key: "fire|Market St|1", value: "page" },
