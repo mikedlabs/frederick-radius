@@ -32,6 +32,7 @@ import {
   mapEventSourcesWithConcurrency,
   publicEventSourceCircuits,
 } from "@/lib/integrations/event-source-circuit";
+import { isEventWithinReadWindow } from "@/lib/events/visible";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -1058,10 +1059,14 @@ async function fetchIcalFeed(
         ? easternWallToUtcISO(start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate(), 12, 0)
         : start.toISOString();
       const effectiveStart = new Date(startsAtISO);
-      if (effectiveStart < now || effectiveStart > horizon) continue;
       const endsAtISO = allDay
         ? easternWallToUtcISO(start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate(), 23, 59)
         : (item.end ?? new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000)).toISOString();
+      if (!isEventWithinReadWindow(
+        { starts_at: startsAtISO, ends_at: endsAtISO, is_all_day: allDay },
+        now,
+        horizon,
+      )) continue;
       const rawTitle = (item.summary ?? "").trim();
       if (!rawTitle) continue;
       // Cancellation can arrive two ways — the iCal STATUS property or
@@ -1194,8 +1199,12 @@ async function fetchRssFeed(
         }
       }
       if (!start || isNaN(start.getTime())) continue;
-      if (start < now || start > horizon) continue;
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+      if (!isEventWithinReadWindow(
+        { starts_at: start.toISOString(), ends_at: end.toISOString() },
+        now,
+        horizon,
+      )) continue;
 
       const { venue, address } = resolveKnownEventVenue(
         feed.source,
@@ -1359,10 +1368,14 @@ async function fetchTribeFeed(
       const startsAtISO = jsonEventDateToISO(item.utc_start_date, item.start_date);
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
-      if (effectiveStart < now || effectiveStart > horizon) continue;
       const endsAtISO =
         jsonEventDateToISO(item.utc_end_date, item.end_date) ??
         new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
+      if (!isEventWithinReadWindow(
+        { starts_at: startsAtISO, ends_at: endsAtISO },
+        now,
+        horizon,
+      )) continue;
       const status = deriveEventStatus(rawTitle, undefined);
       const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
       // Tribe descriptions are HTML; strip tags before the shared cleaner.
@@ -1582,7 +1595,14 @@ export function parseWixEventsHtml(
     // Keep a multi-day/current series while its publisher-supplied end is in
     // the future, plus ordinary future events inside the requested horizon.
     const wixStatus = wixLifecycleStatus(row.status);
-    if (wixStatus === "ended" || end < now || start > horizon) continue;
+    if (
+      wixStatus === "ended" ||
+      !isEventWithinReadWindow(
+        { starts_at: start.toISOString(), ends_at: end.toISOString() },
+        now,
+        horizon,
+      )
+    ) continue;
 
     const location = asRecord(row.location);
     const coordinates = asRecord(location?.coordinates);
@@ -1782,10 +1802,18 @@ async function fetchJsonArrayFeed(
         : jsonEventDateToISO(undefined, str("startDatetime"));
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
-      if (effectiveStart < now || effectiveStart > horizon) continue;
-      const endsAtISO = isPresence
+      const rawEndsAtISO = isPresence
         ? jsonEventDateToISO(str("endDateTimeUtc"), undefined)
         : jsonEventDateToISO(undefined, str("endDatetime"));
+      const endsAtISO =
+        rawEndsAtISO && Date.parse(rawEndsAtISO) > effectiveStart.getTime()
+          ? rawEndsAtISO
+          : new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
+      if (!isEventWithinReadWindow(
+        { starts_at: startsAtISO, ends_at: endsAtISO },
+        now,
+        horizon,
+      )) continue;
       const status = deriveEventStatus(rawTitle, undefined);
       const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
       const description = str("description").replace(/<[^>]+>/g, " ").trim();
@@ -1812,7 +1840,7 @@ async function fetchJsonArrayFeed(
         status,
         description: cleanedDesc,
         starts_at: startsAtISO,
-        ends_at: endsAtISO ?? new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        ends_at: endsAtISO,
         is_all_day: false,
         venue_name: venue,
         address,
@@ -1944,13 +1972,17 @@ export function parseVibemapEvents(
       : jsonEventDateToISO(undefined, startRaw);
     if (!startsAtISO) continue;
     const effectiveStart = new Date(startsAtISO);
-    if (effectiveStart < now || effectiveStart > horizon) continue;
     const endISO = allDay ? null : jsonEventDateToISO(undefined, str("vibemap_event_end_date"));
     const endsAtISO = allDay
       ? easternWallToUtcISO(+dm![1], +dm![2], +dm![3], 23, 59)
       : endISO && Date.parse(endISO) > effectiveStart.getTime()
         ? endISO
         : new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
+    if (!isEventWithinReadWindow(
+      { starts_at: startsAtISO, ends_at: endsAtISO, is_all_day: allDay },
+      now,
+      horizon,
+    )) continue;
     // Cancellation is a first-class flag here, not a title sniff.
     const status: EventStatus =
       m["vibemap_event_is_canceled"] === true ? "cancelled" : deriveEventStatus(rawTitle);
@@ -2601,7 +2633,7 @@ function getCachedEventSourcePage(
       );
     },
     [
-      "live-event-source-page-v1",
+      "live-event-source-page-v2",
       source,
       String(windowDays),
       afterCursor ?? "first",

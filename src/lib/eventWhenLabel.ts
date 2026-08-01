@@ -38,7 +38,10 @@ export const MAX_LIVE_SESSION_MS = 8 * 3_600_000;
  *  event is one or the other, never both. That symmetry is the fix: this
  *  cap used to live only in isEventLiveNow, so isEventEnded trusted an
  *  inflated end verbatim and a finished afternoon show never demoted. */
-function trustedEndMs(e: { starts_at: string; ends_at?: string }): number {
+export function effectiveTimedEventEndMs(e: {
+  starts_at: string;
+  ends_at?: string | null;
+}): number {
   const start = Date.parse(e.starts_at);
   const rawEnd = e.ends_at ? Date.parse(e.ends_at) : NaN;
   const stated =
@@ -56,12 +59,12 @@ function trustedEndMs(e: { starts_at: string; ends_at?: string }): number {
  *   - all-day events with a valid exclusive end remain current until that
  *     instant (including every day of a multi-day span); legacy rows without a
  *     usable end fall back to their Eastern start day;
- *   - a timed event ends at its trustedEndMs (real end, capped at 8h), so a
+ *   - a timed event ends at its effective end (real end, capped at 8h), so a
  *     noon show with an end-of-day stamp finally demotes to "Earlier today"
  *     instead of riding the live rail until midnight.
  */
 export function isEventEnded(
-  e: { starts_at: string; ends_at?: string; is_all_day?: boolean },
+  e: { starts_at: string; ends_at?: string | null; is_all_day?: boolean },
   now: Date,
 ): boolean {
   if (e.is_all_day) {
@@ -72,7 +75,7 @@ export function isEventEnded(
     }
     return easternDayKey(new Date(e.starts_at)) < easternDayKey(now);
   }
-  return trustedEndMs(e) < now.getTime();
+  return effectiveTimedEventEndMs(e) < now.getTime();
 }
 
 /**
@@ -87,13 +90,13 @@ export function isEventEnded(
  *    isEventEnded grants.
  */
 export function isEventLiveNow(
-  e: { starts_at: string; ends_at?: string; is_all_day?: boolean },
+  e: { starts_at: string; ends_at?: string | null; is_all_day?: boolean },
   now: Date,
 ): boolean {
   if (e.is_all_day) return false;
   const start = Date.parse(e.starts_at);
   if (!Number.isFinite(start) || start > now.getTime()) return false;
-  return now.getTime() < trustedEndMs(e);
+  return now.getTime() < effectiveTimedEventEndMs(e);
 }
 
 /** An event is a "tonight" event only when IT starts in the Eastern

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import {
+  eventMatchesTimeWindow,
   eventGroupRenderState,
   reconcileBrowseResponse,
 } from "./EventsExplorer";
@@ -138,5 +139,56 @@ describe("EventsExplorer deferred browse reconciliation", () => {
       totalRest: 8,
       canExpand: true,
     });
+  });
+});
+
+describe("EventsExplorer event time windows", () => {
+  const bounds = {
+    now: Date.parse("2026-08-01T10:00:01-04:00"),
+    next24: Date.parse("2026-08-02T00:00:00-04:00"),
+    weekendStart: Date.parse("2026-07-31T17:00:00-04:00"),
+    weekendEnd: Date.parse("2026-08-03T00:00:00-04:00"),
+  };
+
+  it("keeps a brunch card in Today and This week after it starts", () => {
+    const brunch = event("brunch", "food", "2026-08-01T10:00:00-04:00");
+    brunch.ends_at = "2026-08-01T12:00:00-04:00";
+    expect(eventMatchesTimeWindow(brunch, "today", bounds)).toBe(true);
+    expect(eventMatchesTimeWindow(brunch, "week", bounds)).toBe(true);
+  });
+
+  it("drops the brunch card after it really ends", () => {
+    const brunch = event("brunch", "food", "2026-08-01T10:00:00-04:00");
+    brunch.ends_at = "2026-08-01T12:00:00-04:00";
+    expect(
+      eventMatchesTimeWindow(brunch, "today", {
+        ...bounds,
+        now: Date.parse("2026-08-01T12:00:01-04:00"),
+      }),
+    ).toBe(false);
+  });
+
+  it("does not put a live weekday event into the upcoming weekend", () => {
+    const mondayBounds = {
+      now: Date.parse("2026-08-03T10:30:00-04:00"),
+      next24: Date.parse("2026-08-04T00:00:00-04:00"),
+      weekendStart: Date.parse("2026-08-07T17:00:00-04:00"),
+      weekendEnd: Date.parse("2026-08-10T00:00:00-04:00"),
+    };
+    const mondayEvent = event("monday", "food", "2026-08-03T10:00:00-04:00");
+    mondayEvent.ends_at = "2026-08-03T11:00:00-04:00";
+    expect(eventMatchesTimeWindow(mondayEvent, "today", mondayBounds)).toBe(true);
+    expect(eventMatchesTimeWindow(mondayEvent, "weekend", mondayBounds)).toBe(false);
+  });
+
+  it("preserves the eight-hour cap on inflated feed ends", () => {
+    const daytime = event("daytime", "community", "2026-08-01T10:00:00-04:00");
+    daytime.ends_at = "2026-08-01T23:59:00-04:00";
+    expect(
+      eventMatchesTimeWindow(daytime, "all", {
+        ...bounds,
+        now: Date.parse("2026-08-01T19:00:00-04:00"),
+      }),
+    ).toBe(false);
   });
 });

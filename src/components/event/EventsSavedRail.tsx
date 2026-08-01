@@ -5,6 +5,7 @@ import EventCard from "@/components/event/EventCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { isUpcomingEvent } from "@/lib/events/visible";
 
 /**
  * EventsSavedRail — the saved events that are still ahead, surfaced at the
@@ -44,7 +45,7 @@ export default function EventsSavedRail({
     if (savedSlugs.size === 0) return [];
     const now = +new Date(nowISO);
     return events
-      .filter((e) => savedSlugs.has(e.slug) && +new Date(e.starts_at) >= now)
+      .filter((e) => savedSlugs.has(e.slug) && isUpcomingEvent(e, new Date(now)))
       .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
       .slice(0, MAX_SHOWN);
   }, [mounted, saved, events, nowISO]);

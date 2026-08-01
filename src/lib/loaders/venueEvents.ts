@@ -13,6 +13,7 @@ import {
   eventAttendanceMode,
   isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
+import { isUpcomingEvent } from "@/lib/events/visible";
 
 /**
  * Venue events — produced by the extraction agent
@@ -59,10 +60,9 @@ export function venueEvents(): VenueEvent[] {
 
 /** Future venue events, soonest first. */
 export function upcomingVenueEvents(now: Date = new Date()): VenueEvent[] {
-  const t = now.getTime();
   return DATA.filter((e) => {
     const ms = Date.parse(e.starts_at);
-    return Number.isFinite(ms) && ms >= t - 3_600_000;
+    return Number.isFinite(ms) && isUpcomingEvent(e, now);
   }).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
 

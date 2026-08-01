@@ -132,6 +132,35 @@ describe("parseVibemapEvents", () => {
     expect(e.source).toBe("dfp");
   });
 
+  it("retains an in-progress event until its published end", () => {
+    const brunch = vmRow({
+      title: "Saturday Brunch",
+      meta: {
+        vibemap_event_start_date: "2026-07-19 10:00:00",
+        vibemap_event_end_date: "2026-07-19 12:00:00",
+      },
+    });
+    const horizon = new Date("2026-08-18T12:00:00Z");
+    expect(
+      parseVibemapEvents(
+        [brunch],
+        DFP_FEED,
+        new Date("2026-07-19T10:00:01-04:00"),
+        horizon,
+        FETCHED,
+      ),
+    ).toHaveLength(1);
+    expect(
+      parseVibemapEvents(
+        [brunch],
+        DFP_FEED,
+        new Date("2026-07-19T12:00:01-04:00"),
+        horizon,
+        FETCHED,
+      ),
+    ).toHaveLength(0);
+  });
+
   it("keeps only first-party Vibemap event art from the ImageKit account", () => {
     const image =
       "https://ik.imagekit.io/vibemap/original_images_image_event.jpeg?updatedAt=1";

@@ -11,6 +11,7 @@ import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confide
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { isUpcomingEvent } from "@/lib/events/visible";
 import {
   partitionEvents,
   logPlacementWarnings,
@@ -317,7 +318,7 @@ export function getEventSeries(slug: string, now: Date = new Date()): EventWithM
       (x) =>
         x.slug !== slug &&
         seriesKey(x) === key &&
-        new Date(x.ends_at) >= now
+        isUpcomingEvent(x, now)
     )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((x) => decorate(x));
@@ -343,14 +344,15 @@ export function eventsLive(now: Date = new Date()): EventWithMeta[] {
 }
 
 export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
-  // Rolling 24h window — absolute-time arithmetic so it's DST- and
-  // timezone-safe (the old setHours(getHours()+24) read server-local
-  // hours and could drift an hour across the DST switch).
+  // Current events plus starts in the rolling 24h window. Using the shared
+  // visibility rule matters at the boundary: a start-only 10 AM event gets
+  // its assumed runtime instead of disappearing at 10:00. Absolute-time
+  // arithmetic keeps the window DST- and timezone-safe.
   const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return EVENTS
     .filter((e) => {
       const s = new Date(e.starts_at);
-      return s >= now && s < end;
+      return Number.isFinite(s.getTime()) && s < end && isUpcomingEvent(e, now);
     })
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
@@ -381,14 +383,14 @@ export function eventsWeekend(now: Date = new Date()): EventWithMeta[] {
 
 export function eventsInMunicipality(slug: string, futureOnly = true, now: Date = new Date()): EventWithMeta[] {
   return EVENTS
-    .filter((e) => e.municipality === slug && (!futureOnly || new Date(e.ends_at) >= now))
+    .filter((e) => e.municipality === slug && (!futureOnly || isUpcomingEvent(e, now)))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
 
 export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -402,7 +404,7 @@ export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMe
  */
 export function civicUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS_CIVIC
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -449,7 +451,7 @@ export function nearTown(
   if (!m) return [];
   const centroid = m.centroid;
   return EVENTS
-    .filter((e) => e.municipality !== slug && new Date(e.ends_at) >= now)
+    .filter((e) => e.municipality !== slug && isUpcomingEvent(e, now))
     .map((e) => ({ e, near_m: haversineMeters(centroid, e.geom) }))
     .filter((x) => x.near_m <= NEAR_TOWN_RADIUS_M)
     .sort((a, b) =>

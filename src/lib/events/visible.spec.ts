@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isUpcomingEvent, getVisibleEvents, hasImplausibleStartTime } from "./visible";
+import {
+  isUpcomingEvent,
+  isEventWithinReadWindow,
+  getVisibleEvents,
+  hasImplausibleStartTime,
+} from "./visible";
 
 const now = new Date("2026-06-04T18:00:00-04:00"); // Thu Jun 4, 6pm ET
 
@@ -37,6 +42,74 @@ describe("isUpcomingEvent", () => {
 
   it("keeps a start-only event in the future", () => {
     expect(isUpcomingEvent({ starts_at: "2026-06-10T12:00:00-04:00" }, now)).toBe(true);
+  });
+
+  it("keeps a start-only or zero-duration event during its assumed runtime", () => {
+    const startedAt = "2026-06-04T17:00:00-04:00";
+    expect(isUpcomingEvent({ starts_at: startedAt }, now)).toBe(true);
+    expect(isUpcomingEvent({ starts_at: startedAt, ends_at: startedAt }, now)).toBe(true);
+    expect(
+      isUpcomingEvent(
+        { starts_at: startedAt, ends_at: startedAt },
+        new Date("2026-06-04T19:00:01-04:00"),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isEventWithinReadWindow", () => {
+  const horizon = new Date("2026-06-11T18:00:00-04:00");
+
+  it("keeps a currently running event after its start boundary", () => {
+    expect(
+      isEventWithinReadWindow(
+        {
+          starts_at: "2026-06-04T10:00:00-04:00",
+          ends_at: "2026-06-04T12:00:00-04:00",
+        },
+        new Date("2026-06-04T10:00:01-04:00"),
+        horizon,
+      ),
+    ).toBe(true);
+  });
+
+  it("drops the same event only after its end", () => {
+    expect(
+      isEventWithinReadWindow(
+        {
+          starts_at: "2026-06-04T10:00:00-04:00",
+          ends_at: "2026-06-04T12:00:00-04:00",
+        },
+        new Date("2026-06-04T12:00:01-04:00"),
+        horizon,
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects a future start beyond the requested horizon", () => {
+    expect(
+      isEventWithinReadWindow(
+        {
+          starts_at: "2026-06-12T10:00:00-04:00",
+          ends_at: "2026-06-12T12:00:00-04:00",
+        },
+        now,
+        horizon,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps an active multi-day range by its real end", () => {
+    expect(
+      isEventWithinReadWindow(
+        {
+          starts_at: "2026-06-01T10:00:00-04:00",
+          ends_at: "2026-06-30T17:00:00-04:00",
+        },
+        now,
+        horizon,
+      ),
+    ).toBe(true);
   });
 });
 

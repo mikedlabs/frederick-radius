@@ -527,11 +527,14 @@ const cachedAssemble = unstable_cache(
   // v18: venue-feed events with clearly non-music titles (yoga/trivia/
   // bingo/paint/run club) no longer get the blanket "music" category —
   // the cached rows' category/category_name change.
+  // v25: source adapters now retain events for their real/assumed runtime
+  // instead of dropping them as soon as starts_at passes; set membership
+  // changes at every in-progress boundary.
   // v24: cache one event array under a stable invocation key instead of
   // serializing both `unified` and its `publicEvents` subset in a new entry
   // every five minutes. This keeps the item below Next's 2 MB cache limit and
   // lets stale-while-revalidate work.
-  ["unified-events-v24"],
+  ["unified-events-v25"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

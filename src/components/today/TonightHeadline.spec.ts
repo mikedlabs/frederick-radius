@@ -147,4 +147,22 @@ describe("TonightHeadline", () => {
     expect(imageHtml).not.toMatch(/(?<!motion-safe:)group-hover:scale/);
     expect(noImageHtml).not.toMatch(/(?<!motion-safe:)group-hover:translate/);
   });
+
+  it("uses nested semantics and lazy art inside the event program", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({
+          source: "ticketmaster",
+          hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
+        }),
+        now,
+        embedded: true,
+      }),
+    );
+
+    expect(html).toContain("<h3");
+    expect(html).not.toContain("<h2");
+    expect(html).toContain('loading="lazy"');
+    expect(html).not.toContain('rel="preload"');
+  });
 });

@@ -6,7 +6,7 @@ const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
 
-  it("puts exactly one decision lead below weather, before Ask, Browse, and the event program", () => {
+  it("puts the town-aware place lead below weather, before Ask, Browse, and the event program", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");
     const ask = renderedPage.indexOf("<TodayAsk embedded");
@@ -20,7 +20,17 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(browse);
   });
 
-  it("streams the event decision over the existing place answer with one shared promise", () => {
+  it("shows an honest live scope readout before weather on narrow screens", () => {
+    const title = renderedPage.indexOf("{frame.title}");
+    const scope = renderedPage.indexOf("<TodayScopeStatus />");
+    const weather = renderedPage.indexOf("<SkyHero");
+
+    expect(title).toBeGreaterThan(-1);
+    expect(scope).toBeGreaterThan(title);
+    expect(weather).toBeGreaterThan(scope);
+  });
+
+  it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {
     const decisionStart = todayPage.indexOf("const decisionLead =");
     const decisionEnd = todayPage.indexOf(
       "const availableToday =",
@@ -29,13 +39,23 @@ describe("Today decision hierarchy", () => {
     const decision = todayPage.slice(decisionStart, decisionEnd);
 
     expect(decision).toContain(
-      "fallback={<OpenPlaceLead rows={daypartRows} note={daypartNote} />}",
+      "<OpenPlaceLead rows={daypartRows} note={daypartNote} />",
     );
-    expect(decision).toContain("<TodayDecisionLead");
-    expect(decision).toContain("eventsPromise={eventsPromise}");
+    expect(decision).not.toContain("<TodayDecisionLead");
+    expect(decision).not.toContain("eventsPromise={eventsPromise}");
     expect(decision).not.toMatch(
       /<(?:OnNowBand|KeysScore|LocalSportsScoreboard|TomorrowPreview)\b/,
     );
+  });
+
+  it("keeps the optional event feature inside the countywide event program", () => {
+    const eventsStart = todayPage.indexOf("async function WhatsOn");
+    const events = todayPage.slice(eventsStart);
+
+    expect(eventsStart).toBeGreaterThan(-1);
+    expect(events).toContain("featureIsPromoted && feature ?");
+    expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
+    expect(events).toContain("Countywide");
   });
 
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {
