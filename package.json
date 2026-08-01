@@ -2,6 +2,7 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "next dev",
     "prebuild": "npm run build:source-registry && npm run audit:sources && npm run build:client-places && npm run audit:county-data && npm run gates",
@@ -145,6 +146,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
