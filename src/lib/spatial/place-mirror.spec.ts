@@ -68,7 +68,11 @@ describe("PostGIS place mirror", () => {
     const result = await syncSpatialPlaceMirror();
 
     expect(result.audit.current).toBe(true);
-    expect(result.upserted).toBe(catalog.count);
+    expect(result.checked).toBe(catalog.count);
+    expect(result.upserted).toBe(0);
+    expect(
+      transactionQueries.some((query) => query.includes("is distinct from")),
+    ).toBe(true);
     expect(
       transactionQueries.filter((query) =>
         query.includes("jsonb_to_recordset"),

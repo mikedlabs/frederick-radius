@@ -276,7 +276,11 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
 export async function getLiveCardEventBySlug(
   slug: string,
   windowDays = 90,
-  options: { signal?: AbortSignal; deadline?: number } = {},
+  options: {
+  signal?: AbortSignal;
+  deadline?: number;
+  allowNetwork?: boolean;
+} = {},
 ): Promise<EventWithMeta | null> {
   if (
     options.signal?.aborted ||
@@ -292,6 +296,15 @@ export async function getLiveCardEventBySlug(
     (event) => event.slug === slug,
   );
   if (committedVenueHit) return withVenueThumb(committedVenueHit);
+
+  // Event detail is allowed to use committed venue snapshots, but a visitor
+  // request must never become the owner of the countywide provider fanout.
+  // The background warmer and archive jobs own that work. A dated event
+  // that has not reached durable storage yet is an honest recovery state,
+  // not permission to leave provider promises alive after the page deadline.
+  if (options.allowNetwork === false) {
+    throw new LiveEventLookupIncompleteError(["live-network-disabled"]);
+  }
 
   const sourceBudget = Math.min(
     SLUG_SOURCE_TIMEOUT_MS,

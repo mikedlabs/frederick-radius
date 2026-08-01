@@ -45,6 +45,7 @@ export type SpatialMirrorAudit = {
 };
 
 export type SpatialMirrorSyncResult = {
+  checked: number;
   upserted: number;
   retired: number;
   audit: SpatialMirrorAudit;
@@ -167,10 +168,10 @@ function mirrorPayload(place: SpatialCatalogPlace) {
 async function upsertBatch(
   sql: TransactionSql,
   batch: readonly SpatialCatalogPlace[],
-): Promise<void> {
+): Promise<number> {
   const payload = JSON.stringify(batch.map(mirrorPayload));
-  await sql`
-    insert into public.places (
+  const changed = await sql<{ slug: string }[]>`
+    insert into public.places as target (
       slug,
       name,
       category_slug,
@@ -228,7 +229,36 @@ async function upsertBatch(
       status = 'active',
       deleted_at = null,
       updated_at = excluded.updated_at
+    where (
+      target.name,
+      target.category_slug,
+      target.municipality_slug,
+      target.address,
+      target.city,
+      target.state,
+      target.postal_code,
+      target.source,
+      target.lng,
+      target.lat,
+      target.status,
+      target.deleted_at
+    ) is distinct from (
+      excluded.name,
+      excluded.category_slug,
+      excluded.municipality_slug,
+      excluded.address,
+      excluded.city,
+      excluded.state,
+      excluded.postal_code,
+      excluded.source,
+      excluded.lng,
+      excluded.lat,
+      excluded.status,
+      excluded.deleted_at
+    )
+    returning target.slug
   `;
+  return changed.length;
 }
 
 export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult> {
@@ -237,6 +267,7 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
     throw new Error("DATABASE_URL is required to sync the PostGIS place mirror.");
   }
   const catalog = spatialCatalogSnapshot();
+  let changed = 0;
   let retired = 0;
 
   try {
@@ -250,7 +281,7 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
         offset < catalog.places.length;
         offset += MIRROR_BATCH_SIZE
       ) {
-        await upsertBatch(
+        changed += await upsertBatch(
           sql,
           catalog.places.slice(offset, offset + MIRROR_BATCH_SIZE),
         );
@@ -300,11 +331,16 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
   const audit = await auditWithSql(rootSql);
   if (!audit.current) {
     throw new Error(
-      "The PostGIS place mirror did not match the deployed catalog after sync.",
+      "The PostGIS place mirror did not match the deployed catalog after sync " +
+        `(expected=${audit.expectedCount}, active=${audit.activeCount}, ` +
+        `missing=${audit.missing.length}, extra=${audit.extra.length}, ` +
+        `coordinate_mismatches=${audit.coordinateMismatches.length}, ` +
+        `missing_locations=${audit.missingLocations.length}).`,
     );
   }
   return {
-    upserted: catalog.count,
+    checked: catalog.count,
+    upserted: changed,
     retired,
     audit,
   };

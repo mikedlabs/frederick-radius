@@ -169,6 +169,21 @@ function isPastDatedEventSlug(slug: string, now: Date): boolean {
   return day !== null && day < easternDayKey(now);
 }
 
+const PRODUCTION_PAGE_SOURCES: EventResolverSources = {
+  ...DEFAULT_SOURCES,
+  unified: async () => null,
+  live: (slug, context) => {
+    if (context.signal.aborted) return Promise.resolve(null);
+    const hasDatedRoutingEvidence =
+      slug.startsWith("live-") || eventSlugDay(slug) !== null;
+    if (!hasDatedRoutingEvidence) return Promise.resolve(null);
+    return getLiveCardEventBySlug(slug, 90, {
+      ...context,
+      allowNetwork: false,
+    });
+  },
+};
+
 export class EventResolutionTimeoutError extends Error {
   readonly sources: AsyncEventSource[];
 
@@ -442,7 +457,11 @@ async function resolveEventPageBySlugUncached(
   slug: string,
   now: Date = new Date(),
 ): Promise<ResolvedEventPage | null> {
-  return resolveEventPageBySlugWithSources(slug, now, DEFAULT_SOURCES);
+  return resolveEventPageBySlugWithSources(
+    slug,
+    now,
+    PRODUCTION_PAGE_SOURCES,
+  );
 }
 
 async function resolveEventMetadataBySlugUncached(

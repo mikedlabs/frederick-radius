@@ -615,7 +615,30 @@ describe("resolveEventPageBySlugWithSources", () => {
     expect(loaders.live).toHaveBeenCalledOnce();
   });
 
-  it("does not resolve an online-only event with no actionable join URL", async () => {
+  it("can model a production source contract without assembling the board", async () => {
+  const loaders = sources({
+    unified: vi.fn(async () => null),
+    live: vi.fn(async () => {
+      throw new Error("visitor network disabled");
+    }),
+  });
+
+  await expect(
+    resolveEventPageBySlugWithSources(
+      "new-show-2026-08-02",
+      new Date("2026-08-01T12:00:00.000Z"),
+      loaders,
+    ),
+  ).rejects.toMatchObject({
+    name: "EventResolutionUnavailableError",
+    sources: ["live"],
+  });
+  expect(loaders.unified).toHaveBeenCalledOnce();
+  expect(loaders.live).toHaveBeenCalledOnce();
+  expect(loaders.ingested).toHaveBeenCalledOnce();
+});
+
+it("does not resolve an online-only event with no actionable join URL", async () => {
     const stranded = {
       ...event("stranded-online-class"),
       attendance_mode: "online" as const,
