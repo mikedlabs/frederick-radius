@@ -317,6 +317,7 @@ export function buildCurrentSituationSnapshot({
         trafficIsFresh,
         clock,
         scannerIsFresh,
+        scannerIsFresh ? sources.scanner.itemCount : 0,
       ),
       matchedOfficialIds,
       unmatchedOfficial: trafficIsFresh

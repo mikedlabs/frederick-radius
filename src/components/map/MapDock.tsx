@@ -2192,7 +2192,9 @@ export default function MapDock(props: MapDockProps) {
                           : props.incidentHealth.status === "disabled"
                             ? "Loading the latest public incidents…"
                           : props.incidentHealth.status === "empty"
-                          ? "No current public incidents in the latest FrederickScanner response."
+                          ? (props.incidentHealth.notShownCount ?? 0) > 0
+                            ? `${props.incidentHealth.notShownCount} public report${props.incidentHealth.notShownCount === 1 ? " is" : "s are"} on the latest scanner board. This road view shows only reports with a safe block-level map location and likely travel impact.`
+                            : "No current public incidents in the latest FrederickScanner response."
                           : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
                       </p>
                     )}
