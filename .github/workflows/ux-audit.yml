@@ -16,27 +16,49 @@ permissions:
 
 jobs:
   mobile-ux:
+    name: Mobile UX shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Build the production app once per shard
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit
-        run: npm run test:ux
+        # Leave enough of the job budget for Playwright to flush traces and for
+        # the artifact step below to upload them when a shard times out.
+        run: >-
+          timeout --signal=TERM 30m
+          npx playwright test
+          e2e/ux-audit.spec.ts
+          e2e/safe-interaction-crawler.spec.ts
+          --project=chromium
+          --workers=2
+          --retries=1
+          --shard=${{ matrix.shard }}/4
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
       - name: Keep failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ux-browser-failure-traces
+          name: ux-browser-failure-traces-${{ matrix.shard }}
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
