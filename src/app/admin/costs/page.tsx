@@ -59,7 +59,7 @@ type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
 /** Unit prices are estimates, not bills. Capped-attempt services deliberately do
  * not receive a made-up dollar conversion. */
 const UPSTREAMS: MeteredUpstream[] = [
-  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
+  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
   { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
   { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Current travel-time calls are 1×1 matrices. Google bills per returned element; traffic-aware drive elements use the Pro SKU, while walk elements can cost less. One-hour cache hits do not increment." },
   { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
@@ -207,7 +207,6 @@ export default async function CostsAdmin() {
   // Cost-control posture — read live from env so the checklist is honest.
   const controls: Array<{ label: string; ok: boolean; why: string }> = [
     { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
-    { label: "Photo blob mirror", ok: Boolean(process.env.BLOB_READ_WRITE_TOKEN), why: "Mirrors each Google photo once so repeat views never re-bill Google." },
     { label: "Google Maps key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Places and Routes share this deployment key. Set quota limits and billing alerts in Google Cloud." },
     { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
     { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },

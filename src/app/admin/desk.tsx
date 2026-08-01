@@ -282,7 +282,7 @@ function datasetTones(): { total: number; fresh: number; aging: number; stale: n
   const venueLatest = venueRows.map((r) => r.source.fetchedAt).sort().at(-1);
   const transit = TRANSIT as { generatedAt: string };
   const needsVerify = PLACES.filter((p) => !p.is_operational || p.is_operational === "needs_verification").length;
-  // Same nine datasets the old desk table tracked; the hub needs only the
+  // Same active datasets the old desk table tracked; the hub needs only the
   // tone rollup (the full table lives on /admin/data-health).
   const tones: AgeTone[] = [
     needsVerify > 0 ? "aging" : "fresh", // curated places
@@ -290,7 +290,6 @@ function datasetTones(): { total: number; fresh: number; aging: number; stale: n
     ageOf(venueLatest, 7, 14).tone,
     ageOf(transit.generatedAt, 60, 120).tone,
     ageOf(SCORES.computed_at, 7, 21).tone,
-    "none", // photo mirror
     "none", // human corrections
     "fresh", // event seeds (dates audited Jul 2026)
     "none", // collections

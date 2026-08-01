@@ -99,7 +99,6 @@
     "build:food-truck-marks": "tsx --tsconfig tsconfig.json scripts/build-food-truck-marks.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
-    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts",
     "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts",
     "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
     "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts",
