@@ -5,6 +5,7 @@ import {
   countOpenNow,
   getOpenNowSnapshot,
   openNowHighlights,
+  publicPlaceBySlug,
 } from "@/lib/loaders/places";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
@@ -59,6 +60,13 @@ describe("county open-now snapshot", () => {
   });
 
   it("keeps non-leisure inventory searchable without promoting it as a pick", () => {
+    for (const { slug } of NON_LEISURE) {
+      expect(
+        publicPlaceBySlug(slug),
+        `${slug} should remain in the public searchable catalog`,
+      ).toBeDefined();
+    }
+
     const snapshot = buildOpenNowSnapshot(
       [...NON_LEISURE, ...LEISURE],
       NOW,

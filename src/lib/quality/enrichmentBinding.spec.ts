@@ -216,6 +216,10 @@ describe("Google identity promotion", () => {
       refresh,
       canonical!.google_place_id,
     );
+    if (refresh) {
+      expect(refresh.place_id).toBe(canonical!.google_place_id);
+      expect(acceptedRefresh).toBe(refresh);
+    }
     const now = acceptedRefresh
       ? new Date(acceptedRefresh.refreshed_at)
       : new Date("2026-05-20T16:06:58.803Z");
