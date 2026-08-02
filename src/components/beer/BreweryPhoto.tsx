@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import { GooglePhotoAttributionOverlay } from "@/components/place/GoogleAttribution";
 import type {
   BreweryPhotoAsset,
   BreweryPhotoMap,
@@ -124,16 +124,7 @@ export function BreweryPhoto({
         />
       ) : null}
       {showPhoto && photo?.attribution ? (
-        <span
-          className="absolute bottom-2 right-2 z-10 max-w-[82%] rounded bg-black/72 px-2 py-1 text-right text-[9px] leading-none text-white shadow-sm backdrop-blur-sm"
-          aria-label="Google photo attribution"
-        >
-          <GooglePhotoAttributionLine
-            attribution={photo.attribution}
-            compact
-            showAvatar={false}
-          />
-        </span>
+        <GooglePhotoAttributionOverlay attribution={photo.attribution} />
       ) : null}
     </span>
   );

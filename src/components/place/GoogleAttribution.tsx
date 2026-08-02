@@ -122,6 +122,58 @@ export function GooglePhotoAttributionLine({
   );
 }
 
+/**
+ * Compact credit that stays physically attached to a photo without covering
+ * it with an opaque badge. The author profile and exact Google Maps photo
+ * remain separate, readable links; the edge gradient only protects contrast.
+ */
+export function GooglePhotoAttributionOverlay({
+  attribution,
+  placeGoogleMapsUri,
+}: {
+  attribution?: GooglePhotoAttribution;
+  placeGoogleMapsUri?: string;
+}) {
+  const authors = attribution?.authors.filter((author) => author.display_name?.trim()) ?? [];
+  const sourceHref = safeGoogleUrl(attribution?.google_maps_uri ?? placeGoogleMapsUri);
+
+  return (
+    <span
+      data-google-photo-attribution="overlay"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent px-2 pb-1.5 pt-7 text-right text-[8px] font-medium leading-[1.15] text-white sm:text-[9px]"
+      aria-label="Google photo attribution"
+    >
+      <span className="pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-x-1 gap-y-0.5 [text-shadow:0_1px_2px_rgb(0_0_0_/_0.9)]">
+        {authors.length > 0 ? (
+          <span className="inline-flex max-w-full items-center gap-1">
+            <span className="opacity-75">Photo</span>
+            {authors.map((author, index) => (
+              <span key={`${author.uri ?? author.display_name}-${index}`}>
+                {index > 0 ? ", " : ""}
+                <AuthorLink author={author} />
+              </span>
+            ))}
+          </span>
+        ) : null}
+        {authors.length > 0 ? <span aria-hidden className="opacity-60">·</span> : null}
+        {sourceHref ? (
+          <a
+            href={sourceHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View this photo on Google Maps"
+            className="shrink-0 underline decoration-white/60 underline-offset-2"
+          >
+            <span translate="no">Google Maps</span>
+          </a>
+        ) : (
+          <span translate="no">Google Maps</span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 /** Review author/source line plus Google's required explanation of filtering. */
 export function GoogleReviewAttribution({
   author,
