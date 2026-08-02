@@ -71,4 +71,30 @@ describe("Apify source signal fingerprints", () => {
       ),
     ).toEqual(["https://www.example.com/events/one"]);
   });
+
+  it("recognizes single-digit 24-hour-style times without a meridiem", () => {
+    const fingerprint = fingerprintApifySource(
+      "Doors 7:30. Program 19:05. Invalid 29:99.",
+      [],
+      "https://example.com/calendar/",
+    );
+
+    expect(fingerprint.times.count).toBe(2);
+  });
+
+  it("recognizes event-like PHP endpoints without accepting unrelated PHP pages", () => {
+    expect(
+      canonicalApifyEventLinks(
+        [
+          "https://example.com/events.php?id=42",
+          "https://example.com/calendar.php",
+          "https://example.com/contact.php",
+        ],
+        "https://example.com/",
+      ),
+    ).toEqual([
+      "https://example.com/calendar.php",
+      "https://example.com/events.php",
+    ]);
+  });
 });

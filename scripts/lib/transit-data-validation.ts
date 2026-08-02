@@ -549,6 +549,13 @@ export function validateMarcScheduleArtifact(
         message: "Schedule references a stop outside the county station set.",
       });
     }
+    if (!Array.isArray(value)) {
+      issues.push({
+        code: "invalid_stop_departures",
+        path: `marc.stops.${stopId}`,
+        message: "Each MARC stop must contain an array of departures.",
+      });
+    }
     let previousMinute = -Infinity;
     rows(value).forEach((departureValue, index) => {
       departureCount += 1;

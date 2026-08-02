@@ -53,6 +53,7 @@ import {
   promoteVenueInventory,
   type VenueCollectionStatus,
 } from "./lib/venue-event-promotion";
+import { normalizeVenueEventTimes } from "./lib/venue-event-time";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 
 const OUT = resolve("src/data/venue-events.json");
@@ -109,7 +110,7 @@ type EnsureModelReady = () => Promise<boolean>;
 
 const SHAPE =
   `Extract UPCOMING events from this venue's page as a JSON array. Each item:\n` +
-  `{ "title": string, "starts_at": string (date and time as published, ISO if possible), ` +
+  `{ "title": string, "starts_at": string (date and time as published, ISO if possible; use the America/New_York offset), ` +
   `"ends_at"?: string, "description"?: string (one complete, neutral sentence), "price"?: string, "ticket_url"?: string (absolute) }\n` +
   `Copy each published title exactly. A description must use only facts from the source and must not use fragments, ` +
   `slogans, promotional filler, or an invented three-part list. Preserve a factual list when the source requires it. ` +
@@ -117,7 +118,7 @@ const SHAPE =
 
 const IMAGE_SHAPE =
   `This image is a venue's monthly events/music calendar. Extract every event legibly shown as a JSON array. Each item:\n` +
-  `{ "title": string, "starts_at": string (date, with time if shown; include the year ${new Date().getFullYear()} if the image omits it), ` +
+  `{ "title": string, "starts_at": string (date, with time if shown; include the year ${new Date().getFullYear()} if the image omits it and use the America/New_York offset), ` +
   `"description"?: string (one complete, neutral sentence using only legible facts) }\n` +
   `Copy each published title exactly. Do not use fragments, promotional filler, or an invented three-part list. ` +
   `Only events you can actually read in the image, with a real date. If none are legible, return [].`;
@@ -129,17 +130,20 @@ const methodOf = (v: VenueSource): Method => v.method ?? (v.render ? "render" : 
 const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
 
 function publishableRawEvents(events: RawEvent[]): RawEvent[] {
-  return (events as unknown[]).filter(
-    (event): event is RawEvent =>
-      Boolean(
-        event &&
-          typeof event === "object" &&
-          typeof (event as RawEvent).title === "string" &&
-          (event as RawEvent).title?.trim() &&
-          typeof (event as RawEvent).starts_at === "string" &&
-          (event as RawEvent).starts_at?.trim(),
-      ),
-  );
+  return (events as unknown[]).flatMap((event) => {
+    if (
+      !event ||
+      typeof event !== "object" ||
+      typeof (event as RawEvent).title !== "string" ||
+      !(event as RawEvent).title?.trim() ||
+      typeof (event as RawEvent).starts_at !== "string" ||
+      !(event as RawEvent).starts_at?.trim()
+    ) {
+      return [];
+    }
+    const normalized = normalizeVenueEventTimes(event as RawEvent);
+    return normalized ? [normalized] : [];
+  });
 }
 
 /**
@@ -304,10 +308,14 @@ async function collect(
     for (const url of venue.urls) {
       const result = await fetchSquarespaceEventsResult(url);
       if (result.status === "failure") continue;
-      if (result.events.length) {
-        const { events } = result;
+      const events = publishableRawEvents(result.events);
+      if (events.length) {
         console.log(`  ✓ ${events.length} event(s) from feed ${url}`);
         return { events, source: directSource(url), status: "complete" };
+      }
+      if (result.events.length) {
+        console.log(`  – feed returned no valid event date-times: ${url}`);
+        continue;
       }
       verifiedEmptySource ??= directSource(url);
     }
@@ -448,7 +456,12 @@ async function main() {
   const existingPath = existsSync(SOURCE_INVENTORY_OUT)
     ? SOURCE_INVENTORY_OUT
     : OUT;
-  const existing = JSON.parse(readFileSync(existingPath, "utf8")) as VenueEvent[];
+  const existing = (
+    JSON.parse(readFileSync(existingPath, "utf8")) as VenueEvent[]
+  ).flatMap((event) => {
+    const normalized = normalizeVenueEventTimes(event);
+    return normalized ? [normalized] : [];
+  });
   const byKey = new Map(existing.map((e) => [keyOf(e), e]));
   const venues = cfg.venues.filter((v) => (only ? v.slug === only : true));
   const sourceState = loadVenueSourceState();

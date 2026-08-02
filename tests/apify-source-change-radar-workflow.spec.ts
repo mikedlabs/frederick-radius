@@ -7,8 +7,13 @@ const WORKFLOW_PATH = resolve(
   process.cwd(),
   ".github/workflows/apify-source-change-radar.yml",
 );
+const ISSUE_LIFECYCLE_PATH = resolve(
+  process.cwd(),
+  "scripts/lib/apify-source-change-radar-issue.cjs",
+);
 
 type WorkflowStep = {
+  id?: string;
   name?: string;
   if?: string;
   uses?: string;
@@ -56,7 +61,11 @@ describe("Apify source change radar workflow", () => {
     const parsed = workflow();
     expect(Object.keys(parsed.on ?? {})).toEqual(["workflow_dispatch"]);
     expect(workflowText()).not.toContain("schedule:");
-    expect(parsed.permissions).toEqual({ contents: "read", issues: "write" });
+    expect(parsed.permissions).toEqual({
+      actions: "read",
+      contents: "read",
+      issues: "write",
+    });
     expect(parsed.concurrency).toEqual({
       group: "apify-source-change-radar",
       "cancel-in-progress": false,
@@ -69,6 +78,8 @@ describe("Apify source change radar workflow", () => {
     });
     expect(workflowText()).not.toContain("contents: write");
     expect(workflowText()).not.toContain("create-pull-request");
+    expect(workflowText()).toContain("github.event_name == 'schedule'");
+    expect(workflowText()).toContain("Apify source radar (live)");
   });
 
   it("has no URL, Actor, cost, or publishing input", () => {
@@ -112,6 +123,13 @@ describe("Apify source change radar workflow", () => {
       APIFY_TOKEN: "${{ secrets.APIFY_TOKEN }}",
     });
     expect(workflowText().match(/secrets\.APIFY_TOKEN/g) ?? []).toHaveLength(1);
+
+    const summary = allSteps.find(
+      (step) => step.name === "Add safe result to job summary",
+    );
+    expect(summary?.env?.RADAR_LIVE).toContain("confirm_live");
+    expect(summary?.run).toContain("Plan-only run completed");
+    expect(summary?.run).toContain("No provider request was made");
   });
 
   it("fails closed without restored state and persists only private fingerprints", () => {
@@ -133,35 +151,78 @@ describe("Apify source change radar workflow", () => {
     expect(restore?.with?.path).toBe(
       "scripts/reports/apify-source-change-radar/state.json",
     );
+    expect(restore?.with?.key).toContain("github.run_attempt");
+    expect(restore?.with?.["restore-keys"]).toBe(
+      "apify-source-change-radar-state-\n",
+    );
     expect(guard?.if).toContain("!inputs.initialize_state");
     action(save, "actions/cache/save");
     expect(save?.if).toContain("hashFiles");
+    expect(save?.if).toContain("steps.review-queue.outcome == 'success'");
     expect(save?.with?.path).toBe(
       "scripts/reports/apify-source-change-radar/state.json",
     );
+    expect(save?.with?.key).toContain("github.run_attempt");
     action(artifact, "actions/upload-artifact");
     expect(artifact?.with?.["retention-days"]).toBe(14);
     expect(String(artifact?.with?.path)).not.toContain("state.json");
   });
 
+  it("derives a fail-closed monthly reservation floor from durable live-run history", () => {
+    const budget = steps().find(
+      (step) => step.name === "Enforce durable monthly live-run ceiling",
+    );
+    action(budget, "actions/github-script");
+    expect(budget?.if).toContain("confirm_live");
+    expect(budget?.if).toContain("github.event_name == 'schedule'");
+    const script = String(budget?.with?.script);
+    expect(script).toContain("listWorkflowRuns");
+    expect(script).toContain("github.paginate");
+    expect(script).toContain("run.display_title !== liveRunName");
+    expect(script).toContain("run.run_attempt");
+    expect(script).toContain("currentSeen");
+    expect(script).toContain("if (!currentSeen)");
+    expect(script).toContain(
+      "The current live run is absent from durable GitHub history",
+    );
+    expect(script).not.toContain("attemptedRuns += currentAttempt");
+    expect(script).toContain("!Number.isFinite(updatedAtMs)");
+    expect(script).toContain("runAttempt !== currentAttempt");
+    expect(script).toContain("attemptedRuns > 6");
+    expect(script).toContain("reservedCents > 90");
+    expect(script).toContain('core.setOutput("attempted-runs"');
+
+    const live = steps().find((step) =>
+      step.run?.includes("--live --confirm"),
+    );
+    expect(live?.env).toMatchObject({
+      RADAR_DURABLE_MONTH: "${{ steps.monthly-budget.outputs.month }}",
+      RADAR_DURABLE_ATTEMPTED_RUNS:
+        "${{ steps.monthly-budget.outputs.attempted-runs }}",
+    });
+  });
+
   it("uses one bounded issue queue and never injects publisher text", () => {
-    const issue = steps().find((step) =>
-      step.uses?.startsWith("actions/github-script@"),
+    const issue = steps().find(
+      (step) => step.name === "Open or update the review queue issue",
     );
     action(issue, "actions/github-script");
+    expect(issue?.id).toBe("review-queue");
     expect(issue?.if).toContain("github-issue.json");
     const script = String(issue?.with?.script);
-    expect(script).toContain("signal.items.length > 3");
-    expect(script).toContain("apify/website-content-crawler");
-    expect(script).toContain("cannot publish an event");
-    expect(script).toContain("Source radar recovered or returned quiet");
-    expect(script).toContain('state: "closed"');
-    expect(script).toContain('state_reason: "completed"');
-    expect(script.indexOf("listForRepo")).toBeLessThan(
-      script.indexOf("if (!signal.actionable)"),
+    expect(script).toContain("updateApifySourceChangeRadarIssue");
+    const lifecycle = readFileSync(ISSUE_LIFECYCLE_PATH, "utf8");
+    expect(lifecycle).toContain("signal.items.length <= 3");
+    expect(lifecycle).toContain("apify/website-content-crawler");
+    expect(lifecycle).toContain("cannot publish an event");
+    expect(lifecycle).toContain(
+      "This quiet snapshot does not resolve the earlier actionable signal",
     );
-    expect(script).not.toContain("item.error.message");
-    expect(script).not.toContain("markdown");
-    expect(script).not.toContain("rawHtml");
+    expect(lifecycle).toContain('state: "closed"');
+    expect(lifecycle).toContain('state_reason: "not_planned"');
+    expect(lifecycle).toContain("Date.parse(signal.generatedAt) >=");
+    expect(lifecycle).not.toContain("item.error.message");
+    expect(lifecycle).not.toContain("markdown");
+    expect(lifecycle).not.toContain("rawHtml");
   });
 });

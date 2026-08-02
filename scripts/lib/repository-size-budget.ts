@@ -232,12 +232,22 @@ export function readTrackedWorkingTreeSizes(
   return raw
     .split("\0")
     .filter(Boolean)
-    .map((repositoryPath) => ({
-      path: repositoryPath,
-      bytes: lstatSync(
-        path.join(repositoryRoot, ...repositoryPath.split("/")),
-      ).size,
-    }))
+    .flatMap((repositoryPath): TrackedFileSize[] => {
+      try {
+        return [{
+          path: repositoryPath,
+          bytes: lstatSync(
+            path.join(repositoryRoot, ...repositoryPath.split("/")),
+          ).size,
+        }];
+      } catch (error) {
+        // `git ls-files` continues to report an unstaged deletion. It is not
+        // part of the working-tree byte inventory; if policy names the path,
+        // the audit below will still report `exception_file_missing`.
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+        throw error;
+      }
+    })
     .sort((left, right) => left.path.localeCompare(right.path));
 }
 

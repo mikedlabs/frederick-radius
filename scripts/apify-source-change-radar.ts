@@ -223,6 +223,16 @@ export type RunApifySourceChangeRadarOptions = {
   fetchPage?: ApifyPageFetcher;
   now?: () => Date;
   allowInitializeState?: boolean;
+  /**
+   * A fail-closed lower bound supplied by the GitHub runner. It includes the
+   * current live attempt and is derived from durable workflow-run history, so
+   * a runner interruption cannot make an already reserved attempt disappear
+   * with an unsaved cache entry.
+   */
+  durableBudgetFloor?: {
+    month: string;
+    attemptedRunsIncludingCurrent: number;
+  };
 };
 
 export type CanonicalVenueRegistry = {
@@ -545,10 +555,16 @@ function isSha256(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
 function validFingerprint(
   value: unknown,
 ): value is ApifySourceSignalFingerprint {
-  if (!value || typeof value !== "object") return false;
+  if (!isPlainRecord(value)) return false;
   const fingerprint = value as ApifySourceSignalFingerprint;
   return (
     isSha256(fingerprint.contentHash) &&
@@ -556,7 +572,7 @@ function validFingerprint(
     fingerprint.contentLength >= 0 &&
     [fingerprint.dates, fingerprint.times, fingerprint.eventLinks].every(
       (signal) =>
-        signal &&
+        isPlainRecord(signal) &&
         isSha256(signal.hash) &&
         Number.isInteger(signal.count) &&
         signal.count >= 0,
@@ -565,22 +581,21 @@ function validFingerprint(
 }
 
 function validateState(value: unknown): ApifySourceChangeRadarState {
-  if (!value || typeof value !== "object") {
+  if (!isPlainRecord(value)) {
     throw new Error("state root is invalid");
   }
   const state = value as ApifySourceChangeRadarState;
   if (
     state.version !== 1 ||
-    !state.budget?.months ||
-    typeof state.budget.months !== "object" ||
-    !state.observations ||
-    typeof state.observations !== "object"
+    !isPlainRecord(state.budget) ||
+    !isPlainRecord(state.budget.months) ||
+    !isPlainRecord(state.observations)
   ) {
     throw new Error("state shape is invalid");
   }
   for (const budget of Object.values(state.budget.months)) {
     if (
-      !budget ||
+      !isPlainRecord(budget) ||
       !Number.isInteger(budget.attemptedRuns) ||
       budget.attemptedRuns < 0 ||
       !Number.isFinite(budget.reservedMaxChargeUsd) ||
@@ -598,7 +613,7 @@ function validateState(value: unknown): ApifySourceChangeRadarState {
   ]);
   for (const observation of Object.values(state.observations)) {
     if (
-      !observation ||
+      !isPlainRecord(observation) ||
       typeof observation.sourceUrl !== "string" ||
       !statuses.has(observation.status) ||
       typeof observation.lastCheckedAt !== "string" ||
@@ -786,6 +801,7 @@ export function buildApifySourceChangeRadarIssueSignal(
     } as const;
     const actionableWarning =
       result.parsingWarnings.includes("same-host-redirect") ||
+      result.parsingWarnings.includes("source-url-changed") ||
       result.parsingWarnings.includes("repeated-content-only-drift");
     if (result.status === "changed" && result.fingerprint) {
       items.push({
@@ -946,14 +962,41 @@ export async function runApifySourceChangeRadar(
       options.allowInitializeState === true,
     );
     const budget = state.budget.months[month]!;
-    if (budget.attemptedRuns + 1 > config.limits.maxRunsPerMonth) {
+    const durableBudgetFloor = options.durableBudgetFloor;
+    if (
+      durableBudgetFloor &&
+      (durableBudgetFloor.month !== month ||
+        !Number.isInteger(durableBudgetFloor.attemptedRunsIncludingCurrent) ||
+        durableBudgetFloor.attemptedRunsIncludingCurrent < 1)
+    ) {
+      throw new ApifySourceChangeRadarError(
+        "INVALID_STATE",
+        "The durable GitHub budget floor is invalid or belongs to a different UTC month.",
+      );
+    }
+    const attemptedRunsAfterReservation = Math.max(
+      budget.attemptedRuns + 1,
+      durableBudgetFloor?.attemptedRunsIncludingCurrent ?? 0,
+    );
+    const reservedChargeAfterReservation = Math.max(
+      Number((budget.reservedMaxChargeUsd + reservedThisRun).toFixed(2)),
+      durableBudgetFloor
+        ? Number(
+            (
+              durableBudgetFloor.attemptedRunsIncludingCurrent *
+              config.limits.maxReservedChargeUsdPerRun
+            ).toFixed(2),
+          )
+        : 0,
+    );
+    if (attemptedRunsAfterReservation > config.limits.maxRunsPerMonth) {
       throw new ApifySourceChangeRadarError(
         "MONTHLY_CAP_EXCEEDED",
-        `Monthly run cap would be exceeded (${budget.attemptedRuns} used + 1 planned > ${config.limits.maxRunsPerMonth}). No provider request was made.`,
+        `Monthly run cap would be exceeded (${attemptedRunsAfterReservation} reserved > ${config.limits.maxRunsPerMonth}). No provider request was made.`,
       );
     }
     if (
-      budget.reservedMaxChargeUsd + reservedThisRun >
+      reservedChargeAfterReservation >
       config.limits.maxReservedChargeUsdPerMonth + Number.EPSILON
     ) {
       throw new ApifySourceChangeRadarError(
@@ -963,11 +1006,11 @@ export async function runApifySourceChangeRadar(
     }
 
     // Reserve the full bounded run before the first provider call. Failed and
-    // interrupted requests therefore cannot silently reuse the allowance.
-    budget.attemptedRuns += 1;
-    budget.reservedMaxChargeUsd = Number(
-      (budget.reservedMaxChargeUsd + reservedThisRun).toFixed(2),
-    );
+    // interrupted requests therefore cannot silently reuse the allowance. In
+    // GitHub, the durable workflow-run floor repairs a stale cache before this
+    // write if an earlier runner died after a provider request.
+    budget.attemptedRuns = attemptedRunsAfterReservation;
+    budget.reservedMaxChargeUsd = reservedChargeAfterReservation;
     budget.lastReservedAt = generatedAt;
     await writeJsonAtomic(statePath, state);
 
@@ -975,7 +1018,13 @@ export async function runApifySourceChangeRadar(
     const summary = emptySummary();
     const results: ApifySourceChangeRadarResult[] = [];
     for (const source of sources) {
-      const previous = state.observations[source.id];
+      const storedPrevious = state.observations[source.id];
+      const sourceUrlChanged = Boolean(
+        storedPrevious && !sameExactPage(storedPrevious.sourceUrl, source.url),
+      );
+      // Fingerprints from a different exact page are never comparable. A
+      // reviewed URL change gets a fresh baseline and an actionable warning.
+      const previous = sourceUrlChanged ? undefined : storedPrevious;
       const canonicalCheck = canonicalChecks.get(source.id)!;
       try {
         const snapshot = await fetchPage(source.url, {
@@ -1035,6 +1084,7 @@ export async function runApifySourceChangeRadar(
         if (snapshot.usageTotalUsd === undefined) {
           parsingWarnings.push("provider-usage-unreported");
         }
+        if (sourceUrlChanged) parsingWarnings.push("source-url-changed");
         const redirected = !sameExactPage(source.url, snapshot.finalUrl);
         if (redirected) parsingWarnings.push("same-host-redirect");
         if (contentOnlyChange) parsingWarnings.push("content-only-drift");
@@ -1047,13 +1097,16 @@ export async function runApifySourceChangeRadar(
         }
         const confidence: ApifySourceChangeConfidence = redirected
           ? "medium"
-          : status === "changed"
-            ? changedFields.includes("dates") || changedFields.includes("times")
-              ? "high"
-              : "medium"
-            : status === "unchanged"
-              ? "high"
-              : "low";
+          : sourceUrlChanged
+            ? "medium"
+            : status === "changed"
+              ? changedFields.includes("dates") ||
+                changedFields.includes("times")
+                ? "high"
+                : "medium"
+              : status === "unchanged"
+                ? "high"
+                : "low";
         summary[status] += 1;
         state.observations[source.id] = {
           sourceUrl: source.url,
@@ -1096,13 +1149,13 @@ export async function runApifySourceChangeRadar(
         const evidence = safeError(error);
         summary.error += 1;
         state.observations[source.id] = {
-          ...previous,
+          ...(sourceUrlChanged ? {} : previous),
           sourceUrl: source.url,
           status: "error",
           lastCheckedAt: generatedAt,
           consecutiveFailures: (previous?.consecutiveFailures ?? 0) + 1,
-          consecutiveContentOnlyChanges:
-            previous?.consecutiveContentOnlyChanges ?? 0,
+          // A failed retrieval breaks the consecutiveness of cosmetic drift.
+          consecutiveContentOnlyChanges: 0,
           errorCode: evidence.code,
           ...(evidence.httpStatus === undefined
             ? {}
@@ -1118,7 +1171,7 @@ export async function runApifySourceChangeRadar(
           parsingWarnings: ["source-retrieval-failed"],
           canonicalCheck,
           changedFields: [],
-          ...(previous?.fingerprint
+          ...(!sourceUrlChanged && previous?.fingerprint
             ? { previousFingerprint: previous.fingerprint }
             : {}),
           error: evidence,
@@ -1225,6 +1278,33 @@ export function parseApifySourceChangeRadarCliArgs(
   };
 }
 
+function durableBudgetFloorFromEnvironment():
+  | RunApifySourceChangeRadarOptions["durableBudgetFloor"]
+  | undefined {
+  const month = process.env.RADAR_DURABLE_MONTH;
+  const attemptedRuns = process.env.RADAR_DURABLE_ATTEMPTED_RUNS;
+  const required = process.env.GITHUB_ACTIONS === "true";
+  if (!month && !attemptedRuns) {
+    if (required) {
+      throw new ApifySourceChangeRadarError(
+        "INVALID_STATE",
+        "A GitHub live radar run requires its durable monthly budget floor.",
+      );
+    }
+    return undefined;
+  }
+  if (!month || !attemptedRuns || !/^\d+$/.test(attemptedRuns)) {
+    throw new ApifySourceChangeRadarError(
+      "INVALID_STATE",
+      "The durable GitHub budget environment is incomplete or invalid.",
+    );
+  }
+  return {
+    month,
+    attemptedRunsIncludingCurrent: Number(attemptedRuns),
+  };
+}
+
 async function main(): Promise<void> {
   const args = parseApifySourceChangeRadarCliArgs(process.argv.slice(2));
   const config = await loadConfig(DEFAULT_CONFIG_PATH);
@@ -1257,6 +1337,7 @@ async function main(): Promise<void> {
     allowlist,
     sourceIds: args.sourceIds,
     allowInitializeState: args.initializeState,
+    durableBudgetFloor: durableBudgetFloorFromEnvironment(),
   });
   console.log(
     `Apify source change radar checked ${result.report.results.length} source(s): ${result.report.summary.unchanged} unchanged/skipped, ${result.report.summary.changed} changed, ${result.report.summary.error} failed.`,

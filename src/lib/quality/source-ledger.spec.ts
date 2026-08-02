@@ -418,6 +418,39 @@ describe("source health ledger", () => {
     expect(row.freshness.state).toBe("invalid");
   });
 
+  it("rejects future reachability without exposing it as the latest observation", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "success",
+        },
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-29T11:45:00.000Z",
+          outcome: "success",
+        },
+      ],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "invalid_evidence",
+      available: false,
+      reasonCode: "evidence_timestamp_invalid",
+      recommendedAction: "repair_evidence_timestamp",
+      lastObservedAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityOutcome: "success",
+      lastAttemptAt: null,
+    });
+  });
+
   it("keeps non-active manifest rows out of operational health", () => {
     const [row] = buildSourceLedger(
       [source({ status: "pending_review" })],

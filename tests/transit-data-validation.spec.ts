@@ -162,6 +162,26 @@ describe("MARC schedule artifact validation", () => {
       ]),
     );
   });
+
+  it("rejects a non-array departure collection for a MARC stop", () => {
+    const fixture: Record<string, unknown> = structuredClone(marcFixture());
+    const stops = fixture.stops as Record<string, unknown>;
+    stops.east = {
+      t: "06:15",
+      min: 375,
+      svc: "weekday",
+      trip: "train-1",
+    };
+    fixture.departures = 1;
+
+    expect(
+      validateMarcScheduleArtifact(fixture, marcStationStops, NOW),
+    ).toContainEqual({
+      code: "invalid_stop_departures",
+      path: "marc.stops.east",
+      message: "Each MARC stop must contain an array of departures.",
+    });
+  });
 });
 
 describe("MARC source GTFS reference validation", () => {

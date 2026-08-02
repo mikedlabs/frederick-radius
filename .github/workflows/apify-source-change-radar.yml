@@ -1,4 +1,5 @@
 name: Apify source change radar
+run-name: "Apify source radar (${{ github.event_name == 'schedule' && 'live' || inputs.confirm_live && 'live' || 'plan' }})"
 
 # Manual-only until baseline and unchanged behavior are proven on main. This
 # workflow can open a review issue, but it cannot edit or publish Radius data.
@@ -17,6 +18,7 @@ on:
         default: false
 
 permissions:
+  actions: read
   contents: read
   issues: write
 
@@ -49,7 +51,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: scripts/reports/apify-source-change-radar/state.json
-          key: apify-source-change-radar-state-${{ github.run_id }}
+          key: apify-source-change-radar-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             apify-source-change-radar-state-
 
@@ -57,31 +59,112 @@ jobs:
         run: npm run radar:apify-sources
 
       - name: Keep live radar state on main
-        if: ${{ inputs.confirm_live && github.ref != 'refs/heads/main' }}
+        if: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
         run: |
-          echo "::error title=Live radar runs from main only::Choose main so the private budget and fingerprint ledger cannot split across branch-scoped caches."
-          exit 1
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error title=Live radar runs from main only::Choose main so the private budget and fingerprint ledger cannot split across branches."
+            exit 1
+          fi
 
-      - name: Protect the private state and charge ledger
-        if: ${{ inputs.confirm_live && !inputs.initialize_state }}
+      - name: Enforce durable monthly live-run ceiling
+        id: monthly-budget
+        if: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const liveRunName = "Apify source radar (live)";
+            const now = new Date();
+            const month = now.toISOString().slice(0, 7);
+            const monthStart = `${month}-01T00:00:00.000Z`;
+            const monthStartMs = Date.parse(monthStart);
+            const currentAttempt = Number(process.env.GITHUB_RUN_ATTEMPT);
+            if (!Number.isInteger(currentAttempt) || currentAttempt < 1) {
+              core.setFailed("GitHub did not provide a valid current run attempt; no provider request is allowed.");
+              return;
+            }
+            // Workflow-run history is the durable spend ledger. Unlike a
+            // cache entry, it survives a runner dying after the provider call.
+            // Pagination is intentionally exhaustive and any API failure stops
+            // the job before APIFY_TOKEN is exposed.
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              {
+                ...context.repo,
+                workflow_id: "apify-source-change-radar.yml",
+                per_page: 100,
+              },
+            );
+            let attemptedRuns = 0;
+            let currentSeen = false;
+            for (const run of runs) {
+              if (
+                run.display_title !== liveRunName ||
+                run.head_branch !== "main"
+              ) {
+                continue;
+              }
+              const updatedAtMs =
+                typeof run.updated_at === "string"
+                  ? Date.parse(run.updated_at)
+                  : Number.NaN;
+              if (!Number.isFinite(updatedAtMs)) {
+                core.setFailed("GitHub returned uncertain timestamp data for a live run; no provider request is allowed.");
+                return;
+              }
+              const runAttempt = Number(run.run_attempt);
+              if (!Number.isInteger(runAttempt) || runAttempt < 1) {
+                core.setFailed("GitHub returned an uncertain live-run attempt count; no provider request is allowed.");
+                return;
+              }
+              if (updatedAtMs < monthStartMs) continue;
+              if (Number(run.id) === Number(context.runId)) {
+                currentSeen = true;
+                if (runAttempt !== currentAttempt) {
+                  core.setFailed("GitHub run history has not indexed the current attempt; no provider request is allowed.");
+                  return;
+                }
+              }
+              attemptedRuns += runAttempt;
+            }
+            if (!currentSeen) {
+              core.setFailed("The current live run is absent from durable GitHub history; no provider request is allowed.");
+              return;
+            }
+            const reservedCents = attemptedRuns * 15;
+            if (attemptedRuns > 6 || reservedCents > 90) {
+              core.setFailed(
+                `Monthly Apify radar ceiling reached: ${attemptedRuns} live attempt(s), $${(reservedCents / 100).toFixed(2)} reserved. No provider request is allowed.`,
+              );
+              return;
+            }
+            core.setOutput("month", month);
+            core.setOutput("attempted-runs", String(attemptedRuns));
+            core.info(
+              `Durable monthly floor: ${attemptedRuns}/6 live attempt(s), $${(reservedCents / 100).toFixed(2)}/$0.90 reserved.`,
+            );
+
+      - name: Protect the private state and fingerprint ledger
+        if: ${{ (inputs.confirm_live || github.event_name == 'schedule') && !inputs.initialize_state }}
         env:
           RESTORED_STATE_KEY: ${{ steps.radar-state.outputs.cache-matched-key }}
         run: |
           if [ -z "$RESTORED_STATE_KEY" ] || [ ! -f scripts/reports/apify-source-change-radar/state.json ]; then
-            echo "::error title=Apify radar state was not restored::Recover the prior state, or check initialize_state only after verifying current Apify account usage."
+            echo "::error title=Apify radar state was not restored::Recover the prior fingerprints, or check initialize_state only after verifying current Apify account usage."
             exit 1
           fi
 
       - name: Warn before first ledger initialization
-        if: ${{ inputs.confirm_live && inputs.initialize_state && steps.radar-state.outputs.cache-matched-key == '' }}
+        if: ${{ (inputs.confirm_live || github.event_name == 'schedule') && inputs.initialize_state && steps.radar-state.outputs.cache-matched-key == '' }}
         run: |
-          echo "::warning title=Verify Apify account usage::The workflow fails closed after cache loss. Confirm the account spending limit and current usage before creating a new ledger."
+          echo "::warning title=Verify Apify account usage::The durable run-history gate preserves reservations, but fingerprints require initialization after cache loss. Confirm the account spending limit and current usage first."
 
       - name: Run capped exact-page radar
-        if: ${{ inputs.confirm_live }}
+        if: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           RADAR_INITIALIZE_STATE: ${{ inputs.initialize_state }}
+          RADAR_DURABLE_MONTH: ${{ steps.monthly-budget.outputs.month }}
+          RADAR_DURABLE_ATTEMPTED_RUNS: ${{ steps.monthly-budget.outputs.attempted-runs }}
         run: |
           if [ -z "$APIFY_TOKEN" ]; then
             echo "::error title=Missing APIFY_TOKEN::Add the token to the dedicated APIFY_TOKEN GitHub environment."
@@ -96,8 +179,16 @@ jobs:
 
       - name: Add safe result to job summary
         if: always()
+        env:
+          RADAR_LIVE: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
         run: |
-          if [ -f scripts/reports/apify-source-change-radar/github-summary.md ]; then
+          if [ "$RADAR_LIVE" != "true" ]; then
+            {
+              echo "## Apify source change radar"
+              echo
+              echo "Plan-only run completed. No provider request was made and no state was written."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f scripts/reports/apify-source-change-radar/github-summary.md ]; then
             cat scripts/reports/apify-source-change-radar/github-summary.md >> "$GITHUB_STEP_SUMMARY"
           else
             {
@@ -108,125 +199,19 @@ jobs:
           fi
 
       - name: Open or update the review queue issue
-        if: ${{ always() && inputs.confirm_live && hashFiles('scripts/reports/apify-source-change-radar/github-issue.json') != '' }}
+        id: review-queue
+        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && hashFiles('scripts/reports/apify-source-change-radar/github-issue.json') != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const fs = require("node:fs");
-            const signalPath = "scripts/reports/apify-source-change-radar/github-issue.json";
-            const signal = JSON.parse(fs.readFileSync(signalPath, "utf8"));
-            const marker = "<!-- apify-source-change-radar -->";
-            const title = "[source-radar] First-party venue pages need review";
-            if (
-              signal?.schemaVersion !== 1 ||
-              signal?.marker !== marker ||
-              signal?.title !== title ||
-              !Array.isArray(signal?.items) ||
-              signal.items.length > 3 ||
-              typeof signal?.expiresAt !== "string" ||
-              !signal?.summary ||
-              Boolean(signal.actionable) !== (signal.items.length > 0)
-            ) {
-              core.setFailed("The radar issue signal failed its safe schema check.");
-              return;
-            }
-            const safe = (value, max = 160) =>
-              String(value ?? "")
-                .replace(/[|\r\n]/g, " ")
-                .slice(0, max);
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const openIssues = await github.paginate(
-              github.rest.issues.listForRepo,
-              { ...context.repo, state: "open", per_page: 100 },
-            );
-            const existing = openIssues.find(
-              (issue) => !issue.pull_request && issue.body?.includes(marker),
-            );
-            if (!signal.actionable) {
-              if (!existing) {
-                core.info("No actionable source change and no open radar issue.");
-                return;
-              }
-              const quietBody = [
-                marker,
-                "## Source radar recovered or returned quiet",
-                "",
-                `Collected: ${safe(signal.generatedAt, 40)}`,
-                `Result: ${Number(signal.summary.baseline ?? 0)} baseline, ${Number(signal.summary.unchanged ?? 0)} unchanged, ${Number(signal.summary.cosmetic ?? 0)} isolated cosmetic, ${Number(signal.summary.changed ?? 0)} changed, ${Number(signal.summary.error ?? 0)} failed.`,
-                `Workflow evidence: ${runUrl}`,
-                "",
-                "No actionable schedule signal remains. Automatic publishing stayed disabled. Closing this review issue; a later actionable run will open a new one.",
-              ].join("\n");
-              await github.rest.issues.createComment({
-                ...context.repo,
-                issue_number: existing.number,
-                body: quietBody,
-              });
-              await github.rest.issues.update({
-                ...context.repo,
-                issue_number: existing.number,
-                state: "closed",
-                state_reason: "completed",
-              });
-              return;
-            }
-            const rows = [];
-            for (const item of signal.items) {
-              if (
-                item.actor !== "apify/website-content-crawler" ||
-                !["changed", "error", "warning"].includes(item.status) ||
-                !["low", "medium", "high"].includes(item.confidence)
-              ) {
-                core.setFailed("A radar issue item failed its allowlist check.");
-                return;
-              }
-              const sourceUrl = new URL(item.sourceUrl);
-              if (sourceUrl.protocol !== "https:") {
-                core.setFailed("A radar issue item used a non-HTTPS source URL.");
-                return;
-              }
-              const warnings = Array.isArray(item.parsingWarnings)
-                ? item.parsingWarnings.map((value) => safe(value, 60)).join(", ") || "none"
-                : "none";
-              const signalText = item.status === "error"
-                ? `${safe(item.errorCode, 60)}${item.httpStatus ? ` (HTTP ${Number(item.httpStatus)})` : ""}`
-                : `${safe(item.changedFields?.join(", ") || item.status, 100)}; dates ${Number(item.dateCount ?? 0)}, times ${Number(item.timeCount ?? 0)}, event links ${Number(item.eventLinkCount ?? 0)}`;
-              rows.push(
-                `| [${safe(item.sourceName)}](${sourceUrl.toString()}) | ${safe(item.town, 80)} | ${safe(item.status, 20)} | ${safe(item.confidence, 10)} | ${signalText} | ${warnings} | ${Number(item.canonicalCheck?.committedVenueEventCount ?? 0)} |`,
-              );
-            }
-            const body = [
-              marker,
-              "## First-party venue source review",
-              "",
-              "This is a private-fingerprint review signal. It did not copy publisher prose and cannot publish an event.",
-              "",
-              `Collected: ${safe(signal.generatedAt, 40)}`,
-              `Expires: ${safe(signal.expiresAt, 40)}`,
-              `Actor: \`apify/website-content-crawler\``,
-              `Workflow evidence: ${runUrl}`,
-              "",
-              "| Source | Town | Status | Confidence | Signal | Parsing warnings | Committed venue events checked |",
-              "| --- | --- | --- | --- | --- | --- | --- |",
-              ...rows,
-              "",
-              "Review the original page and canonical venue records. Promote, reject, expire, or correct manually; this queue has no publishing permission.",
-            ].join("\n");
-            if (existing) {
-              await github.rest.issues.createComment({
-                ...context.repo,
-                issue_number: existing.number,
-                body,
-              });
-            } else {
-              await github.rest.issues.create({ ...context.repo, title, body });
-            }
+            const { updateApifySourceChangeRadarIssue } = require("./scripts/lib/apify-source-change-radar-issue.cjs");
+            await updateApifySourceChangeRadarIssue({ github, context, core });
 
       - name: Upload private fingerprint evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: apify-source-change-radar-${{ github.run_id }}
+          name: apify-source-change-radar-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             apify-source-change-radar.log
             scripts/reports/apify-source-change-radar/apify-source-change-radar-*.json
@@ -236,8 +221,8 @@ jobs:
           retention-days: 14
 
       - name: Save private radar state
-        if: ${{ always() && inputs.confirm_live && hashFiles('scripts/reports/apify-source-change-radar/state.json') != '' }}
+        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && steps.review-queue.outcome == 'success' && hashFiles('scripts/reports/apify-source-change-radar/state.json') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: scripts/reports/apify-source-change-radar/state.json
-          key: apify-source-change-radar-state-${{ github.run_id }}
+          key: apify-source-change-radar-state-${{ github.run_id }}-${{ github.run_attempt }}

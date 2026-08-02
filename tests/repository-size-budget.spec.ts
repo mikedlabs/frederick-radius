@@ -1,9 +1,19 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditRepositorySizeBudget,
   parseRepositorySizeBudgetPolicy,
+  readTrackedWorkingTreeSizes,
   type RepositorySizeBudgetPolicy,
 } from "../scripts/lib/repository-size-budget";
 
@@ -158,6 +168,44 @@ describe("repository size budget", () => {
     expect(missing.violations).toContainEqual(expect.objectContaining({
       code: "exception_file_missing",
     }));
+  });
+
+  it("handles ordinary unstaged deletions while retaining missing-exception enforcement", () => {
+    const repositoryRoot = mkdtempSync(
+      resolve(tmpdir(), "radius-repository-size-budget-"),
+    );
+    try {
+      execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+      mkdirSync(resolve(repositoryRoot, "src/data"), { recursive: true });
+      writeFileSync(resolve(repositoryRoot, "src/keep.ts"), "export {};\n");
+      writeFileSync(
+        resolve(repositoryRoot, generatedException.path),
+        "x".repeat(150),
+      );
+      writeFileSync(resolve(repositoryRoot, "src/deleted.ts"), "export {};\n");
+      execFileSync("git", ["add", "."], { cwd: repositoryRoot });
+      unlinkSync(resolve(repositoryRoot, "src/deleted.ts"));
+      unlinkSync(resolve(repositoryRoot, generatedException.path));
+
+      const trackedFiles = readTrackedWorkingTreeSizes(repositoryRoot);
+      expect(trackedFiles).toEqual([{
+        path: "src/keep.ts",
+        bytes: 11,
+      }]);
+
+      const result = auditRepositorySizeBudget(
+        trackedFiles,
+        policy({ exceptions: [generatedException] }),
+      );
+      expect(result.violations).toEqual([
+        expect.objectContaining({
+          code: "exception_file_missing",
+          path: generatedException.path,
+        }),
+      ]);
+    } finally {
+      rmSync(repositoryRoot, { recursive: true, force: true });
+    }
   });
 
   it("fails closed on duplicate paths and incomplete provenance policy", () => {

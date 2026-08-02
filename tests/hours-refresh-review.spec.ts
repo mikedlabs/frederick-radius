@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeHoursRefreshChange,
+  isIsoCalendarDate,
   renderHoursRefreshReview,
 } from "../scripts/hours-refresh-review.mjs";
 
@@ -35,6 +36,12 @@ function artifact(
 }
 
 describe("hours refresh review manifest", () => {
+  it("validates real calendar dates instead of accepting shape alone", () => {
+    expect(isIsoCalendarDate("2026-02-28")).toBe(true);
+    expect(isIsoCalendarDate("2026-02-30")).toBe(false);
+    expect(isIsoCalendarDate("2026-2-8")).toBe(false);
+  });
+
   it("flags public removals and newly closed statuses without hiding the coverage gain", () => {
     const analysis = analyzeHoursRefreshChange({
       beforeArtifact: artifact({
@@ -247,5 +254,48 @@ describe("hours refresh review manifest", () => {
     expect(renderHoursRefreshReview(analysis)).toContain(
       "[Recorded](https://example.com/official-location)",
     );
+  });
+
+  it.each([
+    {
+      effective_at: "2026-02-30",
+      review_after: "2026-10-31",
+      label: "an impossible effective date",
+    },
+    {
+      effective_at: "2026-08-01",
+      review_after: "2026-07-31",
+      label: "an effective date after its review deadline",
+    },
+  ])("does not accept closure evidence with $label", (dates) => {
+    const analysis = analyzeHoursRefreshChange({
+      beforeArtifact: artifact({
+        cafe: {
+          business_status: "OPERATIONAL",
+          refreshed_at: "2026-07-30T12:00:00.000Z",
+        },
+      }),
+      afterArtifact: artifact({
+        cafe: {
+          business_status: "CLOSED_PERMANENTLY",
+          refreshed_at: "2026-07-31T08:00:00.000Z",
+        },
+      }),
+      beforePlaces: [place("cafe")],
+      afterPlaces: [],
+      statusOverrides: {
+        cafe: {
+          status: "closed_permanently",
+          effective_at: dates.effective_at,
+          review_after: dates.review_after,
+          source: "https://example.com/official-closure",
+          note: "The business published a permanent closure notice.",
+        },
+      },
+    });
+
+    expect(analysis.review_required).toBe(true);
+    expect(analysis.unreviewedPublicRemovals).toEqual(["cafe"]);
+    expect(analysis.unreviewedNewlyClosed).toHaveLength(1);
   });
 });

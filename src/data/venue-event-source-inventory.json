@@ -173,7 +173,7 @@
   },
   {
     "title": "Miss Maryland Volunteer & Miss Maryland Teen Volunteer Competition",
-    "starts_at": "2026-08-01T17:00:00",
+    "starts_at": "2026-08-01T17:00:00-04:00",
     "description": "The competition concludes at the 2026 Miss Maryland Teen Volunteer & Miss Maryland Volunteer Final Competition, where Maryland's next titleholders will be crowned.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -189,7 +189,7 @@
   },
   {
     "title": "The Importance of Being Earnest",
-    "starts_at": "2026-08-01T19:30:00",
+    "starts_at": "2026-08-01T19:30:00-04:00",
     "description": "A champagne-fizz comedy where two charming young bachelors invent elaborate alter egos to escape social obligations, impress formidable women, and generally wreak havoc.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -205,7 +205,7 @@
   },
   {
     "title": "The Importance of Being Earnest",
-    "starts_at": "2026-08-02T15:00:00",
+    "starts_at": "2026-08-02T15:00:00-04:00",
     "description": "A champagne-fizz comedy where two charming young bachelors invent elaborate alter egos to escape social obligations, impress formidable women, and generally wreak havoc.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -221,7 +221,7 @@
   },
   {
     "title": "Law and Order SIU 2026 DUN-DUN! These Are YOUR Stories",
-    "starts_at": "2026-08-08T15:00:00",
+    "starts_at": "2026-08-08T15:00:00-04:00",
     "ticket_url": "https://www.weinbergcenter.org",
     "venue_slug": "weinberg-center",
     "venue_name": "Weinberg Center for the Arts",
@@ -235,7 +235,7 @@
   },
   {
     "title": "Law and Order SIU 2026 DUN-DUN! These Are YOUR Stories",
-    "starts_at": "2026-08-08T19:30:00",
+    "starts_at": "2026-08-08T19:30:00-04:00",
     "ticket_url": "https://www.weinbergcenter.org",
     "venue_slug": "weinberg-center",
     "venue_name": "Weinberg Center for the Arts",
@@ -249,7 +249,7 @@
   },
   {
     "title": "Improv Class",
-    "starts_at": "2026-09-14T18:30:00",
+    "starts_at": "2026-09-14T18:30:00-04:00",
     "ticket_url": "https://www.weinbergcenter.org",
     "venue_slug": "weinberg-center",
     "venue_name": "Weinberg Center for the Arts",
@@ -263,7 +263,7 @@
   },
   {
     "title": "Intellectual Property: CHUCK TODD",
-    "starts_at": "2026-09-19T19:30:00",
+    "starts_at": "2026-09-19T19:30:00-04:00",
     "description": "Chuck Todd marks the inaugural program in a new PBS/Amazon series titled Intellectual Property, focusing on experts.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -279,7 +279,7 @@
   },
   {
     "title": "Las Áñez",
-    "starts_at": "2026-10-08T19:30:00",
+    "starts_at": "2026-10-08T19:30:00-04:00",
     "description": "Las Áñez presents twin sisters on stage singing their original Latin-American songs, bringing energy, rhythm, and an infectious spark.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -295,7 +295,7 @@
   },
   {
     "title": "The Hot Sardines",
-    "starts_at": "2026-10-09T20:00:00",
+    "starts_at": "2026-10-09T20:00:00-04:00",
     "description": "The Hot Sardines return to Downtown Frederick, emerging a decade ago from the underground parties of Brooklyn to touring worldwide and recording a string of albums.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -311,7 +311,7 @@
   },
   {
     "title": "David Sedaris",
-    "starts_at": "2026-10-10T20:00:00",
+    "starts_at": "2026-10-10T20:00:00-04:00",
     "description": "David Sedaris is one of America's pre-eminent humor writers and a master of satire.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -327,7 +327,7 @@
   },
   {
     "title": "Intellectual Property: MORRIS PEARL",
-    "starts_at": "2026-10-14T19:30:00",
+    "starts_at": "2026-10-14T19:30:00-04:00",
     "description": "Morris Pearl, chair of Patriotic Millionaires, is the second guest on the first season of the PBS/Amazon series Intellectual Property.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -343,7 +343,7 @@
   },
   {
     "title": "TOAST – The Best of Bread",
-    "starts_at": "2026-10-24T19:30:00",
+    "starts_at": "2026-10-24T19:30:00-04:00",
     "description": "Over their career, Bread scored 13 hits on Billboard's Top 100, and the two surviving members of Bread, David Gates and others, honor the legacy of the band.",
     "ticket_url": "https://www.weinbergcenter.org",
     "description_origin": "radius-summary",
@@ -359,7 +359,7 @@
   },
   {
     "title": "The Importance of Being Earnest",
-    "starts_at": "2026-08-01T19:30",
+    "starts_at": "2026-08-01T19:30-04:00",
     "ends_at": null,
     "description": null,
     "price": null,
@@ -376,7 +376,7 @@
   },
   {
     "title": "The Importance of Being Earnest",
-    "starts_at": "2026-08-02T15:00",
+    "starts_at": "2026-08-02T15:00-04:00",
     "ends_at": null,
     "description": null,
     "price": null,
@@ -393,7 +393,7 @@
   },
   {
     "title": "Law and Order SIU 2026",
-    "starts_at": "2026-08-08T15:00",
+    "starts_at": "2026-08-08T15:00-04:00",
     "ends_at": null,
     "description": null,
     "price": null,
@@ -410,7 +410,7 @@
   },
   {
     "title": "Law and Order SIU 2026",
-    "starts_at": "2026-08-08T19:30",
+    "starts_at": "2026-08-08T19:30-04:00",
     "ends_at": null,
     "description": null,
     "price": null,
@@ -427,7 +427,7 @@
   },
   {
     "title": "Improv Class",
-    "starts_at": "2026-09-14T18:30",
+    "starts_at": "2026-09-14T18:30-04:00",
     "ends_at": null,
     "description": null,
     "price": null,

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -139,6 +139,86 @@ describe("Apify source change radar policy", () => {
       }),
     ).rejects.toMatchObject({ code: "STATE_REQUIRED" });
     expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["array root", []],
+    [
+      "array month ledger",
+      { version: 1, budget: { months: [] }, observations: {} },
+    ],
+    [
+      "array observations",
+      {
+        version: 1,
+        budget: {
+          months: {
+            "2026-08": { attemptedRuns: 0, reservedMaxChargeUsd: 0 },
+          },
+        },
+        observations: [],
+      },
+    ],
+  ])("rejects an invalid %s state without calling Apify", async (_label, state) => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-apify-radar-"),
+    );
+    await writeFile(
+      join(reportDirectory, "state.json"),
+      `${JSON.stringify(state)}\n`,
+      "utf8",
+    );
+    const fetchPage = vi.fn();
+    await expect(
+      runApifySourceChangeRadar({
+        ...(await runOptions(reportDirectory)),
+        fetchPage,
+        now: () => new Date("2026-08-02T12:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it("reconciles a stale cache upward from the durable GitHub attempt floor", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-apify-radar-"),
+    );
+    const fetchPage = vi.fn(async (url: string) => snapshot(url));
+    const recovered = await runApifySourceChangeRadar({
+      ...(await runOptions(reportDirectory)),
+      sourceIds: ["jojos-events"],
+      fetchPage,
+      allowInitializeState: true,
+      durableBudgetFloor: {
+        month: "2026-08",
+        attemptedRunsIncludingCurrent: 5,
+      },
+      now: () => new Date("2026-08-02T12:00:00.000Z"),
+    });
+
+    expect(recovered.report.budget).toMatchObject({
+      attemptedRunsThisMonth: 5,
+      reservedMaxChargeUsdThisMonth: 0.75,
+    });
+
+    const blockedDirectory = await mkdtemp(
+      join(tmpdir(), "radius-apify-radar-"),
+    );
+    const blockedFetch = vi.fn();
+    await expect(
+      runApifySourceChangeRadar({
+        ...(await runOptions(blockedDirectory)),
+        sourceIds: ["jojos-events"],
+        fetchPage: blockedFetch,
+        allowInitializeState: true,
+        durableBudgetFloor: {
+          month: "2026-08",
+          attemptedRunsIncludingCurrent: 7,
+        },
+        now: () => new Date("2026-08-02T12:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "MONTHLY_CAP_EXCEEDED" });
+    expect(blockedFetch).not.toHaveBeenCalled();
   });
 
   it("stores a private baseline, then skips an identical repeat without an issue signal", async () => {
@@ -288,6 +368,101 @@ describe("Apify source change radar policy", () => {
     expect(second.issueSignal).toMatchObject({
       actionable: true,
       items: [{ status: "warning", confidence: "low" }],
+    });
+  });
+
+  it("breaks the cosmetic-drift streak when a retrieval fails", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-apify-radar-"),
+    );
+    const options = await runOptions(reportDirectory);
+    let mode: "a" | "b" | "error" | "c" = "a";
+    const fetchPage = vi.fn(async (url: string) => {
+      if (mode === "error") {
+        throw new ApifyRestError("HTTP_ERROR", "Provider failed.", {
+          status: 503,
+        });
+      }
+      return snapshot(
+        url,
+        `Header ${mode.toUpperCase()}\nJuly 31 at 7 p.m.`,
+      );
+    });
+    await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["sky-stage-calendar"],
+      fetchPage,
+      allowInitializeState: true,
+      now: () => new Date("2026-08-02T14:00:00.000Z"),
+    });
+    mode = "b";
+    await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["sky-stage-calendar"],
+      fetchPage,
+      now: () => new Date("2026-08-03T14:00:00.000Z"),
+    });
+    mode = "error";
+    await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["sky-stage-calendar"],
+      fetchPage,
+      now: () => new Date("2026-08-04T14:00:00.000Z"),
+    });
+    mode = "c";
+    const afterFailure = await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["sky-stage-calendar"],
+      fetchPage,
+      now: () => new Date("2026-08-05T14:00:00.000Z"),
+    });
+
+    expect(afterFailure.report.results[0]).toMatchObject({
+      status: "cosmetic",
+      parsingWarnings: expect.not.arrayContaining([
+        "repeated-content-only-drift",
+      ]),
+    });
+    expect(afterFailure.issueSignal.actionable).toBe(false);
+  });
+
+  it("stores a fresh actionable baseline when a reviewed source URL changes", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-apify-radar-"),
+    );
+    const options = await runOptions(reportDirectory);
+    const fetchPage = vi.fn(async (url: string) => snapshot(url));
+    const first = await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["jojos-events"],
+      fetchPage,
+      allowInitializeState: true,
+      now: () => new Date("2026-08-02T14:00:00.000Z"),
+    });
+    const state = JSON.parse(await readFile(first.statePath, "utf8"));
+    state.observations["jojos-events"].sourceUrl =
+      "https://old.example/events/";
+    await writeFile(first.statePath, `${JSON.stringify(state)}\n`, "utf8");
+
+    const changedUrl = await runApifySourceChangeRadar({
+      ...options,
+      sourceIds: ["jojos-events"],
+      fetchPage,
+      now: () => new Date("2026-08-03T14:00:00.000Z"),
+    });
+
+    expect(changedUrl.report.results[0]).toMatchObject({
+      status: "baseline",
+      confidence: "medium",
+      changedFields: [],
+      parsingWarnings: expect.arrayContaining(["source-url-changed"]),
+    });
+    expect(changedUrl.report.results[0]).not.toHaveProperty(
+      "previousFingerprint",
+    );
+    expect(changedUrl.issueSignal).toMatchObject({
+      actionable: true,
+      items: [{ status: "warning" }],
     });
   });
 

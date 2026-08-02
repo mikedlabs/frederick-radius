@@ -440,12 +440,32 @@ export function buildSourceLedger(
     .map((source): SourceLedgerRow => {
       const sourceEvidence = evidenceBySource.get(source.id) ?? [];
       const config = configBySource.get(source.id);
+      const nowMs = now.getTime();
+      const futureAttemptObserved = sourceEvidence.some((item) => {
+        const attemptedMs = timestamp(item.attemptedAt);
+        return (
+          attemptedMs !== null
+          && attemptedMs > nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS
+        );
+      });
+      // `lastObservedAt` and reachability fields promise valid observations.
+      // Keep future-dated evidence available for the invalid-evidence
+      // diagnosis, but never project it as the latest real observation.
+      const validObservations = sourceEvidence.filter((item) => {
+        const attemptedMs = timestamp(item.attemptedAt);
+        return (
+          attemptedMs !== null
+          && attemptedMs <= nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS
+        );
+      });
       const latestObservation = freshest(
-        sourceEvidence,
+        validObservations,
         (item) => item.attemptedAt,
       );
       const latestReachability = freshest(
-        sourceEvidence.filter((item) => item.kind === "reachability_probe"),
+        validObservations.filter(
+          (item) => item.kind === "reachability_probe",
+        ),
         (item) => item.attemptedAt,
       );
       // A successful HTTP reachability check proves only that an upstream
@@ -494,8 +514,8 @@ export function buildSourceLedger(
       const hasFutureEvidence = [attemptMs, successMs, publishedMs].some(
         (value) =>
           value !== null &&
-          value > now.getTime() + MAX_FUTURE_EVIDENCE_SKEW_MS,
-      );
+          value > nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS,
+      ) || futureAttemptObserved;
       if (source.status !== "active") {
         state = "inactive";
       } else if (config?.configured === false) {

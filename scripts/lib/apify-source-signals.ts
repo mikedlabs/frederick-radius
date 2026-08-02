@@ -25,9 +25,9 @@ const NAMED_DATE_PATTERN =
 const NUMERIC_DATE_PATTERN =
   /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?)\b/g;
 const TIME_PATTERN =
-  /\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]\d|2[0-3]):[0-5]\d\b/gi;
+  /\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/gi;
 const EVENT_PATH_PATTERN =
-  /\/(?:event|events|calendar|calendars|performance|performances|show|shows|ticket|tickets)(?:\/|$)/i;
+  /\/(?:event|events|calendar|calendars|performance|performances|show|shows|ticket|tickets)(?:[/.]|$)/i;
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");

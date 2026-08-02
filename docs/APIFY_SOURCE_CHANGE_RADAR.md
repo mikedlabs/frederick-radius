@@ -57,7 +57,11 @@ The radar classifies results this way:
 
 One cosmetic result stays quiet. Two consecutive content-only changes are
 configurable as a low-confidence review warning. A same-host redirect is also
-actionable. A cross-host redirect is rejected as an error.
+actionable. If a reviewed source id moves to a different exact URL, the old
+page fingerprint is never compared with the new page: the radar stores a fresh
+baseline and opens a `source-url-changed` review warning. A cross-host redirect
+is rejected as an error. A retrieval error breaks any cosmetic-change streak,
+so changes separated by a failure are not treated as consecutive.
 
 Warnings such as `no-date-signals`, `no-time-signals`,
 `no-event-link-signals`, `same-host-redirect`, and
@@ -77,11 +81,27 @@ One live radar run:
 - runs under one non-overlapping GitHub concurrency group.
 
 The provider parameter is the hard per-request ceiling. The local run and
-monthly gates refuse work before a request, and the GitHub workflow fails
-closed if its private state is missing. GitHub caches can still be evicted, so
-an operator must verify current Apify usage before deliberately initializing a
-new ledger. Keep an Apify account spending limit in place as the authoritative
-account-wide backstop.
+monthly gates refuse work before a request. The GitHub workflow also derives a
+durable monthly reservation floor from this workflow's own run history. Live
+runs (including a future scheduled run) have a fixed `(live)` run name; reruns
+count through GitHub's `run_attempt`, and the current attempt must already be
+present in paginated run history before the secret is exposed. Missing or
+uncertain history fails closed. The CLI reconciles cached budget upward from
+that floor, so an interrupted runner cannot erase a reservation by failing to
+save its cache.
+
+The private cache is still used for fingerprints. Cache keys include both the
+run id and attempt so a rerun can save a new immutable entry; prefix restore
+selects the newest retained entry. Observation state is saved only after the
+review-queue step succeeds. If issue delivery fails, the old fingerprint stays
+authoritative so the signal is retried rather than disappearing as unchanged;
+the run-history floor still preserves that attempt's budget reservation.
+GitHub caches can be evicted, so the workflow still refuses a missing
+fingerprint state unless initialization is explicit.
+An operator must verify current Apify usage before deliberately initializing a
+new fingerprint ledger. Deleting workflow history or the cache is an operator
+action that requires the same account-side reconciliation. Keep an Apify
+account spending limit in place as the authoritative account-wide backstop.
 
 The August 2026 account review found an active $5 monthly platform limit,
 roughly $0.03 used, no Apify schedules, and four saved tasks. Do **not** reuse
@@ -113,12 +133,16 @@ workflow on `main` before enabling a schedule.
 
 ## Review queue lifecycle
 
-The workflow has `contents: read` and `issues: write`. It can create or comment
-on one marked review issue. It cannot commit, open a data pull request, call a
-Radius publishing route, or update the database. Every signal expires after 14
-days. When a later full run has no actionable items, the workflow posts a safe
-recovery/quiet summary and closes the marked issue so stale alerts do not stay
-open.
+The workflow has `actions: read`, `contents: read`, and `issues: write`. It can
+create or comment on one marked review issue. It cannot commit, open a data pull
+request, call a Radius publishing route, or update the database. Every
+actionable signal carries a machine-readable 14-day expiry marker. A later
+quiet run adds context but does **not** resolve or close an unexpired alert. A
+reviewer must promote, reject, or correct it explicitly. On a quiet run at or
+after the latest marked expiry, the workflow can close only the review queue as
+expired with an audited comment; canonical Radius data is never changed. A
+legacy issue without a valid expiry marker fails safe and remains open for a
+human.
 
 ### Promote
 

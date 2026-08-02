@@ -2727,14 +2727,6 @@
   },
   "ar-workshop": {
     "name": "Ar Workshop",
-    "commerce_links": [
-      {
-        "type": "gift_card",
-        "url": "https://www.arworkshop.com/tulsa/arw-gift-card/",
-        "anchor_text": "BUY GIFT CARDS",
-        "source_url": "https://www.arworkshop.com/frederick/"
-      }
-    ],
     "source": {
       "url": "https://www.arworkshop.com/frederick/",
       "fetchedAt": "2026-08-01T09:51:37.622Z",

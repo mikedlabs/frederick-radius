@@ -17,6 +17,15 @@ const CLOSED_STATUSES = new Set([
   "CLOSED_PERMANENTLY",
 ]);
 
+export function isIsoCalendarDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
+
 function dataKeys(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return Object.keys(value).filter((key) => !key.startsWith("_"));
@@ -41,8 +50,9 @@ function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
   if (
     !expectedClosure ||
     (override.status !== expectedClosure && override.status !== "operational") ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(override.effective_at ?? "") ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(override.review_after ?? "") ||
+    !isIsoCalendarDate(override.effective_at) ||
+    !isIsoCalendarDate(override.review_after) ||
+    override.effective_at > override.review_after ||
     override.effective_at > asOf ||
     override.review_after < asOf ||
     typeof override.note !== "string" ||
