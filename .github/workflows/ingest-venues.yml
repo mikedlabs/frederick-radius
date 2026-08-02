@@ -1,4 +1,5 @@
 name: Ingest venue events
+run-name: Ingest venue events (firecrawl=${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
 
 # Captures lineups from venues that only post on their own site
 # (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
@@ -15,7 +16,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ingest-venue-events
+  group: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget' || 'ingest-venue-events' }}
   cancel-in-progress: false
 
 jobs:
@@ -24,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
+      actions: read
       contents: read
     environment: "Data Enrichment"
     env:
@@ -32,9 +34,8 @@ jobs:
       - name: Require venue extraction configuration
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
-          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
-          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
-          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::error title=Missing ANTHROPIC_VENUE_EVENTS_API_KEY::Add the standard API key to the Data Enrichment environment before running venue extraction."
@@ -42,12 +43,7 @@ jobs:
           fi
           case "$FIRECRAWL_FETCH_FALLBACK" in
             0) ;;
-            1)
-              if [ -z "$FIRECRAWL_API_KEY" ]; then
-                echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback is enabled but the Data Enrichment environment has no key."
-                exit 1
-              fi
-              ;;
+            1) ;;
             *)
               echo "::error title=Invalid Firecrawl setting::FIRECRAWL_FETCH_FALLBACK must be 0 or 1."
               exit 1
@@ -55,18 +51,39 @@ jobs:
           esac
           case "$FIRECRAWL_FALLBACK_MAX_REQUESTS" in
             ''|*[!0-9]*)
-              echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+              echo "::error title=Invalid Firecrawl request cap::Use 1 or 2."
               exit 1
               ;;
           esac
-          if [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -lt 1 ] || [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 20 ]; then
-            echo "::error title=Invalid Firecrawl request cap::Use a whole number from 1 through 20."
+          if [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -lt 1 ] || [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 2 ]; then
+            echo "::error title=Invalid Firecrawl request cap::Use 1 or 2."
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Enforce shared Firecrawl fallback budget
+        id: firecrawl-budget
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CURRENT_WORKFLOW_FILE: ingest-venues.yml
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}
+        with:
+          script: |
+            const { enforceFirecrawlFallbackBudget } = require("./scripts/lib/firecrawl-fallback-budget.cjs");
+            await enforceFirecrawlFallbackBudget({ github, context, core });
+      - name: Verify enabled Firecrawl fallback secret
+        if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' }}
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          if [ -z "$FIRECRAWL_API_KEY" ]; then
+            echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback passed its shared budget gate, but the Data Enrichment environment has no key."
+            exit 1
+          fi
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
@@ -75,12 +92,13 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Extract venue events
         id: extract
+        if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' }}
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
-          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
-          FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}
-          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}
+          FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
         run: npm run ingest:venues
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.

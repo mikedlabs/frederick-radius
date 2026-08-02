@@ -91,8 +91,7 @@ describe("Firecrawl REST adapter", () => {
 
     expect(result).toEqual({
       requestedUrl,
-      finalUrl:
-        "https://www.example.com/events?town=Frederick&date=2026-07-30",
+      finalUrl: "https://www.example.com/events?town=Frederick&date=2026-07-30",
       text: "# Tonight\n\nAlive at Five",
       markdown: "# Tonight\n\nAlive at Five",
       links: [
@@ -109,14 +108,15 @@ describe("Firecrawl REST adapter", () => {
   });
 
   it("falls back to the requested URL when Firecrawl omits redirect metadata", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: { markdown: "Public page" },
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: { markdown: "Public page" },
+          }),
+          { status: 200 },
+        ),
     );
 
     await expect(
@@ -134,7 +134,7 @@ describe("Firecrawl REST adapter", () => {
 
   it("can request raw source content without converting an RSS feed", async () => {
     const requestedUrl = "https://example.com/events.rss";
-    const xml = "<?xml version=\"1.0\"?><rss><channel></channel></rss>";
+    const xml = '<?xml version="1.0"?><rss><channel></channel></rss>';
     const fetchImpl = vi.fn<typeof fetch>(
       async () =>
         new Response(
@@ -184,17 +184,18 @@ describe("Firecrawl REST adapter", () => {
 
   it("uses Firecrawl's current enhanced proxy name when explicitly requested", async () => {
     const requestedUrl = "https://example.com/protected";
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            markdown: "Verified public page",
-            metadata: { url: requestedUrl },
-          },
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              markdown: "Verified public page",
+              metadata: { url: requestedUrl },
+            },
+          }),
+          { status: 200 },
+        ),
     );
 
     await fetchFirecrawlPage(requestedUrl, {
@@ -207,6 +208,44 @@ describe("Firecrawl REST adapter", () => {
     expect(JSON.parse(String(init?.body))).toMatchObject({
       url: requestedUrl,
       proxy: "enhanced",
+    });
+  });
+
+  it("sends an explicit fresh, no-storage, single-credit v2 scrape policy", async () => {
+    const requestedUrl = "https://example.com/current-events";
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              markdown: "Current public events",
+              metadata: { url: requestedUrl, statusCode: 200 },
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+
+    await fetchFirecrawlPage(requestedUrl, {
+      apiKey: "fc-test-secret",
+      fetchImpl,
+      maxAgeMs: 0,
+      storeInCache: false,
+      proxy: "basic",
+    });
+
+    const [endpoint, init] = fetchImpl.mock.calls[0];
+    expect(endpoint).toBe("https://api.firecrawl.dev/v2/scrape");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      url: requestedUrl,
+      formats: ["markdown", "links"],
+      onlyMainContent: true,
+      skipTlsVerification: false,
+      timeout: 19_500,
+      proxy: "basic",
+      maxAge: 0,
+      storeInCache: false,
     });
   });
 
@@ -266,11 +305,15 @@ describe("Firecrawl REST adapter", () => {
   });
 
   it("rejects a response that exceeds the configured byte ceiling", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ success: true, data: { markdown: "large" } }), {
-        status: 200,
-        headers: { "Content-Length": "2048" },
-      }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ success: true, data: { markdown: "large" } }),
+          {
+            status: 200,
+            headers: { "Content-Length": "2048" },
+          },
+        ),
     );
 
     await expect(
@@ -283,14 +326,15 @@ describe("Firecrawl REST adapter", () => {
   });
 
   it("can require Firecrawl to report the final source URL", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: { markdown: "Public page", metadata: { statusCode: 200 } },
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: { markdown: "Public page", metadata: { statusCode: 200 } },
+          }),
+          { status: 200 },
+        ),
     );
 
     await expect(
@@ -307,21 +351,22 @@ describe("Firecrawl REST adapter", () => {
 
   it("does not accept sourceURL alone as strict final-URL evidence", async () => {
     const requestedUrl = "https://example.com/events.rss";
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            rawHtml: "<?xml version=\"1.0\"?><rss><channel /></rss>",
-            metadata: {
-              sourceURL: requestedUrl,
-              statusCode: 200,
-              contentType: "application/rss+xml",
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              rawHtml: '<?xml version="1.0"?><rss><channel /></rss>',
+              metadata: {
+                sourceURL: requestedUrl,
+                statusCode: 200,
+                contentType: "application/rss+xml",
+              },
             },
-          },
-        }),
-        { status: 200 },
-      ),
+          }),
+          { status: 200 },
+        ),
     );
 
     await expect(
@@ -339,14 +384,15 @@ describe("Firecrawl REST adapter", () => {
 
   it("returns clear HTTP errors without exposing the API key", async () => {
     const apiKey = "fc-sensitive-secret";
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          success: false,
-          error: `Authorization ${apiKey} was rejected`,
-        }),
-        { status: 401 },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: `Authorization ${apiKey} was rejected`,
+          }),
+          { status: 401 },
+        ),
     );
 
     let caught: unknown;

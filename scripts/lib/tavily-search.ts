@@ -7,20 +7,24 @@
  * freshness, and confidence rules.
  */
 
+import { isIP } from "node:net";
+import {
+  normalizePublicHost,
+  publicHttpUrlDomain,
+} from "./public-http-url.cjs";
+
 const TAVILY_SEARCH_ENDPOINT = "https://api.tavily.com/search";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_RESULTS = 10;
+const MAX_RESPONSE_BYTES = 1_000_000;
 
-export type TavilySearchDepth =
-  | "ultra-fast"
-  | "fast"
-  | "basic"
-  | "advanced";
+export type TavilySearchDepth = "ultra-fast" | "fast" | "basic" | "advanced";
 
 export type TavilySearchErrorCode =
   | "configuration"
   | "timeout"
   | "network_error"
+  | "response_too_large"
   | "bad_request"
   | "unauthorized"
   | "rate_limited"
@@ -142,32 +146,19 @@ function normalizeAllowedDomain(value: string): string {
     }
   }
 
-  domain = domain
-    .replace(/^\*\./, "")
-    .replace(/^www\./, "")
-    .replace(/\.$/, "");
-
-  if (
-    domain.length > 253 ||
-    !domain.includes(".") ||
-    !domain
-      .split(".")
-      .every(
-        (label) =>
-          label.length > 0 &&
-          label.length <= 63 &&
-          /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
-      )
-  ) {
+  const normalized = normalizePublicHost(domain.replace(/^\*\./, ""));
+  if (!normalized) {
     throw configurationError(
       `Invalid Tavily allowed domain: ${JSON.stringify(value)}.`,
     );
   }
 
-  return domain;
+  return normalized;
 }
 
-function normalizeAllowedDomains(values: readonly string[] | undefined): string[] {
+function normalizeAllowedDomains(
+  values: readonly string[] | undefined,
+): string[] {
   if (!values) return [];
   if (values.length > 300) {
     throw configurationError(
@@ -177,23 +168,16 @@ function normalizeAllowedDomains(values: readonly string[] | undefined): string[
   return [...new Set(values.map(normalizeAllowedDomain))];
 }
 
-function normalizedResultHost(url: string): string | null {
-  try {
-    return new URL(url).hostname
-      .toLowerCase()
-      .replace(/^www\./, "")
-      .replace(/\.$/, "");
-  } catch {
-    return null;
-  }
-}
-
-function isAllowedResultUrl(url: string, allowedDomains: readonly string[]): boolean {
-  const host = normalizedResultHost(url);
+function isAllowedResultUrl(
+  url: string,
+  allowedDomains: readonly string[],
+): boolean {
+  const host = publicHttpUrlDomain(url);
   if (!host) return false;
   if (allowedDomains.length === 0) return true;
   return allowedDomains.some(
-    (domain) => host === domain || host.endsWith(`.${domain}`),
+    (domain) =>
+      host === domain || (isIP(domain) === 0 && host.endsWith(`.${domain}`)),
   );
 }
 
@@ -257,11 +241,70 @@ function readRequestId(payload: unknown): string | null {
 }
 
 function redactSecret(value: string, apiKey: string): string {
-  return value.includes(apiKey) ? value.split(apiKey).join("[REDACTED]") : value;
+  return value.includes(apiKey)
+    ? value.split(apiKey).join("[REDACTED]")
+    : value;
 }
 
 async function parseResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text();
+  const contentLength = response.headers.get("content-length");
+  if (
+    contentLength &&
+    /^\d+$/.test(contentLength) &&
+    Number(contentLength) > MAX_RESPONSE_BYTES
+  ) {
+    throw new TavilySearchError(
+      `Tavily Search API response exceeded the ${MAX_RESPONSE_BYTES}-byte limit.`,
+      {
+        code: "response_too_large",
+        status: response.status,
+        requestId:
+          response.headers.get("x-request-id") ??
+          response.headers.get("x-tavily-request-id"),
+      },
+    );
+  }
+
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > MAX_RESPONSE_BYTES) {
+        try {
+          await reader.cancel();
+        } catch {
+          // The size violation is the actionable failure even if cancellation fails.
+        }
+        throw new TavilySearchError(
+          `Tavily Search API response exceeded the ${MAX_RESPONSE_BYTES}-byte limit.`,
+          {
+            code: "response_too_large",
+            status: response.status,
+            requestId:
+              response.headers.get("x-request-id") ??
+              response.headers.get("x-tavily-request-id"),
+          },
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (byteLength === 0) return null;
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder().decode(bytes);
   if (!text) return null;
   try {
     return JSON.parse(text);
@@ -337,7 +380,8 @@ export async function searchTavilyCandidates(
       signal: controller.signal,
     });
     payload = await parseResponseBody(response);
-  } catch {
+  } catch (error) {
+    if (error instanceof TavilySearchError) throw error;
     if (controller.signal.aborted) {
       throw new TavilySearchError(
         `Tavily search timed out after ${timeoutMs}ms.`,
@@ -400,7 +444,11 @@ export async function searchTavilyCandidates(
         : normalizedQuery,
     candidates: body.results
       .map((result) => parseCandidate(result, allowedDomains))
-      .filter((result): result is TavilySearchCandidate => result !== null),
+      .filter((result): result is TavilySearchCandidate => result !== null)
+      // Treat the requested provider limit as an untrusted hint. Enforce the
+      // same boundary locally so an over-return cannot inflate reports,
+      // caches, or the compact GitHub review queue.
+      .slice(0, maxResults),
     requestId,
     responseTime:
       typeof body.response_time === "string" ||

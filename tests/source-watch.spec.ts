@@ -185,6 +185,8 @@ describe("Source Watch candidate runs", () => {
       expect.objectContaining({
         timeoutMs: 1_000,
         requireReportedFinalUrl: true,
+        maxAgeMs: 0,
+        storeInCache: false,
         proxy: "basic",
       }),
     );
@@ -305,6 +307,154 @@ describe("Source Watch candidate runs", () => {
     expect(state.budget.months["2026-07"].attemptedCredits).toBe(20);
   });
 
+  it("resets a source id moved to a different exact URL as an actionable fresh baseline", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const original = testConfig();
+    const replacement = structuredClone(original);
+    replacement.sources[0]!.url =
+      "https://source-1.example.test/new-events-page";
+    const fetchPage = vi.fn(async (url: string) =>
+      snapshot(url, "Identical rendered content"),
+    );
+
+    const first = await runSourceWatch({
+      config: original,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage,
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+    const reset = await runSourceWatch({
+      config: replacement,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage,
+      now: () => new Date("2026-07-29T13:00:00.000Z"),
+    });
+
+    expect(first.issueSignal.items[0]).toMatchObject({ status: "baseline" });
+    expect(reset.report.summary).toMatchObject({ new: 1, changed: 0 });
+    expect(reset.issueSignal.items[0]).toEqual({
+      sourceId: "official-source-1",
+      sourceUrl: "https://source-1.example.test/new-events-page",
+      finalUrl: "https://source-1.example.test/new-events-page",
+      checkedAt: "2026-07-29T13:00:00.000Z",
+      expiresAt: "2026-08-12T13:00:00.000Z",
+      status: "url-baseline",
+      currentHash: hashSourceWatchContent("Identical rendered content"),
+      textLength: "Identical rendered content".length,
+      linkCount: 1,
+    });
+    expect(reset.issueSignal.items[0]).not.toHaveProperty("previousHash");
+    expect(JSON.stringify(reset.issueSignal)).not.toContain(
+      replacement.sources[0]!.name,
+    );
+    expect(JSON.parse(await readFile(reset.issueSignalPath, "utf8"))).toEqual(
+      reset.issueSignal,
+    );
+  });
+
+  it("resets the baseline when a stable source starts redirecting to a different same-host page", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const config = testConfig();
+    const sourceUrl = config.sources[0]!.url;
+    const redirectedUrl = "https://source-1.example.test/calendar";
+
+    await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => snapshot(sourceUrl, "Identical rendered content"),
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+    const redirected = await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => ({
+        ...snapshot(sourceUrl, "Identical rendered content"),
+        finalUrl: redirectedUrl,
+      }),
+      now: () => new Date("2026-07-29T13:00:00.000Z"),
+    });
+    const stable = await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => ({
+        ...snapshot(sourceUrl, "Identical rendered content"),
+        finalUrl: redirectedUrl,
+      }),
+      now: () => new Date("2026-07-29T14:00:00.000Z"),
+    });
+
+    expect(redirected.report.summary).toMatchObject({ new: 1, changed: 0 });
+    expect(redirected.report.candidates[0]).toMatchObject({
+      status: "new",
+      finalUrl: redirectedUrl,
+    });
+    expect(redirected.report.candidates[0]).not.toHaveProperty("previousHash");
+    expect(redirected.issueSignal.items[0]).toMatchObject({
+      status: "url-baseline",
+      finalUrl: redirectedUrl,
+    });
+    expect(redirected.issueSignal.items[0]).not.toHaveProperty("previousHash");
+    expect(stable.report.summary).toMatchObject({ same: 1, changed: 0 });
+    expect(stable.issueSignal.items[0]).toMatchObject({
+      status: "same",
+      finalUrl: redirectedUrl,
+    });
+  });
+
+  it("keeps a changed-URL baseline pending across a failed first retrieval", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const original = testConfig();
+    const replacement = structuredClone(original);
+    replacement.sources[0]!.url =
+      "https://source-1.example.test/replacement-events";
+
+    await runSourceWatch({
+      config: original,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async (url) => snapshot(url, "Old exact page"),
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+    const failed = await runSourceWatch({
+      config: replacement,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => {
+        throw new FirecrawlRestError("TIMEOUT", "Provider timed out");
+      },
+      now: () => new Date("2026-07-29T13:00:00.000Z"),
+    });
+    const recovered = await runSourceWatch({
+      config: replacement,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async (url) => snapshot(url, "New exact page"),
+      now: () => new Date("2026-07-29T14:00:00.000Z"),
+    });
+
+    expect(failed.issueSignal.items[0]).toMatchObject({
+      status: "error",
+      errorCode: "TIMEOUT",
+    });
+    expect(failed.issueSignal.items[0]).not.toHaveProperty("previousHash");
+    expect(recovered.report.summary).toMatchObject({ new: 1, changed: 0 });
+    expect(recovered.issueSignal.items[0]).toMatchObject({
+      status: "url-baseline",
+    });
+    expect(recovered.issueSignal.items[0]).not.toHaveProperty("previousHash");
+  });
+
   it("reserves the hard monthly cap before making any further request", async () => {
     const reportDirectory = await mkdtemp(
       join(tmpdir(), "radius-source-watch-"),
@@ -421,7 +571,9 @@ describe("Source Watch candidate runs", () => {
         errorCode: expectedCode,
         httpStatus: expectedHttpStatus,
       });
-      expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(false);
+      expect(sourceWatchReportHasSuccessfulRetrieval(result.report)).toBe(
+        false,
+      );
     },
   );
 

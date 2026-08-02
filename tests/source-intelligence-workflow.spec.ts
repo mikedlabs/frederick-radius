@@ -29,6 +29,8 @@ type WorkflowStep = {
     "restore-keys"?: string;
     "retention-days"?: number;
     "persist-credentials"?: boolean;
+    script?: string;
+    [key: string]: unknown;
   };
 };
 
@@ -41,6 +43,7 @@ type WorkflowJob = {
 };
 
 type WorkflowDocument = {
+  "run-name"?: string;
   on?: {
     workflow_dispatch?: {
       inputs?: Record<string, WorkflowInput>;
@@ -56,6 +59,22 @@ type WorkflowDocument = {
       };
   env?: Record<string, string>;
   jobs?: Record<string, WorkflowJob>;
+};
+
+type HistoryRun = {
+  id: number;
+  run_attempt: number;
+  updated_at: string;
+  display_title: string;
+  head_branch: string;
+  status?: string;
+  conclusion?: string | null;
+};
+
+type BudgetScriptResult = {
+  failures: string[];
+  outputs: Record<string, string>;
+  paginateArguments?: Record<string, unknown>;
 };
 
 type SourceScoutConfig = {
@@ -114,13 +133,100 @@ function expectImmutableAction(step: WorkflowStep | undefined, action: string) {
   );
 }
 
+function durableBudgetStep(): WorkflowStep {
+  const step = allSteps(loadWorkflow()).find(
+    (candidate) => candidate.name === "Enforce durable provider spend ceilings",
+  );
+  expect(step).toBeDefined();
+  return step!;
+}
+
+async function runDurableBudgetScript(options: {
+  tool: "tavily-scout" | "firecrawl-watch";
+  currentRunId?: number;
+  currentAttempt?: number;
+  runs?: HistoryRun[];
+  historyError?: Error;
+}): Promise<BudgetScriptResult> {
+  const currentRunId = options.currentRunId ?? 100;
+  const currentAttempt = options.currentAttempt ?? 1;
+  const failures: string[] = [];
+  const outputs: Record<string, string> = {};
+  let paginateArguments: Record<string, unknown> | undefined;
+  const listWorkflowRuns = () => undefined;
+  const github = {
+    rest: { actions: { listWorkflowRuns } },
+    paginate: async (
+      route: unknown,
+      args: Record<string, unknown>,
+    ): Promise<HistoryRun[]> => {
+      expect(route).toBe(listWorkflowRuns);
+      paginateArguments = args;
+      if (options.historyError) throw options.historyError;
+      return options.runs ?? [];
+    },
+  };
+  const core = {
+    setFailed: (message: unknown) => failures.push(String(message)),
+    setOutput: (name: string, value: unknown) => {
+      outputs[name] = String(value);
+    },
+    info: () => undefined,
+  };
+  const fakeProcess = {
+    env: {
+      GITHUB_RUN_ID: String(currentRunId),
+      GITHUB_RUN_ATTEMPT: String(currentAttempt),
+      SELECTED_TOOL: options.tool,
+    },
+  };
+  const AsyncFunction = Object.getPrototypeOf(async () => undefined)
+    .constructor as new (
+    ...args: string[]
+  ) => (...values: unknown[]) => Promise<void>;
+  const execute = new AsyncFunction(
+    "github",
+    "context",
+    "core",
+    "process",
+    durableBudgetStep().with?.script ?? "",
+  );
+  await execute(
+    github,
+    {
+      repo: { owner: "mikedlabs", repo: "frederick-radius" },
+      runId: currentRunId,
+    },
+    core,
+    fakeProcess,
+  );
+  return { failures, outputs, paginateArguments };
+}
+
+function historyRun(overrides: Partial<HistoryRun> = {}): HistoryRun {
+  return {
+    id: 100,
+    run_attempt: 1,
+    updated_at: new Date().toISOString(),
+    display_title: "Source intelligence (tavily-live)",
+    head_branch: "main",
+    status: "in_progress",
+    conclusion: null,
+    ...overrides,
+  };
+}
+
 describe("manual Source Intelligence workflow", () => {
-  it("is manual-only, read-only, production-scoped, and non-overlapping", () => {
+  it("is manual-only, least-privilege, production-scoped, and non-overlapping", () => {
     const workflow = loadWorkflow();
     const triggers = Object.keys(workflow.on ?? {});
 
     expect(triggers).toEqual(["workflow_dispatch"]);
-    expect(workflow.permissions).toEqual({ contents: "read" });
+    expect(workflow.permissions).toEqual({
+      actions: "read",
+      contents: "read",
+      issues: "write",
+    });
     expect(workflow.env).toBeUndefined();
     expect(workflow.concurrency).toMatchObject({
       "cancel-in-progress": false,
@@ -132,6 +238,21 @@ describe("manual Source Intelligence workflow", () => {
     expect(job["timeout-minutes"]).toBeGreaterThan(0);
     expect(job["timeout-minutes"]).toBeLessThanOrEqual(20);
     expect(job.env).toBeUndefined();
+  });
+
+  it("uses immutable plan and provider-live run names", () => {
+    const workflow = loadWorkflow();
+    const runName = workflow["run-name"] ?? "";
+
+    expect(runName).toContain("Source intelligence (");
+    expect(runName).toContain("'tavily-live'");
+    expect(runName).toContain("'firecrawl-live'");
+    expect(runName).toContain("'plan'");
+    expect(runName).toContain("inputs.confirm_live");
+    expect(runName).not.toContain("inputs.profile");
+    expect(runName).not.toContain("inputs.source");
+    expect(runName).not.toContain("github.actor");
+    expect(runName).not.toContain("github.run_attempt");
   });
 
   it("offers only reviewed tools, profiles, and exact Firecrawl sources", () => {
@@ -294,6 +415,238 @@ describe("manual Source Intelligence workflow", () => {
     );
   });
 
+  it("derives separate daily and monthly reservations from exhaustive GitHub history before secrets", () => {
+    const workflow = loadWorkflow();
+    const steps = allSteps(workflow);
+    const budget = durableBudgetStep();
+    const script = budget.with?.script ?? "";
+    const budgetIndex = steps.findIndex(
+      (step) => step.name === "Enforce durable provider spend ceilings",
+    );
+    const firstSecretIndex = steps.findIndex((step) =>
+      JSON.stringify(step.env ?? {}).includes("secrets."),
+    );
+
+    expectImmutableAction(budget, "actions/github-script");
+    expect(budget.id).toBe("durable-budget");
+    expect(budget.if).toContain("inputs.confirm_live");
+    expect(budget.if).toContain("inputs.tool != 'tavily-plan'");
+    expect(budget.env).toEqual({ SELECTED_TOOL: "${{ inputs.tool }}" });
+    expect(script).toContain("github.paginate");
+    expect(script).toContain("listWorkflowRuns");
+    expect(script).toContain('workflow_id: "source-intelligence.yml"');
+    expect(script).toContain("GITHUB_RUN_ID");
+    expect(script).toContain("GITHUB_RUN_ATTEMPT");
+    expect(script).toContain("run.run_attempt");
+    expect(script).toContain("providerTotals.dailyAttempts += runAttempt");
+    expect(script).toContain("providerTotals.monthlyAttempts += runAttempt");
+    expect(script).toContain("currentSeen");
+    expect(script).toContain("if (!currentSeen)");
+    expect(script).toContain("unrecognized spend classification");
+    expect(script).toContain(
+      'const legacyRunName = "Source intelligence pilot"',
+    );
+    expect(script).toContain('provider: "tavily"');
+    expect(script).toContain("reservation: 12");
+    expect(script).toContain("dailyCeiling: 24");
+    expect(script).toContain("monthlyCeiling: 300");
+    expect(script).toContain('provider: "firecrawl"');
+    expect(script).toContain("reservation: 1");
+    expect(script).toContain("dailyCeiling: 2");
+    expect(script).toContain("monthlyCeiling: 30");
+    expect(script).not.toContain("run.conclusion");
+    expect(script).not.toContain("run.status");
+    expect(budgetIndex).toBeGreaterThan(-1);
+    expect(firstSecretIndex).toBeGreaterThan(budgetIndex);
+  });
+
+  it("counts exact rerun attempts while keeping provider reservations independent", async () => {
+    const result = await runDurableBudgetScript({
+      tool: "tavily-scout",
+      currentAttempt: 2,
+      runs: [
+        historyRun({ run_attempt: 2 }),
+        historyRun({
+          id: 90,
+          run_attempt: 9,
+          display_title: "Source intelligence (firecrawl-live)",
+          status: "completed",
+          conclusion: "failure",
+        }),
+        historyRun({
+          id: 80,
+          run_attempt: 25,
+          display_title: "Source intelligence (plan)",
+          status: "completed",
+          conclusion: "cancelled",
+        }),
+      ],
+    });
+
+    expect(result.failures).toEqual([]);
+    expect(result.outputs).toMatchObject({
+      provider: "tavily",
+      "daily-reserved-credits": "24",
+      "monthly-reserved-credits": "24",
+    });
+    expect(result.paginateArguments).toMatchObject({
+      owner: "mikedlabs",
+      repo: "frederick-radius",
+      workflow_id: "source-intelligence.yml",
+      per_page: 100,
+    });
+  });
+
+  it("counts failed and canceled attempts and blocks a reservation over its ceiling", async () => {
+    const result = await runDurableBudgetScript({
+      tool: "tavily-scout",
+      runs: [
+        historyRun(),
+        historyRun({
+          id: 99,
+          run_attempt: 2,
+          status: "completed",
+          conclusion: "cancelled",
+        }),
+      ],
+    });
+
+    expect(result.failures).toEqual([
+      expect.stringContaining("tavily durable reservation ceiling reached"),
+    ]);
+    expect(result.outputs).toEqual({});
+  });
+
+  it("allows two exact-page Firecrawl proofs before the daily ceiling", async () => {
+    const current = historyRun({
+      display_title: "Source intelligence (firecrawl-live)",
+    });
+    const allowed = await runDurableBudgetScript({
+      tool: "firecrawl-watch",
+      runs: [current],
+    });
+    expect(allowed.failures).toEqual([]);
+    expect(allowed.outputs).toMatchObject({
+      provider: "firecrawl",
+      "daily-reserved-credits": "1",
+      "monthly-reserved-credits": "1",
+    });
+
+    const secondAllowed = await runDurableBudgetScript({
+      tool: "firecrawl-watch",
+      runs: [
+        current,
+        historyRun({
+          id: 99,
+          display_title: "Source intelligence (firecrawl-live)",
+          status: "completed",
+          conclusion: "failure",
+        }),
+      ],
+    });
+    expect(secondAllowed.failures).toEqual([]);
+    expect(secondAllowed.outputs).toMatchObject({
+      provider: "firecrawl",
+      "daily-reserved-credits": "2",
+      "monthly-reserved-credits": "2",
+    });
+
+    const blocked = await runDurableBudgetScript({
+      tool: "firecrawl-watch",
+      runs: [
+        current,
+        historyRun({
+          id: 99,
+          display_title: "Source intelligence (firecrawl-live)",
+          status: "completed",
+          conclusion: "failure",
+        }),
+        historyRun({
+          id: 98,
+          display_title: "Source intelligence (firecrawl-live)",
+          status: "completed",
+          conclusion: "cancelled",
+        }),
+      ],
+    });
+    expect(blocked.failures).toEqual([
+      expect.stringContaining("firecrawl durable reservation ceiling reached"),
+    ]);
+    expect(blocked.outputs).toEqual({});
+  });
+
+  it("reserves legacy unclassified runs against both providers", async () => {
+    const legacy = historyRun({
+      id: 99,
+      display_title: "Source intelligence pilot",
+      status: "completed",
+      conclusion: "success",
+    });
+    const tavily = await runDurableBudgetScript({
+      tool: "tavily-scout",
+      runs: [historyRun(), legacy],
+    });
+    expect(tavily.failures).toEqual([]);
+    expect(tavily.outputs["daily-reserved-credits"]).toBe("24");
+
+    const firecrawl = await runDurableBudgetScript({
+      tool: "firecrawl-watch",
+      runs: [
+        historyRun({
+          display_title: "Source intelligence (firecrawl-live)",
+        }),
+        legacy,
+      ],
+    });
+    expect(firecrawl.failures).toEqual([]);
+    expect(firecrawl.outputs["daily-reserved-credits"]).toBe("2");
+  });
+
+  it.each([
+    {
+      label: "missing current run",
+      currentAttempt: 1,
+      runs: [historyRun({ id: 99 })],
+      failure: "absent from durable GitHub history",
+    },
+    {
+      label: "mismatched current attempt",
+      currentAttempt: 2,
+      runs: [historyRun({ run_attempt: 1 })],
+      failure: "exact current attempt",
+    },
+    {
+      label: "malformed timestamp",
+      currentAttempt: 1,
+      runs: [historyRun({ updated_at: "not-a-timestamp" })],
+      failure: "uncertain workflow-run history",
+    },
+    {
+      label: "unknown recent classification",
+      currentAttempt: 1,
+      runs: [historyRun({ display_title: "unexpected run title" })],
+      failure: "unrecognized spend classification",
+    },
+  ])("fails closed for $label", async ({ currentAttempt, runs, failure }) => {
+    const result = await runDurableBudgetScript({
+      tool: "tavily-scout",
+      currentAttempt,
+      runs,
+    });
+
+    expect(result.failures).toEqual([expect.stringContaining(failure)]);
+    expect(result.outputs).toEqual({});
+  });
+
+  it("fails the step when paginated history cannot be loaded", async () => {
+    await expect(
+      runDurableBudgetScript({
+        tool: "firecrawl-watch",
+        historyError: new Error("history unavailable"),
+      }),
+    ).rejects.toThrow("history unavailable");
+  });
+
   it("uploads review evidence briefly and has no publishing path", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
@@ -305,12 +658,16 @@ describe("manual Source Intelligence workflow", () => {
     expectImmutableAction(artifact, "actions/upload-artifact");
     expect(artifact?.if).toBe("always()");
     expect(artifact?.with?.path).toContain("scripts/reports");
+    expect(artifact?.with?.path).toContain(
+      "scripts/reports/source-watch/github-issue.json",
+    );
+    expect(artifact?.with?.path).toContain(
+      "scripts/reports/source-scout-github-issue.json",
+    );
     expect(artifact?.with?.["retention-days"]).toBeGreaterThanOrEqual(1);
     expect(artifact?.with?.["retention-days"]).toBeLessThanOrEqual(14);
 
-    const checkout = steps.find((step) =>
-      usesAction(step, "actions/checkout"),
-    );
+    const checkout = steps.find((step) => usesAction(step, "actions/checkout"));
     expectImmutableAction(checkout, "actions/checkout");
     expect(checkout?.with?.["persist-credentials"]).toBe(false);
 
@@ -336,22 +693,24 @@ describe("manual Source Intelligence workflow", () => {
     const restore = steps.find((step) =>
       usesAction(step, "actions/cache/restore"),
     );
-    const save = steps.find((step) =>
-      usesAction(step, "actions/cache/save"),
-    );
+    const save = steps.find((step) => usesAction(step, "actions/cache/save"));
 
     expect(restore).toBeDefined();
     expectImmutableAction(restore, "actions/cache/restore");
     expect(restore?.id).toBe("source-state");
     expect(restore?.with?.path).toContain("scripts/reports");
     expect(restore?.with?.["restore-keys"]).toContain("source-intelligence-");
+    expect(restore?.with?.key).toContain("github.run_attempt");
 
     expect(save).toBeDefined();
     expectImmutableAction(save, "actions/cache/save");
     expect(save?.if).toContain("always()");
+    expect(save?.if).toContain("steps.source-watch-review-queue.outcome");
+    expect(save?.if).toContain("'success'");
     expect(save?.with?.path).toContain("scripts/reports");
     expect(save?.with?.key).toContain("source-intelligence-");
     expect(save?.with?.key).toContain("github.run_id");
+    expect(save?.with?.key).toContain("github.run_attempt");
 
     const initializeGuard = steps.find((step) => {
       const text = JSON.stringify(step);
@@ -362,6 +721,96 @@ describe("manual Source Intelligence workflow", () => {
       );
     });
     expect(initializeGuard).toBeDefined();
+  });
+
+  it("updates a compact per-source issue before advancing Firecrawl fingerprints", () => {
+    const workflow = loadWorkflow();
+    const steps = allSteps(workflow);
+    const liveIndex = steps.findIndex(
+      (step) => step.name === "Run one-source Firecrawl Source Watch pilot",
+    );
+    const issueIndex = steps.findIndex(
+      (step) => step.name === "Open or update the per-source review queue",
+    );
+    const saveIndex = steps.findIndex(
+      (step) => step.name === "Save source intelligence state",
+    );
+    const issue = steps[issueIndex];
+
+    expect(liveIndex).toBeGreaterThan(-1);
+    expect(issueIndex).toBeGreaterThan(liveIndex);
+    expect(saveIndex).toBeGreaterThan(issueIndex);
+    expectImmutableAction(issue, "actions/github-script");
+    expect(issue?.id).toBe("source-watch-review-queue");
+    expect(issue?.if).toContain("always()");
+    expect(issue?.if).toContain("firecrawl-watch");
+    expect(issue?.if).toContain("inputs.confirm_live");
+    expect(issue?.if).toContain("steps.firecrawl-live.outcome");
+    expect(issue?.if).toContain("'success'");
+    expect(issue?.if).toContain("'failure'");
+    expect(issue?.if).toContain("github-issue.json");
+    expect(issue?.with?.script).toContain("scripts/lib/source-watch-issue.cjs");
+    expect(issue?.with?.script).toContain("updateSourceWatchIssues");
+
+    const save = steps[saveIndex];
+    expect(save?.if).toContain("source-watch-review-queue.outcome");
+    expect(save?.if).toContain("success");
+    expect(save?.with?.path).toContain(
+      "scripts/reports/source-watch/state.json",
+    );
+
+    const live = steps[liveIndex];
+    expect(live?.id).toBe("firecrawl-live");
+    expect(runText(live)).toContain(
+      "rm -f scripts/reports/source-watch/github-issue.json",
+    );
+  });
+
+  it("routes compact Tavily candidate evidence into a stable review queue", () => {
+    const workflow = loadWorkflow();
+    const steps = allSteps(workflow);
+    const liveIndex = steps.findIndex(
+      (step) => step.name === "Run capped Tavily Source Scout",
+    );
+    const issueIndex = steps.findIndex(
+      (step) => step.name === "Open or update the Source Scout review queue",
+    );
+    const saveIndex = steps.findIndex(
+      (step) => step.name === "Save source intelligence state",
+    );
+    const issue = steps[issueIndex];
+
+    expect(liveIndex).toBeGreaterThan(-1);
+    expect(issueIndex).toBeGreaterThan(liveIndex);
+    expect(saveIndex).toBeGreaterThan(issueIndex);
+    expectImmutableAction(issue, "actions/github-script");
+    expect(issue?.id).toBe("source-scout-review-queue");
+    expect(issue?.if).toContain("always()");
+    expect(issue?.if).toContain("tavily-scout");
+    expect(issue?.if).toContain("inputs.confirm_live");
+    expect(issue?.if).toContain("steps.tavily-live.outcome");
+    expect(issue?.if).toContain("'success'");
+    expect(issue?.if).toContain("'failure'");
+    expect(issue?.if).toContain("source-scout-github-issue.json");
+    expect(issue?.with?.script).toContain("scripts/lib/source-scout-issue.cjs");
+    expect(issue?.with?.script).toContain("updateSourceScoutIssues");
+
+    // Tavily's attempted-credit ledger must survive even when issue delivery
+    // fails. The next run can replay the cached evidence without another call.
+    const save = steps[saveIndex];
+    expect(save?.if).not.toContain("source-scout-review-queue.outcome");
+    expect(save?.with?.path).toContain(
+      "scripts/reports/source-scout-usage.json",
+    );
+    expect(save?.with?.path).toContain(
+      "scripts/reports/source-scout-cache.json",
+    );
+
+    const live = steps[liveIndex];
+    expect(live?.id).toBe("tavily-live");
+    expect(runText(live)).toContain(
+      "rm -f scripts/reports/source-scout-github-issue.json",
+    );
   });
 
   it("keeps live provider ledgers on the main branch", () => {

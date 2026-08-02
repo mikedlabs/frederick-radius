@@ -33,6 +33,7 @@ const DEFAULT_REPORT_DIRECTORY = resolve(
 );
 const CREDITS_PER_SOURCE = 1;
 const ABSOLUTE_MONTHLY_CREDIT_CAP = 500;
+const REVIEW_EXPIRY_MS = 14 * 24 * 60 * 60 * 1_000;
 
 export type SourceWatchStatus =
   "new" | "same" | "changed" | "removed" | "error";
@@ -76,6 +77,8 @@ type StoredObservation = {
   status: SourceWatchStatus;
   errorCode?: string;
   httpStatus?: number;
+  /** A reviewed id moved to a new exact URL but has not established a baseline. */
+  identityResetAt?: string;
 };
 
 type SourceWatchState = {
@@ -126,6 +129,30 @@ export type SourceWatchReport = {
   summary: Record<SourceWatchStatus, number>;
   sourcesChecked: Array<{ id: string; url: string }>;
   candidates: SourceWatchCandidate[];
+};
+
+export type SourceWatchIssueStatus =
+  "baseline" | "same" | "changed" | "removed" | "error" | "url-baseline";
+
+export type SourceWatchIssueItem = {
+  sourceId: string;
+  sourceUrl: string;
+  finalUrl?: string;
+  checkedAt: string;
+  expiresAt: string;
+  status: SourceWatchIssueStatus;
+  previousHash?: string;
+  currentHash?: string;
+  textLength?: number;
+  linkCount?: number;
+  errorCode?: string;
+  httpStatus?: number;
+};
+
+export type SourceWatchIssueSignal = {
+  schemaVersion: 1;
+  generatedAt: string;
+  items: SourceWatchIssueItem[];
 };
 
 type FirecrawlPageFetcher = (
@@ -478,6 +505,14 @@ function isExpectedFinalHost(requestedUrl: string, finalUrl: string): boolean {
   }
 }
 
+function sameExactPage(first: string, second: string): boolean {
+  try {
+    return new URL(first).toString() === new URL(second).toString();
+  } catch {
+    return false;
+  }
+}
+
 function safeMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -663,7 +698,9 @@ export async function runSourceWatch(
 ): Promise<{
   reportPath: string;
   statePath: string;
+  issueSignalPath: string;
   report: SourceWatchReport;
+  issueSignal: SourceWatchIssueSignal;
 }> {
   const now = options.now?.() ?? new Date();
   if (Number.isNaN(now.getTime())) {
@@ -673,6 +710,7 @@ export async function runSourceWatch(
     );
   }
   const checkedAt = now.toISOString();
+  const expiresAt = new Date(now.getTime() + REVIEW_EXPIRY_MS).toISOString();
   const month = checkedAt.slice(0, 7);
   const loadedConfig =
     options.config ??
@@ -712,15 +750,33 @@ export async function runSourceWatch(
     const fetchPage = options.fetchPage ?? fetchFirecrawlPage;
     const summary = emptySummary();
     const candidates: SourceWatchCandidate[] = [];
+    const issueItems: SourceWatchIssueItem[] = [];
 
     for (const source of config.sources) {
-      const previous = state.observations[source.id];
+      const storedPrevious = state.observations[source.id];
+      const sourceUrlChanged = Boolean(
+        storedPrevious && storedPrevious.url !== source.url,
+      );
+      // A hash from a different exact page is never comparable. If the first
+      // fetch of the new URL fails, identityResetAt keeps the fresh baseline
+      // pending until a successful observation can make it review-visible.
+      const previous = sourceUrlChanged ? undefined : storedPrevious;
+      let identityBaseline = Boolean(
+        sourceUrlChanged ||
+        (previous?.identityResetAt && !previous.contentHash),
+      );
+      let comparablePrevious = previous;
       let observedFinalUrl: string | undefined;
       try {
         const snapshot = await fetchPage(source.url, {
           timeoutMs: config.limits.timeoutMs,
           allowHttp: source.httpException !== undefined,
           requireReportedFinalUrl: true,
+          // Change detection must compare a current observation, never
+          // Firecrawl's default cached copy, and the provider must not retain
+          // the fetched page in its cache.
+          maxAgeMs: 0,
+          storeInCache: false,
           // Keep each allowlisted source to the single credit reserved above.
           proxy: "basic",
         });
@@ -732,9 +788,21 @@ export async function runSourceWatch(
         }
         assertSuccessfulFirecrawlTargetStatus(snapshot.metadata);
 
+        // The configured URL can remain stable while the publisher redirects
+        // it to a different same-host page. Never compare that page with the
+        // previous page's hash; establish a review-visible URL baseline first.
+        if (
+          previous?.contentHash &&
+          (!previous.finalUrl ||
+            !sameExactPage(previous.finalUrl, snapshot.finalUrl))
+        ) {
+          identityBaseline = true;
+          comparablePrevious = undefined;
+        }
+
         const currentHash = hashSourceWatchContent(snapshot.markdown);
         const status = classifySourceWatchHash(
-          previous?.contentHash,
+          comparablePrevious?.contentHash,
           currentHash,
         );
         summary[status] += 1;
@@ -744,15 +812,33 @@ export async function runSourceWatch(
           contentHash: currentHash,
           textLength: snapshot.markdown.length,
           linkCount: snapshot.links.length,
-          firstObservedAt: previous?.firstObservedAt ?? checkedAt,
+          firstObservedAt: comparablePrevious?.firstObservedAt ?? checkedAt,
           lastChangedAt:
             status === "new" || status === "changed"
               ? checkedAt
-              : previous?.lastChangedAt,
+              : comparablePrevious?.lastChangedAt,
           lastCheckedAt: checkedAt,
           status,
         };
         state.observations[source.id] = observation;
+        issueItems.push({
+          sourceId: source.id,
+          sourceUrl: source.url,
+          finalUrl: snapshot.finalUrl,
+          checkedAt,
+          expiresAt,
+          status: identityBaseline
+            ? "url-baseline"
+            : status === "new"
+              ? "baseline"
+              : status,
+          ...(comparablePrevious?.contentHash && status === "changed"
+            ? { previousHash: comparablePrevious.contentHash }
+            : {}),
+          currentHash,
+          textLength: snapshot.markdown.length,
+          linkCount: snapshot.links.length,
+        });
 
         if (status !== "same") {
           candidates.push({
@@ -760,7 +846,9 @@ export async function runSourceWatch(
             status,
             checkedAt,
             finalUrl: snapshot.finalUrl,
-            previousHash: previous?.contentHash,
+            ...(comparablePrevious?.contentHash
+              ? { previousHash: comparablePrevious.contentHash }
+              : {}),
             currentHash,
             textLength: snapshot.markdown.length,
             linkCount: snapshot.links.length,
@@ -786,13 +874,29 @@ export async function runSourceWatch(
         const errorCode =
           error instanceof FirecrawlRestError ? error.code : "SOURCE_REJECTED";
         state.observations[source.id] = {
-          ...previous,
+          ...(sourceUrlChanged ? {} : previous),
           url: source.url,
           lastCheckedAt: checkedAt,
           status,
           errorCode,
           httpStatus,
+          ...(identityBaseline
+            ? { identityResetAt: previous?.identityResetAt ?? checkedAt }
+            : {}),
         };
+        issueItems.push({
+          sourceId: source.id,
+          sourceUrl: source.url,
+          ...(observedFinalUrl ? { finalUrl: observedFinalUrl } : {}),
+          checkedAt,
+          expiresAt,
+          status,
+          ...(!sourceUrlChanged && previous?.contentHash
+            ? { previousHash: previous.contentHash }
+            : {}),
+          errorCode,
+          ...(httpStatus === undefined ? {} : { httpStatus }),
+        });
         candidates.push({
           source,
           status,
@@ -800,7 +904,7 @@ export async function runSourceWatch(
           // Preserve a provider-reported redirect for review without accepting
           // it into the last-known-good observation state.
           finalUrl: observedFinalUrl ?? previous?.finalUrl,
-          previousHash: previous?.contentHash,
+          previousHash: sourceUrlChanged ? undefined : previous?.contentHash,
           errorCode,
           httpStatus,
           error: safeErrorMessage(error),
@@ -833,8 +937,21 @@ export async function runSourceWatch(
       candidates,
     };
     const reportPath = join(reportDirectory, reportFileName(now));
+    const issueSignalPath = join(reportDirectory, "github-issue.json");
+    const issueSignal: SourceWatchIssueSignal = {
+      schemaVersion: 1,
+      generatedAt: checkedAt,
+      items: issueItems,
+    };
     await writeJsonAtomic(reportPath, report);
-    return { reportPath, statePath, report };
+    await writeJsonAtomic(issueSignalPath, issueSignal);
+    return {
+      reportPath,
+      statePath,
+      issueSignalPath,
+      report,
+      issueSignal,
+    };
   } finally {
     await lock.release();
   }

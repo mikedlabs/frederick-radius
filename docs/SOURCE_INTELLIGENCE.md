@@ -110,6 +110,18 @@ URL separately and rejects an unexpected cross-host redirect. Its run lock also
 stores a PID and timestamp, so an abandoned lock can recover after 30 minutes
 without allowing two healthy runs to overlap.
 
+The manual GitHub pilot keeps one stable review issue per Source Watch source
+id. Ordinary first baselines remain visible in the workflow evidence without
+opening an alert. A changed, removed, or failed page opens or updates only that
+source's issue. If a reviewed id moves to a different exact URL, the old hash is
+discarded and the new page becomes an actionable fresh baseline; unrelated page
+hashes are never compared. The queue stores only the source id, exact public
+URL, timestamps, hashes, counts, status, expiry, and workflow link. It stores no
+publisher prose, page diff, HTML, image, or extracted event. A quiet run leaves
+an unresolved alert open until its 14-day expiry, then can close only that issue
+with an audited `not_planned` comment. Fingerprint state is cached only after the
+issue step succeeds, so a delivery failure retries the same signal.
+
 ### Source Scout
 
 1. Keep queries, allowed domains, search depth, result count, and credit caps in `config/source-scout.json`.
@@ -143,6 +155,18 @@ without allowing two healthy runs to overlap.
 
 Source Scout never writes to `src/data`. A search result becomes useful only after Radius verifies the original source and matches it to the correct canonical entity.
 
+GitHub live runs also maintain one bot-owned `source-scout-review` issue per
+profile/query. The queue retains only IDs, timestamps, public candidate URLs
+and domains, scores, a URL-set fingerprint, bounded request/credit/error
+metadata, and workflow evidence. It does not retain search snippets, query
+prose, result titles, raw responses, or canonical records. A new URL set or a
+provider error opens or reopens the issue. An unchanged fingerprint preserves
+the human's open or closed decision; cache hits, budget skips, and quiet runs
+cannot erase it. Only a fresh fetched result with no candidates may close an
+unresolved issue after its 30-day review window. The workflow clears each
+transient issue signal before the matching live step and will not process a
+signal unless that current provider step actually ran.
+
 A live Scout run takes an exclusive lock at `scripts/reports/source-scout.lock`. An active lock blocks a second run; an expired lock can be recovered after the configured stale window. Before every provider request, the Scout reserves the estimated credit in `scripts/reports/source-scout-usage.json`. That UTC daily/monthly ledger counts failed attempts as well as successful ones, so repeated or overlapping runs cannot bypass the tracked caps. The plan command does not acquire the lock, touch the ledger, call Tavily, or write files.
 
 ## Cost controls
@@ -154,13 +178,60 @@ The tracked configuration files are the authority for budgets:
 
 Keep Firecrawl to one exact-page scrape per configured observation. Keep Tavily searches narrow and use cached results before spending another credit. Stop with a partial report when a limit is reached. Do not add an environment variable or command-line option that silently raises a tracked cap.
 
-The shared operator extraction engine uses native fetch or Playwright first.
-Firecrawl is an opt-in fallback only when native retrieval fails:
+The GitHub pilot also treats workflow history as a durable reservation ledger,
+so a deleted cache or interrupted runner cannot erase attempted spend. Each
+Tavily live workflow reserves 12 credits against limits of 24 per UTC day and
+300 per UTC month. A Firecrawl live workflow selects exactly one configured
+page, so it reserves one credit against limits of two per UTC day and 30 per
+UTC month. That permits a controlled baseline-and-repeat proof while keeping
+routine spend small. Reruns and unsuccessful attempts count. Unknown or
+malformed recent history fails closed before either provider secret is exposed.
+The provider dashboards remain the final billing record.
 
-- `FIRECRAWL_FETCH_FALLBACK=1` enables it.
-- `FIRECRAWL_FALLBACK_MAX_REQUESTS` sets the per-process ceiling, defaulting to
-  6 and never exceeding the code-level ceiling of 20.
-- Venue and municipal runs print an aggregate fallback usage summary.
+The shared operator extraction engine uses native fetch or Playwright first.
+Firecrawl is an opt-in fallback only when native retrieval fails. Its recovery
+request always asks for a fresh page (`maxAge=0`), disables provider cache
+storage, and fixes the proxy to `basic` so one reservation cannot silently turn
+into an enhanced scrape.
+
+Fallback activation is independent for each ingestion workflow:
+
+- venues use `VENUE_FIRECRAWL_FETCH_FALLBACK` and
+  `VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS`;
+- business details use `BUSINESS_FIRECRAWL_FETCH_FALLBACK` and
+  `BUSINESS_FIRECRAWL_FALLBACK_MAX_REQUESTS`; and
+- civic sources use `CIVIC_FIRECRAWL_FETCH_FALLBACK` and
+  `CIVIC_FIRECRAWL_FALLBACK_MAX_REQUESTS`.
+
+Each enable flag defaults to `0`; each request cap defaults to `1` and the
+workflow rejects a value above `2`. These six controls must be **repository
+variables**, not `Data Enrichment` environment variables. GitHub resolves the
+repository values into the durable run title and the cross-workflow concurrency
+lock before a runner starts. The step-level value must match that recorded
+title; an environment-level override therefore fails closed instead of
+silently escaping the shared ledger. `FIRECRAWL_API_KEY` remains an environment
+secret.
+
+The venue, business, and civic workflows share one durable Firecrawl fallback
+reservation ledger. Paginated main-branch history for all three workflow files
+counts the configured one- or two-request cap for every enabled attempt,
+including failed and rerun attempts. Disabled runs reserve zero. The combined
+ceiling is two requests per UTC day and 30 per UTC month, and enabled runs share
+one concurrency group so two workflows cannot pass the gate at the same time.
+Missing current-run evidence, a title/config mismatch, malformed history, an
+unclassified current-month run, or an unavailable history endpoint stops the
+job before the Firecrawl secret is exposed. The extractor also defaults to one
+fallback request and has an absolute per-process maximum of two.
+
+Before the first enabled fallback proof, set the repository variable
+`FIRECRAWL_LEGACY_DISABLED_RUN_IDS` to the comma-separated IDs of the exact
+current-month legacy runs audited with the old global fallback flag off. Only a
+listed first attempt with the exact old workflow title reserves zero. An
+unlisted static title, a legacy rerun, malformed IDs, or more than 100 migration
+IDs fails closed. This one-time explicit ledger avoids a date cutoff becoming
+stale while the change is awaiting deployment. Venue and municipal runs print
+an aggregate fallback usage summary.
+
 - Cross-host Firecrawl redirects are rejected unless the source registry names
   the exact reviewed destination host.
 
@@ -216,6 +287,9 @@ The unattended REST tools use:
 For local use, place keys in `.env.local`. Never commit them, print them, place
 them in client code, or prefix them with `NEXT_PUBLIC_`. For the manual GitHub
 pilot, add both keys as secrets in the repository's `Production` environment.
+The three ingestion fallbacks read `FIRECRAWL_API_KEY` from the separate
+`Data Enrichment` environment; copy the secret there without printing it only
+when an individual fallback is ready for proof.
 `TAVILY_API_KEY` does not belong in Vercel. A Vercel `FIRECRAWL_API_KEY` does
 not activate Visit Frederick collection by itself. The fixed-URL route remains
 unscheduled and `VISIT_FREDERICK_FACTS_REUSE_APPROVED` remains `0` until
@@ -227,14 +301,15 @@ An OAuth-backed MCP connection is different. It represents an interactive user's
 ## Rollout
 
 The manual workflow is `.github/workflows/source-intelligence.yml`. It has
-read-only repository permission, never commits or publishes, uploads review
-reports for 14 days, and persists only the provider cache, attempted-credit
-ledger, and Firecrawl comparison hashes between runs.
+read-only contents permission plus narrowly scoped issue-write permission. It
+never commits or publishes, uploads compact review reports for 14 days, keeps
+one stable issue per watched source, and persists only the provider cache,
+attempted-credit ledger, and Firecrawl comparison hashes between runs.
 
 1. Revoke any provider key previously pasted into chat, logs, or a URL.
 2. Add fresh `TAVILY_API_KEY` and `FIRECRAWL_API_KEY` secrets to the GitHub
    `Production` environment.
-3. Run **Source intelligence pilot** with `tavily-plan`. This costs nothing and
+3. Run **Source intelligence (plan)** with `tavily-plan`. This costs nothing and
    writes nothing.
 4. For the first intentional live run, choose one reviewed profile or source,
    check `confirm_live`, and check `initialize_state`. The latter creates the
@@ -245,11 +320,16 @@ ledger, and Firecrawl comparison hashes between runs.
 6. Download the review artifact, open every original publisher URL, and measure
    useful findings, false positives, and provider credits. Nothing in the
    artifact is approved app data.
-7. Keep `FIRECRAWL_FETCH_FALLBACK=0` while evaluating Source Watch. After the
-   Firecrawl pilot is reliable, set the GitHub environment variable to `1` and
-   keep `FIRECRAWL_FALLBACK_MAX_REQUESTS=6` to enable the bounded fallback in
-   the existing business, venue, and civic ingestion workflows.
-8. Consider a low-frequency schedule only after several reviewed runs stay
+7. Prove each Firecrawl source twice from `main`: create a fresh baseline, then
+   run it again unchanged with `initialize_state` off. Confirm the second run
+   uses the same baseline and does not create or erase a review alert.
+8. Keep every ingestion fallback disabled while evaluating Source Watch. Start
+   with venues only by setting the repository variables
+   `VENUE_FIRECRAWL_FETCH_FALLBACK=1` and
+   `VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS=1`; leave the business and civic
+   repository flags at `0`. Review the fallback usage summary after a manual
+   venue run.
+9. Consider a low-frequency schedule only after several reviewed runs stay
    inside budget and produce trustworthy candidates.
 
 Expand by source type, not by crawling the whole county. Structured feeds and existing official integrations remain preferable even when a provider can scrape the same information.
