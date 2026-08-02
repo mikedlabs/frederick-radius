@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import venueEvents from "../src/data/venue-events.json";
 import { lintSourceText } from "../scripts/style-lint";
@@ -9,6 +11,9 @@ type VenueEventCopy = {
 };
 
 const DESCRIPTION_ORIGINS = new Set(["source-excerpt", "radius-summary"]);
+const SOURCE_INVENTORY = resolve(
+  "src/data/venue-event-source-inventory.json",
+);
 
 function descriptionsWithInvalidOrigin(events: VenueEventCopy[]) {
   return events.filter(
@@ -27,7 +32,13 @@ function lintRadiusSummaries(events: VenueEventCopy[]) {
 }
 
 describe("venue event copy provenance", () => {
-  const events = venueEvents as VenueEventCopy[];
+  // Automated venue runs write the recoverable source inventory before these
+  // checks execute. Validate that full inventory, including a currently hidden
+  // duplicate; fall back to the public artifact before the migration's first
+  // run or in an older checkout.
+  const events = existsSync(SOURCE_INVENTORY)
+    ? JSON.parse(readFileSync(SOURCE_INVENTORY, "utf8")) as VenueEventCopy[]
+    : venueEvents as VenueEventCopy[];
 
   it("marks every committed description with a recognized origin", () => {
     expect(descriptionsWithInvalidOrigin(events)).toEqual([]);

@@ -1,0 +1,217 @@
+import { describe, expect, it } from "vitest";
+import {
+  validateFrederickTransitArtifacts,
+  validateMarcGtfsRows,
+  validateMarcScheduleArtifact,
+  type FrederickTransitArtifacts,
+  type MarcGtfsRows,
+} from "../scripts/lib/transit-data-validation";
+
+const NOW = new Date("2026-08-01T12:00:00.000Z");
+
+function frederickFixture(): FrederickTransitArtifacts {
+  return {
+    transit: {
+      generatedAt: "2026-08-01",
+      staticFeed: {
+        fetchedOn: "2026-08-01",
+        serviceWindowStart: "2026-07-30",
+        serviceWindowEnd: "2026-08-30",
+      },
+      routes: [{ id: "route-10" }],
+      stops: [{ id: "stop-1", lat: 39.4143, lng: -77.4105 }],
+      shapes: {
+        "route-10": [
+          [39.4143, -77.4105],
+          [39.42, -77.42],
+        ],
+      },
+    },
+    network: {
+      shapeVariants: {
+        "route-10": [
+          {
+            id: "shape-10",
+            points: [
+              [39.4143, -77.4105],
+              [39.42, -77.42],
+            ],
+          },
+        ],
+      },
+      stopRoutes: { "stop-1": ["route-10"] },
+    },
+    trips: {
+      "trip-10": {
+        routeId: "route-10",
+        shapeId: "shape-10",
+        serviceId: "weekday",
+      },
+    },
+  };
+}
+
+function marcFixture() {
+  return {
+    generatedAt: "2026-08-01",
+    staticFeed: {
+      fetchedOn: "2026-08-01",
+      serviceWindowStart: "2026-07-01",
+      serviceWindowEnd: "2026-12-31",
+    },
+    stations: 2,
+    departures: 2,
+    calendar: {
+      weekday: {
+        days: [1, 1, 1, 1, 1, 0, 0],
+        start: "20260701",
+        end: "20261231",
+      },
+    },
+    exceptions: {},
+    stops: {
+      east: [
+        { t: "06:15", min: 375, svc: "weekday", trip: "train-1" },
+      ],
+      west: [
+        { t: "17:30", min: 1050, svc: "weekday", trip: "train-2" },
+      ],
+    },
+  };
+}
+
+const marcStationStops = [
+  { id: "east", lat: 39.411687, lng: -77.40515 },
+  { id: "west", lat: 39.411687, lng: -77.40515 },
+];
+
+describe("Frederick TransIT artifact validation", () => {
+  it("accepts a fresh, internally connected static snapshot", () => {
+    expect(validateFrederickTransitArtifacts(frederickFixture(), NOW)).toEqual(
+      [],
+    );
+  });
+
+  it("catches stale calendars, invalid coordinates, and broken references", () => {
+    const fixture = structuredClone(frederickFixture()) as {
+      transit: {
+        generatedAt: string;
+        staticFeed: { fetchedOn: string; serviceWindowEnd: string };
+        stops: Array<{ lat: number }>;
+      };
+      network: { stopRoutes: Record<string, string[]> };
+      trips: Record<string, { routeId: string; shapeId: string }>;
+    };
+    fixture.transit.generatedAt = "2026-06-01";
+    fixture.transit.staticFeed.fetchedOn = "2026-06-01";
+    fixture.transit.staticFeed.serviceWindowEnd = "2026-07-01";
+    fixture.transit.stops[0].lat = 0;
+    fixture.network.stopRoutes = { "missing-stop": ["missing-route"] };
+    fixture.trips["trip-10"].routeId = "missing-route";
+    fixture.trips["trip-10"].shapeId = "missing-shape";
+
+    const codes = validateFrederickTransitArtifacts(fixture, NOW).map(
+      (issue) => issue.code,
+    );
+
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "stale_snapshot",
+        "expired_calendar",
+        "invalid_coordinate",
+        "unknown_stop_reference",
+        "unknown_route_reference",
+        "unknown_shape_reference",
+        "missing_route_stops",
+      ]),
+    );
+  });
+});
+
+describe("MARC schedule artifact validation", () => {
+  it("accepts fresh metadata with complete county stop and service references", () => {
+    expect(
+      validateMarcScheduleArtifact(marcFixture(), marcStationStops, NOW),
+    ).toEqual([]);
+  });
+
+  it("catches an expired calendar, stale metadata, bad coordinates, and orphan departures", () => {
+    const fixture = structuredClone(marcFixture());
+    fixture.generatedAt = "2026-06-01";
+    fixture.staticFeed.fetchedOn = "2026-06-01";
+    fixture.staticFeed.serviceWindowEnd = "2026-07-31";
+    fixture.calendar.weekday.end = "20260731";
+    fixture.stations = 1;
+    fixture.departures = 1;
+    delete (fixture.stops as Partial<typeof fixture.stops>).west;
+    fixture.stops.east[0].svc = "missing-service";
+
+    const codes = validateMarcScheduleArtifact(
+      fixture,
+      [marcStationStops[0], { ...marcStationStops[1], lat: 0 }],
+      NOW,
+    ).map((issue) => issue.code);
+
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "stale_snapshot",
+        "expired_calendar",
+        "invalid_coordinate",
+        "missing_service_reference",
+        "missing_stop_reference",
+      ]),
+    );
+  });
+});
+
+describe("MARC source GTFS reference validation", () => {
+  const feed: MarcGtfsRows = {
+    routes: [{ route_id: "brunswick" }],
+    stops: [
+      { stop_id: "east", stop_lat: "39.411687", stop_lon: "-77.40515" },
+      { stop_id: "west", stop_lat: "39.411687", stop_lon: "-77.40515" },
+    ],
+    trips: [
+      {
+        trip_id: "train-1",
+        route_id: "brunswick",
+        service_id: "weekday",
+      },
+    ],
+    stopTimes: [
+      { trip_id: "train-1", stop_id: "east" },
+      { trip_id: "train-1", stop_id: "west" },
+    ],
+    calendar: [{ service_id: "weekday" }],
+    calendarDates: [],
+  };
+
+  it("accepts resolved source route, trip, service, and stop references", () => {
+    expect(validateMarcGtfsRows(feed, new Set(["east", "west"]))).toEqual([]);
+  });
+
+  it("catches invalid source coordinates and missing GTFS references", () => {
+    const broken = structuredClone(feed);
+    broken.stops[0].stop_lat = "0";
+    broken.trips[0].route_id = "missing-route";
+    broken.trips[0].service_id = "missing-service";
+    broken.stopTimes[0].trip_id = "missing-trip";
+    broken.stopTimes[0].stop_id = "missing-stop";
+
+    const codes = validateMarcGtfsRows(
+      broken,
+      new Set(["east", "west", "absent"]),
+    ).map((issue) => issue.code);
+
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "invalid_coordinate",
+        "unknown_route_reference",
+        "missing_service_reference",
+        "unknown_trip_reference",
+        "unknown_stop_reference",
+        "missing_stop_reference",
+      ]),
+    );
+  });
+});

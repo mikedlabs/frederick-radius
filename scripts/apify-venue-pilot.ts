@@ -42,6 +42,7 @@ export type ApifyVenuePilotSource = {
   id: string;
   venueSlug: string;
   name: string;
+  town: string;
   url: string;
   purpose: string;
   rightsPosture: string;
@@ -254,7 +255,7 @@ export function validateApifyVenuePilotConfig(
     }
     if (urls.has(source.url)) invalidConfig(`${prefix}.url is duplicated.`);
     urls.add(source.url);
-    for (const field of ["name", "purpose", "rightsPosture"] as const) {
+    for (const field of ["name", "town", "purpose", "rightsPosture"] as const) {
       if (typeof source[field] !== "string" || !source[field].trim()) {
         invalidConfig(`${prefix}.${field} is required.`);
       }

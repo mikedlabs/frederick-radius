@@ -12,6 +12,7 @@ import {
   createAbortDeadline,
   withDeadlineOutcome,
 } from "@/lib/promise-deadline";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,18 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
+  return monitorCronResponse(
+    "runtime-source-health",
+    {
+      schedule: "43 */2 * * *",
+      checkinMarginMinutes: 10,
+      maxRuntimeMinutes: 2,
+    },
+    () => runRuntimeSourceHealth(request),
+  );
+}
+
+async function runRuntimeSourceHealth(request: Request) {
   const attemptedAt = new Date().toISOString();
   const endpoints = runtimeSourceProbeEndpoints();
   if (endpoints.length === 0) {

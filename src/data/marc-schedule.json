@@ -1,6 +1,13 @@
 {
   "source": "https://feeds.mta.maryland.gov/gtfs/marc",
   "feedDate": null,
+  "generatedAt": "2026-08-02",
+  "staticFeed": {
+    "sourceUrl": "https://feeds.mta.maryland.gov/gtfs/marc",
+    "fetchedOn": "2026-08-02",
+    "serviceWindowStart": "2022-11-14",
+    "serviceWindowEnd": "2026-12-31"
+  },
   "stations": 8,
   "departures": 58,
   "calendar": {
@@ -549,6 +556,12 @@
         "101C_848REG"
       ]
     },
+    "20260702": {
+      "added": [
+        "104"
+      ],
+      "removed": []
+    },
     "20260703": {
       "added": [
         "101PennR",
@@ -556,6 +569,7 @@
         "101BrunswickR"
       ],
       "removed": [
+        "104",
         "101P",
         "101C",
         "101B"

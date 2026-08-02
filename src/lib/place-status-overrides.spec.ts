@@ -48,6 +48,10 @@ describe("manual place status overrides", () => {
           "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
       },
       {
+        slug: "quince-orchard-psychotherapy",
+        source: "https://orchardmentalhealth.com/contact/",
+      },
+      {
         slug: "saxbys-at-mount-st-marys-university-emmitsburg",
         source:
           "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
@@ -72,6 +76,35 @@ describe("manual place status overrides", () => {
         ),
       ).toBeUndefined();
       expect(publicPlaceBySlug(expected.slug)).toBeDefined();
+    }
+  });
+
+  it("keeps reviewed permanent closures suppressed with source evidence", () => {
+    const closures = [
+      {
+        slug: "mazako",
+        source:
+          "https://mocoshow.com/2026/04/13/mazako-to-close-in-frederick-just-months-after-opening/",
+      },
+      {
+        slug: "sabor-casero-bakery-frederick-frederick",
+        source:
+          "https://www.frederickcountymd.gov/DocumentCenter/View/344522",
+      },
+    ];
+
+    for (const expected of closures) {
+      const override = manualPlaceStatusOverride(expected.slug);
+      expect(override?.status).toBe("closed_permanently");
+      expect(override?.source).toBe(expected.source);
+      expect(hasValidManualPlaceStatusEvidence(override!)).toBe(true);
+      expect(
+        activeManualPlaceStatusOverride(
+          expected.slug,
+          new Date("2026-08-01T12:00:00Z"),
+        )?.status,
+      ).toBe("closed_permanently");
+      expect(publicPlaceBySlug(expected.slug)).toBeUndefined();
     }
   });
 

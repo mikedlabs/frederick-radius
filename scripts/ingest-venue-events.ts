@@ -27,7 +27,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   fetchPageSnapshot,
-  fetchSquarespaceEvents,
+  fetchSquarespaceEventsResult,
   extractJson,
   extractJsonFromImage,
   formatFirecrawlFallbackUsageSummary,
@@ -48,9 +48,17 @@ import {
   type ModelVenueMethod,
   type VenueSourceState,
 } from "./lib/venue-source-state";
+import {
+  buildRecoverableVenuePublication,
+  promoteVenueInventory,
+  type VenueCollectionStatus,
+} from "./lib/venue-event-promotion";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 
 const OUT = resolve("src/data/venue-events.json");
+const SOURCE_INVENTORY_OUT = resolve(
+  "src/data/venue-event-source-inventory.json",
+);
 const CONFIG = resolve("config/venue-sources.json");
 const SOURCE_STATE = resolve("src/data/venue-event-source-state.json");
 const MAX_IMAGE_FINGERPRINT_BYTES = 12_000_000;
@@ -94,8 +102,8 @@ type SourceProvenance = {
 type CollectResult = {
   events: RawEvent[];
   source: SourceProvenance;
+  status: VenueCollectionStatus;
   modelUnavailable?: boolean;
-  sourceUnchanged?: boolean;
 };
 type EnsureModelReady = () => Promise<boolean>;
 
@@ -120,10 +128,24 @@ const methodOf = (v: VenueSource): Method => v.method ?? (v.render ? "render" : 
 /** Stable key to dedupe an event across runs. */
 const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
 
+function publishableRawEvents(events: RawEvent[]): RawEvent[] {
+  return (events as unknown[]).filter(
+    (event): event is RawEvent =>
+      Boolean(
+        event &&
+          typeof event === "object" &&
+          typeof (event as RawEvent).title === "string" &&
+          (event as RawEvent).title?.trim() &&
+          typeof (event as RawEvent).starts_at === "string" &&
+          (event as RawEvent).starts_at?.trim(),
+      ),
+  );
+}
+
 /**
- * Collect raw events for one venue by its declared method. Returns the
- * events plus the source URL to stamp on each. Never throws: a failed
- * fetch/extract yields [] so the caller leaves prior data untouched.
+ * Collect raw events for one venue by its declared method. The explicit
+ * status lets promotion distinguish a verified empty inventory from a failed
+ * read; both carry zero rows, but only the former may retire prior events.
  */
 function directSource(url: string): SourceProvenance {
   return { url, requestedUrl: url, finalUrl: url };
@@ -190,7 +212,11 @@ async function collect(
   if (method === "image") {
     if (!venue.imageUrl) {
       console.log(`  – no imageUrl configured`);
-      return { events: [], source: directSource(venue.urls[0] ?? "") };
+      return {
+        events: [],
+        source: directSource(venue.urls[0] ?? ""),
+        status: "failed",
+      };
     }
     const fingerprint = await fetchImageFingerprint(venue.imageUrl);
     if (fingerprint) {
@@ -212,7 +238,7 @@ async function collect(
           return {
             events: [],
             source: directSource(venue.urls[0] ?? venue.imageUrl),
-            sourceUnchanged: unchanged === "events",
+            status: unchanged === "events" ? "unchanged" : "complete",
           };
         }
         console.log(
@@ -224,6 +250,7 @@ async function collect(
       return {
         events: [],
         source: directSource(venue.urls[0] ?? venue.imageUrl),
+        status: "failed",
         modelUnavailable: true,
       };
     }
@@ -236,6 +263,16 @@ async function collect(
       return {
         events: [],
         source: directSource(venue.urls[0] ?? venue.imageUrl),
+        status: "failed",
+      };
+    }
+    const publishableEvents = publishableRawEvents(events);
+    if (events.length > 0 && publishableEvents.length === 0) {
+      console.log(`  – vision returned no publishable rows; source will retry`);
+      return {
+        events: [],
+        source: directSource(venue.urls[0] ?? venue.imageUrl),
+        status: "failed",
       };
     }
     if (fingerprint) {
@@ -243,37 +280,55 @@ async function collect(
         ...fingerprint,
         method,
         extractorVersion: VENUE_IMAGE_EXTRACTOR_VERSION,
-        outcome: events.length ? "events" : "empty",
+        outcome: publishableEvents.length ? "events" : "empty",
       });
     }
-    const n = Array.isArray(events) ? events.length : 0;
+    const n = publishableEvents.length;
     console.log(`  ✓ ${n} event(s) from image ${venue.imageUrl}`);
     return {
-      events: events.map((event) => ({
+      events: publishableEvents.map((event) => ({
         ...event,
         ...(event.description
           ? { description_origin: "radius-summary" as const }
           : {}),
       })),
       source: directSource(venue.urls[0] ?? venue.imageUrl),
+      status: "complete",
     };
   }
 
   if (method === "feed") {
-    // Deterministic Squarespace JSON — no model call. Try each URL until
-    // one yields events.
+    // Deterministic Squarespace JSON — no model call. Try alternatives until
+    // one yields events, while remembering a verified empty response.
+    let verifiedEmptySource: SourceProvenance | null = null;
     for (const url of venue.urls) {
-      const events = await fetchSquarespaceEvents(url);
-      if (events.length) {
+      const result = await fetchSquarespaceEventsResult(url);
+      if (result.status === "failure") continue;
+      if (result.events.length) {
+        const { events } = result;
         console.log(`  ✓ ${events.length} event(s) from feed ${url}`);
-        return { events, source: directSource(url) };
+        return { events, source: directSource(url), status: "complete" };
       }
+      verifiedEmptySource ??= directSource(url);
     }
-    console.log(`  – feed returned no upcoming events`);
-    return { events: [], source: directSource(venue.urls[0] ?? "") };
+    if (verifiedEmptySource) {
+      console.log(`  – feed verified with no upcoming events`);
+      return {
+        events: [],
+        source: verifiedEmptySource,
+        status: "complete",
+      };
+    }
+    console.log(`  – feed could not be verified; prior data retained`);
+    return {
+      events: [],
+      source: directSource(venue.urls[0] ?? ""),
+      status: "failed",
+    };
   }
 
   // render | fetch — page text → model. Try each URL; first hit wins.
+  let verifiedEmptySource: SourceProvenance | null = null;
   for (const url of venue.urls) {
     const snapshot = await fetchPageSnapshot(url, {
       render: method === "render",
@@ -302,11 +357,16 @@ async function collect(
             requestedUrl: snapshot.requestedUrl,
             finalUrl: snapshot.finalUrl,
           },
-          sourceUnchanged: true,
+          status: "unchanged",
         };
       }
       if (unchanged === "empty") {
         console.log(`  = source unchanged (${unchanged}); Claude skipped: ${url}`);
+        verifiedEmptySource ??= {
+          url: snapshot.requestedUrl,
+          requestedUrl: snapshot.requestedUrl,
+          finalUrl: snapshot.finalUrl,
+        };
         continue;
       }
       console.log(
@@ -317,6 +377,7 @@ async function collect(
       return {
         events: [],
         source: directSource(url),
+        status: "failed",
         modelUnavailable: true,
       };
     }
@@ -328,14 +389,19 @@ async function collect(
       console.log(`  – extraction incomplete; source will retry: ${url}`);
       continue;
     }
+    const publishableEvents = publishableRawEvents(events);
+    if (events.length > 0 && publishableEvents.length === 0) {
+      console.log(`  – extraction had no publishable rows; source will retry: ${url}`);
+      continue;
+    }
     recordVenueSourceObservation(sourceState, venue.slug, url, {
       ...fingerprint,
-      outcome: events.length ? "events" : "empty",
+      outcome: publishableEvents.length ? "events" : "empty",
     });
-    if (events.length) {
-      console.log(`  ✓ ${events.length} event(s) from ${url}`);
+    if (publishableEvents.length) {
+      console.log(`  ✓ ${publishableEvents.length} event(s) from ${url}`);
       return {
-        events: events.map((event) => ({
+        events: publishableEvents.map((event) => ({
           ...event,
           ...(event.description
             ? { description_origin: "radius-summary" as const }
@@ -346,18 +412,43 @@ async function collect(
           requestedUrl: snapshot.requestedUrl,
           finalUrl: snapshot.finalUrl,
         },
+        status: "complete",
       };
     }
+    verifiedEmptySource ??= {
+      url: snapshot.requestedUrl,
+      requestedUrl: snapshot.requestedUrl,
+      finalUrl: snapshot.finalUrl,
+    };
     console.log(`  – 0 event(s) from ${url}`);
   }
-  return { events: [], source: directSource(venue.urls[0] ?? "") };
+  if (verifiedEmptySource) {
+    return {
+      events: [],
+      source: verifiedEmptySource,
+      status: "complete",
+    };
+  }
+  return {
+    events: [],
+    source: directSource(venue.urls[0] ?? ""),
+    status: "failed",
+  };
 }
 
 async function main() {
   resetFirecrawlFallbackUsage();
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
-  const existing = JSON.parse(readFileSync(OUT, "utf8")) as VenueEvent[];
+  // The public artifact intentionally omits exact duplicates from the known
+  // Weinberg/New Spire pair. Seed promotion from the unsuppressed source
+  // inventory when available so a hidden Weinberg row remains recoverable if
+  // New Spire later removes its copy. Falling back to the public artifact makes
+  // the first run after this migration safe for existing deployments.
+  const existingPath = existsSync(SOURCE_INVENTORY_OUT)
+    ? SOURCE_INVENTORY_OUT
+    : OUT;
+  const existing = JSON.parse(readFileSync(existingPath, "utf8")) as VenueEvent[];
   const byKey = new Map(existing.map((e) => [keyOf(e), e]));
   const venues = cfg.venues.filter((v) => (only ? v.slug === only : true));
   const sourceState = loadVenueSourceState();
@@ -394,8 +485,8 @@ async function main() {
     const {
       events,
       source,
+      status,
       modelUnavailable: sourceModelUnavailable,
-      sourceUnchanged,
     } = await collect(
       venue,
       sourceState,
@@ -406,7 +497,7 @@ async function main() {
       modelUnavailable = true;
       console.log(`  – model unavailable; prior venue data retained`);
     }
-    if (sourceUnchanged) {
+    if (status === "unchanged") {
       const fetchedAt = nowISO();
       for (const [key, event] of byKey) {
         if (event.venue_slug !== venue.slug) continue;
@@ -421,27 +512,48 @@ async function main() {
       }
       unchangedSources += 1;
     }
+    const promotedRows: VenueEvent[] = [];
     for (const ev of events) {
       if (!ev.title || !ev.starts_at) continue;
-      const full: VenueEvent = {
+      promotedRows.push({
         ...ev,
         venue_slug: venue.slug,
         venue_name: venue.name,
         category: inferredNonMusicCategory(ev.title) ?? venue.category,
         source: { ...source, fetchedAt: nowISO() },
-      };
-      const k = keyOf(full);
-      if (!byKey.has(k)) added++;
-      byKey.set(k, full); // refresh freshness even if known
+      });
+    }
+    const promotion = promoteVenueInventory({
+      inventory: byKey,
+      venueSlug: venue.slug,
+      status,
+      rows: promotedRows,
+      keyOf,
+    });
+    added += promotion.added;
+    if (status === "complete") {
+      console.log(
+        `  ↑ promoted complete inventory (${promotedRows.length} current, ` +
+          `${promotion.removed} retired)`,
+      );
     }
   }
 
   // Keep only future-ish events: drop anything whose date clearly parsed in the past.
-  const kept = [...byKey.values()].filter((e) => {
+  const futureish = [...byKey.values()].filter((e) => {
     const t = Date.parse(e.starts_at ?? "");
     return !Number.isFinite(t) || t >= runStartedAt - 86_400_000; // keep unparseable + within last day
   });
+  const {
+    sourceInventory,
+    publishedEvents: kept,
+    suppressed,
+  } = buildRecoverableVenuePublication(futureish);
 
+  writeFileSync(
+    SOURCE_INVENTORY_OUT,
+    JSON.stringify(sourceInventory, null, 2) + "\n",
+  );
   writeFileSync(OUT, JSON.stringify(kept, null, 2) + "\n");
   const sourceStateAfter = serializeVenueSourceState(sourceState);
   if (sourceStateAfter !== sourceStateBefore) {
@@ -449,7 +561,9 @@ async function main() {
   }
   console.log(
     `\nDone. +${added} new, ${unchangedSources} unchanged source(s) skipped, ` +
-      `${kept.length} total → src/data/venue-events.json`,
+      `${suppressed} exact cross-venue duplicate(s) suppressed, ` +
+      `${kept.length} published / ${sourceInventory.length} retained ` +
+      `→ src/data/venue-events.json`,
   );
   console.log(
     sourceStateAfter === sourceStateBefore

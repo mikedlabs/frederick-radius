@@ -35,6 +35,8 @@ jobs:
       - run: npm ci
       - name: Rebuild MARC schedule from GTFS
         run: npm run build:marc-schedule
+      - name: Validate MARC data contracts
+        run: npm run validate:transit-data -- --marc
       - name: Stage exact MARC output
         run: |
           set -euo pipefail

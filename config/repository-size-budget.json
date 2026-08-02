@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "defaultMaxBytes": 1048576,
+  "totalMaxBytes": 200000000,
+  "categoryBudgets": {
+    "source-of-truth": 3200000,
+    "deployment-required-snapshot": 21800000,
+    "generated-artifact": 5000000,
+    "design-archive": 17200000
+  },
+  "exceptions": [
+    {
+      "path": "public/brand/campaign/cartographic-ripple-background.png",
+      "category": "source-of-truth",
+      "maxBytes": 3200000,
+      "deploymentRequired": false,
+      "provenance": "Approved campaign artwork used as an input by the deterministic brand exporter.",
+      "regenerationCommand": null
+    },
+    {
+      "path": "public/brand/posters/whole-county.png",
+      "category": "design-archive",
+      "maxBytes": 3000000,
+      "deploymentRequired": false,
+      "provenance": "PNG handoff export generated from the tracked Frederick Radius brand system.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/posters/you-are-here.png",
+      "category": "design-archive",
+      "maxBytes": 3000000,
+      "deploymentRequired": false,
+      "provenance": "PNG handoff export generated from the tracked Frederick Radius brand system.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-cover-photo.png",
+      "category": "design-archive",
+      "maxBytes": 1600000,
+      "deploymentRequired": false,
+      "provenance": "Facebook handoff export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-group-launch.png",
+      "category": "design-archive",
+      "maxBytes": 1450000,
+      "deploymentRequired": false,
+      "provenance": "Facebook handoff export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-page-launch-photo.png",
+      "category": "design-archive",
+      "maxBytes": 1550000,
+      "deploymentRequired": false,
+      "provenance": "Facebook handoff export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-season-fall.png",
+      "category": "design-archive",
+      "maxBytes": 1550000,
+      "deploymentRequired": false,
+      "provenance": "Seasonal Facebook export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-season-spring.png",
+      "category": "design-archive",
+      "maxBytes": 1700000,
+      "deploymentRequired": false,
+      "provenance": "Seasonal Facebook export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-season-summer.png",
+      "category": "design-archive",
+      "maxBytes": 1750000,
+      "deploymentRequired": false,
+      "provenance": "Seasonal Facebook export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/brand/social/facebook-season-winter.png",
+      "category": "design-archive",
+      "maxBytes": 1900000,
+      "deploymentRequired": false,
+      "provenance": "Seasonal Facebook export generated from tracked brand code and owned photography.",
+      "regenerationCommand": "npm run build:brand"
+    },
+    {
+      "path": "public/images/seasons/fall/001.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1450000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "public/images/seasons/fall/029.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1160000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "public/images/seasons/fall/FALL NEW 6.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1400000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "public/images/seasons/spring/017.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1120000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "public/images/seasons/spring/circular-park-layout.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1260000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "public/images/seasons/summer/074.jpg",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 1320000,
+      "deploymentRequired": true,
+      "provenance": "Optimized deployment copy of owned seasonal photography listed in the runtime manifest.",
+      "regenerationCommand": "npm run optimize:seasons -- --force"
+    },
+    {
+      "path": "src/data/discovered-enriched.json",
+      "category": "generated-artifact",
+      "maxBytes": 5000000,
+      "deploymentRequired": false,
+      "provenance": "Review-only Google Places enrichment derived from discovered-clean.json.",
+      "regenerationCommand": "npm run enrich:discovered -- --live --confirm"
+    },
+    {
+      "path": "src/data/places-client.json",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 2600000,
+      "deploymentRequired": true,
+      "provenance": "Slim public place catalog deterministically assembled from the tracked place loaders.",
+      "regenerationCommand": "npm run build:client-places"
+    },
+    {
+      "path": "src/data/places-enrichment.json",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 11800000,
+      "deploymentRequired": true,
+      "provenance": "Provider-backed place enrichment snapshot consumed by the production loaders.",
+      "regenerationCommand": "npm run enrich -- --all --live --confirm"
+    }
+  ]
+}

@@ -31,8 +31,10 @@ spend controls are proven:
 ## Environments
 
 - `Data Enrichment`: main-only model-backed data jobs.
-- `APIFY_TOKEN`: main-only Apify pilot credential. Rename this environment to a
-  purpose-based name only when its encrypted secret can be moved safely.
+- `APIFY_TOKEN`: main-only credential for the manual Apify venue pilot and
+  private source change radar. The radar stays manual until its baseline and
+  unchanged paths are proven on main. Rename this environment only when its
+  encrypted secret can be moved safely.
 - `Production`: main-only source-intelligence credentials.
 
 Secrets are never printed, copied into artifacts, or made available to PR code.

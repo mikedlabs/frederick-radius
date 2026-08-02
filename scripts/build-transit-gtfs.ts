@@ -12,6 +12,10 @@
  */
 import { writeFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { execSync } from "node:child_process";
+import {
+  assertTransitValidation,
+  validateFrederickTransitArtifacts,
+} from "./lib/transit-data-validation";
 
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
 const OFFICIAL_SCHEDULE_URL =
@@ -196,6 +200,11 @@ async function main() {
     },
     routes, stops, shapes,
   };
+  const network = { shapeVariants, stopRoutes };
+  assertTransitValidation(
+    "Frederick TransIT generated artifacts",
+    validateFrederickTransitArtifacts({ transit: out, network, trips }),
+  );
   writeFileSync(OUT, JSON.stringify(out));
   // These richer indexes are split from transit.json so the many small client
   // components that only need route colors or stop coordinates do not all
@@ -203,7 +212,7 @@ async function main() {
   // stop-arrivals API server-side.
   writeFileSync(
     NETWORK_OUT,
-    JSON.stringify({ shapeVariants, stopRoutes }),
+    JSON.stringify(network),
   );
   writeFileSync(TRIPS_OUT, JSON.stringify(trips));
   rmSync(TMP, { recursive: true, force: true });

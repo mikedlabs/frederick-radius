@@ -459,7 +459,14 @@ const postgresWriter: EventArchiveBatchWriter = {
     ) {
       return 0;
     }
-    const cutoff = new Date(context.now.getTime() - context.graceMs);
+    // Drizzle replaces the shared postgres-js timestamptz serializer with a
+    // transparent pass-through. Passing a Date through the raw client then
+    // reaches Buffer.byteLength as an object and throws ERR_INVALID_ARG_TYPE
+    // before Postgres sees the cleanup query. Keep the transport scalar and
+    // restore the database type explicitly in SQL.
+    const cutoff = new Date(
+      context.now.getTime() - context.graceMs,
+    ).toISOString();
     return sql.begin(async (tx) => {
       const remainingMs = Math.max(100, context.deadlineAt - Date.now());
       await tx`
@@ -515,8 +522,9 @@ const postgresWriter: EventArchiveBatchWriter = {
           on identity.canonical_event_id = canonical.id
         join event_archive_success_sources as successful
           on successful.source = identity.source
-        where canonical.last_seen_at < ${cutoff}
-          and coalesce(canonical.ends_at, canonical.starts_at) < ${cutoff}
+        where canonical.last_seen_at < ${cutoff}::timestamptz
+          and coalesce(canonical.ends_at, canonical.starts_at)
+            < ${cutoff}::timestamptz
           and not exists (
             select 1
             from event_archive_seen as seen

@@ -71,6 +71,7 @@ jobs:
               ],
               'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
               'bot/venue-event-refresh': [
+                'src/data/venue-event-source-inventory.json',
                 'src/data/venue-event-source-state.json',
                 'src/data/venue-events.json',
               ],

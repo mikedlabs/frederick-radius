@@ -39,6 +39,8 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Enforce tracked-file size budget
+        run: npm run audit:repo-size
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - name: Typecheck
@@ -49,6 +51,8 @@ jobs:
         run: npm run audit:sources
       - name: Audit migration ledger
         run: npm run db:audit
+      - name: Validate committed transit data
+        run: npm run validate:transit-data
       - name: Unit tests
         run: npm run test:all
       - name: Production recovery selection tests

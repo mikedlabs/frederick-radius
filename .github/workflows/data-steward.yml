@@ -231,6 +231,9 @@ jobs:
       - name: Rebuild transit GTFS
         run: npm run build:transit
 
+      - name: Validate transit data contracts
+        run: npm run validate:transit-data -- --frederick
+
       - name: Validate transit snapshot
         run: npm test -- tests/transit-static-snapshot.spec.ts
 

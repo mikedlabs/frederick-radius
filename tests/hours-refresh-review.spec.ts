@@ -120,7 +120,7 @@ describe("hours refresh review manifest", () => {
     expect(analysis.publicRemovals).toEqual([]);
     expect(analysis.newlyClosed).toEqual([]);
     expect(renderHoursRefreshReview(analysis)).toContain(
-      "No public catalog or new closure transition requires manual review.",
+      "No unreviewed public catalog or public closure transition requires manual review.",
     );
   });
 
@@ -182,6 +182,70 @@ describe("hours refresh review manifest", () => {
     expect(analysis.newlyClosed).toEqual([]);
     expect(renderHoursRefreshReview(analysis)).toContain(
       "No new provider closure",
+    );
+  });
+
+  it("records current source-backed closure evidence as reviewed", () => {
+    const analysis = analyzeHoursRefreshChange({
+      beforeArtifact: artifact({
+        cafe: {
+          business_status: "OPERATIONAL",
+          refreshed_at: "2026-07-30T12:00:00.000Z",
+        },
+      }),
+      afterArtifact: artifact({
+        cafe: {
+          business_status: "CLOSED_PERMANENTLY",
+          refreshed_at: "2026-07-31T08:00:00.000Z",
+        },
+      }),
+      beforePlaces: [place("cafe")],
+      afterPlaces: [],
+      statusOverrides: {
+        cafe: {
+          status: "closed_permanently",
+          effective_at: "2026-07-31",
+          review_after: "2026-10-31",
+          source: "https://example.com/official-closure",
+          note: "The business published a permanent closure notice.",
+        },
+      },
+    });
+
+    expect(analysis.review_required).toBe(false);
+    expect(analysis.unreviewedPublicRemovals).toEqual([]);
+    expect(analysis.unreviewedNewlyClosed).toEqual([]);
+    expect(renderHoursRefreshReview(analysis)).toContain(
+      "[Recorded](https://example.com/official-closure)",
+    );
+  });
+
+  it("accepts a current operational correction as review of a false closure", () => {
+    const analysis = analyzeHoursRefreshChange({
+      beforeArtifact: artifact({}),
+      afterArtifact: artifact({
+        clinic: {
+          business_status: "CLOSED_PERMANENTLY",
+          refreshed_at: "2026-07-31T08:00:00.000Z",
+        },
+      }),
+      beforePlaces: [place("clinic")],
+      afterPlaces: [place("clinic")],
+      statusOverrides: {
+        clinic: {
+          status: "operational",
+          effective_at: "2026-07-31",
+          review_after: "2026-08-15",
+          source: "https://example.com/official-location",
+          note: "The current official location page still offers appointments.",
+        },
+      },
+    });
+
+    expect(analysis.review_required).toBe(false);
+    expect(analysis.unreviewedNewlyClosed).toEqual([]);
+    expect(renderHoursRefreshReview(analysis)).toContain(
+      "[Recorded](https://example.com/official-location)",
     );
   });
 });

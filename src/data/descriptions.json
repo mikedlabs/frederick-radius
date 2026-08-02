@@ -1,88 +1,4 @@
 {
-  "averys-maryland-grille-frederick": {
-    "blurb": "Avery's Maryland Grille is a casual seafood and steakhouse serving wood-grilled steaks, steamed crabs, and seafood.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://averysmarylandgrille.com/about-us",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against Avery's current official About Us and menu pages on 2026-07-29; the business describes itself as a seafood and steakhouse, and the menu lists wood-grilled steak."
-  },
-  "middletown-park-middletown": {
-    "blurb": "Middletown Park has a playground, fishing pond, disc golf course, trails, athletic fields, picnic shelters, and a skate spot and pump track.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.recreater.com/240/Middletown-Park",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Middletown Park page on 2026-07-29."
-  },
-  "pinecliff-park-frederick": {
-    "blurb": "Pinecliff Park has a barrier-free playground, river access, ball fields, picnic shelters, trails, and an amphitheater.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.recreater.com/255/Pinecliff-Park",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Pinecliff Park page on 2026-07-29."
-  },
-  "riverwalk-park-frederick": {
-    "blurb": "Riverwalk Park has a playground, pavilion, ball fields, restrooms, a water fountain, and walking and biking paths.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.cityoffrederickmd.gov/facilities/facility/details/Riverwalk-Park-134",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against the City of Frederick's current Riverwalk Park facility page on 2026-07-29."
-  },
-  "urbana-district-park-new-market": {
-    "blurb": "Urbana District Park has a barrier-free playground, dog park, trails, ball fields, picnic shelters, and a veterans memorial.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.recreater.com/272/Urbana-District-Park",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Urbana District Park page on 2026-07-29."
-  },
-  "utica-park-walkersville": {
-    "blurb": "Utica District Park has playgrounds, trails, picnic shelters, athletic fields, a bike workstation, and a five-kilometer course.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.recreater.com/276/Utica-District-Park",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Utica District Park page on 2026-07-29."
-  },
-  "willowdale-park-frederick": {
-    "blurb": "Willowdale Park has a playground, pavilion, grills, picnic tables, and walking and biking paths.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/Willowdale-Park-156",
-      "fetched_at": "2026-07-29T12:04:25.000Z"
-    },
-    "generated_at": "2026-07-29T12:04:25.000Z",
-    "reviewed_at": "2026-07-29T12:04:25.000Z",
-    "reviewer_note": "Checked against the City of Frederick's current Willowdale Park facility page on 2026-07-29."
-  },
   "7th-sister": {
     "blurb": "7th Sister serves Mid-Atlantic food, including oysters with blackberry mignonette and a house crab cake seared until golden with whole-grain mustard and herbs.",
     "status": "approved",
@@ -95,125 +11,57 @@
     "reviewed_at": "2026-07-22T00:00:00.000Z",
     "reviewer_note": "Checked against the linked business website on 2026-07-22."
   },
-  "cafe-nola": {
-    "blurb": "Cafe Nola is a cafe and bar on East Patrick Street with pickup ordering.",
+  "7th-street-cafe": {
+    "blurb": "7th Street Cafe makes its bread daily in-house for its sandwiches.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.7thstreetsandwich.com/",
+      "fetched_at": "2026-08-01T09:50:51.885Z"
+    },
+    "generated_at": "2026-08-01T09:50:51.885Z"
+  },
+  "averys-maryland-grille-frederick": {
+    "blurb": "Avery's Maryland Grille is a casual seafood and steakhouse serving wood-grilled steaks, steamed crabs, and seafood.",
     "status": "approved",
     "source": {
       "kind": "business_website",
-      "url": "https://www.cafe-nola.com/",
-      "fetched_at": "2026-07-27T16:55:00.000Z"
+      "url": "https://averysmarylandgrille.com/about-us",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
     },
-    "generated_at": "2026-07-27T16:55:00.000Z",
-    "reviewed_at": "2026-07-27T16:55:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-27."
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Avery's current official About Us and menu pages on 2026-07-29; the business describes itself as a seafood and steakhouse, and the menu lists wood-grilled steak."
   },
-  "dublin-roasters-frederick": {
-    "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
-    "status": "approved",
+  "bakehouse": {
+    "blurb": "Bakehouse makes croissants, pastries, and baked goods from a storefront in Downtown Frederick.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://dublinroasterscoffee.com/",
-      "fetched_at": "2026-05-31T18:16:48.386Z"
+      "url": "https://www.bakehousemd.com/",
+      "fetched_at": "2026-08-01T09:49:18.789Z"
     },
-    "generated_at": "2026-05-31T18:16:48.386Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+    "generated_at": "2026-08-01T09:49:18.789Z"
   },
-  "he-vox-lounge": {
-    "blurb": "The Vox Lounge is a SilverVox music venue whose calendar includes live music and open-mic events.",
-    "status": "approved",
+  "bellisarios-pizza": {
+    "blurb": "Bellisario's Pizza has been locally owned since 2000 and serves pizza along with hoagies, calzones, and other Italian-style sandwiches.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://www.silvervox.org/eventspaces/",
-      "fetched_at": "2026-07-28T09:38:24.000Z"
+      "url": "https://bellisariospizza.com/",
+      "fetched_at": "2026-08-01T09:51:25.447Z"
     },
-    "generated_at": "2026-07-28T09:38:24.000Z",
-    "reviewed_at": "2026-07-28T09:38:24.000Z",
-    "reviewer_note": "Checked against SilverVox's event-spaces page on 2026-07-28; the page identifies The Vox Lounge as its music venue and lists live music and open-mic programming."
+    "generated_at": "2026-08-01T09:51:25.447Z"
   },
-  "hoffman-brothers-ice-cream": {
-    "blurb": "Hoffman Brothers makes ice cream in signature flavors such as Honey Graham, Chocolate Love, and Caramel Crunch, with nondairy options available.",
-    "status": "approved",
+  "bentztown": {
+    "blurb": "Bentztown is a restaurant and bar with live music, cocktails, bourbon, and Southern-inspired food.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
-      "fetched_at": "2026-05-31T18:18:33.338Z"
+      "url": "https://bentztown.com/",
+      "fetched_at": "2026-08-01T09:52:01.577Z"
     },
-    "generated_at": "2026-05-31T18:18:33.338Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
-  },
-  "kindred-nutrition": {
-    "blurb": "Kindred Nutrition is a dietitian-led practice specializing in sports nutrition and eating-disorder treatment. It offers in-person care in Frederick and virtual care in multiple states.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://kindrednutrition.com/",
-      "fetched_at": "2026-07-28T09:38:24.000Z"
-    },
-    "generated_at": "2026-07-28T09:38:24.000Z",
-    "reviewed_at": "2026-07-28T09:38:24.000Z",
-    "reviewer_note": "Checked against Kindred Nutrition's current contact and services pages on 2026-07-28; the site lists its Frederick office at 810 Toll House Avenue, virtual care, sports nutrition, and eating-disorder treatment."
-  },
-  "main-cup-middletown": {
-    "blurb": "The Main Cup serves comfort-food standards and globally inspired dishes in a restaurant and bar setting.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://www.themaincup.com/",
-      "fetched_at": "2026-05-31T18:17:22.635Z"
-    },
-    "generated_at": "2026-05-31T18:17:22.635Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
-  },
-  "milkhouse-brewery-mt-airy": {
-    "blurb": "Milkhouse brews classic beer styles with Maryland hops at Stillpoint Farm, which also has a taproom and local mercantile.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://www.milkhousebrewery.com/",
-      "fetched_at": "2026-05-31T18:16:43.279Z"
-    },
-    "generated_at": "2026-05-31T18:16:43.279Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
-  },
-  "plaza-mexico": {
-    "blurb": "Plaza Mexico serves Mexican standards such as quesadillas, nachos, and churros in a colorful family restaurant.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://www.plazamexicomd.com/",
-      "fetched_at": "2026-05-31T18:18:06.467Z"
-    },
-    "generated_at": "2026-05-31T18:18:06.467Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
-  },
-  "swinging-bridge": {
-    "blurb": "The Swinging Bridge is a 100-foot iron pedestrian suspension bridge over Carroll Creek in Baker Park. Built in 1885, it was moved to the park in 1928.",
-    "status": "approved",
-    "source": {
-      "kind": "official_source",
-      "url": "https://apps.mht.maryland.gov/medusa/PDF/Frederick/F-3-8.pdf",
-      "fetched_at": "2026-07-28T09:38:24.000Z"
-    },
-    "generated_at": "2026-07-28T09:38:24.000Z",
-    "reviewed_at": "2026-07-28T09:38:24.000Z",
-    "reviewer_note": "Checked against Maryland Historical Trust inventory F-3-8 on 2026-07-28; the survey records the bridge's material, pedestrian use, 100-foot span, 1885 construction, Carroll Creek location, and 1928 move."
-  },
-  "tin-corner": {
-    "blurb": "Tin Corner serves slow-simmered pho, sizzling rice plates, and Vietnamese dishes with house-made sauces.",
-    "status": "approved",
-    "source": {
-      "kind": "business_website",
-      "url": "https://tincornerfrederick.com/",
-      "fetched_at": "2026-05-31T18:18:38.663Z"
-    },
-    "generated_at": "2026-05-31T18:18:38.663Z",
-    "reviewed_at": "2026-07-22T00:00:00.000Z",
-    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+    "generated_at": "2026-08-01T09:52:01.577Z"
   },
   "bjorlee-museum": {
     "blurb": "Bjorlee Museum is the school museum on Maryland School for the Deaf's Frederick campus, preserving and showcasing MSD history.",
@@ -227,6 +75,264 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Maryland School for the Deaf's current campus page on 2026-07-28; its Frederick-campus facilities include a school museum that preserves and showcases MSD history."
   },
+  "bk-juices": {
+    "blurb": "BK Juices serves juices, smoothies, and juice cleanses.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.bkjuicescafe.com/",
+      "fetched_at": "2026-08-01T09:51:58.621Z"
+    },
+    "generated_at": "2026-08-01T09:51:58.621Z"
+  },
+  "cafe-nola": {
+    "blurb": "Cafe Nola is a cafe and bar on East Patrick Street with pickup ordering.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.cafe-nola.com/",
+      "fetched_at": "2026-07-27T16:55:00.000Z"
+    },
+    "generated_at": "2026-07-27T16:55:00.000Z",
+    "reviewed_at": "2026-07-27T16:55:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-27."
+  },
+  "chappelle-co": {
+    "blurb": "Chappelle & Co. sells candles, home goods, apparel, stationery, and accessories from a retail location in Frederick, Maryland.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://chappelleandco.com/",
+      "fetched_at": "2026-08-01T09:51:20.068Z"
+    },
+    "generated_at": "2026-08-01T09:51:20.068Z"
+  },
+  "cloud-jammer": {
+    "blurb": "Cloud Jammer sells vape products including e-juice, nicotine, glass pieces, vape mods, batteries, and accessories across multiple locations in Pennsylvania and Maryland since 2014.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.cloud-jammervapes.com/",
+      "fetched_at": "2026-08-01T09:50:46.051Z"
+    },
+    "generated_at": "2026-08-01T09:50:46.051Z"
+  },
+  "colonial-jewelers": {
+    "blurb": "Colonial Jewelers is a fourth-generation Frederick business offering custom jewelry design, engagement and wedding jewelry, and repair services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.colonialjewelers.com/",
+      "fetched_at": "2026-08-01T09:49:08.539Z"
+    },
+    "generated_at": "2026-08-01T09:49:08.539Z"
+  },
+  "common-market": {
+    "blurb": "Common Market is a locally owned grocery and cafe that works with local farmers and producers within 200 miles.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.commonmarket.coop/",
+      "fetched_at": "2026-08-01T09:50:35.402Z"
+    },
+    "generated_at": "2026-08-01T09:50:35.402Z"
+  },
+  "critters-reptiles-exotics": {
+    "blurb": "Critters, Reptiles & Exotics is an exotic pet store offering lizards, snakes, birds, rabbits, hamsters, guinea pigs, hedgehogs, chinchillas, sugar gliders, axolotls, and freshwater and saltwater fish for sale.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.crepets.com/",
+      "fetched_at": "2026-08-01T09:50:59.144Z"
+    },
+    "generated_at": "2026-08-01T09:50:59.144Z"
+  },
+  "dublin-roasters-frederick": {
+    "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://dublinroasterscoffee.com/",
+      "fetched_at": "2026-05-31T18:16:48.386Z"
+    },
+    "generated_at": "2026-05-31T18:16:48.386Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "earthly-elements": {
+    "blurb": "Earthly Elements offers mineral specimens, crystals, gemstones, fossils, metaphysical stones, and gifts.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.earthlyrocks.com/",
+      "fetched_at": "2026-08-01T09:51:29.888Z"
+    },
+    "generated_at": "2026-08-01T09:51:29.888Z"
+  },
+  "edgeworks-knife-and-supply": {
+    "blurb": "Edgeworks sells cutlery, knives, and darts and provides knife-sharpening services; it has operated since 1993.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://edgeworksonline.com/",
+      "fetched_at": "2026-08-01T09:51:21.370Z"
+    },
+    "generated_at": "2026-08-01T09:51:21.370Z"
+  },
+  "embark-skateboard-shop": {
+    "blurb": "Embark Skateboard Shop sells skateboarding decks, trucks, wheels, bearings, and apparel, with Embark exclusive items and work from local and visiting artists displayed on a gallery wall.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://embarkskateshop.com/",
+      "fetched_at": "2026-08-01T09:51:40.617Z"
+    },
+    "generated_at": "2026-08-01T09:51:40.617Z"
+  },
+  "escape-this-frederick": {
+    "blurb": "Escape This Frederick operates six private escape rooms with puzzles and themed scenarios, and also offers virtual reality games.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://escapethisfrederick.com/",
+      "fetched_at": "2026-08-01T09:47:49.097Z"
+    },
+    "generated_at": "2026-08-01T09:47:49.097Z"
+  },
+  "frederick-auto-repair": {
+    "blurb": "This Route 40 shop provides major vehicle repairs and Maryland state inspections, with walk-in service and a night drop box.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-repair/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Repair page on 2026-07-29; it lists major repairs, a Maryland state inspector, walk-in service, a night drop box, the address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-express-route-26": {
+    "blurb": "This Route 26 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-26-2/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 26 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-express-route-85": {
+    "blurb": "This Route 85 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-85/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 85 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+  },
+  "frederick-auto-spa-route-40": {
+    "blurb": "This Route 40 Auto Spa offers express and full-service car washes, with a self-service detailing area.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/frederick-auto-spa-rt-40/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Route 40 page on 2026-07-29; it lists express and full-service washes, detailing amenities, the address, phone, and weekly hours."
+  },
+  "frederick-fudge-ice-cream": {
+    "blurb": "Frederick Fudge & Ice Cream serves ice cream, fudge, and chocolate and has operated for more than 20 years.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://fredicecream.com/",
+      "fetched_at": "2026-08-01T09:51:03.738Z"
+    },
+    "generated_at": "2026-08-01T09:51:03.738Z"
+  },
+  "happiness-is-balance-frederick-md": {
+    "blurb": "Happiness Is Balance offers massage therapy, personal training, life coaching, food education, situational awareness instruction, and firearms training.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://happinessisbalance.net/",
+      "fetched_at": "2026-08-01T09:51:49.414Z"
+    },
+    "generated_at": "2026-08-01T09:51:49.414Z"
+  },
+  "he-vox-lounge": {
+    "blurb": "The Vox Lounge is a SilverVox music venue whose calendar includes live music and open-mic events.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.silvervox.org/eventspaces/",
+      "fetched_at": "2026-07-28T09:38:24.000Z"
+    },
+    "generated_at": "2026-07-28T09:38:24.000Z",
+    "reviewed_at": "2026-07-28T09:38:24.000Z",
+    "reviewer_note": "Checked against SilverVox's event-spaces page on 2026-07-28; the page identifies The Vox Lounge as its music venue and lists live music and open-mic programming."
+  },
+  "hispanos-sin-fronteras": {
+    "blurb": "Hispanos Sin Fronteras helps Hispanic business owners with business formation, licensing, and legal procedures in the United States.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://hispanossinfronteras.com/",
+      "fetched_at": "2026-08-01T09:50:30.295Z"
+    },
+    "generated_at": "2026-08-01T09:50:30.295Z"
+  },
+  "hoffman-brothers-ice-cream": {
+    "blurb": "Hoffman Brothers makes ice cream in signature flavors such as Honey Graham, Chocolate Love, and Caramel Crunch, with nondairy options available.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+      "fetched_at": "2026-05-31T18:18:33.338Z"
+    },
+    "generated_at": "2026-05-31T18:18:33.338Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "ibiza-cafe": {
+    "blurb": "Ibiza Cafe serves single-origin siphon and pour-over coffee, hot tea, sandwiches, pastries, waffles, and bubble tea.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.theibizacafe.com/",
+      "fetched_at": "2026-08-01T09:49:23.569Z"
+    },
+    "generated_at": "2026-08-01T09:49:23.569Z"
+  },
+  "inbloom-jewelry": {
+    "blurb": "InBloom Jewelry offers custom jewelry and transforms heirlooms using traditional metalsmithing techniques.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.inbloomjewelry.com/",
+      "fetched_at": "2026-08-01T09:50:28.384Z"
+    },
+    "generated_at": "2026-08-01T09:50:28.384Z"
+  },
+  "jefferson-street-lube-center-frederick": {
+    "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.washluberepair.com/location/jefferson-street-lube-center/",
+      "fetched_at": "2026-07-29T12:23:10.000Z"
+    },
+    "generated_at": "2026-07-29T12:23:10.000Z",
+    "reviewed_at": "2026-07-29T12:23:10.000Z",
+    "reviewer_note": "Checked against WLR Automotive Group's current Jefferson Street Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
+  },
   "jkw-beauty": {
     "blurb": "JKW Beauty is an appointment-based studio offering event hair and makeup, beauty lessons, and airbrush spray tans.",
     "status": "approved",
@@ -239,6 +345,80 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against JKW Beauty's current home and services information on 2026-07-28; the site lists event hair and makeup, studio sessions, lessons, spray tans, and appointment-only access."
   },
+  "jojos-restaurant-tap-house": {
+    "blurb": "JoJo's Restaurant & Tap House offers both a restaurant with a semi-private dining room and a tap house side with over 30 rotating draft beers, cocktails, and wine.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://jojosrestauranttaphouse.com/",
+      "fetched_at": "2026-08-01T09:49:10.420Z"
+    },
+    "generated_at": "2026-08-01T09:49:10.420Z"
+  },
+  "k-town-takeout": {
+    "blurb": "K-town TakeOut serves Korean food, sushi, and takeout meals.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://k-towntakeout.com/",
+      "fetched_at": "2026-08-01T09:50:49.865Z"
+    },
+    "generated_at": "2026-08-01T09:50:49.865Z"
+  },
+  "key-city-tattoo": {
+    "blurb": "Key City Tattoo offers custom tattoo services at two locations in Frederick, Maryland, with multiple artists available at each shop.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.keycitytattoos.com/",
+      "fetched_at": "2026-08-01T09:50:31.837Z"
+    },
+    "generated_at": "2026-08-01T09:50:31.837Z"
+  },
+  "kindred-nutrition": {
+    "blurb": "Kindred Nutrition is a dietitian-led practice specializing in sports nutrition and eating-disorder treatment. It offers in-person care in Frederick and virtual care in multiple states.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://kindrednutrition.com/",
+      "fetched_at": "2026-07-28T09:38:24.000Z"
+    },
+    "generated_at": "2026-07-28T09:38:24.000Z",
+    "reviewed_at": "2026-07-28T09:38:24.000Z",
+    "reviewer_note": "Checked against Kindred Nutrition's current contact and services pages on 2026-07-28; the site lists its Frederick office at 810 Toll House Avenue, virtual care, sports nutrition, and eating-disorder treatment."
+  },
+  "lazy-fish": {
+    "blurb": "Lazy Fish serves sushi and Asian fusion dishes from its upstairs space in downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://lazyfishsushi.com/",
+      "fetched_at": "2026-08-01T09:48:50.357Z"
+    },
+    "generated_at": "2026-08-01T09:48:50.357Z"
+  },
+  "mackies-southern-bbq": {
+    "blurb": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.mackiesbarbecue.com/",
+      "fetched_at": "2026-05-31T18:17:58.141Z"
+    },
+    "generated_at": "2026-05-31T18:17:58.141Z"
+  },
+  "main-cup-middletown": {
+    "blurb": "The Main Cup serves comfort-food standards and globally inspired dishes in a restaurant and bar setting.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.themaincup.com/",
+      "fetched_at": "2026-05-31T18:17:22.635Z"
+    },
+    "generated_at": "2026-05-31T18:17:22.635Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
   "maryland-deaf-center": {
     "blurb": "Maryland Deaf Community Center hosts Deaf-community programs, ASL classes, events, and referral services in Frederick.",
     "status": "approved",
@@ -250,6 +430,16 @@
     "generated_at": "2026-07-29T02:14:12.000Z",
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Maryland Deaf Community Center's current site on 2026-07-28; it lists ASL classes and events and describes education, communication, social, and referral purposes."
+  },
+  "maryland-ensemble-theatre": {
+    "blurb": "Maryland Ensemble Theatre is a theater company in Frederick, Maryland that produces a mainstage season and offers education programs for adults, teens, and kids.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://marylandensemble.org/",
+      "fetched_at": "2026-08-01T09:50:55.727Z"
+    },
+    "generated_at": "2026-08-01T09:50:55.727Z"
   },
   "maryland-school-for-the-deaf": {
     "blurb": "The Frederick campus serves Deaf and hard-of-hearing students in an ASL- and English-rich learning community.",
@@ -275,6 +465,50 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against the City of Frederick's current facility page on 2026-07-28; the page lists the address, hours, benches, electric service, and walking and biking paths. The prior unsupported World War I memorial claim was removed."
   },
+  "middletown-park-middletown": {
+    "blurb": "Middletown Park has a playground, fishing pond, disc golf course, trails, athletic fields, picnic shelters, and a skate spot and pump track.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/240/Middletown-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Middletown Park page on 2026-07-29."
+  },
+  "milkhouse-brewery-mt-airy": {
+    "blurb": "Milkhouse brews classic beer styles with Maryland hops at Stillpoint Farm, which also has a taproom and local mercantile.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.milkhousebrewery.com/",
+      "fetched_at": "2026-05-31T18:16:43.279Z"
+    },
+    "generated_at": "2026-05-31T18:16:43.279Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "minuteman-press-12": {
+    "blurb": "Minuteman Press provides digital printing, graphic design, direct mail services, promotional products, banners, and signs to the Frederick business community for over 30 years.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://minuteman.com/us/locations/md/frederick/",
+      "fetched_at": "2026-08-01T09:49:22.119Z"
+    },
+    "generated_at": "2026-08-01T09:49:22.119Z"
+  },
+  "oscars-alehouse": {
+    "blurb": "Oscar's Alehouse features a wood-burning grill that gives burgers, chicken, steak, and fish an oaky flavor, and rotates 36 craft beer drafts from breweries around the nation and local breweries.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.oscarsalehouse.net/west",
+      "fetched_at": "2026-08-01T09:48:14.084Z"
+    },
+    "generated_at": "2026-08-01T09:48:14.084Z"
+  },
   "panera-bread-urbana": {
     "blurb": "The Urbana Panera is a bakery-cafe serving breakfast, soups, sandwiches, salads, and baked sweets.",
     "status": "approved",
@@ -286,6 +520,30 @@
     "generated_at": "2026-07-29T02:14:12.000Z",
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked the official Urbana cafe page and Panera's current menu information on 2026-07-28; Panera describes its bakery-cafes as serving these menu categories."
+  },
+  "pinecliff-park-frederick": {
+    "blurb": "Pinecliff Park has a barrier-free playground, river access, ball fields, picnic shelters, trails, and an amphitheater.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/255/Pinecliff-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Pinecliff Park page on 2026-07-29."
+  },
+  "plaza-mexico": {
+    "blurb": "Plaza Mexico serves Mexican standards such as quesadillas, nachos, and churros in a colorful family restaurant.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.plazamexicomd.com/",
+      "fetched_at": "2026-05-31T18:18:06.467Z"
+    },
+    "generated_at": "2026-05-31T18:18:06.467Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
   },
   "pumpernickel-rye-urbana": {
     "blurb": "Pumpernickel + Rye is an Urbana deli and market serving sandwiches, house-smoked meats, cured fish, soups, smoothies, espresso, and coffee.",
@@ -299,6 +557,16 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Pumpernickel + Rye's current business website on 2026-07-28; the home page identifies its Urbana location and describes these food and drink offerings."
   },
+  "quartermasters-cigars": {
+    "blurb": "Quartermasters Cigars sells cigars, accessories, and specialty tobacco and has a 1,780-square-foot lounge with a 1,100-square-foot outdoor smoking patio.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.qc-cigars.com/",
+      "fetched_at": "2026-08-01T09:52:11.849Z"
+    },
+    "generated_at": "2026-08-01T09:52:11.849Z"
+  },
   "quince-orchard-psychotherapy": {
     "blurb": "Orchard Mental Health Group offers therapy, psychological testing, and medication management at its Frederick office.",
     "status": "approved",
@@ -311,6 +579,26 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Orchard Mental Health Group's current services and locations information on 2026-07-28; the site lists therapy, testing, medication management, and a Frederick office."
   },
+  "rare-morsel": {
+    "blurb": "Rare Morsel is a chocolate and specialty foods shop offering ice cream, sorbet, frozen treats, and gift items.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.raremorsel.com/",
+      "fetched_at": "2026-08-01T09:51:18.724Z"
+    },
+    "generated_at": "2026-08-01T09:51:18.724Z"
+  },
+  "recycles-bikes": {
+    "blurb": "ReCycles Bikes sells inspected pre-owned bicycles and lists a lifetime tune-up warranty.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://recyclesbicycleshop.com/",
+      "fetched_at": "2026-08-01T09:51:47.277Z"
+    },
+    "generated_at": "2026-08-01T09:51:47.277Z"
+  },
   "rides-for-good": {
     "blurb": "Rides for Good matches Frederick County residents who need transportation with volunteer drivers for essential appointments and services.",
     "status": "approved",
@@ -322,6 +610,28 @@
     "generated_at": "2026-07-29T02:14:12.000Z",
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Rides for Good's current site on 2026-07-28; it describes a Frederick County ride-matching network, volunteer drivers, and trips for medical appointments and other essential services."
+  },
+  "riverwalk-park-frederick": {
+    "blurb": "Riverwalk Park has a playground, pavilion, ball fields, restrooms, a water fountain, and walking and biking paths.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/facilities/facility/details/Riverwalk-Park-134",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current Riverwalk Park facility page on 2026-07-29."
+  },
+  "rosatis-pizza-5": {
+    "blurb": "Rosati's Pizza serves pizza and Italian-American dishes using a family recipe passed down through generations.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.rosatispizza.com/location/frederick-md",
+      "fetched_at": "2026-08-01T09:48:02.952Z"
+    },
+    "generated_at": "2026-08-01T09:48:02.952Z"
   },
   "route-40-lube-center-frederick": {
     "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
@@ -347,65 +657,223 @@
     "reviewed_at": "2026-07-29T12:23:10.000Z",
     "reviewer_note": "Checked against WLR Automotive Group's current Route 85 Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
   },
-  "jefferson-street-lube-center-frederick": {
-    "blurb": "This drive-through Lube Center provides oil changes and preventive vehicle maintenance.",
-    "status": "approved",
+  "shieldco": {
+    "blurb": "ShieldCo Art creates custom metal signs and business logos in various materials including steel, aluminum, brass, and copper.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://www.washluberepair.com/location/jefferson-street-lube-center/",
-      "fetched_at": "2026-07-29T12:23:10.000Z"
+      "url": "https://shieldcoart.com/contact/",
+      "fetched_at": "2026-08-01T09:50:57.623Z"
     },
-    "generated_at": "2026-07-29T12:23:10.000Z",
-    "reviewed_at": "2026-07-29T12:23:10.000Z",
-    "reviewer_note": "Checked against WLR Automotive Group's current Jefferson Street Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
+    "generated_at": "2026-08-01T09:50:57.623Z"
   },
-  "frederick-auto-repair": {
-    "blurb": "This Route 40 shop provides major vehicle repairs and Maryland state inspections, with walk-in service and a night drop box.",
-    "status": "approved",
+  "smoke-signals": {
+    "blurb": "Smoke Signals sells functional art glass and says it represents more than 100 glass artists from the United States and abroad.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://www.washluberepair.com/location/frederick-auto-repair/",
-      "fetched_at": "2026-07-29T12:23:10.000Z"
+      "url": "https://www.smokesignalssmokeshop.com/",
+      "fetched_at": "2026-08-01T09:50:37.122Z"
     },
-    "generated_at": "2026-07-29T12:23:10.000Z",
-    "reviewed_at": "2026-07-29T12:23:10.000Z",
-    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Repair page on 2026-07-29; it lists major repairs, a Maryland state inspector, walk-in service, a night drop box, the address, phone, and weekly hours."
+    "generated_at": "2026-08-01T09:50:37.122Z"
   },
-  "frederick-auto-spa-route-40": {
-    "blurb": "This Route 40 Auto Spa offers express and full-service car washes, with a self-service detailing area.",
-    "status": "approved",
+  "south-market-sandwich-co": {
+    "blurb": "South Market Sandwich Company makes sandwiches and offers free delivery to downtown Frederick Monday through Friday from 11am to 2:30pm.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://www.washluberepair.com/location/frederick-auto-spa-rt-40/",
-      "fetched_at": "2026-07-29T12:23:10.000Z"
+      "url": "https://southmarketsandwiches.com/",
+      "fetched_at": "2026-08-01T09:51:27.037Z"
     },
-    "generated_at": "2026-07-29T12:23:10.000Z",
-    "reviewed_at": "2026-07-29T12:23:10.000Z",
-    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Route 40 page on 2026-07-29; it lists express and full-service washes, detailing amenities, the address, phone, and weekly hours."
+    "generated_at": "2026-08-01T09:51:27.037Z"
   },
-  "frederick-auto-spa-express-route-85": {
-    "blurb": "This Route 85 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
-    "status": "approved",
+  "spinners-pinball-arcade": {
+    "blurb": "Spinners is a nonprofit arcade in Frederick, Maryland offering unlimited all-day play on pinball machines, arcade games, skeeball, air hockey, and console gaming for a single admission price.",
+    "status": "candidate",
     "source": {
       "kind": "business_website",
-      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-85/",
-      "fetched_at": "2026-07-29T12:23:10.000Z"
+      "url": "https://www.spinnerspinball.org/",
+      "fetched_at": "2026-08-01T09:49:13.111Z"
     },
-    "generated_at": "2026-07-29T12:23:10.000Z",
-    "reviewed_at": "2026-07-29T12:23:10.000Z",
-    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 85 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+    "generated_at": "2026-08-01T09:49:13.111Z"
   },
-  "frederick-auto-spa-express-route-26": {
-    "blurb": "This Route 26 express car wash has a self-service detailing area with vacuums, mat cleaners, air hoses, and towels.",
+  "sumittra-thai-cuisine": {
+    "blurb": "Sumittra serves Thai fusion cuisine in Downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.sumittra.com/",
+      "fetched_at": "2026-08-01T09:49:25.079Z"
+    },
+    "generated_at": "2026-08-01T09:49:25.079Z"
+  },
+  "swinging-bridge": {
+    "blurb": "The Swinging Bridge is a 100-foot iron pedestrian suspension bridge over Carroll Creek in Baker Park. Built in 1885, it was moved to the park in 1928.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://apps.mht.maryland.gov/medusa/PDF/Frederick/F-3-8.pdf",
+      "fetched_at": "2026-07-28T09:38:24.000Z"
+    },
+    "generated_at": "2026-07-28T09:38:24.000Z",
+    "reviewed_at": "2026-07-28T09:38:24.000Z",
+    "reviewer_note": "Checked against Maryland Historical Trust inventory F-3-8 on 2026-07-28; the survey records the bridge's material, pedestrian use, 100-foot span, 1885 construction, Carroll Creek location, and 1928 move."
+  },
+  "tempo-di-pasta": {
+    "blurb": "Tempo Di Pasta serves Italian cuisine including panini and pasta dishes.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tempodipasta.com/",
+      "fetched_at": "2026-08-01T09:49:17.483Z"
+    },
+    "generated_at": "2026-08-01T09:49:17.483Z"
+  },
+  "tenth-ward-distilling-company": {
+    "blurb": "Tenth Ward Distilling Company is a woman-owned distillery and cocktail bar in downtown Frederick that makes spirits and canned cocktails.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tenthwarddistilling.com/",
+      "fetched_at": "2026-08-01T09:51:28.645Z"
+    },
+    "generated_at": "2026-08-01T09:51:28.645Z"
+  },
+  "the-flying-barrel": {
+    "blurb": "The Flying Barrel provides a brew house and guidance for customers making beer or wine batches up to 15 gallons.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.flyingbarrel.com/",
+      "fetched_at": "2026-08-01T09:51:07.237Z"
+    },
+    "generated_at": "2026-08-01T09:51:07.237Z"
+  },
+  "the-original-popcorn-house": {
+    "blurb": "The Original Popcorn House makes popcorn with ingredients including Belgian chocolate, cheese, and coconut oil.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.originalpopcornhouse.com/",
+      "fetched_at": "2026-08-01T09:51:39.011Z"
+    },
+    "generated_at": "2026-08-01T09:51:39.011Z"
+  },
+  "the-perfect-blend-cafe": {
+    "blurb": "The Perfect Blend Cafe serves coffee, tea, smoothies, sandwiches, paninis, wraps, and flatbreads made with Boar's Head meats and cheese.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://theperfectblendfrederick.com/",
+      "fetched_at": "2026-08-01T09:50:47.789Z"
+    },
+    "generated_at": "2026-08-01T09:50:47.789Z"
+  },
+  "the-tire-mart-automotive": {
+    "blurb": "The Tire Mart has been serving Frederick since 1965 and provides tire sales and automotive repair services including brake repairs, wheel alignments, and engine diagnostics.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tiremart.biz/",
+      "fetched_at": "2026-08-01T09:48:48.615Z"
+    },
+    "generated_at": "2026-08-01T09:48:48.615Z"
+  },
+  "the-trail-house": {
+    "blurb": "The Trail House sells outdoor clothing, shoes, and gear for various outdoor activities.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.trailhouse.com/",
+      "fetched_at": "2026-08-01T09:51:44.936Z"
+    },
+    "generated_at": "2026-08-01T09:51:44.936Z"
+  },
+  "time-bomb-tattoos-curiosities": {
+    "blurb": "Time Bomb Tattoos & Curiosities provides custom tattoos and piercings in Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://timebombtattoos.com/tattoos/",
+      "fetched_at": "2026-08-01T09:48:05.832Z"
+    },
+    "generated_at": "2026-08-01T09:48:05.832Z"
+  },
+  "tin-corner": {
+    "blurb": "Tin Corner serves slow-simmered pho, sizzling rice plates, and Vietnamese dishes with house-made sauces.",
     "status": "approved",
     "source": {
       "kind": "business_website",
-      "url": "https://www.washluberepair.com/location/frederick-auto-spa-express-rt-26-2/",
-      "fetched_at": "2026-07-29T12:23:10.000Z"
+      "url": "https://tincornerfrederick.com/",
+      "fetched_at": "2026-05-31T18:18:38.663Z"
     },
-    "generated_at": "2026-07-29T12:23:10.000Z",
-    "reviewed_at": "2026-07-29T12:23:10.000Z",
-    "reviewer_note": "Checked against WLR Automotive Group's current Frederick Auto Spa Express Route 26 page on 2026-07-29; it lists the self-service detailing amenities, address, phone, and weekly hours."
+    "generated_at": "2026-05-31T18:18:38.663Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "tire-pros-of-frederick": {
+    "blurb": "Tire Pros of Frederick sells tires and provides automotive services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tireprosoffrederick.com/",
+      "fetched_at": "2026-08-01T09:51:41.895Z"
+    },
+    "generated_at": "2026-08-01T09:51:41.895Z"
+  },
+  "top-gun-collision": {
+    "blurb": "Top Gun Collision Experts provides collision repair with I-CAR Gold Class certified technicians and works with insurance providers.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.topguncollisionrepair.com/",
+      "fetched_at": "2026-08-01T09:51:23.356Z"
+    },
+    "generated_at": "2026-08-01T09:51:23.356Z"
+  },
+  "twin-bears-bakery": {
+    "blurb": "Twin Bears Bakery specializes in naturally fermented sourdough bread and bagels, with their bakers trained at San Francisco Baking Institute using traditional techniques.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://twinbearsbakery.com/",
+      "fetched_at": "2026-08-01T09:51:12.113Z"
+    },
+    "generated_at": "2026-08-01T09:51:12.113Z"
+  },
+  "urbana-district-park-new-market": {
+    "blurb": "Urbana District Park has a barrier-free playground, dog park, trails, ball fields, picnic shelters, and a veterans memorial.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/272/Urbana-District-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Urbana District Park page on 2026-07-29."
+  },
+  "utica-park-walkersville": {
+    "blurb": "Utica District Park has playgrounds, trails, picnic shelters, athletic fields, a bike workstation, and a five-kilometer course.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.recreater.com/276/Utica-District-Park",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against Frederick County Parks and Recreation's current Utica District Park page on 2026-07-29."
+  },
+  "verbena-salon-spa": {
+    "blurb": "Verbena Salon & Spa offers facials, massages, body treatments, hair services, eyelash extensions, permanent makeup, nails, and waxing in historic downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.verbenasalonspa.com/",
+      "fetched_at": "2026-08-01T09:51:32.433Z"
+    },
+    "generated_at": "2026-08-01T09:51:32.433Z"
   },
   "visitation-hotel": {
     "blurb": "Visitation Hotel is a boutique hotel in a restored downtown landmark that began as a monastery and later became a school; it also houses Wye Oak Tavern.",
@@ -418,5 +886,47 @@
     "generated_at": "2026-07-29T02:14:12.000Z",
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Visitation Hotel's current site on 2026-07-28; it describes the building's monastery and school history, boutique hotel use, downtown address, and Wye Oak Tavern."
+  },
+  "wags-restaurant": {
+    "blurb": "Wag's serves burgers and fries, with bar hours that run later than the kitchen Monday through Saturday.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.eatatwags.com/",
+      "fetched_at": "2026-08-01T09:49:20.099Z"
+    },
+    "generated_at": "2026-08-01T09:49:20.099Z"
+  },
+  "wheel-base-bikes": {
+    "blurb": "Wheel Base Bikes sells bicycles including road, mountain, commuter, comfort, cruiser, fitness, and hybrid models, along with parts and accessories.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.wheelbasebikes.com/",
+      "fetched_at": "2026-08-01T09:51:34.313Z"
+    },
+    "generated_at": "2026-08-01T09:51:34.313Z"
+  },
+  "willowdale-park-frederick": {
+    "blurb": "Willowdale Park has a playground, pavilion, grills, picnic tables, and walking and biking paths.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/Willowdale-Park-156",
+      "fetched_at": "2026-07-29T12:04:25.000Z"
+    },
+    "generated_at": "2026-07-29T12:04:25.000Z",
+    "reviewed_at": "2026-07-29T12:04:25.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current Willowdale Park facility page on 2026-07-29."
+  },
+  "yaneth-reyes-jewelry-llc": {
+    "blurb": "Yaneth Reyes Jewelry specializes in custom jewelry design and also provides independent appraisal services and on-site jewelry repairs.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.yanethreyes.com/",
+      "fetched_at": "2026-08-01T09:48:01.377Z"
+    },
+    "generated_at": "2026-08-01T09:48:01.377Z"
   }
 }

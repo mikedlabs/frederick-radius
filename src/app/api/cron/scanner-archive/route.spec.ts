@@ -2,10 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   archiveScannerIncidents: vi.fn(),
+  startIngestRunStrict: vi.fn(),
+  finishIngestRunStrict: vi.fn(),
 }));
 
 vi.mock("@/lib/scanner/incidentArchive", () => ({
   archiveScannerIncidents: mocks.archiveScannerIncidents,
+}));
+vi.mock("@/lib/ingest/run-log", () => ({
+  startIngestRunStrict: mocks.startIngestRunStrict,
+  finishIngestRunStrict: mocks.finishIngestRunStrict,
 }));
 
 import { GET } from "./route";
@@ -21,6 +27,8 @@ describe("GET /api/cron/scanner-archive", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "test-secret";
+    mocks.startIngestRunStrict.mockResolvedValue("scanner-run");
+    mocks.finishIngestRunStrict.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -57,7 +65,39 @@ describe("GET /api/cron/scanner-archive", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ ok: true, complete: true });
+    expect(body).toMatchObject({
+      ok: true,
+      complete: true,
+      heartbeat_recorded: true,
+    });
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "scanner-run",
+      expect.objectContaining({
+        status: "ok",
+        records_in: 4,
+        records_upserted: 2,
+        records_failed: 0,
+      }),
+    );
+  });
+
+  it("fails visibly when archive data was stored but its heartbeat was not", async () => {
+    mocks.startIngestRunStrict.mockResolvedValue(null);
+    mocks.archiveScannerIncidents.mockResolvedValue({
+      seen: 4,
+      inserted: 2,
+      complete: true,
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      ok: false,
+      complete: true,
+      heartbeat_recorded: false,
+    });
   });
 
   it("returns 503 when neither scanner source could be read", async () => {

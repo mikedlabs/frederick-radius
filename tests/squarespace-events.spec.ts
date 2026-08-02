@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parseSquarespaceEvents } from "../scripts/lib/extract-agent";
+import {
+  fetchSquarespaceEventsResult,
+  parseSquarespaceEvents,
+} from "../scripts/lib/extract-agent";
 
 // Fixture modeled on the real Squarespace `?format=json` response from
 // thebanyanmd.com/livemusic (verified May 2026): an `upcoming` array of
@@ -103,5 +106,41 @@ describe("parseSquarespaceEvents", () => {
   it("keeps the relative URL when no base origin is given", () => {
     const events = parseSquarespaceEvents(banyanLike);
     expect(events[0].ticket_url).toBe("/livemusic/jimmy-kenny-and-the-pirate-beach-band");
+  });
+});
+
+describe("fetchSquarespaceEventsResult", () => {
+  it("distinguishes a verified empty feed from a failed request", async () => {
+    const empty = await fetchSquarespaceEventsResult(
+      "https://example.com/events",
+      {
+        fetchImpl: async () =>
+          new Response(JSON.stringify({ upcoming: [] }), { status: 200 }),
+      },
+    );
+    const failed = await fetchSquarespaceEventsResult(
+      "https://example.com/events",
+      {
+        fetchImpl: async () => new Response("unavailable", { status: 503 }),
+      },
+    );
+
+    expect(empty).toEqual({ status: "success", events: [] });
+    expect(failed).toEqual({ status: "failure", events: [] });
+  });
+
+  it("does not call a malformed non-empty feed a successful empty result", async () => {
+    const result = await fetchSquarespaceEventsResult(
+      "https://example.com/events",
+      {
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({ upcoming: [{ title: "Missing date" }] }),
+            { status: 200 },
+          ),
+      },
+    );
+
+    expect(result).toEqual({ status: "failure", events: [] });
   });
 });
