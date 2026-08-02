@@ -1,4 +1,7 @@
 import RAW from "@/data/place-status-overrides.json" with { type: "json" };
+import { isIsoCalendarDate } from "../../scripts/lib/iso-calendar-date.mjs";
+
+export { isIsoCalendarDate } from "../../scripts/lib/iso-calendar-date.mjs";
 
 type ManualPlaceStatusEvidence = {
   effective_at: string;
@@ -23,8 +26,7 @@ export type ManualPlaceOperationalCorrection = ManualPlaceStatusEvidence & {
 };
 
 export type ManualPlaceStatusOverride =
-  | ManualPlaceClosureOverride
-  | ManualPlaceOperationalCorrection;
+  ManualPlaceClosureOverride | ManualPlaceOperationalCorrection;
 
 export const MANUAL_PLACE_STATUS_OVERRIDES = RAW as Record<
   string,
@@ -44,8 +46,8 @@ export function isManualPlaceClosureOverride(
 ): override is ManualPlaceClosureOverride {
   return Boolean(
     override &&
-      (override.status === "closed_temporarily" ||
-        override.status === "closed_permanently"),
+    (override.status === "closed_temporarily" ||
+      override.status === "closed_permanently"),
   );
 }
 
@@ -53,15 +55,6 @@ export function isManualPlaceOperationalCorrection(
   override: ManualPlaceStatusOverride | undefined,
 ): override is ManualPlaceOperationalCorrection {
   return override?.status === "operational";
-}
-
-export function isIsoCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(parsed.getTime()) &&
-    parsed.toISOString().slice(0, 10) === value
-  );
 }
 
 export function hasValidManualPlaceStatusEvidence(
@@ -116,7 +109,5 @@ export function activeManualPlaceStatusOverride(
   const today = now.toISOString().slice(0, 10);
   if (override.effective_at > today) return undefined;
   if (isManualPlaceClosureOverride(override)) return override;
-  return isManualPlaceStatusReviewCurrent(override, now)
-    ? override
-    : undefined;
+  return isManualPlaceStatusReviewCurrent(override, now) ? override : undefined;
 }

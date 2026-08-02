@@ -70,12 +70,8 @@ function marcFixture() {
     },
     exceptions: {},
     stops: {
-      east: [
-        { t: "06:15", min: 375, svc: "weekday", trip: "train-1" },
-      ],
-      west: [
-        { t: "17:30", min: 1050, svc: "weekday", trip: "train-2" },
-      ],
+      east: [{ t: "06:15", min: 375, svc: "weekday", trip: "train-1" }],
+      west: [{ t: "17:30", min: 1050, svc: "weekday", trip: "train-2" }],
     },
   };
 }
@@ -125,6 +121,85 @@ describe("Frederick TransIT artifact validation", () => {
         "missing_route_stops",
       ]),
     );
+  });
+
+  it("keeps the service calendar valid through its last Eastern day", () => {
+    const fixture = frederickFixture();
+    const transit = fixture.transit as {
+      staticFeed: { serviceWindowEnd: string };
+    };
+    transit.staticFeed.serviceWindowEnd = "2026-08-01";
+
+    const beforeEasternMidnight = validateFrederickTransitArtifacts(
+      fixture,
+      new Date("2026-08-02T03:59:59.999Z"),
+    );
+    const atEasternMidnight = validateFrederickTransitArtifacts(
+      fixture,
+      new Date("2026-08-02T04:00:00.000Z"),
+    );
+
+    expect(beforeEasternMidnight.map((issue) => issue.code)).not.toContain(
+      "expired_calendar",
+    );
+    expect(atEasternMidnight.map((issue) => issue.code)).toContain(
+      "expired_calendar",
+    );
+  });
+
+  it.each([
+    {
+      label: "empty",
+      routes: [],
+      stops: [],
+      shapes: {},
+      network: {},
+      trips: {},
+    },
+    {
+      label: "malformed",
+      routes: {},
+      stops: {},
+      shapes: [],
+      network: [],
+      trips: [],
+    },
+  ])(
+    "rejects $label top-level route, stop, shape, network, and trip collections",
+    (values) => {
+      const fixture = frederickFixture();
+      const transit = fixture.transit as Record<string, unknown>;
+      transit.routes = values.routes;
+      transit.stops = values.stops;
+      transit.shapes = values.shapes;
+      fixture.network = values.network;
+      fixture.trips = values.trips;
+
+      const paths = validateFrederickTransitArtifacts(fixture, NOW)
+        .filter((issue) => issue.code === "invalid_collection")
+        .map((issue) => issue.path);
+
+      expect(paths).toEqual([
+        "transit.routes",
+        "transit.stops",
+        "transit.shapes",
+        "network",
+        "trips",
+      ]);
+    },
+  );
+
+  it("rejects malformed network indexes", () => {
+    const fixture = frederickFixture();
+    const network = fixture.network as Record<string, unknown>;
+    network.shapeVariants = [];
+    network.stopRoutes = null;
+
+    const paths = validateFrederickTransitArtifacts(fixture, NOW)
+      .filter((issue) => issue.code === "invalid_collection")
+      .map((issue) => issue.path);
+
+    expect(paths).toEqual(["network.shapeVariants", "network.stopRoutes"]);
   });
 });
 
@@ -181,6 +256,30 @@ describe("MARC schedule artifact validation", () => {
       path: "marc.stops.east",
       message: "Each MARC stop must contain an array of departures.",
     });
+  });
+
+  it("keeps the service calendar valid through its last Eastern day", () => {
+    const fixture = marcFixture();
+    fixture.staticFeed.serviceWindowEnd = "2026-08-01";
+    fixture.calendar.weekday.end = "20260801";
+
+    const beforeEasternMidnight = validateMarcScheduleArtifact(
+      fixture,
+      marcStationStops,
+      new Date("2026-08-02T03:59:59.999Z"),
+    );
+    const atEasternMidnight = validateMarcScheduleArtifact(
+      fixture,
+      marcStationStops,
+      new Date("2026-08-02T04:00:00.000Z"),
+    );
+
+    expect(beforeEasternMidnight.map((issue) => issue.code)).not.toContain(
+      "expired_calendar",
+    );
+    expect(atEasternMidnight.map((issue) => issue.code)).toContain(
+      "expired_calendar",
+    );
   });
 });
 

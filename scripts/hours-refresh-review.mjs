@@ -11,20 +11,11 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { isIsoCalendarDate } from "./lib/iso-calendar-date.mjs";
 
-const CLOSED_STATUSES = new Set([
-  "CLOSED_TEMPORARILY",
-  "CLOSED_PERMANENTLY",
-]);
+export { isIsoCalendarDate } from "./lib/iso-calendar-date.mjs";
 
-export function isIsoCalendarDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(parsed.getTime()) &&
-    parsed.toISOString().slice(0, 10) === value
-  );
-}
+const CLOSED_STATUSES = new Set(["CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
 function dataKeys(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -49,7 +40,8 @@ function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
         : undefined;
   if (
     !expectedClosure ||
-    (override.status !== expectedClosure && override.status !== "operational") ||
+    (override.status !== expectedClosure &&
+      override.status !== "operational") ||
     !isIsoCalendarDate(override.effective_at) ||
     !isIsoCalendarDate(override.review_after) ||
     override.effective_at > override.review_after ||
@@ -292,7 +284,8 @@ export function renderHoursRefreshReview(analysis) {
     ];
   });
   const closedRows = analysis.newlyClosed.map((entry) => {
-    const place = analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
+    const place =
+      analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
     const evidence = analysis.reviewedStatuses.get(entry.slug);
     return [
       `\`${entry.slug}\``,
@@ -309,7 +302,8 @@ export function renderHoursRefreshReview(analysis) {
     ];
   });
   const reopeningRows = analysis.reopenings.map((entry) => {
-    const place = analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
+    const place =
+      analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
     return [
       `\`${entry.slug}\``,
       placeLabel(place, entry.slug),

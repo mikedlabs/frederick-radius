@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { normalizeSourceContent } from "./source-content-fingerprint";
 
 export type ApifySourceSignalFingerprint = {
   contentHash: string;
@@ -37,17 +38,7 @@ function canonicalHost(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
 
-export function normalizeApifySourceContent(value: string): string {
-  return value
-    .normalize("NFKC")
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .split("\n")
-    .map((line) => line.trim().replace(/[ \t]+/g, " "))
-    .filter(Boolean)
-    .join("\n");
-}
+export { normalizeSourceContent as normalizeApifySourceContent };
 
 function normalizeSignalToken(value: string): string {
   return value
@@ -116,7 +107,7 @@ export function fingerprintApifySource(
   links: readonly string[],
   sourceUrl: string,
 ): ApifySourceSignalFingerprint {
-  const normalized = normalizeApifySourceContent(markdown);
+  const normalized = normalizeSourceContent(markdown);
   const dates = collectMatches(normalized, [
     NAMED_DATE_PATTERN,
     NUMERIC_DATE_PATTERN,

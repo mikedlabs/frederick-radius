@@ -25,6 +25,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   fetchPageSnapshot,
   fetchSquarespaceEventsResult,
@@ -66,8 +67,8 @@ const MAX_IMAGE_FINGERPRINT_BYTES = 12_000_000;
 const VENUE_TEXT_EXTRACTOR_VERSION = "venue-events-text-v1";
 const VENUE_IMAGE_EXTRACTOR_VERSION = "venue-events-image-v1";
 
-type Method = "feed" | "image" | "render" | "fetch";
-type VenueSource = {
+export type Method = "feed" | "image" | "render" | "fetch";
+export type VenueSource = {
   slug: string;
   name: string;
   category?: string;
@@ -79,7 +80,7 @@ type VenueSource = {
   // Legacy flag kept for back-compat: render:true == method "render".
   render?: boolean;
 };
-type RawEvent = {
+export type RawEvent = {
   title?: string;
   starts_at?: string; // ISO or plain date/time as published
   ends_at?: string;
@@ -100,13 +101,34 @@ type SourceProvenance = {
   requestedUrl: string;
   finalUrl: string;
 };
-type CollectResult = {
+export type CollectResult = {
   events: RawEvent[];
   source: SourceProvenance;
   status: VenueCollectionStatus;
   modelUnavailable?: boolean;
 };
 type EnsureModelReady = () => Promise<boolean>;
+export type VenueCollectDependencies = {
+  fetchPageSnapshot: typeof fetchPageSnapshot;
+  fetchSquarespaceEventsResult: typeof fetchSquarespaceEventsResult;
+  extractTextEvents: (
+    instructions: string,
+    content: string,
+  ) => Promise<RawEvent[] | null>;
+  extractImageEvents: (
+    instructions: string,
+    imageUrl: string,
+  ) => Promise<RawEvent[] | null>;
+};
+
+const DEFAULT_COLLECT_DEPENDENCIES: VenueCollectDependencies = {
+  fetchPageSnapshot,
+  fetchSquarespaceEventsResult,
+  extractTextEvents: (instructions, content) =>
+    extractJson<RawEvent[]>(instructions, content),
+  extractImageEvents: (instructions, imageUrl) =>
+    extractJsonFromImage<RawEvent[]>(instructions, imageUrl),
+};
 
 const SHAPE =
   `Extract UPCOMING events from this venue's page as a JSON array. Each item:\n` +
@@ -124,10 +146,12 @@ const IMAGE_SHAPE =
   `Only events you can actually read in the image, with a real date. If none are legible, return [].`;
 
 /** Resolve the collection method, honoring the legacy render flag. */
-const methodOf = (v: VenueSource): Method => v.method ?? (v.render ? "render" : "fetch");
+const methodOf = (v: VenueSource): Method =>
+  v.method ?? (v.render ? "render" : "fetch");
 
 /** Stable key to dedupe an event across runs. */
-const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
+const keyOf = (e: VenueEvent) =>
+  `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
 
 function publishableRawEvents(events: RawEvent[]): RawEvent[] {
   return (events as unknown[]).flatMap((event) => {
@@ -174,7 +198,9 @@ async function fetchImageFingerprint(
       signal: ctrl.signal,
     });
     if (!response.ok) {
-      console.log(`  – image fingerprint unavailable (HTTP ${response.status})`);
+      console.log(
+        `  – image fingerprint unavailable (HTTP ${response.status})`,
+      );
       return null;
     }
     const declaredLength = Number(response.headers.get("content-length"));
@@ -205,11 +231,12 @@ async function fetchImageFingerprint(
   }
 }
 
-async function collect(
+export async function collect(
   venue: VenueSource,
   sourceState: VenueSourceState,
   ensureModelReady: EnsureModelReady,
   hasRetainedVenueEvents: boolean,
+  dependencies: VenueCollectDependencies = DEFAULT_COLLECT_DEPENDENCIES,
 ): Promise<CollectResult> {
   const method = methodOf(venue);
 
@@ -258,7 +285,7 @@ async function collect(
         modelUnavailable: true,
       };
     }
-    const events = await extractJsonFromImage<RawEvent[]>(
+    const events = await dependencies.extractImageEvents(
       `Venue: ${venue.name} (Frederick County, MD).\n${IMAGE_SHAPE}`,
       venue.imageUrl,
     );
@@ -303,11 +330,16 @@ async function collect(
 
   if (method === "feed") {
     // Deterministic Squarespace JSON — no model call. Try alternatives until
-    // one yields events, while remembering a verified empty response.
+    // one yields events. An empty inventory is authoritative only when every
+    // configured alternative was successfully verified as empty.
     let verifiedEmptySource: SourceProvenance | null = null;
+    let allAlternativesVerifiedEmpty = venue.urls.length > 0;
     for (const url of venue.urls) {
-      const result = await fetchSquarespaceEventsResult(url);
-      if (result.status === "failure") continue;
+      const result = await dependencies.fetchSquarespaceEventsResult(url);
+      if (result.status === "failure") {
+        allAlternativesVerifiedEmpty = false;
+        continue;
+      }
       const events = publishableRawEvents(result.events);
       if (events.length) {
         console.log(`  ✓ ${events.length} event(s) from feed ${url}`);
@@ -315,11 +347,12 @@ async function collect(
       }
       if (result.events.length) {
         console.log(`  – feed returned no valid event date-times: ${url}`);
+        allAlternativesVerifiedEmpty = false;
         continue;
       }
       verifiedEmptySource ??= directSource(url);
     }
-    if (verifiedEmptySource) {
+    if (verifiedEmptySource && allAlternativesVerifiedEmpty) {
       console.log(`  – feed verified with no upcoming events`);
       return {
         events: [],
@@ -337,12 +370,16 @@ async function collect(
 
   // render | fetch — page text → model. Try each URL; first hit wins.
   let verifiedEmptySource: SourceProvenance | null = null;
+  let allAlternativesVerifiedEmpty = venue.urls.length > 0;
   for (const url of venue.urls) {
-    const snapshot = await fetchPageSnapshot(url, {
+    const snapshot = await dependencies.fetchPageSnapshot(url, {
       render: method === "render",
       allowedRedirectHosts: venue.allowedRedirectHosts ?? [],
     });
-    if (!snapshot) continue;
+    if (!snapshot) {
+      allAlternativesVerifiedEmpty = false;
+      continue;
+    }
     const fingerprint = {
       contentHash: hashSourceContent(snapshot.text),
       finalUrl: snapshot.finalUrl,
@@ -357,7 +394,9 @@ async function collect(
     );
     if (unchanged) {
       if (unchanged === "events" && hasRetainedVenueEvents) {
-        console.log(`  = source unchanged (${unchanged}); Claude skipped: ${url}`);
+        console.log(
+          `  = source unchanged (${unchanged}); Claude skipped: ${url}`,
+        );
         return {
           events: [],
           source: {
@@ -369,7 +408,9 @@ async function collect(
         };
       }
       if (unchanged === "empty") {
-        console.log(`  = source unchanged (${unchanged}); Claude skipped: ${url}`);
+        console.log(
+          `  = source unchanged (${unchanged}); Claude skipped: ${url}`,
+        );
         verifiedEmptySource ??= {
           url: snapshot.requestedUrl,
           requestedUrl: snapshot.requestedUrl,
@@ -389,17 +430,21 @@ async function collect(
         modelUnavailable: true,
       };
     }
-    const events = await extractJson<RawEvent[]>(
+    const events = await dependencies.extractTextEvents(
       `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
       snapshot.text,
     );
     if (!Array.isArray(events)) {
       console.log(`  – extraction incomplete; source will retry: ${url}`);
+      allAlternativesVerifiedEmpty = false;
       continue;
     }
     const publishableEvents = publishableRawEvents(events);
     if (events.length > 0 && publishableEvents.length === 0) {
-      console.log(`  – extraction had no publishable rows; source will retry: ${url}`);
+      console.log(
+        `  – extraction had no publishable rows; source will retry: ${url}`,
+      );
+      allAlternativesVerifiedEmpty = false;
       continue;
     }
     recordVenueSourceObservation(sourceState, venue.slug, url, {
@@ -430,7 +475,7 @@ async function collect(
     };
     console.log(`  – 0 event(s) from ${url}`);
   }
-  if (verifiedEmptySource) {
+  if (verifiedEmptySource && allAlternativesVerifiedEmpty) {
     return {
       events: [],
       source: verifiedEmptySource,
@@ -447,7 +492,9 @@ async function collect(
 async function main() {
   resetFirecrawlFallbackUsage();
   const only = process.argv[2];
-  const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
+  const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as {
+    venues: VenueSource[];
+  };
   // The public artifact intentionally omits exact duplicates from the known
   // Weinberg/New Spire pair. Seed promotion from the unsuppressed source
   // inventory when available so a hidden Weinberg row remains recoverable if
@@ -491,8 +538,7 @@ async function main() {
       if (event.venue_slug !== venue.slug) return false;
       const startsAt = Date.parse(event.starts_at ?? "");
       return (
-        !Number.isFinite(startsAt) ||
-        startsAt >= runStartedAt - 86_400_000
+        !Number.isFinite(startsAt) || startsAt >= runStartedAt - 86_400_000
       );
     });
     const {
@@ -592,7 +638,12 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

@@ -27,14 +27,17 @@ describe("venue event time normalization", () => {
     );
   });
 
-  it("rejects rolled calendar dates and impossible DST wall times", () => {
+  it("rejects date-only starts, rolled dates, and impossible DST wall times", () => {
+    expect(normalizeVenueEventDateTime("2026-08-08")).toBeNull();
     expect(normalizeVenueEventDateTime("2026-02-30T19:30")).toBeNull();
     expect(normalizeVenueEventDateTime("2026-03-08T02:30")).toBeNull();
     expect(normalizeVenueEventDateTime("2026-13-01T19:30-05:00")).toBeNull();
+    expect(
+      normalizeVenueEventTimes({ title: "Show", starts_at: "2026-08-08" }),
+    ).toBeNull();
   });
 
-  it("preserves a calendar-only date and drops only an invalid optional end", () => {
-    expect(normalizeVenueEventDateTime("2026-08-08")).toBe("2026-08-08");
+  it("drops an invalid optional end without discarding a valid start", () => {
     expect(
       normalizeVenueEventTimes({
         title: "Show",
@@ -47,20 +50,44 @@ describe("venue event time normalization", () => {
     });
   });
 
+  it("rejects ambiguous fall-back wall clocks unless the offset is explicit", () => {
+    expect(normalizeVenueEventDateTime("2026-11-01T01:30")).toBeNull();
+    expect(normalizeVenueEventDateTime("2026-11-01T01:30-04:00")).toBe(
+      "2026-11-01T01:30-04:00",
+    );
+    expect(normalizeVenueEventDateTime("2026-11-01T01:30-05:00")).toBe(
+      "2026-11-01T01:30-05:00",
+    );
+  });
+
+  it("accepts the first valid clocks after both DST transitions", () => {
+    expect(normalizeVenueEventDateTime("2026-03-08T03:30")).toBe(
+      "2026-03-08T03:30-04:00",
+    );
+    expect(normalizeVenueEventDateTime("2026-11-01T02:30")).toBe(
+      "2026-11-01T02:30-05:00",
+    );
+  });
+
   it.each([
     ["public artifact", venueEvents],
     ["recoverable source inventory", venueSourceInventory],
-  ])("keeps every Weinberg/New Spire time explicit and Eastern in the %s", (_name, rows) => {
-    const ownedRows = rows.filter((row) => WEINBERG_VENUES.has(row.venue_slug));
-    expect(ownedRows.length).toBeGreaterThan(0);
+  ])(
+    "keeps every Weinberg/New Spire time explicit and Eastern in the %s",
+    (_name, rows) => {
+      const ownedRows = rows.filter((row) =>
+        WEINBERG_VENUES.has(row.venue_slug),
+      );
+      expect(ownedRows.length).toBeGreaterThan(0);
 
-    for (const row of ownedRows) {
-      for (const value of [row.starts_at, row.ends_at]) {
-        if (!value) continue;
-        expect(value).toMatch(/(?:Z|[+-]\d{2}:\d{2})$/);
-        const wallClock = value.replace(/(?:Z|[+-]\d{2}:\d{2})$/, "");
-        expect(normalizeVenueEventDateTime(wallClock)).toBe(value);
+      for (const row of ownedRows) {
+        for (const value of [row.starts_at, row.ends_at]) {
+          if (!value) continue;
+          expect(value).toMatch(/(?:Z|[+-]\d{2}:\d{2})$/);
+          const wallClock = value.replace(/(?:Z|[+-]\d{2}:\d{2})$/, "");
+          expect(normalizeVenueEventDateTime(wallClock)).toBe(value);
+        }
       }
-    }
-  });
+    },
+  );
 });

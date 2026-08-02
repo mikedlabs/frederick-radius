@@ -18,6 +18,7 @@ import {
   type ApifyPageSnapshot,
   type ApifyRestOptions,
 } from "./lib/apify-rest";
+import { normalizeSourceContent } from "./lib/source-content-fingerprint";
 import { validateFirecrawlPublicUrl } from "./lib/firecrawl-rest";
 
 loadEnvironment({ path: resolve(".env.local"), quiet: true });
@@ -415,19 +416,10 @@ function sameCanonicalHost(first: string, second: string): boolean {
   }
 }
 
-function normalizeContent(value: string): string {
-  return value
-    .normalize("NFKC")
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .split("\n")
-    .map((line) => line.trim().replace(/[ \t]+/g, " "))
-    .filter(Boolean)
-    .join("\n");
-}
-
-function safeSameHostLinks(links: readonly string[], sourceUrl: string): string[] {
+function safeSameHostLinks(
+  links: readonly string[],
+  sourceUrl: string,
+): string[] {
   const kept = new Set<string>();
   for (const value of links) {
     try {
@@ -456,7 +448,9 @@ function safeMetadata(value: Record<string, unknown>): Record<string, unknown> {
       .map((key) => [key, String(value[key]).slice(0, 300)]),
   );
   const crawl =
-    value.crawl && typeof value.crawl === "object" && !Array.isArray(value.crawl)
+    value.crawl &&
+    typeof value.crawl === "object" &&
+    !Array.isArray(value.crawl)
       ? (value.crawl as Record<string, unknown>)
       : {};
   if (typeof crawl.httpStatusCode === "number") {
@@ -467,11 +461,14 @@ function safeMetadata(value: Record<string, unknown>): Record<string, unknown> {
 
 function contentSignals(markdown: string, links: readonly string[]) {
   return {
-    dateMentions: (markdown.match(
-      /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b/gi,
-    ) ?? []).length,
-    timeMentions: (markdown.match(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi) ?? [])
-      .length,
+    dateMentions: (
+      markdown.match(
+        /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b/gi,
+      ) ?? []
+    ).length,
+    timeMentions: (
+      markdown.match(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi) ?? []
+    ).length,
     eventLikeLinks: links.filter((link) =>
       /\/(?:event|events|calendar|performance|performances|tickets?)(?:\/|$)/i.test(
         new URL(link).pathname,
@@ -520,7 +517,8 @@ export async function runApifyVenuePilot(
       (await readConfig(options.configPath ?? DEFAULT_CONFIG_PATH)),
   );
   const source = config.sources.find(({ id }) => id === options.sourceId);
-  if (!source) invalidConfig(`unknown reviewed source id: ${options.sourceId}.`);
+  if (!source)
+    invalidConfig(`unknown reviewed source id: ${options.sourceId}.`);
 
   const reportDirectory = options.reportDirectory ?? DEFAULT_REPORT_DIRECTORY;
   const statePath = join(reportDirectory, "state.json");
@@ -596,7 +594,7 @@ export async function runApifyVenuePilot(
           `Apify reported an unexpected cross-host final URL: ${snapshot.finalUrl}`,
         );
       }
-      const normalized = normalizeContent(snapshot.markdown);
+      const normalized = normalizeSourceContent(snapshot.markdown);
       const sameHostLinks = safeSameHostLinks(snapshot.links, source.url);
       report = {
         ...baseReport,
@@ -681,7 +679,8 @@ async function main(): Promise<void> {
   const unknown = args.sourceIds.filter(
     (id) => !config.sources.some((source) => source.id === id),
   );
-  if (unknown.length) invalidConfig(`unknown reviewed source id: ${unknown.join(", ")}.`);
+  if (unknown.length)
+    invalidConfig(`unknown reviewed source id: ${unknown.join(", ")}.`);
 
   if (!args.live) {
     console.log(

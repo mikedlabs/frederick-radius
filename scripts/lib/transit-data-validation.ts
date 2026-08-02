@@ -1,4 +1,5 @@
 const DAY_MS = 24 * 60 * 60 * 1_000;
+const EASTERN_TIME_ZONE = "America/New_York";
 
 export const TRANSIT_SNAPSHOT_MAX_AGE_DAYS = 14;
 export const MARC_SNAPSHOT_MAX_AGE_DAYS = 45;
@@ -40,10 +41,12 @@ export type MarcGtfsRows = {
   calendarDates: readonly Record<string, string>[];
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function record(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return isRecord(value) ? value : {};
 }
 
 function rows(value: unknown): unknown[] {
@@ -56,9 +59,7 @@ function dateOnlyUtc(value: unknown): number | null {
   }
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
   if (!Number.isFinite(parsed)) return null;
-  return new Date(parsed).toISOString().slice(0, 10) === value
-    ? parsed
-    : null;
+  return new Date(parsed).toISOString().slice(0, 10) === value ? parsed : null;
 }
 
 function gtfsDateUtc(value: unknown): number | null {
@@ -69,23 +70,67 @@ function gtfsDateUtc(value: unknown): number | null {
 }
 
 function utcDay(now: Date): number {
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+function easternCalendarDay(now: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: EASTERN_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(now)
+      .map((part) => [part.type, part.value]),
+  ) as Record<string, string>;
   return Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
   );
+}
+
+function validateNonEmptyArray(
+  issues: TransitValidationIssue[],
+  value: unknown,
+  path: string,
+  label: string,
+): boolean {
+  if (Array.isArray(value) && value.length > 0) return true;
+  issues.push({
+    code: "invalid_collection",
+    path,
+    message: `${label} must be a non-empty array.`,
+  });
+  return false;
+}
+
+function validateNonEmptyRecord(
+  issues: TransitValidationIssue[],
+  value: unknown,
+  path: string,
+  label: string,
+): boolean {
+  if (isRecord(value) && Object.keys(value).length > 0) return true;
+  issues.push({
+    code: "invalid_collection",
+    path,
+    message: `${label} must be a non-empty object.`,
+  });
+  return false;
 }
 
 function coordinateIsValid(lat: unknown, lng: unknown): boolean {
   return (
-    typeof lat === "number"
-    && Number.isFinite(lat)
-    && typeof lng === "number"
-    && Number.isFinite(lng)
-    && lat >= FREDERICK_REGION.minLat
-    && lat <= FREDERICK_REGION.maxLat
-    && lng >= FREDERICK_REGION.minLng
-    && lng <= FREDERICK_REGION.maxLng
+    typeof lat === "number" &&
+    Number.isFinite(lat) &&
+    typeof lng === "number" &&
+    Number.isFinite(lng) &&
+    lat >= FREDERICK_REGION.minLat &&
+    lat <= FREDERICK_REGION.maxLat &&
+    lng >= FREDERICK_REGION.minLng &&
+    lng <= FREDERICK_REGION.maxLng
   );
 }
 
@@ -158,6 +203,47 @@ export function validateFrederickTransitArtifacts(
   const trips = record(artifacts.trips);
   const staticFeed = record(transit.staticFeed);
 
+  validateNonEmptyArray(
+    issues,
+    transit.routes,
+    "transit.routes",
+    "TransIT routes",
+  );
+  validateNonEmptyArray(
+    issues,
+    transit.stops,
+    "transit.stops",
+    "TransIT stops",
+  );
+  validateNonEmptyRecord(
+    issues,
+    transit.shapes,
+    "transit.shapes",
+    "TransIT shapes",
+  );
+  if (
+    validateNonEmptyRecord(
+      issues,
+      artifacts.network,
+      "network",
+      "TransIT network",
+    )
+  ) {
+    validateNonEmptyRecord(
+      issues,
+      network.shapeVariants,
+      "network.shapeVariants",
+      "TransIT shape variants",
+    );
+    validateNonEmptyRecord(
+      issues,
+      network.stopRoutes,
+      "network.stopRoutes",
+      "TransIT stop routes",
+    );
+  }
+  validateNonEmptyRecord(issues, artifacts.trips, "trips", "TransIT trips");
+
   const generatedAt = validateSnapshotDate(
     issues,
     transit.generatedAt,
@@ -172,11 +258,7 @@ export function validateFrederickTransitArtifacts(
     now,
     TRANSIT_SNAPSHOT_MAX_AGE_DAYS,
   );
-  if (
-    generatedAt !== null
-    && fetchedOn !== null
-    && generatedAt !== fetchedOn
-  ) {
+  if (generatedAt !== null && fetchedOn !== null && generatedAt !== fetchedOn) {
     issues.push({
       code: "metadata_mismatch",
       path: "transit.staticFeed.fetchedOn",
@@ -200,7 +282,7 @@ export function validateFrederickTransitArtifacts(
         message: "Service-window start is after its end.",
       });
     }
-    if (serviceEnd < utcDay(now)) {
+    if (serviceEnd < easternCalendarDay(now)) {
       issues.push({
         code: "expired_calendar",
         path: "transit.staticFeed.serviceWindowEnd",
@@ -208,8 +290,8 @@ export function validateFrederickTransitArtifacts(
       });
     }
     if (
-      fetchedOn !== null
-      && (fetchedOn < serviceStart || fetchedOn > serviceEnd)
+      fetchedOn !== null &&
+      (fetchedOn < serviceStart || fetchedOn > serviceEnd)
     ) {
       issues.push({
         code: "snapshot_outside_service_window",
@@ -286,7 +368,9 @@ export function validateFrederickTransitArtifacts(
         issues.push({
           code: "invalid_shape_id",
           path: `network.shapeVariants.${routeId}[${index}].id`,
-          message: id ? "Shape id is duplicated for its route." : "Shape id is missing.",
+          message: id
+            ? "Shape id is duplicated for its route."
+            : "Shape id is missing.",
         });
       } else {
         variantIds.add(id);
@@ -301,7 +385,9 @@ export function validateFrederickTransitArtifacts(
   }
 
   const servedRouteIds = new Set<string>();
-  for (const [stopId, routeValue] of Object.entries(record(network.stopRoutes))) {
+  for (const [stopId, routeValue] of Object.entries(
+    record(network.stopRoutes),
+  )) {
     if (!stopIds.has(stopId)) {
       issues.push({
         code: "unknown_stop_reference",
@@ -396,7 +482,8 @@ function marcServiceWindow(schedule: Record<string, unknown>): {
     const calendar = record(value);
     const rowStart = gtfsDateUtc(calendar.start);
     const rowEnd = gtfsDateUtc(calendar.end);
-    if (rowStart !== null) start = start === null ? rowStart : Math.min(start, rowStart);
+    if (rowStart !== null)
+      start = start === null ? rowStart : Math.min(start, rowStart);
     if (rowEnd !== null) end = end === null ? rowEnd : Math.max(end, rowEnd);
   }
   for (const date of Object.keys(record(schedule.exceptions))) {
@@ -431,11 +518,7 @@ export function validateMarcScheduleArtifact(
     now,
     MARC_SNAPSHOT_MAX_AGE_DAYS,
   );
-  if (
-    generatedAt !== null
-    && fetchedOn !== null
-    && generatedAt !== fetchedOn
-  ) {
+  if (generatedAt !== null && fetchedOn !== null && generatedAt !== fetchedOn) {
     issues.push({
       code: "metadata_mismatch",
       path: "marc.staticFeed.fetchedOn",
@@ -456,10 +539,7 @@ export function validateMarcScheduleArtifact(
         message: "Calendar service has invalid GTFS dates.",
       });
     }
-    if (
-      days.length !== 7
-      || days.some((day) => day !== 0 && day !== 1)
-    ) {
+    if (days.length !== 7 || days.some((day) => day !== 0 && day !== 1)) {
       issues.push({
         code: "invalid_service_days",
         path: `marc.calendar.${serviceId}.days`,
@@ -478,7 +558,7 @@ export function validateMarcScheduleArtifact(
       message: "MARC schedule has no valid service calendar window.",
     });
   } else {
-    if (computedWindow.end < utcDay(now)) {
+    if (computedWindow.end < easternCalendarDay(now)) {
       issues.push({
         code: "expired_calendar",
         path: "marc.calendar",
@@ -486,8 +566,8 @@ export function validateMarcScheduleArtifact(
       });
     }
     if (
-      metadataStart !== computedWindow.start
-      || metadataEnd !== computedWindow.end
+      metadataStart !== computedWindow.start ||
+      metadataEnd !== computedWindow.end
     ) {
       issues.push({
         code: "metadata_mismatch",
@@ -503,7 +583,9 @@ export function validateMarcScheduleArtifact(
       issues.push({
         code: "invalid_stop_id",
         path: `marc.stationStops[${index}].id`,
-        message: stop.id ? "Station stop id is duplicated." : "Station stop id is missing.",
+        message: stop.id
+          ? "Station stop id is duplicated."
+          : "Station stop id is missing.",
       });
     }
     requiredStopIds.add(stop.id);
@@ -529,7 +611,10 @@ export function validateMarcScheduleArtifact(
       if (typeof serviceId === "string") exceptionAdded.add(serviceId);
     }
     for (const serviceId of rows(record(value).removed)) {
-      if (typeof serviceId !== "string" || !Object.hasOwn(calendar, serviceId)) {
+      if (
+        typeof serviceId !== "string" ||
+        !Object.hasOwn(calendar, serviceId)
+      ) {
         issues.push({
           code: "missing_service_reference",
           path: `marc.exceptions.${date}.removed`,
@@ -561,7 +646,10 @@ export function validateMarcScheduleArtifact(
       departureCount += 1;
       const departure = record(departureValue);
       const serviceId = typeof departure.svc === "string" ? departure.svc : "";
-      if (!Object.hasOwn(calendar, serviceId) && !exceptionAdded.has(serviceId)) {
+      if (
+        !Object.hasOwn(calendar, serviceId) &&
+        !exceptionAdded.has(serviceId)
+      ) {
         issues.push({
           code: "missing_service_reference",
           path: `marc.stops.${stopId}[${index}].svc`,
@@ -573,11 +661,7 @@ export function validateMarcScheduleArtifact(
       const expectedMinute = match
         ? Number(match[1]) * 60 + Number(match[2])
         : Number.NaN;
-      if (
-        !match
-        || Number(match[2]) > 59
-        || departure.min !== expectedMinute
-      ) {
+      if (!match || Number(match[2]) > 59 || departure.min !== expectedMinute) {
         issues.push({
           code: "invalid_departure_time",
           path: `marc.stops.${stopId}[${index}]`,
@@ -649,7 +733,9 @@ export function validateMarcGtfsRows(
       issues.push({
         code: "invalid_trip_id",
         path: `gtfs.trips[${index}].trip_id`,
-        message: trip.trip_id ? "Trip id is duplicated." : "Trip id is missing.",
+        message: trip.trip_id
+          ? "Trip id is duplicated."
+          : "Trip id is missing.",
       });
     }
     tripIds.add(trip.trip_id);
@@ -661,8 +747,8 @@ export function validateMarcGtfsRows(
       });
     }
     if (
-      !calendarServiceIds.has(trip.service_id)
-      && !exceptionAdded.has(trip.service_id)
+      !calendarServiceIds.has(trip.service_id) &&
+      !exceptionAdded.has(trip.service_id)
     ) {
       issues.push({
         code: "missing_service_reference",

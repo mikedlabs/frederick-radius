@@ -1,5 +1,3 @@
-import { easternWallToUtcISO } from "../../src/lib/tz";
-
 const EASTERN_TIME_ZONE = "America/New_York";
 const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const LOCAL_DATE_TIME =
@@ -94,26 +92,33 @@ function easternOffset(instant: string): string | null {
   }
 }
 
+function matchesEasternWall(
+  instant: string,
+  expected: NonNullable<ReturnType<typeof easternWallParts>>,
+): boolean {
+  const actual = easternWallParts(instant);
+  return (
+    actual !== null &&
+    Object.entries(expected).every(
+      ([key, value]) => actual[key as keyof typeof actual] === value,
+    )
+  );
+}
+
 /**
  * Normalize an extracted venue date-time without letting the server's own
  * timezone reinterpret it. Venue pages publish Frederick wall-clock times, so
  * a zone-less value is resolved through America/New_York and receives the
- * date's real EST/EDT offset. Date-only values remain calendar dates.
+ * date's real EST/EDT offset. A date without a published clock is not a valid
+ * venue start because this artifact has no supported all-day/date-only marker.
  */
 export function normalizeVenueEventDateTime(value: string): string | null {
   const input = value.trim();
-  const dateOnly = CALENDAR_DATE.exec(input);
-  if (dateOnly) {
-    const [, year, month, day] = dateOnly;
-    return validCalendarParts(Number(year), Number(month), Number(day))
-      ? input
-      : null;
-  }
+  if (CALENDAR_DATE.test(input)) return null;
 
   const zoned = ZONED_DATE_TIME.exec(input);
   if (zoned) {
-    const [, year, month, day, hour, minute, second, fraction, rawZone] =
-      zoned;
+    const [, year, month, day, hour, minute, second, fraction, rawZone] = zoned;
     if (
       !validCalendarParts(
         Number(year),
@@ -126,11 +131,12 @@ export function normalizeVenueEventDateTime(value: string): string | null {
     ) {
       return null;
     }
-    const zone = rawZone.toUpperCase() === "Z"
-      ? "Z"
-      : rawZone.includes(":")
-        ? rawZone
-        : `${rawZone.slice(0, 3)}:${rawZone.slice(3)}`;
+    const zone =
+      rawZone.toUpperCase() === "Z"
+        ? "Z"
+        : rawZone.includes(":")
+          ? rawZone
+          : `${rawZone.slice(0, 3)}:${rawZone.slice(3)}`;
     const normalized =
       `${year}-${month}-${day}T${hour}:${minute}` +
       `${second ? `:${second}${fraction ?? ""}` : ""}${zone}`;
@@ -161,24 +167,28 @@ export function normalizeVenueEventDateTime(value: string): string | null {
     return null;
   }
 
-  const instant = easternWallToUtcISO(
+  const wallAsUtc = Date.UTC(
     numeric.year,
-    numeric.month,
+    numeric.month - 1,
     numeric.day,
     numeric.hour,
     numeric.minute,
     numeric.second,
   );
-  const actual = easternWallParts(instant);
-  if (
-    !actual ||
-    Object.entries(numeric).some(
-      ([key, expected]) => actual[key as keyof typeof actual] !== expected,
+  // Frederick can be UTC-04:00 or UTC-05:00. Resolve both candidates through
+  // Intl instead of asking for the offset at a synthetic UTC wall time, which
+  // is wrong during the hours immediately after a DST transition.
+  const matchingInstants = [4, 5]
+    .map((hoursBehindUtc) =>
+      new Date(wallAsUtc + hoursBehindUtc * 60 * 60 * 1_000).toISOString(),
     )
-  ) {
-    // Reject impossible local clocks, including the spring-forward DST gap.
+    .filter((candidate) => matchesEasternWall(candidate, numeric));
+  if (matchingInstants.length !== 1) {
+    // Zero matches is the spring-forward gap; two matches is the fall-back
+    // overlap. An ambiguous source clock requires an explicit UTC offset.
     return null;
   }
+  const instant = matchingInstants[0]!;
   const offset = easternOffset(instant);
   if (!offset) return null;
   return (
