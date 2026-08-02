@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const lifecycle = require("../scripts/lib/source-watch-issue.cjs") as {
   BOT_LOGIN: string;
   QUEUE_LABEL: string;
+  alertFingerprintMarker: (item: Record<string, unknown>) => string;
   evidenceMarker: (runId: number, runAttempt: number) => string;
   latestExpiryFromBodies: (
     bodies: readonly unknown[],
@@ -20,6 +21,7 @@ const lifecycle = require("../scripts/lib/source-watch-issue.cjs") as {
 const {
   BOT_LOGIN,
   QUEUE_LABEL,
+  alertFingerprintMarker,
   evidenceMarker,
   latestExpiryFromBodies,
   markerForSource,
@@ -42,6 +44,7 @@ function item(
   const base = {
     sourceId: "weinberg-performances",
     sourceUrl: "https://weinbergcenter.org/performances/",
+    finalUrl: "https://weinbergcenter.org/performances/",
     checkedAt: CHECKED_AT,
     expiresAt: EXPIRES_AT,
     status,
@@ -402,7 +405,7 @@ describe("Source Watch per-source issue lifecycle", () => {
     expect(h.createComment.mock.calls[0]?.[0].body).toContain("`error`");
   });
 
-  it("leaves an explicitly closed issue closed on quiet runs and reopens it only for a new alert", async () => {
+  it("preserves a human-closed issue for the same alert and reopens it only for new evidence", async () => {
     const quiet = harness({
       issues: [existing(undefined, undefined, "closed")],
     });
@@ -410,10 +413,36 @@ describe("Source Watch per-source issue lifecycle", () => {
     expect(quiet.update).not.toHaveBeenCalled();
     expect(quiet.createComment).not.toHaveBeenCalled();
 
-    const actionable = harness({
-      issues: [existing(undefined, undefined, "closed")],
+    const previousAlert = item("changed");
+    const repeatedAlert = item("changed", {
+      previousHash: "d".repeat(64),
     });
-    await update(actionable, signal(item("changed")));
+    const sameAlert = harness({
+      issues: [
+        existing(undefined, undefined, "closed", 41, {
+          body: [
+            markerForSource("weinberg-performances"),
+            alertFingerprintMarker(previousAlert),
+          ].join("\n"),
+        }),
+      ],
+    });
+    await update(sameAlert, signal(repeatedAlert));
+    expect(sameAlert.update).not.toHaveBeenCalled();
+    expect(sameAlert.createComment).not.toHaveBeenCalled();
+
+    const newAlert = item("changed", { currentHash: "c".repeat(64) });
+    const actionable = harness({
+      issues: [
+        existing(undefined, undefined, "closed", 41, {
+          body: [
+            markerForSource("weinberg-performances"),
+            alertFingerprintMarker(previousAlert),
+          ].join("\n"),
+        }),
+      ],
+    });
+    await update(actionable, signal(newAlert));
     expect(actionable.update).toHaveBeenCalledWith(
       expect.objectContaining({ issue_number: 41, state: "open" }),
     );

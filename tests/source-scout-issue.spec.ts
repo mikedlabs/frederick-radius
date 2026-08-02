@@ -270,6 +270,21 @@ describe("Source Scout compact issue schema", () => {
       validateSignal(
         signal(
           item("fetched", {
+            candidates: [
+              {
+                url: `https://weinbergcenter.org/${"a".repeat(2_100)}`,
+                domain: "weinbergcenter.org",
+                score: 1,
+              },
+            ],
+          }),
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      validateSignal(
+        signal(
+          item("fetched", {
             candidates: [{ ...FIRST_CANDIDATE, domain: "example.com" }],
           }),
         ),

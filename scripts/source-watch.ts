@@ -137,6 +137,7 @@ export type SourceWatchIssueStatus =
 export type SourceWatchIssueItem = {
   sourceId: string;
   sourceUrl: string;
+  finalUrl?: string;
   checkedAt: string;
   expiresAt: string;
   status: SourceWatchIssueStatus;
@@ -504,6 +505,14 @@ function isExpectedFinalHost(requestedUrl: string, finalUrl: string): boolean {
   }
 }
 
+function sameExactPage(first: string, second: string): boolean {
+  try {
+    return new URL(first).toString() === new URL(second).toString();
+  } catch {
+    return false;
+  }
+}
+
 function safeMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -752,10 +761,11 @@ export async function runSourceWatch(
       // fetch of the new URL fails, identityResetAt keeps the fresh baseline
       // pending until a successful observation can make it review-visible.
       const previous = sourceUrlChanged ? undefined : storedPrevious;
-      const identityBaseline = Boolean(
+      let identityBaseline = Boolean(
         sourceUrlChanged ||
         (previous?.identityResetAt && !previous.contentHash),
       );
+      let comparablePrevious = previous;
       let observedFinalUrl: string | undefined;
       try {
         const snapshot = await fetchPage(source.url, {
@@ -778,9 +788,21 @@ export async function runSourceWatch(
         }
         assertSuccessfulFirecrawlTargetStatus(snapshot.metadata);
 
+        // The configured URL can remain stable while the publisher redirects
+        // it to a different same-host page. Never compare that page with the
+        // previous page's hash; establish a review-visible URL baseline first.
+        if (
+          previous?.contentHash &&
+          (!previous.finalUrl ||
+            !sameExactPage(previous.finalUrl, snapshot.finalUrl))
+        ) {
+          identityBaseline = true;
+          comparablePrevious = undefined;
+        }
+
         const currentHash = hashSourceWatchContent(snapshot.markdown);
         const status = classifySourceWatchHash(
-          previous?.contentHash,
+          comparablePrevious?.contentHash,
           currentHash,
         );
         summary[status] += 1;
@@ -790,11 +812,11 @@ export async function runSourceWatch(
           contentHash: currentHash,
           textLength: snapshot.markdown.length,
           linkCount: snapshot.links.length,
-          firstObservedAt: previous?.firstObservedAt ?? checkedAt,
+          firstObservedAt: comparablePrevious?.firstObservedAt ?? checkedAt,
           lastChangedAt:
             status === "new" || status === "changed"
               ? checkedAt
-              : previous?.lastChangedAt,
+              : comparablePrevious?.lastChangedAt,
           lastCheckedAt: checkedAt,
           status,
         };
@@ -802,6 +824,7 @@ export async function runSourceWatch(
         issueItems.push({
           sourceId: source.id,
           sourceUrl: source.url,
+          finalUrl: snapshot.finalUrl,
           checkedAt,
           expiresAt,
           status: identityBaseline
@@ -809,8 +832,8 @@ export async function runSourceWatch(
             : status === "new"
               ? "baseline"
               : status,
-          ...(previous?.contentHash && status === "changed"
-            ? { previousHash: previous.contentHash }
+          ...(comparablePrevious?.contentHash && status === "changed"
+            ? { previousHash: comparablePrevious.contentHash }
             : {}),
           currentHash,
           textLength: snapshot.markdown.length,
@@ -823,7 +846,9 @@ export async function runSourceWatch(
             status,
             checkedAt,
             finalUrl: snapshot.finalUrl,
-            previousHash: previous?.contentHash,
+            ...(comparablePrevious?.contentHash
+              ? { previousHash: comparablePrevious.contentHash }
+              : {}),
             currentHash,
             textLength: snapshot.markdown.length,
             linkCount: snapshot.links.length,
@@ -862,6 +887,7 @@ export async function runSourceWatch(
         issueItems.push({
           sourceId: source.id,
           sourceUrl: source.url,
+          ...(observedFinalUrl ? { finalUrl: observedFinalUrl } : {}),
           checkedAt,
           expiresAt,
           status,

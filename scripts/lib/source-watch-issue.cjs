@@ -2,13 +2,17 @@
 
 // github-script loads this CommonJS module directly on the Actions runner.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { createHash } = require("node:crypto");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require("node:fs");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const net = require("node:net");
+const { publicHttpUrlDomain } = require("./public-http-url.cjs");
 
 const MARKER_PREFIX = "<!-- source-watch:";
 const EXPIRY_MARKER_PREFIX = "<!-- source-watch-expires:";
 const EVIDENCE_MARKER_PREFIX = "<!-- source-watch-evidence:";
+const ALERT_FINGERPRINT_MARKER_PREFIX =
+  "<!-- source-watch-alert-fingerprint:";
 const TITLE_PREFIX = "[source-watch:";
 const BOT_LOGIN = "github-actions[bot]";
 const QUEUE_LABEL = "source-watch-review";
@@ -49,65 +53,8 @@ function validIsoTimestamp(value) {
   );
 }
 
-function privateIpv4(hostname) {
-  const parts = hostname.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
-    return true;
-  }
-  const [first, second] = parts;
-  return (
-    first === 0 ||
-    first === 10 ||
-    first === 127 ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 168) ||
-    first >= 224
-  );
-}
-
-function privateHost(hostname) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host.endsWith(".internal")
-  ) {
-    return true;
-  }
-  const version = net.isIP(host);
-  if (version === 4) return privateIpv4(host);
-  if (version === 6) {
-    return (
-      host === "::" ||
-      host === "::1" ||
-      host.startsWith("fc") ||
-      host.startsWith("fd") ||
-      /^fe[89ab]/.test(host) ||
-      host.startsWith("::ffff:")
-    );
-  }
-  return false;
-}
-
 function validExactPublicUrl(value) {
-  if (typeof value !== "string" || !value || value !== value.trim()) {
-    return false;
-  }
-  try {
-    const parsed = new URL(value);
-    return (
-      (parsed.protocol === "https:" || parsed.protocol === "http:") &&
-      !parsed.username &&
-      !parsed.password &&
-      !parsed.hash &&
-      parsed.href === value &&
-      !privateHost(parsed.hostname)
-    );
-  } catch {
-    return false;
-  }
+  return publicHttpUrlDomain(value) !== undefined;
 }
 
 function markerForSource(sourceId) {
@@ -120,6 +67,22 @@ function evidenceMarker(runId, runAttempt) {
 
 function expiryMarker(sourceId, expiresAt) {
   return `${EXPIRY_MARKER_PREFIX}${sourceId}:${expiresAt} -->`;
+}
+
+function alertFingerprint(item) {
+  const identity = {
+    status: item.status,
+    sourceUrl: item.sourceUrl,
+    finalUrl: item.finalUrl ?? null,
+    currentHash: item.currentHash ?? null,
+    errorCode: item.errorCode ?? null,
+    httpStatus: item.httpStatus ?? null,
+  };
+  return createHash("sha256").update(JSON.stringify(identity)).digest("hex");
+}
+
+function alertFingerprintMarker(item) {
+  return `${ALERT_FINGERPRINT_MARKER_PREFIX}${item.sourceId}:${alertFingerprint(item)}:${item.expiresAt} -->`;
 }
 
 function titleForSource(sourceId) {
@@ -244,6 +207,30 @@ function latestExpiryFromBodies(bodies, sourceId) {
   return latest;
 }
 
+function latestAlertFingerprintFromBodies(bodies, sourceId) {
+  if (!SOURCE_ID_PATTERN.test(sourceId)) return undefined;
+  const escapedId = sourceId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `^${ALERT_FINGERPRINT_MARKER_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${escapedId}:([a-f0-9]{64}):(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z) -->$`,
+  );
+  let latest;
+  for (const body of bodies) {
+    if (typeof body !== "string") continue;
+    for (const line of body.split(/\r?\n/)) {
+      const match = pattern.exec(line);
+      if (!match) continue;
+      const expiresAt = match[2];
+      if (
+        validIsoTimestamp(expiresAt) &&
+        (!latest || Date.parse(expiresAt) >= Date.parse(latest.expiresAt))
+      ) {
+        latest = { fingerprint: match[1], expiresAt };
+      }
+    }
+  }
+  return latest;
+}
+
 function validCount(value) {
   return Number.isInteger(value) && value >= 0;
 }
@@ -258,6 +245,7 @@ function validIssueItem(item, generatedAt) {
   ];
   if (
     !exactKeys(item, baseKeys, [
+      "finalUrl",
       "previousHash",
       "currentHash",
       "textLength",
@@ -271,6 +259,7 @@ function validIssueItem(item, generatedAt) {
   if (
     !SOURCE_ID_PATTERN.test(item.sourceId) ||
     !validExactPublicUrl(item.sourceUrl) ||
+    (item.finalUrl !== undefined && !validExactPublicUrl(item.finalUrl)) ||
     !validIsoTimestamp(item.checkedAt) ||
     item.checkedAt !== generatedAt ||
     !validIsoTimestamp(item.expiresAt)
@@ -284,6 +273,7 @@ function validIssueItem(item, generatedAt) {
     return (
       exactKeys(item, [
         ...baseKeys,
+        "finalUrl",
         "currentHash",
         "textLength",
         "linkCount",
@@ -297,6 +287,7 @@ function validIssueItem(item, generatedAt) {
     return (
       exactKeys(item, [
         ...baseKeys,
+        "finalUrl",
         "previousHash",
         "currentHash",
         "textLength",
@@ -314,7 +305,7 @@ function validIssueItem(item, generatedAt) {
       !exactKeys(
         item,
         [...baseKeys, "errorCode"],
-        ["previousHash", "httpStatus"],
+        ["finalUrl", "previousHash", "httpStatus"],
       ) ||
       !ERROR_CODE_PATTERN.test(item.errorCode) ||
       (item.previousHash !== undefined &&
@@ -366,6 +357,7 @@ function evidenceRows(item, runUrl) {
     `| Checked | ${item.checkedAt} |`,
     `| Status | \`${item.status}\` |`,
   ];
+  if (item.finalUrl) rows.push(`| Observed final URL | ${item.finalUrl} |`);
   if (item.previousHash)
     rows.push(`| Previous hash | \`${item.previousHash}\` |`);
   if (item.currentHash) rows.push(`| Current hash | \`${item.currentHash}\` |`);
@@ -385,6 +377,7 @@ function actionableBody(item, evidence) {
   return [
     markerForSource(item.sourceId),
     expiryMarker(item.sourceId, item.expiresAt),
+    alertFingerprintMarker(item),
     evidence.marker,
     "## Source Watch review",
     "",
@@ -496,6 +489,16 @@ async function updateSourceWatchIssues({
     }
 
     if (ACTIONABLE_STATUSES.has(item.status)) {
+      const fingerprintState = latestAlertFingerprintFromBodies(
+        trustedBodies,
+        item.sourceId,
+      );
+      if (fingerprintState?.fingerprint === alertFingerprint(item)) {
+        core.info(
+          `Source Watch alert fingerprint for ${item.sourceId} is unchanged; its human issue state was preserved.`,
+        );
+        continue;
+      }
       if (existing.state !== "open") {
         await github.rest.issues.update({
           ...context.repo,
@@ -545,13 +548,17 @@ async function updateSourceWatchIssues({
 }
 
 module.exports = {
+  ALERT_FINGERPRINT_MARKER_PREFIX,
   BOT_LOGIN,
   EVIDENCE_MARKER_PREFIX,
   EXPIRY_MARKER_PREFIX,
   MARKER_PREFIX,
   QUEUE_LABEL,
   TITLE_PREFIX,
+  alertFingerprint,
+  alertFingerprintMarker,
   evidenceMarker,
+  latestAlertFingerprintFromBodies,
   latestExpiryFromBodies,
   markerForSource,
   updateSourceWatchIssues,

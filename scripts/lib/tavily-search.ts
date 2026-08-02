@@ -8,23 +8,15 @@
  */
 
 import { isIP } from "node:net";
+import {
+  normalizePublicHost,
+  publicHttpUrlDomain,
+} from "./public-http-url.cjs";
 
 const TAVILY_SEARCH_ENDPOINT = "https://api.tavily.com/search";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_RESULTS = 10;
 const MAX_RESPONSE_BYTES = 1_000_000;
-const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
-const SPECIAL_USE_HOST_SUFFIXES = [
-  ".alt",
-  ".arpa",
-  ".example",
-  ".internal",
-  ".invalid",
-  ".local",
-  ".localhost",
-  ".onion",
-  ".test",
-] as const;
 
 export type TavilySearchDepth = "ultra-fast" | "fast" | "basic" | "advanced";
 
@@ -154,20 +146,14 @@ function normalizeAllowedDomain(value: string): string {
     }
   }
 
-  domain = domain
-    .replace(/^\*\./, "")
-    .replace(/^www\./, "")
-    .replace(/^\[/, "")
-    .replace(/\]$/, "")
-    .replace(/\.$/, "");
-
-  if (!isPublicHost(domain)) {
+  const normalized = normalizePublicHost(domain.replace(/^\*\./, ""));
+  if (!normalized) {
     throw configurationError(
       `Invalid Tavily allowed domain: ${JSON.stringify(value)}.`,
     );
   }
 
-  return domain;
+  return normalized;
 }
 
 function normalizeAllowedDomains(
@@ -182,141 +168,11 @@ function normalizeAllowedDomains(
   return [...new Set(values.map(normalizeAllowedDomain))];
 }
 
-function isValidDomainName(host: string): boolean {
-  return (
-    host.length <= 253 &&
-    host.includes(".") &&
-    host
-      .split(".")
-      .every(
-        (label) =>
-          label.length > 0 &&
-          label.length <= 63 &&
-          /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
-      )
-  );
-}
-
-function isPublicIpv4(host: string): boolean {
-  const parts = host.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
-    return false;
-  }
-
-  const [first, second, third] = parts as [number, number, number, number];
-  return !(
-    first === 0 ||
-    first === 10 ||
-    first === 127 ||
-    (first === 100 && second >= 64 && second <= 127) ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 0 && third === 0) ||
-    (first === 192 && second === 0 && third === 2) ||
-    (first === 192 && second === 88 && third === 99) ||
-    (first === 192 && second === 168) ||
-    (first === 198 && (second === 18 || second === 19)) ||
-    (first === 198 && second === 51 && third === 100) ||
-    (first === 203 && second === 0 && third === 113) ||
-    first >= 224
-  );
-}
-
-function parseIpv6Groups(host: string): number[] | null {
-  const address = host.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
-  if (isIP(address) !== 6) return null;
-
-  const halves = address.split("::");
-  if (halves.length > 2) return null;
-  const head = halves[0] ? halves[0].split(":") : [];
-  const tail = halves[1] ? halves[1].split(":") : [];
-  const missing = 8 - head.length - tail.length;
-  if (missing < 0 || (halves.length === 1 && missing !== 0)) return null;
-
-  const groups = [
-    ...head,
-    ...Array.from({ length: missing }, () => "0"),
-    ...tail,
-  ].map((group) => Number.parseInt(group, 16));
-  return groups.length === 8 && groups.every(Number.isFinite) ? groups : null;
-}
-
-function isPublicIpv6(host: string): boolean {
-  const groups = parseIpv6Groups(host);
-  if (!groups) return false;
-
-  const [first, second] = groups;
-  const ipv4Mapped =
-    groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff;
-  if (ipv4Mapped) return false;
-
-  return !(
-    groups.slice(0, 6).every((group) => group === 0) ||
-    (first! & 0xfe00) === 0xfc00 ||
-    (first! & 0xffc0) === 0xfe80 ||
-    (first! & 0xff00) === 0xff00 ||
-    (first === 0x64 && second === 0xff9b) ||
-    (first === 0x100 && groups.slice(1, 4).every((group) => group === 0)) ||
-    (first === 0x2001 && second === 0) ||
-    (first === 0x2001 && second === 2) ||
-    (first === 0x2001 && second === 0x0db8) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
-    first === 0x2002
-  );
-}
-
-function isPublicHost(host: string): boolean {
-  const normalized = host
-    .toLowerCase()
-    .replace(/^\[/, "")
-    .replace(/\]$/, "")
-    .replace(/\.$/, "");
-  const ipVersion = isIP(normalized);
-  if (ipVersion === 4) return isPublicIpv4(normalized);
-  if (ipVersion === 6) return isPublicIpv6(normalized);
-  if (
-    SPECIAL_USE_HOST_SUFFIXES.some(
-      (suffix) => normalized === suffix.slice(1) || normalized.endsWith(suffix),
-    )
-  ) {
-    return false;
-  }
-  return isValidDomainName(normalized);
-}
-
-function publicResultHost(url: string): string | null {
-  if (url !== url.trim() || CONTROL_CHARACTER_PATTERN.test(url)) {
-    return null;
-  }
-  try {
-    const parsed = new URL(url);
-    if (
-      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
-      parsed.username ||
-      parsed.password ||
-      parsed.hash ||
-      parsed.href !== url
-    ) {
-      return null;
-    }
-    const host = parsed.hostname
-      .toLowerCase()
-      .replace(/^www\./, "")
-      .replace(/^\[/, "")
-      .replace(/\]$/, "")
-      .replace(/\.$/, "");
-    return isPublicHost(host) ? host : null;
-  } catch {
-    return null;
-  }
-}
-
 function isAllowedResultUrl(
   url: string,
   allowedDomains: readonly string[],
 ): boolean {
-  const host = publicResultHost(url);
+  const host = publicHttpUrlDomain(url);
   if (!host) return false;
   if (allowedDomains.length === 0) return true;
   return allowedDomains.some(

@@ -339,6 +339,7 @@ describe("Source Watch candidate runs", () => {
     expect(reset.issueSignal.items[0]).toEqual({
       sourceId: "official-source-1",
       sourceUrl: "https://source-1.example.test/new-events-page",
+      finalUrl: "https://source-1.example.test/new-events-page",
       checkedAt: "2026-07-29T13:00:00.000Z",
       expiresAt: "2026-08-12T13:00:00.000Z",
       status: "url-baseline",
@@ -353,6 +354,60 @@ describe("Source Watch candidate runs", () => {
     expect(JSON.parse(await readFile(reset.issueSignalPath, "utf8"))).toEqual(
       reset.issueSignal,
     );
+  });
+
+  it("resets the baseline when a stable source starts redirecting to a different same-host page", async () => {
+    const reportDirectory = await mkdtemp(
+      join(tmpdir(), "radius-source-watch-"),
+    );
+    const config = testConfig();
+    const sourceUrl = config.sources[0]!.url;
+    const redirectedUrl = "https://source-1.example.test/calendar";
+
+    await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => snapshot(sourceUrl, "Identical rendered content"),
+      now: () => new Date("2026-07-29T12:00:00.000Z"),
+    });
+    const redirected = await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => ({
+        ...snapshot(sourceUrl, "Identical rendered content"),
+        finalUrl: redirectedUrl,
+      }),
+      now: () => new Date("2026-07-29T13:00:00.000Z"),
+    });
+    const stable = await runSourceWatch({
+      config,
+      sourceIds: ["official-source-1"],
+      reportDirectory,
+      fetchPage: async () => ({
+        ...snapshot(sourceUrl, "Identical rendered content"),
+        finalUrl: redirectedUrl,
+      }),
+      now: () => new Date("2026-07-29T14:00:00.000Z"),
+    });
+
+    expect(redirected.report.summary).toMatchObject({ new: 1, changed: 0 });
+    expect(redirected.report.candidates[0]).toMatchObject({
+      status: "new",
+      finalUrl: redirectedUrl,
+    });
+    expect(redirected.report.candidates[0]).not.toHaveProperty("previousHash");
+    expect(redirected.issueSignal.items[0]).toMatchObject({
+      status: "url-baseline",
+      finalUrl: redirectedUrl,
+    });
+    expect(redirected.issueSignal.items[0]).not.toHaveProperty("previousHash");
+    expect(stable.report.summary).toMatchObject({ same: 1, changed: 0 });
+    expect(stable.issueSignal.items[0]).toMatchObject({
+      status: "same",
+      finalUrl: redirectedUrl,
+    });
   });
 
   it("keeps a changed-URL baseline pending across a failed first retrieval", async () => {

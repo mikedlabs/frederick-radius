@@ -313,6 +313,7 @@ describe("searchTavilyCandidates", () => {
       " https://frederickcountymd.gov/notices",
       "https://frederickcountymd.gov/notices\n",
       "https://FREDERICKCOUNTYMD.GOV/notices",
+      `https://frederickcountymd.gov/${"a".repeat(2_100)}`,
     ];
     const fetchImpl = vi.fn(async () =>
       jsonResponse({

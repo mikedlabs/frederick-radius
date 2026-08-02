@@ -22,8 +22,8 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { isIP } from "node:net";
 import { fileURLToPath } from "node:url";
+import { publicHttpUrlDomain } from "./lib/public-http-url.cjs";
 import {
   searchTavilyCandidates,
   TavilySearchError,
@@ -41,20 +41,8 @@ const USAGE_NAME = "source-scout-usage.json";
 const LOCK_NAME = "source-scout.lock";
 const ISSUE_SIGNAL_NAME = "source-scout-github-issue.json";
 const ISSUE_REVIEW_EXPIRY_MS = 30 * 24 * 60 * 60 * 1_000;
-const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
 const ISSUE_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SOURCE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const PRIVATE_HOST_SUFFIXES = [
-  ".alt",
-  ".arpa",
-  ".example",
-  ".internal",
-  ".invalid",
-  ".local",
-  ".localhost",
-  ".onion",
-  ".test",
-] as const;
 
 type SourceScoutLimits = {
   maxRequestsPerRun: number;
@@ -564,117 +552,8 @@ function normalizeHost(host: string): string {
     .replace(/\.$/, "");
 }
 
-function isValidDomainName(host: string): boolean {
-  return (
-    host.length <= 253 &&
-    host.includes(".") &&
-    host
-      .split(".")
-      .every(
-        (label) =>
-          label.length > 0 &&
-          label.length <= 63 &&
-          /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
-      )
-  );
-}
-
-function isPublicIpv4(host: string): boolean {
-  const parts = host.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
-    return false;
-  }
-  const [first, second, third] = parts as [number, number, number, number];
-  return !(
-    first === 0 ||
-    first === 10 ||
-    first === 127 ||
-    (first === 100 && second >= 64 && second <= 127) ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 0 && third === 0) ||
-    (first === 192 && second === 0 && third === 2) ||
-    (first === 192 && second === 88 && third === 99) ||
-    (first === 192 && second === 168) ||
-    (first === 198 && (second === 18 || second === 19)) ||
-    (first === 198 && second === 51 && third === 100) ||
-    (first === 203 && second === 0 && third === 113) ||
-    first >= 224
-  );
-}
-
-function parseIpv6Groups(host: string): number[] | null {
-  if (isIP(host) !== 6) return null;
-  const halves = host.toLowerCase().split("::");
-  if (halves.length > 2) return null;
-  const head = halves[0] ? halves[0].split(":") : [];
-  const tail = halves[1] ? halves[1].split(":") : [];
-  const missing = 8 - head.length - tail.length;
-  if (missing < 0 || (halves.length === 1 && missing !== 0)) return null;
-  const groups = [
-    ...head,
-    ...Array.from({ length: missing }, () => "0"),
-    ...tail,
-  ].map((group) => Number.parseInt(group, 16));
-  return groups.length === 8 && groups.every(Number.isFinite) ? groups : null;
-}
-
-function isPublicIpv6(host: string): boolean {
-  const groups = parseIpv6Groups(host);
-  if (!groups) return false;
-  const [first, second] = groups;
-  const ipv4Mapped =
-    groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff;
-  if (ipv4Mapped) return false;
-  return !(
-    groups.slice(0, 6).every((group) => group === 0) ||
-    (first! & 0xfe00) === 0xfc00 ||
-    (first! & 0xffc0) === 0xfe80 ||
-    (first! & 0xff00) === 0xff00 ||
-    (first === 0x64 && second === 0xff9b) ||
-    (first === 0x100 && groups.slice(1, 4).every((group) => group === 0)) ||
-    (first === 0x2001 && second === 0) ||
-    (first === 0x2001 && second === 2) ||
-    (first === 0x2001 && second === 0x0db8) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
-    first === 0x2002
-  );
-}
-
-function isPublicHost(host: string): boolean {
-  const normalized = normalizeHost(host);
-  const ipVersion = isIP(normalized);
-  if (ipVersion === 4) return isPublicIpv4(normalized);
-  if (ipVersion === 6) return isPublicIpv6(normalized);
-  if (
-    PRIVATE_HOST_SUFFIXES.some(
-      (suffix) => normalized === suffix.slice(1) || normalized.endsWith(suffix),
-    )
-  ) {
-    return false;
-  }
-  return isValidDomainName(normalized);
-}
-
 function sourceDomain(url: string): string | null {
-  if (url !== url.trim() || CONTROL_CHARACTER_PATTERN.test(url)) return null;
-  try {
-    const parsed = new URL(url);
-    if (
-      (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
-      parsed.username ||
-      parsed.password ||
-      parsed.hash ||
-      parsed.href !== url
-    ) {
-      return null;
-    }
-    const host = normalizeHost(parsed.hostname);
-    return isPublicHost(host) ? host : null;
-  } catch {
-    return null;
-  }
+  return publicHttpUrlDomain(url) ?? null;
 }
 
 function domainMatches(host: string, domain: string): boolean {
