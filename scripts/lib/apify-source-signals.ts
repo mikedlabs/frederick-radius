@@ -43,6 +43,21 @@ function canonicalHost(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
 
+function canonicalSignalUrl(url: URL, source: URL): string {
+  const canonical = new URL(url.href);
+  canonical.username = "";
+  canonical.password = "";
+  // `www.` and apex spellings are equivalent at the acceptance boundary.
+  // Persist one source-owned spelling so provider link drift cannot create a
+  // false schedule-change signal.
+  canonical.hostname = source.hostname;
+  canonical.port = source.port;
+  canonical.search = "";
+  canonical.hash = "";
+  canonical.pathname = canonical.pathname.replace(/\/+$/, "") || "/";
+  return canonical.toString();
+}
+
 export { normalizeSourceContent as normalizeApifySourceContent };
 
 function normalizeSignalToken(value: string): string {
@@ -71,6 +86,7 @@ export function canonicalApifyEventLinks(
 ): string[] {
   const source = new URL(sourceUrl);
   const sourceHost = canonicalHost(source.href);
+  const canonicalSourceUrl = canonicalSignalUrl(source, source);
   const kept = new Set<string>();
   for (const value of links) {
     try {
@@ -81,17 +97,10 @@ export function canonicalApifyEventLinks(
       ) {
         continue;
       }
-      parsed.username = "";
-      parsed.password = "";
-      // `www.` and apex spellings are equivalent at the acceptance boundary.
-      // Persist one source-owned spelling so provider link drift cannot create
-      // a false schedule-change signal.
-      parsed.hostname = source.hostname;
-      parsed.port = source.port;
-      parsed.search = "";
-      parsed.hash = "";
-      if (!EVENT_PATH_PATTERN.test(parsed.pathname)) continue;
-      kept.add(parsed.toString());
+      const canonicalLink = canonicalSignalUrl(parsed, source);
+      if (canonicalLink === canonicalSourceUrl) continue;
+      if (!EVENT_PATH_PATTERN.test(new URL(canonicalLink).pathname)) continue;
+      kept.add(canonicalLink);
     } catch {
       // Provider-returned links are only optional change signals.
     }

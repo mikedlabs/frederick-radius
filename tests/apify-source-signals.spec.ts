@@ -195,4 +195,20 @@ describe("Apify source signal fingerprints", () => {
       ),
     ).toEqual(["https://www.example.com/events/show"]);
   });
+
+  it("excludes the source page itself from discovered event links", () => {
+    const sourceUrl = "https://www.example.com/calendar/?view=month#top";
+    const links = [
+      "https://example.com/calendar",
+      "https://www.example.com/calendar/?utm_source=navigation",
+      "https://example.com/calendar/show-one?tracking=private",
+    ];
+
+    expect(canonicalApifyEventLinks(links, sourceUrl)).toEqual([
+      "https://www.example.com/calendar/show-one",
+    ]);
+    expect(
+      fingerprintApifySource("Calendar", links.slice(0, 2), sourceUrl),
+    ).toMatchObject({ eventLinks: { count: 0 } });
+  });
 });
