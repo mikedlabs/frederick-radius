@@ -13,6 +13,22 @@ const schedules = new Map([
 ]);
 
 describe("data-tool activation status", () => {
+  it("labels Firecrawl Source Watch as manual while its schedule is deferred", () => {
+    const status = classifyDataTools(
+      { FIRECRAWL_API_KEY: "configured" },
+      schedules,
+    ).find((tool) => tool.id === "firecrawl-source-watch");
+    expect(status).toMatchObject({
+      label: "Firecrawl source watch",
+      note: "manual only; weekly schedule deferred until county-connector-schedules has an unchanged repeat after baseline run 30734393491 attempt 2",
+      scope: "operator",
+      status: "active",
+    });
+    expect(renderDataToolStatus(status ? [status] : [])).toContain(
+      "weekly schedule deferred until county-connector-schedules has an unchanged repeat after baseline run 30734393491 attempt 2",
+    );
+  });
+
   it("reports the scheduled Apify radar instead of the retired venue pilot", () => {
     const statuses = classifyDataTools(
       { APIFY_TOKEN: "configured" },

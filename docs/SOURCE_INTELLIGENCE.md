@@ -1,7 +1,8 @@
 # Radius Source Intelligence
 
-Source Intelligence has two review-only tools with bounded GitHub schedules
-and one prepared, approval-gated background recovery:
+Source Intelligence has one scheduled review-only discovery tool, one manually
+dispatched exact-page watcher, and one prepared, approval-gated background
+recovery:
 
 - **Source Watch** checks a small, reviewed list of exact public pages for meaningful changes. It uses `scripts/source-watch.ts`, the allowlist and cost policy in `config/source-watch.json`, and the REST adapter in `scripts/lib/firecrawl-rest.ts`.
 - **Source Scout** searches for possible sources when Radius has a known data gap. It uses `scripts/source-scout.ts`, the profiles and limits in `config/source-scout.json`, and the REST adapter in `scripts/lib/tavily-search.ts`.
@@ -188,10 +189,13 @@ routine spend small. Reruns and unsuccessful attempts count. Unknown or
 malformed recent history fails closed before either provider secret is exposed.
 The provider dashboards remain the final billing record.
 
-The scheduled selection is exact and fail-closed:
+The scheduled selection and the deferred watch rollout are exact and
+fail-closed:
 
-- Firecrawl checks the County Connector schedule page on Mondays. That reserves
-  four or five of 30 monthly credits.
+- Firecrawl Source Watch has no cron in the current rollout, so it reserves no
+  scheduled credits. The County Connector baseline succeeded in workflow run
+  `30734393491`, attempt 2. Its proposed weekly check remains deferred until a
+  manual run against that baseline produces an accepted unchanged repeat.
 - Downtown Frederick events and the County food-truck roster remain manual
   candidates. Each needs its own accepted baseline and unchanged repeat before
   a future schedule is added.
@@ -229,8 +233,8 @@ title; an environment-level override therefore fails closed instead of
 silently escaping the shared ledger. `FIRECRAWL_API_KEY` remains an environment
 secret.
 
-Keep all three ingestion fallback flags at `0` during scheduled Source Watch
-operation. Enable only the venue flag for one intentional manual proof, with a
+Keep all three ingestion fallback flags at `0` during manual Source Watch
+proofs. Enable only the venue flag for one intentional fallback proof, with a
 cap of `1`, then return it to `0`. An enabled daily workflow reserves its cap
 even when native retrieval succeeds; leaving one enabled throughout a 31-day
 month would exceed the shared 30-request monthly ceiling.
@@ -319,11 +323,11 @@ unscheduled and `VISIT_FREDERICK_FACTS_REUSE_APPROVED` remains `0` until
 written permission is documented; no provider key is ever available to client
 code or a visitor request path.
 
-An OAuth-backed MCP connection is different. It represents an interactive user's consent inside Codex or another connected client. A scheduled GitHub Action cannot borrow that session, and an OAuth cookie or token must never be copied into the repository. Unattended Source Watch and Source Scout runs require their provider API keys.
+An OAuth-backed MCP connection is different. It represents an interactive user's consent inside Codex or another connected client. A scheduled GitHub Action cannot borrow that session, and an OAuth cookie or token must never be copied into the repository. Manual Source Watch and scheduled Source Scout live runs require their provider API keys.
 
 ## Rollout
 
-The scheduled and manually dispatchable workflow is
+The Tavily-scheduled and manually dispatchable workflow is
 `.github/workflows/source-intelligence.yml`. It has
 read-only contents permission plus narrowly scoped issue-write permission. It
 never commits or publishes, uploads compact review reports for 14 days, keeps
@@ -344,20 +348,21 @@ attempted-credit ledger, and Firecrawl comparison hashes between runs.
 6. Download the review artifact, open every original publisher URL, and measure
    useful findings, false positives, and provider credits. Nothing in the
    artifact is approved app data.
-7. Prove each scheduled Firecrawl source twice from `main`: create a fresh
-   baseline, then run it again unchanged with `initialize_state` off. Confirm
-   the second run uses the same baseline and does not create or erase a review
-   alert. A scheduled run also fails before provider access when its exact
-   source URL has no restored hash.
+7. Treat workflow run `30734393491`, attempt 2, as the successful County
+   Connector baseline. Before adding its proposed weekly cron, run that exact
+   source again from `main` with `initialize_state` off and confirm an unchanged
+   result against the restored baseline. Do not add a cron for any other
+   Firecrawl source until it has the same baseline-and-repeat proof.
 8. Keep every ingestion fallback disabled during routine Source Watch runs. To
    prove the extraction fallback, temporarily set the repository variables
    `VENUE_FIRECRAWL_FETCH_FALLBACK=1` and
    `VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS=1`; leave the business and civic
    repository flags at `0`. Review the fallback usage summary after one manual
    venue run, then return the venue flag to `0`.
-9. Merge the tracked schedule only after the baseline and unchanged proofs are
-   accepted. Scheduled runs always use `initialize_state=false` and fail closed
-   if the relevant state cannot be restored.
+9. Roll out the audited Tavily schedule independently. Keep every Firecrawl
+   cron absent until the County Connector unchanged-repeat proof is accepted.
+   Scheduled Tavily runs always use `initialize_state=false` and fail closed if
+   the usage state cannot be restored.
 
 Expand by source type, not by crawling the whole county. Structured feeds and existing official integrations remain preferable even when a provider can scrape the same information.
 

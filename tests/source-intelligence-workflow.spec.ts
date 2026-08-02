@@ -224,7 +224,6 @@ describe("Source Intelligence workflow", () => {
 
     expect(triggers).toEqual(["schedule", "workflow_dispatch"]);
     expect(workflow.on?.schedule?.map(({ cron }) => cron)).toEqual([
-      "13 13 * * 1",
       "11 14 2,16 * *",
       "21 14 5,19 * *",
       "31 14 8,22 * *",
@@ -275,15 +274,13 @@ describe("Source Intelligence workflow", () => {
     expect(runName).toContain("'plan'");
     expect(runName).toContain("inputs.confirm_live");
     expect(runName).toContain("github.event.schedule");
-    expect(providerClauses).toHaveLength(2);
-    expect(partition["firecrawl-live"]).toEqual(scheduleCrons.slice(0, 1));
-    expect(partition["tavily-live"]).toEqual(scheduleCrons.slice(1));
-    expect(
-      new Set([
-        ...(partition["firecrawl-live"] ?? []),
-        ...(partition["tavily-live"] ?? []),
-      ]),
-    ).toEqual(new Set(scheduleCrons));
+    expect(providerClauses).toHaveLength(1);
+    expect(partition["firecrawl-live"]).toBeUndefined();
+    expect(partition["tavily-live"]).toEqual(scheduleCrons);
+    expect(new Set(partition["tavily-live"] ?? [])).toEqual(
+      new Set(scheduleCrons),
+    );
+    expect(runName).not.toContain("github.event.schedule == '13 13 * * 1'");
     expect(runName).not.toContain("inputs.profile");
     expect(runName).not.toContain("inputs.source");
     expect(runName).not.toContain("github.actor");
@@ -796,15 +793,11 @@ describe("Source Intelligence workflow", () => {
     expect(initializeGuard).toBeDefined();
     expect(initializeGuard?.env).toMatchObject({
       RESTORED_STATE_KEY: "${{ steps.source-state.outputs.cache-matched-key }}",
-      SELECTION_MODE: "${{ steps.selection.outputs.mode }}",
       SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
-      SELECTED_SOURCE: "${{ steps.selection.outputs.source }}",
     });
-    expect(runText(initializeGuard!)).toContain(
+    expect(runText(initializeGuard!)).not.toContain(
       "assertScheduledFirecrawlBaseline",
     );
-    expect(runText(initializeGuard!)).toContain("config/source-watch.json");
-    expect(runText(initializeGuard!)).toContain('SELECTION_MODE" = "schedule"');
   });
 
   it("updates a compact per-source issue before advancing Firecrawl fingerprints", () => {

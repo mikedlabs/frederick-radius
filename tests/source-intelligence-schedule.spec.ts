@@ -5,13 +5,11 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const {
-  assertScheduledFirecrawlBaseline,
   FIRECRAWL_SOURCES,
   SOURCE_INTELLIGENCE_SCHEDULES,
   TAVILY_PROFILES,
   resolveSourceIntelligenceSelection,
 } = require("../scripts/lib/source-intelligence-schedule.cjs") as {
-  assertScheduledFirecrawlBaseline: (input: Record<string, unknown>) => void;
   FIRECRAWL_SOURCES: Set<string>;
   SOURCE_INTELLIGENCE_SCHEDULES: Record<
     string,
@@ -33,7 +31,7 @@ type ScoutConfig = {
 };
 
 type WatchConfig = {
-  sources: Array<{ id: string; url: string }>;
+  sources: Array<{ id: string }>;
 };
 
 function readJson<T>(path: string): T {
@@ -41,12 +39,8 @@ function readJson<T>(path: string): T {
 }
 
 describe("Source Intelligence scheduled selection", () => {
-  it("maps every audited cron to one reviewed provider target", () => {
+  it("maps every audited cron to one reviewed Tavily profile", () => {
     expect(SOURCE_INTELLIGENCE_SCHEDULES).toEqual({
-      "13 13 * * 1": {
-        tool: "firecrawl-watch",
-        source: "county-connector-schedules",
-      },
       "11 14 2,16 * *": {
         tool: "tavily-scout",
         profile: "official-civic-mdot",
@@ -88,23 +82,19 @@ describe("Source Intelligence scheduled selection", () => {
       });
       expect(selection).toMatchObject({
         mode: "schedule",
-        tool: target.tool,
+        tool: "tavily-scout",
         live: true,
         initializeState: false,
       });
-      if (target.tool === "tavily-scout") {
-        expect(profiles.has(selection.profile)).toBe(true);
-        expect(selection.profile).not.toBe("provider-smoke");
-        expect(selection.source).toBe("");
-      } else {
-        expect(sources.has(selection.source)).toBe(true);
-        expect(selection.profile).toBe("");
-      }
+      expect(target.tool).toBe("tavily-scout");
+      expect(profiles.has(selection.profile)).toBe(true);
+      expect(selection.profile).not.toBe("provider-smoke");
+      expect(selection.source).toBe("");
     }
   });
 
   it("fails closed for a missing, unknown, or inherited-property cron", () => {
-    for (const eventSchedule of ["", "0 0 * * *", "__proto__"]) {
+    for (const eventSchedule of ["", "0 0 * * *", "13 13 * * 1", "__proto__"]) {
       expect(() =>
         resolveSourceIntelligenceSelection({
           eventName: "schedule",
@@ -112,66 +102,6 @@ describe("Source Intelligence scheduled selection", () => {
         }),
       ).toThrow(/cron|schedule/i);
     }
-  });
-
-  it("refuses a scheduled Firecrawl source without its exact reviewed baseline", () => {
-    const config = readJson<WatchConfig>("config/source-watch.json");
-    const source = "county-connector-schedules";
-    const exactUrl = config.sources.find(({ id }) => id === source)?.url;
-    const scheduled = {
-      mode: "schedule",
-      tool: "firecrawl-watch",
-      source,
-      config,
-    };
-
-    expect(() =>
-      assertScheduledFirecrawlBaseline({
-        ...scheduled,
-        state: { observations: {} },
-      }),
-    ).toThrow(/baseline/i);
-    expect(() =>
-      assertScheduledFirecrawlBaseline({
-        ...scheduled,
-        state: {
-          observations: {
-            [source]: {
-              url: "https://example.com/moved",
-              contentHash: "a".repeat(64),
-            },
-          },
-        },
-      }),
-    ).toThrow(/baseline/i);
-    expect(() =>
-      assertScheduledFirecrawlBaseline({
-        ...scheduled,
-        state: {
-          observations: {
-            [source]: { url: exactUrl, contentHash: "not-a-sha256" },
-          },
-        },
-      }),
-    ).toThrow(/baseline/i);
-    expect(() =>
-      assertScheduledFirecrawlBaseline({
-        ...scheduled,
-        state: {
-          observations: {
-            [source]: { url: exactUrl, contentHash: "a".repeat(64) },
-          },
-        },
-      }),
-    ).not.toThrow();
-
-    expect(() =>
-      assertScheduledFirecrawlBaseline({
-        mode: "manual",
-        tool: "firecrawl-watch",
-        source,
-      }),
-    ).not.toThrow();
   });
 
   it("preserves manual plans and requires confirmation before manual live work", () => {
@@ -195,11 +125,17 @@ describe("Source Intelligence scheduled selection", () => {
       resolveSourceIntelligenceSelection({
         eventName: "workflow_dispatch",
         tool: "firecrawl-watch",
-        source: "weinberg-performances",
-        confirmLive: false,
-        initializeState: true,
+        source: "county-connector-schedules",
+        confirmLive: "true",
+        initializeState: "false",
       }),
-    ).toMatchObject({ live: false, initializeState: false });
+    ).toMatchObject({
+      mode: "manual",
+      tool: "firecrawl-watch",
+      source: "county-connector-schedules",
+      live: true,
+      initializeState: false,
+    });
 
     expect(
       resolveSourceIntelligenceSelection({

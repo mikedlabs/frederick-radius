@@ -2,8 +2,6 @@ name: Source intelligence
 run-name: >-
   Source intelligence (${{
     github.event_name == 'schedule' &&
-      (github.event.schedule == '13 13 * * 1') && 'firecrawl-live' ||
-    github.event_name == 'schedule' &&
       (github.event.schedule == '11 14 2,16 * *' ||
        github.event.schedule == '21 14 5,19 * *' ||
        github.event.schedule == '31 14 8,22 * *' ||
@@ -16,10 +14,10 @@ run-name: >-
 
 # Review-only scheduled and manual checks of first-party sources.
 # This workflow never writes canonical app data, commits changes, or publishes
-# provider output. Every schedule maps to one tracked profile or exact page.
+# provider output. Every schedule maps to one tracked Tavily profile; Firecrawl
+# Source Watch remains manually dispatched until its unchanged-repeat proof.
 on:
   schedule:
-    - cron: "13 13 * * 1"
     - cron: "11 14 2,16 * *"
     - cron: "21 14 5,19 * *"
     - cron: "31 14 8,22 * *"
@@ -358,9 +356,7 @@ jobs:
         if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
         env:
           RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
-          SELECTION_MODE: ${{ steps.selection.outputs.mode }}
           SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
-          SELECTED_SOURCE: ${{ steps.selection.outputs.source }}
         run: |
           if [ -z "$RESTORED_STATE_KEY" ]; then
             echo "::error title=Source state was not restored::If this is the first intentional live run, check initialize_state. Otherwise stop and recover the previous state before spending credits."
@@ -378,19 +374,6 @@ jobs:
                 echo "::error title=Firecrawl comparison baseline is missing::Check initialize_state only for the first intentional run."
                 exit 1
               }
-              if [ "$SELECTION_MODE" = "schedule" ]; then
-                node -e '
-                  const fs = require("node:fs");
-                  const { assertScheduledFirecrawlBaseline } = require("./scripts/lib/source-intelligence-schedule.cjs");
-                  assertScheduledFirecrawlBaseline({
-                    mode: process.env.SELECTION_MODE,
-                    tool: process.env.SELECTED_TOOL,
-                    source: process.env.SELECTED_SOURCE,
-                    config: JSON.parse(fs.readFileSync("config/source-watch.json", "utf8")),
-                    state: JSON.parse(fs.readFileSync("scripts/reports/source-watch/state.json", "utf8")),
-                  });
-                '
-              fi
               ;;
           esac
 

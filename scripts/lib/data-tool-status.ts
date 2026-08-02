@@ -9,6 +9,7 @@ type EnvironmentRequirement =
 export type DataToolDefinition = {
   id: string;
   label: string;
+  note?: string;
   scope: "vercel" | "runtime" | "operator";
   gate?: { env: string; equals?: string };
   requirements?: readonly EnvironmentRequirement[];
@@ -20,6 +21,7 @@ export type DataToolDefinition = {
 export type DataToolStatus = {
   id: string;
   label: string;
+  note?: string;
   scope: DataToolDefinition["scope"];
   status: DataToolActivationStatus;
   gate?: string;
@@ -270,6 +272,7 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "firecrawl-source-watch",
     label: "Firecrawl source watch",
+    note: "manual only; weekly schedule deferred until county-connector-schedules has an unchanged repeat after baseline run 30734393491 attempt 2",
     scope: "operator",
     requirements: [{ env: "FIRECRAWL_API_KEY" }],
     optionalWhenUnconfigured: true,
@@ -339,6 +342,7 @@ export function classifyDataTools(
       return {
         id: definition.id,
         label: definition.label,
+        note: definition.note,
         scope: definition.scope,
         status: "disabled",
         gate: definition.gate?.env,
@@ -363,6 +367,7 @@ export function classifyDataTools(
     return {
       id: definition.id,
       label: definition.label,
+      note: definition.note,
       scope: definition.scope,
       status,
       gate: definition.gate?.env,
@@ -385,8 +390,9 @@ export function renderDataToolStatus(
           ? `; set ${item.gate}=1 to enable`
           : "";
     const schedule = item.schedule ? `; schedule: ${item.schedule}` : "";
+    const note = item.note ? `; ${item.note}` : "";
     lines.push(
-      `${item.status.toUpperCase().padEnd(21)} ${item.id} [${item.scope}]${schedule}${detail}`,
+      `${item.status.toUpperCase().padEnd(21)} ${item.id} [${item.scope}]${schedule}${note}${detail}`,
     );
   }
 

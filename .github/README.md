@@ -21,14 +21,15 @@ Generated changes always remain review PRs. `publish-data-snapshot.yml` is the
 equivalent boundary for the separate `data-snapshots` branch.
 
 Paid or experimental collectors stay manual until their source quality and
-spend controls are proven. The review-only Source Intelligence and Apify radar
-workflows now have exact, budgeted schedules; neither can publish Radius data.
-The enrichment and attribution workflows remain manual:
+spend controls are proven. Tavily Source Scout and the Apify radar now have
+exact, budgeted schedules; neither can publish Radius data. Firecrawl Source
+Watch remains manually dispatched until its County Connector baseline has a
+live unchanged repeat. The workflow split is explicit:
 
-- `source-intelligence.yml`
-- `apify-source-change-radar.yml`
-- `enrich-places.yml`
-- `photo-attribution-backfill.yml`
+- `source-intelligence.yml`: Tavily scheduled; Firecrawl manual.
+- `apify-source-change-radar.yml`: scheduled three times monthly.
+- `enrich-places.yml`: manual.
+- `photo-attribution-backfill.yml`: manual.
 
 ## Environments
 

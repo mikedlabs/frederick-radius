@@ -1,10 +1,6 @@
 "use strict";
 
 const SOURCE_INTELLIGENCE_SCHEDULES = Object.freeze({
-  "13 13 * * 1": Object.freeze({
-    tool: "firecrawl-watch",
-    source: "county-connector-schedules",
-  }),
   "11 14 2,16 * *": Object.freeze({
     tool: "tavily-scout",
     profile: "official-civic-mdot",
@@ -117,47 +113,6 @@ function manualSelection(input) {
   };
 }
 
-function assertScheduledFirecrawlBaseline(input) {
-  if (input?.mode !== "schedule" || input.tool !== "firecrawl-watch") return;
-
-  const source = input.source;
-  if (typeof source !== "string" || !FIRECRAWL_SOURCES.has(source)) {
-    throw new Error(
-      "A scheduled Firecrawl run does not have a reviewed source id.",
-    );
-  }
-  const sources = input.config?.sources;
-  const configuredSource = Array.isArray(sources)
-    ? sources.find((candidate) => candidate?.id === source)
-    : undefined;
-  if (
-    !configuredSource ||
-    typeof configuredSource.url !== "string" ||
-    configuredSource.url.length === 0
-  ) {
-    throw new Error(
-      `The scheduled Firecrawl source is missing from its reviewed config: ${source}`,
-    );
-  }
-  const observations = input.state?.observations;
-  const observation =
-    observations &&
-    typeof observations === "object" &&
-    Object.hasOwn(observations, source)
-      ? observations[source]
-      : undefined;
-  if (
-    !observation ||
-    observation.url !== configuredSource.url ||
-    typeof observation.contentHash !== "string" ||
-    !/^[a-f0-9]{64}$/.test(observation.contentHash)
-  ) {
-    throw new Error(
-      `The scheduled Firecrawl source lacks an exact-URL baseline: ${source}. Run and review a manual baseline plus unchanged proof first.`,
-    );
-  }
-}
-
 function resolveSourceIntelligenceSelection(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("Source Intelligence selection input is invalid.");
@@ -174,7 +129,6 @@ function resolveSourceIntelligenceSelection(input) {
 }
 
 module.exports = {
-  assertScheduledFirecrawlBaseline,
   FIRECRAWL_SOURCES,
   MANUAL_TOOLS,
   SOURCE_INTELLIGENCE_SCHEDULES,
