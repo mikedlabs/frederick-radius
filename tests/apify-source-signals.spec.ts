@@ -18,7 +18,7 @@ describe("Apify source signal fingerprints", () => {
     );
     const second = fingerprintApifySource(
       "  # Calendar\r\n\r\nJuly   31 at 7:00 p.m.  ",
-      ["https://example.com/events/first-friday?other=value"],
+      ["https://example.com/events/first-friday?utm_medium=email"],
       sourceUrl,
     );
 
@@ -180,7 +180,7 @@ describe("Apify source signal fingerprints", () => {
       ),
     ).toEqual([
       "https://example.com/calendar.php",
-      "https://example.com/events.php",
+      "https://example.com/events.php?id=42",
     ]);
   });
 
@@ -188,7 +188,7 @@ describe("Apify source signal fingerprints", () => {
     expect(
       canonicalApifyEventLinks(
         [
-          "https://example.com/events/show?id=1",
+          "https://example.com/events/show?utm_source=calendar",
           "https://www.example.com/events/show#tickets",
         ],
         "https://www.example.com/calendar/",
@@ -210,5 +210,37 @@ describe("Apify source signal fingerprints", () => {
     expect(
       fingerprintApifySource("Calendar", links.slice(0, 2), sourceUrl),
     ).toMatchObject({ eventLinks: { count: 0 } });
+  });
+
+  it("preserves semantic event IDs while removing tracking parameters", () => {
+    const sourceUrl = "https://example.com/events.php";
+    const eventLinks = canonicalApifyEventLinks(
+      [
+        "https://example.com/events.php?id=42&utm_source=calendar&category=music",
+        "https://example.com/events.php?utm_medium=email&category=music&id=41",
+      ],
+      sourceUrl,
+    );
+    const eventFortyOne = fingerprintApifySource(
+      "Events",
+      [eventLinks[0]],
+      sourceUrl,
+    );
+    const eventFortyTwo = fingerprintApifySource(
+      "Events",
+      [eventLinks[1]],
+      sourceUrl,
+    );
+
+    expect(eventLinks).toEqual([
+      "https://example.com/events.php?category=music&id=41",
+      "https://example.com/events.php?category=music&id=42",
+    ]);
+    expect(eventFortyOne.eventLinks.hash).not.toBe(
+      eventFortyTwo.eventLinks.hash,
+    );
+    expect(
+      changedApifySourceFingerprintFields(eventFortyOne, eventFortyTwo),
+    ).toContain("event-links");
   });
 });

@@ -34,6 +34,8 @@ const MERIDIEM_RANGE_START_PATTERN =
   /(?<![:\d])\b(?:[01]?\d|2[0-3])(?=[^\S\r\n]*(?:[-\u2012-\u2014]|\bto\b)[^\S\r\n]*(?:[01]?\d|2[0-3])(?::[0-5]\d)?[^\S\r\n]*(?:a\.?m\.?|p\.?m\.?)\b)/gi;
 const EVENT_PATH_PATTERN =
   /\/(?:event|events|calendar|calendars|performance|performances|show|shows|ticket|tickets)(?:[/.]|$)/i;
+const TRACKING_QUERY_PARAM_PATTERN =
+  /^(?:utm_[a-z0-9_]+|_ga|_gl|dclid|fbclid|gbraid|gclid|mc_cid|mc_eid|msclkid|tracking|wbraid)$/i;
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -52,10 +54,28 @@ function canonicalSignalUrl(url: URL, source: URL): string {
   // false schedule-change signal.
   canonical.hostname = source.hostname;
   canonical.port = source.port;
+  const semanticParams = [...canonical.searchParams.entries()]
+    .filter(([name]) => !TRACKING_QUERY_PARAM_PATTERN.test(name))
+    .sort(([leftName, leftValue], [rightName, rightValue]) => {
+      if (leftName !== rightName) return leftName < rightName ? -1 : 1;
+      if (leftValue === rightValue) return 0;
+      return leftValue < rightValue ? -1 : 1;
+    });
   canonical.search = "";
+  for (const [name, value] of semanticParams) {
+    canonical.searchParams.append(name, value);
+  }
   canonical.hash = "";
   canonical.pathname = canonical.pathname.replace(/\/+$/, "") || "/";
   return canonical.toString();
+}
+
+function isSourcePageLink(candidate: URL, source: URL): boolean {
+  return (
+    candidate.origin === source.origin &&
+    candidate.pathname === source.pathname &&
+    (candidate.search === source.search || candidate.search === "")
+  );
 }
 
 export { normalizeSourceContent as normalizeApifySourceContent };
@@ -86,7 +106,7 @@ export function canonicalApifyEventLinks(
 ): string[] {
   const source = new URL(sourceUrl);
   const sourceHost = canonicalHost(source.href);
-  const canonicalSourceUrl = canonicalSignalUrl(source, source);
+  const canonicalSourceUrl = new URL(canonicalSignalUrl(source, source));
   const kept = new Set<string>();
   for (const value of links) {
     try {
@@ -98,8 +118,9 @@ export function canonicalApifyEventLinks(
         continue;
       }
       const canonicalLink = canonicalSignalUrl(parsed, source);
-      if (canonicalLink === canonicalSourceUrl) continue;
-      if (!EVENT_PATH_PATTERN.test(new URL(canonicalLink).pathname)) continue;
+      const canonicalLinkUrl = new URL(canonicalLink);
+      if (isSourcePageLink(canonicalLinkUrl, canonicalSourceUrl)) continue;
+      if (!EVENT_PATH_PATTERN.test(canonicalLinkUrl.pathname)) continue;
       kept.add(canonicalLink);
     } catch {
       // Provider-returned links are only optional change signals.
