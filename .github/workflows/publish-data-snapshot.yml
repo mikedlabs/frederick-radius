@@ -1,8 +1,9 @@
 name: Publish validated data snapshot
 
 # The fetch job never receives write credentials. This isolated reusable job
-# accepts only bounded pipeline artifacts, validates their path and size, and
-# updates the dedicated data-snapshots branch without executing repository code.
+# accepts only bounded pipeline artifacts, validates their path and size, copies
+# the Vercel ignore helper from the same trusted main revision, and updates the
+# dedicated data-snapshots branch without executing repository code.
 
 on:
   workflow_call:
@@ -82,6 +83,7 @@ jobs:
           ARTIFACT_ROOT: ${{ runner.temp }}/pipeline-snapshot
           PRIOR_MANIFEST: ${{ github.workspace }}/snapshot-worktree/data/sources.yaml
           TRUSTED_MANIFEST: ${{ github.workspace }}/trusted-base/data/sources.yaml
+          TRUSTED_PREVIEW_IGNORE: ${{ github.workspace }}/trusted-base/scripts/vercel-ignore-preview.sh
           CANDIDATE_MANIFEST: ${{ runner.temp }}/pipeline-snapshot/data/sources.yaml
           CANDIDATE_CLEAN_ROOT: ${{ runner.temp }}/pipeline-snapshot/data/clean
         run: |
@@ -90,6 +92,10 @@ jobs:
             set -euo pipefail
             if find "$ARTIFACT_ROOT" -type l -print -quit | grep -q .; then
               echo "Snapshot artifact contains a symbolic link."
+              exit 1
+            fi
+            if [ ! -f "$TRUSTED_PREVIEW_IGNORE" ] || [ -L "$TRUSTED_PREVIEW_IGNORE" ]; then
+              echo "The trusted Vercel preview-ignore helper is missing or unsafe."
               exit 1
             fi
             test -s "$ARTIFACT_ROOT/data/sources.yaml"
@@ -213,7 +219,7 @@ jobs:
           end
           RUBY
 
-            unexpected=$(git ls-files | grep -Ev '^data/(sources\.yaml|clean/|raw/)' || true)
+            unexpected=$(git ls-files | grep -Ev '^(data/sources\.yaml$|data/clean/|data/raw/|scripts/vercel-ignore-preview\.sh$)' || true)
             if [ -n "$unexpected" ]; then
               echo "The snapshot branch contains unexpected tracked files:"
               printf '%s\n' "$unexpected"
@@ -225,10 +231,14 @@ jobs:
               path=${file#"$ARTIFACT_ROOT/"}
               install -D -m 0644 "$file" "$path"
             done < <(find "$ARTIFACT_ROOT" -type f -print0)
-            git add -f data
-            changed=$(git status --porcelain=v1 | sed -E 's/^.. //' | grep -Ev '^data/' || true)
+            # Every pushed branch is evaluated by Vercel, so the snapshot branch
+            # retains this one reviewed helper to skip a full preview build.
+            rm -f scripts/vercel-ignore-preview.sh
+            install -D -m 0755 "$TRUSTED_PREVIEW_IGNORE" scripts/vercel-ignore-preview.sh
+            git add -f data scripts/vercel-ignore-preview.sh
+            changed=$(git status --porcelain=v1 | sed -E 's/^.. //' | grep -Ev '^(data/|scripts/vercel-ignore-preview\.sh$)' || true)
             if [ -n "$changed" ]; then
-              echo "Snapshot publication changed files outside data/:"
+              echo "Snapshot publication changed files outside the approved snapshot paths:"
               printf '%s\n' "$changed"
               exit 1
             fi

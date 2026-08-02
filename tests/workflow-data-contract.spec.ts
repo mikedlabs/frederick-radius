@@ -536,6 +536,31 @@ describe("scheduled data workflow contracts", () => {
     expect(publisherText).toContain(
       "Normalized outputs do not match active pipeline sources",
     );
+    expect(publisherText).toContain(
+      "TRUSTED_PREVIEW_IGNORE: ${{ github.workspace }}/trusted-base/scripts/vercel-ignore-preview.sh",
+    );
+    expect(publisherText).toContain(
+      '[ ! -f "$TRUSTED_PREVIEW_IGNORE" ] || [ -L "$TRUSTED_PREVIEW_IGNORE" ]',
+    );
+    expect(publisherText).toContain(
+      "data/sources\\.yaml$|data/clean/|data/raw/|scripts/vercel-ignore-preview\\.sh$",
+    );
+    expect(publisherText).toContain(
+      'install -D -m 0755 "$TRUSTED_PREVIEW_IGNORE" scripts/vercel-ignore-preview.sh',
+    );
+    expect(
+      publisherText.indexOf("rm -f scripts/vercel-ignore-preview.sh"),
+    ).toBeLessThan(
+      publisherText.indexOf(
+        'install -D -m 0755 "$TRUSTED_PREVIEW_IGNORE" scripts/vercel-ignore-preview.sh',
+      ),
+    );
+    expect(publisherText).toContain(
+      "git add -f data scripts/vercel-ignore-preview.sh",
+    );
+    expect(publisherText).toContain(
+      "grep -Ev '^(data/|scripts/vercel-ignore-preview\\.sh$)'",
+    );
     expect(publisherText).toContain("git push origin HEAD:data-snapshots");
     expect(workflowText("data-refresh.yml")).toContain(
       "PIPELINE_FINALIZATION_MARKER: /tmp/frederick-radius-pipeline-finalized.json",
@@ -555,6 +580,25 @@ describe("scheduled data workflow contracts", () => {
       ),
     ).toHaveLength(2);
     expect(publisherText).toContain('tee "$RUNNER_TEMP/snapshot-publish.log"');
+  });
+
+  it("allows only bounded data paths and the trusted Vercel helper on the snapshot branch", () => {
+    const publisherText = workflowText("publish-data-snapshot.yml");
+    const allowlistLine = publisherText
+      .split("\n")
+      .find((line) => line.includes("unexpected=$(git ls-files"));
+    const allowlistPattern = allowlistLine?.match(/grep -Ev '([^']+)'/)?.[1];
+
+    expect(allowlistPattern).toBeDefined();
+    const allowed = new RegExp(allowlistPattern!);
+    expect(allowed.test("data/sources.yaml")).toBe(true);
+    expect(allowed.test("data/clean/nws_forecast.json")).toBe(true);
+    expect(allowed.test("data/raw/nws_forecast/2026-08-02.json")).toBe(true);
+    expect(allowed.test("scripts/vercel-ignore-preview.sh")).toBe(true);
+    expect(allowed.test("data/sources.yaml.backup")).toBe(false);
+    expect(allowed.test("scripts/another-helper.sh")).toBe(false);
+    expect(allowed.test("scripts/vercel-ignore-preview.sh.backup")).toBe(false);
+    expect(allowed.test("package.json")).toBe(false);
   });
 
   it("pins the required CI and voice-gate actions and bounds the voice job", () => {
