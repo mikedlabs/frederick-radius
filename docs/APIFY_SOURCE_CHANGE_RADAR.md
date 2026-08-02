@@ -83,7 +83,7 @@ One live radar run:
 The provider parameter is the hard per-request ceiling. The local run and
 monthly gates refuse work before a request. The GitHub workflow also derives a
 durable monthly reservation floor from this workflow's own run history. Live
-runs (including a future scheduled run) have a fixed `(live)` run name; reruns
+runs, whether scheduled or manually dispatched, have a fixed `(live)` run name; reruns
 count through GitHub's `run_attempt`, and the current attempt must already be
 present in paginated run history before the secret is exposed. Missing or
 uncertain history fails closed. The CLI reconciles cached budget upward from
@@ -104,19 +104,25 @@ action that requires the same account-side reconciliation. Keep an Apify
 account spending limit in place as the authoritative account-wide backstop.
 
 The August 2026 account review found an active $5 monthly platform limit,
-roughly $0.03 used, no Apify schedules, and four saved tasks. Do **not** reuse
+roughly $0.03 used, no provider-side Apify schedules, and four saved tasks. Do **not** reuse
 the legacy `Downtown Frederick App` task: it targets three whole sites, has an
 unlimited maximum cost, and previously ran for nearly two hours before being
 aborted. The radar starts the locked one-page Actor input in code instead.
 
-## GitHub setup and launch gate
+## GitHub schedule and launch gate
 
 `.github/workflows/apify-source-change-radar.yml` uses the existing dedicated
 GitHub environment named `APIFY_TOKEN` and its `APIFY_TOKEN` secret. Do not move
 the secret into `Data Enrichment` or expose it to Vercel visitor routes.
 
-The workflow is deliberately **manual-only**. Issue #1467 requires proving the
-workflow on `main` before enabling a schedule.
+Following the accepted launch proof below, GitHub runs the radar at 15:17 UTC on
+the 5th, 15th, and 25th of each month (`17 15 5,15,25 * *`). Three automatic
+attempts reserve at most $0.45, leaving three of the six monthly attempts and
+$0.45 of reservation headroom for an intentional proof, rerun, or recovery.
+Keep orchestration in GitHub; do not create an Apify-side schedule.
+
+Issue #1467 held the schedule until the baseline and unchanged proofs succeeded
+on `main`. The accepted proof sequence was:
 
 1. Run the workflow on `main` with `confirm_live` off. Confirm the three exact
    URLs and $0.15 ceiling in the plan.
@@ -127,9 +133,9 @@ workflow on `main` before enabling a schedule.
    should report `unchanged` and skip the issue.
 5. Review the private artifact, state-cache result, job summary, and issue-step
    log. Confirm that no publisher text appears anywhere.
-6. Only after that evidence is reviewed should a separate pull request add a
-   modest GitHub Actions schedule. Keep orchestration in GitHub; do not create
-   an Apify-side schedule.
+6. Merge the scheduling change only after that evidence is reviewed. Scheduled
+   runs always use the restored state with initialization off and fail closed
+   if the private fingerprint cache is unavailable.
 
 ## Review queue lifecycle
 

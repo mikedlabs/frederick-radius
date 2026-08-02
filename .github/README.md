@@ -21,20 +21,22 @@ Generated changes always remain review PRs. `publish-data-snapshot.yml` is the
 equivalent boundary for the separate `data-snapshots` branch.
 
 Paid or experimental collectors stay manual until their source quality and
-spend controls are proven:
+spend controls are proven. The review-only Source Intelligence and Apify radar
+workflows now have exact, budgeted schedules; neither can publish Radius data.
+The enrichment and attribution workflows remain manual:
 
-- `apify-venue-pilot.yml`
 - `source-intelligence.yml`
+- `apify-source-change-radar.yml`
 - `enrich-places.yml`
 - `photo-attribution-backfill.yml`
 
 ## Environments
 
 - `Data Enrichment`: main-only model-backed data jobs.
-- `APIFY_TOKEN`: main-only credential for the manual Apify venue pilot and
-  private source change radar. The radar stays manual until its baseline and
-  unchanged paths are proven on main. Rename this environment only when its
-  encrypted secret can be moved safely.
+- `APIFY_TOKEN`: main-only credential for the private source change radar. The
+  historical venue-pilot script remains available locally, but its GitHub
+  workflow is retired. Rename this environment only when its encrypted secret
+  can be moved safely.
 - `Production`: main-only source-intelligence credentials.
 
 Secrets are never printed, copied into artifacts, or made available to PR code.

@@ -33,23 +33,24 @@ A venue/source declares its `method`; the agent picks the cheapest one
 that works and falls back as needed. Prefer a structured feed over the
 model whenever one exists — it is exact, free, and survives redesigns.
 
-| Method | When | How | Model? |
-| --- | --- | --- | --- |
-| **`feed`** | Squarespace events page (very common for small venues) | `fetchSquarespaceEvents(url)` reads `<url>?format=json` and `parseSquarespaceEvents()` maps `upcoming[]` (ms-epoch dates) deterministically | **No** |
-| **`render`** | JS-rendered or 403s a bare fetch | headless Chromium → text → `extractJson()` | Yes (text) |
-| **`fetch`** | static HTML | plain fetch → text → `extractJson()` | Yes (text) |
-| **`image`** | calendar published only as a graphic (e.g. a Wix PNG) | `extractJsonFromImage(url)` reads the image with Claude vision | Yes (vision) |
+| Method       | When                                                   | How                                                                                                                                         | Model?       |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| **`feed`**   | Squarespace events page (very common for small venues) | `fetchSquarespaceEvents(url)` reads `<url>?format=json` and `parseSquarespaceEvents()` maps `upcoming[]` (ms-epoch dates) deterministically | **No**       |
+| **`render`** | JS-rendered or 403s a bare fetch                       | headless Chromium → text → `extractJson()`                                                                                                  | Yes (text)   |
+| **`fetch`**  | static HTML                                            | plain fetch → text → `extractJson()`                                                                                                        | Yes (text)   |
+| **`image`**  | calendar published only as a graphic (e.g. a Wix PNG)  | `extractJsonFromImage(url)` reads the image with Claude vision                                                                              | Yes (vision) |
 
 `parseSquarespaceEvents` is pure and unit-tested (`tests/squarespace-events.spec.ts`)
 against the real Banyan shape — no network, no key. The `feed` path needs
 neither the API key nor Chromium; `image` needs the key but not Chromium.
 
 ## Live profiles
-| Profile | Source kind | Output | Agent |
-| --- | --- | --- | --- |
-| **Municipal civic** | town gov pages | `municipal-civic.json` | `ingest-municipal-civic.ts` |
-| **Venue events** | venue sites (Banyan, Derby, Sky Stage…) | `venue-events.json` | `ingest-venue-events.ts` |
-| **Business deep-info** | each place's OWN website (571 food/drink, URLs already in `places-enrichment.json`) | `business-info.json` | `ingest-business-info.ts` |
+
+| Profile                | Source kind                                                                         | Output                 | Agent                       |
+| ---------------------- | ----------------------------------------------------------------------------------- | ---------------------- | --------------------------- |
+| **Municipal civic**    | town gov pages                                                                      | `municipal-civic.json` | `ingest-municipal-civic.ts` |
+| **Venue events**       | venue sites (Banyan, Derby, Sky Stage…)                                             | `venue-events.json`    | `ingest-venue-events.ts`    |
+| **Business deep-info** | each place's OWN website (571 food/drink, URLs already in `places-enrichment.json`) | `business-info.json`   | `ingest-business-info.ts`   |
 
 The **business deep-info** profile is the moat at scale: it reads the
 website each place already has on file and extracts what Google's listing
@@ -60,6 +61,7 @@ Frederick small-business sites are directly readable; the CAPTCHA-walled
 few (e.g. bentztown.com) are handled via aggregators instead.
 
 ## Next profiles (same engine — just add the shape + sources)
+
 - **Happy hours / specials** — extract day/time/deal from a place's site
   ("Mon–Fri 4–6, $5 drafts"). Attaches to the place; answers "happy hour
   near me right now."
@@ -70,11 +72,13 @@ few (e.g. bentztown.com) are handled via aggregators instead.
   deck availability** — all web-sourced, all the same pattern.
 
 ## The social-media reality (food trucks, happy hours posted only on IG/FB)
+
 Blind scraping of Instagram/Facebook is brittle + against ToS. Don't
 build on it. Three honest paths, best first:
+
 1. **Partnership / shared sheet** — the org gives us the data (free promo
    for them). Cleanest + reliable.
-2. **Permitted API + Claude vision** — read the posted graphic *if* we
+2. **Permitted API + Claude vision** — read the posted graphic _if_ we
    have page access. Elegant, gated on access.
 3. **30-second human-in-the-loop** — paste the post/image weekly; Claude
    extracts; publishes. Reliable fallback.
@@ -91,12 +95,15 @@ source attempt after the structured, native-fetch, and local-render paths are
 insufficient. The original venue, organizer, business, or government URL stays
 attached to every candidate.
 
-The first Apify evaluation is a manual, review-only three-page venue pilot. It
-accepts no arbitrary URL, stores no downloaded page, cannot publish, and has
-hard page, result, time, monthly-attempt, and dollar ceilings. See
-`docs/APIFY_VENUE_PILOT.md`.
+The original Apify venue pilot is retained as a historical, manually runnable
+evaluation script, but its GitHub workflow is retired. The current Apify source
+change radar checks three exact reviewed pages on a conservative monthly
+schedule. It accepts no arbitrary URL, stores no downloaded page, cannot
+publish, and has hard page, result, time, monthly-attempt, and dollar ceilings.
+See `docs/APIFY_SOURCE_CHANGE_RADAR.md` and `docs/APIFY_VENUE_PILOT.md`.
 
 ## Rendering reality (learned by testing real venue sites)
+
 Many venue calendars **don't work with a bare fetch**: they're
 JS-rendered (events aren't in the static HTML — e.g. Sky Stage) or the
 server **403s** a plain request (e.g. Weinberg). So the engine supports
@@ -105,6 +112,7 @@ server **403s** a plain request (e.g. Weinberg). So the engine supports
 static pages, `render` for JS/blocked ones.
 
 ### Configured venue sources (May 2026 research)
+
 The Banyan, Weinberg Center (covers New Spire), Sky Stage, Bushwaller's,
 Cellar Door, Bentztown, JoJo's, and The Frederick Center have real sources in
 `config/venue-sources.json`. The Derby remains social-only and is left empty
@@ -113,22 +121,26 @@ the school-closings profile:
 `fcps.org/families_students/weather_delays_closings`.
 
 ### The smarter shortcut: aggregators
+
 Several local sources already aggregate **many** venues at once — far
 cheaper than per-venue scraping:
+
 - **Frederick Frequency** (frederickfrequency.com) — local live-music calendar
 - **Events Frederick** concert calendar (eventsfrederick.com)
 - **Bandsintown** (bandsintown.com/c/frederick-md) — has a real API
 - **Visit Frederick** live-music listing (visitfrederick.org/events/live-music)
 - **Celebrate Frederick** (already ingested via iCal)
-Prefer these as primary sources; fall back to per-venue extraction for
-what they miss.
+  Prefer these as primary sources; fall back to per-venue extraction for
+  what they miss.
 
 ## "Learning the cadence"
+
 v1: run daily, dedupe, surface only what's new. v2: track each source's
 `lastChanged` to infer its rhythm ("posts every Thursday") and check
 around that window — adaptive freshness without hammering sites.
 
 ## To turn a profile on
+
 1. Fill `urls` in the source config (the agent validates + skips empties).
 2. Add standard workspace API keys to GitHub's protected **Data Enrichment**
    environment: `ANTHROPIC_BUSINESS_INFO_API_KEY`,
@@ -138,6 +150,7 @@ around that window — adaptive freshness without hammering sites.
    data; or `npm run ingest:civic` / `npm run ingest:venues` locally.
 
 ## Guarantees (every profile inherits these)
+
 - **Never fabricates** — extracts only what's on the page; failures
   leave prior data untouched.
 - **Always sourced** — `{ url, fetchedAt }` on every record → the UI

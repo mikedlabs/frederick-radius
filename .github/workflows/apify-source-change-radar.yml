@@ -1,9 +1,12 @@
 name: Apify source change radar
 run-name: "Apify source radar (${{ github.event_name == 'schedule' && 'live' || inputs.confirm_live && 'live' || 'plan' }})"
 
-# Manual-only until baseline and unchanged behavior are proven on main. This
-# workflow can open a review issue, but it cannot edit or publish Radius data.
+# The three-run monthly schedule leaves half of the six-attempt durable budget
+# available for a proof, rerun, or recovery. This workflow can open a review
+# issue, but it cannot edit or publish Radius data.
 on:
+  schedule:
+    - cron: "17 15 5,15,25 * *"
   workflow_dispatch:
     inputs:
       confirm_live:
@@ -162,7 +165,7 @@ jobs:
         if: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          RADAR_INITIALIZE_STATE: ${{ inputs.initialize_state }}
+          RADAR_INITIALIZE_STATE: ${{ github.event_name == 'schedule' && 'false' || inputs.initialize_state && 'true' || 'false' }}
           RADAR_DURABLE_MONTH: ${{ steps.monthly-budget.outputs.month }}
           RADAR_DURABLE_ATTEMPTED_RUNS: ${{ steps.monthly-budget.outputs.attempted-runs }}
         run: |

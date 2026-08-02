@@ -45,6 +45,7 @@ type WorkflowJob = {
 type WorkflowDocument = {
   "run-name"?: string;
   on?: {
+    schedule?: Array<{ cron?: string }>;
     workflow_dispatch?: {
       inputs?: Record<string, WorkflowInput>;
     };
@@ -216,12 +217,20 @@ function historyRun(overrides: Partial<HistoryRun> = {}): HistoryRun {
   };
 }
 
-describe("manual Source Intelligence workflow", () => {
-  it("is manual-only, least-privilege, production-scoped, and non-overlapping", () => {
+describe("Source Intelligence workflow", () => {
+  it("uses the audited schedule, least privilege, Production, and one concurrency lane", () => {
     const workflow = loadWorkflow();
     const triggers = Object.keys(workflow.on ?? {});
 
-    expect(triggers).toEqual(["workflow_dispatch"]);
+    expect(triggers).toEqual(["schedule", "workflow_dispatch"]);
+    expect(workflow.on?.schedule?.map(({ cron }) => cron)).toEqual([
+      "13 13 * * 1",
+      "11 14 2,16 * *",
+      "21 14 5,19 * *",
+      "31 14 8,22 * *",
+      "41 14 11 * *",
+      "51 14 25 * *",
+    ]);
     expect(workflow.permissions).toEqual({
       actions: "read",
       contents: "read",
@@ -243,16 +252,77 @@ describe("manual Source Intelligence workflow", () => {
   it("uses immutable plan and provider-live run names", () => {
     const workflow = loadWorkflow();
     const runName = workflow["run-name"] ?? "";
+    const scheduleCrons = (workflow.on?.schedule ?? []).map(
+      ({ cron }) => cron!,
+    );
+    const providerClauses = [
+      ...runName.matchAll(
+        /github\.event_name == 'schedule' &&\s*\(([\s\S]*?)\) && '(firecrawl-live|tavily-live)'/g,
+      ),
+    ];
+    const partition = Object.fromEntries(
+      providerClauses.map((match) => [
+        match[2],
+        [...match[1]!.matchAll(/github\.event\.schedule == '([^']+)'/g)].map(
+          (cronMatch) => cronMatch[1],
+        ),
+      ]),
+    );
 
     expect(runName).toContain("Source intelligence (");
     expect(runName).toContain("'tavily-live'");
     expect(runName).toContain("'firecrawl-live'");
     expect(runName).toContain("'plan'");
     expect(runName).toContain("inputs.confirm_live");
+    expect(runName).toContain("github.event.schedule");
+    expect(providerClauses).toHaveLength(2);
+    expect(partition["firecrawl-live"]).toEqual(scheduleCrons.slice(0, 1));
+    expect(partition["tavily-live"]).toEqual(scheduleCrons.slice(1));
+    expect(
+      new Set([
+        ...(partition["firecrawl-live"] ?? []),
+        ...(partition["tavily-live"] ?? []),
+      ]),
+    ).toEqual(new Set(scheduleCrons));
     expect(runName).not.toContain("inputs.profile");
     expect(runName).not.toContain("inputs.source");
     expect(runName).not.toContain("github.actor");
     expect(runName).not.toContain("github.run_attempt");
+  });
+
+  it("resolves every scheduled or manual target before setup and secrets", () => {
+    const steps = allSteps(loadWorkflow());
+    const checkoutIndex = steps.findIndex((step) =>
+      usesAction(step, "actions/checkout"),
+    );
+    const selectionIndex = steps.findIndex(
+      (step) => step.name === "Resolve exact provider target",
+    );
+    const setupIndex = steps.findIndex((step) =>
+      usesAction(step, "actions/setup-node"),
+    );
+    const selection = steps[selectionIndex];
+
+    expect(selectionIndex).toBeGreaterThan(checkoutIndex);
+    expect(setupIndex).toBeGreaterThan(selectionIndex);
+    expectImmutableAction(selection, "actions/github-script");
+    expect(selection?.id).toBe("selection");
+    expect(selection?.env).toMatchObject({
+      EVENT_NAME: "${{ github.event_name }}",
+      EVENT_SCHEDULE: "${{ github.event.schedule || '' }}",
+      INPUT_TOOL: "${{ inputs.tool || '' }}",
+      INPUT_PROFILE: "${{ inputs.profile || '' }}",
+      INPUT_SOURCE: "${{ inputs.source || '' }}",
+    });
+    expect(selection?.with?.script).toContain(
+      "scripts/lib/source-intelligence-schedule.cjs",
+    );
+    expect(selection?.with?.script).toContain(
+      "resolveSourceIntelligenceSelection",
+    );
+    expect(selection?.with?.script).toContain(
+      'core.setOutput("initialize_state"',
+    );
   });
 
   it("offers only reviewed tools, profiles, and exact Firecrawl sources", () => {
@@ -361,7 +431,7 @@ describe("manual Source Intelligence workflow", () => {
     expect(runText(tavilyLive!)).toContain("--live");
     expect(runText(tavilyLive!)).toContain("--confirm");
     expect(tavilyLive?.if).toContain("tavily-scout");
-    expect(tavilyLive?.if).toContain("confirm_live");
+    expect(tavilyLive?.if).toContain("steps.selection.outputs.live == 'true'");
 
     const firecrawlLive = liveSteps.find((step) =>
       runText(step).includes("source:watch"),
@@ -371,11 +441,13 @@ describe("manual Source Intelligence workflow", () => {
     expect(runText(firecrawlLive!)).toContain("--live");
     expect(runText(firecrawlLive!)).toContain("--confirm");
     expect(firecrawlLive?.if).toContain("firecrawl-watch");
-    expect(firecrawlLive?.if).toContain("confirm_live");
+    expect(firecrawlLive?.if).toContain(
+      "steps.selection.outputs.live == 'true'",
+    );
 
     for (const step of liveSteps) {
       expect(step.if).toBeTruthy();
-      expect(step.if).toContain("confirm_live");
+      expect(step.if).toContain("steps.selection.outputs.live == 'true'");
     }
   });
 
@@ -392,11 +464,11 @@ describe("manual Source Intelligence workflow", () => {
     );
 
     expect(tavilyStep?.env).toMatchObject({
-      SCOUT_PROFILE: "${{ inputs.profile }}",
+      SCOUT_PROFILE: "${{ steps.selection.outputs.profile }}",
       TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}",
     });
     expect(firecrawlStep?.env).toMatchObject({
-      WATCH_SOURCE: "${{ inputs.source }}",
+      WATCH_SOURCE: "${{ steps.selection.outputs.source }}",
       FIRECRAWL_API_KEY: "${{ secrets.FIRECRAWL_API_KEY }}",
     });
     expect(tavilyStep?.env?.FIRECRAWL_API_KEY).toBeUndefined();
@@ -429,9 +501,10 @@ describe("manual Source Intelligence workflow", () => {
 
     expectImmutableAction(budget, "actions/github-script");
     expect(budget.id).toBe("durable-budget");
-    expect(budget.if).toContain("inputs.confirm_live");
-    expect(budget.if).toContain("inputs.tool != 'tavily-plan'");
-    expect(budget.env).toEqual({ SELECTED_TOOL: "${{ inputs.tool }}" });
+    expect(budget.if).toContain("steps.selection.outputs.live == 'true'");
+    expect(budget.env).toEqual({
+      SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
+    });
     expect(script).toContain("github.paginate");
     expect(script).toContain("listWorkflowRuns");
     expect(script).toContain('workflow_id: "source-intelligence.yml"');
@@ -721,6 +794,17 @@ describe("manual Source Intelligence workflow", () => {
       );
     });
     expect(initializeGuard).toBeDefined();
+    expect(initializeGuard?.env).toMatchObject({
+      RESTORED_STATE_KEY: "${{ steps.source-state.outputs.cache-matched-key }}",
+      SELECTION_MODE: "${{ steps.selection.outputs.mode }}",
+      SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
+      SELECTED_SOURCE: "${{ steps.selection.outputs.source }}",
+    });
+    expect(runText(initializeGuard!)).toContain(
+      "assertScheduledFirecrawlBaseline",
+    );
+    expect(runText(initializeGuard!)).toContain("config/source-watch.json");
+    expect(runText(initializeGuard!)).toContain('SELECTION_MODE" = "schedule"');
   });
 
   it("updates a compact per-source issue before advancing Firecrawl fingerprints", () => {
@@ -744,7 +828,7 @@ describe("manual Source Intelligence workflow", () => {
     expect(issue?.id).toBe("source-watch-review-queue");
     expect(issue?.if).toContain("always()");
     expect(issue?.if).toContain("firecrawl-watch");
-    expect(issue?.if).toContain("inputs.confirm_live");
+    expect(issue?.if).toContain("steps.selection.outputs.live == 'true'");
     expect(issue?.if).toContain("steps.firecrawl-live.outcome");
     expect(issue?.if).toContain("'success'");
     expect(issue?.if).toContain("'failure'");
@@ -787,7 +871,7 @@ describe("manual Source Intelligence workflow", () => {
     expect(issue?.id).toBe("source-scout-review-queue");
     expect(issue?.if).toContain("always()");
     expect(issue?.if).toContain("tavily-scout");
-    expect(issue?.if).toContain("inputs.confirm_live");
+    expect(issue?.if).toContain("steps.selection.outputs.live == 'true'");
     expect(issue?.if).toContain("steps.tavily-live.outcome");
     expect(issue?.if).toContain("'success'");
     expect(issue?.if).toContain("'failure'");
@@ -818,6 +902,6 @@ describe("manual Source Intelligence workflow", () => {
 
     expect(serialized).toContain("github.ref");
     expect(serialized).toContain("refs/heads/main");
-    expect(serialized).toContain("inputs.confirm_live");
+    expect(serialized).toContain("steps.selection.outputs.live");
   });
 });

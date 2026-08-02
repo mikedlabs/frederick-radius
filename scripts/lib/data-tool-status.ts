@@ -1,13 +1,10 @@
 export type DataToolActivationStatus =
-  | "active"
-  | "disabled"
-  | "missing_configuration";
+  "active" | "disabled" | "missing_configuration";
 
 export type DataToolEnvironment = Readonly<Record<string, string | undefined>>;
 
 type EnvironmentRequirement =
-  | { env: string; equals?: string }
-  | { anyOf: readonly string[] };
+  { env: string; equals?: string } | { anyOf: readonly string[] };
 
 export type DataToolDefinition = {
   id: string;
@@ -278,8 +275,8 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     optionalWhenUnconfigured: true,
   },
   {
-    id: "apify-venue-pilot",
-    label: "Apify venue pilot",
+    id: "apify-source-change-radar",
+    label: "Apify source change radar",
     scope: "operator",
     requirements: [{ env: "APIFY_TOKEN" }],
     optionalWhenUnconfigured: true,
@@ -310,11 +307,13 @@ function requirementMissing(
 }
 
 export function activationFlagNames(): string[] {
-  return [...new Set(
-    DATA_TOOL_DEFINITIONS.flatMap((definition) =>
-      definition.gate ? [definition.gate.env] : [],
+  return [
+    ...new Set(
+      DATA_TOOL_DEFINITIONS.flatMap((definition) =>
+        definition.gate ? [definition.gate.env] : [],
+      ),
     ),
-  )].sort();
+  ].sort();
 }
 
 export function classifyDataTools(
@@ -374,14 +373,17 @@ export function classifyDataTools(
   });
 }
 
-export function renderDataToolStatus(statuses: readonly DataToolStatus[]): string {
+export function renderDataToolStatus(
+  statuses: readonly DataToolStatus[],
+): string {
   const lines = ["Frederick Radius data-tool activation"];
   for (const item of statuses) {
-    const detail = item.missing.length > 0
-      ? `; missing: ${item.missing.join(", ")}`
-      : item.gate && item.status === "disabled"
-        ? `; set ${item.gate}=1 to enable`
-        : "";
+    const detail =
+      item.missing.length > 0
+        ? `; missing: ${item.missing.join(", ")}`
+        : item.gate && item.status === "disabled"
+          ? `; set ${item.gate}=1 to enable`
+          : "";
     const schedule = item.schedule ? `; schedule: ${item.schedule}` : "";
     lines.push(
       `${item.status.toUpperCase().padEnd(21)} ${item.id} [${item.scope}]${schedule}${detail}`,
@@ -398,6 +400,8 @@ export function renderDataToolStatus(statuses: readonly DataToolStatus[]): strin
   lines.push(
     `Summary: ${counts.active} active, ${counts.disabled} disabled, ${counts.missing_configuration} missing configuration.`,
   );
-  lines.push("Only environment-variable names are shown; secret values are never printed.");
+  lines.push(
+    "Only environment-variable names are shown; secret values are never printed.",
+  );
   return lines.join("\n");
 }

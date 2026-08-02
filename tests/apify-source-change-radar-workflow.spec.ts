@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -24,6 +24,7 @@ type WorkflowStep = {
 
 type Workflow = {
   on?: Record<string, unknown> & {
+    schedule?: Array<{ cron?: string }>;
     workflow_dispatch?: { inputs?: Record<string, Record<string, unknown>> };
   };
   permissions?: Record<string, string>;
@@ -57,10 +58,13 @@ function action(step: WorkflowStep | undefined, name: string): void {
 }
 
 describe("Apify source change radar workflow", () => {
-  it("stays manual-only until main proves the review workflow", () => {
+  it("runs three times monthly with rerun headroom and least privilege", () => {
     const parsed = workflow();
-    expect(Object.keys(parsed.on ?? {})).toEqual(["workflow_dispatch"]);
-    expect(workflowText()).not.toContain("schedule:");
+    expect(Object.keys(parsed.on ?? {})).toEqual([
+      "schedule",
+      "workflow_dispatch",
+    ]);
+    expect(parsed.on?.schedule).toEqual([{ cron: "17 15 5,15,25 * *" }]);
     expect(parsed.permissions).toEqual({
       actions: "read",
       contents: "read",
@@ -106,6 +110,20 @@ describe("Apify source change radar workflow", () => {
     ]) {
       expect(inputs).not.toHaveProperty(forbidden);
     }
+  });
+
+  it("retires only the legacy workflow and retains the radar's source registry", () => {
+    expect(
+      existsSync(
+        resolve(process.cwd(), ".github/workflows/apify-venue-pilot.yml"),
+      ),
+    ).toBe(false);
+    expect(
+      existsSync(resolve(process.cwd(), "config/apify-venue-pilot.json")),
+    ).toBe(true);
+    expect(
+      existsSync(resolve(process.cwd(), "scripts/apify-venue-pilot.ts")),
+    ).toBe(true);
   });
 
   it("plans without a secret and exposes the token only to the gated live step", () => {
@@ -192,13 +210,13 @@ describe("Apify source change radar workflow", () => {
     expect(script).toContain("reservedCents > 90");
     expect(script).toContain('core.setOutput("attempted-runs"');
 
-    const live = steps().find((step) =>
-      step.run?.includes("--live --confirm"),
-    );
+    const live = steps().find((step) => step.run?.includes("--live --confirm"));
     expect(live?.env).toMatchObject({
       RADAR_DURABLE_MONTH: "${{ steps.monthly-budget.outputs.month }}",
       RADAR_DURABLE_ATTEMPTED_RUNS:
         "${{ steps.monthly-budget.outputs.attempted-runs }}",
+      RADAR_INITIALIZE_STATE:
+        "${{ github.event_name == 'schedule' && 'false' || inputs.initialize_state && 'true' || 'false' }}",
     });
   });
 
