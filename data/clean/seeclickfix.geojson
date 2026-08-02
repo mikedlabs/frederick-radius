@@ -6,6 +6,138 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.56949498280204,
+          39.40977782857715
+        ]
+      },
+      "properties": {
+        "external_id": "22400922",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Large tree right next too road and very close to the Bennies Hill Bridge has died and one of the shoots is cracked and getting ready to fall onto my property",
+        "address": "Bennies Hill Rd Middletown, MD, 21769, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-02T18:26:04.000Z",
+        "url": "https://seeclickfix.com/issues/22400922",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.327378754191,
+          39.340869243881
+        ]
+      },
+      "properties": {
+        "external_id": "22400495",
+        "summary": "Roadway Sign Maintenance",
+        "description": "Can we make one side of the street no parking? When cars are parked on both sides, it is difficult to get through for regular traffic. Fire truck would have more problems.",
+        "address": "3930 Braveheart Cir Frederick, MD, 21704, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-08-02T17:00:17.000Z",
+        "url": "https://seeclickfix.com/issues/22400495",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.24025451910835,
+          39.43192419166993
+        ]
+      },
+      "properties": {
+        "external_id": "22400223",
+        "summary": "Roadway Mowing Request",
+        "description": "Grass is 4ft tall on roadway, I can’t ride my bike down the white line safely without get ticks and getting hit by grasses. Needs to be addressed",
+        "address": "12201-12399 Old Annapolis Rd New Market, MD, 21774, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-02T16:04:12.000Z",
+        "url": "https://seeclickfix.com/issues/22400223",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.19225435856255,
+          39.36835022557169
+        ]
+      },
+      "properties": {
+        "external_id": "22399669",
+        "summary": "Roadway General Request",
+        "description": "Hole in roadway looks like it has been cut for 4 months and the hole is getting worse",
+        "address": "13521-13525 Old National Pike Green Valley, MD, 21771, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-02T14:21:59.000Z",
+        "url": "https://seeclickfix.com/issues/22399669",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.32705783374087,
+          39.34098006844787
+        ]
+      },
+      "properties": {
+        "external_id": "22399140",
+        "summary": "Roadway General Request",
+        "description": "Pothole in road",
+        "address": "3930 Braveheart Cir Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-02T11:11:05.000Z",
+        "url": "https://seeclickfix.com/issues/22399140",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4137,
+          39.4175
+        ]
+      },
+      "properties": {
+        "external_id": "22396262",
+        "summary": "Sewer Issue",
+        "description": "cracked manhole ring",
+        "address": "N Bentz St & Calvary Dr Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Sewer Issue",
+        "reported_at": "2026-08-01T18:30:06.000Z",
+        "url": "https://seeclickfix.com/issues/22396262",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.37804005617457,
           39.454514773932836
         ]
@@ -262,138 +394,6 @@
         "category": "Property Damage",
         "reported_at": "2026-07-30T16:48:06.000Z",
         "url": "https://seeclickfix.com/issues/22379423",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.47794782625415,
-          39.68865423707334
-        ]
-      },
-      "properties": {
-        "external_id": "22379333",
-        "summary": "Roadway Mowing Request",
-        "description": "16650 Buck Lance Rd is requesting mowing on this road. The brush and grass on the side of this gravel road is scrapping against the vehicles as they travel through the road.",
-        "address": "16650 Buck Lantz Rd Sabillasville, Maryland, 21780",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-07-30T16:40:17.000Z",
-        "url": "https://seeclickfix.com/issues/22379333",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.25479817821402,
-          39.34765197090453
-        ]
-      },
-      "properties": {
-        "external_id": "22378733",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Requesting clogged culvert to be cleared.",
-        "address": "11790 Thomas Spring Rd Monrovia, Maryland, 21770",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-07-30T15:54:12.000Z",
-        "url": "https://seeclickfix.com/issues/22378733",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.40353551106692,
-          39.33203899985566
-        ]
-      },
-      "properties": {
-        "external_id": "22378203",
-        "summary": "Roadway Mowing Request",
-        "description": "At Baker Valley Rd and Fingerboard Rd the grass is very high and needs to be mowed.",
-        "address": "Baker Valley Rd Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-07-30T15:15:59.000Z",
-        "url": "https://seeclickfix.com/issues/22378203",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.39778858488324,
-          39.328653968257406
-        ]
-      },
-      "properties": {
-        "external_id": "22378111",
-        "summary": "Roadway General Request",
-        "description": "At Hopeland Rd and Fingerboard Rd there's a grassy knoll area that obstructs the view to see on-coming traffic. Constituent says that is causing vehicles to move out further onto the roadway to see if",
-        "address": "Hopeland Rd Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-07-30T15:10:00.000Z",
-        "url": "https://seeclickfix.com/issues/22378111",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.28615512945,
-          39.313677553699
-        ]
-      },
-      "properties": {
-        "external_id": "22376161",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "Winmoor road between Innsbrook Ct and Horan Ct is severely warped with dips and ruts and bumps and uneven areas that cause a bumpy and dangerous ride. My wife is suffering from cancer and each time we",
-        "address": "3404 Winmoor Dr Ijamsville, MD, 21754, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-07-30T12:41:53.000Z",
-        "url": "https://seeclickfix.com/issues/22376161",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.4135052400704,
-          39.70511650446173
-        ]
-      },
-      "properties": {
-        "external_id": "22375942",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Resident concerns with dead tree, (across the street), on roadside dropping branches on the road.",
-        "address": "7324 Friends Creek Rd Emmitsburg, Maryland, 21727",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-07-30T12:11:56.000Z",
-        "url": "https://seeclickfix.com/issues/22375942",
         "source": "seeclickfix"
       }
     }
