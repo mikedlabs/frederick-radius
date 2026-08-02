@@ -26,12 +26,12 @@ const NAMED_DATE_PATTERN =
 const NUMERIC_DATE_PATTERN =
   /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?)\b/g;
 const TIME_PATTERN =
-  /\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/gi;
+  /\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?[^\S\r\n]*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/gi;
 // Publishers commonly omit the meridiem from the first endpoint of a range
 // (for example, "7–9 pm"). Capture that otherwise-bare endpoint separately so
 // moving an event's start still changes the time-signal fingerprint.
 const MERIDIEM_RANGE_START_PATTERN =
-  /(?<![:\d])\b(?:[01]?\d|2[0-3])(?=\s*(?:[-\u2012-\u2014]|\bto\b)\s*(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b)/gi;
+  /(?<![:\d])\b(?:[01]?\d|2[0-3])(?=[^\S\r\n]*(?:[-\u2012-\u2014]|\bto\b)[^\S\r\n]*(?:[01]?\d|2[0-3])(?::[0-5]\d)?[^\S\r\n]*(?:a\.?m\.?|p\.?m\.?)\b)/gi;
 const EVENT_PATH_PATTERN =
   /\/(?:event|events|calendar|calendars|performance|performances|show|shows|ticket|tickets)(?:[/.]|$)/i;
 

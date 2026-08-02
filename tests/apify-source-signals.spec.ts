@@ -106,6 +106,23 @@ describe("Apify source signal fingerprints", () => {
     );
   });
 
+  it("does not join unrelated numbers and times across markdown lines", () => {
+    const sourceUrl = "https://example.com/calendar/";
+    const pageSeven = fingerprintApifySource(
+      "Page 7\n- 9 pm concert",
+      [],
+      sourceUrl,
+    );
+    const pageEight = fingerprintApifySource(
+      "Page 8\n- 9 pm concert",
+      [],
+      sourceUrl,
+    );
+
+    expect(pageSeven.times.count).toBe(1);
+    expect(pageEight.times).toEqual(pageSeven.times);
+  });
+
   it("recognizes event-like PHP endpoints without accepting unrelated PHP pages", () => {
     expect(
       canonicalApifyEventLinks(
