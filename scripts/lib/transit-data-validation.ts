@@ -53,6 +53,12 @@ function rows(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
+}
+
 function dateOnlyUtc(value: unknown): number | null {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return null;
@@ -548,6 +554,16 @@ export function validateMarcScheduleArtifact(
     }
   }
 
+  const exceptionsValue = schedule.exceptions;
+  const exceptions = isRecord(exceptionsValue) ? exceptionsValue : {};
+  if (!isRecord(exceptionsValue)) {
+    issues.push({
+      code: "invalid_collection",
+      path: "marc.exceptions",
+      message: "MARC calendar exceptions must be an object.",
+    });
+  }
+
   const computedWindow = marcServiceWindow(schedule);
   const metadataStart = dateOnlyUtc(staticFeed.serviceWindowStart);
   const metadataEnd = dateOnlyUtc(staticFeed.serviceWindowEnd);
@@ -599,7 +615,7 @@ export function validateMarcScheduleArtifact(
   });
 
   const exceptionAdded = new Set<string>();
-  for (const [date, value] of Object.entries(record(schedule.exceptions))) {
+  for (const [date, value] of Object.entries(exceptions)) {
     if (gtfsDateUtc(date) === null) {
       issues.push({
         code: "invalid_exception_date",
@@ -607,14 +623,38 @@ export function validateMarcScheduleArtifact(
         message: "Calendar exception key must be a real GTFS date.",
       });
     }
-    for (const serviceId of rows(record(value).added)) {
-      if (typeof serviceId === "string") exceptionAdded.add(serviceId);
+
+    if (!isRecord(value)) {
+      issues.push({
+        code: "invalid_collection",
+        path: `marc.exceptions.${date}`,
+        message: "Each MARC calendar exception must be an object.",
+      });
+      continue;
     }
-    for (const serviceId of rows(record(value).removed)) {
-      if (
-        typeof serviceId !== "string" ||
-        !Object.hasOwn(calendar, serviceId)
-      ) {
+
+    const added = isStringArray(value.added) ? value.added : [];
+    const removed = isStringArray(value.removed) ? value.removed : [];
+    if (!isStringArray(value.added)) {
+      issues.push({
+        code: "invalid_collection",
+        path: `marc.exceptions.${date}.added`,
+        message: "Added exceptions must be an array of service-id strings.",
+      });
+    }
+    if (!isStringArray(value.removed)) {
+      issues.push({
+        code: "invalid_collection",
+        path: `marc.exceptions.${date}.removed`,
+        message: "Removed exceptions must be an array of service-id strings.",
+      });
+    }
+
+    for (const serviceId of added) {
+      exceptionAdded.add(serviceId);
+    }
+    for (const serviceId of removed) {
+      if (!Object.hasOwn(calendar, serviceId)) {
         issues.push({
           code: "missing_service_reference",
           path: `marc.exceptions.${date}.removed`,

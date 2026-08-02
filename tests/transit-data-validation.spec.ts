@@ -258,6 +258,48 @@ describe("MARC schedule artifact validation", () => {
     });
   });
 
+  it.each([
+    {
+      label: "a non-object exceptions map",
+      exceptions: [],
+      expectedPaths: ["marc.exceptions"],
+    },
+    {
+      label: "a non-object exception entry",
+      exceptions: { "20260801": [] },
+      expectedPaths: ["marc.exceptions.20260801"],
+    },
+    {
+      label: "missing added and removed arrays",
+      exceptions: { "20260801": {} },
+      expectedPaths: [
+        "marc.exceptions.20260801.added",
+        "marc.exceptions.20260801.removed",
+      ],
+    },
+    {
+      label: "non-string added and removed entries",
+      exceptions: { "20260801": { added: [123], removed: [false] } },
+      expectedPaths: [
+        "marc.exceptions.20260801.added",
+        "marc.exceptions.20260801.removed",
+      ],
+    },
+  ])("rejects $label", ({ exceptions, expectedPaths }) => {
+    const fixture = marcFixture() as Record<string, unknown>;
+    fixture.exceptions = exceptions;
+
+    const invalidPaths = validateMarcScheduleArtifact(
+      fixture,
+      marcStationStops,
+      NOW,
+    )
+      .filter((issue) => issue.code === "invalid_collection")
+      .map((issue) => issue.path);
+
+    expect(invalidPaths).toEqual(expect.arrayContaining(expectedPaths));
+  });
+
   it("keeps the service calendar valid through its last Eastern day", () => {
     const fixture = marcFixture();
     fixture.staticFeed.serviceWindowEnd = "2026-08-01";

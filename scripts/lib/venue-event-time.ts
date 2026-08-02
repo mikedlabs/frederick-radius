@@ -213,6 +213,11 @@ export function normalizeVenueEventTimes<T extends EventTimeFields>(
     } else {
       delete normalized.ends_at;
     }
+  } else {
+    // Optional provider fields still arrive as blank strings, nulls, and
+    // occasionally unexpected runtime values. Treat all of them as absent so
+    // consumers never try to render an invalid end date.
+    delete normalized.ends_at;
   }
   return normalized;
 }

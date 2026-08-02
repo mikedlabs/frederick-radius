@@ -27,21 +27,19 @@ function statusOf(artifact, slug) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
+function currentStatusEvidence(statusOverrides, slug, asOf) {
   const override = statusOverrides?.[slug];
   if (!override || typeof override !== "object" || Array.isArray(override)) {
     return undefined;
   }
-  const expectedClosure =
-    providerStatus === "CLOSED_PERMANENTLY"
-      ? "closed_permanently"
-      : providerStatus === "CLOSED_TEMPORARILY"
-        ? "closed_temporarily"
-        : undefined;
   if (
-    !expectedClosure ||
-    (override.status !== expectedClosure &&
-      override.status !== "operational") ||
+    override.status !== "closed_permanently" &&
+    override.status !== "closed_temporarily" &&
+    override.status !== "operational"
+  ) {
+    return undefined;
+  }
+  if (
     !isIsoCalendarDate(override.effective_at) ||
     !isIsoCalendarDate(override.review_after) ||
     override.effective_at > override.review_after ||
@@ -59,6 +57,33 @@ function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
   } catch {
     return undefined;
   }
+}
+
+function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
+  const expectedClosure =
+    providerStatus === "CLOSED_PERMANENTLY"
+      ? "closed_permanently"
+      : providerStatus === "CLOSED_TEMPORARILY"
+        ? "closed_temporarily"
+        : undefined;
+  if (!expectedClosure) return undefined;
+
+  const evidence = currentStatusEvidence(statusOverrides, slug, asOf);
+  return evidence?.status === expectedClosure ||
+    evidence?.status === "operational"
+    ? evidence
+    : undefined;
+}
+
+function reviewedRemovalEvidence(statusOverrides, slug, asOf) {
+  const evidence = currentStatusEvidence(statusOverrides, slug, asOf);
+  // A removal is accounted for only by source-backed closure evidence for the
+  // same slug. An operational correction can explain a false provider status,
+  // but it cannot explain why an otherwise public listing disappeared.
+  return evidence?.status === "closed_permanently" ||
+    evidence?.status === "closed_temporarily"
+    ? evidence
+    : undefined;
 }
 
 function checkedAt(artifact, slug) {
@@ -188,8 +213,14 @@ export function analyzeHoursRefreshChange({
       return evidence ? [[entry.slug, evidence]] : [];
     }),
   );
+  const reviewedRemovalStatuses = new Map(
+    publicRemovals.flatMap((slug) => {
+      const evidence = reviewedRemovalEvidence(statusOverrides, slug, asOf);
+      return evidence ? [[slug, evidence]] : [];
+    }),
+  );
   const unreviewedPublicRemovals = publicRemovals.filter(
-    (slug) => !reviewedStatuses.has(slug),
+    (slug) => !reviewedRemovalStatuses.has(slug),
   );
   const unreviewedNewlyClosed = newlyClosed.filter(
     (entry) =>
@@ -238,6 +269,7 @@ export function analyzeHoursRefreshChange({
     newlyClosed,
     unreviewedNewlyClosed,
     reviewedStatuses,
+    reviewedRemovalStatuses,
     reopenings,
     review_required: reviewReasons.length > 0,
     reviewReasons,
@@ -259,7 +291,7 @@ export function renderHoursRefreshReview(analysis) {
     const transition = analysis.statusTransitions.find(
       (entry) => entry.slug === slug,
     );
-    const evidence = analysis.reviewedStatuses.get(slug);
+    const evidence = analysis.reviewedRemovalStatuses.get(slug);
     return [
       `\`${slug}\``,
       placeLabel(place, slug),

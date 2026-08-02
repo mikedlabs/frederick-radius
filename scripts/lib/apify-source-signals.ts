@@ -27,6 +27,11 @@ const NUMERIC_DATE_PATTERN =
   /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?)\b/g;
 const TIME_PATTERN =
   /\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/gi;
+// Publishers commonly omit the meridiem from the first endpoint of a range
+// (for example, "7–9 pm"). Capture that otherwise-bare endpoint separately so
+// moving an event's start still changes the time-signal fingerprint.
+const MERIDIEM_RANGE_START_PATTERN =
+  /(?<![:\d])\b(?:[01]?\d|2[0-3])(?=\s*(?:[-\u2012-\u2014]|\bto\b)\s*(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b)/gi;
 const EVENT_PATH_PATTERN =
   /\/(?:event|events|calendar|calendars|performance|performances|show|shows|ticket|tickets)(?:[/.]|$)/i;
 
@@ -112,7 +117,10 @@ export function fingerprintApifySource(
     NAMED_DATE_PATTERN,
     NUMERIC_DATE_PATTERN,
   ]);
-  const times = collectMatches(normalized, [TIME_PATTERN]);
+  const times = collectMatches(normalized, [
+    TIME_PATTERN,
+    MERIDIEM_RANGE_START_PATTERN,
+  ]);
   const eventLinks = canonicalApifyEventLinks(links, sourceUrl);
   return {
     contentHash: sha256(normalized),

@@ -50,6 +50,22 @@ describe("venue event time normalization", () => {
     });
   });
 
+  it.each(["", "   ", null, 42])(
+    "normalizes an unusable optional end to absent: %j",
+    (endsAt) => {
+      const event = {
+        title: "Show",
+        starts_at: "2026-08-08T19:30",
+        ends_at: endsAt,
+      } as Parameters<typeof normalizeVenueEventTimes>[0];
+
+      expect(normalizeVenueEventTimes(event)).toEqual({
+        title: "Show",
+        starts_at: "2026-08-08T19:30-04:00",
+      });
+    },
+  );
+
   it("rejects ambiguous fall-back wall clocks unless the offset is explicit", () => {
     expect(normalizeVenueEventDateTime("2026-11-01T01:30")).toBeNull();
     expect(normalizeVenueEventDateTime("2026-11-01T01:30-04:00")).toBe(

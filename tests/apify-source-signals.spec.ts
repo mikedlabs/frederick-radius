@@ -82,6 +82,30 @@ describe("Apify source signal fingerprints", () => {
     expect(fingerprint.times.count).toBe(2);
   });
 
+  it.each(["7-9 pm", "7–9 p.m.", "7—9 PM", "7 to 9 pm", "7:30–9 pm"])(
+    "captures both endpoints when a time range shares its meridiem: %s",
+    (range) => {
+      const fingerprint = fingerprintApifySource(
+        `Live music ${range}`,
+        [],
+        "https://example.com/calendar/",
+      );
+
+      expect(fingerprint.times.count).toBe(2);
+    },
+  );
+
+  it("changes the time signal when the bare start of a shared-meridiem range moves", () => {
+    const sourceUrl = "https://example.com/calendar/";
+    const seven = fingerprintApifySource("Live music 7–9 pm", [], sourceUrl);
+    const eight = fingerprintApifySource("Live music 8–9 pm", [], sourceUrl);
+
+    expect(eight.times.hash).not.toBe(seven.times.hash);
+    expect(changedApifySourceFingerprintFields(seven, eight)).toContain(
+      "times",
+    );
+  });
+
   it("recognizes event-like PHP endpoints without accepting unrelated PHP pages", () => {
     expect(
       canonicalApifyEventLinks(
