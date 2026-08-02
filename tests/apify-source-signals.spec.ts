@@ -106,6 +106,48 @@ describe("Apify source signal fingerprints", () => {
     );
   });
 
+  it.each(["Jul 21-22, 2026", "Jul 21–22, 2026", "Jul 21 to 22, 2026"])(
+    "tracks a same-month date range endpoint: %s",
+    (range) => {
+      const sourceUrl = "https://example.com/calendar/";
+      const baseline = fingerprintApifySource(range, [], sourceUrl);
+      const changed = fingerprintApifySource(
+        range.replace("22", "23"),
+        [],
+        sourceUrl,
+      );
+
+      expect(baseline.dates.count).toBe(1);
+      expect(changed.dates.hash).not.toBe(baseline.dates.hash);
+      expect(changedApifySourceFingerprintFields(baseline, changed)).toContain(
+        "dates",
+      );
+    },
+  );
+
+  it("does not join a named date and unrelated list number across lines", () => {
+    const sourceUrl = "https://example.com/calendar/";
+    const splitDate = fingerprintApifySource(
+      "Jul\n21 agenda items",
+      [],
+      sourceUrl,
+    );
+    const pageTwentyTwo = fingerprintApifySource(
+      "Jul 21\n- 22, 2026 attendees",
+      [],
+      sourceUrl,
+    );
+    const pageTwentyThree = fingerprintApifySource(
+      "Jul 21\n- 23, 2026 attendees",
+      [],
+      sourceUrl,
+    );
+
+    expect(splitDate.dates.count).toBe(0);
+    expect(pageTwentyTwo.dates.count).toBe(1);
+    expect(pageTwentyThree.dates).toEqual(pageTwentyTwo.dates);
+  });
+
   it("does not join unrelated numbers and times across markdown lines", () => {
     const sourceUrl = "https://example.com/calendar/";
     const pageSeven = fingerprintApifySource(

@@ -295,14 +295,15 @@ export function validateFrederickTransitArtifacts(
         message: "The committed TransIT service calendar has expired.",
       });
     }
-    if (
-      fetchedOn !== null &&
-      (fetchedOn < serviceStart || fetchedOn > serviceEnd)
-    ) {
+    // GTFS feed_start_date describes service coverage, not the earliest date
+    // the publisher may make that feed available. A feed can legitimately be
+    // downloaded before its service window begins; only a snapshot published
+    // after its advertised coverage ended is inconsistent here.
+    if (fetchedOn !== null && fetchedOn > serviceEnd) {
       issues.push({
         code: "snapshot_outside_service_window",
         path: "transit.staticFeed.fetchedOn",
-        message: "Fetched date is outside the advertised service window.",
+        message: "Fetched date is after the advertised service window.",
       });
     }
   }

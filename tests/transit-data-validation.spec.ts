@@ -88,6 +88,33 @@ describe("Frederick TransIT artifact validation", () => {
     );
   });
 
+  it("accepts a GTFS snapshot published before its service coverage starts", () => {
+    const fixture = frederickFixture();
+    const transit = fixture.transit as {
+      generatedAt: string;
+      staticFeed: { fetchedOn: string; serviceWindowStart: string };
+    };
+    transit.generatedAt = "2026-07-31";
+    transit.staticFeed.fetchedOn = "2026-07-31";
+    transit.staticFeed.serviceWindowStart = "2026-08-01";
+
+    expect(validateFrederickTransitArtifacts(fixture, NOW)).toEqual([]);
+  });
+
+  it("rejects a GTFS snapshot published after its service coverage ends", () => {
+    const fixture = frederickFixture();
+    const transit = fixture.transit as {
+      staticFeed: { serviceWindowEnd: string };
+    };
+    transit.staticFeed.serviceWindowEnd = "2026-07-31";
+
+    expect(
+      validateFrederickTransitArtifacts(fixture, NOW).map(
+        (issue) => issue.code,
+      ),
+    ).toContain("snapshot_outside_service_window");
+  });
+
   it("catches stale calendars, invalid coordinates, and broken references", () => {
     const fixture = structuredClone(frederickFixture()) as {
       transit: {
