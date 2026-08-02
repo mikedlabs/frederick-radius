@@ -25,6 +25,22 @@ function source(
     state,
     available: state === "healthy" || state === "healthy_empty",
     reason: "Internal detail that must not become public.",
+    reasonCode:
+      state === "healthy"
+        ? "publication_current"
+        : state === "healthy_empty"
+          ? "publication_empty_valid"
+          : state === "stale"
+            ? "publication_stale"
+            : state === "failing"
+              ? "collection_failed"
+              : state === "running"
+                ? "collection_running"
+                : "source_not_observed",
+    recommendedAction: "none",
+    lastObservedAt: publishedAt,
+    lastReachabilityAt: null,
+    lastReachabilityOutcome: null,
     lastAttemptAt: publishedAt,
     lastAttemptOutcome: publishedAt ? "success" : null,
     lastSuccessAt: publishedAt,
@@ -54,6 +70,17 @@ function snapshot(generatedAt: string): PublicHealthSnapshot {
       stale: 0,
       attention: 0,
       unknown: 0,
+      diagnostics: {
+        upstreamUnreachable: 0,
+        collectionFailed: 0,
+        unconfigured: 0,
+        invalidEvidence: 0,
+        awaitingPublish: 0,
+        requiredEmpty: 0,
+        running: 0,
+        reachableUnvalidated: 0,
+        neverObserved: 0,
+      },
       lastPublishedAt: generatedAt,
     },
   };
@@ -77,11 +104,46 @@ describe("public health summary", () => {
       stale: 1,
       attention: 1,
       unknown: 1,
+      diagnostics: {
+        upstreamUnreachable: 0,
+        collectionFailed: 1,
+        unconfigured: 0,
+        invalidEvidence: 0,
+        awaitingPublish: 0,
+        requiredEmpty: 0,
+        running: 0,
+        reachableUnvalidated: 0,
+        neverObserved: 1,
+      },
       lastPublishedAt: "2026-07-28T15:00:00.000Z",
     });
     expect(JSON.stringify(result)).not.toMatch(
       /Source current|secret upstream|pending_review/,
     );
+  });
+
+  it("keeps the legacy unknown count while exposing an actionable breakdown", () => {
+    const reachable = source("reachable", "unknown", null);
+    reachable.reasonCode = "upstream_reachable_validation_missing";
+    reachable.recommendedAction = "record_validation_or_publication";
+    reachable.lastObservedAt = "2026-07-28T15:45:00.000Z";
+    reachable.lastReachabilityAt = "2026-07-28T15:45:00.000Z";
+    reachable.lastReachabilityOutcome = "success";
+
+    const result = summarizePublicSourceHealth([
+      reachable,
+      source("unobserved", "unknown", null),
+      source("working", "running", null),
+    ]);
+
+    expect(result).toMatchObject({
+      unknown: 3,
+      diagnostics: {
+        running: 1,
+        reachableUnvalidated: 1,
+        neverObserved: 1,
+      },
+    });
   });
 
   it("returns a compact operational snapshot when dependencies answer", async () => {

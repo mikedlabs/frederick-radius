@@ -6,6 +6,7 @@ import {
   writeFoodTruckSchedule,
 } from "@/lib/food-trucks/schedule-store";
 import { verifyCronAuth } from "../../ingest/_auth";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,18 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
+  return monitorCronResponse(
+    "food-truck-schedules",
+    {
+      schedule: "15 */4 * * *",
+      checkinMarginMinutes: 10,
+      maxRuntimeMinutes: 2,
+    },
+    runFoodTruckScheduleRefresh,
+  );
+}
+
+async function runFoodTruckScheduleRefresh() {
   const previous = await readStoredFoodTruckSchedule();
   const schedule = await buildFoodTruckSchedule(new Date());
   const allSourcesFailed = schedule.sources.every((source) => !source.ok);

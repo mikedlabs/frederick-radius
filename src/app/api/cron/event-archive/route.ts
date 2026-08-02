@@ -42,6 +42,7 @@ import {
   EVENT_ARCHIVE_WRITE_BUDGET_MS,
 } from "./config";
 import { classifyEvent } from "@/lib/events/classify";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -143,6 +144,18 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
+  return monitorCronResponse(
+    "event-archive",
+    {
+      schedule: "4,34 * * * *",
+      checkinMarginMinutes: 5,
+      maxRuntimeMinutes: 2,
+    },
+    () => runEventArchive(request),
+  );
+}
+
+async function runEventArchive(request: Request) {
   const startedAt = Date.now();
   const runStart = await runHeartbeat(
     request.signal,

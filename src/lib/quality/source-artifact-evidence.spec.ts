@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
+import BUSINESS_INFO_RAW from "@/data/business-info.json" with { type: "json" };
 import {
+  businessInfoRowEvidenceTimestamp,
   buildSourceArtifactEvidence,
   bundledSourceArtifactEvidence,
 } from "./source-artifact-evidence";
 
 describe("bundled source artifact evidence", () => {
+  it("uses commerce verification only when editorial evidence is absent", () => {
+    expect(
+      businessInfoRowEvidenceTimestamp({
+        source: { fetchedAt: "2026-07-20T00:00:00.000Z" },
+        commerce_source: { checkedAt: "2026-07-28T00:00:00.000Z" },
+      }),
+    ).toBe("2026-07-20T00:00:00.000Z");
+    expect(
+      businessInfoRowEvidenceTimestamp({
+        commerce_source: { checkedAt: "2026-07-28T00:00:00.000Z" },
+      }),
+    ).toBe("2026-07-28T00:00:00.000Z");
+    expect(businessInfoRowEvidenceTimestamp({})).toBeUndefined();
+  });
+
   it("uses the oldest row timestamp so one fresh row cannot launder a stale batch", () => {
     expect(
       buildSourceArtifactEvidence([
@@ -74,17 +91,17 @@ describe("bundled source artifact evidence", () => {
     const evidence = bundledSourceArtifactEvidence();
 
     expect(evidence.map((item) => item.sourceKey).sort()).toEqual([
+      "business_info_extraction",
       "municipal_civic_extraction",
       "transit_gtfs",
       "venue_event_extraction",
     ]);
-    // The business-info artifact currently mixes timestamped editorial rows
-    // with commerce-only rows that have no editorial fetchedAt. Do not present
-    // the whole artifact as freshly verified until every published row carries
-    // valid source evidence.
     expect(
-      evidence.some((item) => item.sourceKey === "business_info_extraction"),
-    ).toBe(false);
+      evidence.find((item) => item.sourceKey === "business_info_extraction"),
+    ).toMatchObject({
+      kind: "artifact",
+      recordCount: Object.keys(BUSINESS_INFO_RAW).length,
+    });
     expect(
       evidence.every(
         (item) =>

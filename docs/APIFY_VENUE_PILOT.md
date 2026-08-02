@@ -92,6 +92,11 @@ not introduce rights or provenance problems. The intended order remains:
 Never chain Firecrawl and Apify for the same source attempt. A provider is a
 retrieval mechanism, not the source or evidence that a claim is true.
 
+The three reviewed pages have now produced successful private pilot evidence,
+including an identical repeat fingerprint for JoJo's. The bounded follow-on is
+the manual-only [Apify source change radar](./APIFY_SOURCE_CHANGE_RADAR.md).
+That radar remains a review queue and cannot publish event data.
+
 Official references:
 
 - [Website Content Crawler](https://apify.com/apify/website-content-crawler/api)

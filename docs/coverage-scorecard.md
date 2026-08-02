@@ -7,24 +7,74 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-07-28 — 1613 places._
+_Generated 2026-08-02 — 1573 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 84 (10%) | 713 (83%) | 716 (84%) | 50 | 299 |
-| Thurmont | 116 | 80 (69%) | 12 (10%) | 105 (91%) | 104 (90%) | 4 | 33 |
-| Brunswick | 97 | 65 (67%) | 6 (6%) | 85 (88%) | 78 (80%) | 2 | 24 |
-| Walkersville | 87 | 66 (76%) | 14 (16%) | 81 (93%) | 78 (90%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 8 (9%) | 72 (85%) | 74 (87%) | 4 | 27 |
-| New Market | 78 | 52 (67%) | 3 (4%) | 65 (83%) | 62 (79%) | 4 | 13 |
-| Mount Airy | 67 | 52 (78%) | 8 (12%) | 62 (93%) | 62 (93%) | 5 | 28 |
-| Emmitsburg | 59 | 41 (69%) | 9 (15%) | 54 (92%) | 53 (90%) | 2 | 19 |
-| Myersville | 56 | 41 (73%) | 5 (9%) | 49 (88%) | 49 (88%) | 3 | 17 |
-| Woodsboro | 42 | 23 (55%) | 3 (7%) | 33 (79%) | 30 (71%) | 2 | 12 |
-| Burkittsville | 37 | 18 (49%) | 1 (3%) | 35 (95%) | 37 (100%) | 2 | 10 |
-| Urbana | 31 | 20 (65%) | 6 (19%) | 23 (74%) | 25 (81%) | 2 | 9 |
-| Rosemont | 4 | 1 (25%) | 0 (0%) | 3 (75%) | 3 (75%) | 0 | 2 |
-| **Total** | **1613** | 1191 (74%) | 159 (10%) | 1380 (86%) | 1371 (85%) | **82** | **522** |
+| Frederick | 855 | 682 (80%) | 464 (54%) | 711 (83%) | 713 (83%) | 50 | 298 |
+| Thurmont | 110 | 75 (68%) | 46 (42%) | 100 (91%) | 99 (90%) | 3 | 30 |
+| Brunswick | 97 | 65 (67%) | 33 (34%) | 85 (88%) | 78 (80%) | 2 | 24 |
+| Walkersville | 86 | 66 (77%) | 48 (56%) | 81 (94%) | 78 (91%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 31 (36%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| New Market | 75 | 51 (68%) | 36 (48%) | 62 (83%) | 59 (79%) | 4 | 13 |
+| Mount Airy | 63 | 48 (76%) | 36 (57%) | 58 (92%) | 58 (92%) | 5 | 27 |
+| Emmitsburg | 58 | 40 (69%) | 31 (53%) | 53 (91%) | 52 (90%) | 2 | 18 |
+| Myersville | 46 | 33 (72%) | 16 (35%) | 40 (87%) | 40 (87%) | 2 | 9 |
+| Woodsboro | 37 | 21 (57%) | 15 (41%) | 31 (84%) | 27 (73%) | 1 | 10 |
+| Burkittsville | 30 | 15 (50%) | 9 (30%) | 28 (93%) | 30 (100%) | 2 | 8 |
+| Urbana | 29 | 20 (69%) | 19 (66%) | 23 (79%) | 25 (86%) | 2 | 9 |
+| Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
+| **Total** | **1573** | 1168 (74%) | 784 (50%) | 1345 (86%) | 1334 (85%) | **79** | **503** |
+
+## Coverage by category
+
+This matrix uses the normalized public client records that discovery and Ask
+consume. It reveals categories whose inventory is large but whose current
+hours, imagery, decision-useful copy, or direct actions are still thin.
+
+| Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Shopping | 192 | 126 (65.6%) | 162 (84.4%) | 0 (0%) | 183 (95.3%) |
+| Churches & worship | 161 | 54 (33.5%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
+| Services | 52 | 27 (51.9%) | 38 (73.1%) | 0 (0%) | 50 (96.2%) |
+| Yoga & fitness | 41 | 17 (41.5%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
+| Salon & barber | 28 | 15 (53.6%) | 23 (82.1%) | 0 (0%) | 27 (96.4%) |
+| Massage | 18 | 10 (55.6%) | 15 (83.3%) | 0 (0%) | 18 (100%) |
+| Antiques | 15 | 7 (46.7%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
+| Playgrounds | 13 | 4 (30.8%) | 8 (61.5%) | 0 (0%) | 6 (46.2%) |
+| Spas | 12 | 7 (58.3%) | 11 (91.7%) | 0 (0%) | 11 (91.7%) |
+| Parking | 10 | 0 (0%) | 7 (70%) | 2 (20%) | 10 (100%) |
+| Distilleries | 8 | 4 (50%) | 7 (87.5%) | 0 (0%) | 8 (100%) |
+| Government | 7 | 5 (71.4%) | 5 (71.4%) | 0 (0%) | 7 (100%) |
+| Public safety | 5 | 0 (0%) | 4 (80%) | 0 (0%) | 5 (100%) |
+| Pharmacies | 3 | 2 (66.7%) | 3 (100%) | 0 (0%) | 3 (100%) |
+| Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
+| Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Wellness | 134 | 85 (63.4%) | 108 (80.6%) | 3 (2.2%) | 132 (98.5%) |
+| Civic & public | 75 | 27 (36%) | 62 (82.7%) | 2 (2.7%) | 69 (92%) |
+| Galleries | 27 | 8 (29.6%) | 23 (85.2%) | 1 (3.7%) | 27 (100%) |
+| Live music | 23 | 2 (8.7%) | 20 (87%) | 1 (4.3%) | 22 (95.7%) |
+| Farms & pick-your-own | 22 | 7 (31.8%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
+| Lodging | 34 | 2 (5.9%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
+| Libraries | 14 | 8 (57.1%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
+| Bakeries | 37 | 18 (48.6%) | 34 (91.9%) | 3 (8.1%) | 34 (91.9%) |
+| Bars | 24 | 14 (58.3%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
+| Book stores | 12 | 6 (50%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
+| Theaters | 12 | 3 (25%) | 11 (91.7%) | 1 (8.3%) | 10 (83.3%) |
+| Golf | 7 | 2 (28.6%) | 3 (42.9%) | 6 (85.7%) | 1 (14.3%) |
+| Ice cream & treats | 28 | 23 (82.1%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
+| Trails | 22 | 3 (13.6%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
+| Parks | 138 | 45 (32.6%) | 120 (87%) | 16 (11.6%) | 100 (72.5%) |
+| Coffee | 41 | 23 (56.1%) | 36 (87.8%) | 5 (12.2%) | 35 (85.4%) |
+| Family | 39 | 24 (61.5%) | 32 (82.1%) | 6 (15.4%) | 39 (100%) |
+| Pizza | 18 | 9 (50%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
+| Restaurants | 175 | 121 (69.1%) | 160 (91.4%) | 34 (19.4%) | 168 (96%) |
+| Museums | 18 | 8 (44.4%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
+| Markets | 57 | 33 (57.9%) | 54 (94.7%) | 20 (35.1%) | 56 (98.2%) |
+| Breweries | 16 | 11 (68.8%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
+| Tours & rides | 2 | 1 (50%) | 1 (50%) | 2 (100%) | 2 (100%) |
+| Auto care | 16 | 12 (75%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
+| Wineries | 14 | 11 (78.6%) | 14 (100%) | 11 (78.6%) | 14 (100%) |
 
 ## Hours refresh artifact
 
@@ -34,38 +84,37 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the seven-day cycle | 1524 |
-| Snapshot rows | 216 |
-| Rows matched to the public set | 212 |
-| Rows carrying a schedule | 167 |
-| Rows refreshed within policy, including status-only results | 212 (13.9%) |
-| Rows fresh within policy | 167 (11%) |
-| Seven-day cycle state | warming |
-| Cycle buckets meeting the minimum write ratio | 1 / 7 |
+| Public Google-backed places expected in the 6-day cycle | 1487 |
+| Snapshot rows | 1082 |
+| Rows matched to the public set | 1060 |
+| Rows carrying a schedule | 831 |
+| Rows refreshed within policy, including status-only results | 1060 (71.3%) |
+| Rows fresh within policy | 831 (55.9%) |
+| 6-day cycle state | stalled |
+| Cycle buckets meeting the minimum write ratio | 3 / 6 |
 | Stale rows | 0 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 4 |
+| Unmatched rows | 22 |
 
-Oldest refresh: 2026-07-27T12:49:47.617Z. Newest refresh: 2026-07-27T12:49:47.617Z.
+Oldest refresh: 2026-07-27T12:49:47.617Z. Newest refresh: 2026-08-01T08:00:33.740Z.
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
-| 0 | 225 | 0 | 0 | no |
-| 1 | 200 | 0 | 0 | no |
-| 2 | 221 | 0 | 0 | no |
-| 3 | 240 | 0 | 0 | no |
-| 4 | 212 | 212 | 167 | yes |
-| 5 | 234 | 0 | 0 | no |
-| 6 | 192 | 0 | 0 | no |
+| 0 | 273 | 273 | 221 | yes |
+| 1 | 208 | 208 | 168 | yes |
+| 2 | 274 | 273 | 204 | yes |
+| 3 | 261 | 108 | 90 | no |
+| 4 | 244 | 104 | 74 | no |
+| 5 | 227 | 94 | 74 | no |
 
-The first complete seven-day pass is still warming up. Missing buckets are visible, but they are not called failed until the cycle window has elapsed.
+**Stalled:** missing cycle days none; underfilled cycle days 3, 4, 5. Check the Vercel writer before the next pull.
 
 Live recovery path:
 
 1. Apply `drizzle/0024_place_hours_refresh.sql` and `drizzle/0034_expose_place_hours_refresh_read_only.sql` in Supabase.
 2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.
 3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.
-4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:00 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.
+4. In GitHub Actions, add browser-safe repository variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the 09:17 UTC data-steward job reads the snapshot through Supabase's read-only Data API after the 08:00 UTC Vercel writer.
 5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.
 
 ## Committed event quality
@@ -79,14 +128,14 @@ after deployment.
 | Missing category | 0 | The event cannot enter a useful browse lane. |
 | Placeholder category | 0 | Generic labels hide the event's real purpose. |
 | Missing venue name | 0 | A user cannot tell where to go. |
-| No native venue join | 9 | Radius cannot inherit venue details; review whether a standalone event location is intentional. |
+| No native venue join | 6 | Radius cannot inherit venue details; review whether a standalone event location is intentional. |
 | Area-centroid location | 1 | The event may be listed, but must not claim precise distance. |
 | Unknown location | 0 | The event should not appear on a precise map. |
 | Invalid time | 0 | The event cannot be ordered safely. |
 | Zero duration | 0 | Often signals a lost end time. |
 | End before start | 0 | The schedule is internally contradictory. |
 
-Category distribution (41 rows): arts: 8, family: 5, market: 1, music: 25, outdoors: 1, theater: 1.
+Category distribution (37 rows): arts: 5, family: 5, music: 25, outdoors: 1, theater: 1.
 
 ## Core amenity coverage by town
 

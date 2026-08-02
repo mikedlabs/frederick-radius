@@ -14,6 +14,7 @@
       "id": "weinberg-performances",
       "venueSlug": "weinberg-center",
       "name": "Weinberg Center performances",
+      "town": "Frederick",
       "url": "https://weinbergcenter.org/performances/",
       "purpose": "Measure whether Apify returns usable event text when the first-party page rejects a normal request.",
       "rightsPosture": "Private retrieval-quality review only; retain the Weinberg URL as the source and do not republish descriptions or artwork."
@@ -22,6 +23,7 @@
       "id": "sky-stage-calendar",
       "venueSlug": "sky-stage",
       "name": "Sky Stage calendar",
+      "town": "Frederick",
       "url": "https://www.skystagefrederick.com/project/calendar/",
       "purpose": "Measure whether Apify can see useful text in the first-party JavaScript calendar widget.",
       "rightsPosture": "Private retrieval-quality review only; retain the Frederick Arts Council venue URL as the source and do not republish descriptions or media."
@@ -30,6 +32,7 @@
       "id": "jojos-events",
       "venueSlug": "jojos",
       "name": "JoJo's events",
+      "town": "Frederick",
       "url": "https://jojosrestauranttaphouse.com/events.php",
       "purpose": "Measure whether Apify returns a stable event snapshot from the venue's custom first-party page.",
       "rightsPosture": "Private retrieval-quality review only; retain the venue URL as the source and do not scrape its social accounts."

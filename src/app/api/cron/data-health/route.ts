@@ -53,6 +53,7 @@ import {
   EVENT_ARCHIVE_RUN,
   evaluateDataHealthPhase,
 } from "@/lib/quality/data-health-phases";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,19 @@ const REPORT_HEARTBEAT_DEADLINE_MS = 8_000;
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
+
+  return monitorCronResponse(
+    "data-health",
+    {
+      schedule: "30 9 * * *",
+      checkinMarginMinutes: 15,
+      maxRuntimeMinutes: 3,
+    },
+    runDataHealthReport,
+  );
+}
+
+async function runDataHealthReport() {
   const startedAt = Date.now();
 
   const dedup = buildDedup(PLACES);
@@ -289,7 +303,8 @@ export async function GET(request: Request) {
   // incident: opens on the first red morning, gains a daily comment while
   // red, closes itself on recovery. AWAITED (not void like the Slack post):
   // delivery is this feature's entire point, and serverless drops floating
-  // promises. Fail-soft inside; "skipped" without GITHUB_ALERTS_TOKEN.
+  // promises. Fail-soft inside; configuration, auth, rate-limit, HTTP, and
+  // network failures return distinct delivery codes in the response.
   const deliveryStartedAt = Date.now();
   const [deliveryOutcome, reporterHeartbeatOutcome] = await Promise.all([
     withDeadlineOutcome(

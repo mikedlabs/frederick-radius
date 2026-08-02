@@ -396,6 +396,10 @@ export type FeedEvent = {
   ticket_url?: string;
 };
 
+export type SquarespaceEventsFetchResult =
+  | { status: "success"; events: FeedEvent[] }
+  | { status: "failure"; events: [] };
+
 /**
  * Parse a Squarespace events collection (the `?format=json` response) to
  * normalized events — deterministically, with no model call. Squarespace
@@ -463,29 +467,61 @@ export function parseSquarespaceEvents(json: unknown, baseUrl?: string): FeedEve
 }
 
 /**
- * Fetch a Squarespace collection's JSON feed and parse it to events.
+ * Fetch a Squarespace collection's JSON feed and parse it to events while
+ * preserving the distinction between a verified empty feed and a failed or
+ * malformed response. Venue promotion needs that distinction: an empty,
+ * successfully read source may replace old inventory, while a failed read
+ * must retain the last-known-good rows.
+ */
+export async function fetchSquarespaceEventsResult(
+  collectionUrl: string,
+  opts: {
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+  } = {},
+): Promise<SquarespaceEventsFetchResult> {
+  const sep = collectionUrl.includes("?") ? "&" : "?";
+  const url = `${collectionUrl}${sep}format=json`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 20_000);
+  try {
+    const r = await (opts.fetchImpl ?? fetch)(url, {
+      headers: { "User-Agent": UA },
+      redirect: "follow",
+      signal: ctrl.signal,
+    });
+    if (!r.ok) {
+      console.log(`  ✗ ${url} → HTTP ${r.status}`);
+      return { status: "failure", events: [] };
+    }
+    const json = JSON.parse(await r.text()) as { upcoming?: unknown } | null;
+    if (!json || !Array.isArray(json.upcoming)) {
+      console.log(`  ✗ ${url} (feed) → missing upcoming[]`);
+      return { status: "failure", events: [] };
+    }
+    const events = parseSquarespaceEvents(json, collectionUrl);
+    if (json.upcoming.length > 0 && events.length === 0) {
+      console.log(`  ✗ ${url} (feed) → no valid upcoming rows`);
+      return { status: "failure", events: [] };
+    }
+    return { status: "success", events };
+  } catch (err) {
+    console.log(`  ✗ ${url} (feed) → ${(err as Error).message}`);
+    return { status: "failure", events: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Backward-compatible event-array view for callers that do not promote a
+ * stored inventory and therefore do not need success/failure metadata.
  * `collectionUrl` is the human events page (e.g. ".../livemusic"); this
  * appends `?format=json`. Returns [] on any fetch/parse failure so the
  * caller can fall back to render+model without a thrown error.
  */
 export async function fetchSquarespaceEvents(collectionUrl: string): Promise<FeedEvent[]> {
-  const sep = collectionUrl.includes("?") ? "&" : "?";
-  const url = `${collectionUrl}${sep}format=json`;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20_000);
-    const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!r.ok) {
-      console.log(`  ✗ ${url} → HTTP ${r.status}`);
-      return [];
-    }
-    const json = JSON.parse(await r.text());
-    return parseSquarespaceEvents(json, collectionUrl);
-  } catch (err) {
-    console.log(`  ✗ ${url} (feed) → ${(err as Error).message}`);
-    return [];
-  }
+  return (await fetchSquarespaceEventsResult(collectionUrl)).events;
 }
 
 /**

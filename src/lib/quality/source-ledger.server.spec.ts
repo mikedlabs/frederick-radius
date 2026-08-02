@@ -191,6 +191,11 @@ describe("server source ledger evidence", () => {
 
     expect(ledger.find((row) => row.id === "mta_marc_rt")).toMatchObject({
       state: "unknown",
+      reasonCode: "upstream_reachable_validation_missing",
+      recommendedAction: "record_validation_or_publication",
+      lastObservedAt: "2026-07-28T11:55:00.000Z",
+      lastReachabilityAt: "2026-07-28T11:55:00.000Z",
+      lastReachabilityOutcome: "success",
       lastPublishedAt: null,
       lastSuccessAt: null,
       recordCount: null,

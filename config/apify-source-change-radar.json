@@ -1,0 +1,15 @@
+{
+  "_doc": "Private review radar for the exact first-party pages already approved in config/apify-venue-pilot.json. It stores hashes and counts, never publisher prose, and cannot publish Radius data. The workflow must prove baseline and unchanged behavior on main before any schedule is added.",
+  "version": 1,
+  "mode": "private-change-radar",
+  "limits": {
+    "maxSourcesPerRun": 3,
+    "maxRunsPerMonth": 6,
+    "maxChargeUsdPerSource": 0.05,
+    "maxReservedChargeUsdPerRun": 0.15,
+    "maxReservedChargeUsdPerMonth": 0.9,
+    "timeoutMs": 240000,
+    "contentOnlyAlertAfterConsecutiveRuns": 2
+  },
+  "sourceIds": ["weinberg-performances", "sky-stage-calendar", "jojos-events"]
+}

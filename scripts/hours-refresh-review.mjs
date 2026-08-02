@@ -11,11 +11,11 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { isIsoCalendarDate } from "./lib/iso-calendar-date.mjs";
 
-const CLOSED_STATUSES = new Set([
-  "CLOSED_TEMPORARILY",
-  "CLOSED_PERMANENTLY",
-]);
+export { isIsoCalendarDate } from "./lib/iso-calendar-date.mjs";
+
+const CLOSED_STATUSES = new Set(["CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
 function dataKeys(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -25,6 +25,65 @@ function dataKeys(value) {
 function statusOf(artifact, slug) {
   const value = artifact?.[slug]?.business_status;
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function currentStatusEvidence(statusOverrides, slug, asOf) {
+  const override = statusOverrides?.[slug];
+  if (!override || typeof override !== "object" || Array.isArray(override)) {
+    return undefined;
+  }
+  if (
+    override.status !== "closed_permanently" &&
+    override.status !== "closed_temporarily" &&
+    override.status !== "operational"
+  ) {
+    return undefined;
+  }
+  if (
+    !isIsoCalendarDate(override.effective_at) ||
+    !isIsoCalendarDate(override.review_after) ||
+    override.effective_at > override.review_after ||
+    override.effective_at > asOf ||
+    override.review_after < asOf ||
+    typeof override.note !== "string" ||
+    !override.note.trim()
+  ) {
+    return undefined;
+  }
+  try {
+    return new URL(override.source).protocol === "https:"
+      ? override
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function reviewedStatusEvidence(statusOverrides, slug, providerStatus, asOf) {
+  const expectedClosure =
+    providerStatus === "CLOSED_PERMANENTLY"
+      ? "closed_permanently"
+      : providerStatus === "CLOSED_TEMPORARILY"
+        ? "closed_temporarily"
+        : undefined;
+  if (!expectedClosure) return undefined;
+
+  const evidence = currentStatusEvidence(statusOverrides, slug, asOf);
+  return evidence?.status === expectedClosure ||
+    evidence?.status === "operational"
+    ? evidence
+    : undefined;
+}
+
+function reviewedRemovalEvidence(statusOverrides, slug, asOf) {
+  const evidence = currentStatusEvidence(statusOverrides, slug, asOf);
+  // A removal is accounted for only by source-backed closure evidence for the
+  // same slug. An operational correction can explain a false provider status,
+  // but it cannot explain why an otherwise public listing disappeared.
+  return evidence?.status === "closed_permanently" ||
+    evidence?.status === "closed_temporarily"
+    ? evidence
+    : undefined;
 }
 
 function checkedAt(artifact, slug) {
@@ -89,6 +148,7 @@ function markdownTable(headers, rows, emptyMessage) {
  *   afterArtifact: Record<string, any>;
  *   beforePlaces: Array<Record<string, any>>;
  *   afterPlaces: Array<Record<string, any>>;
+ *   statusOverrides?: Record<string, any>;
  * }} input
  */
 export function analyzeHoursRefreshChange({
@@ -96,6 +156,7 @@ export function analyzeHoursRefreshChange({
   afterArtifact,
   beforePlaces,
   afterPlaces,
+  statusOverrides = {},
 }) {
   const before = placeIndex(beforePlaces);
   const after = placeIndex(afterPlaces);
@@ -137,15 +198,48 @@ export function analyzeHoursRefreshChange({
   const reopenings = statusTransitions.filter(
     (entry) => CLOSED_STATUSES.has(entry.from) && entry.to === "OPERATIONAL",
   );
+  const asOf =
+    typeof afterArtifact?._meta?.generated_at === "string"
+      ? afterArtifact._meta.generated_at.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+  const reviewedStatuses = new Map(
+    newlyClosed.flatMap((entry) => {
+      const evidence = reviewedStatusEvidence(
+        statusOverrides,
+        entry.slug,
+        entry.to,
+        asOf,
+      );
+      return evidence ? [[entry.slug, evidence]] : [];
+    }),
+  );
+  const reviewedRemovalStatuses = new Map(
+    publicRemovals.flatMap((slug) => {
+      const evidence = reviewedRemovalEvidence(statusOverrides, slug, asOf);
+      return evidence ? [[slug, evidence]] : [];
+    }),
+  );
+  const unreviewedPublicRemovals = publicRemovals.filter(
+    (slug) => !reviewedRemovalStatuses.has(slug),
+  );
+  const unreviewedNewlyClosed = newlyClosed.filter(
+    (entry) =>
+      (entry.public_before || entry.public_after) &&
+      !reviewedStatuses.has(entry.slug),
+  );
   const reviewReasons = [];
   if (publicAdditions.length > 0) {
     reviewReasons.push(`${publicAdditions.length} public listing addition(s)`);
   }
-  if (publicRemovals.length > 0) {
-    reviewReasons.push(`${publicRemovals.length} public listing removal(s)`);
+  if (unreviewedPublicRemovals.length > 0) {
+    reviewReasons.push(
+      `${unreviewedPublicRemovals.length} unreviewed public listing removal(s)`,
+    );
   }
-  if (newlyClosed.length > 0) {
-    reviewReasons.push(`${newlyClosed.length} new closed-status transition(s)`);
+  if (unreviewedNewlyClosed.length > 0) {
+    reviewReasons.push(
+      `${unreviewedNewlyClosed.length} unreviewed closed-status transition(s)`,
+    );
   }
 
   return {
@@ -170,8 +264,12 @@ export function analyzeHoursRefreshChange({
     unmatched_rows: artifactNumber(afterArtifact, "unmatched_rows"),
     publicAdditions,
     publicRemovals,
+    unreviewedPublicRemovals,
     statusTransitions,
     newlyClosed,
+    unreviewedNewlyClosed,
+    reviewedStatuses,
+    reviewedRemovalStatuses,
     reopenings,
     review_required: reviewReasons.length > 0,
     reviewReasons,
@@ -186,13 +284,14 @@ export function renderHoursRefreshReview(analysis) {
     : "unknown";
   const reviewLine = analysis.review_required
     ? `**Manual review required:** ${analysis.reviewReasons.join("; ")}.`
-    : "**No public catalog or new closure transition requires manual review.**";
+    : "**No unreviewed public catalog or public closure transition requires manual review.**";
 
   const removedRows = analysis.publicRemovals.map((slug) => {
     const place = analysis.before.get(slug);
     const transition = analysis.statusTransitions.find(
       (entry) => entry.slug === slug,
     );
+    const evidence = analysis.reviewedRemovalStatuses.get(slug);
     return [
       `\`${slug}\``,
       placeLabel(place, slug),
@@ -200,6 +299,7 @@ export function renderHoursRefreshReview(analysis) {
       place?.municipality,
       transition?.to ?? "No new provider closure",
       transition?.checked_at,
+      evidence ? `[Recorded](${evidence.source})` : "Review required",
     ];
   });
   const addedRows = analysis.publicAdditions.map((slug) => {
@@ -216,7 +316,9 @@ export function renderHoursRefreshReview(analysis) {
     ];
   });
   const closedRows = analysis.newlyClosed.map((entry) => {
-    const place = analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
+    const place =
+      analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
+    const evidence = analysis.reviewedStatuses.get(entry.slug);
     return [
       `\`${entry.slug}\``,
       placeLabel(place, entry.slug),
@@ -224,10 +326,16 @@ export function renderHoursRefreshReview(analysis) {
       entry.from,
       entry.to,
       entry.checked_at,
+      evidence
+        ? `[Recorded](${evidence.source})`
+        : entry.public_before || entry.public_after
+          ? "Review required"
+          : "Not public",
     ];
   });
   const reopeningRows = analysis.reopenings.map((entry) => {
-    const place = analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
+    const place =
+      analysis.before.get(entry.slug) ?? analysis.after.get(entry.slug);
     return [
       `\`${entry.slug}\``,
       placeLabel(place, entry.slug),
@@ -261,11 +369,19 @@ export function renderHoursRefreshReview(analysis) {
     "### Removed from public discovery",
     "",
     markdownTable(
-      ["Slug", "Place", "Category", "Town", "New status", "Checked at"],
+      [
+        "Slug",
+        "Place",
+        "Category",
+        "Town",
+        "New status",
+        "Checked at",
+        "Status evidence",
+      ],
       removedRows,
       "No public listings were removed.",
     ),
-    "A removed listing must be checked before merge. Confirm a closure against the business or another current first-party source; inspect any removal without a new closed status as a loader or catalog regression.",
+    "An unreviewed removal must be checked before merge. Confirm a closure against the business or another current official source; inspect any removal without a new closed status as a loader or catalog regression.",
     "",
     "### Added to public discovery",
     "",
@@ -279,7 +395,15 @@ export function renderHoursRefreshReview(analysis) {
     "### Newly closed",
     "",
     markdownTable(
-      ["Slug", "Place", "Public before", "From", "To", "Checked at"],
+      [
+        "Slug",
+        "Place",
+        "Public before",
+        "From",
+        "To",
+        "Checked at",
+        "Review evidence",
+      ],
       closedRows,
       "No new closed statuses were observed.",
     ),
@@ -292,7 +416,7 @@ export function renderHoursRefreshReview(analysis) {
     ),
     "## Reviewer checklist",
     "",
-    "- Verify every public removal and addition before merging the data PR.",
+    "- Verify every unreviewed public removal and addition before merging the data PR.",
     "- For a newly closed place, prefer the business's own current notice or another official source over a directory echo.",
     "- Confirm that the coverage gain comes from current schedules and that unmatched rows did not erase a canonical identity.",
     "- Do not edit generated client data by hand. Correct the source or reviewed override, rebuild, and regenerate this report.",
@@ -323,6 +447,10 @@ export function main() {
     afterArtifact: jsonAtWorktree(root, artifactPath),
     beforePlaces: jsonAtHead(root, clientPath),
     afterPlaces: jsonAtWorktree(root, clientPath),
+    statusOverrides: jsonAtWorktree(
+      root,
+      "src/data/place-status-overrides.json",
+    ),
   });
   writeFileSync(outputPath, renderHoursRefreshReview(analysis));
 

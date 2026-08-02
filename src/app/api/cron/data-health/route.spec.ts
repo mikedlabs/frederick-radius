@@ -178,7 +178,7 @@ describe("GET /api/cron/data-health", () => {
       healthyPhaseRun("event-archive"),
     ]);
     mocks.runTripwires.mockResolvedValue({ anomalies: [], checks: [] });
-    mocks.deliverDataHealthReport.mockResolvedValue("skipped");
+    mocks.deliverDataHealthReport.mockResolvedValue("missing_token");
     mocks.startIngestRunStrict.mockResolvedValue("report-run");
     mocks.finishIngestRunStrict.mockResolvedValue(undefined);
     mocks.readStoredFoodTruckSchedule.mockResolvedValue({});
@@ -247,6 +247,15 @@ describe("GET /api/cron/data-health", () => {
       name: "db-health",
       green: false,
     });
+  });
+
+  it("surfaces the actionable GitHub delivery result", async () => {
+    mocks.deliverDataHealthReport.mockResolvedValue("auth_failed");
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(body.summary.github_delivery).toBe("auth_failed");
   });
 
   it("keeps the headline red when current fresh hours are zero", async () => {

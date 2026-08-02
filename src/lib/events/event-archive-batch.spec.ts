@@ -2,9 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import {
   prepareEventArchiveRows,
+  syncEventArchiveBatch,
   syncEventArchiveBatchWithWriter,
   type EventArchiveBatchWriter,
 } from "./event-archive-batch";
+
+const { getSqlMock } = vi.hoisted(() => ({
+  getSqlMock: vi.fn(),
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  getSql: getSqlMock,
+}));
 
 function event(
   slug: string,
@@ -167,6 +176,70 @@ describe("event archive batch", () => {
         graceMs: 24 * 60 * 60_000,
       }),
     );
+  });
+
+  it("sends the tombstone cutoff as typed text through the Drizzle-mutated raw client", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    const queries: { text: string; parameters: unknown[] }[] = [];
+    const invalidArgument = Object.assign(
+      new TypeError("Date reached postgres-js Buffer.byteLength"),
+      { code: "ERR_INVALID_ARG_TYPE" },
+    );
+    const tx = (
+      strings: TemplateStringsArray,
+      ...parameters: unknown[]
+    ): Promise<unknown[]> => {
+      const text = strings.join("$parameter");
+      queries.push({ text, parameters });
+      // Drizzle installs a transparent timestamptz serializer on the shared
+      // postgres-js client. Model the production failure mode so this test
+      // fails if cleanup ever hands the raw client a Date again.
+      if (parameters.some((parameter) => parameter instanceof Date)) {
+        throw invalidArgument;
+      }
+      if (text.includes("count(*) filter")) {
+        return Promise.resolve([
+          { upserted: 1, ignored_lifecycle_only: 0 },
+        ]);
+      }
+      return Promise.resolve([]);
+    };
+    const sql = {
+      begin: async (work: (transaction: typeof tx) => Promise<unknown>) =>
+        work(tx),
+    };
+    getSqlMock.mockReturnValue(sql);
+
+    try {
+      const result = await syncEventArchiveBatch(
+        [event("first-saturday-art-walk-2026-08-01", "publisher-uid-44")],
+        {
+          successfulSources: ["celebrate"],
+          seenSourceIdentities: [
+            { source: "celebrate", source_uid: "publisher-uid-44" },
+          ],
+        },
+      );
+
+      expect(result).toMatchObject({
+        complete: true,
+        recordsComplete: true,
+        tombstonesEnabled: true,
+        failure: null,
+      });
+      const cleanup = queries.find((query) =>
+        query.text.includes("insert into public.event_tombstones"),
+      );
+      expect(cleanup?.text).toContain("$parameter::timestamptz");
+      expect(cleanup?.parameters).toContain("2026-07-28T00:00:00.000Z");
+      expect(
+        cleanup?.parameters.some((parameter) => parameter instanceof Date),
+      ).toBe(false);
+    } finally {
+      getSqlMock.mockReset();
+      vi.useRealTimers();
+    }
   });
 
   it("reports a rejected tombstone cleanup without mislabeling it as a timeout", async () => {

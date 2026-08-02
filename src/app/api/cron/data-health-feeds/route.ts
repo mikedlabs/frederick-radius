@@ -20,6 +20,7 @@ import {
   withDeadlineOutcome,
 } from "@/lib/promise-deadline";
 import { DATA_HEALTH_FEEDS_RUN } from "@/lib/quality/data-health-phases";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,19 @@ const FAILED_LIVE_RESULT: LiveResult = {
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
+
+  return monitorCronResponse(
+    "data-health-feeds",
+    {
+      schedule: "5 */2 * * *",
+      checkinMarginMinutes: 10,
+      maxRuntimeMinutes: 2,
+    },
+    () => runDataHealthFeeds(request),
+  );
+}
+
+async function runDataHealthFeeds(request: Request) {
   const startedAt = Date.now();
 
   // These three phases are independent: the heartbeat insert, historical

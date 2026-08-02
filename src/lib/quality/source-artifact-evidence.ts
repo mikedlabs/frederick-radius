@@ -6,6 +6,7 @@ import type { SourceEvidence } from "./source-ledger";
 
 type TimestampedSource = {
   source?: { fetchedAt?: unknown };
+  commerce_source?: { checkedAt?: unknown };
 };
 
 type TransitArtifact = {
@@ -24,6 +25,18 @@ export type ArtifactEvidenceInput = {
    */
   timestampCoverage?: "records" | "artifact";
 };
+
+/**
+ * Return the timestamp that truthfully covers one published business-info
+ * row. Editorial extraction is the primary evidence. Commerce verification is
+ * a per-row fallback only when editorial evidence is absent; a row with
+ * neither timestamp still makes the complete artifact fail closed.
+ */
+export function businessInfoRowEvidenceTimestamp(
+  row: TimestampedSource,
+): unknown {
+  return row.source?.fetchedAt ?? row.commerce_source?.checkedAt;
+}
 
 function oldestTimestamp(values: readonly unknown[]): string | null {
   let oldest: { iso: string; time: number } | null = null;
@@ -88,7 +101,7 @@ export function bundledSourceArtifactEvidence(): SourceEvidence[] {
     {
       sourceKey: "business_info_extraction",
       timestamps: Object.values(businessInfo).map(
-        (row) => row.source?.fetchedAt,
+        businessInfoRowEvidenceTimestamp,
       ),
       recordCount: Object.keys(businessInfo).length,
     },

@@ -29,6 +29,17 @@ describe("GET /api/health", () => {
         stale: 0,
         attention: 0,
         unknown: 0,
+        diagnostics: {
+          upstreamUnreachable: 0,
+          collectionFailed: 0,
+          unconfigured: 0,
+          invalidEvidence: 0,
+          awaitingPublish: 0,
+          requiredEmpty: 0,
+          running: 0,
+          reachableUnvalidated: 0,
+          neverObserved: 0,
+        },
         lastPublishedAt: "2026-07-28T15:55:00.000Z",
       },
     });

@@ -20,7 +20,12 @@ import { execSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MARC_STOP_IDS } from "../src/data/marc-stations";
+import { MARC_STATIONS, MARC_STOP_IDS } from "../src/data/marc-stations";
+import {
+  assertTransitValidation,
+  validateMarcGtfsRows,
+  validateMarcScheduleArtifact,
+} from "./lib/transit-data-validation";
 
 const GTFS_URL = "https://feeds.mta.maryland.gov/gtfs/marc";
 const OUT = join(process.cwd(), "src/data/marc-schedule.json");
@@ -62,6 +67,11 @@ function toMinutes(hms: string): number {
   return h * 60 + m;
 }
 
+function gtfsDateIso(value: string): string | undefined {
+  if (!/^\d{8}$/.test(value)) return undefined;
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+}
+
 function main() {
   const dir = mkdtempSync(join(tmpdir(), "marc-gtfs-"));
   try {
@@ -84,9 +94,36 @@ function main() {
       // feed_info.txt is optional in GTFS
     }
 
+    const routeRows = parseCsv(read("routes.txt"));
+    const stopRows = parseCsv(read("stops.txt"));
+    const calendarRows = parseCsv(read("calendar.txt"));
+    let calendarDateRows: Record<string, string>[] = [];
+    try {
+      calendarDateRows = parseCsv(read("calendar_dates.txt"));
+    } catch {
+      // calendar_dates.txt is optional in GTFS
+    }
+    const tripRows = parseCsv(read("trips.txt"));
+    const stopTimeRows = parseCsv(read("stop_times.txt"));
+
+    assertTransitValidation(
+      "MARC source GTFS",
+      validateMarcGtfsRows(
+        {
+          routes: routeRows,
+          stops: stopRows,
+          trips: tripRows,
+          stopTimes: stopTimeRows,
+          calendar: calendarRows,
+          calendarDates: calendarDateRows,
+        },
+        MARC_STOP_IDS,
+      ),
+    );
+
     // calendar: service_id -> weekday flags (mon..sun) + date range
     const calendar: Record<string, { days: number[]; start: string; end: string }> = {};
-    for (const r of parseCsv(read("calendar.txt"))) {
+    for (const r of calendarRows) {
       calendar[r.service_id] = {
         days: [
           +r.monday, +r.tuesday, +r.wednesday, +r.thursday, +r.friday,
@@ -99,26 +136,22 @@ function main() {
 
     // calendar_dates: exception_type 1 = added, 2 = removed, per date
     const exceptions: Record<string, { added: string[]; removed: string[] }> = {};
-    try {
-      for (const r of parseCsv(read("calendar_dates.txt"))) {
-        const d = (exceptions[r.date] ??= { added: [], removed: [] });
-        if (r.exception_type === "1") d.added.push(r.service_id);
-        else if (r.exception_type === "2") d.removed.push(r.service_id);
-      }
-    } catch {
-      // calendar_dates.txt is optional
+    for (const r of calendarDateRows) {
+      const d = (exceptions[r.date] ??= { added: [], removed: [] });
+      if (r.exception_type === "1") d.added.push(r.service_id);
+      else if (r.exception_type === "2") d.removed.push(r.service_id);
     }
 
     // trips: trip_id -> { service_id, headsign }
     const trips: Record<string, { svc: string; head: string }> = {};
-    for (const r of parseCsv(read("trips.txt"))) {
+    for (const r of tripRows) {
       trips[r.trip_id] = { svc: r.service_id, head: r.trip_headsign };
     }
 
     // stop_times: keep only the county stop_ids, join to trips.
     type Dep = { t: string; min: number; svc: string; head: string; trip: string };
     const stops: Record<string, Dep[]> = {};
-    for (const r of parseCsv(read("stop_times.txt"))) {
+    for (const r of stopTimeRows) {
       if (!MARC_STOP_IDS.has(r.stop_id)) continue;
       const trip = trips[r.trip_id];
       if (!trip) continue;
@@ -143,15 +176,43 @@ function main() {
         .sort((a, b) => a.min - b.min);
     }
 
+    const generatedAt = new Date().toISOString().slice(0, 10);
+    const serviceDates = [
+      ...Object.values(calendar).flatMap((service) => [
+        service.start,
+        service.end,
+      ]),
+      ...Object.keys(exceptions),
+    ]
+      .map(gtfsDateIso)
+      .filter((date): date is string => Boolean(date))
+      .sort();
     const payload = {
       source: GTFS_URL,
       feedDate,
+      generatedAt,
+      staticFeed: {
+        sourceUrl: GTFS_URL,
+        fetchedOn: generatedAt,
+        serviceWindowStart: serviceDates[0],
+        serviceWindowEnd: serviceDates.at(-1),
+      },
       stations: Object.keys(stops).length,
       departures: Object.values(stops).reduce((n, a) => n + a.length, 0),
       calendar,
       exceptions,
       stops,
     };
+    assertTransitValidation(
+      "MARC generated schedule",
+      validateMarcScheduleArtifact(
+        payload,
+        MARC_STATIONS.flatMap((station) => [
+          { id: station.stopIds.eb, lat: station.lat, lng: station.lng },
+          { id: station.stopIds.wb, lat: station.lat, lng: station.lng },
+        ]),
+      ),
+    );
     writeFileSync(OUT, JSON.stringify(payload, null, 2) + "\n");
     console.log(
       `Wrote ${OUT}: ${payload.stations} stations, ${payload.departures} departures.`,

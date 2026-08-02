@@ -94,6 +94,7 @@ jobs:
         if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
         run: |
           set -euo pipefail
+          install -D -m 0644 src/data/venue-event-source-inventory.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-inventory.json"
           install -D -m 0644 src/data/venue-events.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-events.json"
           install -D -m 0644 src/data/venue-event-source-state.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-state.json"
 
@@ -124,6 +125,7 @@ jobs:
       base_sha: ${{ github.sha }}
       branch: bot/venue-event-refresh
       allowed_paths: |
+        src/data/venue-event-source-inventory.json
         src/data/venue-events.json
         src/data/venue-event-source-state.json
       commit_message: "data: refresh venue events (automated)"

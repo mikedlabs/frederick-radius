@@ -28,6 +28,18 @@ export type PublicSourceHealth = {
   stale: number | null;
   attention: number | null;
   unknown: number | null;
+  /** Additive detail for operators; legacy aggregate fields remain stable. */
+  diagnostics: {
+    upstreamUnreachable: number;
+    collectionFailed: number;
+    unconfigured: number;
+    invalidEvidence: number;
+    awaitingPublish: number;
+    requiredEmpty: number;
+    running: number;
+    reachableUnvalidated: number;
+    neverObserved: number;
+  } | null;
   lastPublishedAt: string | null;
 };
 
@@ -143,6 +155,8 @@ export function summarizePublicSourceHealth(
   const unknown = active.filter((row) =>
     UNKNOWN_STATES.has(row.state),
   ).length;
+  const countReason = (reasonCode: SourceLedgerRow["reasonCode"]) =>
+    active.filter((row) => row.reasonCode === reasonCode).length;
 
   return {
     status:
@@ -155,6 +169,19 @@ export function summarizePublicSourceHealth(
     stale,
     attention,
     unknown,
+    diagnostics: {
+      upstreamUnreachable: countReason("upstream_unreachable"),
+      collectionFailed: countReason("collection_failed"),
+      unconfigured: countReason("configuration_missing"),
+      invalidEvidence: countReason("evidence_timestamp_invalid"),
+      awaitingPublish: countReason("publication_missing"),
+      requiredEmpty: countReason("publication_required_empty"),
+      running: countReason("collection_running"),
+      reachableUnvalidated: countReason(
+        "upstream_reachable_validation_missing",
+      ),
+      neverObserved: countReason("source_not_observed"),
+    },
     lastPublishedAt: latestIso(
       active.map((row) => row.lastPublishedAt),
     ),
@@ -221,6 +248,7 @@ export async function getPublicHealthSnapshot(
     stale: null,
     attention: null,
     unknown: null,
+    diagnostics: null,
     lastPublishedAt: null,
   };
 

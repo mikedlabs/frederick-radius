@@ -68,6 +68,43 @@ export type SourceLedgerState =
   | "healthy"
   | "inactive";
 
+/**
+ * Stable, machine-readable diagnosis for the row's current state.
+ *
+ * `state` is the established public/admin compatibility contract. This code
+ * adds the missing operational detail, especially for legacy `unknown` rows:
+ * an upstream that answered a bounded HTTP check is materially different from
+ * a source that has never been observed, even though neither is publication
+ * proof.
+ */
+export type SourceLedgerReasonCode =
+  | "upstream_unreachable"
+  | "collection_failed"
+  | "collection_running"
+  | "configuration_missing"
+  | "evidence_timestamp_invalid"
+  | "publication_stale"
+  | "publication_missing"
+  | "publication_required_empty"
+  | "upstream_reachable_validation_missing"
+  | "source_not_observed"
+  | "publication_empty_valid"
+  | "publication_current"
+  | "source_inactive";
+
+export type SourceLedgerRecommendedAction =
+  | "retry_upstream"
+  | "repair_collection"
+  | "inspect_running_collection"
+  | "configure_source"
+  | "repair_evidence_timestamp"
+  | "refresh_publication"
+  | "publish_collected_data"
+  | "investigate_empty_publication"
+  | "record_validation_or_publication"
+  | "run_collection"
+  | "none";
+
 export type SourceFreshness = {
   state: "current" | "stale" | "not_applicable" | "unknown" | "invalid";
   ageHours: number | null;
@@ -86,6 +123,13 @@ export type SourceLedgerRow = {
   state: SourceLedgerState;
   available: boolean;
   reason: string;
+  reasonCode: SourceLedgerReasonCode;
+  recommendedAction: SourceLedgerRecommendedAction;
+  /** Freshest valid evidence timestamp of any kind, including reachability. */
+  lastObservedAt: string | null;
+  /** Reachability is reported separately and never counts as publication. */
+  lastReachabilityAt: string | null;
+  lastReachabilityOutcome: SourceEvidenceOutcome | null;
   lastAttemptAt: string | null;
   lastAttemptOutcome: SourceEvidenceOutcome | null;
   lastSuccessAt: string | null;
@@ -217,6 +261,7 @@ function sourceReason(
     manifestStatus: string;
     missingSettings: string[];
     error: string | null;
+    reasonCode: SourceLedgerReasonCode;
   },
 ): string {
   switch (state) {
@@ -239,13 +284,94 @@ function sourceReason(
     case "required_empty":
       return "The source succeeded with no rows, but this source requires records.";
     case "unknown":
-      return "No validated collection or publication evidence is recorded.";
+      return options.reasonCode === "upstream_reachable_validation_missing"
+        ? "The upstream answered a reachability check, but no validated collection or publication evidence is recorded."
+        : "No source observation, validated collection, or publication evidence is recorded.";
     case "healthy_empty":
       return "The source answered successfully with no rows. An empty result is valid for this source.";
     case "healthy":
       return "The source has current published evidence.";
     case "inactive":
       return `The manifest keeps this source ${options.manifestStatus.replace(/_/g, " ")}.`;
+  }
+}
+
+function sourceDiagnosis(
+  state: SourceLedgerState,
+  options: {
+    latestAttemptKind: SourceEvidenceKind | null;
+    latestReachabilityOutcome: SourceEvidenceOutcome | null;
+  },
+): {
+  reasonCode: SourceLedgerReasonCode;
+  recommendedAction: SourceLedgerRecommendedAction;
+} {
+  switch (state) {
+    case "failing":
+      return options.latestAttemptKind === "reachability_probe"
+        ? {
+            reasonCode: "upstream_unreachable",
+            recommendedAction: "retry_upstream",
+          }
+        : {
+            reasonCode: "collection_failed",
+            recommendedAction: "repair_collection",
+          };
+    case "running":
+      return {
+        reasonCode: "collection_running",
+        recommendedAction: "inspect_running_collection",
+      };
+    case "unconfigured":
+      return {
+        reasonCode: "configuration_missing",
+        recommendedAction: "configure_source",
+      };
+    case "invalid_evidence":
+      return {
+        reasonCode: "evidence_timestamp_invalid",
+        recommendedAction: "repair_evidence_timestamp",
+      };
+    case "stale":
+      return {
+        reasonCode: "publication_stale",
+        recommendedAction: "refresh_publication",
+      };
+    case "awaiting_publish":
+      return {
+        reasonCode: "publication_missing",
+        recommendedAction: "publish_collected_data",
+      };
+    case "required_empty":
+      return {
+        reasonCode: "publication_required_empty",
+        recommendedAction: "investigate_empty_publication",
+      };
+    case "unknown":
+      return options.latestReachabilityOutcome === "success"
+        ? {
+            reasonCode: "upstream_reachable_validation_missing",
+            recommendedAction: "record_validation_or_publication",
+          }
+        : {
+            reasonCode: "source_not_observed",
+            recommendedAction: "run_collection",
+          };
+    case "healthy_empty":
+      return {
+        reasonCode: "publication_empty_valid",
+        recommendedAction: "none",
+      };
+    case "healthy":
+      return {
+        reasonCode: "publication_current",
+        recommendedAction: "none",
+      };
+    case "inactive":
+      return {
+        reasonCode: "source_inactive",
+        recommendedAction: "none",
+      };
   }
 }
 
@@ -314,13 +440,44 @@ export function buildSourceLedger(
     .map((source): SourceLedgerRow => {
       const sourceEvidence = evidenceBySource.get(source.id) ?? [];
       const config = configBySource.get(source.id);
+      const nowMs = now.getTime();
+      const futureAttemptObserved = sourceEvidence.some((item) => {
+        const attemptedMs = timestamp(item.attemptedAt);
+        return (
+          attemptedMs !== null
+          && attemptedMs > nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS
+        );
+      });
+      // `lastObservedAt` and reachability fields promise valid observations.
+      // Keep future-dated evidence available for the invalid-evidence
+      // diagnosis, but never project it as the latest real observation.
+      const validObservations = sourceEvidence.filter((item) => {
+        const attemptedMs = timestamp(item.attemptedAt);
+        return (
+          attemptedMs !== null
+          && attemptedMs <= nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS
+        );
+      });
+      const latestObservation = freshest(
+        validObservations,
+        (item) => item.attemptedAt,
+      );
+      const latestReachability = freshest(
+        validObservations.filter(
+          (item) => item.kind === "reachability_probe",
+        ),
+        (item) => item.attemptedAt,
+      );
       // A successful HTTP reachability check proves only that an upstream
       // endpoint answered. It must not clear a parser/publisher failure or
-      // become a collection success. A failed reachability check remains
-      // operationally relevant and is allowed to put the source in failing.
+      // become a collection success. Within the reachability layer, however,
+      // only the newest probe is current evidence: a later success must retire
+      // an older outage instead of leaving the source permanently failing.
       const stateEvidence = sourceEvidence.filter(
-        (item) =>
-          item.kind !== "reachability_probe" || item.outcome === "failure",
+        (item) => {
+          if (item.kind !== "reachability_probe") return true;
+          return item === latestReachability && item.outcome !== "success";
+        },
       );
       const latestAttempt = freshest(
         stateEvidence,
@@ -357,8 +514,8 @@ export function buildSourceLedger(
       const hasFutureEvidence = [attemptMs, successMs, publishedMs].some(
         (value) =>
           value !== null &&
-          value > now.getTime() + MAX_FUTURE_EVIDENCE_SKEW_MS,
-      );
+          value > nowMs + MAX_FUTURE_EVIDENCE_SKEW_MS,
+      ) || futureAttemptObserved;
       if (source.status !== "active") {
         state = "inactive";
       } else if (config?.configured === false) {
@@ -399,6 +556,11 @@ export function buildSourceLedger(
         state = "healthy";
       }
 
+      const diagnosis = sourceDiagnosis(state, {
+        latestAttemptKind: latestAttempt?.kind ?? null,
+        latestReachabilityOutcome: latestReachability?.outcome ?? null,
+      });
+
       return {
         id: source.id,
         name: source.name,
@@ -414,7 +576,13 @@ export function buildSourceLedger(
           manifestStatus: source.status,
           missingSettings: config?.missingSettings ?? [],
           error: latestError,
+          reasonCode: diagnosis.reasonCode,
         }),
+        reasonCode: diagnosis.reasonCode,
+        recommendedAction: diagnosis.recommendedAction,
+        lastObservedAt: latestObservation?.attemptedAt ?? null,
+        lastReachabilityAt: latestReachability?.attemptedAt ?? null,
+        lastReachabilityOutcome: latestReachability?.outcome ?? null,
         lastAttemptAt,
         lastAttemptOutcome: latestAttempt?.outcome ?? null,
         lastSuccessAt,

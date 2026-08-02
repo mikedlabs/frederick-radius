@@ -120,7 +120,170 @@ describe("source health ledger", () => {
       configured: true,
       available: false,
       state: "unknown",
+      reasonCode: "source_not_observed",
+      recommendedAction: "run_collection",
+      lastObservedAt: null,
+      lastReachabilityAt: null,
       lastAttemptAt: null,
+    });
+  });
+
+  it("turns reachability-only unknown into an actionable diagnosis", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [{
+        sourceKey: "county",
+        kind: "reachability_probe",
+        attemptedAt: "2026-07-28T11:45:00.000Z",
+        outcome: "success",
+      }],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "unknown",
+      available: false,
+      reasonCode: "upstream_reachable_validation_missing",
+      recommendedAction: "record_validation_or_publication",
+      lastObservedAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityOutcome: "success",
+      lastAttemptAt: null,
+      lastPublishedAt: null,
+    });
+    expect(row.reason).toContain("upstream answered a reachability check");
+  });
+
+  it("retires an older reachability failure after a newer successful probe", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T10:45:00.000Z",
+          outcome: "failure",
+          error: "The upstream endpoint timed out.",
+        },
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "success",
+        },
+      ],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "unknown",
+      available: false,
+      reasonCode: "upstream_reachable_validation_missing",
+      recommendedAction: "record_validation_or_publication",
+      lastObservedAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityOutcome: "success",
+      lastAttemptAt: null,
+      lastAttemptOutcome: null,
+      latestError: null,
+    });
+  });
+
+  it("does not let reachability recovery clear an unresolved parser failure", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [
+        {
+          sourceKey: "county",
+          kind: "ingest_run",
+          attemptedAt: "2026-07-28T10:45:00.000Z",
+          outcome: "failure",
+          error: "Parser rejected the response.",
+        },
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "success",
+        },
+      ],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "failing",
+      reasonCode: "collection_failed",
+      recommendedAction: "repair_collection",
+      lastReachabilityOutcome: "success",
+      lastAttemptAt: "2026-07-28T10:45:00.000Z",
+      lastAttemptOutcome: "failure",
+      latestError: "Parser rejected the response.",
+    });
+  });
+
+  it("keeps an in-progress reachability observation out of never-observed", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [{
+        sourceKey: "county",
+        kind: "reachability_probe",
+        attemptedAt: "2026-07-28T11:45:00.000Z",
+        outcome: "running",
+      }],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "running",
+      reasonCode: "collection_running",
+      recommendedAction: "inspect_running_collection",
+      lastObservedAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityOutcome: "running",
+    });
+  });
+
+  it("distinguishes an upstream outage from a parser or collection failure", () => {
+    const [upstream, collection] = buildSourceLedger(
+      [
+        source({ id: "upstream", evidenceAliases: ["upstream"] }),
+        source({ id: "collection", evidenceAliases: ["collection"] }),
+      ],
+      [
+        {
+          sourceKey: "upstream",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "failure",
+        },
+        {
+          sourceKey: "collection",
+          kind: "ingest_run",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "failure",
+        },
+      ],
+      [
+        configured({ sourceId: "upstream" }),
+        configured({ sourceId: "collection" }),
+      ],
+      NOW,
+    ).sort((a, b) => b.id.localeCompare(a.id));
+
+    expect(upstream).toMatchObject({
+      id: "upstream",
+      state: "failing",
+      reasonCode: "upstream_unreachable",
+      recommendedAction: "retry_upstream",
+    });
+    expect(collection).toMatchObject({
+      id: "collection",
+      state: "failing",
+      reasonCode: "collection_failed",
+      recommendedAction: "repair_collection",
     });
   });
 
@@ -253,6 +416,39 @@ describe("source health ledger", () => {
     expect(row.state).toBe("invalid_evidence");
     expect(row.available).toBe(false);
     expect(row.freshness.state).toBe("invalid");
+  });
+
+  it("rejects future reachability without exposing it as the latest observation", () => {
+    const [row] = buildSourceLedger(
+      [source()],
+      [
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-28T11:45:00.000Z",
+          outcome: "success",
+        },
+        {
+          sourceKey: "county",
+          kind: "reachability_probe",
+          attemptedAt: "2026-07-29T11:45:00.000Z",
+          outcome: "success",
+        },
+      ],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "invalid_evidence",
+      available: false,
+      reasonCode: "evidence_timestamp_invalid",
+      recommendedAction: "repair_evidence_timestamp",
+      lastObservedAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityAt: "2026-07-28T11:45:00.000Z",
+      lastReachabilityOutcome: "success",
+      lastAttemptAt: null,
+    });
   });
 
   it("keeps non-active manifest rows out of operational health", () => {

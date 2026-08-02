@@ -35,6 +35,7 @@ import {
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
 import { isGooglePlaceId } from "@/lib/provenance";
+import { monitorCronResponse } from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,18 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
+  return monitorCronResponse(
+    "hours-refresh",
+    {
+      schedule: "0 8 * * *",
+      checkinMarginMinutes: 10,
+      maxRuntimeMinutes: 6,
+    },
+    () => runHoursRefresh(request),
+  );
+}
+
+async function runHoursRefresh(request: Request) {
   if (process.env.HOURS_REFRESH_CRON !== "1") {
     return NextResponse.json({
       enabled: false,
