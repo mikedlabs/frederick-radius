@@ -33,6 +33,7 @@ const DEFAULT_REPORT_DIRECTORY = resolve(
 );
 const CREDITS_PER_SOURCE = 1;
 const ABSOLUTE_MONTHLY_CREDIT_CAP = 500;
+const REVIEW_EXPIRY_MS = 14 * 24 * 60 * 60 * 1_000;
 
 export type SourceWatchStatus =
   "new" | "same" | "changed" | "removed" | "error";
@@ -76,6 +77,8 @@ type StoredObservation = {
   status: SourceWatchStatus;
   errorCode?: string;
   httpStatus?: number;
+  /** A reviewed id moved to a new exact URL but has not established a baseline. */
+  identityResetAt?: string;
 };
 
 type SourceWatchState = {
@@ -126,6 +129,29 @@ export type SourceWatchReport = {
   summary: Record<SourceWatchStatus, number>;
   sourcesChecked: Array<{ id: string; url: string }>;
   candidates: SourceWatchCandidate[];
+};
+
+export type SourceWatchIssueStatus =
+  "baseline" | "same" | "changed" | "removed" | "error" | "url-baseline";
+
+export type SourceWatchIssueItem = {
+  sourceId: string;
+  sourceUrl: string;
+  checkedAt: string;
+  expiresAt: string;
+  status: SourceWatchIssueStatus;
+  previousHash?: string;
+  currentHash?: string;
+  textLength?: number;
+  linkCount?: number;
+  errorCode?: string;
+  httpStatus?: number;
+};
+
+export type SourceWatchIssueSignal = {
+  schemaVersion: 1;
+  generatedAt: string;
+  items: SourceWatchIssueItem[];
 };
 
 type FirecrawlPageFetcher = (
@@ -663,7 +689,9 @@ export async function runSourceWatch(
 ): Promise<{
   reportPath: string;
   statePath: string;
+  issueSignalPath: string;
   report: SourceWatchReport;
+  issueSignal: SourceWatchIssueSignal;
 }> {
   const now = options.now?.() ?? new Date();
   if (Number.isNaN(now.getTime())) {
@@ -673,6 +701,7 @@ export async function runSourceWatch(
     );
   }
   const checkedAt = now.toISOString();
+  const expiresAt = new Date(now.getTime() + REVIEW_EXPIRY_MS).toISOString();
   const month = checkedAt.slice(0, 7);
   const loadedConfig =
     options.config ??
@@ -712,15 +741,32 @@ export async function runSourceWatch(
     const fetchPage = options.fetchPage ?? fetchFirecrawlPage;
     const summary = emptySummary();
     const candidates: SourceWatchCandidate[] = [];
+    const issueItems: SourceWatchIssueItem[] = [];
 
     for (const source of config.sources) {
-      const previous = state.observations[source.id];
+      const storedPrevious = state.observations[source.id];
+      const sourceUrlChanged = Boolean(
+        storedPrevious && storedPrevious.url !== source.url,
+      );
+      // A hash from a different exact page is never comparable. If the first
+      // fetch of the new URL fails, identityResetAt keeps the fresh baseline
+      // pending until a successful observation can make it review-visible.
+      const previous = sourceUrlChanged ? undefined : storedPrevious;
+      const identityBaseline = Boolean(
+        sourceUrlChanged ||
+        (previous?.identityResetAt && !previous.contentHash),
+      );
       let observedFinalUrl: string | undefined;
       try {
         const snapshot = await fetchPage(source.url, {
           timeoutMs: config.limits.timeoutMs,
           allowHttp: source.httpException !== undefined,
           requireReportedFinalUrl: true,
+          // Change detection must compare a current observation, never
+          // Firecrawl's default cached copy, and the provider must not retain
+          // the fetched page in its cache.
+          maxAgeMs: 0,
+          storeInCache: false,
           // Keep each allowlisted source to the single credit reserved above.
           proxy: "basic",
         });
@@ -753,6 +799,23 @@ export async function runSourceWatch(
           status,
         };
         state.observations[source.id] = observation;
+        issueItems.push({
+          sourceId: source.id,
+          sourceUrl: source.url,
+          checkedAt,
+          expiresAt,
+          status: identityBaseline
+            ? "url-baseline"
+            : status === "new"
+              ? "baseline"
+              : status,
+          ...(previous?.contentHash && status === "changed"
+            ? { previousHash: previous.contentHash }
+            : {}),
+          currentHash,
+          textLength: snapshot.markdown.length,
+          linkCount: snapshot.links.length,
+        });
 
         if (status !== "same") {
           candidates.push({
@@ -786,13 +849,28 @@ export async function runSourceWatch(
         const errorCode =
           error instanceof FirecrawlRestError ? error.code : "SOURCE_REJECTED";
         state.observations[source.id] = {
-          ...previous,
+          ...(sourceUrlChanged ? {} : previous),
           url: source.url,
           lastCheckedAt: checkedAt,
           status,
           errorCode,
           httpStatus,
+          ...(identityBaseline
+            ? { identityResetAt: previous?.identityResetAt ?? checkedAt }
+            : {}),
         };
+        issueItems.push({
+          sourceId: source.id,
+          sourceUrl: source.url,
+          checkedAt,
+          expiresAt,
+          status,
+          ...(!sourceUrlChanged && previous?.contentHash
+            ? { previousHash: previous.contentHash }
+            : {}),
+          errorCode,
+          ...(httpStatus === undefined ? {} : { httpStatus }),
+        });
         candidates.push({
           source,
           status,
@@ -800,7 +878,7 @@ export async function runSourceWatch(
           // Preserve a provider-reported redirect for review without accepting
           // it into the last-known-good observation state.
           finalUrl: observedFinalUrl ?? previous?.finalUrl,
-          previousHash: previous?.contentHash,
+          previousHash: sourceUrlChanged ? undefined : previous?.contentHash,
           errorCode,
           httpStatus,
           error: safeErrorMessage(error),
@@ -833,8 +911,21 @@ export async function runSourceWatch(
       candidates,
     };
     const reportPath = join(reportDirectory, reportFileName(now));
+    const issueSignalPath = join(reportDirectory, "github-issue.json");
+    const issueSignal: SourceWatchIssueSignal = {
+      schemaVersion: 1,
+      generatedAt: checkedAt,
+      items: issueItems,
+    };
     await writeJsonAtomic(reportPath, report);
-    return { reportPath, statePath, report };
+    await writeJsonAtomic(issueSignalPath, issueSignal);
+    return {
+      reportPath,
+      statePath,
+      issueSignalPath,
+      report,
+      issueSignal,
+    };
   } finally {
     await lock.release();
   }

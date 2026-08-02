@@ -22,6 +22,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { isIP } from "node:net";
 import { fileURLToPath } from "node:url";
 import {
   searchTavilyCandidates,
@@ -38,6 +39,22 @@ const REPORT_NAME = "source-scout-latest.json";
 const CACHE_NAME = "source-scout-cache.json";
 const USAGE_NAME = "source-scout-usage.json";
 const LOCK_NAME = "source-scout.lock";
+const ISSUE_SIGNAL_NAME = "source-scout-github-issue.json";
+const ISSUE_REVIEW_EXPIRY_MS = 30 * 24 * 60 * 60 * 1_000;
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+const ISSUE_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const SOURCE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const PRIVATE_HOST_SUFFIXES = [
+  ".alt",
+  ".arpa",
+  ".example",
+  ".internal",
+  ".invalid",
+  ".local",
+  ".localhost",
+  ".onion",
+  ".test",
+] as const;
 
 type SourceScoutLimits = {
   maxRequestsPerRun: number;
@@ -99,7 +116,7 @@ export type ScoutCandidate = PersistedScoutCandidate & {
   reviewFor: string[];
 };
 
-type QueryRunStatus =
+export type QueryRunStatus =
   | "planned"
   | "fetched"
   | "cache"
@@ -171,6 +188,34 @@ export type SourceScoutReport = {
   queries: SourceScoutQueryRun[];
 };
 
+export type SourceScoutIssueCandidate = {
+  url: string;
+  domain: string;
+  score: number;
+};
+
+export type SourceScoutIssueItem = {
+  profileId: string;
+  queryId: string;
+  observedAt: string;
+  expiresAt: string;
+  status: Exclude<QueryRunStatus, "planned">;
+  candidateFingerprint: string;
+  candidateCount: number;
+  candidates: SourceScoutIssueCandidate[];
+  estimatedCredits: number;
+  requestId: string | null;
+  apiReportedCredits: number | null;
+  errorCode: string | null;
+  errorStatus: number | null;
+};
+
+export type SourceScoutIssueSignal = {
+  schemaVersion: 1;
+  generatedAt: string;
+  items: SourceScoutIssueItem[];
+};
+
 type CacheEntry = {
   cacheKey: string;
   fetchedAt: string;
@@ -221,6 +266,8 @@ export type RunSourceScoutResult = {
   cachePath: string;
   usagePath: string;
   lockPath: string;
+  issueSignalPath: string;
+  issueSignal: SourceScoutIssueSignal | null;
   wroteFiles: boolean;
 };
 
@@ -239,6 +286,16 @@ function requireString(value: unknown, path: string): string {
     throw new Error(`${path} must be a non-empty string.`);
   }
   return value.trim();
+}
+
+function requireSourceId(value: unknown, path: string): string {
+  const id = requireString(value, path);
+  if (id.length > 80 || !SOURCE_ID_PATTERN.test(id)) {
+    throw new Error(
+      `${path} must be a lowercase kebab-case ID with at most 80 characters.`,
+    );
+  }
+  return id;
 }
 
 function requireBoolean(value: unknown, path: string): boolean {
@@ -362,7 +419,7 @@ function validateConfig(value: unknown): SourceScoutConfig {
   const profiles = value.profiles.map((rawProfile, profileIndex) => {
     const path = `profiles[${profileIndex}]`;
     if (!isObject(rawProfile)) throw new Error(`${path} must be an object.`);
-    const id = requireString(rawProfile.id, `${path}.id`);
+    const id = requireSourceId(rawProfile.id, `${path}.id`);
     if (profileIds.has(id))
       throw new Error(`Duplicate Source Scout profile: ${id}.`);
     profileIds.add(id);
@@ -376,7 +433,7 @@ function validateConfig(value: unknown): SourceScoutConfig {
       if (!isObject(rawQuery)) {
         throw new Error(`${queryPath} must be an object.`);
       }
-      const queryId = requireString(rawQuery.id, `${queryPath}.id`);
+      const queryId = requireSourceId(rawQuery.id, `${queryPath}.id`);
       if (queryIds.has(queryId)) {
         throw new Error(`Duplicate query ${queryId} in profile ${id}.`);
       }
@@ -502,12 +559,119 @@ function normalizeHost(host: string): string {
   return host
     .toLowerCase()
     .replace(/^www\./, "")
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
     .replace(/\.$/, "");
 }
 
+function isValidDomainName(host: string): boolean {
+  return (
+    host.length <= 253 &&
+    host.includes(".") &&
+    host
+      .split(".")
+      .every(
+        (label) =>
+          label.length > 0 &&
+          label.length <= 63 &&
+          /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
+      )
+  );
+}
+
+function isPublicIpv4(host: string): boolean {
+  const parts = host.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
+    return false;
+  }
+  const [first, second, third] = parts as [number, number, number, number];
+  return !(
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 0 && third === 0) ||
+    (first === 192 && second === 0 && third === 2) ||
+    (first === 192 && second === 88 && third === 99) ||
+    (first === 192 && second === 168) ||
+    (first === 198 && (second === 18 || second === 19)) ||
+    (first === 198 && second === 51 && third === 100) ||
+    (first === 203 && second === 0 && third === 113) ||
+    first >= 224
+  );
+}
+
+function parseIpv6Groups(host: string): number[] | null {
+  if (isIP(host) !== 6) return null;
+  const halves = host.toLowerCase().split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0 || (halves.length === 1 && missing !== 0)) return null;
+  const groups = [
+    ...head,
+    ...Array.from({ length: missing }, () => "0"),
+    ...tail,
+  ].map((group) => Number.parseInt(group, 16));
+  return groups.length === 8 && groups.every(Number.isFinite) ? groups : null;
+}
+
+function isPublicIpv6(host: string): boolean {
+  const groups = parseIpv6Groups(host);
+  if (!groups) return false;
+  const [first, second] = groups;
+  const ipv4Mapped =
+    groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff;
+  if (ipv4Mapped) return false;
+  return !(
+    groups.slice(0, 6).every((group) => group === 0) ||
+    (first! & 0xfe00) === 0xfc00 ||
+    (first! & 0xffc0) === 0xfe80 ||
+    (first! & 0xff00) === 0xff00 ||
+    (first === 0x64 && second === 0xff9b) ||
+    (first === 0x100 && groups.slice(1, 4).every((group) => group === 0)) ||
+    (first === 0x2001 && second === 0) ||
+    (first === 0x2001 && second === 2) ||
+    (first === 0x2001 && second === 0x0db8) ||
+    (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
+    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
+    first === 0x2002
+  );
+}
+
+function isPublicHost(host: string): boolean {
+  const normalized = normalizeHost(host);
+  const ipVersion = isIP(normalized);
+  if (ipVersion === 4) return isPublicIpv4(normalized);
+  if (ipVersion === 6) return isPublicIpv6(normalized);
+  if (
+    PRIVATE_HOST_SUFFIXES.some(
+      (suffix) => normalized === suffix.slice(1) || normalized.endsWith(suffix),
+    )
+  ) {
+    return false;
+  }
+  return isValidDomainName(normalized);
+}
+
 function sourceDomain(url: string): string | null {
+  if (url !== url.trim() || CONTROL_CHARACTER_PATTERN.test(url)) return null;
   try {
-    return normalizeHost(new URL(url).hostname);
+    const parsed = new URL(url);
+    if (
+      (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+      parsed.username ||
+      parsed.password ||
+      parsed.hash ||
+      parsed.href !== url
+    ) {
+      return null;
+    }
+    const host = normalizeHost(parsed.hostname);
+    return isPublicHost(host) ? host : null;
   } catch {
     return null;
   }
@@ -579,6 +743,116 @@ function withoutContent(
     responseTime: result.responseTime,
     credits: result.credits,
   };
+}
+
+function issueCandidateFingerprint(
+  candidates: readonly Pick<SourceScoutIssueCandidate, "url" | "domain">[],
+): string {
+  const identities = candidates
+    .map(({ url, domain }) => ({ url, domain }))
+    .sort(
+      (left, right) =>
+        left.url.localeCompare(right.url) ||
+        left.domain.localeCompare(right.domain),
+    );
+  return createHash("sha256").update(JSON.stringify(identities)).digest("hex");
+}
+
+function issueRequestId(value: string | null): string | null {
+  return value && ISSUE_REQUEST_ID_PATTERN.test(value) ? value : null;
+}
+
+function issueObservedAt(
+  query: SourceScoutQueryRun,
+  generatedAt: string,
+): string {
+  const candidateObservedAt = query.candidates[0]?.observedAt;
+  if (
+    !candidateObservedAt ||
+    query.candidates.some(
+      (candidate) => candidate.observedAt !== candidateObservedAt,
+    ) ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(
+      candidateObservedAt,
+    ) ||
+    !Number.isFinite(Date.parse(candidateObservedAt)) ||
+    new Date(candidateObservedAt).toISOString() !== candidateObservedAt ||
+    Date.parse(candidateObservedAt) > Date.parse(generatedAt)
+  ) {
+    return generatedAt;
+  }
+  return candidateObservedAt;
+}
+
+export function buildSourceScoutIssueSignal(
+  report: SourceScoutReport,
+): SourceScoutIssueSignal {
+  if (report.mode !== "live") {
+    throw new Error(
+      "Source Scout issue signals are written only for live runs.",
+    );
+  }
+  const expiresAt = new Date(
+    Date.parse(report.generatedAt) + ISSUE_REVIEW_EXPIRY_MS,
+  ).toISOString();
+  const items = report.queries.map((query): SourceScoutIssueItem => {
+    if (query.status === "planned") {
+      throw new Error(
+        `Live Source Scout query ${query.profileId}/${query.queryId} remained planned.`,
+      );
+    }
+    const candidates = query.candidates
+      .flatMap((candidate): SourceScoutIssueCandidate[] => {
+        const domain = sourceDomain(candidate.originalSourceUrl);
+        if (
+          !domain ||
+          domain !== candidate.sourceDomain ||
+          !Number.isFinite(candidate.score) ||
+          Math.abs(candidate.score) > 1_000_000
+        ) {
+          return [];
+        }
+        return [
+          {
+            url: candidate.originalSourceUrl,
+            domain,
+            score: candidate.score,
+          },
+        ];
+      })
+      .filter(
+        (candidate, index, all) =>
+          all.findIndex(({ url }) => url === candidate.url) === index,
+      )
+      .sort(
+        (left, right) =>
+          left.url.localeCompare(right.url) ||
+          left.domain.localeCompare(right.domain) ||
+          left.score - right.score,
+      );
+    return {
+      profileId: query.profileId,
+      queryId: query.queryId,
+      observedAt: issueObservedAt(query, report.generatedAt),
+      expiresAt,
+      status: query.status,
+      candidateFingerprint: issueCandidateFingerprint(candidates),
+      candidateCount: candidates.length,
+      candidates,
+      estimatedCredits: query.estimatedCredits,
+      requestId: issueRequestId(query.requestId),
+      apiReportedCredits:
+        query.apiReportedCredits !== null &&
+        Number.isFinite(query.apiReportedCredits) &&
+        query.apiReportedCredits >= 0 &&
+        query.apiReportedCredits <= 1_000
+          ? query.apiReportedCredits
+          : null,
+      errorCode: query.error?.code ?? null,
+      errorStatus: query.error?.status ?? null,
+    };
+  });
+  return { schemaVersion: 1, generatedAt: report.generatedAt, items };
 }
 
 async function readCache(cachePath: string): Promise<SourceScoutCache> {
@@ -862,6 +1136,7 @@ export async function runSourceScout(
   const cachePath = resolve(reportsDir, CACHE_NAME);
   const usagePath = resolve(reportsDir, USAGE_NAME);
   const lockPath = resolve(reportsDir, LOCK_NAME);
+  const issueSignalPath = resolve(reportsDir, ISSUE_SIGNAL_NAME);
   const now = dependencies.now?.() ?? new Date();
   const generatedAt = now.toISOString();
   const dailyKey = generatedAt.slice(0, 10);
@@ -942,6 +1217,8 @@ export async function runSourceScout(
       cachePath,
       usagePath,
       lockPath,
+      issueSignalPath,
+      issueSignal: null,
       wroteFiles: false,
     };
   }
@@ -1080,14 +1357,18 @@ export async function runSourceScout(
       }
     }
 
+    const issueSignal = buildSourceScoutIssueSignal(report);
     await writeJsonAtomic(cachePath, cache);
     await writeJsonAtomic(reportPath, report);
+    await writeJsonAtomic(issueSignalPath, issueSignal);
     return {
       report,
       reportPath,
       cachePath,
       usagePath,
       lockPath,
+      issueSignalPath,
+      issueSignal,
       wroteFiles: true,
     };
   } finally {

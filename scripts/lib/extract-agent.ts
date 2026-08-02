@@ -33,8 +33,8 @@ import {
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const DEFAULT_MODEL = process.env.EXTRACT_MODEL || "claude-haiku-4-5-20251001";
 const UA = "FrederickRadius/1.0 (+civic data ingest)";
-const DEFAULT_FIRECRAWL_FALLBACK_LIMIT = 6;
-const ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT = 20;
+const DEFAULT_FIRECRAWL_FALLBACK_LIMIT = 1;
+const ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT = 2;
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_ANTHROPIC_RETRIES = 2;
 const DEFAULT_ANTHROPIC_RETRY_DELAY_MS = 750;
@@ -89,10 +89,7 @@ function configuredFirecrawlFallbackLimit(): number {
   const requested = Number.isInteger(parsed)
     ? parsed
     : DEFAULT_FIRECRAWL_FALLBACK_LIMIT;
-  return Math.max(
-    0,
-    Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT),
-  );
+  return Math.max(0, Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT));
 }
 
 /** Reset the per-process fallback budget at the start of one operator run. */
@@ -102,10 +99,7 @@ export function resetFirecrawlFallbackUsage(limit?: number): void {
       ? configuredFirecrawlFallbackLimit()
       : Math.trunc(limit);
   firecrawlFallbackUsage = {
-    limit: Math.max(
-      0,
-      Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT),
-    ),
+    limit: Math.max(0, Math.min(requested, ABSOLUTE_FIRECRAWL_FALLBACK_LIMIT)),
     attempted: 0,
     succeeded: 0,
     failed: 0,
@@ -191,6 +185,12 @@ async function fetchFirecrawlFallback(
     const snapshot = await fetchFirecrawlPage(url, {
       allowHttp: opts.firecrawlAllowHttp === true,
       requireReportedFinalUrl: true,
+      // Recovery needs the page as it exists now. Avoid Firecrawl's default
+      // cache window and do not retain source content in provider storage.
+      maxAgeMs: 0,
+      storeInCache: false,
+      // A reserved fallback attempt must remain a single-credit scrape.
+      proxy: "basic",
     });
     if (
       !isAllowedRedirectHost(
@@ -235,9 +235,9 @@ async function fetchRenderedPage(
   url: string,
   maxChars: number,
 ): Promise<PageSnapshot | null> {
-  let browser: Awaited<ReturnType<
-    (typeof import("@playwright/test"))["chromium"]["launch"]
-  >> | null = null;
+  let browser: Awaited<
+    ReturnType<(typeof import("@playwright/test"))["chromium"]["launch"]>
+  > | null = null;
   try {
     const { chromium } = await import("@playwright/test");
     browser = await chromium.launch();
@@ -416,7 +416,10 @@ export type SquarespaceEventsFetchResult =
  * dropped rather than invented. `baseUrl` (the site origin) turns the
  * relative `fullUrl` into an absolute ticket/detail link when present.
  */
-export function parseSquarespaceEvents(json: unknown, baseUrl?: string): FeedEvent[] {
+export function parseSquarespaceEvents(
+  json: unknown,
+  baseUrl?: string,
+): FeedEvent[] {
   const root = json as { upcoming?: unknown } | null;
   const items = root && Array.isArray(root.upcoming) ? root.upcoming : [];
   const origin = (() => {
@@ -520,7 +523,9 @@ export async function fetchSquarespaceEventsResult(
  * appends `?format=json`. Returns [] on any fetch/parse failure so the
  * caller can fall back to render+model without a thrown error.
  */
-export async function fetchSquarespaceEvents(collectionUrl: string): Promise<FeedEvent[]> {
+export async function fetchSquarespaceEvents(
+  collectionUrl: string,
+): Promise<FeedEvent[]> {
   return (await fetchSquarespaceEventsResult(collectionUrl)).events;
 }
 
@@ -555,22 +560,32 @@ export async function extractJson<T = unknown>(
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const r = await (opts.fetchImpl ?? fetch)("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+    const r = await (opts.fetchImpl ?? fetch)(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: opts.model || DEFAULT_MODEL,
+          max_tokens: opts.maxTokens ?? 1500,
+          messages: [
+            {
+              role: "user",
+              content: `${preamble}${instructions}\n\nPAGE TEXT:\n${content}`,
+            },
+          ],
+        }),
+        signal: ctrl.signal,
       },
-      body: JSON.stringify({
-        model: opts.model || DEFAULT_MODEL,
-        max_tokens: opts.maxTokens ?? 1500,
-        messages: [{ role: "user", content: `${preamble}${instructions}\n\nPAGE TEXT:\n${content}` }],
-      }),
-      signal: ctrl.signal,
-    });
+    );
     if (!r.ok) {
-      console.log(`  ✗ Claude → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      console.log(
+        `  ✗ Claude → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`,
+      );
       return null;
     }
     const data = (await r.json()) as { content?: { text?: string }[] };
@@ -585,8 +600,8 @@ export async function extractJson<T = unknown>(
     }
   } catch (error) {
     const timedOut =
-      ctrl.signal.aborted
-      || (error instanceof Error && error.name === "AbortError");
+      ctrl.signal.aborted ||
+      (error instanceof Error && error.name === "AbortError");
     console.log(
       timedOut
         ? `  ✗ Claude request timed out after ${timeoutMs}ms`
@@ -751,8 +766,7 @@ async function requestAnthropicMessage(
 
     const bodyText = await responseText(response);
     const canRetry =
-      isRetryableAnthropicStatus(response.status) &&
-      attempt <= maxRetries;
+      isRetryableAnthropicStatus(response.status) && attempt <= maxRetries;
     if (!canRetry) {
       throw new AnthropicProviderError(
         `Anthropic request failed with HTTP ${response.status}`,
@@ -898,30 +912,35 @@ export async function extractJsonFromImage<T = unknown>(
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const r = await (opts.fetchImpl ?? fetch)("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+    const r = await (opts.fetchImpl ?? fetch)(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: opts.maxTokens ?? 2000,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image", source: { type: "url", url: imageUrl } },
+                { type: "text", text: `${preamble}${instructions}` },
+              ],
+            },
+          ],
+        }),
+        signal: ctrl.signal,
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: opts.maxTokens ?? 2000,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "image", source: { type: "url", url: imageUrl } },
-              { type: "text", text: `${preamble}${instructions}` },
-            ],
-          },
-        ],
-      }),
-      signal: ctrl.signal,
-    });
+    );
     if (!r.ok) {
-      console.log(`  ✗ Claude vision → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      console.log(
+        `  ✗ Claude vision → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`,
+      );
       return null;
     }
     const data = (await r.json()) as { content?: { text?: string }[] };
@@ -936,8 +955,8 @@ export async function extractJsonFromImage<T = unknown>(
     }
   } catch (error) {
     const timedOut =
-      ctrl.signal.aborted
-      || (error instanceof Error && error.name === "AbortError");
+      ctrl.signal.aborted ||
+      (error instanceof Error && error.name === "AbortError");
     console.log(
       timedOut
         ? `  ✗ Claude vision request timed out after ${timeoutMs}ms`
@@ -965,10 +984,7 @@ export const nowISO = () => new Date().toISOString();
  * stopped moving. A silent skip is the one failure mode a scheduled
  * agent must not have. Local runs still exit soft.
  */
-function failPreflight(
-  msg: string,
-  options: { failInCi: boolean },
-): boolean {
+function failPreflight(msg: string, options: { failInCi: boolean }): boolean {
   console.error(msg);
   if (options.failInCi && process.env.CI) process.exit(1);
   return false;

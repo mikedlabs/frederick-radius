@@ -22,16 +22,19 @@ type WorkflowDocument = {
     issues?: string;
     "pull-requests"?: string;
   };
-  jobs?: Record<string, {
-    "timeout-minutes"?: number;
-    "runs-on"?: string;
-    permissions?: {
-      actions?: string;
-      contents?: string;
-      issues?: string;
-      "pull-requests"?: string;
-    };
-  }>;
+  jobs?: Record<
+    string,
+    {
+      "timeout-minutes"?: number;
+      "runs-on"?: string;
+      permissions?: {
+        actions?: string;
+        contents?: string;
+        issues?: string;
+        "pull-requests"?: string;
+      };
+    }
+  >;
 };
 
 describe("scheduled data workflow contracts", () => {
@@ -161,11 +164,7 @@ describe("scheduled data workflow contracts", () => {
       "ANTHROPIC_BUSINESS_INFO_API_KEY",
       'cron: "0 8 * * *"',
     ],
-    [
-      "ingest-civic.yml",
-      "ANTHROPIC_CIVIC_API_KEY",
-      'cron: "30 8 * * *"',
-    ],
+    ["ingest-civic.yml", "ANTHROPIC_CIVIC_API_KEY", 'cron: "30 8 * * *"'],
     [
       "ingest-venues.yml",
       "ANTHROPIC_VENUE_EVENTS_API_KEY",
@@ -181,37 +180,78 @@ describe("scheduled data workflow contracts", () => {
         `ANTHROPIC_API_KEY: \${{ secrets.${secretName} }}`,
       );
       expect(workflow).toContain(schedule);
-      expect(workflow).toContain(
-        "if: ${{ github.ref == 'refs/heads/main' }}",
-      );
+      expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
       expect(workflow).not.toContain("secrets.ANTHROPIC_API_KEY");
       expect(workflow).not.toContain("ANTHROPIC_ADMIN_API_KEY");
     },
   );
 
   it.each([
-    "ingest-business-info.yml",
-    "ingest-civic.yml",
-    "ingest-venues.yml",
+    ["ingest-business-info.yml", "BUSINESS"],
+    ["ingest-civic.yml", "CIVIC"],
+    ["ingest-venues.yml", "VENUE"],
   ])(
     "%s fails closed when its optional Firecrawl fallback is misconfigured",
-    (name) => {
+    (name, scope) => {
       const workflow = workflowText(name);
 
       expect(workflow).toMatch(
-        /Verify optional Firecrawl fallback|Require venue extraction configuration/,
+        /Validate optional Firecrawl fallback|Require venue extraction configuration/,
       );
       expect(workflow).toContain(
         "FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}",
       );
       expect(workflow).toContain(
-        "FIRECRAWL_FETCH_FALLBACK: ${{ vars.FIRECRAWL_FETCH_FALLBACK || '0' }}",
+        `FIRECRAWL_FETCH_FALLBACK: \${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}`,
       );
       expect(workflow).toContain(
-        "FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.FIRECRAWL_FALLBACK_MAX_REQUESTS || '6' }}",
+        `FIRECRAWL_FALLBACK_MAX_REQUESTS: \${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}`,
       );
       expect(workflow).toContain('if [ -z "$FIRECRAWL_API_KEY" ]; then');
-      expect(workflow).toContain('"$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 20');
+      expect(workflow).toContain('"$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 2');
+      expect(workflow).toContain(
+        "group: ${{ vars." +
+          scope +
+          "_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget'",
+      );
+      expect(workflow).toContain(
+        "run-name: " +
+          (name === "ingest-venues.yml"
+            ? "Ingest venue events"
+            : name === "ingest-business-info.yml"
+              ? "Ingest business deep-info"
+              : "Ingest municipal civic data") +
+          ` (firecrawl=\${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=\${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})`,
+      );
+      expect(workflow).toContain("actions: read");
+      expect(workflow).toContain(
+        "FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}",
+      );
+      expect(workflow).toContain("Enforce shared Firecrawl fallback budget");
+      expect(workflow).toContain(
+        'require("./scripts/lib/firecrawl-fallback-budget.cjs")',
+      );
+      expect(workflow).toContain(
+        "steps.firecrawl-budget.outputs.allowed == 'true'",
+      );
+      expect(workflow).toContain(
+        "if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' }}",
+      );
+      expect(workflow).toContain(
+        "FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}",
+      );
+      expect(
+        workflow.indexOf("Enforce shared Firecrawl fallback budget"),
+      ).toBeLessThan(
+        workflow.indexOf("FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}"),
+      );
+      expect(
+        workflow.indexOf("Enforce shared Firecrawl fallback budget"),
+      ).toBeLessThan(
+        workflow.indexOf(
+          "FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed",
+        ),
+      );
     },
   );
 
@@ -223,21 +263,33 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
+  it("keeps the business Firecrawl request behind the browser fallback", () => {
+    const script = readFileSync(
+      resolve(process.cwd(), "scripts/ingest-business-info.ts"),
+      "utf8",
+    );
+    const plainFetch = script.indexOf("firecrawlFallback: false");
+    const renderedFetch = script.indexOf("render: true", plainFetch);
+
+    expect(plainFetch).toBeGreaterThan(-1);
+    expect(renderedFetch).toBeGreaterThan(plainFetch);
+  });
+
   it("fails paid enrichment jobs before installation when their required key is missing", () => {
     const google = workflowText("enrich-places.yml");
     const venue = workflowText("ingest-venues.yml");
 
-    expect(google.indexOf("Require Google enrichment configuration")).toBeLessThan(
-      google.indexOf("run: npm ci"),
-    );
+    expect(
+      google.indexOf("Require Google enrichment configuration"),
+    ).toBeLessThan(google.indexOf("run: npm ci"));
     expect(google).toContain("Missing GOOGLE_PLACES_API_KEY");
     expect(google).not.toContain("skipping enrichment");
-    expect(venue.indexOf("Require venue extraction configuration")).toBeLessThan(
-      venue.indexOf("run: npm ci"),
-    );
-    expect(venue.indexOf("Require venue extraction configuration")).toBeLessThan(
-      venue.indexOf("Install Chromium"),
-    );
+    expect(
+      venue.indexOf("Require venue extraction configuration"),
+    ).toBeLessThan(venue.indexOf("run: npm ci"));
+    expect(
+      venue.indexOf("Require venue extraction configuration"),
+    ).toBeLessThan(venue.indexOf("Install Chromium"));
     expect(venue).toContain("Missing ANTHROPIC_VENUE_EVENTS_API_KEY");
   });
 
@@ -262,7 +314,9 @@ describe("scheduled data workflow contracts", () => {
     const workflow = workflowText("data-refresh.yml");
 
     expect(workflow).toContain("ref: data-snapshots");
-    expect(workflow).toContain("cp -R .last-good-snapshot/data/clean data/clean");
+    expect(workflow).toContain(
+      "cp -R .last-good-snapshot/data/clean data/clean",
+    );
     expect(workflow).toContain("cp -R .last-good-snapshot/data/raw data/raw");
     expect(workflow).toContain("PUBLISH_OUTCOME: ${{ needs.publish.result }}");
     expect(workflow).toContain(
@@ -277,9 +331,7 @@ describe("scheduled data workflow contracts", () => {
   it("does not splice workflow input into a secret-bearing shell command", () => {
     const workflow = workflowText("ingest-business-info.yml");
 
-    expect(workflow).toContain(
-      "INGEST_LIMIT: ${{ inputs.limit || '60' }}",
-    );
+    expect(workflow).toContain("INGEST_LIMIT: ${{ inputs.limit || '60' }}");
     expect(workflow).toContain('--limit="$INGEST_LIMIT"');
     expect(workflow).not.toContain("--limit=${{");
   });
@@ -339,41 +391,56 @@ describe("scheduled data workflow contracts", () => {
     expect(producerWorkflows.length).toBe(8);
     for (const name of producerWorkflows) {
       const workflow = parse(workflowText(name)) as WorkflowDocument;
-      expect(workflow.permissions, `${name} must default to no token access`).toEqual(
-        {},
-      );
+      expect(
+        workflow.permissions,
+        `${name} must default to no token access`,
+      ).toEqual({});
       const text = workflowText(name);
       const publishers =
-        text.match(/uses: \.\/\.github\/workflows\/publish-automated-pr\.yml/g) ?? [];
+        text.match(
+          /uses: \.\/\.github\/workflows\/publish-automated-pr\.yml/g,
+        ) ?? [];
       const checkDispatches =
-        text.match(/uses: \.\/\.github\/workflows\/automated-pr-checks\.yml/g) ?? [];
+        text.match(
+          /uses: \.\/\.github\/workflows\/automated-pr-checks\.yml/g,
+        ) ?? [];
       const allowlists = text.match(/\n\s+allowed_paths:/g) ?? [];
-      const baseShas = text.match(/\n\s+base_sha: \$\{\{ github\.sha \}\}/g) ?? [];
-      const artifactUploads = text.match(
-        /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g,
-      ) ?? [];
+      const baseShas =
+        text.match(/\n\s+base_sha: \$\{\{ github\.sha \}\}/g) ?? [];
+      const artifactUploads =
+        text.match(
+          /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g,
+        ) ?? [];
       const mainGuards =
         text.match(/if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/g) ?? [];
-      const exactHeads = text.match(/head_sha: \$\{\{ needs\.[^}]+\.outputs\.pr_head_sha \}\}/g) ?? [];
+      const exactHeads =
+        text.match(
+          /head_sha: \$\{\{ needs\.[^}]+\.outputs\.pr_head_sha \}\}/g,
+        ) ?? [];
       expect(
         checkDispatches.length,
         `${name} must call the isolated check dispatcher once per publisher`,
       ).toBe(publishers.length);
-      expect(allowlists.length, `${name} needs one strict file allowlist per PR`).toBe(
-        publishers.length,
-      );
-      expect(baseShas.length, `${name} must bind every artifact to its generation commit`).toBe(
-        publishers.length,
-      );
-      expect(artifactUploads.length, `${name} must stage each PR through an artifact`).toBe(
-        publishers.length,
-      );
-      expect(exactHeads.length, `${name} must dispatch checks for the exact published head`).toBe(
-        publishers.length,
-      );
-      expect(mainGuards.length, `${name} must publish only from main`).toBeGreaterThanOrEqual(
-        publishers.length,
-      );
+      expect(
+        allowlists.length,
+        `${name} needs one strict file allowlist per PR`,
+      ).toBe(publishers.length);
+      expect(
+        baseShas.length,
+        `${name} must bind every artifact to its generation commit`,
+      ).toBe(publishers.length);
+      expect(
+        artifactUploads.length,
+        `${name} must stage each PR through an artifact`,
+      ).toBe(publishers.length);
+      expect(
+        exactHeads.length,
+        `${name} must dispatch checks for the exact published head`,
+      ).toBe(publishers.length);
+      expect(
+        mainGuards.length,
+        `${name} must publish only from main`,
+      ).toBeGreaterThanOrEqual(publishers.length);
       expect(text).toContain("persist-credentials: false");
       expect(text).not.toContain("peter-evans/create-pull-request");
       expect(text).not.toContain("pull_request_target");
@@ -395,11 +462,17 @@ describe("scheduled data workflow contracts", () => {
       "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
     );
     expect(publisherText).toContain("persist-credentials: false");
-    expect(publisherText).toContain("Refuse output generated from a stale main revision");
-    expect(publisherText).toContain("Recheck main immediately before publication");
+    expect(publisherText).toContain(
+      "Refuse output generated from a stale main revision",
+    );
+    expect(publisherText).toContain(
+      "Recheck main immediately before publication",
+    );
     expect(publisherText).toContain("branch.data.commit.sha !== expected");
     expect(publisherText).toContain("ref: ${{ inputs.base_sha }}");
-    expect(publisherText).toContain("Artifact files do not exactly match the reviewed allowlist.");
+    expect(publisherText).toContain(
+      "Artifact files do not exactly match the reviewed allowlist.",
+    );
     expect(publisherText).not.toContain("npm ci");
 
     expect(workflowText("ci.yml")).toContain("workflow_dispatch: {}");
@@ -444,13 +517,17 @@ describe("scheduled data workflow contracts", () => {
     expect(publisherText).toContain("base_sha:");
     expect(publisherText).toContain("ref: ${{ inputs.base_sha }}");
     expect(publisherText).toContain("path: trusted-base");
-    expect(publisherText).toContain("Refuse snapshot generated from a stale main revision");
+    expect(publisherText).toContain(
+      "Refuse snapshot generated from a stale main revision",
+    );
     expect(publisherText).toContain("branch.data.commit.sha !== expected");
     expect(publisherText).toContain(
       "git ls-remote --refs origin refs/heads/main",
     );
     expect(publisherText).toContain('current_main" != "$BASE_SHA');
-    expect(publisherText).toContain("Candidate manifest changed the trusted source set");
+    expect(publisherText).toContain(
+      "Candidate manifest changed the trusted source set",
+    );
     expect(publisherText).toContain("changed trusted source configuration");
     expect(publisherText).toContain(
       "STATE_FIELDS = %w[last_success last_validated last_changed last_payload_sha256]",
@@ -469,21 +546,32 @@ describe("scheduled data workflow contracts", () => {
     expect(workflowText("data-refresh.yml")).toContain(
       "base_sha: ${{ github.sha }}",
     );
-    expect(workflowText("data-refresh.yml").match(/ref: \$\{\{ github\.sha \}\}/g)).toHaveLength(2);
-    expect(workflowText("freshness-check.yml").match(/ref: \$\{\{ github\.sha \}\}/g)).toHaveLength(2);
+    expect(
+      workflowText("data-refresh.yml").match(/ref: \$\{\{ github\.sha \}\}/g),
+    ).toHaveLength(2);
+    expect(
+      workflowText("freshness-check.yml").match(
+        /ref: \$\{\{ github\.sha \}\}/g,
+      ),
+    ).toHaveLength(2);
     expect(publisherText).toContain('tee "$RUNNER_TEMP/snapshot-publish.log"');
   });
 
   it("pins the required CI and voice-gate actions and bounds the voice job", () => {
     const ci = workflowText("ci.yml");
     const style = workflowText("style.yml");
-    const mutableOfficialAction = /actions\/(?:checkout|setup-node|upload-artifact)@v\d+/;
+    const mutableOfficialAction =
+      /actions\/(?:checkout|setup-node|upload-artifact)@v\d+/;
 
     expect(ci).not.toMatch(mutableOfficialAction);
     expect(style).not.toMatch(mutableOfficialAction);
     expect(style).toContain("timeout-minutes: 15");
-    expect(ci).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
-    expect(style).toContain("actions/setup-node@820762786026740c76f36085b0efc47a31fe5020");
+    expect(ci).toContain(
+      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    );
+    expect(style).toContain(
+      "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+    );
   });
 
   it("pins the scheduled discovery boundary and does not persist credentials", () => {
@@ -503,9 +591,8 @@ describe("scheduled data workflow contracts", () => {
     for (const name of workflowNames) {
       const text = workflowText(name);
       const scheduled = /\bschedule:\s*(?:\n|\{)/.test(text);
-      const paid = /(ANTHROPIC|FIRECRAWL|GOOGLE_PLACES_API_KEY|APIFY|TAVILY)/.test(
-        text,
-      );
+      const paid =
+        /(ANTHROPIC|FIRECRAWL|GOOGLE_PLACES_API_KEY|APIFY|TAVILY)/.test(text);
       if (!scheduled && !paid) continue;
 
       const workflow = parse(text) as WorkflowDocument;

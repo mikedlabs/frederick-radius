@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +10,12 @@ import {
   sourceScoutReportHasSuccessfulRetrieval,
   type SourceScoutConfig,
 } from "../scripts/source-scout";
+
+const require = createRequire(import.meta.url);
+const { validateSignal: validateScoutIssueSignal } =
+  require("../scripts/lib/source-scout-issue.cjs") as {
+    validateSignal: (signal: unknown) => boolean;
+  };
 
 const temporaryDirectories: string[] = [];
 
@@ -145,6 +152,8 @@ describe("Radius Source Scout", () => {
     await expect(readFile(result.cachePath, "utf8")).rejects.toThrow();
     await expect(readFile(result.usagePath, "utf8")).rejects.toThrow();
     await expect(readFile(result.lockPath, "utf8")).rejects.toThrow();
+    await expect(readFile(result.issueSignalPath, "utf8")).rejects.toThrow();
+    expect(result.issueSignal).toBeNull();
   });
 
   it("enforces request and credit caps before calls and writes provenance only to review artifacts", async () => {
@@ -187,6 +196,12 @@ describe("Radius Source Scout", () => {
           title: "Blocked",
           content: "Blocked social content",
           score: 0.99,
+        },
+        {
+          url: "http://service.internal/admin",
+          title: "Private control panel",
+          content: "Private raw content",
+          score: 1,
         },
       ],
       requestId: `request-${query}`,
@@ -236,6 +251,8 @@ describe("Radius Source Scout", () => {
       await readFile(result.reportPath, "utf8"),
     );
     const persistedCache = JSON.parse(await readFile(result.cachePath, "utf8"));
+    const issueSignalText = await readFile(result.issueSignalPath, "utf8");
+    const issueSignal = JSON.parse(issueSignalText);
     expect(persistedReport.reviewOnly).toBe(true);
     expect(persistedReport.provider).toEqual({ name: "tavily" });
     expect(persistedCache.reviewOnly).toBe(true);
@@ -251,6 +268,39 @@ describe("Radius Source Scout", () => {
     expect(Object.values(persistedCache.entries)[0]).not.toHaveProperty(
       "result.candidates.0.content",
     );
+    expect(result.issueSignal).toEqual(issueSignal);
+    expect(validateScoutIssueSignal(issueSignal)).toBe(true);
+    expect(issueSignal).toMatchObject({
+      schemaVersion: 1,
+      generatedAt: "2026-07-29T16:00:00.000Z",
+    });
+    expect(issueSignal.items[0]).toMatchObject({
+      profileId: "test-profile",
+      queryId: "one",
+      observedAt: "2026-07-29T16:00:00.000Z",
+      expiresAt: "2026-08-28T16:00:00.000Z",
+      status: "fetched",
+      candidateCount: 1,
+      candidates: [
+        {
+          url: "https://example.gov/first-source",
+          domain: "example.gov",
+          score: 0.9,
+        },
+      ],
+      estimatedCredits: 1,
+      requestId: null,
+      apiReportedCredits: 1,
+      errorCode: null,
+      errorStatus: null,
+    });
+    expect(issueSignal.items[0].candidateFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(issueSignalText).not.toContain("Title for first source");
+    expect(issueSignalText).not.toContain("Content for first source");
+    expect(issueSignalText).not.toContain("first source");
+    expect(issueSignalText).not.toContain("Private control panel");
+    expect(issueSignalText).not.toContain("reviewFor");
+    expect(issueSignalText).not.toContain("queryText");
     const usage = JSON.parse(await readFile(result.usagePath, "utf8"));
     expect(usage).toMatchObject({
       schemaVersion: 1,
@@ -326,6 +376,12 @@ describe("Radius Source Scout", () => {
     expect(second.report.queries[0]?.candidates[0]?.observedAt).toBe(
       "2026-07-29T16:00:00.000Z",
     );
+    expect(second.issueSignal?.items[0]).toMatchObject({
+      status: "cache",
+      observedAt: "2026-07-29T16:00:00.000Z",
+      candidateCount: 1,
+    });
+    expect(validateScoutIssueSignal(second.issueSignal)).toBe(true);
   });
 
   it("rejects an unbounded query unless open discovery is explicit", async () => {
@@ -354,6 +410,33 @@ describe("Radius Source Scout", () => {
     ).rejects.toThrow(
       "must have allowedDomains or explicitly set openDiscovery=true",
     );
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it("rejects profile and query IDs that cannot form stable issue identities", async () => {
+    const directory = await temporaryDirectory();
+    const invalid = testConfig([
+      {
+        id: "query_with_prose",
+        text: "bounded query",
+        allowedDomains: ["example.gov"],
+        reviewFor: ["source"],
+      },
+    ]);
+    const configPath = await writeConfig(directory, invalid);
+    const search = vi.fn();
+
+    await expect(
+      runSourceScout(
+        {
+          configPath,
+          reportsDir: join(directory, "reports"),
+          live: true,
+          confirmed: true,
+        },
+        { search },
+      ),
+    ).rejects.toThrow("lowercase kebab-case ID");
     expect(search).not.toHaveBeenCalled();
   });
 
@@ -405,6 +488,29 @@ describe("Radius Source Scout", () => {
       creditsCommitted: 1,
     });
     expect(sourceScoutReportHasSuccessfulRetrieval(result.report)).toBe(false);
+    const issueSignalText = await readFile(result.issueSignalPath, "utf8");
+    expect(validateScoutIssueSignal(result.issueSignal)).toBe(true);
+    expect(result.issueSignal?.items).toMatchObject([
+      {
+        profileId: "test-profile",
+        queryId: "one",
+        status: "error",
+        candidateCount: 0,
+        errorCode: "plan_limit_exceeded",
+        errorStatus: 432,
+      },
+      {
+        profileId: "test-profile",
+        queryId: "two",
+        status: "skipped-terminal-error",
+        candidateCount: 0,
+        errorCode: null,
+        errorStatus: null,
+      },
+    ]);
+    expect(issueSignalText).not.toContain("Plan usage limit reached");
+    expect(issueSignalText).not.toContain("first query");
+    expect(issueSignalText).not.toContain("second query");
   });
 
   it("rejects a missing profile value before doing any work", () => {

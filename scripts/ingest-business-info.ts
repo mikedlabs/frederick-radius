@@ -139,7 +139,12 @@ async function fetchAdaptive(
 ): Promise<PageSnapshot | null> {
   let fallback: PageSnapshot | null = null;
   for (const candidateUrl of preferredBusinessWebsiteUrls(url)) {
-    const plain = await fetchPageSnapshot(candidateUrl, { maxChars: 16_000 });
+    const plain = await fetchPageSnapshot(candidateUrl, {
+      maxChars: 16_000,
+      // Preserve the paid fallback for the final recovery step. A failed
+      // static fetch must try the already-installed browser first.
+      firecrawlFallback: false,
+    });
     if (!needsRenderedBusinessSnapshot(plain, minChars)) {
       return plain;
     }
@@ -153,13 +158,17 @@ async function fetchAdaptive(
   return fallback;
 }
 
-function isAllowedWebsite(url: string, businessName: string, cfg: Cfg): boolean {
+function isAllowedWebsite(
+  url: string,
+  businessName: string,
+  cfg: Cfg,
+): boolean {
   if (!/^https?:/.test(url)) return false;
   const domain = domainOf(url);
   return Boolean(
     domain &&
-      businessInfoSourceKind(url, businessName) === "business_website" &&
-      !cfg.excludeDomains.some((excluded) => domain.includes(excluded)),
+    businessInfoSourceKind(url, businessName) === "business_website" &&
+    !cfg.excludeDomains.some((excluded) => domain.includes(excluded)),
   );
 }
 
@@ -194,7 +203,8 @@ function placeImportance(place: PublicPlace): number {
 
 async function main() {
   const positional = process.argv[2];
-  const only = positional && !positional.startsWith("--") ? positional : undefined;
+  const only =
+    positional && !positional.startsWith("--") ? positional : undefined;
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const force = process.argv.includes("--force");
   const planOnly = process.argv.includes("--plan");
@@ -202,14 +212,19 @@ async function main() {
   const cfg = JSON.parse(readFileSync(CFG, "utf8")) as Cfg;
   const enr = JSON.parse(readFileSync(ENR, "utf8")) as Enrichment;
   const publicRows = JSON.parse(readFileSync(PUBLIC, "utf8")) as PublicPlace[];
-  const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<string, Record_>;
-  const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : cfg.defaultLimit;
+  const existing = JSON.parse(readFileSync(OUT, "utf8")) as Record<
+    string,
+    Record_
+  >;
+  const limit = limitArg
+    ? parseInt(limitArg.split("=")[1], 10)
+    : cfg.defaultLimit;
   if (!Number.isFinite(limit) || limit < 1) {
     throw new Error("--limit must be a positive whole number");
   }
 
   const requestedSlug = only
-    ? publicPlaceBySlug(only)?.slug ?? only
+    ? (publicPlaceBySlug(only)?.slug ?? only)
     : undefined;
   const copyCounts = decisionCopyCounts(publicRows);
 
@@ -227,27 +242,27 @@ async function main() {
 
   const eligible: QueueCandidate[] = publicRows.flatMap((place) => {
     if (requestedSlug && place.slug !== requestedSlug) return [];
-    if (
-      !place.website ||
-      !isAllowedWebsite(place.website, place.name, cfg)
-    ) return [];
+    if (!place.website || !isAllowedWebsite(place.website, place.name, cfg))
+      return [];
     const prior = existingByCanonical.get(place.slug);
-    return [{
-      slug: place.slug,
-      website: place.website,
-      displayName: place.name,
-      primaryType: place.primary_type,
-      hasUsefulCopy: hasUsefulDecisionCopy(place, copyCounts),
-      hasExistingSource: Boolean(prior?.source?.url),
-      hasDecisionFact: Boolean(prior?.known_for?.trim()),
-      fetchedAt: prior?.source?.fetchedAt,
-      importance: placeImportance(place),
-      routineRefresh: routineType(
-        { primaryType: place.primary_type, category: place.category },
-        cfg,
-      ),
-      explicitRequest: Boolean(only),
-    }];
+    return [
+      {
+        slug: place.slug,
+        website: place.website,
+        displayName: place.name,
+        primaryType: place.primary_type,
+        hasUsefulCopy: hasUsefulDecisionCopy(place, copyCounts),
+        hasExistingSource: Boolean(prior?.source?.url),
+        hasDecisionFact: Boolean(prior?.known_for?.trim()),
+        fetchedAt: prior?.source?.fetchedAt,
+        importance: placeImportance(place),
+        routineRefresh: routineType(
+          { primaryType: place.primary_type, category: place.category },
+          cfg,
+        ),
+        explicitRequest: Boolean(only),
+      },
+    ];
   });
 
   // Preserve the old one-slug diagnostic for a non-public enrichment row.
@@ -325,10 +340,14 @@ async function main() {
       !finalDomain ||
       cfg.excludeDomains.some((domain) => finalDomain.includes(domain))
     ) {
-      console.log(`  ✗ ${slug}: redirected to excluded source (${finalDomain})`);
+      console.log(
+        `  ✗ ${slug}: redirected to excluded source (${finalDomain})`,
+      );
       continue;
     }
-    if (!isTrustedBusinessWebsiteRedirect(candidate.website, snapshot.finalUrl)) {
+    if (
+      !isTrustedBusinessWebsiteRedirect(candidate.website, snapshot.finalUrl)
+    ) {
       console.log(
         `  ✗ ${slug}: redirected to unrelated source (${finalDomain})`,
       );
@@ -442,7 +461,9 @@ async function main() {
       existing[slug] = checked;
       existingByCanonical.set(slug, checked);
       updated++;
-      console.log(`  – ${slug}: nothing extractable; source fingerprint stored`);
+      console.log(
+        `  – ${slug}: nothing extractable; source fingerprint stored`,
+      );
       continue;
     }
     const next: Record_ = mergeBusinessInfoRefresh(prior, {

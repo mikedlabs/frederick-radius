@@ -19,6 +19,28 @@ afterEach(() => {
 });
 
 describe("fetchPageSnapshot", () => {
+  it("defaults the shared extractor fallback to one request", () => {
+    vi.stubEnv("FIRECRAWL_FALLBACK_MAX_REQUESTS", "");
+    resetFirecrawlFallbackUsage();
+
+    expect(getFirecrawlFallbackUsage()).toEqual({
+      limit: 1,
+      attempted: 0,
+      succeeded: 0,
+      failed: 0,
+      deniedByLimit: 0,
+    });
+  });
+
+  it("cannot raise the shared extractor fallback above two requests", () => {
+    vi.stubEnv("FIRECRAWL_FALLBACK_MAX_REQUESTS", "99");
+    resetFirecrawlFallbackUsage();
+    expect(getFirecrawlFallbackUsage().limit).toBe(2);
+
+    resetFirecrawlFallbackUsage(99);
+    expect(getFirecrawlFallbackUsage().limit).toBe(2);
+  });
+
   it("uses Playwright before considering Firecrawl for render sources", async () => {
     vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
@@ -86,7 +108,11 @@ describe("fetchPageSnapshot", () => {
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
     const target = "https://example.com/dynamic-events";
     const fetchMock = vi.fn(
-      async (input: string | URL | Request): Promise<Response> => {
+      async (
+        input: string | URL | Request,
+        _init?: RequestInit,
+      ): Promise<Response> => {
+        void _init;
         if (String(input) !== "https://api.firecrawl.dev/v2/scrape") {
           return new Response("", { status: 403 });
         }
@@ -117,6 +143,19 @@ describe("fetchPageSnapshot", () => {
       finalUrl: target,
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, firecrawlInit] = fetchMock.mock.calls.find(
+      ([input]) => String(input) === "https://api.firecrawl.dev/v2/scrape",
+    )!;
+    expect(JSON.parse(String(firecrawlInit?.body))).toEqual({
+      url: target,
+      formats: ["markdown", "links"],
+      onlyMainContent: true,
+      skipTlsVerification: false,
+      timeout: 19_500,
+      proxy: "basic",
+      maxAge: 0,
+      storeInCache: false,
+    });
   });
 
   it("rejects a Firecrawl fallback that omits its explicit final URL", async () => {
