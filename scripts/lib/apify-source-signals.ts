@@ -113,7 +113,10 @@ export function canonicalApifyEventLinks(
       const parsed = new URL(value, sourceUrl);
       if (
         parsed.protocol !== "https:" ||
-        canonicalHost(parsed.href) !== sourceHost
+        canonicalHost(parsed.href) !== sourceHost ||
+        parsed.port !== source.port ||
+        parsed.username !== "" ||
+        parsed.password !== ""
       ) {
         continue;
       }

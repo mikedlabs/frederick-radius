@@ -65,6 +65,8 @@ describe("Apify source signal fingerprints", () => {
           "https://www.example.com/events/one?tracking=yes",
           "https://example.com/about",
           "http://example.com/events/insecure",
+          "https://example.com:8443/events/different-origin",
+          "https://user:password@example.com/events/credentialed",
           "https://other.example/events/copied",
         ],
         "https://example.com/calendar",
@@ -194,6 +196,18 @@ describe("Apify source signal fingerprints", () => {
         "https://www.example.com/calendar/",
       ),
     ).toEqual(["https://www.example.com/events/show"]);
+  });
+
+  it("accepts an explicit default HTTPS port but rejects a different port", () => {
+    expect(
+      canonicalApifyEventLinks(
+        [
+          "https://example.com:443/events/default-port",
+          "https://example.com:8443/events/other-port",
+        ],
+        "https://example.com/calendar/",
+      ),
+    ).toEqual(["https://example.com/events/default-port"]);
   });
 
   it("excludes the source page itself from discovered event links", () => {
