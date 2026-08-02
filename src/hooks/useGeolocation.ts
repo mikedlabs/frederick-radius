@@ -17,6 +17,13 @@ export type GeoPosition = {
   timestamp: number;
 };
 
+export type CachedGeoPosition = {
+  lng: number;
+  lat: number;
+  /** A clean /map route may open on this already-consented fix. */
+  preferMapCamera?: boolean;
+};
+
 export type GeoState =
   | { status: "idle" }
   | { status: "loading" }
@@ -40,6 +47,23 @@ function announceLocationChange(): void {
 }
 
 /**
+ * A cached fix may seed the full map camera only when the route has not already
+ * promised a specific camera or town. Intent, time, and amenity filters still
+ * qualify: they describe what to show around the user, not where to look.
+ */
+function currentRoutePrefersMapCamera(): boolean {
+  if (typeof window === "undefined" || window.location?.pathname !== "/map") {
+    return false;
+  }
+  try {
+    const params = new URLSearchParams(window.location.search ?? "");
+    return !params.has("at") && !params.has("c") && !params.has("in");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Persist a consented fix and notify every same-tab surface that depends on
  * location ranking. Keeping this write in one exported contract prevents map,
  * search, and Today from silently maintaining incompatible location state.
@@ -58,13 +82,11 @@ export function cacheGeolocationPosition(position: GeoPosition): void {
  * Read the cached geolocation fix WITHOUT prompting or mounting the hook.
  *
  * Returns the user's last-known coordinates if a fresh (< 30 min) fix is
- * cached in sessionStorage, else null. Used by surfaces that want to
- * center "from where you're standing" only when we already have consent —
- * e.g. arriving on the map via a category tile. Never triggers a
- * permission prompt: if there's no cached fix, the caller falls back to
- * the city center. Safe to call during a client render (SSR-guarded).
+ * cached in sessionStorage, else null. A clean map route also gets a camera
+ * hint, so it can open around the user after consent without asking again.
+ * Explicit map cameras and town scopes always win.
  */
-export function readCachedPosition(): { lng: number; lat: number } | null {
+export function readCachedPosition(): CachedGeoPosition | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
@@ -75,7 +97,13 @@ export function readCachedPosition(): { lng: number; lat: number } | null {
       Number.isFinite(cached.lat) &&
       Date.now() - cached.timestamp < TTL_MS
     ) {
-      return { lng: cached.lng, lat: cached.lat };
+      return {
+        lng: cached.lng,
+        lat: cached.lat,
+        ...(currentRoutePrefersMapCamera()
+          ? { preferMapCamera: true as const }
+          : {}),
+      };
     }
   } catch {
     // ignore parse / storage errors — treat as no fix
