@@ -69,7 +69,8 @@ export function canonicalApifyEventLinks(
   links: readonly string[],
   sourceUrl: string,
 ): string[] {
-  const sourceHost = canonicalHost(sourceUrl);
+  const source = new URL(sourceUrl);
+  const sourceHost = canonicalHost(source.href);
   const kept = new Set<string>();
   for (const value of links) {
     try {
@@ -82,6 +83,11 @@ export function canonicalApifyEventLinks(
       }
       parsed.username = "";
       parsed.password = "";
+      // `www.` and apex spellings are equivalent at the acceptance boundary.
+      // Persist one source-owned spelling so provider link drift cannot create
+      // a false schedule-change signal.
+      parsed.hostname = source.hostname;
+      parsed.port = source.port;
       parsed.search = "";
       parsed.hash = "";
       if (!EVENT_PATH_PATTERN.test(parsed.pathname)) continue;

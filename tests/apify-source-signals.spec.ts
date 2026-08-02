@@ -69,7 +69,7 @@ describe("Apify source signal fingerprints", () => {
         ],
         "https://example.com/calendar",
       ),
-    ).toEqual(["https://www.example.com/events/one"]);
+    ).toEqual(["https://example.com/events/one"]);
   });
 
   it("recognizes single-digit 24-hour-style times without a meridiem", () => {
@@ -182,5 +182,17 @@ describe("Apify source signal fingerprints", () => {
       "https://example.com/calendar.php",
       "https://example.com/events.php",
     ]);
+  });
+
+  it("canonicalizes equivalent www and apex event links to the configured source host", () => {
+    expect(
+      canonicalApifyEventLinks(
+        [
+          "https://example.com/events/show?id=1",
+          "https://www.example.com/events/show#tickets",
+        ],
+        "https://www.example.com/calendar/",
+      ),
+    ).toEqual(["https://www.example.com/events/show"]);
   });
 });
