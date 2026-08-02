@@ -1,10 +1,28 @@
-name: Source intelligence pilot
-run-name: "Source intelligence (${{ inputs.tool == 'tavily-scout' && inputs.confirm_live && 'tavily-live' || inputs.tool == 'firecrawl-watch' && inputs.confirm_live && 'firecrawl-live' || 'plan' }})"
+name: Source intelligence
+run-name: >-
+  Source intelligence (${{
+    github.event_name == 'schedule' &&
+      (github.event.schedule == '11 14 2,16 * *' ||
+       github.event.schedule == '21 14 5,19 * *' ||
+       github.event.schedule == '31 14 8,22 * *' ||
+       github.event.schedule == '41 14 11 * *' ||
+       github.event.schedule == '51 14 25 * *') && 'tavily-live' ||
+    inputs.tool == 'tavily-scout' && inputs.confirm_live && 'tavily-live' ||
+    inputs.tool == 'firecrawl-watch' && inputs.confirm_live && 'firecrawl-live' ||
+    'plan'
+  }})
 
-# Manual, review-only pilots for finding and watching first-party sources.
+# Review-only scheduled and manual checks of first-party sources.
 # This workflow never writes canonical app data, commits changes, or publishes
-# provider output. Keep it manual until several reviewed runs prove useful.
+# provider output. Every schedule maps to one tracked Tavily profile; Firecrawl
+# Source Watch remains manually dispatched until its unchanged-repeat proof.
 on:
+  schedule:
+    - cron: "11 14 2,16 * *"
+    - cron: "21 14 5,19 * *"
+    - cron: "31 14 8,22 * *"
+    - cron: "41 14 11 * *"
+    - cron: "51 14 25 * *"
   workflow_dispatch:
     inputs:
       tool:
@@ -79,6 +97,36 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve exact provider target
+        id: selection
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule || '' }}
+          INPUT_TOOL: ${{ inputs.tool || '' }}
+          INPUT_PROFILE: ${{ inputs.profile || '' }}
+          INPUT_SOURCE: ${{ inputs.source || '' }}
+          INPUT_CONFIRM_LIVE: ${{ inputs.confirm_live && 'true' || 'false' }}
+          INPUT_INITIALIZE_STATE: ${{ inputs.initialize_state && 'true' || 'false' }}
+        with:
+          script: |
+            const { resolveSourceIntelligenceSelection } = require("./scripts/lib/source-intelligence-schedule.cjs");
+            const selection = resolveSourceIntelligenceSelection({
+              eventName: process.env.EVENT_NAME,
+              eventSchedule: process.env.EVENT_SCHEDULE,
+              tool: process.env.INPUT_TOOL,
+              profile: process.env.INPUT_PROFILE,
+              source: process.env.INPUT_SOURCE,
+              confirmLive: process.env.INPUT_CONFIRM_LIVE,
+              initializeState: process.env.INPUT_INITIALIZE_STATE,
+            });
+            core.setOutput("mode", selection.mode);
+            core.setOutput("tool", selection.tool);
+            core.setOutput("profile", selection.profile);
+            core.setOutput("source", selection.source);
+            core.setOutput("live", String(selection.live));
+            core.setOutput("initialize_state", String(selection.initializeState));
+
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -103,39 +151,39 @@ jobs:
             source-intelligence-state-
 
       - name: Zero-cost Tavily plan and preflight
-        if: ${{ inputs.tool == 'tavily-plan' || inputs.tool == 'tavily-scout' }}
+        if: ${{ steps.selection.outputs.tool == 'tavily-plan' || steps.selection.outputs.tool == 'tavily-scout' }}
         env:
-          SCOUT_PROFILE: ${{ inputs.profile }}
+          SCOUT_PROFILE: ${{ steps.selection.outputs.profile }}
         run: |
           set -o pipefail
           npm run source:scout -- --profile="$SCOUT_PROFILE" 2>&1 | tee source-intelligence.log
 
       - name: Zero-cost Firecrawl plan and preflight
-        if: ${{ inputs.tool == 'firecrawl-watch' }}
+        if: ${{ steps.selection.outputs.tool == 'firecrawl-watch' }}
         env:
-          WATCH_SOURCE: ${{ inputs.source }}
+          WATCH_SOURCE: ${{ steps.selection.outputs.source }}
         run: |
           set -o pipefail
           npm run source:watch -- --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
 
       - name: Require explicit live confirmation
-        if: ${{ inputs.tool != 'tavily-plan' && !inputs.confirm_live }}
+        if: ${{ steps.selection.outputs.tool != 'tavily-plan' && steps.selection.outputs.live != 'true' }}
         run: |
           echo "::error title=Live confirmation required::Run the workflow again with confirm_live checked."
           exit 1
 
       - name: Keep live budget state on main
-        if: ${{ inputs.tool != 'tavily-plan' && inputs.confirm_live && github.ref != 'refs/heads/main' }}
+        if: ${{ steps.selection.outputs.live == 'true' && github.ref != 'refs/heads/main' }}
         run: |
           echo "::error title=Live pilots run from main only::Choose the main branch so provider budgets and comparison state cannot split across branch-scoped caches."
           exit 1
 
       - name: Enforce durable provider spend ceilings
         id: durable-budget
-        if: ${{ inputs.tool != 'tavily-plan' && inputs.confirm_live }}
+        if: ${{ steps.selection.outputs.live == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          SELECTED_TOOL: ${{ inputs.tool }}
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
         with:
           script: |
             const policies = {
@@ -305,10 +353,10 @@ jobs:
             );
 
       - name: Protect persistent budgets and comparison state
-        if: ${{ inputs.tool != 'tavily-plan' && inputs.confirm_live && !inputs.initialize_state }}
+        if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
         env:
           RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
-          SELECTED_TOOL: ${{ inputs.tool }}
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
         run: |
           if [ -z "$RESTORED_STATE_KEY" ]; then
             echo "::error title=Source state was not restored::If this is the first intentional live run, check initialize_state. Otherwise stop and recover the previous state before spending credits."
@@ -331,9 +379,9 @@ jobs:
 
       - name: Run capped Tavily Source Scout
         id: tavily-live
-        if: ${{ inputs.tool == 'tavily-scout' && inputs.confirm_live }}
+        if: ${{ steps.selection.outputs.tool == 'tavily-scout' && steps.selection.outputs.live == 'true' }}
         env:
-          SCOUT_PROFILE: ${{ inputs.profile }}
+          SCOUT_PROFILE: ${{ steps.selection.outputs.profile }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           rm -f scripts/reports/source-scout-github-issue.json
@@ -346,7 +394,7 @@ jobs:
 
       - name: Open or update the Source Scout review queue
         id: source-scout-review-queue
-        if: ${{ always() && inputs.tool == 'tavily-scout' && inputs.confirm_live && (steps.tavily-live.outcome == 'success' || steps.tavily-live.outcome == 'failure') && hashFiles('scripts/reports/source-scout-github-issue.json') != '' }}
+        if: ${{ always() && steps.selection.outputs.tool == 'tavily-scout' && steps.selection.outputs.live == 'true' && (steps.tavily-live.outcome == 'success' || steps.tavily-live.outcome == 'failure') && hashFiles('scripts/reports/source-scout-github-issue.json') != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -355,9 +403,9 @@ jobs:
 
       - name: Run one-source Firecrawl Source Watch pilot
         id: firecrawl-live
-        if: ${{ inputs.tool == 'firecrawl-watch' && inputs.confirm_live }}
+        if: ${{ steps.selection.outputs.tool == 'firecrawl-watch' && steps.selection.outputs.live == 'true' }}
         env:
-          WATCH_SOURCE: ${{ inputs.source }}
+          WATCH_SOURCE: ${{ steps.selection.outputs.source }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
         run: |
           rm -f scripts/reports/source-watch/github-issue.json
@@ -370,7 +418,7 @@ jobs:
 
       - name: Open or update the per-source review queue
         id: source-watch-review-queue
-        if: ${{ always() && inputs.tool == 'firecrawl-watch' && inputs.confirm_live && (steps.firecrawl-live.outcome == 'success' || steps.firecrawl-live.outcome == 'failure') && hashFiles('scripts/reports/source-watch/github-issue.json') != '' }}
+        if: ${{ always() && steps.selection.outputs.tool == 'firecrawl-watch' && steps.selection.outputs.live == 'true' && (steps.firecrawl-live.outcome == 'success' || steps.firecrawl-live.outcome == 'failure') && hashFiles('scripts/reports/source-watch/github-issue.json') != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -381,7 +429,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "## Source intelligence pilot"
+            echo "## Source intelligence"
             echo
             echo "Review evidence only. No Radius data was published."
             echo
@@ -394,7 +442,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: source-intelligence-${{ inputs.tool }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: source-intelligence-${{ steps.selection.outputs.tool }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             source-intelligence.log
             scripts/reports/source-scout-latest.json
@@ -405,7 +453,7 @@ jobs:
           retention-days: 14
 
       - name: Save source intelligence state
-        if: ${{ always() && inputs.tool != 'tavily-plan' && (inputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
+        if: ${{ always() && steps.selection.outputs.live == 'true' && (steps.selection.outputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |

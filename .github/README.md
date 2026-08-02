@@ -21,20 +21,23 @@ Generated changes always remain review PRs. `publish-data-snapshot.yml` is the
 equivalent boundary for the separate `data-snapshots` branch.
 
 Paid or experimental collectors stay manual until their source quality and
-spend controls are proven:
+spend controls are proven. Tavily Source Scout and the Apify radar now have
+exact, budgeted schedules; neither can publish Radius data. Firecrawl Source
+Watch remains manually dispatched until its County Connector baseline has a
+live unchanged repeat. The workflow split is explicit:
 
-- `apify-venue-pilot.yml`
-- `source-intelligence.yml`
-- `enrich-places.yml`
-- `photo-attribution-backfill.yml`
+- `source-intelligence.yml`: Tavily scheduled; Firecrawl manual.
+- `apify-source-change-radar.yml`: scheduled three times monthly.
+- `enrich-places.yml`: manual.
+- `photo-attribution-backfill.yml`: manual.
 
 ## Environments
 
 - `Data Enrichment`: main-only model-backed data jobs.
-- `APIFY_TOKEN`: main-only credential for the manual Apify venue pilot and
-  private source change radar. The radar stays manual until its baseline and
-  unchanged paths are proven on main. Rename this environment only when its
-  encrypted secret can be moved safely.
+- `APIFY_TOKEN`: main-only credential for the private source change radar. The
+  historical venue-pilot script remains available locally, but its GitHub
+  workflow is retired. Rename this environment only when its encrypted secret
+  can be moved safely.
 - `Production`: main-only source-intelligence credentials.
 
 Secrets are never printed, copied into artifacts, or made available to PR code.

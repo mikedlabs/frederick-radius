@@ -1,17 +1,15 @@
 export type DataToolActivationStatus =
-  | "active"
-  | "disabled"
-  | "missing_configuration";
+  "active" | "disabled" | "missing_configuration";
 
 export type DataToolEnvironment = Readonly<Record<string, string | undefined>>;
 
 type EnvironmentRequirement =
-  | { env: string; equals?: string }
-  | { anyOf: readonly string[] };
+  { env: string; equals?: string } | { anyOf: readonly string[] };
 
 export type DataToolDefinition = {
   id: string;
   label: string;
+  note?: string;
   scope: "vercel" | "runtime" | "operator";
   gate?: { env: string; equals?: string };
   requirements?: readonly EnvironmentRequirement[];
@@ -23,6 +21,7 @@ export type DataToolDefinition = {
 export type DataToolStatus = {
   id: string;
   label: string;
+  note?: string;
   scope: DataToolDefinition["scope"];
   status: DataToolActivationStatus;
   gate?: string;
@@ -273,13 +272,14 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "firecrawl-source-watch",
     label: "Firecrawl source watch",
+    note: "manual only; weekly schedule deferred until county-connector-schedules has an unchanged repeat after baseline run 30734393491 attempt 2",
     scope: "operator",
     requirements: [{ env: "FIRECRAWL_API_KEY" }],
     optionalWhenUnconfigured: true,
   },
   {
-    id: "apify-venue-pilot",
-    label: "Apify venue pilot",
+    id: "apify-source-change-radar",
+    label: "Apify source change radar",
     scope: "operator",
     requirements: [{ env: "APIFY_TOKEN" }],
     optionalWhenUnconfigured: true,
@@ -310,11 +310,13 @@ function requirementMissing(
 }
 
 export function activationFlagNames(): string[] {
-  return [...new Set(
-    DATA_TOOL_DEFINITIONS.flatMap((definition) =>
-      definition.gate ? [definition.gate.env] : [],
+  return [
+    ...new Set(
+      DATA_TOOL_DEFINITIONS.flatMap((definition) =>
+        definition.gate ? [definition.gate.env] : [],
+      ),
     ),
-  )].sort();
+  ].sort();
 }
 
 export function classifyDataTools(
@@ -340,6 +342,7 @@ export function classifyDataTools(
       return {
         id: definition.id,
         label: definition.label,
+        note: definition.note,
         scope: definition.scope,
         status: "disabled",
         gate: definition.gate?.env,
@@ -364,6 +367,7 @@ export function classifyDataTools(
     return {
       id: definition.id,
       label: definition.label,
+      note: definition.note,
       scope: definition.scope,
       status,
       gate: definition.gate?.env,
@@ -374,17 +378,21 @@ export function classifyDataTools(
   });
 }
 
-export function renderDataToolStatus(statuses: readonly DataToolStatus[]): string {
+export function renderDataToolStatus(
+  statuses: readonly DataToolStatus[],
+): string {
   const lines = ["Frederick Radius data-tool activation"];
   for (const item of statuses) {
-    const detail = item.missing.length > 0
-      ? `; missing: ${item.missing.join(", ")}`
-      : item.gate && item.status === "disabled"
-        ? `; set ${item.gate}=1 to enable`
-        : "";
+    const detail =
+      item.missing.length > 0
+        ? `; missing: ${item.missing.join(", ")}`
+        : item.gate && item.status === "disabled"
+          ? `; set ${item.gate}=1 to enable`
+          : "";
     const schedule = item.schedule ? `; schedule: ${item.schedule}` : "";
+    const note = item.note ? `; ${item.note}` : "";
     lines.push(
-      `${item.status.toUpperCase().padEnd(21)} ${item.id} [${item.scope}]${schedule}${detail}`,
+      `${item.status.toUpperCase().padEnd(21)} ${item.id} [${item.scope}]${schedule}${note}${detail}`,
     );
   }
 
@@ -398,6 +406,8 @@ export function renderDataToolStatus(statuses: readonly DataToolStatus[]): strin
   lines.push(
     `Summary: ${counts.active} active, ${counts.disabled} disabled, ${counts.missing_configuration} missing configuration.`,
   );
-  lines.push("Only environment-variable names are shown; secret values are never printed.");
+  lines.push(
+    "Only environment-variable names are shown; secret values are never printed.",
+  );
   return lines.join("\n");
 }

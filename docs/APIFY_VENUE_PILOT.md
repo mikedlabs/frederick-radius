@@ -1,13 +1,19 @@
-# Apify venue retrieval pilot
+# Historical Apify venue retrieval pilot
 
 Radius uses Apify only as a bounded way to evaluate difficult, exact public
 pages. It is not a general web crawler, a social-media bypass, or a publishing
 pipeline.
 
-The pilot is intentionally separate from the live app and from the daily venue
-refresh. It can inspect one reviewed first-party page, record compact retrieval
-evidence, and stop. It does not edit `src/data`, open a pull request, write to
-the database, or make a provider request during a user's visit.
+The pilot was intentionally separate from the live app and from the daily
+venue refresh. It proved that three difficult first-party pages could be
+retrieved within a narrow provider cap. Its GitHub workflow has now been
+retired in favor of the lower-cost, durable
+[Apify source change radar](./APIFY_SOURCE_CHANGE_RADAR.md).
+
+`config/apify-venue-pilot.json` and `scripts/apify-venue-pilot.ts` remain in the
+repository because the radar imports their reviewed URL registry, validation,
+and types. Retaining those files does not expose a scheduled pilot or a second
+GitHub spending path.
 
 ## Current allowlist
 
@@ -48,34 +54,18 @@ an Apify account spending limit in place as the authoritative cross-run
 ceiling. The provider-enforced `$0.25` `maxTotalChargeUsd` remains the hard
 ceiling for each individual Actor run.
 
-## GitHub setup
+## Retirement
 
-The manual workflow is `.github/workflows/apify-venue-pilot.yml`. It uses the
-dedicated GitHub environment named `APIFY_TOKEN`, which contains the secret
-also named `APIFY_TOKEN`. It has read-only repository permission and retains
-private evidence for seven days.
+`.github/workflows/apify-venue-pilot.yml` is intentionally absent. Do not
+restore or schedule it: its advisory cache and $0.25 per-run ceiling were
+separate from the radar's durable reservation ledger. The dedicated
+`APIFY_TOKEN` GitHub environment now belongs to the radar only. The Vercel copy
+of `APIFY_TOKEN` is not used by either review workflow.
 
-The Vercel copy of `APIFY_TOKEN` is not used by this pilot. Keeping the provider
-out of Vercel visitor routes avoids adding public request latency, cost, and an
-unnecessary attack surface.
-
-## First run
-
-1. Open **Actions → Apify venue retrieval pilot → Run workflow**.
-2. Select `main` and one reviewed source.
-3. Leave `confirm_live` off to verify the zero-cost plan.
-4. Before initializing missing state, inspect the Apify account's current
-   monthly usage and spending limit. For the first paid run, check both
-   `confirm_live` and `initialize_state`.
-5. For later runs, leave `initialize_state` off. A missing prior ledger then
-   fails closed instead of silently resetting the advisory monthly history.
-6. Download the private artifact and compare the content hash, final URL,
-   text length, date/time signals, event-like links, Actor run, and actual
-   provider usage. Open the original publisher page before accepting a fact.
-
-The report does not store the downloaded page, full Markdown, HTML, captions,
-or media. The Apify run and dataset IDs make the provider result inspectable by
-an authorized operator without copying it into Radius.
+The successful historical runs compared content hashes, final URLs, text
+length, date/time signals, event-like links, Actor runs, and provider usage.
+Their reports did not store downloaded pages, full Markdown, HTML, captions,
+or media.
 
 ## Promotion rule
 
@@ -94,8 +84,9 @@ retrieval mechanism, not the source or evidence that a claim is true.
 
 The three reviewed pages have now produced successful private pilot evidence,
 including an identical repeat fingerprint for JoJo's. The bounded follow-on is
-the manual-only [Apify source change radar](./APIFY_SOURCE_CHANGE_RADAR.md).
-That radar remains a review queue and cannot publish event data.
+the scheduled, review-only
+[Apify source change radar](./APIFY_SOURCE_CHANGE_RADAR.md). That radar remains
+a review queue and cannot publish event data.
 
 Official references:
 

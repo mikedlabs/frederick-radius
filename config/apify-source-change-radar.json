@@ -1,5 +1,5 @@
 {
-  "_doc": "Private review radar for the exact first-party pages already approved in config/apify-venue-pilot.json. It stores hashes and counts, never publisher prose, and cannot publish Radius data. The workflow must prove baseline and unchanged behavior on main before any schedule is added.",
+  "_doc": "Private review radar for the exact first-party pages already approved in config/apify-venue-pilot.json. It stores hashes and counts, never publisher prose, and cannot publish Radius data. Its three-run monthly schedule follows the accepted baseline and unchanged proof on main.",
   "version": 1,
   "mode": "private-change-radar",
   "limits": {
