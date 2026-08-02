@@ -22,7 +22,7 @@ export type ApifySourceFingerprintField =
   "content" | "dates" | "times" | "event-links";
 
 const NAMED_DATE_PATTERN =
-  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[^\S\r\n]+(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?[^\S\r\n]+\d{2,4})?(?:[^\S\r\n]*(?:[-\u2012-\u2014]|\bto\b)[^\S\r\n]*(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?[^\S\r\n]+\d{2,4})?)?\b/gi;
+  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[^\S\r\n]+(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?[^\S\r\n]+\d{2,4})?(?:[^\S\r\n]*(?:[-\u2012-\u2014]|\b(?:to|thru|through)\b)[^\S\r\n]*(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?[^\S\r\n]+\d{2,4})?)?\b/gi;
 const NUMERIC_DATE_PATTERN =
   /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?)\b/g;
 const TIME_PATTERN =
