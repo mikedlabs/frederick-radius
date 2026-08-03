@@ -1,6 +1,114 @@
 {
   "issues": [
     {
+      "id": 22404374,
+      "status": "Acknowledged",
+      "summary": "Roadway Mowing Request",
+      "description": "At the intersection of Old Annapolis Rd and Bottom Rd. grass cutting is needed. Obstruction of view is an issue.",
+      "rating": 2,
+      "lat": 39.407868841572515,
+      "lng": -77.20373470205988,
+      "address": "Bottom Rd Mount Airy, Maryland, 21771",
+      "created_at": "2026-08-03T08:28:27-04:00",
+      "acknowledged_at": "2026-08-03T08:28:30-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T08:28:30-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22404374",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.20373470205988,
+          39.407868841572515
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22404374",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40761,
+        "title": "Roadway Mowing Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40761",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.407868841572515&lng=-77.20373470205988&request_types=40761&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22404374/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22404374/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22403842,
+      "status": "Acknowledged",
+      "summary": "Animal Carcass in Public Ways",
+      "description": "Dead deer by stop sign on Old Liberty Road ",
+      "rating": 2,
+      "lat": 39.457976269372395,
+      "lng": -77.30868775334909,
+      "address": "10306 Old Liberty Rd Frederick, Maryland, 21701",
+      "created_at": "2026-08-03T06:25:19-04:00",
+      "acknowledged_at": "2026-08-03T06:25:23-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T06:25:23-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22403842",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.30868775334909,
+          39.457976269372395
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22403842",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40778,
+        "title": "Animal Carcass in Public Ways",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40778",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.457976269372395&lng=-77.30868775334909&request_types=40778&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22403842/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22403842/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/signs-6693545b1fdc5149cf533ce1afe0b4809a4bd2826dee86a6afd74d110c8ded70.png"
+      }
+    },
+    {
       "id": 22400922,
       "status": "Acknowledged",
       "summary": "Roadway Tree Maintenance",
@@ -13,7 +121,7 @@
       "acknowledged_at": "2026-08-02T14:26:17-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-08-02T14:26:17-04:00",
+      "updated_at": "2026-08-03T08:00:48-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22400922",
       "point": {
         "type": "Point",
@@ -121,7 +229,7 @@
       "acknowledged_at": "2026-08-02T12:04:16-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-08-02T12:04:16-04:00",
+      "updated_at": "2026-08-03T08:00:47-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22400223",
       "point": {
         "type": "Point",
@@ -229,7 +337,7 @@
       "acknowledged_at": "2026-08-02T07:11:17-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-08-02T07:11:17-04:00",
+      "updated_at": "2026-08-03T06:40:24-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22399140",
       "point": {
         "type": "Point",
@@ -501,7 +609,7 @@
       "acknowledged_at": "2026-07-31T11:07:45-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-07-31T11:07:45-04:00",
+      "updated_at": "2026-08-03T08:00:20-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22387590",
       "point": {
         "type": "Point",
@@ -667,7 +775,7 @@
       "acknowledged_at": "2026-07-31T08:04:33-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-07-31T08:04:33-04:00",
+      "updated_at": "2026-08-03T08:10:25-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22385671",
       "point": {
         "type": "Point",
@@ -721,7 +829,7 @@
       "acknowledged_at": "2026-07-31T08:02:08-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-07-31T08:02:08-04:00",
+      "updated_at": "2026-08-03T08:10:25-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22385657",
       "point": {
         "type": "Point",
@@ -977,121 +1085,11 @@
         "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMxNzUyNzcsInB1ciI6ImJsb2JfaWQifX0=--8ef928ef97333c595ca80c4e24e4f1e2702b8e53/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/8b6fcbc0-2ae3-42f6-81f2-17881f4e2edf_2026-07-30T08-48-30-09-00.jpg",
         "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMxNzUyNzcsInB1ciI6ImJsb2JfaWQifX0=--8ef928ef97333c595ca80c4e24e4f1e2702b8e53/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/8b6fcbc0-2ae3-42f6-81f2-17881f4e2edf_2026-07-30T08-48-30-09-00.jpg"
       }
-    },
-    {
-      "id": 22379735,
-      "status": "Acknowledged",
-      "summary": "Roadway General Request",
-      "description": "I would like to report an ongoing traffic safety issue at the entrance to the parking lot on Corporate Drive.\n\nVehicles traveling on Corporate Drive are making illegal left turns into the parking lot by crossing a lane that is designated only for vehicles traveling from New Design Road to merge right into the entrance. This entrance is not designed or signed for left turns from Corporate Drive.\n\nDrivers are making these turns in a U-turn-like fashion, blocking the single travel lane and causing significant congestion for vehicles approaching from Crestwood. The backups create unnecessary delays and increase the risk of a rear-end or side-impact collision.\n\nWould it be possible to install flexible delineator posts or similar barriers—like those used to separate bicycle lanes—to physically prevent vehicles from making these illegal left turns? A barrier would help keep traffic flowing properly, discourage illegal maneuvers, and improve safety before a serious crash occurs.\n\nThank you for considering this request.",
-      "rating": 2,
-      "lat": 39.37818758057406,
-      "lng": -77.41993759638545,
-      "address": "5301-5503 Corporate Dr Ballenger Creek, MD, 21703, USA",
-      "created_at": "2026-07-30T13:11:26-04:00",
-      "acknowledged_at": "2026-07-30T13:11:29-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-07-30T13:11:30-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22379735",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.41993759638545,
-          39.37818758057406
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22379735",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 41878,
-        "title": "Roadway General Request",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/41878",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.37818758057406&lng=-77.41993759638545&request_types=41878&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22379735/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22379735/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 4267737,
-        "name": "Sarbear1",
-        "role": "Registered User",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/4267737",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
-    },
-    {
-      "id": 22379423,
-      "status": "Closed",
-      "summary": "Property Damage",
-      "description": "Mailbox hit by mower. Please investigate.",
-      "rating": 2,
-      "lat": 39.65890330038718,
-      "lng": -77.39410322969503,
-      "address": "15429 Kelbaugh Rd Thurmont, Maryland, 21788",
-      "created_at": "2026-07-30T12:48:06-04:00",
-      "acknowledged_at": "2026-07-30T12:48:09-04:00",
-      "closed_at": "2026-07-30T15:10:39-04:00",
-      "reopened_at": null,
-      "updated_at": "2026-07-30T15:10:40-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22379423",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.39410322969503,
-          39.65890330038718
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22379423",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40770,
-        "title": "Property Damage",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40770",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.65890330038718&lng=-77.39410322969503&request_types=40770&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22379423/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22379423/flag",
-      "transitions": {
-        "open_url": "https://seeclickfix.com/api/v2/issues/22379423/open"
-      },
-      "reporter": {
-        "id": 2002133,
-        "name": "Frederick County, MD Neighbor",
-        "role": "Guest",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2002133",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories_trans/no-image-3afd5fe0adb47a63f5b051604db11d882955257f2b16ddde9e931b0a065ae59f.png"
-      }
     }
   ],
   "metadata": {
     "pagination": {
-      "entries": 446,
+      "entries": 448,
       "page": 1,
       "per_page": 20,
       "pages": 23,

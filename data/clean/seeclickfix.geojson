@@ -6,6 +6,50 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.20373470205988,
+          39.407868841572515
+        ]
+      },
+      "properties": {
+        "external_id": "22404374",
+        "summary": "Roadway Mowing Request",
+        "description": "At the intersection of Old Annapolis Rd and Bottom Rd. grass cutting is needed. Obstruction of view is an issue.",
+        "address": "Bottom Rd Mount Airy, Maryland, 21771",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-03T12:28:27.000Z",
+        "url": "https://seeclickfix.com/issues/22404374",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.30868775334909,
+          39.457976269372395
+        ]
+      },
+      "properties": {
+        "external_id": "22403842",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Dead deer by stop sign on Old Liberty Road",
+        "address": "10306 Old Liberty Rd Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-03T10:25:19.000Z",
+        "url": "https://seeclickfix.com/issues/22403842",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.56949498280204,
           39.40977782857715
         ]
@@ -350,50 +394,6 @@
         "category": "Roadway General Request",
         "reported_at": "2026-07-30T17:52:30.000Z",
         "url": "https://seeclickfix.com/issues/22380286",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.41993759638545,
-          39.37818758057406
-        ]
-      },
-      "properties": {
-        "external_id": "22379735",
-        "summary": "Roadway General Request",
-        "description": "I would like to report an ongoing traffic safety issue at the entrance to the parking lot on Corporate Drive.\n\nVehicles traveling on Corporate Drive are making illegal left turns into the parking lot",
-        "address": "5301-5503 Corporate Dr Ballenger Creek, MD, 21703, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-07-30T17:11:26.000Z",
-        "url": "https://seeclickfix.com/issues/22379735",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.39410322969503,
-          39.65890330038718
-        ]
-      },
-      "properties": {
-        "external_id": "22379423",
-        "summary": "Property Damage",
-        "description": "Mailbox hit by mower. Please investigate.",
-        "address": "15429 Kelbaugh Rd Thurmont, Maryland, 21788",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Property Damage",
-        "reported_at": "2026-07-30T16:48:06.000Z",
-        "url": "https://seeclickfix.com/issues/22379423",
         "source": "seeclickfix"
       }
     }

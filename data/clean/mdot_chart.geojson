@@ -6,52 +6,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.42019,
-          39.398083
-        ]
-      },
-      "properties": {
-        "external_id": "fcffbef8809c036f006ad32ec4235c0a",
-        "incident_type": "disabled",
-        "description": "Disabled Vehicle Event @ I-70 WEST PRIOR TO EXIT 53B US 40 FREDERICK FREEWAY (WB) (MM 53.0)",
-        "county": "Frederick",
-        "road": "I-70",
-        "direction": "West",
-        "location": "Disabled Vehicle Event @ I-70 WEST PRIOR TO EXIT 53B US 40 FREDERICK FREEWAY (WB) (MM 53.0)",
-        "severity": "medium",
-        "started_at": "2026-08-02T19:39:36.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.259224,
-          39.385128
-        ]
-      },
-      "properties": {
-        "external_id": "13004787809b036f006ad32ec4235c0a",
-        "incident_type": "special",
-        "description": "MD 75 (GREEN VALLEY RD) @ MD 144 (OLD NATIONAL PIKE) [Traffic Control Signal]",
-        "county": "Frederick",
-        "road": "MD 75",
-        "direction": "North",
-        "location": "MD 75 (GREEN VALLEY RD) @ MD 144 (OLD NATIONAL PIKE) [Traffic Control Signal]",
-        "severity": "low",
-        "started_at": "2026-08-02T19:33:27.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           -77.35535,
           39.324097
         ]
