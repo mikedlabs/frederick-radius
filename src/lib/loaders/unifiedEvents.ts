@@ -535,7 +535,11 @@ const cachedAssemble = unstable_cache(
   // serializing both `unified` and its `publicEvents` subset in a new entry
   // every five minutes. This keeps the item below Next's 2 MB cache limit and
   // lets stale-while-revalidate work.
-  ["unified-events-v25"],
+  // v26: extracted venue events now carry a stable venue + occurrence
+  // identity instead of the old empty-slug fallback. The persistent cache is
+  // shared across deployments, so this version change is required for the
+  // archive worker to receive the corrected source IDs immediately.
+  ["unified-events-v26"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.
