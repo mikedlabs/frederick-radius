@@ -17,12 +17,11 @@ import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 
-const loadPlaceSheet = () => import("./PlaceSheet");
-const PlaceSheet = lazy(loadPlaceSheet);
+const PlaceSheet = lazy(() => import("./PlaceSheet"));
 let placeLayerSequence = 0;
 
 function preloadPlaceSheet() {
-  void loadPlaceSheet().catch(() => {
+  void import("./PlaceSheet").catch(() => {
     // A failed speculative request must not create an unhandled page error.
     // React's lazy boundary remains the visible, retryable on-demand path.
   });
