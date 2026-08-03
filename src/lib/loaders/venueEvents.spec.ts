@@ -77,3 +77,40 @@ describe("venue event mixed-calendar categories", () => {
     expect(card.category).toBe("music");
   });
 });
+
+describe("venue event durable identity", () => {
+  it("gives each dated venue listing its own stable archive identity", () => {
+    const cards = venueEventsToCards([
+      event({
+        title: "Bluegrass Jam",
+        category: "music",
+        starts_at: "2026-08-05T23:00:00.000Z",
+      }),
+      event({
+        title: "Bluegrass Jam",
+        category: "music",
+        starts_at: "2026-08-12T23:00:00.000Z",
+      }),
+    ]);
+
+    expect(cards.map((card) => card.slug)).toEqual([
+      "bluegrass-jam-2026-08-05",
+      "bluegrass-jam-2026-08-12",
+    ]);
+    expect(cards.map((card) => card.source_id)).toEqual([
+      "venue:unmatched-test-venue:2026-08-05T23:00:00.000Z",
+      "venue:unmatched-test-venue:2026-08-12T23:00:00.000Z",
+    ]);
+    expect(new Set(cards.map((card) => card.source_id))).toHaveLength(2);
+  });
+
+  it("keeps the same identity when publisher copy changes but the slot does not", () => {
+    const [before, after] = venueEventsToCards([
+      event({ title: "Bluegrass Jam" }),
+      event({ title: "Wednesday Bluegrass Jam" }),
+    ]);
+
+    expect(before.slug).not.toBe(after.slug);
+    expect(before.source_id).toBe(after.source_id);
+  });
+});
