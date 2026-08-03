@@ -36,6 +36,8 @@ export type IngestedOccurrence = {
   endsAtUtc: string | null;
   allDay: boolean;
   sourceUrl: string | null;
+  /** Last successful normalized-source refresh for archive provenance. */
+  verifiedAt: string | null;
 };
 
 export type IngestedSeries = {
@@ -84,7 +86,14 @@ type Row = {
   category: string | null;
   hero_image: string | null;
   hero_image_alt: string | null;
+  updated_at: string | Date | null;
 };
+
+function verifiedTimestamp(value: Row["updated_at"]): string | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+}
 
 function seriesKeyOf(r: Row): string {
   const title = r.title.trim().toLowerCase().replace(/\s+/g, " ");
@@ -105,7 +114,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     rows = (await sql<Row[]>`
       select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
              all_day, venue_name, address, lat, lng, municipality, category,
-             hero_image, hero_image_alt
+             hero_image, hero_image_alt, updated_at
       from ingested_events
       where starts_at_utc >= ${since}
          or ends_at_utc >= ${since}
@@ -188,6 +197,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
         endsAtUtc: r.ends_at_utc,
         allDay: r.all_day,
         sourceUrl: r.source_url,
+        verifiedAt: verifiedTimestamp(r.updated_at),
       })),
       count: rs.length,
       nextStart: head.starts_at_utc,

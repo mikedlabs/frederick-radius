@@ -53,6 +53,7 @@ describe("multi-day all-day ingested visibility", () => {
             category: "community",
             hero_image: null,
             hero_image_alt: null,
+            updated_at: "2026-07-11T10:30:00.000Z",
           },
         ];
       },
@@ -72,6 +73,7 @@ describe("multi-day all-day ingested visibility", () => {
       starts_at: "2026-07-10T04:00:00.000Z",
       ends_at: "2026-07-12T04:00:00.000Z",
       is_all_day: true,
+      last_verified_at: "2026-07-11T10:30:00.000Z",
     });
   });
 

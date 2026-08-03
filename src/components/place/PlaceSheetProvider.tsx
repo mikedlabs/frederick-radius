@@ -20,6 +20,13 @@ import LazySheetFallback from "@/components/ui/LazySheetFallback";
 const PlaceSheet = lazy(() => import("./PlaceSheet"));
 let placeLayerSequence = 0;
 
+function preloadPlaceSheet() {
+  void import("./PlaceSheet").catch(() => {
+    // A failed speculative request must not create an unhandled page error.
+    // React's lazy boundary remains the visible, retryable on-demand path.
+  });
+}
+
 type Ctx = {
   openSheet: (p: PlaceCardData) => void;
   closeSheet: () => void;
@@ -40,6 +47,26 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   // payload, so there's no PII trail beyond what the user can already
   // see in their own URL bar.
   const pushRecent = usePushRecentPlace();
+
+  // The sheet stays out of the initial app bundle, but a map user is likely
+  // to open it next. Warm its chunk once the map has painted so an immediate
+  // Details tap opens the useful sheet instead of sitting on a loader while a
+  // cold browser asks for the lazy bundle. Other routes keep the lazy split.
+  useEffect(() => {
+    if (pathname !== "/map") return;
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(
+        preloadPlaceSheet,
+        { timeout: 1_500 },
+      );
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timer = globalThis.setTimeout(preloadPlaceSheet, 250);
+    return () => globalThis.clearTimeout(timer);
+  }, [pathname]);
+
   const openSheet = useCallback(
     (p: PlaceCardData) => {
       const hydrationUpdate = activePlaceSlugRef.current === p.slug;
