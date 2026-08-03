@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   RETURN_BRIDGE_SESSION_GAP_MS,
-  RETURN_BRIDGE_SNOOZE_MS,
   beginReturnBridgeSession,
   clearPendingReturnBridgeValue,
   completeReturnBridge,
@@ -40,7 +39,7 @@ describe("Return Bridge state", () => {
       sessions: 3,
       valueKind: null,
       valueAt: 0,
-      dismissals: 2,
+      dismissals: 1,
       autoDisabled: true,
     }));
   });
@@ -82,7 +81,7 @@ describe("Return Bridge state", () => {
     ).toBe("return");
   });
 
-  it("snoozes once, then permanently stops automatic offers", () => {
+  it("permanently stops automatic offers after the first dismissal", () => {
     const active = recordReturnBridgeValue(
       beginReturnBridgeSession(emptyReturnBridgeState(), NOW),
       "transit-stop",
@@ -90,14 +89,14 @@ describe("Return Bridge state", () => {
     );
     const firstDismissal = dismissReturnBridge(
       markReturnBridgeOfferShown(active, NOW),
-      NOW,
     );
 
-    expect(firstDismissal.snoozedUntil).toBe(NOW + RETURN_BRIDGE_SNOOZE_MS);
+    expect(firstDismissal.snoozedUntil).toBe(0);
+    expect(firstDismissal.autoDisabled).toBe(true);
     expect(
       returnBridgeOfferReason(firstDismissal, {
         socialEntry: false,
-        now: NOW + RETURN_BRIDGE_SNOOZE_MS - 1,
+        now: NOW + 60_000,
       }),
     ).toBeNull();
 
@@ -105,20 +104,7 @@ describe("Return Bridge state", () => {
     expect(
       returnBridgeOfferReason(eligibleAgain, {
         socialEntry: false,
-        now: NOW + RETURN_BRIDGE_SNOOZE_MS + 1,
-      }),
-    ).toBe("return");
-
-    const secondDismissal = dismissReturnBridge(
-      eligibleAgain,
-      NOW + RETURN_BRIDGE_SNOOZE_MS + 1,
-    );
-    expect(secondDismissal.autoDisabled).toBe(true);
-    expect(secondDismissal.snoozedUntil).toBe(0);
-    expect(
-      returnBridgeOfferReason(secondDismissal, {
-        socialEntry: true,
-        now: NOW + 10 * RETURN_BRIDGE_SNOOZE_MS,
+        now: NOW + 30 * 24 * 60 * 60 * 1000,
       }),
     ).toBeNull();
   });

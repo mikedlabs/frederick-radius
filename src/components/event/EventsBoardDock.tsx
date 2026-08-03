@@ -3,7 +3,6 @@
 import {
   Fragment,
   useEffect,
-  useOptimistic,
   useRef,
   useState,
   useTransition,
@@ -401,8 +400,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         : "what";
 
   const activePreset = activeWhenPreset({ lens, tod });
-  const [visibleWhenPreset, setOptimisticWhenPreset] =
-    useOptimistic(activePreset);
+  const [pendingWhenPreset, setPendingWhenPreset] = useState<
+    (typeof WHEN_PRESETS)[number]["key"] | null | undefined
+  >(undefined);
+  const visibleWhenPreset = pendingWhenPreset === undefined
+    ? activePreset
+    : pendingWhenPreset;
   const [, startWhenTransition] = useTransition();
   // "Tomorrow" is a day pick, not a lens — the ?d= plumbing already
   // exists, so the ribbon chip just targets tomorrow's Eastern day key.
@@ -437,21 +440,23 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const pickPreset = (p: (typeof WHEN_PRESETS)[number]) => {
     haptic("light");
     const turningOff = visibleWhenPreset === p.key;
-    startWhenTransition(async () => {
-      setOptimisticWhenPreset(turningOff ? null : p.key);
-      // Let the selected state paint before the potentially larger event list
-      // re-slices and requests its continuation payload.
-      await new Promise<void>((resolve) => {
-        window.requestAnimationFrame(() => resolve());
+    const nextPreset = turningOff ? null : p.key;
+    // A discrete local state update acknowledges the tap in the current
+    // frame. The larger event-board re-slice remains a transition, so a busy
+    // live feed cannot make the chip look ignored.
+    setPendingWhenPreset(nextPreset);
+    window.requestAnimationFrame(() => {
+      startWhenTransition(() => {
+        if (turningOff) {
+          setLens("all");
+          setTod(null);
+        } else {
+          setLens(p.lens);
+          setTod(p.tod);
+        }
+        setDay(null);
+        setPendingWhenPreset(undefined);
       });
-      if (turningOff) {
-        setLens("all");
-        setTod(null);
-      } else {
-        setLens(p.lens);
-        setTod(p.tod);
-      }
-      setDay(null);
     });
   };
   const pickDaypart = (d: Daypart) => {

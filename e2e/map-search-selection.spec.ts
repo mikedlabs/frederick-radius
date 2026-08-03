@@ -20,11 +20,43 @@ test.describe("map search selection", () => {
     await expect(
       page.locator('[data-map-place-slug="market-street-boba-beans"]'),
     ).toBeVisible();
+    await expect(page.locator("[data-map-selection-lock]")).toHaveCount(1);
+    await expect(page.locator("[data-map-selection-lock]")).toHaveCSS(
+      "animation-name",
+      "map-lock-on",
+    );
+    await expect(page.locator("[data-map-result-surface]")).toHaveCSS(
+      "animation-name",
+      "map-result-arrive",
+    );
+    await expect(page.locator("[data-map-dock]")).toHaveCSS("opacity", "0");
+    await expect(page.locator(".map-edge-tools")).toBeHidden();
     await expect(
       page.locator(
         '[data-map-place-slug="calvary-united-methodist-church-of-frederick-maryland"]',
       ),
     ).toHaveCount(0);
+  });
+
+  test("selection choreography becomes static for reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await search.fill("Market Street Boba Beans");
+    await page
+      .locator('[data-map-search-result="place:market-street-boba-beans"]')
+      .click();
+
+    await expect(page.locator("[data-map-result-surface]")).toBeVisible();
+    await expect(page.locator("[data-map-result-surface]")).toHaveCSS(
+      "animation-name",
+      "none",
+    );
+    await expect(page.locator("[data-map-selection-lock]")).toHaveCSS(
+      "animation-name",
+      "none",
+    );
   });
 
   test("restores a shared query without covering the map until search is active", async ({ page }) => {
@@ -282,6 +314,18 @@ test.describe("map search selection", () => {
       "data-map-amenity-marks",
       "off",
     );
+
+    const rail = page.getByRole("group", { name: "Current map view" });
+    const railBox = await rail.boundingBox();
+    const dockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
+    expect(railBox?.y ?? 9999).toBeLessThan(dockBox?.y ?? 0);
+
+    await rail.getByRole("button", { name: "Reset map view" }).click();
+    await expect(rail).toHaveCount(0);
+    await expect(search).toHaveValue("");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("amenity"))
+      .toBe(false);
   });
 
   test("parking is a parking command, not a parks result", async ({ page }) => {
@@ -319,8 +363,14 @@ test.describe("map search selection", () => {
 
     const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("coffee nearby");
+    const firstRadiusResult = page.locator(
+      '[data-map-search-result^="place:"]',
+    ).first();
+    await expect(firstRadiusResult).toBeVisible();
+    const resultId = await firstRadiusResult.getAttribute("data-map-search-result");
+    expect(resultId).toMatch(/^place:/);
     const localResult = page.locator(
-      '[data-map-search-result="place:market-street-boba-beans"]',
+      `[data-map-search-result="${resultId}"]`,
     );
     await expect(localResult).toBeVisible();
     await expect.poll(() => matrixRequests).toBeGreaterThan(0);
@@ -501,16 +551,25 @@ test.describe("map search selection", () => {
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await roads.click();
 
-    await expect(roads).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("region", { name: "Live conditions" })).toBeHidden();
+    await page.getByRole("button", { name: "What the map shows" }).click();
+    await page
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
+      .click();
+    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
     await expect(
-      page.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
+      reopenedLayers.getByRole("button", { name: "Roads now" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      reopenedLayers.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
     ).toBeVisible();
     await expect(
-      page.getByText(
+      reopenedLayers.getByText(
         /Maryland CHART incidents, WZDx work zones, and county-published issues/,
       ),
     ).toBeVisible();
-    await expect(page.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
+    await expect(reopenedLayers.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
   });
 
   test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
@@ -532,12 +591,21 @@ test.describe("map search selection", () => {
 
     await roads.click();
 
-    await expect(roads).toHaveAttribute("aria-pressed", "true");
+    await expect(layers).toBeHidden();
+    await page.getByRole("button", { name: /What the map shows/ }).click();
+    await page
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
+      .click();
+    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
     await expect(
-      page.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
+      reopenedLayers.getByRole("button", { name: "Roads now" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      reopenedLayers.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
     ).toBeVisible();
     await expect(
-      page.getByText(
+      reopenedLayers.getByText(
         /Maryland CHART incidents, WZDx work zones, and county-published issues/,
       ),
     ).toBeVisible();

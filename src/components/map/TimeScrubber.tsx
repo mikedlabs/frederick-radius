@@ -56,13 +56,14 @@ export default function TimeScrubber({
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
-  // Autoplay: step time on a light interval (not every frame) so the parent's
-  // re-render stays cheap. ~18 hours over ~22s.
+  // Autoplay: quarter-hour steps are enough to communicate openings and event
+  // starts. They also prevent the map from recomputing 1,000+ place states for
+  // visually indistinguishable eight-minute increments. ~18 hours in 18s.
   useEffect(() => {
     if (!playing || !active) return;
     const id = setInterval(() => {
-      onChange(((hour ?? START) + 0.13 >= END ? START : (hour ?? START) + 0.13));
-    }, 150);
+      onChange(((hour ?? START) + 0.25 >= END ? START : (hour ?? START) + 0.25));
+    }, 250);
     return () => clearInterval(id);
   }, [playing, active, hour, onChange]);
 

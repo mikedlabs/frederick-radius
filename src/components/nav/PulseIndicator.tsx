@@ -89,6 +89,7 @@ export default function PulseIndicator() {
 
   return (
     <Link
+      data-pulse-indicator
       href="/pulse"
       prefetch={false}
       aria-label={statusLabel}

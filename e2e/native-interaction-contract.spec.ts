@@ -24,6 +24,10 @@ test("Find is reversible through Close, Escape, and browser Back", async ({
 }) => {
   await page.goto("/today", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1 })).toBeAttached();
+  // Today hydrates live rails below the fold. Let that first layout settle so
+  // this test measures the modal's scroll contract rather than a feed card
+  // arriving while the overlay happens to be open.
+  await page.waitForLoadState("networkidle");
   await page.evaluate(() => window.scrollTo(0, 620));
   const scrollY = await page.evaluate(() => window.scrollY);
   expect(scrollY).toBeGreaterThan(0);
@@ -288,7 +292,17 @@ test("event filters and map layers acknowledge the tap before data work finishes
     .getByRole("button", { name: /Transit/ });
   await expect(transit).toHaveAttribute("aria-pressed", "false");
   await transit.click();
-  await expect(transit).toHaveAttribute("aria-pressed", "true", {
+  await expect(page.getByRole("region", { name: "Live conditions" })).toBeHidden({
     timeout: 300,
   });
+  await page.getByRole("button", { name: "What the map shows" }).click();
+  await page
+    .getByRole("region", { name: "What the map shows" })
+    .getByRole("button", { name: "Check live conditions and map layers" })
+    .click();
+  await expect(
+    page
+      .getByRole("region", { name: "Live conditions" })
+      .getByRole("button", { name: /Transit/ }),
+  ).toHaveAttribute("aria-pressed", "true");
 });

@@ -46,6 +46,7 @@ test.describe("mobile discovery shell", () => {
 
     const mapFind = page.getByRole("combobox", { name: "Search this map" });
     await expect(mapFind).toHaveAttribute("id", "map-search-input");
+    await expect(page.locator("[data-map-context-rail]")).toHaveCount(0);
     const coldDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     const coldMapBox = await page.locator(".dock-host").boundingBox();
     expect(coldDockBox?.y ?? 0).toBeGreaterThan(
@@ -57,7 +58,8 @@ test.describe("mobile discovery shell", () => {
 
     const contentsButton = page.getByRole("button", { name: "What the map shows" });
     await expect(contentsButton).toBeVisible();
-    await expect(page.locator(".map-edge-tool-locate")).toBeVisible();
+    await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Use my location" })).toBeVisible();
     await expect(page.locator(".map-edge-tool-essential")).toBeHidden();
     const focusedDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     // A focus event alone does not prove that a software keyboard opened.
@@ -67,7 +69,7 @@ test.describe("mobile discovery shell", () => {
     expect(
       Math.abs((focusedDockBox?.y ?? 0) - (coldDockBox?.y ?? 0)),
     ).toBeLessThanOrEqual(2);
-    await expect(page.locator("[data-map-dock] .dock-head button")).toHaveCount(1);
+    await expect(page.locator("[data-map-dock] .dock-head button")).toHaveCount(2);
     await expect(
       page.getByRole("button", { name: /Open map tools|Map tools,/ }),
     ).toHaveCount(0);
@@ -84,7 +86,9 @@ test.describe("mobile discovery shell", () => {
     const contentsPane = page.getByRole("region", { name: "What the map shows" });
     await expect(contentsPane).toBeVisible();
     await expect(contentsPane).toBeFocused();
-    await expect(contentsPane.getByRole("button", { name: "Find a place" })).toBeVisible();
+    await expect(
+      contentsPane.getByRole("button", { name: "Find places nearby" }),
+    ).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /See what is happening right now/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /Find a nearby essential/ })).toBeVisible();
 
@@ -109,18 +113,92 @@ test.describe("mobile discovery shell", () => {
     const transit = layersPane.getByRole("button", { name: /Transit/ });
     await expect(transit).toHaveAttribute("aria-pressed", "false");
     await transit.click();
-    await expect(transit).toHaveAttribute("aria-pressed", "true");
-
-    await page.keyboard.press("Escape");
     await expect(layersPane).toBeHidden();
     await expect(contentsButton).toBeFocused();
-    await expect(contentsButton).toContainText("Map view");
+    await expect(contentsButton).toContainText("Change view");
     await expect(contentsButton.locator(".dock-layer-count")).toHaveText("1");
+
+    const contextRail = page.getByRole("group", { name: "Current map view" });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
+    await expect(contextRail).toBeVisible();
+    await expect(contextRail).not.toContainText("Showing");
+    await expect(contextRail).toContainText("County · Transit");
+    await expect(page.locator(".dock-active-state")).toHaveCount(0);
+
+    const contextBox = await contextRail.boundingBox();
+    const activeDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
+    expect(contextBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(activeDockBox?.y ?? 0).toBeGreaterThan(contextBox?.y ?? 9999);
+    const contextActions = contextRail.getByRole("button");
+    await expect(contextActions).toHaveCount(2);
+    for (const action of await contextActions.all()) {
+      const box = await action.boundingBox();
+      expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(44);
+    }
+    const topFurnitureOverlaps = await page.evaluate(() => {
+      const rail = document.querySelector<HTMLElement>("[data-map-context-rail]");
+      if (!rail) return true;
+      const a = rail.getBoundingClientRect();
+      const intersects = (b: DOMRect) =>
+        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      return [
+        document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo"),
+        document.querySelector<HTMLElement>(".mapboxgl-ctrl-attrib"),
+      ]
+        .filter((element): element is HTMLElement => Boolean(element?.offsetParent))
+        .some((element) => intersects(element.getBoundingClientRect()));
+    });
+    expect(topFurnitureOverlaps).toBe(false);
+
+    await contextRail.getByRole("button", { name: /Change map view/ }).click();
+    await expect(
+      page.getByRole("region", { name: "What the map shows" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(contentsButton).toBeFocused();
+
+    await contentsButton.click();
+    await page
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
+      .click();
+    const reopenedLayersPane = page.getByRole("region", { name: "Live conditions" });
+    await expect(
+      reopenedLayersPane.getByRole("button", { name: /Transit/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
+    await expect(reopenedLayersPane).toBeHidden();
 
     await contentsButton.click();
     await expect(page.getByRole("region", { name: "What the map shows" })).toBeVisible();
     await page.locator(".mapboxgl-canvas").click({ position: { x: 12, y: 100 } });
     await expect(page.getByRole("region", { name: "What the map shows" })).toBeHidden();
+
+    await contentsButton.click();
+    const finalContentsPane = page.getByRole("region", {
+      name: "What the map shows",
+    });
+    await finalContentsPane
+      .getByRole("button", { name: "Find places nearby" })
+      .click();
+    const placesPane = page.getByRole("region", { name: "Find a place" });
+    await expect(placesPane).toBeVisible();
+    await expect(placesPane.getByText("All place categories")).toBeVisible();
+    const withinReach = placesPane.getByRole("button", {
+      name: "See what is within reach",
+    });
+    await withinReach.click();
+    await expect(placesPane).toBeHidden();
+    await expect(page).toHaveURL(/\/map\?mode=radius$/);
+    const modeControl = page.getByRole("group", { name: "Map mode" });
+    await expect(modeControl).toBeVisible();
+    await expect(
+      modeControl.getByRole("link", { name: "Nearby" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   test("focused search surfaces keep one route-owned query instead of duplicating global Find", async ({ page }) => {
@@ -141,6 +219,51 @@ test.describe("mobile discovery shell", () => {
         name: "Ask or find across Frederick County",
       }),
     ).toHaveCount(0);
+  });
+
+  test("required Mapbox credits never overlap the Radius HUD on a narrow phone", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto("/map?show=transit", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
+
+    const geometry = await page.evaluate(() => {
+      const host = document.querySelector<HTMLElement>(".dock-host");
+      const rail = document.querySelector<HTMLElement>("[data-map-context-rail]");
+      const logo = document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo");
+      const attribution = document.querySelector<HTMLElement>(".mapboxgl-ctrl-attrib");
+      if (!host || !rail || !logo || !attribution) return null;
+      const hostBox = host.getBoundingClientRect();
+      const railBox = rail.getBoundingClientRect();
+      const intersects = (first: DOMRect, second: DOMRect) =>
+        first.left < second.right &&
+        first.right > second.left &&
+        first.top < second.bottom &&
+        first.bottom > second.top;
+      return {
+        insideHost:
+          railBox.left >= hostBox.left &&
+          railBox.right <= hostBox.right &&
+          railBox.top >= hostBox.top &&
+          railBox.bottom <= hostBox.bottom,
+        overlapsLogo: intersects(railBox, logo.getBoundingClientRect()),
+        overlapsAttribution: intersects(
+          railBox,
+          attribution.getBoundingClientRect(),
+        ),
+        documentOverflow:
+          document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+
+    expect(geometry).not.toBeNull();
+    expect(geometry?.insideHost).toBe(true);
+    expect(geometry?.overlapsLogo).toBe(false);
+    expect(geometry?.overlapsAttribution).toBe(false);
+    expect(geometry?.documentOverflow ?? 999).toBeLessThanOrEqual(1);
   });
 
   test("map options never create a sideways or document scroll trap", async ({ page }) => {
@@ -371,7 +494,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Compass" }),
+      page.getByRole("heading", { level: 1, name: "What do you need?" }),
     ).toBeVisible();
     const toolSearch = page.getByRole("searchbox", {
       name: "Search all Radius tools",
@@ -394,12 +517,20 @@ test.describe("mobile discovery shell", () => {
         pinned.getByRole("link", { name: new RegExp(`^${label}\\b`) }),
       ).toBeVisible();
     }
+    for (const shortcut of await pinned.getByRole("link").all()) {
+      const box = await shortcut.boundingBox();
+      expect(box).not.toBeNull();
+      expect((box?.x ?? 999) + (box?.width ?? 999)).toBeLessThanOrEqual(320);
+    }
 
     await toolSearch.fill("coffee");
     await expect(toolSearch).toHaveAttribute("type", "search");
     await expect(toolSearch).toHaveAttribute("inputmode", "search");
     await expect(page.getByRole("button", { name: "Clear tool search" })).toHaveCount(1);
     await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveAttribute("href", "/search?q=coffee");
+    await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveCount(1);
+    await toolSearch.fill("ask");
+    await expect(page.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
     await toolSearch.fill("weather");
     await expect(page.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
@@ -410,8 +541,8 @@ test.describe("mobile discovery shell", () => {
       ),
     ).toBeLessThanOrEqual(1);
 
-    await page.getByRole("button", { name: "Edit" }).click();
-    const dialog = page.getByRole("dialog", { name: "All tools" });
+    await page.getByRole("button", { name: "Manage" }).click();
+    const dialog = page.getByRole("dialog", { name: "Manage shortcuts" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("searchbox")).toHaveCount(0);
     expect(

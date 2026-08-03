@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   CalendarDays,
+  ChevronDown,
   Clock3,
   ExternalLink,
   MapPin,
@@ -12,7 +13,12 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
-import { foodTruckStopDirectionsUrl } from "@/lib/food-trucks/presentation";
+import {
+  foodTruckStopDirectionsUrl,
+  foodTruckStopTiming,
+  prioritizeFoodTruckStops,
+  type FoodTruckStopTiming,
+} from "@/lib/food-trucks/presentation";
 import { settleFoodTruckPageData } from "@/lib/food-trucks/page-data";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import FoodTruckBoard, { type FoodTruckBoardItem } from "@/components/food-trucks/FoodTruckBoard";
@@ -115,9 +121,15 @@ function stopVendorIdentity(vendor: FoodTruckScheduleStop["vendors"][number]) {
   };
 }
 
-function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
+function StopCard({
+  stop,
+  timing,
+}: {
+  stop: FoodTruckScheduleStop;
+  timing: FoodTruckStopTiming;
+}) {
   return (
-    <article className="food-truck-stop-card">
+    <article className="food-truck-stop-card" data-stop-timing={timing}>
       <div className="food-truck-stop-visual">
         {stop.vendors.slice(0, 3).map((vendor) => (
           <FoodTruckIdentity
@@ -134,6 +146,9 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
       </div>
       <div className="min-w-0 flex-1 p-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          {timing === "active" ? (
+            <span style={{ color: "var(--app-positive)" }}>Scheduled now</span>
+          ) : null}
           <span className="inline-flex items-center gap-1.5">
             <Clock3 className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
             {scheduleTime(stop)}
@@ -265,7 +280,15 @@ export default async function FoodTrucksPage({
     beacons: getFreshestBeaconByTruck(),
     schedule: getFoodTruckSchedule(),
   });
-  const nearbyAsOf = new Date().toISOString();
+  const boardAsOf = new Date();
+  const nearbyAsOf = boardAsOf.toISOString();
+  const prioritizedStops = prioritizeFoodTruckStops(schedule.stops, boardAsOf);
+  const currentStops = prioritizedStops.filter(
+    (stop) => foodTruckStopTiming(stop, boardAsOf) !== "ended",
+  );
+  const earlierStops = prioritizedStops.filter(
+    (stop) => foodTruckStopTiming(stop, boardAsOf) === "ended",
+  );
   const scheduledSlugs = new Set(
     schedule.stops.flatMap((stop) => stop.vendors.map((vendor) => vendor.slug).filter(Boolean) as string[]),
   );
@@ -353,7 +376,7 @@ export default async function FoodTrucksPage({
         nearby={(
           <FoodTruckNearMe
             trucks={nearbyTrucks}
-            stops={schedule.stops}
+            stops={prioritizedStops}
             asOf={nearbyAsOf}
             accent={FOOD_ACCENT}
           />
@@ -380,9 +403,27 @@ export default async function FoodTrucksPage({
           </time>
         </div>
 
-        {schedule.stops.length > 0 ? (
+        {currentStops.length > 0 ? (
           <div className="food-truck-stop-grid">
-            {schedule.stops.map((stop) => <StopCard key={stop.id} stop={stop} />)}
+            {currentStops.map((stop) => (
+              <StopCard
+                key={stop.id}
+                stop={stop}
+                timing={foodTruckStopTiming(stop, boardAsOf)}
+              />
+            ))}
+          </div>
+        ) : schedule.stops.length > 0 ? (
+          <div className="food-truck-empty-board">
+            <Clock3 className="h-6 w-6" strokeWidth={1.8} aria-hidden style={{ color: FOOD_ACCENT }} />
+            <div>
+              <h3 className="font-serif text-[20px]" style={{ color: "var(--app-ink)" }}>
+                No more published stops are coming up on this board.
+              </h3>
+              <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Earlier stops remain below with the public source we checked.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="food-truck-empty-board">
@@ -410,6 +451,27 @@ export default async function FoodTrucksPage({
           </div>
         )}
 
+        {earlierStops.length > 0 ? (
+          <details
+            className="group overflow-hidden rounded-[var(--app-radius-lg)] border"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+            data-earlier-food-truck-stops
+          >
+            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[12px] font-semibold marker:content-none" style={{ color: "var(--app-ink-2)" }}>
+              <span>Earlier this week</span>
+              <span className="inline-flex items-center gap-2 font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                {earlierStops.length} {earlierStops.length === 1 ? "stop" : "stops"}
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              </span>
+            </summary>
+            <div className="food-truck-stop-grid border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+              {earlierStops.map((stop) => (
+                <StopCard key={stop.id} stop={stop} timing="ended" />
+              ))}
+            </div>
+          </details>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
             Every stop includes the public source we checked.
@@ -418,7 +480,7 @@ export default async function FoodTrucksPage({
         </div>
           </section>
         }
-        trucks={<FoodTruckBoard trucks={boardItems} stops={schedule.stops} accent={FOOD_ACCENT} />}
+        trucks={<FoodTruckBoard trucks={boardItems} stops={prioritizedStops} accent={FOOD_ACCENT} />}
       />
 
       {ownerView ? null : <OwnerDoor unlisted={unlistedStopVendors} lead={false} />}

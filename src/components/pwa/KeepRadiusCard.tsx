@@ -71,14 +71,14 @@ export default function KeepRadiusCard({
   if (variant === "row") {
     if (installed) return null;
     return (
-      <section className="sv-colophon" aria-label="Keep Frederick Radius handy">
+      <section className="sv-colophon" aria-label="Add Frederick Radius to your Home Screen">
         <div className="inner">
           <button
             type="button"
             onClick={openReturnBridge}
             className="sv-colophon-row w-full text-left"
           >
-            <span className="k">Keep this list easy to find</span>
+            <span className="k">Add Radius to your Home Screen</span>
             <span className="v link">
               Set up
               <ArrowRight
@@ -96,7 +96,7 @@ export default function KeepRadiusCard({
   return (
     <section
       id={id}
-      aria-label="Keep Frederick Radius handy"
+      aria-label="Add Frederick Radius to your Home Screen"
       className="rounded-[var(--app-radius-lg)] border p-4"
       style={{
         borderColor: installed
@@ -125,12 +125,12 @@ export default function KeepRadiusCard({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {installed ? "Radius is on this device" : "Keep Radius handy"}
+            {installed ? "Radius is on this device" : "Add Radius to your Home Screen"}
           </span>
           <span className="mt-0.5 block text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
             {installed
               ? "Open it from your Home Screen whenever you need it."
-              : "Add it to this device, or save a return link for later."}
+              : "Open Radius like an app with one tap from your phone."}
           </span>
         </span>
         {!installed ? (
@@ -140,7 +140,7 @@ export default function KeepRadiusCard({
             className="min-h-11 shrink-0 rounded-full px-3 text-[12px] font-semibold"
             style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
           >
-            Set up
+            Add
           </button>
         ) : null}
       </div>

@@ -242,6 +242,9 @@ export type MapDockProps = {
 
   /** Lets AppMap dim the map chrome + mark the host while a pane is open. */
   onPaneOpenChange: (open: boolean) => void;
+
+  /** A selected result, unsettled viewport, or cold map owns the upper HUD. */
+  suppressContextRail?: boolean;
 };
 
 /** A dock chip: color-dotted pill with an optional mono count. ≥44px
@@ -497,7 +500,7 @@ export default function MapDock(props: MapDockProps) {
     if (!searchPanelOpen) return;
     const dismissSearchOutside = (event: PointerEvent | WheelEvent) => {
       const target = event.target;
-      // The Map view button belongs to the same command instrument. Let its
+      // The Change view button belongs to the same command instrument. Let its
       // own click close search and open the sheet; closing during capture
       // would move the bottom dock before the click lands on touch devices.
       if (target instanceof Node && dockRef.current?.contains(target)) return;
@@ -851,6 +854,7 @@ export default function MapDock(props: MapDockProps) {
   const clearAll = () => {
     haptic("light");
     track("map_dock", { pane: "clear", pick: "all" });
+    updateMapSearch("");
     clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
@@ -1098,6 +1102,46 @@ export default function MapDock(props: MapDockProps) {
 
   return (
     <>
+      {activeOptionCount > 0 &&
+        pane === null &&
+        !searchPanelOpen &&
+        !searchKeyboardOpen &&
+        !props.suppressContextRail && (
+          <div
+            className="map-context-rail"
+            role="group"
+            aria-label="Current map view"
+            data-map-context-rail
+            data-map-top-surface="context"
+          >
+            <span
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {`Map showing ${contentsSummary}`}
+            </span>
+            <button
+              type="button"
+              className="map-context-rail-open tap-44"
+              onClick={() => togglePane("contents")}
+              aria-label={`Change map view: ${contentsSummary}`}
+            >
+              <Layers3 className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span className="map-context-rail-summary">{contentsSummary}</span>
+            </button>
+            <button
+              type="button"
+              className="map-context-rail-clear tap-44"
+              onClick={clearAll}
+              aria-label="Reset map view"
+              title="Reset map view"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            </button>
+          </div>
+        )}
       <div
         className={`dock${pane ? " dock-open" : ""}`}
         data-map-dock
@@ -1174,7 +1218,7 @@ export default function MapDock(props: MapDockProps) {
                 // moment the eye is on it. No questions promised here — the
                 // Ask handoff isn't wired to this box, and a signifier must
                 // not overpromise.
-                placeholder="Find coffee, a trail, a town"
+                placeholder="Search this map"
                 aria-label="Search this map"
                 role="combobox"
                 aria-autocomplete="list"
@@ -1427,6 +1471,26 @@ export default function MapDock(props: MapDockProps) {
           </div>
 
           <button
+            type="button"
+            className="dock-locate tap-44"
+            data-on={props.userLoc ? "true" : undefined}
+            onClick={props.goNearMe}
+            aria-label={props.userLoc ? "Center on my location" : "Use my location"}
+            aria-busy={props.locating || undefined}
+            title={props.userLoc ? "Center on my location" : "Use my location"}
+          >
+            {props.locating ? (
+              <LoaderCircle
+                className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            ) : (
+              <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
+            )}
+          </button>
+
+          <button
             ref={optionsButtonRef}
             type="button"
             className="dock-contents tap-44"
@@ -1438,7 +1502,9 @@ export default function MapDock(props: MapDockProps) {
             onClick={() => togglePane("contents")}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
-            <span>Map view</span>
+            <span className="dock-contents-label">
+              <span className="dock-contents-prefix">Change </span>view
+            </span>
             {activeOptionCount > 0 && (
               <span className="dock-layer-count" aria-hidden>
                 {Math.min(activeOptionCount, 99)}
@@ -1446,41 +1512,6 @@ export default function MapDock(props: MapDockProps) {
             )}
           </button>
         </div>
-
-        {activeOptionCount > 0 && pane === null && (
-          <div
-            className="dock-active-state"
-            role="group"
-            aria-label="Current map view"
-          >
-            <span
-              className="sr-only"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {`Map showing ${contentsSummary}`}
-            </span>
-            <button
-              type="button"
-              className="dock-active-state-open"
-              onClick={() => togglePane("contents")}
-              aria-label={`Change map view: ${contentsSummary}`}
-            >
-              <span className="dock-active-state-dot" aria-hidden />
-              <span>{contentsSummary}</span>
-            </button>
-            <button
-              type="button"
-              className="dock-active-state-clear tap-44"
-              onClick={clearAll}
-              aria-label="Reset map view"
-              title="Reset map view"
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
-        )}
 
         {/* The deeper controls are a bottom sheet on phones and a side tray on
             desktop. They never replace or dim the map. */}
@@ -1557,15 +1588,15 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="Find a place"
+                  aria-label="Find places nearby"
                   onClick={() => openContentsPane("what", "categories")}
                 >
                   <span className="dock-content-icon" aria-hidden>
                     <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Find a place</strong>
-                    <small>{intent?.label ?? "Food, coffee, parks, shops, and more"}</small>
+                    <strong>Places nearby</strong>
+                    <small>Food, coffee, parks, shops, and more</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1626,7 +1657,7 @@ export default function MapDock(props: MapDockProps) {
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
                 </div>
-                <div className="dock-content-secondary" aria-label="Map view and sharing">
+                <div className="dock-content-secondary" aria-label="Map area and sharing">
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"
@@ -1745,6 +1776,29 @@ export default function MapDock(props: MapDockProps) {
                 selection closes the panel so the map becomes the answer. */}
             {pane === "what" && (
               <div>
+                <button
+                  type="button"
+                  className="dock-reveal"
+                  aria-label="See what is within reach"
+                  onClick={() => {
+                    haptic("light");
+                    track("map_dock", { pane: "what", pick: "within-reach" });
+                    closePane();
+                    // The destination owns its own state and intentionally
+                    // drops the browse query. Next patches the native History
+                    // API and synchronizes useSearchParams when the state is
+                    // null; this avoids a pending debounced map-query write
+                    // cancelling a same-route App Router navigation.
+                    window.history.pushState(null, "", "/map?mode=radius");
+                  }}
+                >
+                  <span className="dock-reveal-copy">
+                    <strong>Within reach</strong>
+                    <small>Compare what you can reach by walking, biking, or driving.</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+
                 {intent?.subIntents && intent.subIntents.length > 0 && (
                   <>
                     <Sect>Narrow {intent.label}</Sect>
@@ -2041,7 +2095,10 @@ export default function MapDock(props: MapDockProps) {
                     <Chip
                       on={props.showParking}
                       color="var(--app-cool)"
-                      onClick={() => props.setShowParking((v) => !v)}
+                      onClick={() => {
+                        props.setShowParking((v) => !v);
+                        closePane();
+                      }}
                       count={props.parkingCount}
                       title="Downtown city parking garages, tinted by live availability"
                     >
@@ -2051,8 +2108,10 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.showTransit}
                     color="var(--app-cool)"
-                    onClick={() => props.setShowTransit((v) => !v)}
-                    count={props.transitCount > 0 ? props.transitCount : null}
+                    onClick={() => {
+                      props.setShowTransit((v) => !v);
+                      closePane();
+                    }}
                     disabled={props.transitHealth.status === "unavailable"}
                     title={
                       props.transitHealth.status === "unavailable"
@@ -2065,7 +2124,10 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.showRadar}
                     color="var(--app-cool)"
-                    onClick={() => props.setShowRadar((v) => !v)}
+                    onClick={() => {
+                      props.setShowRadar((v) => !v);
+                      closePane();
+                    }}
                     title={
                       props.radarHealth.status === "unavailable"
                         ? props.showRadar
@@ -2080,7 +2142,10 @@ export default function MapDock(props: MapDockProps) {
                     <Chip
                       on={communityReportsOn}
                       color="var(--app-warning-press)"
-                      onClick={() => toggleAmenity("community")}
+                      onClick={() => {
+                        toggleAmenity("community");
+                        closePane();
+                      }}
                       count={props.communityReportCount}
                       title="Reviewed, unexpired reports submitted by the Frederick community"
                     >
@@ -2090,7 +2155,10 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.roadsNowFullyOn}
                     color="var(--app-brand)"
-                    onClick={() => props.setShowRoadsNow(!props.roadsNowFullyOn)}
+                    onClick={() => {
+                      props.setShowRoadsNow(!props.roadsNowFullyOn);
+                      closePane();
+                    }}
                     title={
                       "Current road flow from Mapbox with Maryland CHART reports and privacy-filtered public incidents. Medical and personal calls are never shown"
                     }
@@ -2100,7 +2168,10 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.showCameras}
                     color="var(--app-cool)"
-                    onClick={() => props.setShowCameras((v) => !v)}
+                    onClick={() => {
+                      props.setShowCameras((v) => !v);
+                      closePane();
+                    }}
                     title={
                       props.cameraHealth.status === "unavailable"
                         ? props.showCameras

@@ -24,18 +24,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 
 // ── Brand Book No.01 tokens (mirror applyFrederickPalette.ts) ──────────
-const PAPER = "#F4EEE2";
-const PAPER_2 = "#E4DAC3";
-const WATER = "#8DACC0";
-const WATER_LINE = "#4A7090";
-const PARK = "#C3D1B3";
-const BUILDING = "#E1D5BD";
-const ROAD_MINOR = "#D8CDB1";
-const ROAD_MAJOR = "#C9BD9F";
-const ROAD_HWY = "#AD9E80";
-const LABEL = "#221C15";
-const LABEL_2 = "#5C5A50";
-const HALO = "#F4EEE2";
+const PAPER = "#F2EFE8";
+const PAPER_2 = "#E6E1D6";
+const WATER = "#86AFC4";
+const WATER_LINE = "#3D6F8D";
+const PARK = "#B9CDAE";
+const FARM = "#DED7B9";
+const BUILDING = "#DDD5C7";
+const BUILDING_LINE = "#C9BFAE";
+const BARE = "#E7DFD1";
+const ROAD_MINOR = "#CFC7B9";
+const ROAD_MAJOR = "#BEB3A1";
+const ROAD_HWY = "#9D8D73";
+const ROAD_CASE = "#AFA28D";
+const ROAD_HWY_CASE = "#796B57";
+const BOUNDARY = "#9E886A";
+const LABEL = "#201C17";
+const LABEL_2 = "#555850";
+const HALO = "#F2EFE8";
 
 const has = (id, ...needles) => needles.some((n) => id.includes(n));
 
@@ -53,7 +59,9 @@ function paint(layer) {
 
   if (layer.type === "fill") {
     if (has(id, "water")) setP("fill-color", WATER);
-    else if (has(id, "park", "green", "grass", "wood", "forest", "pitch", "cemetery")) setP("fill-color", PARK);
+    else if (has(id, "farmland", "orchard", "vineyard", "agricult")) setP("fill-color", FARM);
+    else if (has(id, "park", "green", "grass", "wood", "forest", "pitch", "cemetery", "wetland", "scrub", "heath", "golf", "recreation", "national-park", "meadow")) setP("fill-color", PARK);
+    else if (has(id, "sand", "beach", "rock", "quarry", "bare-ground")) setP("fill-color", BARE);
     else if (has(id, "building")) {
       setP("fill-color", BUILDING);
       setP("fill-opacity", 0.7);
@@ -75,8 +83,20 @@ function paint(layer) {
       setP("line-width", ["interpolate", ["linear"], ["zoom"], 8, 1.2, 12, 2.6, 16, 5]);
       return;
     }
-    if (has(id, "motorway", "trunk")) setP("line-color", ROAD_HWY);
-    else if (has(id, "primary", "secondary", "main")) setP("line-color", ROAD_MAJOR);
+    if (has(id, "admin", "boundary")) {
+      setP("line-color", BOUNDARY);
+      setP("line-opacity", 0.55);
+      return;
+    }
+    if (has(id, "building")) {
+      setP("line-color", BUILDING_LINE);
+      setP("line-opacity", 0.6);
+      return;
+    }
+    const isCase = has(id, "case", "casing", "outline");
+    if (has(id, "motorway", "trunk")) setP("line-color", isCase ? ROAD_HWY_CASE : ROAD_HWY);
+    else if (has(id, "primary", "secondary", "main")) setP("line-color", isCase ? ROAD_CASE : ROAD_MAJOR);
+    else if (has(id, "road", "street", "bridge", "tunnel", "path", "rail", "transit")) setP("line-color", isCase ? ROAD_CASE : ROAD_MINOR);
     else setP("line-color", ROAD_MINOR);
     return;
   }

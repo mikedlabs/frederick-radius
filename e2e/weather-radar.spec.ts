@@ -39,7 +39,7 @@ test.describe("weather radar", () => {
     const radar = layers.getByRole("button", { name: "Radar" });
     await radar.click();
 
-    await expect(radar).toHaveAttribute("aria-pressed", "true");
+    await expect(layers).toBeHidden();
     await expect.poll(() => radarRequests.some((url) => url.includes("weather-maps.json"))).toBe(true);
     await expect.poll(() => radarRequests.some((url) => url.includes("tilecache.rainviewer.com"))).toBe(true);
 
@@ -50,8 +50,17 @@ test.describe("weather radar", () => {
     expect(tileZooms.length).toBeGreaterThan(0);
     expect(Math.max(...tileZooms)).toBeLessThanOrEqual(7);
 
+    await page.getByRole("button", { name: "What the map shows" }).click();
+    await page
+      .getByRole("region", { name: "What the map shows" })
+      .getByRole("button", { name: "Check live conditions and map layers" })
+      .click();
+    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
     await expect(
-      layers.getByText(/Latest RainViewer frame|Showing the last good frames/),
+      reopenedLayers.getByRole("button", { name: "Radar" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      reopenedLayers.getByText(/Latest RainViewer frame|Showing the last good frames/),
     ).toBeVisible();
   }
 

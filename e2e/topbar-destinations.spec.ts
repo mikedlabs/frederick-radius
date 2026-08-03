@@ -41,7 +41,9 @@ for (const viewport of [
       await expect(compass.getByText("Compass", { exact: true })).toBeVisible();
     } else {
       await expect(pulse).toBeHidden();
-      await expect(compass).toBeHidden();
+      await expect(compass).toBeVisible();
+      await expect(compass).toHaveAttribute("aria-current", "page");
+      await expect(compass.getByText("Compass", { exact: true })).toBeHidden();
     }
   });
 }

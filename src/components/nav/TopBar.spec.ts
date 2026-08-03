@@ -42,7 +42,7 @@ describe("TopBar search ownership", () => {
 
     expect(topBar).toContain('className="hidden text-[15px] min-[390px]:inline"');
     expect(location).toContain("min-[390px]:block sm:max-w-[160px]");
-    expect(topBar).toContain('className="hidden sm:contents"');
+    expect(topBar).toContain('className="contents"');
     expect(topBar).toContain("{showMobileSearch && (");
   });
 
@@ -62,7 +62,7 @@ describe("TopBar search ownership", () => {
   it("presents beta as product status inside the home lockup, not another tool", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
 
-    expect(topBar).toContain('aria-label="Frederick Radius beta, home"');
+    expect(topBar).toContain('"Frederick Radius beta, home"');
     expect(topBar).toContain('data-product-status="beta"');
     expect(topBar).toMatch(/data-product-status="beta"[\s\S]*>\s*Beta\s*<\/span>/);
     expect(topBar).toContain(

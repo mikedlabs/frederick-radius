@@ -10,7 +10,6 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity, Toilet } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
@@ -139,11 +138,28 @@ function isPlainNavigationClick(
   );
 }
 
+function storedFindReturnScrollY(): number | null {
+  const state = window.history.state as Record<string, unknown> | null;
+  const value = state?.__frederickRadiusLayerScrollY;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function settleFindReturnScroll(scrollY: number | null) {
+  if (scrollY === null) return;
+  // Today can finish hydrating a live rail while Find is open. Reassert the
+  // saved coordinate after that layout settles so the dismissed surface does
+  // not return the reader to a different chapter of the page.
+  window.setTimeout(() => {
+    window.scrollTo({ top: scrollY, behavior: "auto" });
+  }, 220);
+}
+
 export default function SearchOverlay({
   open,
   onClose,
   openerRef,
   historyLayerId,
+  returnScrollY,
 }: {
   open: boolean;
   onClose: () => void;
@@ -151,8 +167,8 @@ export default function SearchOverlay({
    * the button a person taps before mounting the dialog. */
   openerRef?: React.RefObject<HTMLElement | null>;
   historyLayerId: string;
+  returnScrollY?: number | null;
 }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchMeta, setSearchMeta] = useState<QualifiedSearchIndexResult["meta"] | null>(null);
@@ -169,20 +185,32 @@ export default function SearchOverlay({
   /** Element focused before the overlay opened — focus returns to it on
    *  close (WCAG 2.4.3; previously focus was dropped on the body). */
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Seed this during render as well as the open effect. A production lazy
+  // chunk can become visible and be dismissed before passive effects run.
+  const returnScrollYRef = useRef<number | null>(returnScrollY ?? null);
+  const leavingFindRef = useRef(false);
   const recent = useRecentSearches();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
+  const closeFindLayer = useCallback(() => {
+    const returnScrollY = returnScrollYRef.current;
+    const shouldRestore = !leavingFindRef.current;
+    onClose();
+    if (shouldRestore) settleFindReturnScroll(returnScrollY);
+  }, [onClose]);
   const historyLayer = useReversibleHistoryLayer({
     active: open,
     id: historyLayerId,
-    onDismiss: onClose,
+    onDismiss: closeFindLayer,
+    returnScrollY,
   });
   const dismiss = historyLayer.dismiss;
   const navigateFromSearch = useCallback(
     (href: string) => {
-      historyLayer.leave(() => router.push(href));
+      leavingFindRef.current = true;
+      historyLayer.leaveTo(href);
     },
-    [historyLayer, router],
+    [historyLayer],
   );
 
   const updateQuery = (next: string) => {
@@ -271,6 +299,9 @@ export default function SearchOverlay({
   useEffect(() => {
     if (open) {
       track("find_open");
+      leavingFindRef.current = false;
+      returnScrollYRef.current =
+        returnScrollY ?? storedFindReturnScrollY() ?? window.scrollY;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read of a client-only cached fix when the overlay opens
       setCoords(readCachedPosition());
       // Remember what had focus (the TopBar search button) so closing the
@@ -278,14 +309,22 @@ export default function SearchOverlay({
       returnFocusRef.current =
         openerRef?.current ??
         (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      const t = setTimeout(
+        () => inputRef.current?.focus({ preventScroll: true }),
+        50,
+      );
       return () => {
         clearTimeout(t);
-        returnFocusRef.current?.focus?.();
+        // Restoring focus must not pull the page underneath the full-screen
+        // Find surface to a new scroll position. That jump is especially
+        // noticeable on a phone after someone opens Find halfway down Today.
+        if (!leavingFindRef.current) {
+          returnFocusRef.current?.focus?.({ preventScroll: true });
+        }
         returnFocusRef.current = null;
       };
     }
-  }, [open, openerRef]);
+  }, [open, openerRef, returnScrollY]);
 
   // Reset on close
   useEffect(() => {

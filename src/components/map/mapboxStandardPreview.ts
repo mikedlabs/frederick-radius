@@ -74,7 +74,7 @@ export function mapStyleWithStandardPreview<T>(
 }
 
 /**
- * Config supported by the installed Mapbox GL JS 3.23.x.
+ * Config supported by the installed Mapbox GL JS 3.27.x.
  *
  * It preserves the Frederick paper/creek/forest palette and suppresses
  * Mapbox's generic POI + transit labels because Radius supplies its own
@@ -95,16 +95,16 @@ export const FREDERICK_STANDARD_CONFIG = Object.freeze({
   show3dLandmarks: true,
   show3dTrees: false,
   show3dFacades: false,
-  colorLand: "#F4EEE2",
-  colorWater: "#8DACC0",
-  colorGreenspace: "#C3D1B3",
-  colorBuildings: "#E1D5BD",
-  colorRoads: "#D8CDB1",
-  colorTrunks: "#C9BD9F",
-  colorMotorways: "#AD9E80",
-  colorPlaceLabels: "#221C15",
-  colorRoadLabels: "#5C5A50",
-  colorAdminBoundaries: "#B39F7C",
+  colorLand: "#F2EFE8",
+  colorWater: "#86AFC4",
+  colorGreenspace: "#B9CDAE",
+  colorBuildings: "#DDD5C7",
+  colorRoads: "#CFC7B9",
+  colorTrunks: "#BEB3A1",
+  colorMotorways: "#9D8D73",
+  colorPlaceLabels: "#201C17",
+  colorRoadLabels: "#555850",
+  colorAdminBoundaries: "#9E886A",
 });
 
 export type FrederickStandardConfig = Readonly<

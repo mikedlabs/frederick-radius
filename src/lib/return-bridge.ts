@@ -8,8 +8,9 @@ export const RETURN_BRIDGE_VALUE_CANCEL_EVENT = "fr:return-bridge:value-cancel";
 export const RETURN_BRIDGE_OPEN_EVENT = "fr:open-install";
 
 export const RETURN_BRIDGE_SESSION_GAP_MS = 30 * 60 * 1000;
-export const RETURN_BRIDGE_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
-export const RETURN_BRIDGE_MAX_AUTO_DISMISSALS = 2;
+// One automatic invitation is enough. Saved, Compass, and Settings retain a
+// deliberate way to reopen the instructions without nagging someone again.
+export const RETURN_BRIDGE_MAX_AUTO_DISMISSALS = 1;
 
 export type ReturnBridgeValueKind =
   | "place"
@@ -173,7 +174,6 @@ export function markReturnBridgeOfferShown(
 
 export function dismissReturnBridge(
   state: ReturnBridgeState,
-  now = Date.now(),
 ): ReturnBridgeState {
   const dismissals = Math.min(
     RETURN_BRIDGE_MAX_AUTO_DISMISSALS,
@@ -182,11 +182,8 @@ export function dismissReturnBridge(
   return {
     ...state,
     dismissals,
-    snoozedUntil:
-      dismissals >= RETURN_BRIDGE_MAX_AUTO_DISMISSALS
-        ? 0
-        : now + RETURN_BRIDGE_SNOOZE_MS,
-    autoDisabled: dismissals >= RETURN_BRIDGE_MAX_AUTO_DISMISSALS,
+    snoozedUntil: 0,
+    autoDisabled: true,
   };
 }
 

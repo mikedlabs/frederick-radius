@@ -7,6 +7,11 @@ describe("map interaction state contracts", () => {
 
     expect(source).toContain("requestHighAccuracy: requestSharedGeolocation");
     expect(source).toContain("requestSharedGeolocation()");
+    expect(source).toContain("requestIfGranted: refreshGrantedGeolocation");
+    expect(source).toContain("void refreshGrantedGeolocation()");
+    expect(source).toContain(
+      "cached && isInFrederickCounty(cached.lng, cached.lat)",
+    );
     expect(source).toContain("GEOLOCATION_CHANGE_EVENT");
     expect(source).not.toContain("navigator.geolocation.getCurrentPosition");
   });
@@ -39,5 +44,27 @@ describe("map interaction state contracts", () => {
     expect(mapSource).not.toContain("lead.hero_image");
     expect(pageSource).not.toContain("hero_image: e.hero_image");
     expect(typeSource).not.toContain("hero_image?: string;");
+  });
+
+  it("hands the branded loading scene to the first idle map frame", () => {
+    const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const clientSource = readFileSync("src/components/map/AppMapClient.tsx", "utf8");
+    const sceneSource = readFileSync("src/components/map/MapLoadingScene.tsx", "utf8");
+
+    expect(clientSource).toContain('<MapLoadingScene height="100%" />');
+    expect(mapSource).toContain('<MapLoadingScene height="100%" ready={mapVisualReady} />');
+    expect(mapSource).toContain("if (dock && !mapVisualReady) setMapVisualReady(true)");
+    expect(sceneSource).toContain('data-state={ready ? "ready" : "loading"}');
+    expect(sceneSource).toContain("aria-hidden={ready || undefined}");
+  });
+
+  it("uses one-shot selection and location acknowledgement rings", () => {
+    const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const css = readFileSync("src/app/globals.css", "utf8");
+
+    expect(mapSource).toContain("data-map-selection-lock");
+    expect(mapSource).toContain("data-map-location-lock");
+    expect(css).toContain("animation: map-lock-on 520ms");
+    expect(css).not.toContain("animation: map-lock-on 520ms var(--app-ease-out) infinite");
   });
 });

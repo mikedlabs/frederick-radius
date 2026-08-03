@@ -367,7 +367,7 @@ function DealCard({
           <h3 className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">
             <Link
               href={`/places/${venue.slug}`}
-              className="rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--app-brand)]"
+              className="tap-44-y inline-flex items-center rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--app-brand)]"
               style={{ color: "var(--app-ink)" }}
             >
               {venue.name}

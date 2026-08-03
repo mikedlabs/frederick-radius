@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cacheGeolocationPosition,
   GEOLOCATION_CHANGE_EVENT,
+  readCachedGeoPosition,
   readCachedPosition,
   type GeoPosition,
 } from "./useGeolocation";
@@ -38,6 +39,7 @@ describe("shared geolocation cache", () => {
       lng: position.lng,
       lat: position.lat,
     });
+    expect(readCachedGeoPosition()).toEqual(position);
     expect(changed).toHaveBeenCalledOnce();
   });
 

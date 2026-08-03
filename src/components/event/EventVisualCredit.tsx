@@ -34,7 +34,7 @@ export default function EventVisualCredit({
           href={visual.sourceHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold underline underline-offset-2"
+          className="tap-44-y inline-flex items-center font-semibold underline underline-offset-2"
         >
           {visual.caption}
         </a>

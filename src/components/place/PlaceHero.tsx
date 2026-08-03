@@ -147,6 +147,7 @@ export default function PlaceHero({
             attribution={photoAttribution}
             placeGoogleMapsUri={googleMapsUri}
             compact={size === "card"}
+            touchTarget
           />
         </div>
       )}
@@ -255,6 +256,7 @@ export function PhotoCredit({
           href={wm.source_url}
           target="_blank"
           rel="noopener noreferrer"
+          className="tap-44-y inline-flex items-center"
           style={{ color: "var(--app-ink-2)" }}
         >
           {wm.author}
@@ -264,6 +266,7 @@ export function PhotoCredit({
           href="https://commons.wikimedia.org"
           target="_blank"
           rel="noopener noreferrer"
+          className="tap-44-y inline-flex items-center"
           style={{ color: "var(--app-ink-2)" }}
         >
           Wikimedia Commons
