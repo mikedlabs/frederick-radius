@@ -671,8 +671,8 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
       <DismissibleSection
         id="upcoming"
         title="Events today"
-        href={visibleTodayCount > 0 || feature ? "/events" : undefined}
-        cta="See all"
+        href="/events"
+        cta={visibleTodayCount > 0 || feature ? "See all" : "Full board"}
         flat
         meta={
           visibleTodayCount > 0
@@ -774,25 +774,15 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
           <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>
             Nothing else is on the calendar today.
           </p>
-        ) : (
+        ) : sourceHealth.degraded ? null : (
           <p
             className="text-body py-4"
             style={{ color: "var(--app-ink-3)" }}
           >
-            {/* Only an empty set we TRUST is stated as "no events." When the
-                feeds are degraded the banner above already explains the gap,
-                and this stays a neutral pointer instead of a false all-clear. */}
-            {sourceHealth.degraded ? (
-              <Link href="/events" className="tap-44-y inline-flex font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                Open the full events board.
-              </Link>
-            ) : (
-              <>
-                No events are on the calendar today. <Link href="/events" className="tap-44-y inline-flex font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                  Browse all events.
-                </Link>
-              </>
-            )}
+            {/* Only an empty set we TRUST is stated as "no events." The
+                heading already carries the one route to the complete board,
+                so this stays an answer instead of repeating the same link. */}
+            No events are on the calendar today.
           </p>
         )}
       </DismissibleSection>

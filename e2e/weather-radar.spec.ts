@@ -29,17 +29,18 @@ test.describe("weather radar", () => {
 
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    await page.getByRole("button", { name: "What the map shows" }).click();
-    const options = page.getByRole("region", { name: "What the map shows" });
+    await page.getByRole("button", { name: "Choose what to see" }).click();
+    const options = page.getByRole("region", { name: "Choose what to see" });
     await options
-      .getByRole("button", { name: "Check live conditions and map layers" })
+      .getByRole("button", { name: "Check travel and live conditions" })
       .click();
 
-    const layers = page.getByRole("region", { name: "Live conditions" });
+    const layers = page.getByRole("region", { name: "Travel & conditions" });
     const radar = layers.getByRole("button", { name: "Radar" });
     await radar.click();
 
-    await expect(layers).toBeHidden();
+    await expect(layers).toBeVisible();
+    await expect(radar).toHaveAttribute("aria-pressed", "true");
     await expect.poll(() => radarRequests.some((url) => url.includes("weather-maps.json"))).toBe(true);
     await expect.poll(() => radarRequests.some((url) => url.includes("tilecache.rainviewer.com"))).toBe(true);
 
@@ -50,17 +51,11 @@ test.describe("weather radar", () => {
     expect(tileZooms.length).toBeGreaterThan(0);
     expect(Math.max(...tileZooms)).toBeLessThanOrEqual(7);
 
-    await page.getByRole("button", { name: "What the map shows" }).click();
-    await page
-      .getByRole("region", { name: "What the map shows" })
-      .getByRole("button", { name: "Check live conditions and map layers" })
-      .click();
-    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
     await expect(
-      reopenedLayers.getByRole("button", { name: "Radar" }),
+      layers.getByRole("button", { name: "Radar" }),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(
-      reopenedLayers.getByText(/Latest RainViewer frame|Showing the last good frames/),
+      layers.getByText(/Latest RainViewer frame|Showing the last good frames/),
     ).toBeVisible();
   }
 

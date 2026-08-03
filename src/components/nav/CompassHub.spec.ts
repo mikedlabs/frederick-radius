@@ -10,6 +10,7 @@ import {
   ALL_COMPASS_TOOLS_ID,
   buildToolDeckDirectory,
   buildToolDeckGroups,
+  compassShortcutGridClass,
   commonCompassTasks,
   searchToolDeckGroups,
 } from "./CompassHub";
@@ -33,6 +34,14 @@ function pathname(href: string): string {
 }
 
 describe("Compass Tool Deck model", () => {
+  it("sizes the shortcut grid to the number of pinned tools", () => {
+    expect(compassShortcutGridClass(1)).toContain("grid-cols-1");
+    expect(compassShortcutGridClass(2)).toContain("grid-cols-2");
+    expect(compassShortcutGridClass(3)).toContain("grid-cols-3");
+    expect(compassShortcutGridClass(4)).toContain("grid-cols-4");
+    expect(compassShortcutGridClass(8)).toContain("grid-cols-4");
+  });
+
   it("resolves the nine model groups in their stable order", () => {
     const groups = buildToolDeckGroups(null);
     const modeledIds = new Set<string>(

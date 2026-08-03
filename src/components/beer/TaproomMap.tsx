@@ -72,8 +72,8 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           className="max-w-[28rem] text-[12px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          All {places.length} brewery guides start in view. Counted markers
-          keep close taprooms readable; tap one to open that part of the map.
+          All {places.length} guides are in view. Tap a cluster to zoom in or a
+          marker for details.
         </p>
       </header>
 

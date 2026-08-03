@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   AlertDataPanel,
   pulseClearedKeys,
+  pulseDisplayGroups,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -184,5 +185,31 @@ describe("Pulse smart blocks", () => {
     expect(
       banks.flatMap((bank) => bank.tiles.map((entry) => entry.key)),
     ).toEqual(["weather", "traffic", "news", "future-feed"]);
+  });
+
+  it("puts actionable readings first and collapses quiet or degraded sources", () => {
+    const lead = tile("alerts", { active: true, attention: true });
+    const changed = tile("traffic", { active: true });
+    const quiet = tile("weather");
+    const disconnected: PulseTile = {
+      ...tile("scanner", { active: true, attention: true }),
+      availability: "not-connected",
+    };
+    const summarized = tile("power", { active: true, attention: true });
+
+    const groups = pulseDisplayGroups(
+      [lead, changed, quiet, disconnected, summarized],
+      {
+        leadKey: "alerts",
+        summarizedKeys: new Set(["power"]),
+      },
+    );
+
+    expect(groups.attention).toEqual([]);
+    expect(groups.actionable.map((entry) => entry.key)).toEqual(["traffic"]);
+    expect(groups.quiet.map((entry) => entry.key)).toEqual([
+      "weather",
+      "scanner",
+    ]);
   });
 });

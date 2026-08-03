@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   BookmarkMinus,
   BusFront,
+  ChevronDown,
   Clock3,
   LocateFixed,
   MapPin,
@@ -426,11 +427,15 @@ function SavedBusCard({
 export default function SavedTransitSection({
   stops,
   buses,
+  collapsed = false,
   onRemoveStop,
   onRemoveBus,
 }: {
   stops: SavedTransitStop[];
   buses: SavedTransitBus[];
+  /** Keep live transit behind one quiet reveal when places or events already
+   * provide a more useful lead on Saved. */
+  collapsed?: boolean;
   onRemoveStop: (
     stop: SavedTransitStop,
   ) => { removed: boolean; persistent: boolean };
@@ -515,46 +520,52 @@ export default function SavedTransitSection({
     returnFocusToHeading();
   };
 
-  return (
-    <section
-      aria-labelledby="saved-transit-heading"
-      className="space-y-2.5"
-    >
-      <header className="flex items-center gap-2.5">
+  const transitHeading = (
+    <>
+      <span
+        aria-hidden
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+        style={{
+          color: "var(--app-cool)",
+          background: "var(--app-cool-tint-10)",
+        }}
+      >
+        <BusFront className="h-4 w-4" strokeWidth={2.2} />
+      </span>
+      <span className="min-w-0 flex-1">
         <span
-          aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-          style={{
-            color: "var(--app-cool)",
-            background: "var(--app-cool-tint-10)",
-          }}
+          id="saved-transit-heading"
+          role="heading"
+          aria-level={2}
+          tabIndex={-1}
+          className="block text-[11px] font-bold uppercase tracking-[0.12em]"
+          style={{ color: "var(--app-ink)" }}
         >
-          <BusFront className="h-4 w-4" strokeWidth={2.2} />
+          Saved transit
         </span>
-        <span className="min-w-0 flex-1">
-          <h2
-            id="saved-transit-heading"
-            tabIndex={-1}
-            className="text-[11px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Saved transit
-          </h2>
-          <span
-            className="block text-[10.5px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {total} saved on this device · updates while this page is open
-          </span>
-        </span>
-        <Link
-          href="/transit"
-          className="tap-44-y shrink-0 text-[11px] font-semibold"
-          style={{ color: "var(--app-cool)" }}
+        <span
+          className="block text-[10.5px]"
+          style={{ color: "var(--app-ink-3)" }}
         >
-          Open transit
-        </Link>
-      </header>
+          {total} transit {total === 1 ? "item" : "items"} saved on this device. Open for live status.
+        </span>
+      </span>
+    </>
+  );
+
+  const transitContent = (
+    <div className="space-y-2.5">
+      {collapsed ? (
+        <div className="flex justify-end">
+          <Link
+            href="/transit"
+            className="tap-44-y inline-flex items-center text-[11px] font-semibold"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Open transit
+          </Link>
+        </div>
+      ) : null}
 
       {stops.length > 0 ? (
         <div className="space-y-2">
@@ -625,6 +636,46 @@ export default function SavedTransitSection({
           </ul>
         </div>
       ) : null}
+    </div>
+  );
+
+  return (
+    <section aria-labelledby="saved-transit-heading" className="space-y-2.5">
+      {collapsed ? (
+        <details
+          className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+          style={{
+            borderColor: "var(--app-border)",
+            background:
+              "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
+          }}
+        >
+          <summary className="tap-44 flex min-h-14 cursor-pointer list-none items-center gap-2.5 px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] [&::-webkit-details-marker]:hidden">
+            {transitHeading}
+            <ChevronDown
+              aria-hidden
+              className="h-4 w-4 shrink-0 opacity-50 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+            {transitContent}
+          </div>
+        </details>
+      ) : (
+        <>
+          <header className="flex items-center gap-2.5">
+            {transitHeading}
+            <Link
+              href="/transit"
+              className="tap-44-y shrink-0 text-[11px] font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Open transit
+            </Link>
+          </header>
+          {transitContent}
+        </>
+      )}
       <span className="sr-only" role="status" aria-live="polite">
         {notice}
       </span>

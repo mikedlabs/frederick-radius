@@ -372,11 +372,11 @@ export default function BrowseMapClient({
   const intentCounts: Record<string, number> = {};
   for (const i of INTENTS) intentCounts[i.key] = allPlaces.filter(i.match).length;
 
-  // Interaction: the map FADES non-matching pins rather than removing them.
-  // So when a What/Open-now filter is active we hand the map the FULL place
-  // set for the pins plus the matched slugs; the map dims the rest and the
-  // dock counts only the matches. With no place filter we pass nothing extra
-  // and every pin stays at full strength.
+  // A place/open/deal filter constrains the actual curated GeoJSON source,
+  // not just its paint. Mapbox clusters before styling, so leaving faded
+  // nonmatches in the source would make a Coffee bubble count restaurants and
+  // services too. With no place filter we pass null and preserve the complete
+  // clustered county map.
   const anyPlaceFilter = Boolean(intent || activeSub || openNow || dealsOn);
   const activeSlugs = anyPlaceFilter ? places.map((p) => p.slug) : null;
 

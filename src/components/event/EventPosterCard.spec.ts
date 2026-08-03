@@ -91,6 +91,11 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain("Local photographer");
     expect(html).toContain("Google Maps");
     expect(html).toContain("https://www.google.com/maps/place/example-photo");
+    const posterEnd = html.indexOf("</article>");
+    const creditStart = html.indexOf("data-event-photo-credit");
+    expect(posterEnd).toBeGreaterThan(-1);
+    expect(creditStart).toBeGreaterThan(posterEnd);
+    expect(html).not.toContain("bg-black/55");
   });
 
   it("keeps a photo-less EventCard feature in the poster layout", () => {

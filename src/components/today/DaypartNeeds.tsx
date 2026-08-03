@@ -363,7 +363,7 @@ function DaypartPickCard({
       href={`/places/${place.slug}`}
       prefetch={false}
       aria-label={ariaLabel}
-      className="group flex min-h-[76px] w-[15rem] items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition active:scale-[0.985]"
+      className="group flex min-h-[76px] w-[11.25rem] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985]"
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-edge), var(--app-hi)",
@@ -371,13 +371,13 @@ function DaypartPickCard({
     >
       <span
         aria-hidden
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
         style={{
           color: "var(--app-brand-press)",
           background: "var(--app-brand-tint-6)",
         }}
       >
-        <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
+        <CategoryIcon slug={category} className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </span>
       <span className="min-w-0 flex-1">
         <span
@@ -419,6 +419,7 @@ export default function DaypartNeeds({
   const [contextRevision, setContextRevision] = useState(0);
   const resolvedCategoriesRef = useRef<Record<string, boolean>>({});
   const mayAutoAdvanceRef = useRef(true);
+  const shelfRef = useRef<HTMLUListElement>(null);
 
   const baseActive = rows.find((row) => row.category === selectedCategory) ?? rows[0] ?? null;
   const activeCategory = baseActive?.category ?? "";
@@ -437,6 +438,16 @@ export default function DaypartNeeds({
     Boolean(activeCategory) &&
     active?.picks.length === 0 &&
     !resolvedCategories[activeCategory];
+  const activePickKey = active?.picks.map((place) => place.slug).join("|") ?? "";
+
+  // A town/location refresh replaces this ranked shelf in place. Browsers can
+  // preserve the old horizontal offset as that list changes, which made the
+  // new first (and therefore best) answer arrive half off-screen. A new shelf
+  // always begins with its first result; ordinary user scrolling is untouched
+  // because this only runs when the category or result identities change.
+  useEffect(() => {
+    shelfRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [activeCategory, activePickKey]);
 
   // The server renders useful cards immediately, then this shared decision
   // endpoint applies the user's real browsing context. It is the same ranking
@@ -656,7 +667,7 @@ export default function DaypartNeeds({
             ))}
           </div>
         ) : active.picks.length > 0 ? (
-          <ul className="shelf-rail mt-2 gap-2.5 pb-1">
+          <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
             {active.picks.map((place) => (
               <li key={place.slug} className="shrink-0">
                 <DaypartPickCard place={place} category={active.category} />

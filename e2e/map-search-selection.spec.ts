@@ -539,25 +539,20 @@ test.describe("map search selection", () => {
 
   test("groups live road context behind one honest control", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "What the map shows" }).click();
+    await page.getByRole("button", { name: "Choose what to see" }).click();
     await page
-      .getByRole("region", { name: "What the map shows" })
-      .getByRole("button", { name: "Check live conditions and map layers" })
+      .getByRole("region", { name: "Choose what to see" })
+      .getByRole("button", { name: "Check travel and live conditions" })
       .click();
 
     const roads = page
-      .getByRole("region", { name: "Live conditions" })
+      .getByRole("region", { name: "Travel & conditions" })
       .getByRole("button", { name: "Roads now" });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await roads.click();
 
-    await expect(page.getByRole("region", { name: "Live conditions" })).toBeHidden();
-    await page.getByRole("button", { name: "What the map shows" }).click();
-    await page
-      .getByRole("region", { name: "What the map shows" })
-      .getByRole("button", { name: "Check live conditions and map layers" })
-      .click();
-    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
+    await expect(page.getByRole("region", { name: "Travel & conditions" })).toBeVisible();
+    const reopenedLayers = page.getByRole("region", { name: "Travel & conditions" });
     await expect(
       reopenedLayers.getByRole("button", { name: "Roads now" }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -574,13 +569,13 @@ test.describe("map search selection", () => {
 
   test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
     await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: /What the map shows/ }).click();
+    await page.getByRole("button", { name: /Choose what to see/ }).click();
     await page
-      .getByRole("region", { name: "What the map shows" })
-      .getByRole("button", { name: "Check live conditions and map layers" })
+      .getByRole("region", { name: "Choose what to see" })
+      .getByRole("button", { name: "Check travel and live conditions" })
       .click();
 
-    const layers = page.getByRole("region", { name: "Live conditions" });
+    const layers = page.getByRole("region", { name: "Travel & conditions" });
     const roads = layers.getByRole("button", { name: "Roads now" });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await expect(
@@ -591,13 +586,8 @@ test.describe("map search selection", () => {
 
     await roads.click();
 
-    await expect(layers).toBeHidden();
-    await page.getByRole("button", { name: /What the map shows/ }).click();
-    await page
-      .getByRole("region", { name: "What the map shows" })
-      .getByRole("button", { name: "Check live conditions and map layers" })
-      .click();
-    const reopenedLayers = page.getByRole("region", { name: "Live conditions" });
+    await expect(layers).toBeVisible();
+    const reopenedLayers = page.getByRole("region", { name: "Travel & conditions" });
     await expect(
       reopenedLayers.getByRole("button", { name: "Roads now" }),
     ).toHaveAttribute("aria-pressed", "true");

@@ -99,6 +99,7 @@ export default function EventPosterCard({
     : "var(--app-ink-2)";
 
   return (
+    <>
     <article
       className={`tactile tactile-feature tactile-ring tactile-interactive group relative w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
         onPhoto
@@ -201,22 +202,13 @@ export default function EventPosterCard({
             {statusText}
           </span>
         )}
-        {safeVisual ? (
-          <EventVisualCredit
-            visual={safeVisual}
-            overlay
-            compact
-            className="relative z-20 ml-auto max-w-[68%] rounded-[9px] bg-black/55 px-2 py-1 backdrop-blur-sm"
-          />
-        ) : (
-          event.distance_m !== undefined && (
-            <span
-              className="ml-auto shrink-0 font-mono text-[11px] tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {formatDistance(event.distance_m)}
-            </span>
-          )
+        {!safeVisual && event.distance_m !== undefined && (
+          <span
+            className="ml-auto shrink-0 font-mono text-[11px] tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {formatDistance(event.distance_m)}
+          </span>
         )}
       </div>
 
@@ -289,5 +281,13 @@ export default function EventPosterCard({
         )}
       </div>
     </article>
+      {safeVisual && (
+        <EventVisualCredit
+          visual={safeVisual}
+          compact
+          className="mt-1.5 px-1.5 text-right"
+        />
+      )}
+    </>
   );
 }

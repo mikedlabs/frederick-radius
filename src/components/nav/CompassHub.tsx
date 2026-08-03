@@ -54,6 +54,13 @@ import {
 const RECENT_TOOLS_KEY = "fr.compass.recent.v1";
 export const ALL_COMPASS_TOOLS_ID = "all-tools";
 
+export function compassShortcutGridClass(itemCount: number): string {
+  if (itemCount <= 1) return "grid max-w-[6.25rem] grid-cols-1 gap-1";
+  if (itemCount === 2) return "grid max-w-[12.75rem] grid-cols-2 gap-1";
+  if (itemCount === 3) return "grid max-w-[19.25rem] grid-cols-3 gap-1";
+  return "grid grid-cols-4 gap-1";
+}
+
 const TONE_COLOR: Record<RadiusToolTone, string> = {
   accent: "var(--app-accent-press)",
   brand: "var(--app-brand-press)",
@@ -742,7 +749,7 @@ function PinnedTools({
       </div>
 
       {items.length > 0 ? (
-        <ul className="grid grid-cols-4 gap-1">
+        <ul className={compassShortcutGridClass(items.length)}>
           {items.map((item) => (
               <li key={item.id} className="min-w-0">
                 <Link
@@ -809,30 +816,36 @@ function RecentTools({
       >
         Recent
       </h2>
-      <ul className="flex min-w-0 gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((item) => (
-          <li key={item.id} className="shrink-0">
-            <Link
-              href={item.href}
-              prefetch={false}
-              {...intentProps(item)}
-              className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{
-                borderColor: "var(--app-border)",
-                color: "var(--app-ink)",
-              }}
-            >
-              <item.icon
-                className="h-3.5 w-3.5"
-                style={{ color: item.color }}
-                strokeWidth={2}
-                aria-hidden
-              />
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="relative min-w-0 flex-1">
+        <ul className="flex min-w-0 snap-x snap-proximity gap-2 overflow-x-auto py-0.5 pr-7 overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map((item) => (
+            <li key={item.id} className="shrink-0 snap-start">
+              <Link
+                href={item.href}
+                prefetch={false}
+                {...intentProps(item)}
+                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                style={{
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-ink)",
+                }}
+              >
+                <item.icon
+                  className="h-3.5 w-3.5"
+                  style={{ color: item.color }}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-[var(--app-bg)] to-transparent"
+        />
+      </div>
     </section>
   );
 }

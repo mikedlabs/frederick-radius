@@ -3,6 +3,20 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+export const UPDATE_PROMPT_DURATION_MS = 10_000;
+
+/**
+ * Keep update controls reachable without covering the map's thumb controls.
+ * The global toaster normally belongs above BottomNav; Map owns that same
+ * lower shelf, so its update notice uses Sonner's supported top position.
+ */
+export function updatePromptPresentation(pathname: string) {
+  return {
+    duration: UPDATE_PROMPT_DURATION_MS,
+    position: pathname === "/map" ? "top-center" : "bottom-center",
+  } as const;
+}
+
 /**
  * Registers the hand-rolled service worker, production only (a dev SW
  * just fights hot reload). Renders nothing.
@@ -44,14 +58,15 @@ export default function ServiceWorkerRegister() {
 
     /**
      * Show the "Update available" toast for a specific waiting worker.
-     * Persistent until the user acts on it (or another update lands,
-     * in which case we dismiss the old one first).
+     * Remains long enough to act on without permanently occupying app chrome.
+     * Another update dismisses the old notice before offering the new one.
      */
     const promptForUpdate = (waiting: ServiceWorker) => {
       if (toastId !== undefined) {
         toast.dismiss(toastId);
       }
       toastId = toast("A new version is ready", {
+        ...updatePromptPresentation(window.location.pathname),
         description: "Refresh to see the latest.",
         action: {
           label: "Refresh",
@@ -59,14 +74,12 @@ export default function ServiceWorkerRegister() {
             waiting.postMessage({ type: "SKIP_WAITING" });
           },
         },
-        // A labeled way to defer — before, the only non-refresh escape was an
-        // undiscoverable swipe on a duration:Infinity banner (2026-07 shell-
-        // hardening P5). "Later" dismisses; the next real update re-offers it.
+        // Keep both choices explicit for keyboard and screen-reader users.
+        // "Later" dismisses; the next real update re-offers it.
         cancel: {
           label: "Later",
           onClick: () => {},
         },
-        duration: Infinity,
       });
     };
 
