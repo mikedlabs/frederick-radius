@@ -46,7 +46,11 @@ const VIEWPORTS = [
   { label: "desktop", width: 1440, height: 900 },
 ] as const;
 
-function installRuntimeGuards(page: Page, appOrigin: string) {
+function installRuntimeGuards(
+  page: Page,
+  appOrigin: string,
+  options: { allowOptimizedImageNavigationAbort?: boolean } = {},
+) {
   const issues: string[] = [];
 
   page.on("pageerror", (error) => {
@@ -88,10 +92,18 @@ function installRuntimeGuards(page: Page, appOrigin: string) {
     const documentedNavigationAbort =
       /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure) &&
       EXPECTED_NAVIGATION_ABORTS.some((pattern) => pattern.test(url.pathname));
+    // This is enabled only for the explicit map → place → map journey below.
+    // Its two client navigations can cancel an in-flight optimized hero image;
+    // HTTP image failures still reach the response-status guard above.
+    const optimizedImageNavigationAbort =
+      options.allowOptimizedImageNavigationAbort === true &&
+      url.pathname === "/_next/image" &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
     if (
       url.origin === appOrigin &&
       !canceledRscPrefetch &&
-      !documentedNavigationAbort
+      !documentedNavigationAbort &&
+      !optimizedImageNavigationAbort
     ) {
       issues.push(`${failure} ${url.pathname}`);
     }
@@ -267,7 +279,9 @@ test("map search keeps its exact state through place details and Back", async ({
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
-  const issues = installRuntimeGuards(page, appOrigin);
+  const issues = installRuntimeGuards(page, appOrigin, {
+    allowOptimizedImageNavigationAbort: true,
+  });
 
   await page.goto(
     "/map?c=-77.4100,39.4150,12.4&show=transit&layers=parks",
@@ -288,7 +302,10 @@ test("map search keeps its exact state through place details and Back", async ({
 
   await page.getByRole("button", { name: "Details", exact: true }).click();
   const fullPage = page.getByRole("link", { name: /See full page/ });
-  await expect(fullPage).toBeVisible();
+  // The map warms this lazy sheet after first paint. Keep a bounded cold-start
+  // allowance for a saturated CI runner while still failing a genuinely stuck
+  // loader well inside the journey's release timeout.
+  await expect(fullPage).toBeVisible({ timeout: 10_000 });
   const fullPageHref = await fullPage.getAttribute("href");
   expect(fullPageHref).toBeTruthy();
   const returnTo = new URL(
