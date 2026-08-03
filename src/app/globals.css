@@ -7775,10 +7775,16 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   /* The legal marks remain untouched at their native dimensions. Only their
      position is owned here, in one unobstructed shelf above Radius controls. */
   .dock-host .mapboxgl-ctrl-bottom-left,
-  .dock-host .mapboxgl-ctrl-bottom-right,
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left,
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
+  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left {
     top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+  }
+  /* Keep Mapbox's legal controls on separate rows. The compact attribution
+     button can share the logo's visual shelf, but its expanded panel spans
+     nearly the full phone width and would paint over the wordmark. */
+  .dock-host .mapboxgl-ctrl-bottom-right,
+  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
+    top: calc(env(safe-area-inset-top, 0px) + 36px) !important;
     bottom: auto !important;
   }
   .dock-host .mapboxgl-ctrl-attrib-button {
@@ -7789,6 +7795,23 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
     border-radius: 11px;
     box-shadow: 0 5px 16px rgba(35, 29, 22, 0.1);
+  }
+  /* Mapbox's compact panel reserves 28px for its native 24px button. Radius
+     intentionally provides a 44px touch target, so reserve that larger hit
+     area when the legal copy opens instead of letting the final link sit
+     underneath the button. */
+  .dock-host .mapboxgl-ctrl-attrib.mapboxgl-compact-show {
+    width: calc(100% - 20px);
+    max-width: none !important;
+    min-height: 44px;
+    box-sizing: border-box !important;
+    padding: 6px 52px 6px 8px !important;
+  }
+  .dock-host
+    .mapboxgl-ctrl-attrib.mapboxgl-compact-show
+    .mapboxgl-ctrl-attrib-inner {
+    line-height: 16px;
+    white-space: normal;
   }
 }
 
