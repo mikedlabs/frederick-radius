@@ -151,7 +151,7 @@ export default function TodaysDealsStack({
 
       <Link
         href="/deals"
-        className="tap-44 flex items-center justify-between px-0.5 text-[13px] font-semibold"
+        className="tap-44 flex min-h-11 items-center justify-between px-0.5 text-[13px] font-semibold"
         style={{ color: "var(--app-brand-press)" }}
       >
         See all {deals.length} {deals.length === 1 ? "special" : "specials"}

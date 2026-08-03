@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { TownStat } from "@/lib/guided/town-stats";
+import { townEventWindowLabel } from "@/lib/guided/town-event-window";
 
 /**
  * The town picker — a grid of town cards that reads as "choose a starting
- * point", not a dropdown. Counts are real (gated places, honest this-week
- * events); a quiet town says "No events this week" rather than faking one.
+ * point", not a dropdown. Counts are real (gated places plus source-backed
+ * event listings in the next seven days) and state their period explicitly.
  * Server component — pure links, no client JS.
  */
 export default function TownPicker({ stats }: { stats: TownStat[] }) {
@@ -41,7 +42,7 @@ export default function TownPicker({ stats }: { stats: TownStat[] }) {
             <div className="mt-3 flex flex-col gap-0.5 text-[11px] sm:flex-row sm:items-center sm:gap-x-2 sm:text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               <span>{t.placeCount} {t.placeCount === 1 ? "place" : "places"}</span>
               <span aria-hidden className="hidden sm:inline">·</span>
-              <span>{t.eventCount > 0 ? `${t.eventCount} ${t.eventCount === 1 ? "event" : "events"} this week` : "Quiet this week"}</span>
+              <span>{townEventWindowLabel(t.eventCount)}</span>
             </div>
 
             {t.bestFor.length > 0 && (

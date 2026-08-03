@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
 import {
+  collapseLaterSeries,
   initialEventsForBrowse,
   prepareEventsForBrowse,
   slimEventForBrowse,
@@ -71,7 +72,7 @@ describe("events browse payload", () => {
     expect(slim.hero_image_attribution).toEqual(heroImageAttribution);
   });
 
-  it("collapses repeated long-tail series but keeps nearby dates distinct", () => {
+  it("keeps every current occurrence in the browse corpus and collapses only display rows", () => {
     const prepared = prepareEventsForBrowse([
       event("ended", "2026-07-14T08:00:00.000Z", {
         ends_at: "2026-07-14T10:00:00.000Z",
@@ -82,9 +83,55 @@ describe("events browse payload", () => {
       event("later-2", "2026-08-08T14:00:00.000Z", { title: "Weekly Jam" }),
       event("later-3", "2026-08-15T14:00:00.000Z", { title: "Weekly Jam" }),
     ], BOUNDS);
+    const displayed = collapseLaterSeries(prepared, BOUNDS);
 
-    expect(prepared.map((item) => item.slug)).toEqual(["near-1", "near-2", "later-1"]);
-    expect(prepared[2].recurrence_text).toBe("3 upcoming dates");
+    expect(prepared.map((item) => item.slug)).toEqual([
+      "near-1",
+      "near-2",
+      "later-1",
+      "later-2",
+      "later-3",
+    ]);
+    expect(displayed.map((item) => item.slug)).toEqual(["near-1", "near-2", "later-1"]);
+    expect(displayed[2].recurrence_text).toBe("3 upcoming dates");
+  });
+
+  it("retains recurring dates for filters while the default initial list shows one representative", () => {
+    const recurrence = "Every Thursday, May 7 – September 24, 2026";
+    const prepared = prepareEventsForBrowse([
+      event("alive-at-five-2026-07-14", "2026-07-14T21:00:00.000Z", {
+        title: "Alive @ Five · Ballistic Berry",
+        venue_name: "Carroll Creek Amphitheater",
+        is_recurring: true,
+        recurrence_text: recurrence,
+      }),
+      event("alive-at-five-2026-07-23", "2026-07-23T21:00:00.000Z", {
+        title: "Alive @ Five · My Chemical Bromance",
+        venue_name: "Carroll Creek Amphitheater",
+        is_recurring: true,
+        recurrence_text: recurrence,
+      }),
+      event("alive-at-five-2026-07-30", "2026-07-30T21:00:00.000Z", {
+        title: "Alive @ Five: Season Finale · Kate Cosentino",
+        venue_name: "Carroll Creek Amphitheater",
+        is_recurring: true,
+        recurrence_text: recurrence,
+      }),
+    ], BOUNDS);
+    const initial = initialEventsForBrowse(prepared, BOUNDS);
+    const summary = summarizeEventsForBrowse(prepared, BOUNDS);
+
+    expect(prepared).toHaveLength(3);
+    expect(initial).toHaveLength(1);
+    expect(initial[0].slug).toBe("alive-at-five-2026-07-14");
+    expect(initial[0].title).toBe("Alive @ Five · Ballistic Berry");
+    expect(initial[0].recurrence_text).toBe(`${recurrence} · 3 upcoming dates`);
+    expect(summary.totalCount).toBe(3);
+    expect(summary.dayCounts).toMatchObject({
+      "2026-07-14": 1,
+      "2026-07-23": 1,
+      "2026-07-30": 1,
+    });
   });
 
   it("ships six cards per horizon while retaining complete summary counts", () => {

@@ -43,6 +43,45 @@ async function submit(page: Page, query: string) {
 test.describe("Ask Radius deterministic workspace", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("shows every starter question without clipping and keeps mobile controls clear", async ({
+    page,
+  }) => {
+    await page.goto("/ask", { waitUntil: "domcontentloaded" });
+
+    const starters = page.locator("[data-ask-empty-state]");
+    const questions = starters.getByRole("button");
+    await expect(questions).toHaveCount(3);
+    const navBox = await page.getByRole("navigation", { name: "Primary" }).boundingBox();
+    expect(navBox, "expected the fixed bottom navigation to have a layout box").not.toBeNull();
+
+    for (const question of await questions.all()) {
+      await expect(question).toBeVisible();
+      const box = await question.boundingBox();
+      expect(box, "expected each starter question to have a layout box").not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(navBox!.y);
+    }
+
+    const area = page.getByRole("button", { name: /Search area:/ });
+    const areaBox = await area.boundingBox();
+    expect(areaBox, "expected the area control to have a layout box").not.toBeNull();
+    expect(areaBox!.width).toBeGreaterThanOrEqual(44);
+    expect(areaBox!.height).toBeGreaterThanOrEqual(44);
+
+    await page.setViewportSize({ width: 320, height: 568 });
+    const narrowNavBox = await page
+      .getByRole("navigation", { name: "Primary" })
+      .boundingBox();
+    expect(narrowNavBox, "expected the narrow-screen navigation to have a layout box").not.toBeNull();
+    const finalQuestionBox = await questions.last().boundingBox();
+    expect(finalQuestionBox, "expected the final question to stay visible on a narrow phone").not.toBeNull();
+    expect(finalQuestionBox!.x + finalQuestionBox!.width).toBeLessThanOrEqual(320);
+    expect(finalQuestionBox!.y + finalQuestionBox!.height).toBeLessThanOrEqual(
+      narrowNavBox!.y,
+    );
+  });
+
   test("renders zero, one, and expandable source states", async ({ page }) => {
     await page.route("**/api/ask", async (route) => {
       const { query } = route.request().postDataJSON() as { query: string };

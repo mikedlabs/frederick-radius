@@ -74,9 +74,13 @@ export type EventsBoardDockProps = {
   dayCounts: Record<string, number>;
   /** True count of the filtered set (the mono count line). */
   filteredCount: number;
+  /** Towns represented by the same result set as filteredCount. */
+  resultTownCount: number;
+  /** False while the count describes only rows loaded so far. */
+  countComplete: boolean;
   /** Categories present in the set (the granular Type pills). */
   categories: { slug: string; name: string }[];
-  /** Towns present in the set — drives the true town count on the line. */
+  /** Towns currently available in the Where filter. */
   towns: { slug: string; name: string }[];
 
   // ── Filter state (owned by EventsExplorer; the dock is presentational) ──
@@ -149,7 +153,10 @@ function EbChip({
       onClick={onClick}
       className={`eb-chip tap-44-y${quiet ? " eb-chip-quiet" : ""}`}
       data-on={on || undefined}
-      style={color ? ({ "--c": color } as React.CSSProperties) : undefined}
+      style={{
+        ...(color ? { "--c": color } : {}),
+        minHeight: 44,
+      } as React.CSSProperties}
     >
       {color && <span aria-hidden className="eb-chip-dot" />}
       {children}
@@ -211,6 +218,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     nowISO,
     dayCounts,
     filteredCount,
+    resultTownCount,
+    countComplete,
     categories,
     towns,
     intent,
@@ -371,7 +380,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     : null;
   const whereText = townName ?? "Whole county";
 
-  const line = countLine({ events: filteredCount, townName, townCount: towns.length });
+  const line = countLine({
+    events: filteredCount,
+    townName,
+    townCount: resultTownCount,
+    complete: countComplete,
+  });
 
   const whatActive = Boolean(
     intent ||
@@ -480,7 +494,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   return (
     <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
       <h1 className="sr-only">Events in Frederick County</h1>
-      <div className="eb-head">
+      <div className="eb-head" style={{ background: "var(--app-bg-elevated-solid)" }}>
         {/* The almanac nameplate — collapses to zero on scroll. */}
         <div className="eb-masthead" aria-hidden={collapsed}>
           <div className="eb-dateline">
@@ -537,7 +551,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             aria-expanded={pane !== null}
             aria-controls="eb-pane"
             aria-haspopup="dialog"
-            aria-label={`Filters: ${filterSummary}`}
             className="eb-filter-trigger"
             onClick={() => toggle(pane ?? firstActivePane)}
           >
@@ -582,7 +595,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             {line}
           </span>
           <details className="eb-display-options">
-            <summary className="tap-44">
+            <summary className="tap-44" style={{ minHeight: 44 }}>
               <span>Display</span>
               <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </summary>
@@ -638,6 +651,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 type="button"
                 role="tab"
                 aria-selected={pane === section}
+                style={{ minHeight: 44 }}
                 onClick={() => {
                   haptic("light");
                   setPane(section);

@@ -24,7 +24,12 @@ import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
 import { isChainName } from "@/lib/category-ranking";
 import type { Event } from "@/data/events";
-import { COUNTY_REGION_LABELS, regionForMunicipality, type CountyRegion } from "@/data/county-regions";
+import {
+  COUNTY_REGION_LABELS,
+  municipalityMatchesRegions,
+  regionForMunicipality,
+  type CountyRegion,
+} from "@/data/county-regions";
 import { cleanReservationSearchQuery, openTableSearchUrl } from "@/lib/ask/reservations";
 import { allAmenities, dedupeAmenities, type Amenity, type AmenityKind } from "@/lib/loaders/amenities";
 import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
@@ -43,11 +48,17 @@ import {
   isOpenNow,
   type OpenStatus,
 } from "@/lib/hours";
+import { mayAssertOpenState } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { PARKING_OFFICE } from "@/data/parking-garages";
 import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
 import { enrichWantAnswerWithWalkingTimes } from "@/lib/want-travel";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  MUNICIPALITIES,
+  MUNICIPALITY_BY_SLUG,
+  type Municipality,
+} from "@/data/municipalities";
 import {
   fieldNotesFor,
   placesWithFieldHappyHour,
@@ -59,7 +70,12 @@ import { askAirQualityLine, askWeatherContext, askWeatherSafetyLine, loadAskWeat
 import { safeAskDescription } from "@/lib/ask/source-copy";
 import { eventFitsAskIntent } from "@/lib/ask/event-filter";
 import { placeMatchesDietary } from "@/lib/ask/dietary";
-import { parseAskDateTime } from "@/lib/ask/time";
+import {
+  parseAskAvailabilityConstraint,
+  parseAskDateTime,
+  stripAskAvailabilityLanguage,
+  type AskAvailabilityConstraint,
+} from "@/lib/ask/time";
 import { formatEventWhen } from "@/lib/events/format";
 import { parseHappyHour } from "@/lib/happyHour";
 import {
@@ -141,6 +157,116 @@ function placeSource(
     rating: typeof p.google_rating === "number" ? p.google_rating : undefined,
     ratingCount: typeof p.google_rating_count === "number" ? p.google_rating_count : undefined,
   };
+}
+
+/** The same freshness gate used by Today before Ask makes a time claim. */
+function askPlaceStatusAt(place: PlaceCardData, at: Date): OpenStatus {
+  const mayAssert =
+    mayAssertOpenState(
+      place.hours_verified,
+      place.hours_updated_at,
+      at,
+    ) && mayPublishVisitabilityHours(place.slug, place.hours, at);
+  if (!place.hours) return { state: "unknown" };
+  if (!mayAssert) return { state: "unverified" };
+  return getOpenStatus(place.hours, { verified: true }, at);
+}
+
+function municipalityNamedInQuery(query: string): Municipality | null {
+  const normalized = query.toLowerCase();
+  for (const municipality of MUNICIPALITIES) {
+    // A bare "Frederick" is county/city ambiguous. Honor only an explicit
+    // Frederick City phrase; the selected-town context handles the rest.
+    if (municipality.slug === "frederick") {
+      if (/\bfrederick\s+city\b/i.test(query)) return municipality;
+      continue;
+    }
+    const names = [
+      municipality.name.toLowerCase(),
+      municipality.slug.replace(/-/g, " "),
+    ];
+    if (names.some((name) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(normalized))) {
+      return municipality;
+    }
+  }
+  return null;
+}
+
+function temporalRetrievalQuery(
+  semanticQuery: string,
+  qualifiers: ReturnType<typeof parseSearchQualifiers>,
+): string {
+  return [
+    semanticQuery,
+    qualifiers.nearMe ? "near me" : null,
+    qualifiers.downtown ? "downtown Frederick" : null,
+    ...qualifiers.regions.map((region) => COUNTY_REGION_LABELS[region]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * A category-free question such as "what is open past midnight" needs the
+ * whole scoped place catalog, not fuzzy matches for the words "past" or
+ * "midnight." Build that candidate set directly and keep only fresh,
+ * verified-open hours at the requested instant.
+ */
+function temporalOpenPlaceHits(
+  context: QualifiedSearchContext,
+  at: Date,
+  limit: number,
+  options: {
+    downtown: boolean;
+    regions: readonly CountyRegion[];
+    queryMunicipality: Municipality | null;
+    preciseNearMe: boolean;
+  },
+): SearchHit[] {
+  const scopedMunicipality = options.regions.length > 0
+    ? null
+    : options.downtown
+      ? "frederick"
+      : options.queryMunicipality?.slug ?? context.municipality ?? null;
+  const rankingOrigin = options.downtown
+    ? FREDERICK_CENTER
+    : options.queryMunicipality?.centroid ?? context.origin ?? null;
+  return clientPlaces()
+    .filter(
+      (place) =>
+        (!scopedMunicipality || place.municipality === scopedMunicipality) &&
+        municipalityMatchesRegions(place.municipality, options.regions) &&
+        (!options.downtown ||
+          haversineMeters(FREDERICK_CENTER, place.geom) <= DOWNTOWN_RADIUS_M),
+    )
+    .map((place) => {
+      const distance = rankingOrigin
+        ? haversineMeters(rankingOrigin, place.geom)
+        : undefined;
+      const open_status = askPlaceStatusAt(place, at);
+      return {
+        type: "place" as const,
+        place: {
+          ...place,
+          open_status,
+          // Keep the internal ranking distance even for an approximate town or
+          // downtown anchor. Presentation still consults canShowDistance and
+          // never exposes an approximate distance as the visitor's distance.
+          distance_m: distance,
+        },
+        score:
+          place.feature_score +
+          (distance == null ? 0 : 10 / (1 + distance / 600)),
+      };
+    })
+    .filter((hit) => isOpenNow(hit.place.open_status))
+    .filter(
+      (hit) =>
+        !options.preciseNearMe ||
+        (hit.place.distance_m ?? Infinity) <= 5_000,
+    )
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 function easternDayMinute(now: Date): { day: number; minute: number } {
@@ -1853,7 +1979,9 @@ async function wantContextBlock(
 
   const line = (r: WantRow) =>
     `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
-  const open = [wa.hero, ...wa.also].filter((r): r is WantRow => r != null).slice(0, 5);
+  const open = [wa.hero, ...wa.also]
+    .filter((r): r is WantRow => r != null)
+    .slice(0, 5);
   const likelyOpen = open[0]?.confidence === "likely";
   const later = wa.later.slice(0, 3);
   const notable = open.length === 0 && later.length === 0 ? wa.notable.slice(0, 4) : [];
@@ -1907,12 +2035,50 @@ export async function askFrederick(
     : requestedOptions === "multiple"
       ? 6
       : 4;
-  const intent = parseAskIntent(q);
+  const intent = parseAskIntent(q, now);
+  const parsedPlaceDateTime = intent.kind === "place"
+    ? parseAskDateTime(q, now)
+    : null;
   const fixedAppointment = parseFixedAppointmentAnchor(q, now);
   const appointmentWindow = fixedAppointmentWindow(fixedAppointment, q, now);
+  const parsedAvailability = intent.kind === "place"
+    ? parseAskAvailabilityConstraint(q, now)
+    : null;
+  const availabilityConstraint: AskAvailabilityConstraint | null =
+    appointmentWindow
+      ? {
+          at: appointmentWindow.at,
+          timeLabel: appointmentWindow.timeLabel,
+          relation: "at",
+        }
+      : parsedAvailability;
   const actions = followUps(q, intent, context);
   const emergency = emergencyRequestKind(q);
   if (emergency) return answerEmergencyRequest(emergency, intent, context);
+  if (parsedPlaceDateTime?.invalidLocalTime) {
+    const when = parsedPlaceDateTime.dateLabel
+      ? ` on ${parsedPlaceDateTime.dateLabel}`
+      : " on that date";
+    return {
+      status: "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer: `${parsedPlaceDateTime.timeLabel ?? "That time"}${when} does not occur in Frederick because the clocks move forward for daylight saving time. Try 3:00 AM or another local time.`,
+      sources: [],
+      context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
+      intent,
+      actions: [
+        {
+          label: "Try 3:00 AM",
+          kind: "refine",
+          query: q.replace(
+            /\b(?:at|for|around|by|after|past)\s*2(?::[0-5]\d)?\s*a\.?m\.?\b/i,
+            "at 3:00 AM",
+          ),
+        },
+      ],
+    };
+  }
   const strictUtilityPlaceRequest = requestedStrictUtilityPlace(q);
   if (strictUtilityPlaceRequest) {
     return answerStrictUtilityPlaceRequest(
@@ -2167,18 +2333,75 @@ export async function askFrederick(
         isLongRunningCommunicationAccessProgram(event)
       ),
   );
-  const retrieval = qualifiedSearch(q, 12, eventPool, context);
+  const availabilitySemanticQuery = availabilityConstraint
+    ? stripAskAvailabilityLanguage(q)
+    : q;
+  const availabilityQualifiers = availabilityConstraint
+    ? parseSearchQualifiers(q)
+    : null;
+  const queryMunicipality = availabilityConstraint
+    ? municipalityNamedInQuery(q)
+    : null;
+  const availabilitySearchContext: QualifiedSearchContext =
+    availabilityConstraint && queryMunicipality
+      ? {
+          ...context,
+          origin: queryMunicipality.centroid,
+          municipality: queryMunicipality.slug,
+          contextLabel: queryMunicipality.name,
+          canShowDistance: false,
+        }
+      : availabilityConstraint && availabilityQualifiers?.downtown
+        ? {
+            ...context,
+            origin: FREDERICK_CENTER,
+            municipality: "frederick",
+            contextLabel: "Downtown Frederick",
+            canShowDistance: false,
+          }
+      : context;
+  const availabilitySearchQuery =
+    availabilityConstraint && availabilityQualifiers
+      ? temporalRetrievalQuery(
+          availabilitySemanticQuery,
+          availabilityQualifiers,
+        )
+      : availabilitySemanticQuery;
+  const retrieval = qualifiedSearch(
+    availabilitySearchQuery,
+    12,
+    eventPool,
+    availabilityConstraint
+      ? { ...availabilitySearchContext, now: availabilityConstraint.at }
+      : context,
+  );
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
   const asksDateNightPlaces = /\bdate[- ]?night\b/i.test(q);
   const asksIndoor = /\bindoors?\b/i.test(q);
   const asksConditionsOnly = wantsWeatherAnswer(q);
   const preciseNearMe = Boolean(
-    retrieval.meta.qualifiers.nearMe &&
+    (availabilityQualifiers?.nearMe ?? retrieval.meta.qualifiers.nearMe) &&
     context.origin &&
     context.canShowDistance === true,
   );
-  const tasteRankedHits = rerankWithTaste(retrieval.hits, tasteProfile);
+  const retrievalHits =
+    availabilityConstraint &&
+    availabilityQualifiers &&
+    availabilitySemanticQuery.length === 0
+      ? temporalOpenPlaceHits(
+          availabilitySearchContext,
+          availabilityConstraint.at,
+          12,
+          {
+            downtown: availabilityQualifiers.downtown,
+            regions: availabilityQualifiers.regions,
+            queryMunicipality,
+            preciseNearMe,
+          },
+        )
+      : retrieval.hits;
+  const tasteRankedHits = rerankWithTaste(retrievalHits, tasteProfile);
   const asksPatio = /\b(?:patio|outdoor seating|terrace)\b/i.test(q);
   const asksWrittenContact =
     /\b(?:(?:cannot|can['’]?t|unable to|don['’]?t want to)\s+call|without calling|written contact|contact by (?:email|text)|email (?:them|the place|the business)|text[-\s]based contact)\b/i.test(q);
@@ -2199,9 +2422,18 @@ export async function askFrederick(
       (!hit.conceptCoverage || hit.conceptCoverage.matched !== hit.conceptCoverage.total)
     ) return false;
     const p = hit.place;
+    if (availabilityConstraint) {
+      const freshStatus = askPlaceStatusAt(p, availabilityConstraint.at);
+      // Only a fresh, verified schedule may prove a place closed. A stale
+      // schedule remains an explicitly unconfirmed alternative; it cannot
+      // silently erase a potentially useful nearby result.
+      if (freshStatus.state === "closed") {
+        return false;
+      }
+    }
     if (preciseNearMe && (p.distance_m ?? Infinity) > 5_000) return false;
     if (intent.localOnly && isChainName(p.name)) return false;
-    if (intent.travelMode === "walk" && context.origin && (p.distance_m ?? Infinity) > 2_400) return false;
+    if (intent.travelMode === "walk" && availabilitySearchContext.origin && (p.distance_m ?? Infinity) > 2_400) return false;
     if (intent.budget === "free" && !(p.tags ?? []).includes("free")) return false;
     if (intent.budget === "value" && p.price_band != null && p.price_band > 2) return false;
     if (asksWrittenContact && !p.email) return false;
@@ -2234,7 +2466,7 @@ export async function askFrederick(
     }
     return true;
   });
-  if (strictNearest && context.origin) {
+  if (strictNearest && availabilitySearchContext.origin) {
     filteredHits.sort((a, b) => {
       const aDistance = a.type === "place" ? a.place.distance_m ?? Infinity : Infinity;
       const bDistance = b.type === "place" ? b.place.distance_m ?? Infinity : Infinity;
@@ -2327,12 +2559,12 @@ export async function askFrederick(
   )
     ? parseAskDateTime("at 11 PM", now)
     : null;
-  const requestedVisitAt = appointmentWindow?.at ?? (
+  const requestedVisitAt = availabilityConstraint?.at ?? (
     intent.requestedDateTime
       ? new Date(intent.requestedDateTime)
       : implicitLateNight?.instant ?? now
   );
-  const requestedVisitLabel = appointmentWindow?.timeLabel ?? (
+  const requestedVisitLabel = availabilityConstraint?.timeLabel ?? (
     intent.requestedDateTime
       ? intent.requestedTime ?? easternTimeLabel(requestedVisitAt)
       : implicitLateNight?.timeLabel ?? undefined
@@ -2364,14 +2596,25 @@ export async function askFrederick(
   for (const r of (want?.picks ?? []).slice(0, answerSourceLimit)) {
     const place = clientPlaceBySlug(r.slug);
     if (place) {
-      const rankedPlace = context.origin
-        ? { ...place, distance_m: haversineMeters(context.origin, place.geom) }
+      const placeRankingContext = availabilityConstraint
+        ? availabilitySearchContext
+        : context;
+      const rankedPlace = placeRankingContext.origin
+        ? {
+            ...place,
+            distance_m: haversineMeters(
+              placeRankingContext.origin,
+              place.geom,
+            ),
+          }
         : place;
       const source = placeSource(
           rankedPlace,
           r.detail || r.fact || `Listed for ${want!.label.toLowerCase()} in Radius`,
           null,
-          canExposeDistance(context),
+          canExposeDistance(
+            placeRankingContext,
+          ),
         );
       if (requestedVisitLabel) source.status = `At ${requestedVisitLabel} · ${r.fact}`;
       sources.push(source);
@@ -2536,12 +2779,14 @@ export async function askFrederick(
   // kind, and "is anything open" is the place-side version. Confirmed-open
   // places lead the block so the model's picks are doors that are actually
   // unlocked; the open state itself rides on every place line below.
-  const wantsOpen = /\bopen\b/i.test(q);
-  const statusAt = intent.requestedDateTime ? new Date(intent.requestedDateTime) : now;
+  const wantsOpen = /\bopen\b/i.test(q) || Boolean(availabilityConstraint);
+  const statusAt = availabilityConstraint?.at ?? (
+    intent.requestedDateTime ? new Date(intent.requestedDateTime) : now
+  );
   const placeStatus = (place: PlaceCardData): OpenStatus =>
     intent.requestedDate && !intent.requestedDateTime
       ? { state: "unknown" }
-      : getOpenStatus(place.hours, { verified: place.hours_verified ?? false }, statusAt);
+      : askPlaceStatusAt(place, statusAt);
   const ordered = wantsOpen
     ? [...hits].sort((a, b) => {
         const openRank = (h: (typeof hits)[number]) =>
@@ -2601,14 +2846,18 @@ export async function askFrederick(
           : lead
             ? "Highest-ranked catalog result for this request"
             : "Another catalog result for this request";
-        sources.push(
-          placeSource(
-            p,
-            fit,
-            region && intent.regions.includes(region) ? region : null,
-            canExposeDistance(context),
+        const source = placeSource(
+          availabilityConstraint ? { ...p, open_status: status } : p,
+          fit,
+          region && intent.regions.includes(region) ? region : null,
+          canExposeDistance(
+            availabilityConstraint ? availabilitySearchContext : context,
           ),
         );
+        if (availabilityConstraint) {
+          source.status = `At ${availabilityConstraint.timeLabel} · ${formatHoursLine(status)}`;
+        }
+        sources.push(source);
       }
     } else if (h.type === "event") {
       const e = h.event;

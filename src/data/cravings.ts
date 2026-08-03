@@ -482,8 +482,13 @@ export const CRAVINGS: Craving[] = [
   },
 ];
 
-export const CRAVING_BY_KEY: Record<string, Craving> = Object.fromEntries(
-  CRAVINGS.map((c) => [c.key, c]),
+// This lookup receives URL values on /nearby. A normal object inherits keys
+// such as `toString`; treating one of those as a Craving crashes SSR when its
+// `.match` predicate is read. A null-prototype dictionary makes unknown URL
+// values genuinely absent at every call site, not just in page metadata.
+export const CRAVING_BY_KEY: Record<string, Craving> = Object.assign(
+  Object.create(null) as Record<string, Craving>,
+  Object.fromEntries(CRAVINGS.map((c) => [c.key, c])),
 );
 
 /** Corrected primary category plus every additional taxonomy tag. A place may

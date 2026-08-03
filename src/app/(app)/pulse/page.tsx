@@ -41,7 +41,10 @@ import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
-import { selectRoadTravelSummary } from "@/lib/live/roadIntelligenceModel";
+import {
+  roadAttentionScopeLabel,
+  selectRoadTravelSummary,
+} from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
@@ -56,7 +59,7 @@ import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
 import { compareAlertPriority } from "@/lib/alert-priority";
-import { powerOutageTone, pulseAlertPriority, pulseStatusState, shouldAqiLead } from "@/lib/pulse/signal-priority";
+import { powerOutageDisplay, powerOutageTone, pulseAlertPriority, pulseStatusState, shouldAqiLead } from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
@@ -410,9 +413,10 @@ export default async function PulsePage() {
     (alert) => alert.status === "closed" || alert.status === "delayed" || alert.status === "early_dismissal",
   );
 
-  // Power outages are "active" only when 25+ customers are out — below
-  // that threshold the data is noise (a single transformer trip).
+  // Power outages become a page-level alert at 25+ customers. Smaller totals
+  // stay quiet in the hierarchy but remain truthfully visible in the tile.
   const outagesActive = outages.total_out >= 25;
+  const outageDisplay = powerOutageDisplay(outages.total_out, powerAvailable);
   const outageTone = powerOutageTone(outages.total_out, outages.total_served);
   const outageShare =
     outages.total_served > 0
@@ -646,7 +650,7 @@ export default async function PulsePage() {
     ].filter(Boolean).join(" · ");
     heroActionLabel = "Check the road details";
     heroFacts = [
-      { label: "Area", value: roadLead.scope },
+      { label: roadAttentionScopeLabel(roadLead), value: roadLead.scope },
       { label: "Status", value: roadLead.severity === "emergency" ? "Emergency" : "Use caution" },
       { label: "Source", value: roadLead.sourceLabel },
       {
@@ -966,7 +970,7 @@ export default async function PulsePage() {
       : "good";
   const aqiPct = aqiWorst ? clampPercent((aqiWorst.aqi / 300) * 100) : 0;
 
-  const powerPct = outagesActive ? clampPercent((outages.total_out / 2000) * 100) : 0;
+  const powerPct = powerAvailable ? clampPercent((outages.total_out / 2000) * 100) : 0;
   const unaffectedOutageAreaCount = Math.max(0, outages.munis.length - affectedOutageAreas.length);
 
   const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
@@ -1098,11 +1102,7 @@ export default async function PulsePage() {
       key: "power",
       label: "Power out",
       iconName: "Zap",
-      countLabel: outagesActive
-        ? `${outages.total_out.toLocaleString()} out`
-        : powerAvailable
-          ? "No major outage"
-          : "Feed unavailable",
+      countLabel: outageDisplay.countLabel,
       accent: outagesActive
         ? outageTone === "danger" ? "var(--app-danger)" : "var(--app-warning)"
         : powerAvailable
@@ -1116,7 +1116,7 @@ export default async function PulsePage() {
         value: outages.total_out,
         pct: powerPct,
         comma: true,
-        unit: outagesActive ? "customers out" : "all served",
+        unit: outageDisplay.unit,
       },
       sourceLabel: "Potomac Edison",
       body: outagesActive ? (
@@ -1161,11 +1161,7 @@ export default async function PulsePage() {
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         </>
-      ) : emptyNote(
-        powerAvailable
-          ? "No significant power outages are reported right now."
-          : "Potomac Edison outage data could not be loaded right now.",
-      ),
+      ) : emptyNote(outageDisplay.quietDetail),
     },
     // ── The rest → compact status tiles ──
     {

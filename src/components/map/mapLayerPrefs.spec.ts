@@ -50,7 +50,7 @@ describe("mapLayerPrefs", () => {
       aviation: false,
     });
     expect(readMapLayerPrefs()).toEqual({});
-    expect(window.localStorage.getItem("fr:map-layers:v2")).toBeNull();
+    expect(window.localStorage.getItem("fr:map-layers:v3")).toBeNull();
   });
 
   it("keeps only the truthy flags", () => {
@@ -78,24 +78,26 @@ describe("mapLayerPrefs", () => {
     expect(p.civic).toBeUndefined();
   });
 
-  it("purges task filters written by an older v2 client", () => {
+  it("migrates v2 choices without restoring formerly auto-seeded Transit", () => {
     window.localStorage.setItem(
       "fr:map-layers:v2",
       JSON.stringify({
         cats: ["coffee"],
         amenities: ["restroom"],
+        transit: true,
         radar: true,
       }),
     );
 
     expect(readMapLayerPrefs()).toEqual({ radar: true });
-    expect(window.localStorage.getItem("fr:map-layers:v2")).toBe(
+    expect(window.localStorage.getItem("fr:map-layers:v2")).toBeNull();
+    expect(window.localStorage.getItem("fr:map-layers:v3")).toBe(
       '{"radar":true}',
     );
   });
 
   it("survives corrupt storage", () => {
-    window.localStorage.setItem("fr:map-layers:v2", "{not json");
+    window.localStorage.setItem("fr:map-layers:v3", "{not json");
     expect(readMapLayerPrefs()).toEqual({});
   });
 
@@ -106,7 +108,7 @@ describe("mapLayerPrefs", () => {
     );
     expect(readMapLayerPrefs()).toEqual({ radar: true, parking: true });
     expect(window.localStorage.getItem("fr:map-layers:v1")).toBeNull();
-    expect(window.localStorage.getItem("fr:map-layers:v2")).toBe(
+    expect(window.localStorage.getItem("fr:map-layers:v3")).toBe(
       '{"parking":true,"radar":true}',
     );
   });

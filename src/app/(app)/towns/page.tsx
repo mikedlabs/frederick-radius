@@ -2,19 +2,19 @@ import type { Metadata } from "next";
 import PageBloom from "@/components/ui/PageBloom";
 import TownPicker from "@/components/town/TownPicker";
 import { townStats } from "@/lib/guided/town-stats";
-import { getWeeklyPublicEventCountsByMunicipality } from "@/lib/guided/town-event-counts";
+import { getNextSevenDayPublicEventCountsByMunicipality } from "@/lib/guided/town-event-counts";
 
 export const metadata: Metadata = {
   title: "Towns",
-  description: "Choose a Frederick County town to see its places and events this week.",
+  description: "Choose a Frederick County town to see its places and listed events in the next seven days.",
   alternates: { canonical: "/towns" },
 };
 
 export default async function TownsPage() {
-  // Real this-week PUBLIC event counts per town (curated + live county/
+  // Rolling seven-day PUBLIC event counts per town (curated + live county/
   // municipal feeds + venue lineups), cached. Passed into the pure townStats
-  // so a feed-fed town no longer reads "No events this week."
-  const eventCounts = await getWeeklyPublicEventCountsByMunicipality();
+  // so a feed-fed town no longer reads as though Radius has no listings.
+  const eventCounts = await getNextSevenDayPublicEventCountsByMunicipality();
   const stats = townStats(eventCounts);
   return (
     <div className="relative space-y-6">
@@ -28,7 +28,7 @@ export default async function TownsPage() {
           Pick a place to start.
         </h1>
         <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Choose a town to see its places, this week&rsquo;s events and what it&rsquo;s best for.
+          Choose a town to see its places, listed events in the next seven days and what it&rsquo;s best for.
         </p>
       </header>
 

@@ -101,4 +101,37 @@ describe("PostGIS place mirror", () => {
       "postgres://secret",
     );
   });
+
+  it("uses the declared coordinate tolerance while retaining exact-hash diagnostics", async () => {
+    const catalog = spatialCatalogSnapshot();
+    const auditRows = catalog.places.map((place, index) => ({
+      slug: place.slug,
+      lng: index === 0 ? place.lng + 5e-10 : place.lng,
+      lat: place.lat,
+      has_location: true,
+    }));
+    const root = vi.fn((strings: TemplateStringsArray) => {
+      const text = queryText(strings);
+      if (text.includes("select slug, lng, lat")) {
+        return Promise.resolve(auditRows);
+      }
+      if (text.includes("select catalog_hash")) {
+        return Promise.resolve([{
+          catalog_hash: catalog.hash,
+          place_count: catalog.count,
+          synced_at: "2026-08-03T12:00:00.000Z",
+        }]);
+      }
+      return Promise.resolve([]);
+    });
+    mocks.getSql.mockReturnValue(root);
+
+    const audit = await auditSpatialPlaceMirror();
+
+    expect(audit.coordinateMismatches).toEqual([]);
+    expect(audit.actualHashMatchesExpected).toBe(false);
+    expect(audit.stateHashMatchesExpected).toBe(true);
+    expect(audit.stateCountMatchesExpected).toBe(true);
+    expect(audit.current).toBe(true);
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  powerOutageDisplay,
   powerOutageTone,
   pulseAlertPriority,
   pulseStatusState,
@@ -63,6 +64,27 @@ describe("powerOutageTone", () => {
   it("marks a widespread outage as high severity", () => {
     expect(powerOutageTone(1_000, 119_844)).toBe("danger");
     expect(powerOutageTone(250, 20_000)).toBe("danger");
+  });
+});
+
+describe("powerOutageDisplay", () => {
+  it("labels a sub-threshold nonzero outage honestly", () => {
+    expect(powerOutageDisplay(23, true)).toEqual({
+      countLabel: "23 reported",
+      unit: "customers out",
+      quietDetail:
+        "23 customers are reported without power, below Radius's major-outage threshold.",
+    });
+  });
+
+  it("reserves all served for a real zero", () => {
+    expect(powerOutageDisplay(0, true).unit).toBe("all served");
+    expect(powerOutageDisplay(1, true)).toEqual({
+      countLabel: "1 reported",
+      unit: "customer out",
+      quietDetail:
+        "1 customer is reported without power, below Radius's major-outage threshold.",
+    });
   });
 });
 

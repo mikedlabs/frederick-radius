@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "@/data/events";
-import { isStrongTodayEvent, selectTodayEvents } from "./today-events";
+import {
+  isStrongTodayEvent,
+  selectTodayEvents,
+  shouldRenderTodayEventSection,
+} from "./today-events";
 
 const now = new Date("2026-07-16T17:45:00.000Z"); // 1:45 PM Eastern
 
@@ -49,5 +53,45 @@ describe("Today event shortlist", () => {
       event({ slug: "tonight", title: "Evening Concert", starts_at: "2026-07-16T23:00:00.000Z", ends_at: "2026-07-17T01:00:00.000Z" }),
     ], now);
     expect(result.map((item) => item.moment)).toEqual(["Now", "Later", "Tonight"]);
+  });
+
+  it("trusts an official publisher row without pretending Radius verified it", () => {
+    const official = event({
+      slug: "library-concert",
+      title: "Library Concert",
+      source: "fcpl",
+      is_verified: false,
+    });
+    const aggregator = event({
+      slug: "unknown-feed-concert",
+      title: "Unknown Feed Concert",
+      source: "eventbrite",
+      is_verified: false,
+    });
+
+    expect(isStrongTodayEvent(official, now)).toBe(true);
+    expect(official.is_verified).toBe(false);
+    expect(isStrongTodayEvent(aggregator, now)).toBe(false);
+  });
+
+  it("hides an empty degraded section but keeps trustworthy empty-day copy", () => {
+    expect(shouldRenderTodayEventSection({
+      degraded: true,
+      featurePromoted: false,
+      programCount: 0,
+      earlierCount: 0,
+    })).toBe(false);
+    expect(shouldRenderTodayEventSection({
+      degraded: false,
+      featurePromoted: false,
+      programCount: 0,
+      earlierCount: 0,
+    })).toBe(true);
+    expect(shouldRenderTodayEventSection({
+      degraded: true,
+      featurePromoted: false,
+      programCount: 1,
+      earlierCount: 0,
+    })).toBe(true);
   });
 });

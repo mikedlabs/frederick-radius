@@ -83,14 +83,17 @@ export async function GET(req: NextRequest) {
       signal: AbortSignal.timeout(6_000),
     });
     if (!r.ok) return new Response("upstream", { status: 502 });
-    const body = await r.arrayBuffer();
-    return new Response(body, {
-      headers: {
-        "Content-Type": r.headers.get("content-type") ?? "image/png",
-        "Cache-Control":
-          "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=2592000",
-      },
+    const headers = new Headers({
+      "Content-Type": r.headers.get("content-type") ?? "image/png",
+      "Cache-Control":
+        "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=2592000",
     });
+    const contentLength = r.headers.get("content-length");
+    if (contentLength) headers.set("Content-Length", contentLength);
+    // Forward the upstream stream instead of buffering the full PNG in the
+    // function. Cold locator requests begin painting sooner and use less
+    // memory; the month-long edge cache still serves subsequent visitors.
+    return new Response(r.body, { headers });
   } catch {
     return new Response("upstream", { status: 502 });
   }

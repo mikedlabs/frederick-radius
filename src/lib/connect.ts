@@ -34,6 +34,7 @@
 
 import { type Municipality } from "@/data/municipalities";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { isOpenNow } from "@/lib/hours";
 // A2.6: this module is server-side only (it's used by /api/nearby and
 // other route handlers). Client surfaces that need the lightweight
 // point → municipality utilities import from `@/lib/location` directly
@@ -180,13 +181,17 @@ export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
 
   const hit = resolveMunicipality(origin);
 
-  // placesWithinRadius already: dedupes, drops closed, stamps distance.
+  // placesWithinRadius already dedupes and stamps distance. Its unknown-hours
+  // rows remain useful elsewhere, but this contract is specifically named
+  // `openPlaces` and the Today section labels it "Open near you." Keep only
+  // recently confirmed open/closing-soon rows so an hours gap is never shown
+  // as an availability claim.
   const openPlaces = clientPlacesWithinRadius(
     origin,
     radiusM,
     opts.placeDistances,
   )
-    .filter((p) => p.open_status.state !== "closed")
+    .filter((p) => isOpenNow(p.open_status))
     .slice(0, limit);
 
   // eventsLive / eventsNext24h are county-wide and venue-closed-safe but

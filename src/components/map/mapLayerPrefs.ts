@@ -12,7 +12,8 @@
  * localStorage only, read/written client-side (AppMap is dynamic ssr:false, so
  * there is no SSR/hydration concern).
  */
-const KEY = "fr:map-layers:v2";
+const KEY = "fr:map-layers:v3";
+const PREVIOUS_KEY = "fr:map-layers:v2";
 const LEGACY_KEY = "fr:map-layers:v1";
 
 export type MapLayerPrefs = {
@@ -45,6 +46,24 @@ export function readMapLayerPrefs(): MapLayerPrefs {
       delete cleaned.amenities;
       if ("cats" in parsed || "amenities" in parsed) writeMapLayerPrefs(cleaned);
       return cleaned;
+    }
+
+    // v2 was live while Transit could be seeded automatically on entry. A
+    // stored `transit:true` therefore does not prove that the visitor chose
+    // the layer, and it made a plain /map arrival silently become
+    // /map?show=transit. Carry forward every other deliberate reference layer,
+    // but reset Transit once so the map reopens on its neutral places view.
+    const previous = window.localStorage.getItem(PREVIOUS_KEY);
+    if (previous) {
+      const parsed = JSON.parse(previous);
+      if (!parsed || typeof parsed !== "object") return {};
+      const migrated = { ...(parsed as MapLayerPrefs) };
+      delete migrated.cats;
+      delete migrated.amenities;
+      delete migrated.transit;
+      window.localStorage.removeItem(PREVIOUS_KEY);
+      writeMapLayerPrefs(migrated);
+      return migrated;
     }
 
     // v1 wrote Transit=true during the old automatic cold open, so it cannot

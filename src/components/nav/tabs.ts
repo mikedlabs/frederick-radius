@@ -34,13 +34,12 @@ export type Tab = {
   label: string;
   icon: LucideIcon;
   /**
-   * These four destinations are the permanent app shell. Next can prefetch
-   * their loading boundaries as soon as the nav enters the viewport, which
-   * makes a touch navigation register without waiting for the destination's
-   * live data. Keep speculative prefetching scoped to this short list rather
-   * than enabling it across event and place result grids.
+   * These four destinations are the permanent app shell. Most are compact
+   * enough for Next's automatic prefetch. The county map is deliberately
+   * excluded: its server payload is large, and prefetching it duplicated that
+   * payload on Today, Transit, place pages, and even the map itself.
    */
-  prefetch: "auto";
+  prefetch: "auto" | false;
   /** Switch from outline to filled when this tab is active. Only the
    *  icons that have a clean filled variant in Lucide set this true. */
   fillOnActive: boolean;
@@ -48,7 +47,7 @@ export type Tab = {
 
 export const TABS: readonly Tab[] = [
   { href: "/today",     label: "Today",  icon: Sun,      prefetch: "auto", fillOnActive: false },
-  { href: "/map",       label: "Map",    icon: MapIcon,  prefetch: "auto", fillOnActive: false },
+  { href: "/map",       label: "Map",    icon: MapIcon,  prefetch: false,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, prefetch: "auto", fillOnActive: false },
   { href: "/my-radius", label: "Saved",  icon: Bookmark, prefetch: "auto", fillOnActive: true  },
 ] as const;

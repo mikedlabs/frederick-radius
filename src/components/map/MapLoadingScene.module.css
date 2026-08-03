@@ -31,6 +31,12 @@
 .scene[data-state="ready"] {
   opacity: 0;
   visibility: hidden;
+  will-change: auto;
+}
+
+.scene[data-state="ready"]::after,
+.scene[data-state="ready"] * {
+  animation-play-state: paused;
 }
 
 .scene::before {

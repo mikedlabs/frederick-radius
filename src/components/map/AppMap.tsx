@@ -101,7 +101,6 @@ import StopArrivalsPopup, {
 // each photo was taken in the county.
 import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
-import MapLoadingScene from "./MapLoadingScene";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration, mapPlaceVisualState } from "./mapVisualState";
 import {
@@ -232,6 +231,7 @@ import {
   type SnowRouteFC,
   type TransitStopPin,
 } from "./types";
+import { immediateMapPlaceResults } from "./mapLocalPlaceSearch";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -274,7 +274,10 @@ import {
   serializeLayers,
   type OverlayKey,
 } from "@/lib/overlays";
-import { replaceMapUrl } from "@/lib/map-url-state";
+import {
+  replaceMapUrl,
+  replaceMapUrlSilently,
+} from "@/lib/map-url-state";
 import {
   EventPopup,
   OsmPopup,
@@ -324,6 +327,7 @@ import { encodePolyline } from "./polyline";
 import { mapCameraPadding } from "./mapCameraPadding";
 import { rememberMapSelectionOpener } from "./mapSelectionFocus";
 import {
+  mapCameraParam,
   mapResultCountAnnouncement,
   resultViewportChanged,
   type MapResultViewport,
@@ -540,6 +544,8 @@ type Props = {
   /** Hide the generic search deck when an embedded map already has one
    *  explicit subject. Native locate and zoom controls remain available. */
   showSearchControls?: boolean;
+  /** The first usable map frame painted, or a stable fallback took over. */
+  onVisualReady?: () => void;
 };
 
 export default function AppMap({
@@ -579,6 +585,7 @@ export default function AppMap({
   dock,
   activeSlugs = null,
   showSearchControls = true,
+  onVisualReady,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
@@ -731,7 +738,7 @@ export default function AppMap({
     // highlighted place rather than a visually similar, unselected map.
     try {
       if (window.location.pathname === "/map") {
-        replaceMapUrl((params) => {
+        replaceMapUrlSilently((params) => {
           params.set("place", pin.slug);
           params.delete("event");
         });
@@ -829,7 +836,6 @@ export default function AppMap({
   // This flag deliberately promises only that the load handler ran. Initial
   // amenity/selection camera work may still follow, so do not call it settled.
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [mapVisualReady, setMapVisualReady] = useState(false);
   // A browser with no WebGL (locked-down corporate profile, a headless/bot
   // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
   // renders an empty rectangle, which is exactly the "map failed to load" a
@@ -841,8 +847,9 @@ export default function AppMap({
     if (!hasWebGL()) {
       setMapUnsupported(true);
       setMapError(true);
+      onVisualReady?.();
     }
-  }, []);
+  }, [onVisualReady]);
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
@@ -1035,7 +1042,7 @@ export default function AppMap({
   const [selectionUrlReady, setSelectionUrlReady] = useState(false);
   useEffect(() => {
     if (!isBrowseMap || !selectionUrlReady) return;
-    replaceMapUrl((params) => {
+    replaceMapUrlSilently((params) => {
       if (selectedSlug) params.set("place", selectedSlug);
       else params.delete("place");
       if (selectedEvent) params.set("event", selectedEvent.slug);
@@ -1146,14 +1153,14 @@ export default function AppMap({
         setUserLoc(null);
         setUserAccuracyM(null);
         setLocationFixTimestamp(null);
-        setGeoMsg(
-          "You are outside Frederick County. Showing downtown Frederick.",
-        );
-        mapRef.current?.getMap().flyTo({
-          center: FREDERICK,
-          zoom: 12,
-          duration: prefersReducedMotion() ? 0 : 1100,
-          curve: 1.25,
+        setGeoMsg("You are outside Frederick County. Showing the whole county.");
+        if (isBrowseMap) {
+          setScope("county");
+          replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+        }
+        mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+          padding: countyFitPadding(),
+          duration: prefersReducedMotion() ? 0 : 900,
           easing: CAM_EASE,
           essential: true,
         });
@@ -1175,12 +1182,25 @@ export default function AppMap({
       return;
     }
 
+    if (isBrowseMap) {
+      // A failed permission request cannot leave a shareable `in=nearme`
+      // promise in the URL or dock. Fall back to the actual county frame and
+      // let the shared-scope event update MapDock's header immediately.
+      setScope("county");
+      replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+      mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+        padding: countyFitPadding(),
+        duration: prefersReducedMotion() ? 0 : 900,
+        easing: CAM_EASE,
+        essential: true,
+      });
+    }
     setGeoMsg(
       sharedGeolocationState.status === "denied"
-        ? "Location is off. Enable it in your browser to use Near me."
-        : "Couldn't get your location. Try again.",
+        ? "Location is off. Showing the whole county. Enable it in your browser to use Near me."
+        : "Couldn't get your location. Showing the whole county.",
     );
-  }, [sharedGeolocationState]);
+  }, [isBrowseMap, sharedGeolocationState]);
   const [showCivic, setShowCivic] = useState(
     () =>
       shouldInitializeReferenceLayer(
@@ -1972,10 +1992,7 @@ export default function AppMap({
     if (writeUrl) {
       try {
         replaceMapUrl((params) => {
-          params.set(
-            "c",
-            `${viewport.center.lng.toFixed(4)},${viewport.center.lat.toFixed(4)},${viewport.zoom.toFixed(2)}`,
-          );
+          params.set("c", mapCameraParam(viewport));
         });
       } catch {
         /* Camera sharing is an enhancement; the committed results still hold. */
@@ -2762,13 +2779,24 @@ export default function AppMap({
   useEffect(() => {
     const term = q.trim();
     const requestId = ++searchRequestRef.current;
+    const origin =
+      userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
+    const immediateMatches = immediateMapPlaceResults(
+      places,
+      term,
+      origin,
+      6,
+    );
     // A result from the previous phrase must never remain tappable while this
-    // phrase waits for its debounce or network response.
-    setSearchMatches([]);
+    // phrase waits for its debounce or network response. A strong name match
+    // from the already-loaded Radius pin set may replace it immediately.
+    setSearchMatches(immediateMatches);
     setSearchUnavailableQuery("");
     // A retry uses the same phrase, so the prior settled marker would otherwise
     // make the empty-state copy flash before the request begins.
-    if (term.length >= 2) setSearchSettledQuery("");
+    if (term.length >= 2) {
+      setSearchSettledQuery(immediateMatches.length > 0 ? term : "");
+    }
     if (term.length < 2) {
       setSearchSettledQuery(term);
       searchSessionRef.current = null;
@@ -2780,8 +2808,6 @@ export default function AppMap({
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
-      const origin =
-        userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
       params.set("lat", origin.lat.toFixed(4));
@@ -2979,8 +3005,10 @@ export default function AppMap({
           (error as { name?: string })?.name !== "AbortError" &&
           requestId === searchRequestRef.current
         ) {
-          setSearchMatches([]);
-          setSearchUnavailableQuery(term);
+          // A delayed enrichment failure must not erase the useful known-place
+          // result that was already on screen.
+          setSearchMatches(immediateMatches);
+          setSearchUnavailableQuery(immediateMatches.length > 0 ? "" : term);
           setSearchSettledQuery(term);
         }
       }
@@ -2989,7 +3017,7 @@ export default function AppMap({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [isBrowseMap, q, searchAttempt, userLoc]);
+  }, [isBrowseMap, places, q, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3952,10 +3980,6 @@ export default function AppMap({
           places, check today and tonight, see conditions, or add Frederick details.
         </p>
 
-        {dock && !mapError && (
-          <MapLoadingScene height="100%" ready={mapVisualReady} />
-        )}
-
         <Map
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
@@ -4114,11 +4138,9 @@ export default function AppMap({
             // already usable map, especially on slow live feeds. Two paint
             // frames give the canvas time to appear, while onIdle remains a
             // fallback for browsers that throttle animation frames.
-            if (dock && !mapVisualReady) {
-              window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => setMapVisualReady(true));
-              });
-            }
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => onVisualReady?.());
+            });
             // A restored `?c=` camera can open already zoomed in without ever
             // firing moveend, so seed the reset FAB's visibility from the
             // initial frame too.
@@ -4182,7 +4204,7 @@ export default function AppMap({
             setSelectionUrlReady(true);
           }}
           onIdle={(e) => {
-            if (dock && !mapVisualReady) setMapVisualReady(true);
+            onVisualReady?.();
             if (!dock) return;
             if (places.length > 0 && placeMarksHealth !== "ready") {
               try {
@@ -4267,6 +4289,7 @@ export default function AppMap({
             const msg = String(e?.error?.message ?? "");
             if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)|\bsprite\b.*(?:failed|404|not found)|(?:failed|404).*\bsprite\b/i.test(msg)) {
               setMapError(true);
+              onVisualReady?.();
             }
           }}
           onMouseMove={onHover}
@@ -5057,7 +5080,7 @@ export default function AppMap({
             {/* A deliberate search/category/amenity task can reveal its
                 strongest matches before street zoom. Collision stays on, so
                 even this emphasis layer cannot recreate the old icon pile. */}
-            <Layer
+            {mapLoaded && <Layer
               id="curated-active-icons"
               type="symbol"
               minzoom={compactSubjectMap ? 9.5 : 11}
@@ -5082,8 +5105,8 @@ export default function AppMap({
                     : 1,
                 "icon-opacity-transition": { duration: mapPaintDuration },
               }}
-            />
-            <Layer
+            />}
+            {mapLoaded && <Layer
               id="curated-icons"
               type="symbol"
               filter={["all", ["!", ["has", "point_count"]], ["!=", ["get", "emph"], true]]}
@@ -5147,7 +5170,7 @@ export default function AppMap({
                 ],
                 "icon-opacity-transition": { duration: mapPaintDuration },
               }}
-            />
+            />}
             {/* Invisible tap-target pad — expands each curated pin's
                 hit area to a Fitts-friendly ~44px regardless of how
                 tiny the rendered icon gets at street zoom. The single-
@@ -5934,6 +5957,11 @@ export default function AppMap({
               });
             }}
             fitCounty={fitCounty}
+            shareCameraParam={() => {
+              const map = mapRef.current?.getMap();
+              const viewport = map ? readResultViewport(map) : null;
+              return viewport ? mapCameraParam(viewport) : null;
+            }}
             discoveries={discoveries}
             selectedDiscoveryId={selectedDiscovery?.id ?? null}
             onSelectDiscovery={(id) => {

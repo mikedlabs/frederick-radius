@@ -35,6 +35,13 @@ const QuerySchema = z.object({
   rank: z.enum(["DISTANCE", "POPULARITY"]).optional(),
 });
 
+function invalidQuery(issues?: unknown) {
+  return NextResponse.json(
+    { ok: false, status: 400, message: "The query is invalid.", ...(issues ? { issues } : {}) },
+    { status: 400 },
+  );
+}
+
 export async function GET(req: Request) {
   // Paid upstream — block hotlinking. Vercel Firewall handles the
   // per-IP rate limit on top of this.
@@ -46,23 +53,40 @@ export async function GET(req: Request) {
   if (await isRateLimited(req, "discover-nearby", 30, 60)) {
     return new NextResponse("Too Many Requests", { status: 429 });
   }
+  const url = new URL(req.url);
+  const rawQuery = Object.fromEntries(url.searchParams);
+  const latRaw = url.searchParams.get("lat");
+  const lngRaw = url.searchParams.get("lng");
+  const hasLat = latRaw !== null;
+  const hasLng = lngRaw !== null;
+  // Coordinates are one value. z.coerce.number() turns an empty string into
+  // zero, and accepting only one half silently fell back to Downtown. Reject
+  // both shapes before coercion so a malformed discovery request cannot pay
+  // for a search around the wrong place.
+  if (
+    hasLat !== hasLng ||
+    (hasLat && (!latRaw?.trim() || !lngRaw?.trim()))
+  ) {
+    return invalidQuery();
+  }
+
+  const parsed = QuerySchema.safeParse(rawQuery);
+  if (!parsed.success) {
+    return invalidQuery(parsed.error.flatten());
+  }
+
+  const { muni, lat, lng, radius, types, max, rank } = parsed.data;
+  // A municipality already supplies the canonical center. Do not silently
+  // discard an explicit coordinate pair when both forms are sent.
+  if (muni && typeof lat === "number" && typeof lng === "number") {
+    return invalidQuery();
+  }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json(
       { ok: false, status: 503, message: "Google Places is not configured." },
       { status: 503 },
     );
   }
-
-  const url = new URL(req.url);
-  const parsed = QuerySchema.safeParse(Object.fromEntries(url.searchParams));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { ok: false, status: 400, message: "The query is invalid.", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const { muni, lat, lng, radius, types, max, rank } = parsed.data;
   const center =
     typeof lat === "number" && typeof lng === "number"
       ? { lat, lng }

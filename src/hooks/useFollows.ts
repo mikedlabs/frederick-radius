@@ -13,6 +13,10 @@ import {
   hasCompletedFollowsSync,
   markFollowsSyncComplete,
 } from "@/lib/follows-sync";
+import {
+  MAX_FOLLOWED_PLACES,
+  normalizeFollowSlugs,
+} from "@/lib/follows-contract";
 
 /**
  * useFollows — auth-aware follow state for places.
@@ -54,7 +58,17 @@ import {
  * is "follow PLACES"; events stay device-local.
  */
 
-type AuthState = "unknown" | "anonymous" | { user: { id: string; email: string | null } };
+type FollowUser = { id: string; email: string | null };
+type AuthState = "unknown" | "anonymous" | { user: FollowUser };
+
+export type FollowedSlugsBootstrap = {
+  /** Verified by the Server Component before this client tree is rendered. */
+  user: FollowUser | null;
+  /** Undefined means the bounded server read failed and the client must retry. */
+  slugs?: readonly string[];
+  /** Older rows remain stored but are outside the bounded UI snapshot. */
+  truncated?: boolean;
+};
 
 function getSyncedFlag(userId: string): boolean {
   if (typeof window === "undefined") return false;
@@ -118,6 +132,8 @@ export function shouldCancelPlaceReturnBridgeAfterDelete(
  * check doesn't loop.
  * -------------------------------------------------------------------- */
 let remoteStore: Set<string> | null = null;
+let remoteStoreUserId: string | null = null;
+let remoteStoreTruncated = false;
 const remoteListeners = new Set<() => void>();
 function readRemote(): Set<string> | null {
   return remoteStore;
@@ -128,6 +144,16 @@ function readServerRemote(): Set<string> | null {
 function writeRemote(next: Set<string> | null) {
   remoteStore = next;
   remoteListeners.forEach((l) => l());
+}
+
+function writeAccountRemote(
+  userId: string | null,
+  next: Set<string> | null,
+  truncated = false,
+) {
+  remoteStoreUserId = userId;
+  remoteStoreTruncated = Boolean(userId) && truncated;
+  writeRemote(next);
 }
 const subscribeRemote = (cb: () => void) => {
   remoteListeners.add(cb);
@@ -143,6 +169,48 @@ const subscribeRemote = (cb: () => void) => {
  * don't issue duplicate requests.
  */
 let authPromise: Promise<AuthState> | null = null;
+
+/**
+ * Commit a verified Server Component snapshot to the browser store. This must
+ * run from an effect, never during render: React may abandon a concurrent
+ * render, and an abandoned tree must not mutate account-global module state.
+ * A defined snapshot is authoritative even for the same account, so a soft
+ * navigation observes cross-device unfollows rather than reviving stale state.
+ */
+function commitFollowBootstrap(bootstrap: FollowedSlugsBootstrap) {
+  if (typeof window === "undefined") return;
+
+  const auth: AuthState = bootstrap.user
+    ? { user: bootstrap.user }
+    : "anonymous";
+  authPromise = Promise.resolve(auth);
+
+  if (!bootstrap.user) {
+    writeAccountRemote(null, null);
+    hydratePromise = null;
+    hydrateUserId = null;
+    return;
+  }
+
+  if (bootstrap.slugs === undefined) {
+    // The server missed its deadline, so a previous same-account snapshot is
+    // not proof of freshness. Keep the state honestly unknown and force the
+    // bounded client retry instead of quietly treating stale rows as hydrated.
+    writeAccountRemote(bootstrap.user.id, null);
+    hydratePromise = null;
+    hydrateUserId = null;
+    return;
+  }
+
+  writeAccountRemote(
+    bootstrap.user.id,
+    new Set(normalizeFollowSlugs(bootstrap.slugs)),
+    bootstrap.truncated,
+  );
+  hydrateUserId = null;
+  hydratePromise = null;
+}
+
 function detectAuth(): Promise<AuthState> {
   if (!authPromise) {
     authPromise = fetch("/api/auth/me", { cache: "no-store" })
@@ -160,64 +228,196 @@ function detectAuth(): Promise<AuthState> {
  * session. Deduped via a module promise so simultaneous hook mounts
  * don't each fire the fetch.
  */
-let hydratePromise: Promise<void> | null = null;
-function ensureRemoteHydrated(localSlugs: Set<string>, userId: string): Promise<void> {
-  if (hydratePromise) return hydratePromise;
-  hydratePromise = fetch("/api/follows", { cache: "no-store" })
-    .then((r) => (r.ok ? r.json() : { slugs: [] }))
-    .then((data: { slugs: string[] }) => {
-      const set = new Set(data.slugs);
-      writeRemote(set);
+type HydrationResult = "hydrated" | "unauthorized" | "transient-error";
+let hydratePromise: Promise<HydrationResult> | null = null;
+let hydrateUserId: string | null = null;
+
+function invalidateAuthForUser(userId: string) {
+  if (remoteStoreUserId === userId) writeAccountRemote(null, null);
+  authPromise = null;
+  hydratePromise = null;
+  hydrateUserId = null;
+}
+
+function ensureRemoteHydrated(
+  localSlugs: Set<string>,
+  userId: string,
+): Promise<HydrationResult> {
+  if (remoteStoreUserId === userId && remoteStore !== null) {
+    void maybeSync(localSlugs, remoteStore, userId);
+    return Promise.resolve("hydrated");
+  }
+  if (hydratePromise && hydrateUserId === userId) {
+    return hydratePromise;
+  }
+
+  // Account changes must never reuse another account's memberships or an
+  // in-flight hydration promise.
+  if (remoteStoreUserId !== userId) writeAccountRemote(userId, null);
+  hydrateUserId = userId;
+  const request = fetch("/api/follows", { cache: "no-store" })
+    .then(async (response): Promise<HydrationResult> => {
+      if (response.status === 401) {
+        if (remoteStoreUserId === userId) invalidateAuthForUser(userId);
+        return "unauthorized";
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as {
+        slugs?: unknown;
+        truncated?: unknown;
+      };
+      if (!Array.isArray(data.slugs)) throw new Error("invalid follows payload");
+      if (remoteStoreUserId !== userId) return "hydrated";
+      const set = new Set(normalizeFollowSlugs(data.slugs));
+      writeAccountRemote(userId, set, data.truncated === true);
       // First-time sync: push any localStorage follows not yet remote.
       void maybeSync(localSlugs, set, userId);
+      return "hydrated";
     })
-    .catch(() => {
-      writeRemote(new Set());
+    .catch((): HydrationResult => {
+      // Unknown is not empty. Preserve the null/loading snapshot and release
+      // the single-flight gate so this hook can retry without a hard reload.
+      return "transient-error";
+    })
+    .finally(() => {
+      if (hydratePromise === request) {
+        hydratePromise = null;
+        hydrateUserId = null;
+      }
     });
+  hydratePromise = request;
   return hydratePromise;
 }
 
 /** Hook-internal helper: list of slugs the user follows.
  *  Reads from the shared store when authed, localStorage when not. */
-export function useFollowedSlugs(): {
+export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
   slugs: Set<string>;
   loading: boolean;
   authed: boolean;
+  truncated: boolean;
 } {
   const localList = useSavedList();
   const localSlugs = useMemo(
     () => new Set(localList.filter((i) => i.type === "place").map((i) => i.id)),
     [localList],
   );
-  const [auth, setAuth] = useState<AuthState>("unknown");
+  const bootstrapAuth: AuthState = bootstrap
+    ? bootstrap.user
+      ? { user: bootstrap.user }
+      : "anonymous"
+    : "unknown";
+  const [auth, setAuth] = useState<AuthState>(bootstrapAuth);
+  const bootstrapSlugs = useMemo(
+    () =>
+      bootstrap?.user && bootstrap.slugs !== undefined
+        ? new Set(normalizeFollowSlugs(bootstrap.slugs))
+        : null,
+    [bootstrap],
+  );
+  const bootstrapKey = useMemo(() => {
+    if (!bootstrap) return null;
+    return JSON.stringify([
+      bootstrap.user?.id ?? null,
+      bootstrap.truncated === true,
+      bootstrap.slugs === undefined
+        ? null
+        : normalizeFollowSlugs(bootstrap.slugs),
+    ]);
+  }, [bootstrap]);
+  const [committedBootstrapKey, setCommittedBootstrapKey] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const remoteSlugs = useSyncExternalStore(subscribeRemote, readRemote, readServerRemote);
 
   useEffect(() => {
     let cancelled = false;
-    void detectAuth().then((a) => {
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleTransientRetry = () => {
       if (cancelled) return;
-      setAuth(a);
+      const delay = Math.min(1_000 * 2 ** retryAttempt, 15_000);
+      retryTimer = setTimeout(() => {
+        if (!cancelled) setRetryAttempt((attempt) => attempt + 1);
+      }, delay);
+    };
+
+    const hydrate = async (a: AuthState) => {
       if (a === "anonymous" || a === "unknown") return;
-      void ensureRemoteHydrated(localSlugs, a.user.id);
-    });
+      const result = await ensureRemoteHydrated(localSlugs, a.user.id);
+      if (cancelled) return;
+      if (result === "transient-error") {
+        scheduleTransientRetry();
+        return;
+      }
+      if (result !== "unauthorized") return;
+
+      // The server rejected the cookie after the page snapshot was created.
+      // Re-read identity instead of leaving the tab permanently "authed".
+      const refreshed = await detectAuth();
+      if (cancelled) return;
+      setAuth(refreshed);
+      if (refreshed !== "anonymous" && refreshed !== "unknown") {
+        const retry = await ensureRemoteHydrated(localSlugs, refreshed.user.id);
+        if (!cancelled && retry === "transient-error") scheduleTransientRetry();
+      }
+    };
+
+    if (bootstrap) {
+      const verified: AuthState = bootstrap.user
+        ? { user: bootstrap.user }
+        : "anonymous";
+      commitFollowBootstrap(bootstrap);
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setCommittedBootstrapKey(bootstrapKey);
+        setAuth(verified);
+      });
+      if (bootstrap.user && bootstrap.slugs === undefined) void hydrate(verified);
+    } else {
+      void detectAuth().then((detected) => {
+        if (cancelled) return;
+        setAuth(detected);
+        void hydrate(detected);
+      });
+    }
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [localSlugs]);
+  }, [bootstrap, bootstrapKey, localSlugs, retryAttempt]);
 
-  if (auth === "unknown") {
+  // A newly arrived server payload wins immediately. Once that payload has
+  // committed, live auth state wins so a later 401 can demote the tab instead
+  // of leaving a stale server prop permanently labelled authenticated.
+  const activeAuth =
+    bootstrap && committedBootstrapKey !== bootstrapKey
+      ? bootstrapAuth
+      : auth;
+  if (activeAuth === "unknown") {
     // Pre-detect: render the localStorage view so the UI doesn't
     // flicker. Once auth settles, it'll either stay the same (anon)
     // or replace with the DB view (signed in).
-    return { slugs: localSlugs, loading: true, authed: false };
+    return { slugs: localSlugs, loading: true, authed: false, truncated: false };
   }
-  if (auth === "anonymous") {
-    return { slugs: localSlugs, loading: false, authed: false };
+  if (activeAuth === "anonymous") {
+    return { slugs: localSlugs, loading: false, authed: false, truncated: false };
   }
+  const accountRemoteSlugs =
+    remoteStoreUserId === activeAuth.user.id ? remoteSlugs : null;
+  const bootstrapAwaitingCommit =
+    bootstrapSlugs !== null && committedBootstrapKey !== bootstrapKey;
+  const slugs = bootstrapAwaitingCommit
+    ? bootstrapSlugs
+    : accountRemoteSlugs ?? bootstrapSlugs ?? localSlugs;
   return {
-    slugs: remoteSlugs ?? localSlugs,
-    loading: remoteSlugs === null,
+    slugs,
+    loading: accountRemoteSlugs === null && bootstrapSlugs === null,
     authed: true,
+    truncated: bootstrapAwaitingCommit
+      ? bootstrap?.truncated === true
+      : remoteStoreUserId === activeAuth.user.id
+        ? remoteStoreTruncated
+        : bootstrap?.truncated === true,
   };
 }
 
@@ -285,8 +485,11 @@ export function useToggleFollow(slug: string, source?: string) {
     // every follow control re-renders to the new state with no spinner
     // and no read-before-write round trip, then reconcile with the
     // server in the background. A failed write reverts the flip.
-    const current = remoteStore ?? new Set<string>();
+    const current = remoteStoreUserId === auth.user.id && remoteStore
+      ? remoteStore
+      : new Set<string>();
     const { next, wasFollowed } = toggleSlug(current, slug);
+    if (!wasFollowed && next.size > MAX_FOLLOWED_PLACES) return false;
     writeRemote(next);
     track("save_place", { on: !wasFollowed, source: source ?? "place_detail", synced: true });
 
@@ -349,7 +552,12 @@ function readIsSavedSync(slug: string): boolean {
  */
 async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, userId: string) {
   if (getSyncedFlag(userId)) return;
-  const toUpload = [...localSlugs].filter((s) => !remoteSlugs.has(s));
+  // Local saves are stored oldest-first. Send newest-first so the bounded
+  // account import keeps the person's most recent, most relevant choices.
+  const toUpload = [...localSlugs]
+    .reverse()
+    .filter((s) => !remoteSlugs.has(s))
+    .slice(0, MAX_FOLLOWED_PLACES);
   if (toUpload.length === 0) {
     setSyncedFlag(userId);
     return;
@@ -361,11 +569,15 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
       body: JSON.stringify({ slugs: toUpload }),
     });
     if (res.ok) {
+      const data = (await res.json()) as { acceptedSlugs?: unknown };
       setSyncedFlag(userId);
       // Fold the just-synced slugs into the shared store so the UI
       // reflects them without waiting for a remount.
       const merged = new Set(remoteStore ?? remoteSlugs);
-      toUpload.forEach((s) => merged.add(s));
+      const accepted = Array.isArray(data.acceptedSlugs)
+        ? normalizeFollowSlugs(data.acceptedSlugs)
+        : [];
+      accepted.forEach((slug) => merged.add(slug));
       writeRemote(merged);
     }
   } catch {
@@ -380,5 +592,6 @@ export function resetFollowsSyncFlag(userId?: string) {
   if (userId) clearSyncedFlag(userId);
   authPromise = null;
   hydratePromise = null;
-  writeRemote(null);
+  hydrateUserId = null;
+  writeAccountRemote(null, null);
 }

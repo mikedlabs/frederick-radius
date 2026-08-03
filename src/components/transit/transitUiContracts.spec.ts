@@ -83,4 +83,12 @@ describe("transit UI interaction contracts", () => {
     expect(page).toContain("shapeVariants");
     expect(page).toContain("<TransitServiceAlerts");
   });
+
+  it("lets visible transit-tile copy provide the accessible name", () => {
+    const page = readFileSync("src/app/(app)/transit/page.tsx", "utf8");
+
+    expect(page).not.toContain(
+      'aria-label={`${intent.label}: ${intent.hint}`}',
+    );
+  });
 });

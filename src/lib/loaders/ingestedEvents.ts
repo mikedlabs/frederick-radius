@@ -40,6 +40,37 @@ import { resolveFrederickMunicipality } from "@/lib/location";
  *  against the live county iCal feed. */
 export const LIFTED_INGEST_SOURCES = new Set(["frederick.librarycalendar.com", "fcvfra.com"]);
 
+/**
+ * A visitor request must not cold-fill the hour-cached, countywide ingested
+ * series. That query can contain thousands of rows and, unlike the durable
+ * event archive, cannot be cancelled once Next's cache fill has started.
+ *
+ * Detail pages pass `allowSeriesScan: false`. A dated slug is still a
+ * plausible published event, so this error tells the resolver to show its
+ * source-unavailable recovery state instead of turning missing warm/archive
+ * state into a false 404. Background archive jobs and discovery assemblies
+ * continue to use the default scan and retain the exact publisher provenance.
+ */
+export class IngestedEventDetailColdScanDisabledError extends Error {
+  constructor() {
+    super("Cold ingested-event series scan is disabled on detail requests.");
+    this.name = "IngestedEventDetailColdScanDisabledError";
+  }
+}
+
+function hasValidPublishedDaySuffix(slug: string): boolean {
+  const dashed = slug.match(/-(\d{4})-(\d{2})-(\d{2})$/);
+  const compact = slug.match(/-(\d{4})(\d{2})(\d{2})$/);
+  const parts = dashed ?? compact;
+  if (!parts) return false;
+  const day = `${parts[1]}-${parts[2]}-${parts[3]}`;
+  const parsed = new Date(`${day}T12:00:00.000Z`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === day
+  );
+}
+
 const SOURCE_BY_DOMAIN: Record<string, Event["source"]> = {
   "frederick.librarycalendar.com": "fcpl",
   "fcvfra.com": "fcvfra",
@@ -294,13 +325,21 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
  */
 export async function getIngestedCardBySlug(
   slug: string,
-  options: { signal?: AbortSignal; deadline?: number } = {},
+  options: {
+    signal?: AbortSignal;
+    deadline?: number;
+    allowSeriesScan?: boolean;
+  } = {},
 ): Promise<EventWithMeta | null> {
   if (
     options.signal?.aborted ||
     (options.deadline != null && Date.now() >= options.deadline)
   ) {
     return null;
+  }
+  if (options.allowSeriesScan === false) {
+    if (!hasValidPublishedDaySuffix(slug)) return null;
+    throw new IngestedEventDetailColdScanDisabledError();
   }
   const series = await getIngestedSeries().catch(() => []);
   for (const s of series) {

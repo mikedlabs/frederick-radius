@@ -5,7 +5,7 @@ import { recommendationTier } from "@/lib/quality/readiness";
 /**
  * Per-town summary for the town picker — "choose a starting point". Counts are
  * REAL: places are gated on the audit's readiness tier (Tier 1–2, what's worth
- * showing), and events are the genuine this-week count, so a quiet town reads
+ * showing), and event counts cover the next seven days, so a quiet town reads
  * honestly (0) instead of a faked number.
  */
 export type TownStat = {
@@ -39,7 +39,7 @@ function bestForTags(places: { category?: string }[], n = 2): string[] {
 }
 
 /**
- * Pure + sync: the place counts/curation are local data, but the this-week
+ * Pure + sync: the place counts/curation are local data, but the next-seven-day
  * PUBLIC event count per municipality is passed IN (the caller fetches it
  * from the cached unified-event loader) so this stays testable and free of a
  * request-scoped cache. Default `{}` → all zero (a quiet town reads 0).

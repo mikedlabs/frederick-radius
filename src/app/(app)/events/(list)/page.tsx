@@ -134,7 +134,7 @@ export default async function EventsIndexPage() {
           Missing an event?{" "}
           <a
             href="/submit/event"
-            className="underline"
+            className="tap-44-y inline-flex min-h-11 items-center underline"
             style={{ color: "var(--app-cool)" }}
           >
             Submit it <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
@@ -313,6 +313,7 @@ async function EventsBoard({
           countAriaOnly
           storageKey="fr.events.civic-meetings"
           defaultOpen={false}
+          className="[&>button]:min-h-11"
         >
           <ol className="space-y-2">
             {civicEvents.slice(0, 24).map((e) => (
@@ -334,6 +335,7 @@ async function EventsBoard({
           countAriaOnly
           storageKey="fr.events.town-reminders"
           defaultOpen={false}
+          className="[&>button]:min-h-11"
         >
           <ol className="space-y-2">
             {reminderEvents.slice(0, 24).map((e) => (
@@ -357,6 +359,7 @@ async function EventsBoard({
           countAriaOnly
           storageKey="fr.events.official"
           defaultOpen={false}
+          className="[&>button]:min-h-11"
         >
           <MunicipalEvents series={civicSeries} summary={ingestedSummary} />
         </CollapsibleSection>
@@ -383,7 +386,7 @@ async function EventsBoard({
           <li>
             <a
               href="webcal://frederickradius.app/api/calendar/all.ics"
-              className="tap-44-y inline-flex items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
+              className="tap-44-y inline-flex min-h-11 items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
               style={{ color: "var(--app-ink)" }}
             >
               All county events
@@ -395,7 +398,7 @@ async function EventsBoard({
           <li>
             <a
               href="webcal://frederickradius.app/api/calendar/live-music.ics"
-              className="tap-44-y inline-flex items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
+              className="tap-44-y inline-flex min-h-11 items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
               style={{ color: "var(--app-ink)" }}
             >
               Live music only

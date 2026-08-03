@@ -9,25 +9,18 @@ import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import PLACES_CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
-import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import {
   getAnomalies,
-  getFeedSnapshotStorageTelemetry,
   getSnapshots,
-  hydrateSnapshots,
 } from "@/lib/integrations/feed-snapshot";
-import { getDriftStats, getDrift, getDecisions as getDriftDecisions } from "@/lib/drift-review";
+import { getDriftStats, getDrift } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
-import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
 import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
 import { isGooglePlaceId } from "@/lib/provenance";
-import { getSourceHealthLedger } from "@/lib/quality/source-ledger.server";
-import {
-  buildRuntimeProbeEvidence,
-  sourceLedgerNeedsAction,
-} from "@/lib/quality/source-ledger";
+import { sourceLedgerNeedsAction } from "@/lib/quality/source-ledger";
+import { loadDataHealthPageRuntime } from "@/lib/loaders/dataHealthPage";
 import {
   FeedSnapshotStorage,
   SourceHealthLedger,
@@ -109,18 +102,16 @@ function sweepAgeDays(lastSweepAt: string | null | undefined): number | null {
 async function Board() {
   const folded = Object.entries(DEDUP).filter(([s, v]) => v.canonical !== s).length;
   const clusters = new Set(Object.values(DEDUP).map((v) => v.canonical)).size;
-  // Hydrate the in-memory rolling buffer from Postgres BEFORE the
-  // live fetch so anomaly comparisons see snapshot history across
-  // deploys + cold starts, not just this worker's lifetime. Then
-  // the live fetch records the current snapshot (in-memory + DB).
-  // No-op when DATABASE_URL is unset (the buffer is the source of
-  // truth in dev).
-  await hydrateSnapshots();
-  const liveCheck = await getLiveEvents(60).catch(() => null);
-  const liveCheckedAt = new Date().toISOString();
-  const currentFeedEvidence = liveCheck
-    ? buildRuntimeProbeEvidence(liveCheck, liveCheckedAt)
-    : [];
+  // The operator board is diagnostic UI, not a cron. Its live probe and every
+  // optional database read are independently deadline-bound so degraded
+  // telemetry becomes an explicit unavailable state, never a 300s request.
+  const {
+    driftDecisions,
+    unparseable,
+    ingestRuns,
+    sourceLedger,
+    snapshotStorage,
+  } = await loadDataHealthPageRuntime();
   const feedMetrics = consumeFeedMetrics();
   const anomalies = getAnomalies();
   const curatedAnomalies = curatedFreshnessAnomalies();
@@ -129,7 +120,7 @@ async function Board() {
     (anomaly) => anomaly.source === "places-hours-refresh.json",
   );
   const snapshots = getSnapshots();
-  const drift = getDriftStats(getDrift(), await getDriftDecisions());
+  const drift = getDriftStats(getDrift(), driftDecisions);
   // Placement validation — coordinates flagged needs_review because
   // they are missing or fall outside the county bbox. The public
   // surfaces never render these, so this view is the only place an
@@ -156,16 +147,6 @@ async function Board() {
   const feeds = feedStatuses();
   const dark = darkFeedCount();
 
-  // These operator-only database reads are independent. Run them together so
-  // the source ledger and bounded storage telemetry do not extend the page by
-  // the sum of each query.
-  const [unparseable, ingestRuns, sourceLedger, snapshotStorage] =
-    await Promise.all([
-      getUnparseableLocationSummary(),
-      getRecentIngestRuns(),
-      getSourceHealthLedger({ currentEvidence: currentFeedEvidence }),
-      getFeedSnapshotStorageTelemetry(),
-    ]);
   const unparseableTotal = unparseable.reduce((a, r) => a + r.count, 0);
   const sourceLedgerProblems = sourceLedger.filter(sourceLedgerNeedsAction);
 

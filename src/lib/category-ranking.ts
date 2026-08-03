@@ -110,7 +110,12 @@ export function coffeeIntentTier(place: {
  * same judgment expressed inside its existing numeric score. */
 export function coffeeIntentScore(place: Parameters<typeof coffeeIntentTier>[0]): number {
   const tier = coffeeIntentTier(place);
-  return tier === 3 ? 10 : tier === 2 ? 4 : tier === 1 ? -6 : -12;
+  const relevance = tier === 3 ? 10 : tier === 2 ? 4 : tier === 1 ? -6 : -12;
+  // This score answers only whether coffee is the place's primary job.
+  // Location-aware local preference is applied once, continuously, in search;
+  // stacking a global chain penalty here made an exact-location chain lose to
+  // businesses several blocks away.
+  return relevance;
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -146,7 +151,7 @@ export function proximitySignal(distance_m?: number): number {
 
 export type CategoryRankContext = {
   /** The user's known municipality slug, or null when unknown. Drives the
-   *  same-town nudge; null = no nudge (the honest downtown default). */
+   *  same-town nudge; null = no geographic nudge. */
   town?: string | null;
   /** Category being ranked. Category-specific soft penalties must never leak
    * into unrelated guides (for example, a tea room is only a loose match on

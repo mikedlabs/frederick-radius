@@ -273,6 +273,45 @@ describe("scheduled feed-health probes", () => {
     });
   });
 
+  it("retries a transient critical-source failure within the declared cap", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const endpoint: FeedHealthEndpoint = {
+      group: "critical GIS",
+      url: "https://example.test/critical-gis",
+      critical: true,
+      method: "HEAD",
+      attempts: 2,
+    };
+
+    const result = await probeFeedEndpoint(endpoint, { fetchImpl });
+
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe(204);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a definitive client error", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 404 }));
+    const endpoint: FeedHealthEndpoint = {
+      group: "retired feed",
+      url: "https://example.test/retired",
+      critical: true,
+      method: "HEAD",
+      attempts: 2,
+    };
+
+    const result = await probeFeedEndpoint(endpoint, { fetchImpl });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(404);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("caps request fan-out while preserving endpoint order", async () => {
     let active = 0;
     let maxActive = 0;

@@ -12,24 +12,57 @@
  * 15 min — social proof doesn't need to be to-the-second.
  */
 import { unstable_cache } from "next/cache";
-import { sql } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
-import { saved_events } from "@/lib/db/schema";
+import { getSql } from "@/lib/db/client";
+import { withDeadlineOutcome } from "@/lib/promise-deadline";
 
 const MIN_VISIBLE = 3;
+export const EVENT_SAVE_COUNT_TIMEOUT_MS = 400;
+
+type SaveCountRow = {
+  n: number | string | null;
+};
+
+type CancellablePromiseLike<T> = PromiseLike<T> & {
+  cancel?: () => void;
+};
 
 async function countSaves(slug: string): Promise<number> {
-  const db = getDb();
-  if (!db) return 0;
-  try {
-    const rows = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(saved_events)
-      .where(sql`${saved_events.event_slug} = ${slug}`);
-    return rows[0]?.n ?? 0;
-  } catch {
-    return 0; // table missing / DB down — no social proof beats a 500
+  const sql = getSql();
+  if (!sql) return 0;
+
+  const query = sql<SaveCountRow[]>`
+    select count(*)::int as n
+    from public.saved_events
+    where event_slug = ${slug}
+  ` as CancellablePromiseLike<SaveCountRow[]>;
+  const outcome = await withDeadlineOutcome(
+    Promise.resolve(query),
+    EVENT_SAVE_COUNT_TIMEOUT_MS,
+  );
+  if (outcome.status !== "fulfilled") {
+    if (outcome.status === "timed_out") {
+      try {
+        query.cancel?.();
+      } catch {
+        // Cancellation is best-effort; the deadline helper already consumes
+        // a late rejection so an optional count cannot poison the page.
+      }
+    }
+    // Structured and payload-free: production logs can distinguish a slow
+    // optional read from an event-resolution failure without recording a
+    // visitor identifier, event title, database URL, or raw exception.
+    console.warn(JSON.stringify({
+      level: "warn",
+      message: "Event detail save-count read did not complete.",
+      phase: "event-detail-secondary",
+      operation: "save-count",
+      outcome: outcome.status,
+    }));
+    return 0;
   }
+
+  const count = Number(outcome.value[0]?.n ?? 0);
+  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
 }
 
 const cachedCount = unstable_cache(

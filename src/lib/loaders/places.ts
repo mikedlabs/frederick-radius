@@ -13,7 +13,12 @@ import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isPizzaPlace, isPlaygroundPlace } from "@/data/cravings";
-import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
+import {
+  isDestinationCategory,
+  isNonDiscoverable,
+  isRecommendable,
+  SUPPRESSED_JUNK_SLUGS,
+} from "@/lib/relevance";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import {
   isGooglePlaceId,
@@ -504,9 +509,12 @@ if (typeof window === "undefined") {
 }
 
 const BASE_BY_SLUG: Record<string, Place> = (() => {
-  const byCanon: Record<string, Place> = {};
+  const byCanon = Object.create(null) as Record<string, Place>;
   for (const p of BASE_PLACES) byCanon[p.slug] = p;
-  const idx: Record<string, Place> = { ...byCanon };
+  const idx = Object.assign(
+    Object.create(null) as Record<string, Place>,
+    byCanon,
+  );
   // Every original slug (folded, legacy, typo, old link) resolves to
   // its surviving canonical record. Removed slugs deliberately do not
   // resolve, so getPlaceBySlug returns null and they vanish entirely.
@@ -1177,17 +1185,50 @@ function fieldNoteTip(slug: string): string | undefined {
 export function slimForList(p: PlaceCardData): PlaceCardData {
   const {
     google_photos: _gp,
+    google_photo_attribution: _gpaOne,
     google_photo_attributions: _gpa,
     google_hours: _gh,
     ...rest
   } = p as PlaceCardData & {
     google_photos?: unknown;
+    google_photo_attribution?: unknown;
     google_photo_attributions?: unknown;
     google_hours?: unknown;
   };
   void _gp;
+  void _gpaOne;
   void _gpa;
   void _gh;
+  return rest as PlaceCardData;
+}
+
+/**
+ * The nearby decision surface needs enough data to rank and open an immediate
+ * answer card, but not review prose, raw hours, or detail-only link metadata for
+ * every eligible place in the county. PlaceSheet fills missing live details for
+ * the one record a person opens.
+ */
+export function slimForNearby(p: PlaceCardData): PlaceCardData {
+  const listPlace = slimForList(p);
+  const {
+    description: _description,
+    review_snippet: _reviewSnippet,
+    review_author: _reviewAuthor,
+    review_author_uri: _reviewAuthorUri,
+    review_author_photo_uri: _reviewAuthorPhoto,
+    review_google_maps_uri: _reviewMaps,
+    hours: _hours,
+    amenities: _amenities,
+    ...rest
+  } = listPlace;
+  void _description;
+  void _reviewSnippet;
+  void _reviewAuthor;
+  void _reviewAuthorUri;
+  void _reviewAuthorPhoto;
+  void _reviewMaps;
+  void _hours;
+  void _amenities;
   return rest as PlaceCardData;
 }
 
@@ -1226,7 +1267,21 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
     // Apply the gate after enrichment because the institutional primary type
     // comes from Google, not the raw DFP row.
     .filter(isRecommendable)
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+    // This is a "what pairs with this stop?" surface, not a literal nearest-
+    // coordinate dump. Appointment services and utilities remain available in
+    // Search and Map, but a coffee page should not lead with a hair salon just
+    // because its door is 40 feet closer. Favor the same category first, then
+    // other destinations in the same chapter, while preserving walkability as
+    // the dominant signal.
+    .filter((candidate) =>
+      isDestinationCategory(
+        CATEGORY_BY_SLUG[candidate.category]?.parent ?? candidate.category,
+      ),
+    )
+    .sort(
+      (a, b) =>
+        nearbyContextScore(p.category, a) - nearbyContextScore(p.category, b),
+    )
     .slice(0, 6);
 
   return {
@@ -1236,6 +1291,22 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
     nearby_places,
     upcoming_events: eventsAtVenue(p.slug),
   };
+}
+
+function nearbyContextScore(
+  anchorCategory: string,
+  candidate: Pick<PlaceCardData, "category" | "distance_m">,
+): number {
+  const anchorParent = CATEGORY_BY_SLUG[anchorCategory]?.parent ?? anchorCategory;
+  const candidateParent =
+    CATEGORY_BY_SLUG[candidate.category]?.parent ?? candidate.category;
+  const affinity =
+    candidate.category === anchorCategory
+      ? -200
+      : candidateParent === anchorParent
+        ? -100
+        : 0;
+  return (candidate.distance_m ?? Infinity) + affinity;
 }
 
 export type RankingContext = {

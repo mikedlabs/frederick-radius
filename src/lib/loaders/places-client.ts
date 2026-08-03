@@ -53,7 +53,7 @@ function isOpen(p: PlaceCardData): boolean {
 const CLIENT_PLACES = ALL_CLIENT_PLACES.filter(isOpen);
 
 const BY_SLUG: Record<string, PlaceCardData> = (() => {
-  const m: Record<string, PlaceCardData> = {};
+  const m = Object.create(null) as Record<string, PlaceCardData>;
   // Detail lookups CAN return a closed place (its detail page should
   // still render with a clear "Closed permanently" label) — but the
   // discovery surfaces below only see operational rows.

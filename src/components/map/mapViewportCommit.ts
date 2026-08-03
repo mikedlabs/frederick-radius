@@ -41,3 +41,8 @@ export function mapResultCountAnnouncement(placeCount: number): string {
     placeCount === 1 ? "place" : "places"
   } in this area.`;
 }
+
+/** Stable, compact camera state for links copied from the map. */
+export function mapCameraParam(viewport: Pick<MapResultViewport, "center" | "zoom">): string {
+  return `${viewport.center.lng.toFixed(4)},${viewport.center.lat.toFixed(4)},${viewport.zoom.toFixed(2)}`;
+}

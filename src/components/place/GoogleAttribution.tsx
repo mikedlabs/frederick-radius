@@ -158,7 +158,16 @@ export function GoogleReviewAttribution({
         // Google requires available review-author attribution to remain with
         // the review. A native image avoids proxying or retaining the avatar.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarSrc} alt="" width={24} height={24} className="mt-0.5 h-6 w-6 rounded-full object-cover" />
+        <img
+          src={avatarSrc}
+          alt=""
+          width={24}
+          height={24}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+          className="mt-0.5 h-6 w-6 rounded-full object-cover"
+        />
       )}
       <span className="min-w-0 space-y-0.5">
         <span className="block">

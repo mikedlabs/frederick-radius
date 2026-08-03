@@ -115,9 +115,9 @@ describe("nearbyNow", () => {
     }
   });
 
-  it("never surfaces a closed place", () => {
+  it("only surfaces places whose current hours confirm they are open", () => {
     for (const p of ctx.openPlaces) {
-      expect(p.open_status.state).not.toBe("closed");
+      expect(["open", "closing-soon"]).toContain(p.open_status.state);
     }
   });
 

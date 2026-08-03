@@ -19,9 +19,9 @@ vi.mock("@/lib/mapbox", () => ({
 
 import { GET } from "@/app/api/static-map/route";
 
-function request(pin = "e14328") {
+function request(pin = "e14328", size = "640x352") {
   return new NextRequest(
-    `https://frederickradius.app/api/static-map?lng=-77.41062&lat=39.41437&pin=${pin}&size=640x352`,
+    `https://frederickradius.app/api/static-map?lng=-77.41062&lat=39.41437&pin=${pin}&size=${size}`,
     { headers: { Referer: "https://frederickradius.app/places/test" } },
   );
 }
@@ -71,6 +71,25 @@ describe("paid static-map proxy", () => {
       "pin-s+e14328(-77.4106,39.4144)/-77.4106,39.4144,14.6,0/640x352@2x",
     );
     expect(response.headers.get("cache-control")).toContain("s-maxage=2592000");
+    fetchMock.mockRestore();
+  });
+
+  it("accepts the compact place locator size", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "Content-Type": "image/png",
+          "Content-Length": "3",
+        },
+      }),
+    );
+
+    const response = await GET(request("e14328", "320x150"));
+
+    expect(response.status).toBe(200);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/320x150@2x");
+    expect(response.headers.get("content-length")).toBe("3");
     fetchMock.mockRestore();
   });
 });

@@ -582,9 +582,14 @@ export const EVENTS: Event[] = [
   },
 ];
 
-export const EVENT_BY_SLUG = Object.fromEntries(
-  EVENTS.map((e) => [e.slug, e])
-) as Record<string, Event>;
+// Event slugs are read from public detail/summary/calendar URLs. A normal
+// object makes inherited keys such as `constructor` and `__proto__` look like
+// events, which sends malformed links into the event decorator as if they were
+// real rows. Use a dictionary with no prototype so unknown slugs stay absent.
+export const EVENT_BY_SLUG: Record<string, Event> = Object.assign(
+  Object.create(null) as Record<string, Event>,
+  Object.fromEntries(EVENTS.map((e) => [e.slug, e])),
+);
 
 export function upcomingEvents(now: Date, limit?: number): Event[] {
   const future = EVENTS.filter((e) => new Date(e.ends_at) >= now).sort(

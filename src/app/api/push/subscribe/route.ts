@@ -21,7 +21,7 @@ import {
   OWNER_ALERTS_TOPIC,
   parsePublicFixedPushTopics,
 } from "@/lib/push-topics";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { isMunicipalitySlug } from "@/data/municipalities";
 import {
   PUSH_BODY_LIMITS,
   guardPushMutation,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   if (
     body.home_town !== undefined &&
     body.home_town !== null &&
-    (typeof body.home_town !== "string" || !MUNICIPALITY_BY_SLUG[body.home_town])
+    !isMunicipalitySlug(body.home_town)
   ) {
     return pushJson({ error: "Invalid home town." }, { status: 400 });
   }

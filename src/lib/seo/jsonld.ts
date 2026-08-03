@@ -8,8 +8,47 @@
  * into a <script type="application/ld+json"> themselves.
  */
 
+import type { DayOfWeek, Hours } from "@/data/places";
+
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 const ET = "America/New_York";
+
+const SCHEMA_DAY: Record<DayOfWeek, string> = {
+  sun: "https://schema.org/Sunday",
+  mon: "https://schema.org/Monday",
+  tue: "https://schema.org/Tuesday",
+  wed: "https://schema.org/Wednesday",
+  thu: "https://schema.org/Thursday",
+  fri: "https://schema.org/Friday",
+  sat: "https://schema.org/Saturday",
+};
+
+export function absoluteSiteUrl(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    return new URL(value, BASE).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Convert Radius's already freshness-gated structured hours into Schema.org.
+ * Callers must pass the decorated place hours, never the raw provider schedule:
+ * the decorated loader removes stale or unreviewed schedules first.
+ */
+export function openingHoursJsonLd(hours: Hours | undefined) {
+  if (!hours) return undefined;
+  const rows = (Object.keys(SCHEMA_DAY) as DayOfWeek[]).flatMap((day) =>
+    (hours[day] ?? []).map((window) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: SCHEMA_DAY[day],
+      opens: window.open,
+      closes: window.close,
+    })),
+  );
+  return rows.length > 0 ? rows : undefined;
+}
 
 /**
  * "2026-06-11T21:00:00.000Z" → "2026-06-11T17:00:00-04:00": the same

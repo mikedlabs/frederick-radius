@@ -43,6 +43,45 @@ export function powerOutageTone(
   return totalOut >= 1_000 || share >= 0.01 ? "danger" : "warning";
 }
 
+/**
+ * The 25-customer threshold controls alert prominence, not truth. A smaller
+ * reported outage must still be named honestly instead of pairing a non-zero
+ * gauge with "all served."
+ */
+export function powerOutageDisplay(
+  totalOut: number,
+  available: boolean,
+): { countLabel: string; unit: string; quietDetail: string } {
+  if (!available) {
+    return {
+      countLabel: "Feed unavailable",
+      unit: "status unavailable",
+      quietDetail: "Potomac Edison outage data could not be loaded right now.",
+    };
+  }
+  if (totalOut <= 0) {
+    return {
+      countLabel: "No major outage",
+      unit: "all served",
+      quietDetail: "No significant power outages are reported right now.",
+    };
+  }
+  const customerNoun = totalOut === 1 ? "customer" : "customers";
+  const reportVerb = totalOut === 1 ? "is" : "are";
+  if (totalOut < 25) {
+    return {
+      countLabel: `${totalOut.toLocaleString("en-US")} reported`,
+      unit: `${customerNoun} out`,
+      quietDetail: `${totalOut.toLocaleString("en-US")} ${customerNoun} ${reportVerb} reported without power, below Radius's major-outage threshold.`,
+    };
+  }
+  return {
+    countLabel: `${totalOut.toLocaleString("en-US")} out`,
+    unit: `${customerNoun} out`,
+    quietDetail: `${totalOut.toLocaleString("en-US")} ${customerNoun} ${reportVerb} reported without power.`,
+  };
+}
+
 export type PulseStatusSignals = {
   weather: boolean;
   fireRescue: boolean;

@@ -56,7 +56,11 @@ export default function AppFooter() {
       <p className="text-[11.5px] sm:hidden" style={{ color: "var(--app-ink-3)" }}>
         Independent local guide{" "}
         <span aria-hidden>·</span>{" "}
-        <Link href="/trust" prefetch={false} className="font-semibold underline">
+        <Link
+          href="/trust"
+          prefetch={false}
+          className="tap-44-y inline-flex items-center font-semibold underline"
+        >
           Trust &amp; sources
         </Link>
       </p>

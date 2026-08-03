@@ -229,6 +229,15 @@ export const MUNICIPALITIES: Municipality[] = [
   },
 ];
 
-export const MUNICIPALITY_BY_SLUG = Object.fromEntries(
-  MUNICIPALITIES.map((m) => [m.slug, m])
-) as Record<string, Municipality>;
+// Municipality slugs arrive through URLs, cookies, local storage, and public
+// API bodies. A null-prototype dictionary prevents Object's inherited keys
+// from being accepted as real Frederick County places.
+export const MUNICIPALITY_BY_SLUG: Record<string, Municipality> = Object.assign(
+  Object.create(null) as Record<string, Municipality>,
+  Object.fromEntries(MUNICIPALITIES.map((m) => [m.slug, m])),
+);
+
+/** Validate an untrusted municipality slug before reading or storing it. */
+export function isMunicipalitySlug(value: unknown): value is string {
+  return typeof value === "string" && Object.hasOwn(MUNICIPALITY_BY_SLUG, value);
+}

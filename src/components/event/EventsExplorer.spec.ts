@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import {
+  eventsForDefaultList,
+  eventsMastheadCountState,
   eventMatchesTimeWindow,
   eventGroupRenderState,
+  initialBrowseIsComplete,
   reconcileBrowseResponse,
 } from "./EventsExplorer";
 
@@ -40,6 +43,84 @@ function event(
 }
 
 describe("EventsExplorer deferred browse reconciliation", () => {
+  it("never treats a same-size degraded server snapshot as complete", () => {
+    expect(initialBrowseIsComplete(27, 27, { degraded: true })).toBe(false);
+    expect(initialBrowseIsComplete(27, 27, { degraded: false })).toBe(true);
+    expect(initialBrowseIsComplete(27, 838, { degraded: false })).toBe(false);
+  });
+
+  it("labels partial query counts while preserving a healthy complete summary", () => {
+    expect(eventsMastheadCountState({
+      loadedCount: 27,
+      summaryCount: 838,
+      dataComplete: false,
+      anyFilter: false,
+      sourceDegraded: false,
+    })).toEqual({ eventCount: 838, complete: true, usesCompleteSummary: true });
+
+    expect(eventsMastheadCountState({
+      loadedCount: 27,
+      summaryCount: 27,
+      dataComplete: false,
+      anyFilter: false,
+      sourceDegraded: true,
+    })).toEqual({ eventCount: 27, complete: false, usesCompleteSummary: false });
+
+    expect(eventsMastheadCountState({
+      loadedCount: 4,
+      summaryCount: 838,
+      dataComplete: false,
+      anyFilter: true,
+      sourceDegraded: false,
+    })).toEqual({ eventCount: 4, complete: false, usesCompleteSummary: false });
+  });
+
+  it("collapses series only on the untouched default list", () => {
+    const recurring = [
+      {
+        ...event("weekly-a", "community", "2026-07-30T18:00:00.000Z"),
+        title: "Weekly Meetup · Session A",
+        is_recurring: true,
+        recurrence_text: "Every Thursday",
+      },
+      {
+        ...event("weekly-b", "community", "2026-08-06T18:00:00.000Z"),
+        title: "Weekly Meetup · Session B",
+        is_recurring: true,
+        recurrence_text: "Every Thursday",
+      },
+    ];
+    const bounds = {
+      now: Date.parse("2026-07-29T12:00:00.000Z"),
+      next24: Date.parse("2026-07-30T04:00:00.000Z"),
+      weekendStart: Date.parse("2026-07-31T04:00:00.000Z"),
+      weekendEnd: Date.parse("2026-08-03T04:00:00.000Z"),
+      live: new Set<string>(),
+    };
+
+    expect(eventsForDefaultList({
+      events: recurring,
+      view: "list",
+      sort: "recommended",
+      anyFilter: false,
+      bounds,
+    })).toHaveLength(1);
+    expect(eventsForDefaultList({
+      events: recurring,
+      view: "list",
+      sort: "recommended",
+      anyFilter: true,
+      bounds,
+    })).toHaveLength(2);
+    expect(eventsForDefaultList({
+      events: recurring,
+      view: "calendar",
+      sort: "recommended",
+      anyFilter: false,
+      bounds,
+    })).toHaveLength(2);
+  });
+
   it("does not turn Outdoors 9 into 0 when a degraded fetch omits that feed", () => {
     const trustedEvents = Array.from({ length: 9 }, (_, index) =>
       event(`outdoors-${index}`, "outdoors", `2026-07-${String(30 + (index % 2)).padStart(2, "0")}T${String(14 + index).padStart(2, "0")}:00:00.000Z`),

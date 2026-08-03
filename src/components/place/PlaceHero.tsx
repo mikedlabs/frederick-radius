@@ -118,9 +118,10 @@ export default function PlaceHero({
         }}
       />
 
-      {/* The hero photo runs through Vercel's image optimizer so every
-       *  device gets a WebP at its true pixel size. The source is the
-       *  same-origin /api/place-photo proxy, which strips the API key.
+      {/* The hero uses Next Image for stable geometry, loading priority, and
+       *  placeholders. Google photos deliberately bypass Vercel's optimizer:
+       *  the same-origin /api/place-photo proxy strips the API key and owns
+       *  the provider-compliant no-store response.
        *  Only rendered when we actually HAVE a real photo — otherwise the
        *  designed plate below carries the hero. */}
       {src && (
@@ -131,6 +132,7 @@ export default function PlaceHero({
           height={height}
           unoptimized={src.startsWith("/api/place-photo")}
           priority={priority}
+          fetchPriority={priority ? "high" : "auto"}
           sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}

@@ -39,8 +39,9 @@ describe("Today decision hierarchy", () => {
     const decision = todayPage.slice(decisionStart, decisionEnd);
 
     expect(decision).toContain(
-      "<OpenPlaceLead rows={daypartRows} note={daypartNote} />",
+      "fallback={<OpenPlaceLead rows={baseDaypartRows} note={null} />}",
     );
+    expect(decision).toContain("<WeatherAwareOpenPlaceLead");
     expect(decision).not.toContain("<TodayDecisionLead");
     expect(decision).not.toContain("eventsPromise={eventsPromise}");
     expect(decision).not.toMatch(

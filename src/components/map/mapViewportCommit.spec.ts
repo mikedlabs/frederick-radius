@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapCameraParam,
   mapResultCountAnnouncement,
   resultViewportChanged,
   type MapResultViewport,
@@ -55,5 +56,9 @@ describe("deliberate map result-area commits", () => {
     expect(mapResultCountAnnouncement(1200)).toBe(
       "Showing 1,200 places in this area.",
     );
+  });
+
+  it("serializes the visible camera with stable share precision", () => {
+    expect(mapCameraParam(committed)).toBe("-77.4100,39.4200,12.00");
   });
 });

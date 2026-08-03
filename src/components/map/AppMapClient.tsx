@@ -1,7 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
@@ -10,19 +17,70 @@ import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapLoadingScene from "./MapLoadingScene";
 
+const EMBEDDED_MAP_HEIGHT = "78vh";
+
+class MapChunkBoundary extends Component<
+  {
+    children: ReactNode;
+    height: CSSProperties["height"];
+    onFailure: () => void;
+  },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onFailure();
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div
+        role="alert"
+        className="grid w-full place-items-center px-6 text-center"
+        style={{ height: this.props.height, background: "var(--app-bg-sunken)" }}
+      >
+        <div className="max-w-sm">
+          <p className="font-serif text-lg font-semibold" style={{ color: "var(--app-ink)" }}>
+            The map did not finish loading.
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
+            Your filters are still here. Reload the map to try again.
+          </p>
+          <button
+            type="button"
+            className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
+            style={{
+              borderColor: "var(--app-border-strong)",
+              background: "var(--app-bg-elevated)",
+              color: "var(--app-ink)",
+            }}
+            onClick={() => window.location.reload()}
+          >
+            Reload map
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
-  // Use the same Frederick-specific scene before and after the AppMap chunk
-  // arrives. A generic pin skeleton followed by a second loader made the map
-  // feel as though it restarted halfway through loading.
+  // The visible Frederick-specific scene is rendered by this light wrapper,
+  // outside the deferred Mapbox chunk. This placeholder only reserves the
+  // embedded map's space while that chunk arrives.
   loading: () => (
     <div
       data-map-dynamic-loading
-      className="relative w-full overflow-hidden rounded-[var(--app-radius-lg)]"
-      style={{ height: "var(--app-browse-map-height)" }}
-    >
-      <MapLoadingScene height="100%" />
-    </div>
+      aria-hidden="true"
+      className="relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+    />
   ),
 });
 
@@ -188,6 +246,17 @@ export default function AppMapClient({
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
 }) {
+  // Keep the branded map scene in this light wrapper, outside the deferred
+  // Mapbox bundle. That makes it part of the initial HTML instead of waiting
+  // several seconds for the large GL chunk before showing any map content.
+  const [mapVisualReady, setMapVisualReady] = useState(false);
+  const hasReportedMapVisualReady = useRef(false);
+  const handleMapVisualReady = useCallback(() => {
+    if (hasReportedMapVisualReady.current) return;
+    hasReportedMapVisualReady.current = true;
+    setMapVisualReady(true);
+  }, []);
+
   // The in-view list panel (the desktop side pane + the mobile slide-up
   // "60 places · N open now · N events nearby" drawer) was removed per the
   // owner: the map IS the page. Tap a pin for its card; no bottom panel
@@ -195,48 +264,58 @@ export default function AppMapClient({
   if (fullBleed) {
     return (
       <div className="relative h-full w-full">
+        <MapLoadingScene height="100%" ready={mapVisualReady} />
         {children}
-        <AppMap
-          places={places}
-          civic={civic}
-          extraAmenities={extraAmenities}
-          amenities={amenities}
-          trailLines={trailLines}
-          trailsLayerDefault={trailsLayerDefault}
-          transitLines={transitLines}
-          municipalBoundaries={municipalBoundaries}
-          countyBoundary={countyBoundary}
-          cemeteries={cemeteries}
-          parking={parking}
-          events={events}
-          transitStops={transitStops}
-          marcStations={marcStations}
-          foodTruckPins={foodTruckPins}
-          roadWorkZones={roadWorkZones}
-          floodContext={floodContext}
-          snowRoutes={snowRoutes}
-          fullBleed
-          recenterToKnownLocation={recenterToKnownLocation}
-          pinpointDefault={pinpointDefault}
-          initialCenter={initialCenter}
-          initialZoom={initialZoom}
-          initialBounds={initialBounds}
-          initialBoundsPadding={initialBoundsPadding}
-          cameraMinZoom={cameraMinZoom}
-          cameraMaxBounds={cameraMaxBounds}
-          compactSubjectMap={compactSubjectMap}
-          initialAmenityGroups={initialAmenityGroups}
-          dock={dock}
-          activeSlugs={activeSlugs}
-          showSearchControls={showSearchControls}
-        />
+        <MapChunkBoundary height="100%" onFailure={handleMapVisualReady}>
+          <AppMap
+            places={places}
+            civic={civic}
+            extraAmenities={extraAmenities}
+            amenities={amenities}
+            trailLines={trailLines}
+            trailsLayerDefault={trailsLayerDefault}
+            transitLines={transitLines}
+            municipalBoundaries={municipalBoundaries}
+            countyBoundary={countyBoundary}
+            cemeteries={cemeteries}
+            parking={parking}
+            events={events}
+            transitStops={transitStops}
+            marcStations={marcStations}
+            foodTruckPins={foodTruckPins}
+            roadWorkZones={roadWorkZones}
+            floodContext={floodContext}
+            snowRoutes={snowRoutes}
+            fullBleed
+            recenterToKnownLocation={recenterToKnownLocation}
+            pinpointDefault={pinpointDefault}
+            initialCenter={initialCenter}
+            initialZoom={initialZoom}
+            initialBounds={initialBounds}
+            initialBoundsPadding={initialBoundsPadding}
+            cameraMinZoom={cameraMinZoom}
+            cameraMaxBounds={cameraMaxBounds}
+            compactSubjectMap={compactSubjectMap}
+            initialAmenityGroups={initialAmenityGroups}
+            dock={dock}
+            activeSlugs={activeSlugs}
+            showSearchControls={showSearchControls}
+            onVisualReady={handleMapVisualReady}
+          />
+        </MapChunkBoundary>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
+    <div className="relative overflow-hidden" style={{ height: EMBEDDED_MAP_HEIGHT }}>
+      <MapLoadingScene
+        height={EMBEDDED_MAP_HEIGHT}
+        ready={mapVisualReady}
+      />
+      <MapChunkBoundary height={EMBEDDED_MAP_HEIGHT} onFailure={handleMapVisualReady}>
+        <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} height={EMBEDDED_MAP_HEIGHT} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} onVisualReady={handleMapVisualReady} />
+      </MapChunkBoundary>
     </div>
   );
 }

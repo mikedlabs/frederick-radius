@@ -54,4 +54,17 @@ describe("event detail transient-failure contract", () => {
     expect(metadataBody).toContain('title: "Event in Frederick County"');
     expect(metadataBody).toContain("robots: { index: false, follow: false }");
   });
+
+  it("does not start a countywide ingested cache fill from a detail request", () => {
+    const resolver = readFileSync(
+      path.join(process.cwd(), "src/lib/loaders/eventResolver.ts"),
+      "utf8",
+    );
+    const productionSources = resolver.match(
+      /const PRODUCTION_PAGE_SOURCES[\s\S]*?\n};/,
+    )?.[0];
+
+    expect(productionSources).toBeTruthy();
+    expect(productionSources).toContain("allowSeriesScan: false");
+  });
 });

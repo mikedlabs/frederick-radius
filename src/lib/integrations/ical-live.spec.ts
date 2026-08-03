@@ -32,6 +32,7 @@ describe("splitLocation venue sanity", () => {
 
 import {
   feedCategory,
+  hasPublishedWeekdayConflict,
   parseVibemapEvents,
   resolveKnownEventVenue,
   type FeedSpec,
@@ -87,6 +88,53 @@ describe("official-feed classification and venue corrections", () => {
       venue: "Fleming Avenue Courts",
       address: "500 Fleming Avenue, Frederick, MD 21701",
     });
+  });
+
+  it("does not find the word art inside Partner Hours", () => {
+    expect(
+      feedCategory(
+        DFP_FEED,
+        "Partner Hours at Centro Hispano de Frederick",
+        "Walk-ins welcome.",
+      ),
+    ).toBe("community");
+  });
+
+  it("quarantines a concrete date that conflicts with the publisher's cadence", () => {
+    expect(
+      hasPublishedWeekdayConflict(
+        "Partner Hours at Centro Hispano de Frederick",
+        "The team will be in office on third Thursdays of the month.",
+        new Date("2026-08-04T20:00:00.000Z"),
+      ),
+    ).toBe(true);
+    expect(
+      hasPublishedWeekdayConflict(
+        "Partner Hours at Centro Hispano de Frederick",
+        "The team will be in office on third Thursdays of the month.",
+        new Date("2026-08-20T20:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("does not apply an unrelated venue cadence to a one-off event", () => {
+    expect(
+      hasPublishedWeekdayConflict(
+        "Saturday Summer Festival",
+        "Join us for music and food. The visitor center is open every Tuesday.",
+        new Date("2026-08-08T16:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("still catches a cadence stated directly in the event title", () => {
+    expect(
+      hasPublishedWeekdayConflict(
+        "Community Clinic every Thursday",
+        "Appointments are available.",
+        new Date("2026-08-04T20:00:00.000Z"),
+      ),
+    ).toBe(true);
   });
 });
 

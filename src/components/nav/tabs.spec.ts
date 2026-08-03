@@ -15,11 +15,11 @@ describe("Ask Radius navigation context", () => {
     ]);
   });
 
-  it("automatically prefetches only the four permanent app destinations", () => {
+  it("does not prefetch the county map's large server payload", () => {
     expect(TABS).toHaveLength(4);
     expect(TABS.map(({ href, prefetch }) => ({ href, prefetch }))).toEqual([
       { href: "/today", prefetch: "auto" },
-      { href: "/map", prefetch: "auto" },
+      { href: "/map", prefetch: false },
       { href: "/events", prefetch: "auto" },
       { href: "/my-radius", prefetch: "auto" },
     ]);

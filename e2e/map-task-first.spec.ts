@@ -31,6 +31,8 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await shortcuts.getByRole("button", { name: "Conditions" }).click();
   const conditions = page.getByRole("region", { name: "Travel & conditions" });
   await expect(conditions).toBeVisible();
+  await expect(conditions.getByText("Choose a layer to add live context.")).toBeVisible();
+  await expect(conditions.getByText(/places|close within the hour/i)).toHaveCount(0);
   await page.waitForTimeout(300);
   await page.screenshot({
     path: "output/playwright/map-polish-conditions-390x844.png",
@@ -148,7 +150,7 @@ test("a shared map reproduces its layers without replacing this device's prefere
 }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      "fr:map-layers:v2",
+      "fr:map-layers:v3",
       JSON.stringify({ transit: true, parking: true }),
     );
   });
@@ -171,7 +173,7 @@ test("a shared map reproduces its layers without replacing this device's prefere
   await expect(page).toHaveURL(/show=none/);
   await expect
     .poll(() =>
-      page.evaluate(() => window.localStorage.getItem("fr:map-layers:v2")),
+      page.evaluate(() => window.localStorage.getItem("fr:map-layers:v3")),
     )
     .toBe('{"transit":true,"parking":true}');
 
@@ -179,7 +181,7 @@ test("a shared map reproduces its layers without replacing this device's prefere
   await expect(page).toHaveURL(/show=transit/);
   await expect
     .poll(() =>
-      page.evaluate(() => window.localStorage.getItem("fr:map-layers:v2")),
+      page.evaluate(() => window.localStorage.getItem("fr:map-layers:v3")),
     )
     .toBe('{"transit":true,"parking":true}');
 });

@@ -18,6 +18,21 @@ describe("Ask source citations", () => {
     expect(filterCitedSources(sources, answer)).toEqual([]);
   });
 
+  it("does not turn a generic budget adjective into a County budget citation", () => {
+    expect(
+      sourceIsCited(
+        { name: "County budget" },
+        "Cafe Nola is a good budget dinner option downtown.",
+      ),
+    ).toBe(false);
+    expect(
+      sourceIsCited(
+        { name: "County budget" },
+        "The County budget page has the adopted spending plan.",
+      ),
+    ).toBe(true);
+  });
+
   it("recognizes a shortened compound event title without accepting unrelated cards", () => {
     expect(sourceIsCited({ name: "Alive @ Five · La Unica" }, "Alive at Five is tonight downtown.")).toBe(true);
     expect(sourceIsCited({ name: "County budget" }, "Dinner in Frederick County sounds good.")).toBe(false);

@@ -12,6 +12,7 @@ import { APP_PAGES, type AppPage } from "@/data/app-pages";
 import { isUpcomingEvent } from "@/lib/events/visible";
 import { FREDERICK_CENTER, haversineMeters, type LngLat } from "@/lib/geo";
 import {
+  coffeeIntentTier,
   coffeeIntentScore,
   isChainName,
 } from "@/lib/category-ranking";
@@ -779,10 +780,20 @@ export function search(
       // penalizes results that send a user across the county.
       const proximityLift = 10 / (1 + distance / 600);
       const farPenalty = Math.max(0, distance - 6_000) / 2_000;
+      // One continuous local-coffee nudge, rather than a global chain penalty
+      // stacked with another preference. A strong independent shop at the
+      // reader's feet can beat a chain a block away; a chain at the reader's
+      // exact position still wins over farther independents.
+      const nearbyLocalCoffeeLift =
+        genericCoffeeIntent &&
+        coffeeIntentTier(hit.place) === 3 &&
+        !isChainName(hit.place.name)
+          ? 8 / (1 + distance / 250)
+          : 0;
       // Persist the location-aware score. Ask's optional taste reranker runs
       // after this search; keeping the adjustment prevents personalization
       // from accidentally restoring a farther generic result.
-      hit.score += proximityLift - farPenalty;
+      hit.score += proximityLift + nearbyLocalCoffeeLift - farPenalty;
     }
   }
 

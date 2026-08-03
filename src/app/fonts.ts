@@ -12,8 +12,9 @@ import localFont from "next/font/local";
  * descent-override, so the fallback occupies the same space as the webfont
  * and the swap costs no layout shift.
  *
- * It also emits the <link rel="preload"> for each file and hashes the URL,
- * which Fontsource leaves to the CSS import chain to discover.
+ * It also emits a preload for the upright face used on every screen. The rare
+ * Public Sans italic is declared in globals.css without a preload so a 30KB
+ * specialty face does not compete with first paint across the whole app.
  *
  * The woff2 files are the ones already in public/brand/fonts. They stay
  * there as well as being bundled here, because three things load them
@@ -28,14 +29,6 @@ export const publicSans = localFont({
       path: "../../public/brand/fonts/public-sans-variable.woff2",
       weight: "100 900",
       style: "normal",
-    },
-    {
-      // Public Sans ships a real variable italic, which the brand guide
-      // allows. Declaring it here keeps the browser from synthesising a
-      // slanted upright.
-      path: "../../public/brand/fonts/public-sans-variable-italic.woff2",
-      weight: "100 900",
-      style: "italic",
     },
   ],
   variable: "--font-public-sans",

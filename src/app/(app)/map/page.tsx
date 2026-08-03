@@ -36,6 +36,7 @@ import type { MapPinPlace } from "@/components/map/types";
 import BrowseMapClient from "@/components/map/BrowseMapClient";
 import MapModeGate from "@/components/map/MapModeGate";
 import MapWarmup from "@/components/map/MapWarmup";
+import MapLoadingScene from "@/components/map/MapLoadingScene";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -359,12 +360,19 @@ export default function MapPage() {
 function MapShellFallback() {
   return (
     <div className="relative -mx-4 sm:-mx-5 lg:ml-0">
-      <div
-        className="animate-pulse"
-        style={{ height: BROWSE_MAP_HEIGHT, background: "var(--app-bg-sunken)" }}
-        aria-busy="true"
-        aria-label="Loading map"
-      />
+      <MapLoadingSurface />
+    </div>
+  );
+}
+
+/** One branded, height-stable fallback for both static Suspense boundaries.
+ * Keeping this in the server-rendered page means the first byte already
+ * carries useful Frederick-specific feedback; hydration no longer swaps a
+ * generic pulse into a second loading scene before the map appears. */
+function MapLoadingSurface() {
+  return (
+    <div className="relative overflow-hidden" style={{ height: BROWSE_MAP_HEIGHT }}>
+      <MapLoadingScene height="100%" />
     </div>
   );
 }
@@ -432,14 +440,7 @@ function BrowseMode() {
   return (
     <div className="relative -mx-4 sm:-mx-5 lg:ml-0">
       <Suspense
-        fallback={
-          <div
-            className="animate-pulse"
-            style={{ height: BROWSE_MAP_HEIGHT, background: "var(--app-bg-sunken)" }}
-            aria-busy="true"
-            aria-label="Loading map"
-          />
-        }
+        fallback={<MapLoadingSurface />}
       >
         <BrowseMapArea />
       </Suspense>

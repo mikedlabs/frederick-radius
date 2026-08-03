@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { easternOffsetIso, breadcrumbJsonLd, itemListJsonLd } from "./jsonld";
+import {
+  absoluteSiteUrl,
+  breadcrumbJsonLd,
+  easternOffsetIso,
+  itemListJsonLd,
+  openingHoursJsonLd,
+} from "./jsonld";
 
 describe("easternOffsetIso", () => {
   it("re-expresses a UTC instant in Eastern wall time with offset (EDT)", () => {
@@ -25,5 +31,39 @@ describe("builders", () => {
   });
   it("itemListJsonLd carries the count", () => {
     expect(itemListJsonLd("x", [{ name: "a", path: "/a" }]).numberOfItems).toBe(1);
+  });
+
+  it("publishes only the structured hours supplied by the trusted loader", () => {
+    expect(
+      openingHoursJsonLd({
+        mon: [
+          { open: "09:00", close: "17:00" },
+          { open: "18:00", close: "21:00" },
+        ],
+      }),
+    ).toEqual([
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: "https://schema.org/Monday",
+        opens: "09:00",
+        closes: "17:00",
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: "https://schema.org/Monday",
+        opens: "18:00",
+        closes: "21:00",
+      },
+    ]);
+    expect(openingHoursJsonLd(undefined)).toBeUndefined();
+  });
+
+  it("turns app-relative image paths into absolute structured-data URLs", () => {
+    expect(absoluteSiteUrl("/api/place-photo?name=Cafe%20Nola")).toMatch(
+      /^https?:\/\/[^/]+\/api\/place-photo\?name=Cafe%20Nola$/,
+    );
+    expect(absoluteSiteUrl("https://images.example/photo.jpg")).toBe(
+      "https://images.example/photo.jpg",
+    );
   });
 });

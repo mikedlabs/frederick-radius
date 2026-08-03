@@ -10,11 +10,29 @@ export const UPDATE_PROMPT_DURATION_MS = 10_000;
  * The global toaster normally belongs above BottomNav; Map owns that same
  * lower shelf, so its update notice uses Sonner's supported top position.
  */
-export function updatePromptPresentation(pathname: string) {
+export function updatePromptPresentation(pathname: string, narrowViewport = false) {
   return {
     duration: UPDATE_PROMPT_DURATION_MS,
-    position: pathname === "/map" ? "top-center" : "bottom-center",
+    position:
+      pathname === "/map"
+        ? "top-center"
+        : narrowViewport
+          ? "bottom-center"
+          : "bottom-right",
   } as const;
+}
+
+/**
+ * A fresh service-worker install can also fire `controllerchange`. Reloading
+ * for that event steals whatever the visitor tapped or typed during the first
+ * seconds of their first visit. Only an update the visitor explicitly accepted
+ * is allowed to refresh the page, and it may do so once.
+ */
+export function shouldReloadForAcceptedUpdate(
+  updateAccepted: boolean,
+  alreadyReloaded: boolean,
+): boolean {
+  return updateAccepted && !alreadyReloaded;
 }
 
 /**
@@ -53,6 +71,7 @@ export default function ServiceWorkerRegister() {
     }
 
     let toastId: string | number | undefined;
+    let updateAccepted = false;
     let reloaded = false;
     let registration: ServiceWorkerRegistration | null = null;
 
@@ -66,11 +85,15 @@ export default function ServiceWorkerRegister() {
         toast.dismiss(toastId);
       }
       toastId = toast("A new version is ready", {
-        ...updatePromptPresentation(window.location.pathname),
+        ...updatePromptPresentation(
+          window.location.pathname,
+          window.matchMedia("(max-width: 639px)").matches,
+        ),
         description: "Refresh to see the latest.",
         action: {
           label: "Refresh",
           onClick: () => {
+            updateAccepted = true;
             waiting.postMessage({ type: "SKIP_WAITING" });
           },
         },
@@ -146,12 +169,12 @@ export default function ServiceWorkerRegister() {
     document.addEventListener("visibilitychange", checkForUpdate);
     window.addEventListener("focus", checkForUpdate);
 
-    // When the user accepts the prompt, the new SW activates and
-    // fires `controllerchange`. Reload once so they're served by the
-    // new worker immediately. Guarded so a rapid second event (rare
-    // but possible) doesn't trigger a refresh loop.
+    // A controller can change for two different reasons: a fresh first install
+    // or an accepted update. The first must stay invisible because reloading
+    // there can erase the visitor's first action. An accepted update still
+    // reloads once so the new build takes over immediately.
     const onControllerChange = () => {
-      if (reloaded) return;
+      if (!shouldReloadForAcceptedUpdate(updateAccepted, reloaded)) return;
       reloaded = true;
       window.location.reload();
     };

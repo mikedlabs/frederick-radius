@@ -56,6 +56,24 @@ export type RoadIntelligenceSnapshot = {
   };
 };
 
+/** Label the geography Radius actually has. A CHART message carries the
+ * physical sign position, not a confirmed crash/closure location contained in
+ * its text; calling every scope "Area" overstates that evidence. */
+export function roadAttentionScopeLabel(
+  signal: Pick<RoadAttentionSignal, "kind">,
+): "Area" | "Road" | "Station" | "Sign location" {
+  switch (signal.kind) {
+    case "highway-message":
+      return "Sign location";
+    case "pavement-weather":
+      return "Station";
+    case "work-zone-closure":
+      return "Road";
+    default:
+      return "Area";
+  }
+}
+
 const CONDITION_LABELS: Record<0 | 1 | 2, string> = {
   0: "Normal",
   1: "Use caution",

@@ -9,6 +9,11 @@ import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 
+/** The hero is a glance, not a live-feed loading screen. Cached safety data is
+ * normally immediate; a cold or degraded provider gets a short budget and an
+ * explicit unavailable note while the dedicated alert surfaces keep loading. */
+export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 500;
+
 /**
  * TodayCard — the daily hook at the very top of /now.
  *
@@ -120,9 +125,23 @@ export default async function TodayCard() {
   // provider never holds the whole hero hostage. A failed alert feed is carried
   // forward explicitly; the verdict then falls back to neutral copy.
   const [forecast, alertResult, airObservations] = await Promise.all([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    within<NwsAlertsResult>(getNwsAlertsResult(), 2_500, { alerts: [], available: false }),
-    within(getAirQuality(FREDERICK_CENTER, { deadlineMs: 2_500 }), 2_500, null),
+    within(
+      getNwsForecast(FREDERICK_CENTER),
+      TODAY_SAFETY_GLANCE_DEADLINE_MS,
+      null,
+    ),
+    within<NwsAlertsResult>(
+      getNwsAlertsResult(),
+      TODAY_SAFETY_GLANCE_DEADLINE_MS,
+      { alerts: [], available: false },
+    ),
+    within(
+      getAirQuality(FREDERICK_CENTER, {
+        deadlineMs: TODAY_SAFETY_GLANCE_DEADLINE_MS,
+      }),
+      TODAY_SAFETY_GLANCE_DEADLINE_MS,
+      null,
+    ),
   ]);
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
@@ -202,7 +221,7 @@ export default async function TodayCard() {
     : [];
 
   return (
-    <section aria-label="Today in Frederick" className="stagger-children" style={{ color: "currentColor" }}>
+    <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
       <OfflineTodayCapture
         snapshot={{
           dayKey: easternDayKey(now),
@@ -215,10 +234,6 @@ export default async function TodayCard() {
           },
         }}
       />
-      {/* The masthead assembles like a published front-endsheet: the dateline,
-          the greeting+mood headline, the weather row, and tonight's event rise
-          in on load via .stagger-children (one-shot breathe-in; reduced-motion
-          renders them static). */}
       {/* The hook — a concise weather read in the display face.
           The 3-second "I get it" line, now a tighter lead above one compact
           weather row (was a 28px headline stacked over a 64px number). */}

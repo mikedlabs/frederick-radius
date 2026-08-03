@@ -19,6 +19,12 @@ export type FeedHealthEndpoint = {
   timeoutMs?: number;
   /** Maximum response bytes inspected before the body is cancelled. */
   maxBodyBytes?: number;
+  /**
+   * Total bounded attempts for transient network/server failures. The default
+   * remains one; the scheduled tripwire opts critical feeds into a second
+   * probe so a single runner/host hiccup is not mistaken for a moved source.
+   */
+  attempts?: number;
   /** Expected response media type. */
   contentType?: RegExp;
   /** Expected marker within the bounded response prefix. */
@@ -62,6 +68,9 @@ const DEFAULT_PREFIX_BYTES = 4_096;
 const MAX_PREFIX_BYTES = 64 * 1_024;
 const DEFAULT_CONCURRENCY = 6;
 const MAX_CONCURRENCY = 12;
+const DEFAULT_ATTEMPTS = 1;
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 250;
 
 /**
  * MARC is one runtime product backed by four independent MTA endpoints. Keep
@@ -579,7 +588,18 @@ export async function probeFeedEndpoint(
     headers.set(endpoint.authHeader.name, authValue);
   }
 
-  try {
+  const runAttempt = async (): Promise<FeedHealthResult> => {
+    if (options.signal?.aborted) {
+      return {
+        ...base,
+        status: "ERR",
+        ok: false,
+        skipped: false,
+        note: "route deadline",
+      };
+    }
+
+    try {
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const signal = options.signal
       ? AbortSignal.any([options.signal, timeoutSignal])
@@ -634,15 +654,36 @@ export async function probeFeedEndpoint(
       ok: true,
       skipped: false,
     };
-  } catch (err) {
-    return {
-      ...base,
-      status: "ERR",
-      ok: false,
-      skipped: false,
-      note: safeError(err),
-    };
+    } catch (err) {
+      return {
+        ...base,
+        status: "ERR",
+        ok: false,
+        skipped: false,
+        note: safeError(err),
+      };
+    }
+  };
+
+  const attempts = boundedInt(
+    endpoint.attempts,
+    DEFAULT_ATTEMPTS,
+    MAX_ATTEMPTS,
+  );
+  let result = await runAttempt();
+  for (let attempt = 1; attempt < attempts; attempt += 1) {
+    const retryableStatus =
+      result.status === "ERR" ||
+      (typeof result.status === "number" &&
+        (result.status === 408 ||
+          result.status === 425 ||
+          result.status === 429 ||
+          result.status >= 500));
+    if (result.ok || result.skipped || !retryableStatus) break;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    result = await runAttempt();
   }
+  return result;
 }
 
 export async function probeFeedEndpoints(

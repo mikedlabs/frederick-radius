@@ -13,6 +13,7 @@ vi.mock("@/lib/db/client", () => ({
 import {
   archivedEventFromSnapshot,
   persistEventIdentity,
+  upcomingArchivedEventRoutes,
 } from "./event-identity";
 
 function snapshot(): EventWithMeta {
@@ -81,6 +82,46 @@ describe("event identity archive", () => {
     expect(sql).toContain("ADD COLUMN IF NOT EXISTS event_snapshot jsonb");
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("FROM anon, authenticated");
+  });
+
+  it("returns only valid canonical routes for the bounded sitemap read", async () => {
+    const sql = vi.fn(() =>
+      Promise.resolve([
+        {
+          canonical_slug: "alive-at-five-2026-08-06",
+          starts_at: new Date("2026-08-06T21:00:00.000Z"),
+          snapshot_at: new Date("2026-08-03T12:00:00.000Z"),
+        },
+        {
+          canonical_slug: "Not a route",
+          starts_at: "2026-08-07T21:00:00.000Z",
+          snapshot_at: "2026-08-03T12:00:00.000Z",
+        },
+      ]),
+    );
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(
+      upcomingArchivedEventRoutes({
+        now: new Date("2026-08-03T12:00:00.000Z"),
+      }),
+    ).resolves.toEqual([
+      {
+        slug: "alive-at-five-2026-08-06",
+        startsAt: "2026-08-06T21:00:00.000Z",
+        lastModifiedAt: "2026-08-03T12:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("fails soft when the event archive cannot answer before its deadline", async () => {
+    mocks.getSql.mockReturnValue(
+      vi.fn(() => Object.assign(new Promise(() => {}), { cancel: vi.fn() })),
+    );
+
+    await expect(
+      upcomingArchivedEventRoutes({ timeoutMs: 5 }),
+    ).resolves.toEqual([]);
   });
 
   it.each(["cancelled", "postponed"] as const)(

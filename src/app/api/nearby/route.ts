@@ -42,8 +42,13 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const lng = Number(url.searchParams.get("lng"));
-  const lat = Number(url.searchParams.get("lat"));
+  const lngRaw = url.searchParams.get("lng");
+  const latRaw = url.searchParams.get("lat");
+  // Number(null) and Number("") are both 0. Without checking the raw values
+  // first, a request missing either required coordinate was accepted as (0,0)
+  // and returned a confident-looking empty Frederick result.
+  const lng = lngRaw?.trim() ? Number(lngRaw) : NaN;
+  const lat = latRaw?.trim() ? Number(latRaw) : NaN;
 
   if (
     !Number.isFinite(lng) ||

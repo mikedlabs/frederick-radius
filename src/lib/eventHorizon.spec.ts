@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { horizonOf, isRangeListing, type HorizonBounds } from "./eventHorizon";
+import {
+  groupByHorizon,
+  horizonOf,
+  isRangeListing,
+  type HorizonBounds,
+} from "./eventHorizon";
 
 const NOW = Date.parse("2026-07-01T14:00:00Z"); // ~10 AM ET
 const HOUR = 3600_000;
@@ -139,5 +144,44 @@ describe("horizonOf — started but past the live cap", () => {
         bounds,
       ),
     ).toBe("live");
+  });
+});
+
+describe("groupByHorizon — chronological section order", () => {
+  it("puts weekday events before the upcoming weekend", () => {
+    const weekdayBounds = bounds();
+    const groups = groupByHorizon([
+      ev("saturday", weekdayBounds.weekendStart + HOUR, weekdayBounds.weekendStart + 2 * HOUR),
+      ev("thursday", NOW + DAY, NOW + DAY + HOUR),
+    ], weekdayBounds);
+
+    expect(groups.map((group) => group.key)).toEqual(["week", "weekend"]);
+  });
+
+  it("does not fold dates after the upcoming weekend back into Later this week", () => {
+    const weekdayBounds = bounds();
+    expect(
+      horizonOf(
+        ev("next-monday", weekdayBounds.weekendEnd + HOUR, weekdayBounds.weekendEnd + 2 * HOUR),
+        weekdayBounds,
+      ),
+    ).toBe("later");
+  });
+
+  it("keeps the current weekend ahead of next-week events", () => {
+    const weekendBounds: HorizonBounds = {
+      now: NOW,
+      next24: NOW + 10 * HOUR,
+      weekendStart: NOW - HOUR,
+      weekendEnd: NOW + 2 * DAY,
+      live: new Set(),
+    };
+    const groups = groupByHorizon([
+      ev("monday", weekendBounds.weekendEnd + HOUR, weekendBounds.weekendEnd + 2 * HOUR),
+      ev("sunday", NOW + DAY, NOW + DAY + HOUR),
+    ], weekendBounds);
+
+    expect(groups.map((group) => group.key)).toEqual(["weekend", "week"]);
+    expect(groups.map((group) => group.label)).toEqual(["This weekend", "Next week"]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INTENT_BY_KEY, type IntentMatchable } from "@/data/intents";
+import { getIntentByKey, INTENT_BY_KEY, type IntentMatchable } from "@/data/intents";
 
 const park = (
   overrides: Partial<IntentMatchable> = {},
@@ -10,6 +10,16 @@ const park = (
   subcategories: [],
   short_blurb: "A public park.",
   ...overrides,
+});
+
+describe("intent URL lookup", () => {
+  it("accepts only own intent keys, never inherited object properties", () => {
+    expect(getIntentByKey("coffee")).toBe(INTENT_BY_KEY.coffee);
+    expect(getIntentByKey("constructor")).toBeNull();
+    expect(getIntentByKey("__proto__")).toBeNull();
+    expect(getIntentByKey("toString")).toBeNull();
+    expect(Object.getPrototypeOf(INTENT_BY_KEY)).toBeNull();
+  });
 });
 
 describe("outdoor playground intent", () => {

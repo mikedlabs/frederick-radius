@@ -55,9 +55,11 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
-  await expect(
-    page.getByRole("link", { name: "First local pick, open now" }),
-  ).toBeVisible();
+  const firstPick = page.getByRole("link", {
+    name: /First local pick.*Open now/i,
+  });
+  await expect(firstPick).toBeVisible();
+  await expect(firstPick).not.toHaveAttribute("aria-label");
 
   const rail = page
     .getByRole("region", { name: "Open places right now" })

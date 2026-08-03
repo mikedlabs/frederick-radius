@@ -23,10 +23,13 @@ export default async function NearbyContext({
   /** The place's own name — drop its own article from the "nearby" list. */
   excludeName?: string;
 }) {
-  const raw = await getNearbyWikipedia(lat, lng, { radiusM: 800, limit: 5 });
+  const raw = await getNearbyWikipedia(lat, lng, { radiusM: 800, limit: 4 });
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const key = excludeName ? norm(excludeName) : "";
-  const items = raw.filter((p) => !key || norm(p.title) !== key).slice(0, 4);
+  // This is supporting context, not a second directory beneath the place.
+  // Two nearby references preserve the useful local-history layer without
+  // making the actionable place page end in a long, tangential article list.
+  const items = raw.filter((p) => !key || norm(p.title) !== key).slice(0, 2);
   if (items.length === 0) return null;
 
   return (

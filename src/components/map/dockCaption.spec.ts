@@ -4,6 +4,7 @@ import {
   defaultTimeMode,
   dockDirty,
   formatHourLabel,
+  layerStatusLine,
   layersCaption,
   whatCaption,
   whenCaption,
@@ -137,6 +138,15 @@ describe("countLine (the living caption)", () => {
     expect(countLine({ places: 16, events: 0, closingSoon: 3, scrubHour: 18.5 })).toBe(
       "16 places · 0 events at 6:30 PM",
     );
+  });
+});
+
+describe("layerStatusLine", () => {
+  it("keeps the travel and detail panes about map layers", () => {
+    expect(layerStatusLine(0)).toBe("Choose a layer to add live context.");
+    expect(layerStatusLine(0, "local")).toBe("Choose a layer to add local detail.");
+    expect(layerStatusLine(1)).toBe("1 map layer showing.");
+    expect(layerStatusLine(3)).toBe("3 map layers showing.");
   });
 });
 

@@ -27,7 +27,7 @@ import {
   FREDERICK_COUNTY_BOUNDS,
 } from "@/components/map/constants";
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
-import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
+import { getIntentByKey, INTENTS } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
 import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
@@ -256,10 +256,7 @@ export default function BrowseMapClient({
     ? FREDERICK_COUNTY_BOUNDS
     : undefined;
 
-  const intent =
-    intentParam && intentParam in INTENT_BY_KEY
-      ? INTENT_BY_KEY[intentParam as IntentKey]
-      : null;
+  const intent = getIntentByKey(intentParam);
   // First-tier filter: top intent.
   const intentPlaces = intent ? allPlaces.filter(intent.match) : allPlaces;
   // Sub-counts (parent-scoped) — computed BEFORE the sub-filter is

@@ -277,14 +277,15 @@ export function DaypartEmptyState({
 function DaypartPickCard({
   place,
   category,
+  eager = false,
 }: {
   place: DaypartPick;
   category: string;
+  eager?: boolean;
 }) {
   const signaledPhoto = place.photo ? daypartPhotoSrc(place.photo) : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
-  const ariaLabel = `${place.name}, ${place.confidence === "likely" ? "likely open" : "open now"}`;
   const detail =
     place.fact ||
     (place.confidence === "likely" ? "Likely open" : "Open now");
@@ -299,7 +300,6 @@ function DaypartPickCard({
       <Link
         href={`/places/${place.slug}`}
         prefetch={false}
-        aria-label={ariaLabel}
         className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
         style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
@@ -309,6 +309,8 @@ function DaypartPickCard({
           fill
           unoptimized={signaledPhoto.startsWith("/api/place-photo")}
           sizes="168px"
+          priority={eager}
+          fetchPriority={eager ? "high" : "auto"}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
@@ -362,7 +364,6 @@ function DaypartPickCard({
     <Link
       href={`/places/${place.slug}`}
       prefetch={false}
-      aria-label={ariaLabel}
       className="group flex min-h-[76px] w-[11.25rem] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985]"
       style={{
         borderColor: "var(--app-border)",
@@ -614,7 +615,7 @@ export default function DaypartNeeds({
                   );
                   tabs?.[nextIndex]?.focus();
                 }}
-                className="tap-44 shrink-0 rounded-full border px-3 text-[12.5px] font-semibold transition active:scale-[0.98]"
+                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[12.5px] font-semibold transition active:scale-[0.98]"
                 style={{
                   borderColor: selected ? "var(--app-brand)" : "var(--app-border)",
                   background: selected
@@ -668,9 +669,13 @@ export default function DaypartNeeds({
           </div>
         ) : active.picks.length > 0 ? (
           <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
-            {active.picks.map((place) => (
+            {active.picks.map((place, index) => (
               <li key={place.slug} className="shrink-0">
-                <DaypartPickCard place={place} category={active.category} />
+                <DaypartPickCard
+                  place={place}
+                  category={active.category}
+                  eager={index === 0}
+                />
               </li>
             ))}
           </ul>

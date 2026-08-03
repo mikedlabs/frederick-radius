@@ -1052,7 +1052,7 @@ function WorkspaceComposer({
       aria-controls="ask-area-chooser"
       aria-label={`Search area: ${contextLabel}. Change area.`}
       title={contextLabel}
-      className="tap-44 inline-flex h-11 max-w-[96px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
+      className="tap-44 inline-flex h-11 min-h-11 min-w-11 max-w-[96px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
       style={{
         background: "var(--app-bg-sunken)",
         color: "var(--app-ink-2)",
@@ -1982,12 +1982,32 @@ export default function AskFrederick({
       </Sheet>
 
       {workspace && !res && !loading && !nearbyGateQuery ? (
-        <section aria-labelledby="ask-start-heading" className="mt-3">
-          <h2 id="ask-start-heading" className="sr-only">
-            Questions to try
-          </h2>
+        <section
+          aria-labelledby="ask-start-heading"
+          className="mt-3"
+          data-ask-empty-state
+        >
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <h2
+              id="ask-start-heading"
+              className="text-[11px] font-semibold uppercase tracking-[0.08em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Questions to try
+            </h2>
+            <Link
+              href="/compass"
+              className="tap-44 inline-flex min-h-11 items-center gap-1 px-1 text-[10.5px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Browse tools
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          </div>
           <div
-            className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-3"
+            style={{ borderColor: "var(--app-border)" }}
+            role="group"
             aria-label="Questions to try"
           >
             {WORKSPACE_ASKS.map((prompt, index) => (
@@ -1995,29 +2015,18 @@ export default function AskFrederick({
                 key={prompt.label}
                 type="button"
                 onClick={() => runIntent(prompt.query)}
-                className="tap-44 inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-full border px-3.5 text-left text-[11px] font-semibold transition hover:bg-[var(--app-bg-elevated-solid)] active:scale-[0.98]"
+                className="tap-44 flex min-h-14 w-full items-center justify-between gap-3 border-b px-3.5 text-left text-[12px] font-semibold transition last:border-b-0 hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] sm:min-h-[60px] sm:border-b-0 sm:border-r sm:last:border-r-0"
                 style={{
-                  borderColor:
-                    index === 0 ? "var(--app-control-border)" : "var(--app-border)",
+                  borderColor: "var(--app-border)",
                   background:
-                    index === 0 ? "var(--app-bg-elevated-solid)" : "transparent",
+                    index === 0 ? "var(--app-bg-sunken)" : "transparent",
                   color: "var(--app-ink-2)",
                 }}
               >
                 <span>{prompt.label}</span>
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
               </button>
             ))}
-          </div>
-          <div className="mt-1 flex justify-end">
-            <Link
-              href="/compass"
-              className="tap-44 inline-flex items-center gap-1 px-1 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Browse tools
-              <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
           </div>
         </section>
       ) : null}

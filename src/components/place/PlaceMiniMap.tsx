@@ -32,10 +32,14 @@ export default function PlaceMiniMap({
     color && /^#[0-9a-fA-F]{6}$/.test(color)
       ? color.slice(1).toLowerCase()
       : "e14328";
-  const src = `/api/static-map?lng=${lng.toFixed(5)}&lat=${lat.toFixed(5)}&pin=${pin}&size=640x352`;
+  // The image proxy resolves coordinates to four decimals (~11m). Match its
+  // public URL precision so nearly identical pins share one edge-cache key;
+  // the interactive-map handoff keeps the more precise five-decimal camera.
+  const src = `/api/static-map?lng=${lng.toFixed(4)}&lat=${lat.toFixed(4)}&pin=${pin}&size=320x150`;
   return (
     <Link
       href={`/map?c=${lng.toFixed(5)},${lat.toFixed(5)},15.5`}
+      prefetch={false}
       aria-label={`Open the map centered on ${name}`}
       className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)" }}
@@ -47,8 +51,8 @@ export default function PlaceMiniMap({
       <img
         src={src}
         alt={`Map showing ${name}`}
-        width={1280}
-        height={704}
+        width={640}
+        height={300}
         loading="lazy"
         decoding="async"
         className="field-map-image h-44 w-full object-cover"

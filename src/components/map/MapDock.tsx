@@ -25,6 +25,7 @@ import {
   TIME_WINDOWS,
   countLine,
   dockDirty,
+  layerStatusLine,
   layersCaption,
   whatCaption,
   whenCaption,
@@ -34,6 +35,7 @@ import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
+import { mapSearchResultLimit } from "./mapSearchVisibility";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -235,6 +237,9 @@ export type MapDockProps = {
   goNearMe: () => void;
   flyTo: (center: [number, number], zoom: number) => void;
   fitCounty: () => void;
+  /** Camera read directly from Mapbox at share time. The address bar may
+   * still hold the last committed result area while a person is panning. */
+  shareCameraParam: () => string | null;
 
   // ── Highlights: evidence-backed connections already in the viewport. ──
   discoveries: MapDiscovery[];
@@ -373,6 +378,7 @@ export default function MapDock(props: MapDockProps) {
     query: props.q,
     index: -1,
   });
+  const [searchResultLimit, setSearchResultLimit] = useState<3 | 4>(4);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   // The Layers tab's Key grid is collapsed by default; one small control
   // reveals it without creating another horizontal rail.
@@ -460,6 +466,19 @@ export default function MapDock(props: MapDockProps) {
       viewport.removeEventListener("resize", updateKeyboardState);
       viewport.removeEventListener("scroll", updateKeyboardState);
       window.removeEventListener("orientationchange", updateKeyboardState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateLimit = () => {
+      setSearchResultLimit(mapSearchResultLimit(window.innerWidth));
+    };
+    updateLimit();
+    window.addEventListener("resize", updateLimit, { passive: true });
+    window.addEventListener("orientationchange", updateLimit, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateLimit);
+      window.removeEventListener("orientationchange", updateLimit);
     };
   }, []);
 
@@ -998,6 +1017,8 @@ export default function MapDock(props: MapDockProps) {
 
   const shareCurrentView = async () => {
     const shareUrl = new URL(window.location.href);
+    const camera = props.shareCameraParam();
+    if (camera) shareUrl.searchParams.set("c", camera);
     // An explicit empty layer state is still meaningful. Without this marker,
     // a recipient's saved device preferences could add layers the sender never
     // chose and make the shared map look different.
@@ -1032,7 +1053,7 @@ export default function MapDock(props: MapDockProps) {
     }
   };
 
-  const visibleSearchMatches = props.searchMatches.slice(0, 4);
+  const visibleSearchMatches = props.searchMatches.slice(0, searchResultLimit);
   const searchResultsVisible =
     pane === null &&
     searchPanelOpen &&
@@ -1405,7 +1426,7 @@ export default function MapDock(props: MapDockProps) {
                     );
                   })}
                 </ul>
-                {props.searchMatches.length > 4 && (
+                {props.searchMatches.length > searchResultLimit && (
                   <div className="dock-search-more-item">
                     <button
                       type="button"
@@ -1632,8 +1653,13 @@ export default function MapDock(props: MapDockProps) {
                 <div className="dock-countline" aria-live="polite">
                   {pane === "discover"
                     ? `${props.discoveries.length} highlight${props.discoveries.length === 1 ? "" : "s"} in this view.`
-                    : line}
-                  {pane !== "discover" && (
+                    : isLayerPane
+                      ? layerStatusLine(
+                          visibleLayerCount,
+                          pane === "localLayers" ? "local" : "travel",
+                        )
+                      : line}
+                  {pane !== "discover" && !isLayerPane && (
                     <span className="sr-only">
                       {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
                     </span>

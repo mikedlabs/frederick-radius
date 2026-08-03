@@ -15,6 +15,10 @@ on:
         description: Exact trusted main revision whose source configuration generated the artifact
         required: true
         type: string
+    outputs:
+      logs_artifact_name:
+        description: Exact diagnostic artifact uploaded by this publisher attempt
+        value: ${{ jobs.publish.outputs.logs_artifact_name }}
 
 permissions: {}
 
@@ -25,7 +29,15 @@ jobs:
     permissions:
       actions: read
       contents: write
+    outputs:
+      logs_artifact_name: ${{ steps.artifact-name.outputs.name }}
     steps:
+      - name: Pin log artifact name to this publisher attempt
+        id: artifact-name
+        env:
+          ARTIFACT_NAME: snapshot-publisher-log-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Checkout the current snapshot branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -274,7 +286,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: snapshot-publisher-log-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/snapshot-publish.log
           if-no-files-found: warn
           retention-days: 7
