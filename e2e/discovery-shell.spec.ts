@@ -264,6 +264,59 @@ test.describe("mobile discovery shell", () => {
     expect(geometry?.overlapsLogo).toBe(false);
     expect(geometry?.overlapsAttribution).toBe(false);
     expect(geometry?.documentOverflow ?? 999).toBeLessThanOrEqual(1);
+
+    await page.locator(".mapboxgl-ctrl-attrib-button").click();
+    await expect(page.locator(".mapboxgl-ctrl-attrib")).toHaveClass(
+      /mapboxgl-compact-show/,
+    );
+    const expandedCredits = await page.evaluate(() => {
+      const host = document.querySelector<HTMLElement>(".dock-host");
+      const logo = document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo");
+      const attribution = document.querySelector<HTMLElement>(
+        ".mapboxgl-ctrl-attrib",
+      );
+      const attributionCopy = attribution?.querySelector<HTMLElement>(
+        ".mapboxgl-ctrl-attrib-inner",
+      );
+      const attributionButton = attribution?.querySelector<HTMLElement>(
+        ".mapboxgl-ctrl-attrib-button",
+      );
+      if (
+        !host ||
+        !logo ||
+        !attribution ||
+        !attributionCopy ||
+        !attributionButton
+      ) {
+        return null;
+      }
+      const hostBox = host.getBoundingClientRect();
+      const logoBox = logo.getBoundingClientRect();
+      const attributionBox = attribution.getBoundingClientRect();
+      const copyBox = attributionCopy.getBoundingClientRect();
+      const buttonBox = attributionButton.getBoundingClientRect();
+      const intersects = (first: DOMRect, second: DOMRect) =>
+        first.left < second.right &&
+        first.right > second.left &&
+        first.top < second.bottom &&
+        first.bottom > second.top;
+      return {
+        insideHost:
+          attributionBox.left >= hostBox.left &&
+          attributionBox.right <= hostBox.right &&
+          attributionBox.top >= hostBox.top &&
+          attributionBox.bottom <= hostBox.bottom,
+        overlapsLogo: intersects(logoBox, attributionBox),
+        copyClearsButton: copyBox.right <= buttonBox.left,
+        documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+
+    expect(expandedCredits).not.toBeNull();
+    expect(expandedCredits?.insideHost).toBe(true);
+    expect(expandedCredits?.overlapsLogo).toBe(false);
+    expect(expandedCredits?.copyClearsButton).toBe(true);
+    expect(expandedCredits?.documentOverflow ?? 999).toBeLessThanOrEqual(1);
   });
 
   test("map options never create a sideways or document scroll trap", async ({ page }) => {

@@ -18,6 +18,9 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { field_amenities } from "@/lib/db/schema";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
+
+export const FIELD_AMENITIES_READ_DEADLINE_MS = 1_500;
 
 // The kinds the /collect picker can emit. Kept in sync with the picker
 // in src/app/(app)/collect/CollectClient.tsx and AMENITY_KIND_TO_CAT.
@@ -41,20 +44,30 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
   const db = getDb();
   if (!db) return [];
   try {
-    const rows = await db
-      .select({
-        id: field_amenities.id,
-        kind: field_amenities.kind,
-        name: field_amenities.name,
-        detail: field_amenities.detail,
-        note: field_amenities.note,
-        municipality: field_amenities.municipality,
-        lng: field_amenities.lng,
-        lat: field_amenities.lat,
-        photo_url: field_amenities.photo_url,
-      })
-      .from(field_amenities)
-      .where(eq(field_amenities.status, "approved"));
+    // Field notes add useful local detail, but they are optional enrichment.
+    // Never let a slow pooled database connection hold the public essentials
+    // page or map open. The reviewed static points remain available while a
+    // late query is safely consumed by the shared deadline helper.
+    const rows = await withDeadlineFallback(
+      Promise.resolve(
+        db
+          .select({
+            id: field_amenities.id,
+            kind: field_amenities.kind,
+            name: field_amenities.name,
+            detail: field_amenities.detail,
+            note: field_amenities.note,
+            municipality: field_amenities.municipality,
+            lng: field_amenities.lng,
+            lat: field_amenities.lat,
+            photo_url: field_amenities.photo_url,
+          })
+          .from(field_amenities)
+          .where(eq(field_amenities.status, "approved")),
+      ),
+      FIELD_AMENITIES_READ_DEADLINE_MS,
+      [],
+    );
 
     const out: Amenity[] = [];
     for (const r of rows) {
