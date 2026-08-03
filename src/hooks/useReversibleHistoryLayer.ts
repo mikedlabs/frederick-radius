@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { useRouter } from "next/navigation";
 
 const HISTORY_LAYER_KEY = "__frederickRadiusLayer";
 const HISTORY_LAYER_SCROLL_KEY = "__frederickRadiusLayerScrollY";
@@ -99,7 +98,6 @@ export function useReversibleHistoryLayer({
   /** Scroll coordinate captured before a sticky/fixed trigger receives focus. */
   returnScrollY?: number | null;
 }) {
-  const router = useRouter();
   const dismissRef = useRef(onDismiss);
   const returnScrollYRef = useRef<number | null>(null);
   useEffect(() => {
@@ -174,10 +172,14 @@ export function useReversibleHistoryLayer({
         // clean Back step to the page beneath Find.
         window.location.replace(path);
       } else {
-        router.push(path, { scroll: true });
+        // This hook also renders inside server-safe lazy fallbacks, so keep it
+        // independent of Next's App Router context. The ordinary branch is an
+        // edge case (an active sheet normally owns the history layer), and a
+        // native same-origin navigation is reliable in every host.
+        window.location.assign(path);
       }
     },
-    [id, router],
+    [id],
   );
 
   return useMemo(
