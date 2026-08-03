@@ -135,6 +135,16 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     ?? place?.category
     ?? "music";
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
+  const slug = cleanEventSlug({ presenter, title, startsAt: e.starts_at });
+  // Venue pages rarely expose a publisher event UID. Venue + occurrence time
+  // is the stable identity we do have: it stays distinct across recurring
+  // dates and survives a later title edit that changes the human-facing slug.
+  const parsedStart = Date.parse(e.starts_at);
+  const sourceId = `venue:${e.venue_slug}:${
+    Number.isFinite(parsedStart)
+      ? new Date(parsedStart).toISOString()
+      : e.starts_at.trim()
+  }`;
   const isFree = e.price ? /free|no cover/i.test(e.price) : false;
   const attendance_mode = eventAttendanceMode({
     title,
@@ -157,7 +167,7 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
   // so an unresolved venue resolves to "area" and never claims a distance.
   const placement = physical && place ? ("venue" as const) : undefined;
   return {
-    slug: cleanEventSlug({ presenter, title, startsAt: e.starts_at }),
+    slug,
     title,
     presenter,
     description: cleanFeedText(e.description ?? ""),
@@ -191,7 +201,13 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     is_verified: false,
     // source_url and last_verified_at come from the stamp below.
     ...stampEventProvenance(
-      { slug: "", source: "venue-extract", source_url: e.source.url, last_verified_at: e.source.fetchedAt },
+      {
+        slug,
+        source: "venue-extract",
+        source_id: sourceId,
+        source_url: e.source.url,
+        last_verified_at: e.source.fetchedAt,
+      },
     ),
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality,
