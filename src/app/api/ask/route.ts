@@ -36,6 +36,7 @@ import {
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
 import { withAskResponsePresentation } from "@/lib/ask/presentation";
+import { enrichAskResultWithTravelTimes } from "@/lib/ask/travel-enrichment";
 import {
   getCountySnowRoutes,
   type CountySnowRoute,
@@ -299,20 +300,24 @@ export async function POST(req: NextRequest) {
       deadlineMs: ASK_SAFETY_DEADLINE_MS,
     }),
   ]);
-  const result = withAskResponsePresentation(
-    applyAskOutdoorSafety(
-      rawResult,
-      query,
-      hold,
-      (source) => {
-        const place = source.href.startsWith("/places/")
-          ? clientPlaceBySlug(source.href.slice("/places/".length))
-          : null;
-        return isOutdoorRecommendation(place ?? source);
-      },
-    ),
+  const safetyResult = applyAskOutdoorSafety(
+    rawResult,
     query,
+    hold,
+    (source) => {
+      const place = source.href.startsWith("/places/")
+        ? clientPlaceBySlug(source.href.slice("/places/".length))
+        : null;
+      return isOutdoorRecommendation(place ?? source);
+    },
   );
+  const routedResult = await enrichAskResultWithTravelTimes(
+    safetyResult,
+    query,
+    context.canShowDistance ? context.origin : null,
+    { timeoutMs: 1_800 },
+  );
+  const result = withAskResponsePresentation(routedResult, query);
   if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.
   if (result.configured !== false && (!result.sources || result.sources.length === 0)) {
