@@ -216,6 +216,43 @@ export function pulseTileBanks(tiles: PulseTile[]): PulseTileBank[] {
   return banks;
 }
 
+export type PulseDisplayGroups = {
+  attention: PulseTile[];
+  actionable: PulseTile[];
+  quiet: PulseTile[];
+};
+
+/**
+ * The mobile board is a decision surface, not a feed inventory. Keep genuine
+ * situations in front; move calm readings and integration health into one
+ * disclosure. A degraded source can never promote itself by also carrying an
+ * old `active` flag.
+ */
+export function pulseDisplayGroups(
+  tiles: PulseTile[],
+  {
+    leadKey,
+    summarizedKeys = new Set<string>(),
+  }: {
+    leadKey?: string;
+    summarizedKeys?: ReadonlySet<string>;
+  } = {},
+): PulseDisplayGroups {
+  const attention: PulseTile[] = [];
+  const actionable: PulseTile[] = [];
+  const quiet: PulseTile[] = [];
+
+  for (const tile of tiles) {
+    if (tile.key === leadKey || summarizedKeys.has(tile.key)) continue;
+    const state = pulseTileState(tile);
+    if (state === "Attention") attention.push(tile);
+    else if (state === "Active") actionable.push(tile);
+    else quiet.push(tile);
+  }
+
+  return { attention, actionable, quiet };
+}
+
 /**
  * Do not describe a previously active item as cleared when its source simply
  * stopped answering. A clear message is only earned by a current, quiet
@@ -737,35 +774,6 @@ function PulseSmartBlock({
   );
 }
 
-function PulseSmartGrid({
-  banks,
-  onOpen,
-}: {
-  banks: PulseTileBank[];
-  onOpen: (key: string) => void;
-}) {
-  const entries = banks.flatMap((bank) =>
-    bank.tiles.map((tile) => ({ bankKey: bank.key, tile })),
-  );
-  if (entries.length === 0) return null;
-  return (
-    <ul
-      data-pulse-board
-      className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-    >
-      {entries.map(({ bankKey, tile }, index) => (
-        <PulseSmartBlock
-          key={tile.key}
-          tile={tile}
-          bankKey={bankKey}
-          index={index}
-          onOpen={() => onOpen(tile.key)}
-        />
-      ))}
-    </ul>
-  );
-}
-
 function SecondarySignals({
   updates,
   visibleUpdates,
@@ -780,7 +788,11 @@ function SecondarySignals({
   onOpen: (key: string) => void;
 }) {
   if (updates.length === 0) return null;
-  const degradedCount = updates.filter((tile) => tile.degraded).length;
+  const degradedCount = updates.filter((tile) => {
+    const state = pulseTileState(tile);
+    return state === "Partial data" || state === "Feed unavailable" || state === "Not connected";
+  }).length;
+  const quietCount = updates.length - degradedCount;
   const total = updates.length;
 
   return (
@@ -810,12 +822,12 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              More local signals
+              Other checked signals
             </span>
             <span className="mt-0.5 block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
               {degradedCount > 0
-                ? `${degradedCount} ${degradedCount === 1 ? "feed needs" : "feeds need"} a refresh`
-                : `${total} additional ${total === 1 ? "source" : "sources"}`}
+                ? `${quietCount} ${quietCount === 1 ? "source is" : "sources are"} quiet. ${degradedCount} ${degradedCount === 1 ? "needs" : "need"} a refresh.`
+                : `${total} ${total === 1 ? "source is" : "sources are"} current and quiet.`}
             </span>
           </span>
           <ChevronDown
@@ -831,7 +843,7 @@ function SecondarySignals({
               className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Local pulse
+              Source details
             </h3>
           </div>
           <ul
@@ -889,6 +901,9 @@ function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
         <span className="mt-0.5 block line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{tile.peek ?? tile.countLabel}</span>
+        <span className="mt-1 block truncate text-[9px]" style={{ color: "var(--app-ink-3)" }}>
+          Source · {tile.sourceLabel}
+        </span>
       </span>
       {tile.peek && <span className="shrink-0 text-right text-[11px] font-semibold" style={{ color: tile.accent }}>{tile.countLabel}</span>}
       <ArrowRight aria-hidden className="h-4 w-4 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5" />
@@ -913,12 +928,6 @@ export default function PulseBoard({
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
   const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
-  const summarizedKeys = new Set(chips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
-  const attention = tiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
-  const banks = useMemo(() => pulseTileBanks(tiles), [tiles]);
-  const localUpdates = banks.find((bank) => bank.key === "local-pulse")?.tiles ?? [];
-  const overviewBanks = banks.filter((bank) => bank.key !== "local-pulse" && bank.tiles.length > 0);
-  const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
 
   const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
@@ -973,6 +982,20 @@ export default function PulseBoard({
   const attentionChips = chips.filter(
     (chip) => chip.tone !== "positive" && (!showAlertData || chip.key !== hero.leadKey),
   );
+  const summarizedKeys = new Set(
+    attentionChips
+      .map((chip) => chip.key)
+      .filter((key): key is string => Boolean(key)),
+  );
+  const displayGroups = pulseDisplayGroups(tiles, {
+    leadKey: hero.leadKey,
+    summarizedKeys,
+  });
+  const attention = displayGroups.attention;
+  const quietSignals = displayGroups.quiet;
+  const visibleQuietSignals = showAllUpdates
+    ? quietSignals
+    : quietSignals.slice(0, 4);
   const attentionCount = attention.length + attentionChips.length + (showAlertData ? 1 : 0);
   const hasAttention = attentionCount > 0;
   const statusWord = pulseStatusWord({
@@ -1087,20 +1110,30 @@ export default function PulseBoard({
           </section>
         )}
 
-        {overviewBanks.length > 0 && (
+        {displayGroups.actionable.length > 0 && (
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
             <GroupHeading
               id="pulse-live-board-heading"
-              title="Right now"
-              note={`${tiles.length} ${tiles.length === 1 ? "source" : "sources"} checked`}
+              title="Active right now"
+              note={`${displayGroups.actionable.length} ${displayGroups.actionable.length === 1 ? "live signal" : "live signals"}`}
             />
-            <PulseSmartGrid banks={overviewBanks} onOpen={openTile} />
+            <div
+              className="overflow-hidden rounded-[var(--app-radius-md)] border px-1"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-elevated-solid)",
+              }}
+            >
+              {displayGroups.actionable.map((tile) => (
+                <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+              ))}
+            </div>
           </section>
         )}
 
         <SecondarySignals
-          updates={localUpdates}
-          visibleUpdates={visibleUpdates}
+          updates={quietSignals}
+          visibleUpdates={visibleQuietSignals}
           showAllUpdates={showAllUpdates}
           onToggleUpdates={() => setShowAllUpdates((value) => !value)}
           onOpen={openTile}

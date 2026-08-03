@@ -83,7 +83,11 @@ import { installCountySpotlight } from "./countySpotlight";
 import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
-import { nearestMapUtilities, type NearbyUtilityPoint } from "./mapNearby";
+import {
+  nearestMapUtilities,
+  nearestMapUtilityPoint,
+  type NearbyUtilityPoint,
+} from "./mapNearby";
 import { installCategoryMarkers, bucketOf } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -100,6 +104,10 @@ import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import MapLoadingScene from "./MapLoadingScene";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration, mapPlaceVisualState } from "./mapVisualState";
+import {
+  backgroundPlacesForMapSource,
+  curatedPlacesForMapSource,
+} from "./mapSourceFilter";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -335,9 +343,20 @@ type CivicTownSelection = {
   lat: number;
 };
 
+function municipalityDisplayName(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  return (
+    MUNICIPALITIES.find(
+      (municipality) =>
+        municipality.slug === normalized ||
+        municipality.name.toLowerCase() === normalized,
+    )?.name ?? value
+  );
+}
+
 type MapSelectionRequest =
   | { kind: "place"; value: MapPinPlace }
-  | { kind: "raw"; value: NonNullable<Selected> }
+  | { kind: "raw"; value: NonNullable<Selected>; contextLabel?: string }
   | { kind: "event"; value: EventPin }
   | { kind: "event-group"; value: MapEventGroup }
   | { kind: "town"; value: CivicTownSelection }
@@ -513,11 +532,10 @@ type Props = {
    *  When present the dock renders and the legacy floating controls
    *  (scrubber, aerial season chips, locate homes) stand down. */
   dock?: BrowseDockInfo;
-  /** The slugs of places that MATCH the active What/Open-now filter, when
-   *  one is on. Non-matching pins are faded (not removed), so the map
-   *  visibly reacts to the dock. Null/undefined = nothing filtered =
-   *  nothing faded. Provided by BrowseMapClient (which also passes the
-   *  FULL place set as `places` in that case). */
+  /** The slugs of places that MATCH the active place/open/deal filter. When
+   *  one is on, the curated GeoJSON source contains only these slugs so its
+   *  pins and cluster counts cannot imply unrelated results. Null/undefined
+   *  means no place filter is active and preserves the full curated map. */
   activeSlugs?: string[] | null;
   /** Hide the generic search deck when an embedded map already has one
    *  explicit subject. Native locate and zoom controls remain available. */
@@ -752,6 +770,7 @@ export default function AppMap({
   const { mode } = useMode();
   const initialDefaults = useMemo(() => defaultsFor(mode), [mode]);
   const [selected, setSelected] = useState<Selected>(null);
+  const [rawSelectionContext, setRawSelectionContext] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   // A selected map highlight is drawn as a small constellation. It is
   // separate from a selected pin: one finding can connect several entities.
@@ -781,6 +800,13 @@ export default function AppMap({
     if (typeof window === "undefined") return new Set();
     const raw = new URLSearchParams(window.location.search).get("show") ?? "";
     return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  });
+  // A shared URL with an explicit `show=` contract must reproduce the sender's
+  // layer state, not inherit unrelated choices from this device. `show=none`
+  // is the intentional empty state used when a person shares a clean map.
+  const [hasExplicitLayerView] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).has("show");
   });
   const [deepLinkedAerial] = useState<AerialPhoto | null>(() => {
     if (compactSubjectMap) return null;
@@ -966,6 +992,21 @@ export default function AppMap({
       current === liveRouteQuery ? current : liveRouteQuery,
     );
   }, [routeQuery]);
+  // Back and Forward are browser actions, so restore their exact query from
+  // the address bar immediately instead of waiting for Next's route snapshot
+  // to settle. Under a busy map load that snapshot can arrive late enough for
+  // the field to keep showing the destination the visitor just left.
+  useEffect(() => {
+    const restoreBrowserQuery = () => {
+      pendingLocalQueryRef.current = null;
+      const next = (
+        new URLSearchParams(window.location.search).get("q") ?? ""
+      ).slice(0, 160);
+      setQ((current) => (current === next ? current : next));
+    };
+    window.addEventListener("popstate", restoreBrowserQuery);
+    return () => window.removeEventListener("popstate", restoreBrowserQuery);
+  }, []);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
   const [searchUnavailableQuery, setSearchUnavailableQuery] = useState("");
@@ -1146,7 +1187,7 @@ export default function AppMap({
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("civic") ||
-          (layerPrefs.civic ?? false),
+          (!hasExplicitLayerView && (layerPrefs.civic ?? false)),
       ),
   );
   const [showTrails, setShowTrails] = useState(
@@ -1154,7 +1195,7 @@ export default function AppMap({
       shouldInitializeReferenceLayer(
         compactSubjectMap,
         deepLinkLayers.has("trails") ||
-          (layerPrefs.trails ?? trailsLayerDefault),
+          (!hasExplicitLayerView && (layerPrefs.trails ?? trailsLayerDefault)),
       ),
   );
   const [showTransit, setShowTransit] = useState(
@@ -1164,7 +1205,7 @@ export default function AppMap({
       shouldInitializeReferenceLayer(
         compactSubjectMap,
         deepLinkLayers.has("transit") ||
-          (layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit")),
+          (!hasExplicitLayerView && (layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit"))),
       ),
   );
   // Aerial photo overlay — the Frederick Radius moat. Off by default
@@ -1175,7 +1216,7 @@ export default function AppMap({
       compactSubjectMap,
       deepLinkLayers.has("aerial") ||
         Boolean(deepLinkedAerial) ||
-        (layerPrefs.aerial ?? false),
+        (!hasExplicitLayerView && (layerPrefs.aerial ?? false)),
     ),
   );
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(deepLinkedAerial);
@@ -1185,7 +1226,8 @@ export default function AppMap({
   const [showCemeteries, setShowCemeteries] = useState(() =>
     shouldInitializeReferenceLayer(
       compactSubjectMap,
-      deepLinkLayers.has("cemeteries") || (layerPrefs.cemeteries ?? false),
+      deepLinkLayers.has("cemeteries") ||
+        (!hasExplicitLayerView && (layerPrefs.cemeteries ?? false)),
     ),
   );
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
@@ -1197,7 +1239,8 @@ export default function AppMap({
     () =>
       shouldInitializeReferenceLayer(
         compactSubjectMap,
-        deepLinkLayers.has("parking") || (layerPrefs.parking ?? false),
+        deepLinkLayers.has("parking") ||
+          (!hasExplicitLayerView && (layerPrefs.parking ?? false)),
       ),
   );
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
@@ -1269,7 +1312,8 @@ export default function AppMap({
     () =>
       shouldInitializeReferenceLayer(
         compactSubjectMap,
-        deepLinkLayers.has("radar") || (layerPrefs.radar ?? false),
+        deepLinkLayers.has("radar") ||
+          (!hasExplicitLayerView && (layerPrefs.radar ?? false)),
       ),
   );
   const [showTraffic, setShowTraffic] = useState(
@@ -1278,7 +1322,7 @@ export default function AppMap({
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("traffic") ||
-          (layerPrefs.traffic ?? false),
+          (!hasExplicitLayerView && (layerPrefs.traffic ?? false)),
       ),
   );
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
@@ -1294,7 +1338,7 @@ export default function AppMap({
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("incidents") ||
-          (layerPrefs.incidents ?? false),
+          (!hasExplicitLayerView && (layerPrefs.incidents ?? false)),
       ),
   );
   const [incidentHealth, setIncidentHealth] = useState<LiveLayerHealth>(() =>
@@ -1311,7 +1355,8 @@ export default function AppMap({
     () =>
       shouldInitializeReferenceLayer(
         compactSubjectMap,
-        deepLinkLayers.has("air") || (layerPrefs.aviation ?? false),
+        deepLinkLayers.has("air") ||
+          (!hasExplicitLayerView && (layerPrefs.aviation ?? false)),
       ),
   );
   const [rotorcraftStatus, setRotorcraftStatus] =
@@ -1321,7 +1366,8 @@ export default function AppMap({
     () =>
       shouldInitializeReferenceLayer(
         compactSubjectMap,
-        deepLinkLayers.has("cameras") || (layerPrefs.cameras ?? false),
+        deepLinkLayers.has("cameras") ||
+          (!hasExplicitLayerView && (layerPrefs.cameras ?? false)),
       ),
   );
   const [cameraHealth, setCameraHealth] = useState<LiveLayerHealth>(() =>
@@ -1427,6 +1473,7 @@ export default function AppMap({
    * reappear under the next selection. */
   const clearMapSelection = useCallback(() => {
     setSelected(null);
+    setRawSelectionContext(null);
     setSelectedSlug(null);
     setSelectedEvent(null);
     setEventGroup(null);
@@ -1454,6 +1501,7 @@ export default function AppMap({
           break;
         case "raw":
           setSelected(next.value);
+          setRawSelectionContext(next.contextLabel ?? null);
           break;
         case "event":
           setSelectedEvent(next.value);
@@ -1560,8 +1608,11 @@ export default function AppMap({
 
   // Remember the user's explicit layer choices (per device) so a customized map
   // survives reload. Transient focus filters (saved-only / field-notes-only)
-  // are intentionally excluded — see mapLayerPrefs.
+  // are intentionally excluded — see mapLayerPrefs. A shared `show=` view is
+  // authoritative for this visit but must not overwrite the recipient's own
+  // saved map setup.
   useEffect(() => {
+    if (hasExplicitLayerView) return;
     writeMapLayerPrefs({
       civic: showCivic,
       transit: showTransit,
@@ -1575,10 +1626,10 @@ export default function AppMap({
       aviation: showRotorcraft,
       cameras: showCameras,
     });
-  }, [showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
+  }, [hasExplicitLayerView, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
 
-  // Live road and aircraft choices are first-class share/deep-link layers.
-  // Expand the composite `roads` alias into explicit state so turning one
+  // Every deliberate reference layer is first-class share/deep-link state.
+  // Expand the composite `roads` alias into explicit members so turning one
   // member back off cannot be undone by a stale alias on the next reload.
   useEffect(() => {
     if (!isBrowseMap) return;
@@ -1590,18 +1641,43 @@ export default function AppMap({
         .filter(Boolean),
     );
     shown.delete("roads");
-    if (showTraffic) shown.add("traffic");
-    else shown.delete("traffic");
-    if (showCivic) shown.add("civic");
-    else shown.delete("civic");
-    if (showIncidents) shown.add("incidents");
-    else shown.delete("incidents");
-    if (showRotorcraft) shown.add("air");
-    else shown.delete("air");
+    shown.delete("none");
+    const shareableLayers: ReadonlyArray<readonly [string, boolean]> = [
+      ["civic", showCivic],
+      ["transit", showTransit],
+      ["trails", showTrails],
+      ["aerial", showAerial],
+      ["cemeteries", showCemeteries],
+      ["parking", showParking],
+      ["radar", showRadar],
+      ["traffic", showTraffic],
+      ["incidents", showIncidents],
+      ["air", showRotorcraft],
+      ["cameras", showCameras],
+    ];
+    for (const [key, visible] of shareableLayers) {
+      if (visible) shown.add(key);
+      else shown.delete(key);
+    }
     if (shown.size > 0) url.searchParams.set("show", [...shown].join(","));
+    else if (hasExplicitLayerView) url.searchParams.set("show", "none");
     else url.searchParams.delete("show");
     window.history.replaceState(window.history.state, "", url.toString());
-  }, [isBrowseMap, showCivic, showIncidents, showRotorcraft, showTraffic]);
+  }, [
+    isBrowseMap,
+    hasExplicitLayerView,
+    showAerial,
+    showCameras,
+    showCemeteries,
+    showCivic,
+    showIncidents,
+    showParking,
+    showRadar,
+    showRotorcraft,
+    showTraffic,
+    showTrails,
+    showTransit,
+  ]);
 
   // An explicitly selected public-essential layer is the foreground task.
   // Keep its clusters/icons above the always-on place dots; otherwise the
@@ -1758,10 +1834,9 @@ export default function AppMap({
     return pinpointDefault ? [] : base;
   }, [places, pinpointDefault, showSavedOnly, followedSlugs, fieldNotesOnly]);
 
-  // The set of pins that MATCH the active What/Open-now filter. When a
-  // filter is on, BrowseMapClient hands us the FULL place set plus these
-  // slugs, and we FADE the rest (rather than removing them) so the map
-  // visibly reacts to the dock. Null = no filter = everything matches.
+  // The set of pins that MATCH the active place/open/deal filter. Null means
+  // no place filter is active and the full curated catalog remains available.
+  // An empty Set is intentionally different: it produces an empty source.
   const matchSet = useMemo(
     () => (activeSlugs ? new Set(activeSlugs) : null),
     [activeSlugs],
@@ -1785,11 +1860,10 @@ export default function AppMap({
     return slugs.length > 0 ? new Set(slugs) : null;
   }, [places, q, searchMatches]);
   const visualMatchSet = discoveryPlaceSet ?? searchPlaceSet ?? matchSet;
-  // What the dock counts + the list show: the drawn pins (lens-filtered)
-  // intersected with the active match set. The faded pins stay on the map
-  // but don't count as "on the map".
+  // What the dock counts, list, curated pins, and curated clusters all use:
+  // the lens-filtered places intersected with the active URL match set.
   const visiblePlaces = useMemo(
-    () => (matchSet ? filteredPlaces.filter((p) => matchSet.has(p.slug)) : filteredPlaces),
+    () => curatedPlacesForMapSource(filteredPlaces, matchSet),
     [filteredPlaces, matchSet],
   );
 
@@ -2003,6 +2077,7 @@ export default function AppMap({
     // Drop OSM pins that duplicate a curated place (same name within
     // ~150 m) — the fix for "still duplicates on the map".
     pool = pool.filter((p) => !osmDupesCurated(p));
+    pool = backgroundPlacesForMapSource(pool, matchSet !== null);
     return {
       type: "FeatureCollection" as const,
       features: pool.map((p) => ({
@@ -2024,7 +2099,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       })),
     };
-  }, [osmPlaces, osmDupesCurated]);
+  }, [matchSet, osmPlaces, osmDupesCurated]);
 
   // Which raw amenity category slugs are active, from the selected groups.
   const activeAmenityCats = useMemo(() => {
@@ -2098,7 +2173,7 @@ export default function AppMap({
           category: cat,
           osm_tag: "",
           address: a.detail ?? "",
-          city: a.municipality,
+          city: municipalityDisplayName(a.municipality),
           phone: "",
           website: "",
           opening_hours: "",
@@ -2131,12 +2206,73 @@ export default function AppMap({
     ],
     [amenities, extraAmenities, osmPlaces, transitStops],
   );
+  const amenitySelectionPoints = useMemo(
+    () => [
+      ...amenities.map((amenity) => {
+        const category = AMENITY_KIND_TO_CAT[amenity.kind];
+        return {
+          _kind: "osm" as const,
+          osm_id: amenity.id,
+          name: amenity.name,
+          category_slug: category,
+          osm_tag: "",
+          lng: amenity.lng,
+          lat: amenity.lat,
+          address: amenity.detail,
+          city: municipalityDisplayName(amenity.municipality),
+          photo: amenity.photo,
+          kind: category,
+        };
+      }),
+      ...[...osmPlaces, ...extraAmenities]
+        .filter(isAmenity)
+        .map((place) => ({
+          ...place,
+          _kind: "osm" as const,
+          kind: place.category_slug,
+        })),
+    ],
+    [amenities, extraAmenities, osmPlaces],
+  );
+
+  const focusNearestAmenity = useCallback(
+    (groupKey: string) => {
+      if (!userLoc) return;
+      const group = AMENITY_GROUPS.find((candidate) => candidate.key === groupKey);
+      if (!group) return;
+      const nearest = nearestMapUtilityPoint(
+        userLoc,
+        amenitySelectionPoints,
+        new Set(group.cats),
+      );
+      if (!nearest) return;
+
+      openMapSelection({
+        kind: "raw",
+        value: nearest.point,
+        contextLabel: `Nearest mapped ${group.label.toLowerCase()}`,
+      });
+      setGeoMsg(null);
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      cameraIntentRef.current = true;
+      map.easeTo({
+        center: [nearest.point.lng, nearest.point.lat],
+        zoom: Math.max(map.getZoom(), 15.5),
+        offset: [0, -110],
+        duration: prefersReducedMotion() ? 0 : 600,
+        easing: CAM_EASE,
+        essential: true,
+      });
+    },
+    [amenitySelectionPoints, openMapSelection, userLoc],
+  );
   /** Curated places use semantic zoom on the county and compact subject maps:
    * clusters at broad/town zoom, then individual dots and category pucks.
    * Other embeds keep every already-scoped place individually represented. */
   const curatedGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
-    features: filteredPlaces.map((p) => {
+    features: visiblePlaces.map((p) => {
       const visual = mapPlaceVisualState(p.slug, {
         amenitiesActive: amenityGroups.size > 0,
         matchSlugs: visualMatchSet,
@@ -2174,7 +2310,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
       };
     }),
-  }), [amenityGroups, filteredPlaces, visualMatchSet]);
+  }), [amenityGroups, visiblePlaces, visualMatchSet]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -2217,7 +2353,7 @@ export default function AppMap({
         scrubSourceRef.current = curatedGeoJson;
       }
       const at = scrubInstant(scrubHour);
-      for (const p of filteredPlaces) {
+      for (const p of visiblePlaces) {
         const h = hoursBySlug.get(p.slug);
         const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
         const dim = !open;
@@ -2230,12 +2366,15 @@ export default function AppMap({
     if (m && m.isSourceLoaded("curated-places")) apply();
     else if (m) m.once("idle", apply);
     return () => { cancelled = true; };
-  }, [scrubHour, curatedGeoJson, filteredPlaces]);
+  }, [scrubHour, curatedGeoJson, visiblePlaces]);
 
   const selectedPlace = useMemo(
-    () => (selectedSlug ? places.find((place) => place.slug === selectedSlug) ?? null : null),
-    [places, selectedSlug],
+    () => (selectedSlug ? visiblePlaces.find((place) => place.slug === selectedSlug) ?? null : null),
+    [selectedSlug, visiblePlaces],
   );
+  useEffect(() => {
+    if (selectedSlug && !selectedPlace) clearMapSelection();
+  }, [clearMapSelection, selectedPlace, selectedSlug]);
 
   // The single selected place uses the Radius brick regardless of category.
   // Category remains visible on the result card; the map itself gains one
@@ -3809,8 +3948,8 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Use the Change view button
-          to choose places, nearby essentials, live conditions, time, or area.
+          or minus to zoom when the map has focus. Use Show to find nearby
+          places, check today and tonight, see conditions, or add Frederick details.
         </p>
 
         {dock && !mapError && (
@@ -3970,6 +4109,16 @@ export default function AppMap({
             markMapOnLoad();
             commitResultViewport(e.target);
             setMapLoaded(true);
+            // `load` means Mapbox has a renderable style. Waiting for a later
+            // network-idle event kept the decorative loading cover over an
+            // already usable map, especially on slow live feeds. Two paint
+            // frames give the canvas time to appear, while onIdle remains a
+            // fallback for browsers that throttle animation frames.
+            if (dock && !mapVisualReady) {
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => setMapVisualReady(true));
+              });
+            }
             // A restored `?c=` camera can open already zoomed in without ever
             // firing moveend, so seed the reset FAB's visibility from the
             // initial frame too.
@@ -5719,6 +5868,7 @@ export default function AppMap({
             communityReportCount={communityReportCount}
             amenityGroups={amenityGroups}
             setAmenityGroups={setAmenityGroups}
+            focusNearestAmenity={focusNearestAmenity}
             civicAvailable={civic.length > 0}
             showCivic={showCivic}
             setShowCivic={setShowCivic}
@@ -5828,7 +5978,12 @@ export default function AppMap({
         )}
 
         {dock && compactMapViewport && selected && (
-          <MapRawPeek item={selected} onClose={clearMapSelection} />
+          <MapRawPeek
+            item={selected}
+            distanceOrigin={userLoc}
+            contextLabel={rawSelectionContext}
+            onClose={clearMapSelection}
+          />
         )}
 
         {dock && compactMapViewport && civicTown && (() => {

@@ -30,7 +30,8 @@ describe("TaproomMap", () => {
     );
 
     expect(html).toContain('data-brewery-map-count="4"');
-    expect(html).toContain("All 4 brewery guides start in view.");
+    expect(html).toContain("All 4 guides are in view.");
+    expect(html).toContain("Tap a cluster to zoom in or a marker for details.");
     expect(html).toContain("Frederick City");
     expect(html).toContain("Mount Airy");
     expect(html).toContain(

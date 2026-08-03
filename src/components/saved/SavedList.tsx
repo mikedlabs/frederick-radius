@@ -760,17 +760,6 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         </section>
       )}
 
-      <SavedTransitSection
-        stops={savedTransitStops}
-        buses={savedTransitBuses}
-        onRemoveStop={(stop) => {
-          return removeSavedTransitStop(stop);
-        }}
-        onRemoveBus={(bus) => {
-          return removeSavedTransitBus(bus);
-        }}
-      />
-
       {places.length > 0 && (
         <section aria-labelledby="saved-places-heading" className="space-y-2.5">
           <header className="flex items-baseline gap-2.5">
@@ -846,6 +835,22 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           )}
         </section>
       )}
+
+      {/* Transit is useful personal context, but a delayed live feed must not
+          outrank the places and events the person explicitly came to Saved to
+          revisit. Keep it after those saves and collapse it when there is
+          already stronger organizer content on the page. */}
+      <SavedTransitSection
+        stops={savedTransitStops}
+        buses={savedTransitBuses}
+        collapsed={hasOrganizerContent}
+        onRemoveStop={(stop) => {
+          return removeSavedTransitStop(stop);
+        }}
+        onRemoveBus={(bus) => {
+          return removeSavedTransitBus(bus);
+        }}
+      />
 
       <KeepRadiusCard variant="row" />
 

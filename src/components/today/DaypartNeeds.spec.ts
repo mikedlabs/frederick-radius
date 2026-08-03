@@ -387,7 +387,7 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).not.toContain("<img");
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
     expect(withoutPhoto).toContain("min-h-[76px]");
-    expect(withoutPhoto).toContain('class="h-5 w-5"');
+    expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
   });
 
   it("uses the photo proxy signal and recognizes its 1x1 failure image", () => {

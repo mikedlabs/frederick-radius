@@ -57,8 +57,11 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
     <section aria-labelledby="brewery-strip-heading" className="text-[var(--app-ink)]">
       <div className="px-0.5">
         <h2 id="brewery-strip-heading" className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px]">
-          Choose a brewery
+          Find the right taproom.
         </h2>
+        <p className="mt-1 text-[12px] leading-relaxed text-[var(--app-ink-2)]">
+          Start with what matters for this visit.
+        </p>
       </div>
 
       {/* Feature filter chips */}
@@ -132,7 +135,7 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
                   <span className="mt-1 block text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--app-ink-3)]">
                     {c.town}
                   </span>
-                  <span className="mt-2 block line-clamp-3 min-h-[3.75rem] text-[12px] leading-relaxed text-[var(--app-ink-2)]">
+                  <span className="mt-2 block line-clamp-2 min-h-[2.5rem] text-[12px] leading-relaxed text-[var(--app-ink-2)]">
                     {c.story}
                   </span>
                   <span className="mt-3 flex min-h-8 items-center justify-between gap-3 border-t pt-2 text-[11.5px] font-semibold text-[var(--app-brand-press)]" style={{ borderColor: "var(--app-border)" }}>

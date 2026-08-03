@@ -21,20 +21,35 @@ describe("SavedList empty state", () => {
     expect(html).not.toContain("min-h-[34rem]");
   });
 
-  it("leads with useful, saved, and upcoming content before one organizer reveal", () => {
+  it("leads with useful saved content and keeps transit quiet before one organizer reveal", () => {
     const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
     const useful = source.indexOf('id="saved-useful-now"');
-    const transit = source.indexOf("<SavedTransitSection");
     const saved = source.indexOf('id="saved-places-heading"');
     const upcoming = source.indexOf('aria-label="Upcoming saved events"');
+    const transit = source.indexOf("<SavedTransitSection");
     const organizer = source.indexOf('id="saved-organizer"');
 
     expect(useful).toBeGreaterThan(-1);
-    expect(transit).toBeGreaterThan(useful);
-    expect(saved).toBeGreaterThan(transit);
+    expect(saved).toBeGreaterThan(useful);
     expect(upcoming).toBeGreaterThan(saved);
-    expect(organizer).toBeGreaterThan(upcoming);
+    expect(transit).toBeGreaterThan(upcoming);
+    expect(organizer).toBeGreaterThan(transit);
+    expect(source).toContain("collapsed={hasOrganizerContent}");
     expect(source.match(/<details/g)).toHaveLength(1);
     expect(source).toContain("Lists, map, notes, visits, and sharing");
+  });
+
+  it("renders saved transit as an accessible quiet disclosure when collapsed", () => {
+    const source = readFileSync(
+      "src/components/saved/SavedTransitSection.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("collapsed = false");
+    expect(source).toContain("<details");
+    expect(source).toContain("<summary");
+    expect(source).toContain('id="saved-transit-heading"');
+    expect(source).toContain('href="/transit"');
+    expect(source).toContain("Open for live status.");
   });
 });

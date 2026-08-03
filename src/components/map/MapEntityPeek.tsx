@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { directionsHref } from "@/lib/map/directionsHref";
+import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { sizedImage } from "@/lib/format/img";
 import type {
   CemeteryPin,
@@ -95,9 +96,13 @@ export function MapEventPeek({
 
 export function MapRawPeek({
   item,
+  distanceOrigin,
+  contextLabel,
   onClose,
 }: {
   item: SelectedOsm | SelectedPlace;
+  distanceOrigin?: LngLat | null;
+  contextLabel?: string | null;
   onClose: () => void;
 }) {
   const isPlace = item._kind === "place";
@@ -112,6 +117,9 @@ export function MapRawPeek({
     !isPlace && item.website && /^https?:\/\//i.test(item.website)
       ? item.website
       : null;
+  const distance = distanceOrigin
+    ? formatDistance(haversineMeters(distanceOrigin, { lat, lng }))
+    : null;
 
   return (
     <MapResultSurface
@@ -135,10 +143,11 @@ export function MapRawPeek({
         </span>
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color }}>
-            {categoryMeta?.name ?? category}
+            {contextLabel ?? categoryMeta?.name ?? category}
           </span>
           <span className="map-peek-name font-serif">{item.name}</span>
           {address && <span className="map-peek-detail">{address}</span>}
+          {distance && <span className="map-peek-detail">{distance} from you</span>}
           {!isPlace && item.cuisine && (
             <span className="map-peek-detail">{item.cuisine}</span>
           )}

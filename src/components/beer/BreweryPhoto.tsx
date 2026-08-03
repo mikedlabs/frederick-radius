@@ -8,6 +8,7 @@ import type {
   BreweryPhotoAsset,
   BreweryPhotoMap,
 } from "@/lib/beer/brewery-media";
+import { BreweryLogo } from "./BreweryLogo";
 
 export type { BreweryPhotoMap };
 
@@ -24,14 +25,16 @@ type BreweryPhotoProps = {
   imageClassName?: string;
   href?: string;
   linkLabel?: string;
+  showLabel?: boolean;
 };
 
 /**
- * A publishable taproom photograph with a typographic fallback. We do not
+ * A publishable taproom photograph with a brewery-mark fallback. We do not
  * silently substitute downloaded third-party photography or an unsourced
  * brewery mark when photo attribution is unavailable.
  */
 export function BreweryPhoto({
+  brewerySlug,
   breweryName,
   photo,
   alt,
@@ -43,21 +46,17 @@ export function BreweryPhoto({
   imageClassName = "object-cover",
   href,
   linkLabel,
+  showLabel = false,
 }: BreweryPhotoProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = photo?.src;
   const showPhoto = Boolean(src && failedSrc !== src);
-  const initials = breweryName
-    .replace(/[^a-zA-Z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase() || "FR";
-
   return (
-    <span className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${className}`}>
+    <span
+      data-brewery-media={showPhoto ? "photo" : "mark"}
+      data-brewery-slug={brewerySlug}
+      className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${className}`}
+    >
       {showPhoto && src ? (
         <Image
           src={src}
@@ -85,27 +84,25 @@ export function BreweryPhoto({
           aria-hidden={decorative || undefined}
           aria-label={decorative ? undefined : `${breweryName} photo unavailable`}
           role={decorative ? undefined : "img"}
-          className={`absolute inset-0 flex flex-col ${
-            compactFallback ? "items-center justify-center p-2" : "justify-between p-[12%]"
-          }`}
+          className="absolute inset-0 flex items-center justify-center"
           style={{
             background:
-              "radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--app-amber) 20%, transparent), transparent 35%), linear-gradient(145deg, var(--app-bg-elevated-solid), var(--app-bg-sunken))",
+              "linear-gradient(145deg, var(--app-bg-elevated-solid), var(--app-bg-sunken))",
           }}
         >
-          <span
-            aria-hidden
-            className={`font-sans font-semibold leading-none tracking-[-0.08em] ${
+          <BreweryLogo
+            brewerySlug={brewerySlug}
+            breweryName={breweryName}
+            decorative
+            sizes={compactFallback ? "112px" : "180px"}
+            className={`bg-white/75 p-2 mix-blend-multiply ${
               compactFallback
-                ? "text-[clamp(2rem,10vw,3.5rem)]"
-                : "text-[clamp(2.6rem,14vw,5rem)]"
+                ? "h-[68%] w-[74%]"
+                : "mb-7 h-[58%] w-[58%] max-h-[132px] max-w-[180px] rounded-sm"
             }`}
-            style={{ color: "color-mix(in srgb, var(--app-amber-text) 24%, transparent)" }}
-          >
-            {initials}
-          </span>
+          />
           {!compactFallback ? (
-            <span className="max-w-[14rem]">
+            <span className="absolute inset-x-3 bottom-3 max-w-[14rem]">
               <span className="block font-sans text-[clamp(.8rem,3.5vw,1.05rem)] font-semibold leading-tight text-[var(--app-ink)]">
                 {breweryName}
               </span>
@@ -116,6 +113,13 @@ export function BreweryPhoto({
           ) : null}
         </span>
       )}
+      {showPhoto && showLabel ? (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/78 via-black/45 to-transparent px-3 pb-2.5 pt-8 text-left text-white">
+          <span className="block text-[12px] font-semibold leading-tight">
+            {breweryName}
+          </span>
+        </span>
+      ) : null}
       {href ? (
         <Link
           href={href}
@@ -125,7 +129,7 @@ export function BreweryPhoto({
       ) : null}
       {showPhoto && photo?.attribution ? (
         <span
-          className="absolute bottom-2 right-2 z-10 max-w-[82%] rounded bg-black/72 px-2 py-1 text-right text-[9px] leading-none text-white shadow-sm backdrop-blur-sm"
+          className="absolute right-1.5 top-1.5 z-10 max-w-[72%] rounded-sm bg-black/64 px-1.5 py-1 text-right text-[8px] leading-none text-white shadow-sm backdrop-blur-sm"
           aria-label="Google photo attribution"
         >
           <GooglePhotoAttributionLine

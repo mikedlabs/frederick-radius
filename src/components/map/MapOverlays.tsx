@@ -127,6 +127,10 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
   useEffect(() => {
     const m = map?.getMap();
     if (!m) return;
+    // The Radius-to-county transition removes the old map canvas before this
+    // passive cleanup runs. Keep the element captured at setup time instead
+    // of asking a dismantled Mapbox instance for a canvas during unmount.
+    const canvas = m.getCanvas();
     // Points AND polygon fills are tappable (a park's grounds answer
     // "what park is this?" just like its marker does).
     const layerIds = active.flatMap((k) => [`ov-${k}-pt`, `ov-${k}-fill`]);
@@ -155,10 +159,10 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
       });
     };
     const enter = () => {
-      m.getCanvas().style.cursor = "pointer";
+      canvas.style.cursor = "pointer";
     };
     const leave = () => {
-      m.getCanvas().style.cursor = "";
+      canvas.style.cursor = "";
     };
 
     for (const id of layerIds) {
@@ -173,7 +177,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
         m.off("mouseenter", id, enter);
         m.off("mouseleave", id, leave);
       }
-      m.getCanvas().style.cursor = "";
+      canvas.style.cursor = "";
     };
   }, [map, active, data]);
 

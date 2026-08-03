@@ -23,8 +23,8 @@ export default function BeerMasthead({ photos }: { photos: BreweryPhotoMap }) {
         <h1 className="max-w-[34rem] font-sans text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-[.98] tracking-[-0.045em] text-balance">
           Beer in Frederick County
         </h1>
-        <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Radius has {breweries} brewery guides across Frederick County.
+        <p className="mt-2 max-w-[32rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Browse {breweries} source-checked brewery guides and choose where to go next.
         </p>
       </div>
       <div className="grid h-[158px] grid-cols-[minmax(0,1.65fr)_minmax(92px,.75fr)] grid-rows-2 gap-px bg-[var(--app-border)] sm:h-[230px]">
@@ -40,6 +40,7 @@ export default function BeerMasthead({ photos }: { photos: BreweryPhotoMap }) {
             sizes={index === 0 ? "(max-width: 640px) 70vw, 540px" : "(max-width: 640px) 30vw, 260px"}
             href={`/places/${brewery.slug}`}
             linkLabel={`Open ${brewery.name}`}
+            showLabel={index === 0}
             className={`group relative h-full w-full outline-none${index === 0 ? " row-span-2" : ""}`}
             imageClassName="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
           />

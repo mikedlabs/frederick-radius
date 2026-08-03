@@ -81,7 +81,7 @@ const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
 /** The map begins as an observation surface. These controls are revealed only
  *  after a person opens Map options; none compete with the county on load. */
 type Pane = "contents" | "what" | "amenities" | "when" | "where" | "discover" | "layers" | "localLayers";
-type PlaceReveal = "categories" | "amenities";
+type PlaceReveal = "categories";
 
 /** Where the camera is pointed, per the user's own choice in the Where
  *  pane. Camera moves only — Where NEVER filters what's on the map. */
@@ -169,6 +169,7 @@ export type MapDockProps = {
   communityReportCount: number;
   amenityGroups: Set<string>;
   setAmenityGroups: SetState<Set<string>>;
+  focusNearestAmenity?: (groupKey: string) => void;
 
   civicAvailable: boolean;
   showCivic: boolean;
@@ -500,7 +501,7 @@ export default function MapDock(props: MapDockProps) {
     if (!searchPanelOpen) return;
     const dismissSearchOutside = (event: PointerEvent | WheelEvent) => {
       const target = event.target;
-      // The Change view button belongs to the same command instrument. Let its
+      // The Show button belongs to the same command instrument. Let its
       // own click close search and open the sheet; closing during capture
       // would move the bottom dock before the click lands on touch devices.
       if (target instanceof Node && dockRef.current?.contains(target)) return;
@@ -961,15 +962,15 @@ export default function MapDock(props: MapDockProps) {
   const cameraUpdate = formatLayerUpdate(props.cameraHealth.timestamp);
 
   const paneTitle =
-    pane === "contents" ? "What the map shows"
+    pane === "contents" ? "Choose what to see"
     : pane === "amenities" ? "Nearby essentials"
     : pane === "what"
-      ? "Find a place"
-    : pane === "when" ? "Right now"
+      ? "Find nearby"
+    : pane === "when" ? "Today & tonight"
     : pane === "where" ? "Choose an area"
     : pane === "discover" ? "Highlights"
-    : pane === "layers" ? "Live conditions"
-    : pane === "localLayers" ? "Local layers"
+    : pane === "layers" ? "Travel & conditions"
+    : pane === "localLayers" ? "Frederick details"
     : "";
   const isLayerPane = pane === "layers" || pane === "localLayers";
 
@@ -992,10 +993,18 @@ export default function MapDock(props: MapDockProps) {
       props.amenityGroups.size === 1 && props.amenityGroups.has(key);
     props.setAmenityGroups(isOnlyActive ? new Set() : new Set([key]));
     closePane();
+    if (!isOnlyActive) props.focusNearestAmenity?.(key);
   };
 
   const shareCurrentView = async () => {
-    const url = window.location.href;
+    const shareUrl = new URL(window.location.href);
+    // An explicit empty layer state is still meaningful. Without this marker,
+    // a recipient's saved device preferences could add layers the sender never
+    // chose and make the shared map look different.
+    if (!shareUrl.searchParams.has("show")) {
+      shareUrl.searchParams.set("show", "none");
+    }
+    const url = shareUrl.toString();
     haptic("light");
     track("map_share", { surface: "contents" });
     try {
@@ -1050,6 +1059,19 @@ export default function MapDock(props: MapDockProps) {
     !props.searchUnavailable &&
     !props.searchPending &&
     visibleSearchMatches.length === 0;
+  const searchStartVisible =
+    pane === null &&
+    searchPanelOpen &&
+    props.q.trim().length === 0;
+  const visibleTimeWindows = TIME_WINDOWS.filter(
+    (window) =>
+      (browse.eventWindowCounts[window.key] ?? 0) > 0 ||
+      (browse.timeModeExplicit && browse.timeMode === window.key) ||
+      (browse.musicTonight && window.key === "tonight"),
+  );
+  const showLiveMusic = browse.musicTonight || browse.musicTonightCount > 0;
+  const showDeals = browse.dealsOn || browse.dealsTodayCount > 0;
+  const hasEventChoices = visibleTimeWindows.length > 0 || showLiveMusic;
   const activeSearchIndex =
     searchSelection.query === props.q &&
     searchSelection.index >= 0 &&
@@ -1254,6 +1276,54 @@ export default function MapDock(props: MapDockProps) {
                 </button>
               )}
             </div>
+            {searchStartVisible && (
+              <div
+                className="dock-search-results dock-search-start"
+                onPointerDown={(event) => {
+                  // Keep the input focused until the chosen task takes over.
+                  // This prevents a mobile blur from closing the panel before
+                  // the button's click can run.
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <p className="dock-search-start-title">Start with what you need</p>
+                <div className="dock-search-start-grid" role="group" aria-label="Map shortcuts">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeSearchPanel();
+                      pickNearMe();
+                    }}
+                  >
+                    <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    Near me
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openContentsPane("when")}
+                  >
+                    <Clock className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    Right now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openContentsPane("amenities")}
+                  >
+                    <Toilet className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    Essentials
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openContentsPane("layers")}
+                  >
+                    <Layers3 className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    Conditions
+                  </button>
+                </div>
+              </div>
+            )}
             {searchResultsVisible && (
               <div
                 className="dock-search-results"
@@ -1488,6 +1558,7 @@ export default function MapDock(props: MapDockProps) {
             ) : (
               <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
             )}
+            <span className="dock-locate-label">Near me</span>
           </button>
 
           <button
@@ -1497,13 +1568,13 @@ export default function MapDock(props: MapDockProps) {
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label="What the map shows"
+            aria-label="Choose what to see"
             title={contentsSummary}
             onClick={() => togglePane("contents")}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
-              <span className="dock-contents-prefix">Change </span>view
+              Show
             </span>
             {activeOptionCount > 0 && (
               <span className="dock-layer-count" aria-hidden>
@@ -1537,7 +1608,7 @@ export default function MapDock(props: MapDockProps) {
                   className="dock-back"
                   onClick={() => {
                     setPlaceReveal(null);
-                    setPane(pane === "localLayers" ? "layers" : "contents");
+                    setPane("contents");
                   }}
                 >
                   <ChevronLeft className="h-4 w-4" strokeWidth={2.3} aria-hidden />
@@ -1588,22 +1659,28 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="Find places nearby"
-                  onClick={() => openContentsPane("what", "categories")}
+                  aria-label="Find something nearby"
+                  onClick={() => {
+                    // "Nearby" should actually start nearby. Preserve a town
+                    // the person deliberately chose, but use the map's normal
+                    // location permission flow from the county default.
+                    if (activeWhereSel.kind === "county") pickNearMe();
+                    openContentsPane("what");
+                  }}
                 >
                   <span className="dock-content-icon" aria-hidden>
                     <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Places nearby</strong>
-                    <small>Food, coffee, parks, shops, and more</small>
+                    <strong>Find nearby</strong>
+                    <small>Places, public essentials, and travel reach</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="See what is happening right now"
+                  aria-label="See what is happening today and tonight"
                   data-on={timeActive || undefined}
                   onClick={() => openContentsPane("when")}
                 >
@@ -1611,7 +1688,7 @@ export default function MapDock(props: MapDockProps) {
                     <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Right now</strong>
+                    <strong>Today &amp; tonight</strong>
                     <small>{timeActive ? when.text : "Events, open places, music, and deals"}</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -1619,27 +1696,7 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="Find a nearby essential"
-                  data-on={publicAmenityCount > 0 || undefined}
-                  onClick={() => openContentsPane("amenities")}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <Toilet className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Nearby essentials</strong>
-                    <small>
-                      {publicAmenityCount > 0
-                        ? `${publicAmenityCount} ${publicAmenityCount === 1 ? "type" : "types"} showing`
-                        : "Restrooms, water, trash, dog needs, and power"}
-                    </small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="dock-content-row dock-content-row-primary"
-                  aria-label="Check live conditions and map layers"
+                  aria-label="Check travel and live conditions"
                   data-on={visibleLayerCount > 0 || undefined}
                   onClick={() => openContentsPane("layers")}
                 >
@@ -1647,12 +1704,28 @@ export default function MapDock(props: MapDockProps) {
                     <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Live conditions</strong>
+                    <strong>Travel &amp; conditions</strong>
                     <small>
                       {visibleLayerCount > 0
                         ? `${visibleLayerCount} ${visibleLayerCount === 1 ? "layer" : "layers"} showing`
                         : "Traffic, transit, parking, radar, and alerts"}
                     </small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row dock-content-row-primary"
+                  aria-label="See Frederick details on the map"
+                  data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
+                  onClick={() => openContentsPane("localLayers")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Trees className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>See Frederick details</strong>
+                    <small>Trails and history on the map, with your saved places</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1674,26 +1747,6 @@ export default function MapDock(props: MapDockProps) {
                     </span>
                     <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                   </button>
-                {props.discoveries.length > 0 && (
-                  <button
-                    type="button"
-                    className="dock-content-row dock-content-row-secondary"
-                    aria-label="Highlights in this view"
-                    data-on={Boolean(props.selectedDiscoveryId) || undefined}
-                    onClick={() => openContentsPane("discover")}
-                  >
-                    <span className="dock-content-icon" aria-hidden>
-                      <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                    </span>
-                    <span className="dock-content-copy">
-                      <strong>Highlights</strong>
-                      <small>
-                        {props.discoveries.length} source-backed {props.discoveries.length === 1 ? "connection" : "connections"}
-                      </small>
-                    </span>
-                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                  </button>
-                )}
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-secondary"
@@ -1707,7 +1760,7 @@ export default function MapDock(props: MapDockProps) {
                   </span>
                   <span className="dock-content-copy">
                     <strong>{shareStatus === "copied" ? "Copied" : "Share"}</strong>
-                    <small>Includes the area and choices currently on the map</small>
+                    <small>Share the current map link</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1785,19 +1838,37 @@ export default function MapDock(props: MapDockProps) {
                     track("map_dock", { pane: "what", pick: "within-reach" });
                     closePane();
                     // The destination owns its own state and intentionally
-                    // drops the browse query. Next patches the native History
-                    // API and synchronizes useSearchParams when the state is
-                    // null; this avoids a pending debounced map-query write
-                    // cancelling a same-route App Router navigation.
+                    // drops the browse query. This is a same-route client mode
+                    // switch: update History, then notify the URL subscriber
+                    // so MapModeGate swaps the UI without a document reload.
                     window.history.pushState(null, "", "/map?mode=radius");
+                    window.dispatchEvent(new PopStateEvent("popstate"));
                   }}
                 >
                   <span className="dock-reveal-copy">
-                    <strong>Within reach</strong>
+                    <strong>Compare travel reach</strong>
                     <small>Compare what you can reach by walking, biking, or driving.</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
+
+                {props.amenityCount > 0 && publicAmenityGroups.length > 0 && (
+                  <button
+                    type="button"
+                    className="dock-reveal"
+                    aria-label="Find a nearby essential"
+                    onClick={() => setPane("amenities")}
+                  >
+                    <span className="dock-content-icon" aria-hidden>
+                      <Toilet className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-reveal-copy">
+                      <strong>Nearby essentials</strong>
+                      <small>Restrooms, water, trash, dog needs, power, and more</small>
+                    </span>
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
+                )}
 
                 {intent?.subIntents && intent.subIntents.length > 0 && (
                   <>
@@ -1878,80 +1949,12 @@ export default function MapDock(props: MapDockProps) {
                   ))}
                 </div>
 
-                {/* Public amenities stay in the find flow, but the full
-                    hand-mapped catalog no longer competes with the six most
-                    common choices above. */}
-                {props.amenityCount > 0 && publicAmenityGroups.length > 0 && (
-                  <>
-                    <button
-                      type="button"
-                      className="dock-reveal"
-                      aria-expanded={placeReveal === "amenities"}
-                      aria-controls="dock-public-amenities"
-                      onClick={() => togglePlaceReveal("amenities")}
-                    >
-                      <span className="dock-reveal-copy">
-                        <strong>Public amenities</strong>
-                        <small>Water, trash, dog stations, and more</small>
-                      </span>
-                      <span className="dock-reveal-count">
-                        {publicAmenityGroups.length}
-                      </span>
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform${placeReveal === "amenities" ? " rotate-180" : ""}`}
-                        strokeWidth={2.2}
-                        aria-hidden
-                      />
-                    </button>
-                    <div id="dock-public-amenities" hidden={placeReveal !== "amenities"} className="pt-2">
-                      <HeadRow
-                        color="var(--app-cool)"
-                        ariaLabel="Public amenities"
-                        onPick={toggleAmenity}
-                        items={publicAmenityGroups.map((g) => ({
-                          key: g.key,
-                          label: g.label,
-                          on: props.amenityGroups.has(g.key),
-                        }))}
-                      />
-                    </div>
-                  </>
-                )}
               </div>
             )}
 
             {/* ── WHEN ── */}
             {pane === "when" && (
               <div>
-                <Sect>Events</Sect>
-                <div className="dock-chips">
-                  {TIME_WINDOWS.map((w) => (
-                    <Chip
-                      key={w.key}
-                      on={
-                        (browse.timeModeExplicit && browse.timeMode === w.key) ||
-                        (browse.musicTonight && w.key === "tonight")
-                      }
-                      color="var(--app-brand)"
-                      onClick={() => pickWindow(w.key)}
-                      count={browse.eventWindowCounts[w.key] ?? 0}
-                    >
-                      {w.label}
-                    </Chip>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={browse.musicTonight || undefined}
-                  aria-pressed={browse.musicTonight}
-                  onClick={toggleMusicTonight}
-                >
-                  <Music className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Live music tonight
-                  <span className="dock-opennow-n">{browse.musicTonightCount.toLocaleString("en-US")}</span>
-                </button>
-
                 <Sect>Places right now</Sect>
                 <button
                   type="button"
@@ -1968,19 +1971,56 @@ export default function MapDock(props: MapDockProps) {
                     <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
                   )}
                 </button>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={browse.dealsOn || undefined}
-                  aria-pressed={browse.dealsOn}
-                  onClick={toggleDealsToday}
-                >
-                  <Tag className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Deals today
-                  <span className="dock-opennow-n">{browse.dealsTodayCount.toLocaleString("en-US")}</span>
-                </button>
+                {showDeals && (
+                  <button
+                    type="button"
+                    className="dock-opennow"
+                    data-on={browse.dealsOn || undefined}
+                    aria-pressed={browse.dealsOn}
+                    onClick={toggleDealsToday}
+                  >
+                    <Tag className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                    Deals today
+                    <span className="dock-opennow-n">{browse.dealsTodayCount.toLocaleString("en-US")}</span>
+                  </button>
+                )}
 
-                <Sect>The day</Sect>
+                {hasEventChoices && (
+                  <>
+                    <Sect>Events</Sect>
+                    <div className="dock-chips">
+                      {visibleTimeWindows.map((w) => (
+                        <Chip
+                          key={w.key}
+                          on={
+                            (browse.timeModeExplicit && browse.timeMode === w.key) ||
+                            (browse.musicTonight && w.key === "tonight")
+                          }
+                          color="var(--app-brand)"
+                          onClick={() => pickWindow(w.key)}
+                          count={browse.eventWindowCounts[w.key] ?? 0}
+                        >
+                          {w.label}
+                        </Chip>
+                      ))}
+                    </div>
+                    {showLiveMusic && (
+                      <button
+                        type="button"
+                        className="dock-opennow"
+                        data-on={browse.musicTonight || undefined}
+                        aria-pressed={browse.musicTonight}
+                        onClick={toggleMusicTonight}
+                      >
+                        <Music className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                        Live music tonight
+                        <span className="dock-opennow-n">{browse.musicTonightCount.toLocaleString("en-US")}</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                <Sect>Another time</Sect>
                 <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
               </div>
             )}
@@ -2095,39 +2135,27 @@ export default function MapDock(props: MapDockProps) {
                     <Chip
                       on={props.showParking}
                       color="var(--app-cool)"
-                      onClick={() => {
-                        props.setShowParking((v) => !v);
-                        closePane();
-                      }}
+                      onClick={() => props.setShowParking((v) => !v)}
                       count={props.parkingCount}
                       title="Downtown city parking garages, tinted by live availability"
                     >
                       Parking
                     </Chip>
                   )}
-                  <Chip
-                    on={props.showTransit}
-                    color="var(--app-cool)"
-                    onClick={() => {
-                      props.setShowTransit((v) => !v);
-                      closePane();
-                    }}
-                    disabled={props.transitHealth.status === "unavailable"}
-                    title={
-                      props.transitHealth.status === "unavailable"
-                        ? "The Frederick County TransIT route feed is unavailable"
-                        : "TransIT bus routes, stops, and live buses"
-                    }
-                  >
-                    {props.transitHealth.status === "unavailable" ? "Transit unavailable" : "Transit"}
-                  </Chip>
+                  {props.transitHealth.status !== "unavailable" && (
+                    <Chip
+                      on={props.showTransit}
+                      color="var(--app-cool)"
+                      onClick={() => props.setShowTransit((v) => !v)}
+                      title="TransIT bus routes, stops, and live buses"
+                    >
+                      Transit
+                    </Chip>
+                  )}
                   <Chip
                     on={props.showRadar}
                     color="var(--app-cool)"
-                    onClick={() => {
-                      props.setShowRadar((v) => !v);
-                      closePane();
-                    }}
+                    onClick={() => props.setShowRadar((v) => !v)}
                     title={
                       props.radarHealth.status === "unavailable"
                         ? props.showRadar
@@ -2142,10 +2170,7 @@ export default function MapDock(props: MapDockProps) {
                     <Chip
                       on={communityReportsOn}
                       color="var(--app-warning-press)"
-                      onClick={() => {
-                        toggleAmenity("community");
-                        closePane();
-                      }}
+                      onClick={() => toggleAmenity("community")}
                       count={props.communityReportCount}
                       title="Reviewed, unexpired reports submitted by the Frederick community"
                     >
@@ -2155,10 +2180,7 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.roadsNowFullyOn}
                     color="var(--app-brand)"
-                    onClick={() => {
-                      props.setShowRoadsNow(!props.roadsNowFullyOn);
-                      closePane();
-                    }}
+                    onClick={() => props.setShowRoadsNow(!props.roadsNowFullyOn)}
                     title={
                       "Current road flow from Mapbox with Maryland CHART reports and privacy-filtered public incidents. Medical and personal calls are never shown"
                     }
@@ -2168,10 +2190,7 @@ export default function MapDock(props: MapDockProps) {
                   <Chip
                     on={props.showCameras}
                     color="var(--app-cool)"
-                    onClick={() => {
-                      props.setShowCameras((v) => !v);
-                      closePane();
-                    }}
+                    onClick={() => props.setShowCameras((v) => !v)}
                     title={
                       props.cameraHealth.status === "unavailable"
                         ? props.showCameras
@@ -2182,11 +2201,19 @@ export default function MapDock(props: MapDockProps) {
                   >
                     Cameras
                   </Chip>
+                  <Chip
+                    on={props.showRotorcraft}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowRotorcraft((v) => !v)}
+                    title="Privacy-limited public helicopter activity. Medical and personal calls are never shown"
+                  >
+                    Helicopter activity
+                  </Chip>
                 </div>
 
                 {(props.showParking || props.showTransit || props.showRadar || communityReportsOn
                   || props.roadsNowActive || props.showRotorcraft || props.showCameras
-                  || props.transitHealth.status === "unavailable"
+                  || (props.showTransit && props.transitHealth.status === "unavailable")
                   || props.radarHealth.status === "unavailable"
                   || props.incidentHealth.status === "unavailable"
                   || props.cameraHealth.status === "unavailable") && (
@@ -2196,24 +2223,18 @@ export default function MapDock(props: MapDockProps) {
                         <strong>Parking</strong> · {props.parkingCount} downtown garages. Tap one for availability and directions.
                       </p>
                     )}
-                    {props.transitHealth.status === "unavailable" ? (
+                    {props.showTransit && (
                       <p className="dock-layer-status">
-                        <strong>Transit</strong> · The county route feed is unavailable, so this layer is off.
-                      </p>
-                    ) : props.showTransit && (
-                      <p className="dock-layer-status">
-                        <strong>Transit</strong> · {props.transitHealth.count} mapped route segments from {props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.
+                        <strong>Transit</strong> · {props.transitHealth.status === "unavailable"
+                          ? "The county route feed is unavailable."
+                          : `${props.transitHealth.count} mapped route segments from ${props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.`}
                       </p>
                     )}
-                    {props.radarHealth.status === "unavailable" ? (
+                    {props.showRadar && (
                       <p className="dock-layer-status">
-                        <strong>Radar</strong> · The latest RainViewer request failed. {props.showRadar
-                          ? "Retrying automatically."
-                          : "Turn Radar on to retry."}
-                      </p>
-                    ) : props.showRadar && (
-                      <p className="dock-layer-status">
-                        <strong>Radar</strong> · {props.radarHealth.status === "stale"
+                        <strong>Radar</strong> · {props.radarHealth.status === "unavailable"
+                          ? "RainViewer did not return the latest radar image. Radius will try again automatically."
+                          : props.radarHealth.status === "stale"
                           ? `Showing the last good frames${radarUpdate ? ` from ${radarUpdate}` : ""} while RainViewer retries.`
                           : props.radarHealth.status === "empty"
                           ? "No frames are available from RainViewer."
@@ -2250,15 +2271,11 @@ export default function MapDock(props: MapDockProps) {
                     {props.showCivic && props.civicAvailable && (
                       <p className="dock-layer-status"><strong>Official road reports</strong> · Maryland CHART incidents, WZDx work zones, and county-published issues.</p>
                     )}
-                    {props.incidentHealth.status === "unavailable" ? (
+                    {props.showIncidents && (
                       <p className="dock-layer-status">
-                        <strong>Scanner reports</strong> · The latest Frederick Scanner request failed. {props.showIncidents
-                          ? "Retrying automatically."
-                          : "Turn Roads now on to retry."}
-                      </p>
-                    ) : props.showIncidents && (
-                      <p className="dock-layer-status">
-                        <strong>Scanner reports</strong> · {props.incidentHealth.status === "stale"
+                        <strong>Scanner reports</strong> · {props.incidentHealth.status === "unavailable"
+                          ? "The latest Frederick Scanner request failed. Retrying automatically."
+                          : props.incidentHealth.status === "stale"
                           ? `Showing ${props.incidentHealth.count} incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
                           : props.incidentHealth.status === "disabled"
                             ? "Loading the latest public incidents…"
@@ -2277,15 +2294,11 @@ export default function MapDock(props: MapDockProps) {
                         shown at the fixed hospital heliport.
                       </p>
                     )}
-                    {props.cameraHealth.status === "unavailable" ? (
+                    {props.showCameras && (
                       <p className="dock-layer-status">
-                        <strong>Cameras</strong> · The latest Maryland CHART request failed. {props.showCameras
-                          ? "Retrying automatically."
-                          : "Turn Cameras on to retry."}
-                      </p>
-                    ) : props.showCameras && (
-                      <p className="dock-layer-status">
-                        <strong>Cameras</strong> · {props.cameraHealth.status === "stale"
+                        <strong>Cameras</strong> · {props.cameraHealth.status === "unavailable"
+                          ? "The latest Maryland CHART request failed. Retrying automatically."
+                          : props.cameraHealth.status === "stale"
                           ? `Showing ${props.cameraHealth.count} camera${props.cameraHealth.count === 1 ? "" : "s"} from the last good update${cameraUpdate ? ` at ${cameraUpdate}` : ""}. The feed is retrying.`
                           : props.cameraHealth.status === "disabled"
                             ? "Loading Maryland CHART cameras…"
@@ -2297,21 +2310,6 @@ export default function MapDock(props: MapDockProps) {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  className="dock-reveal"
-                  aria-label="More local layers"
-                  onClick={() => setPane("localLayers")}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <Trees className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-reveal-copy">
-                    <strong>More local layers</strong>
-                    <small>Trails, aerial photos, parks, history, and saved places</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
               </div>
             )}
 
@@ -2321,7 +2319,7 @@ export default function MapDock(props: MapDockProps) {
                 mixed-purpose scroll. ── */}
             {pane === "localLayers" && (
               <div>
-                <Sect>Explore Frederick</Sect>
+                <Sect>Frederick details</Sect>
                 <div className="dock-chips">
                   {props.trailCount > 0 && (
                     <Chip
@@ -2357,15 +2355,13 @@ export default function MapDock(props: MapDockProps) {
                       Cemeteries
                     </Chip>
                   )}
-                  {OVERLAYS.map((o) => (
+                  {OVERLAYS.filter((o) => o.ready).map((o) => (
                     <Chip
                       key={o.key}
                       on={props.activeOverlays.includes(o.key)}
                       color="var(--app-brand)"
-                      disabled={!o.ready}
-                      soon={!o.ready}
-                      onClick={() => o.ready && props.toggleOverlay(o.key)}
-                      title={o.ready ? o.sources : `${o.sources} (coming soon)`}
+                      onClick={() => props.toggleOverlay(o.key)}
+                      title={o.sources}
                     >
                       {o.label}
                     </Chip>
@@ -2414,6 +2410,27 @@ export default function MapDock(props: MapDockProps) {
                       )}
                     </div>
                   </>
+                )}
+
+                {props.discoveries.length > 0 && (
+                  <button
+                    type="button"
+                    className="dock-reveal"
+                    aria-label="Connections here"
+                    data-on={Boolean(props.selectedDiscoveryId) || undefined}
+                    onClick={() => setPane("discover")}
+                  >
+                    <span className="dock-content-icon" aria-hidden>
+                      <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-reveal-copy">
+                      <strong>Connections here</strong>
+                      <small>
+                        {props.discoveries.length} source-backed {props.discoveries.length === 1 ? "connection" : "connections"}
+                      </small>
+                    </span>
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
                 )}
 
                 {/* The key — a field guide has a legend. Collapsed by

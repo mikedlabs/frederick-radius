@@ -108,7 +108,7 @@ export default function MapResultSurface({
         return;
       }
       document
-        .querySelector<HTMLElement>('[aria-label="What the map shows"]')
+        .querySelector<HTMLElement>('[aria-label="Choose what to see"]')
         ?.focus({ preventScroll: true });
     };
     window.requestAnimationFrame(() => restoreFocus());

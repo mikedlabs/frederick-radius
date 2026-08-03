@@ -35,7 +35,6 @@ import type {
 import type { MapPinPlace } from "@/components/map/types";
 import BrowseMapClient from "@/components/map/BrowseMapClient";
 import MapModeGate from "@/components/map/MapModeGate";
-import MapModeToggle from "@/components/map/MapModeToggle";
 import MapWarmup from "@/components/map/MapWarmup";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
@@ -420,15 +419,9 @@ async function RadiusMode() {
   return (
     <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
       <PageBloom variant="cool" />
-      {/* Mode toggle is handed to RadiusBuilder, which renders it in two
-          places: a modest floating copy over the collapsed map (always
-          visible, so "Whole county" is reachable without expanding) and
-          inside the sheet body for the expanded state. Clear of the map's
-          camera controls and the locate button. */}
       <RadiusBuilder
         amenities={radiusAmenities}
         events={radiusEvents}
-        modeToggle={<MapModeToggle mode="radius" />}
       />
     </div>
   );

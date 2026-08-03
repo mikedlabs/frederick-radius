@@ -3293,6 +3293,55 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-brand-press);
   color: var(--app-on-brand);
 }
+.dock-search-start {
+  padding: 11px;
+}
+@media (max-width: 1023.98px) {
+  .dock-search-start {
+    /* The popup is positioned from the search cell, but the four starting
+       jobs belong to the whole command bar. Let it use the dock width so the
+       labels never crush together on a phone. */
+    left: 0;
+    right: auto;
+    width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-width: 680px;
+  }
+}
+.dock-search-start-title {
+  padding: 1px 3px 8px;
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dock-search-start-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.dock-search-start-grid button {
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 3px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.dock-search-start-grid button:active {
+  background: color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated));
+  transform: scale(0.97);
+}
 @media (max-width: 520px) {
   .dock-search-results {
     max-height: 190px;
@@ -3325,7 +3374,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-head {
-    grid-template-columns: minmax(0, 1fr) 44px minmax(88px, auto);
+    grid-template-columns: minmax(0, 1fr) minmax(44px, auto) minmax(72px, auto);
     border-radius: 14px;
     border-color: color-mix(in srgb, var(--app-ink) 14%, transparent);
     background: color-mix(in srgb, var(--app-bg-elevated-solid) 91%, transparent);
@@ -3345,7 +3394,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     padding-inline: 14px 8px;
   }
   .dock-contents {
-    min-width: 88px;
+    min-width: 72px;
     border-radius: 0 13px 13px 0;
     font-size: 11.5px;
   }
@@ -3354,13 +3403,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-locate {
   display: none;
 }
+.dock-locate-label {
+  display: none;
+}
 @media (max-width: 1023.98px) {
   .dock-locate {
     position: relative;
-    display: grid;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     width: 44px;
     height: 52px;
-    place-items: center;
     border-inline: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
     color: var(--app-ink-2);
     transition: color 160ms var(--app-ease-out), background 160ms var(--app-ease-out), transform 90ms var(--app-ease-out);
@@ -3371,6 +3425,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-locate[data-on="true"] {
     color: var(--app-cool-2);
     background: color-mix(in srgb, var(--app-cool) 8%, transparent);
+  }
+}
+@media (min-width: 370px) and (max-width: 1023.98px) {
+  .dock-locate {
+    width: auto;
+    padding-inline: 9px;
+  }
+  .dock-locate-label {
+    display: inline;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
   }
 }
 
@@ -3536,7 +3602,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
   .dock-content-secondary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
     margin-top: 10px;
   }

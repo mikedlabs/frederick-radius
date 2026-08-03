@@ -69,6 +69,48 @@ test.describe("beer workspace deep links", () => {
     expect(hydrationErrors).toEqual([]);
   });
 
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+  ]) {
+    test(`the taproom front door stays visual and usable at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto("/beer", { waitUntil: "domcontentloaded" });
+
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Beer in Frederick County" }),
+      ).toBeVisible();
+      await expect(page.getByText(/source-checked brewery guides/i)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Find the right taproom." })).toBeVisible();
+
+      const firstHeroMedia = page.locator("header [data-brewery-media]").first();
+      await expect(firstHeroMedia).toBeVisible();
+      await expect.poll(async () => {
+        const image = firstHeroMedia.locator("img").first();
+        return image.evaluate((node: HTMLImageElement) => node.naturalWidth);
+      }).toBeGreaterThan(1);
+
+      const firstTaproomMedia = page
+        .locator("#brewery-strip-results [data-brewery-media]")
+        .first();
+      await expect(firstTaproomMedia).toBeVisible();
+      await expect.poll(async () => {
+        const image = firstTaproomMedia.locator("img").first();
+        return image.evaluate((node: HTMLImageElement) => node.naturalWidth);
+      }).toBeGreaterThan(1);
+
+      const tabHeights = await page.getByRole("tab").evaluateAll((tabs) =>
+        tabs.map((tab) => tab.getBoundingClientRect().height),
+      );
+      expect(tabHeights.every((height) => height >= 44)).toBe(true);
+
+      const overflow = await page.evaluate(() =>
+        document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+    });
+  }
+
   test("the random picker returns an actionable beer and brewery", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/beer#find-your-pour", { waitUntil: "domcontentloaded" });

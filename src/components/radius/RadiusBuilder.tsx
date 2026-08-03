@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Bike, Car, ChevronDown, ChevronUp, Compass, Footprints, Locate, MapPin } from "lucide-react";
+import { ArrowRight, Bike, Car, ChevronDown, ChevronUp, Compass, Footprints, Locate, Map as MapIcon, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
@@ -186,18 +186,11 @@ export type RadiusEventPin = {
 export default function RadiusBuilder({
   amenities = [],
   events = [],
-  modeToggle,
 }: {
   amenities?: Amenity[];
   /** Upcoming events with coordinates; filtered to the chosen reach and
    *  shown as a compact "happening within reach" section. */
   events?: RadiusEventPin[];
-  /** Optional element rendered immediately below the map, right-aligned.
-   *  The /map route passes its MapModeToggle (Radius / Browse) here so
-   *  the mode switch sits BELOW the map (not floating over it) — which
-   *  is where the user expects to find UI controls without competing
-   *  with the map's own camera affordances. */
-  modeToggle?: React.ReactNode;
 }) {
   // Places source: client-bundled, slim, already-decorated — but
   // loaded LAZILY (see useClientPlaces) so the 1.5MB JSON parse stays
@@ -766,42 +759,6 @@ export default function RadiusBuilder({
             aria-hidden
           />
         </div>
-        <button
-          type="button"
-          onClick={requestMyLocation}
-          aria-pressed={Boolean(myLoc)}
-          aria-busy={geoStatus === "loading" || undefined}
-          aria-label={
-            geoStatus === "denied"
-              ? "Location access is blocked. Enable it in your browser settings."
-              : myLoc
-                ? "Using your location"
-                : "Center on your location"
-          }
-          title={
-            geoStatus === "denied"
-              ? "Location access is blocked. Enable it in your browser settings."
-              : myLoc
-                ? "Using your location"
-                : "Center on your location"
-          }
-          disabled={geoStatus === "unavailable"}
-          className="tap-44 grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
-          style={{
-            borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
-            background: myLoc
-              ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-              : "var(--app-bg-elevated)",
-            color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-          }}
-        >
-          <Locate
-            className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse motion-reduce:animate-none" : ""}`}
-            strokeWidth={myLoc ? 2.5 : 2}
-            fill={myLoc ? "currentColor" : "none"}
-            aria-hidden
-          />
-        </button>
       </div>
 
       {/* Quick picks — the PRIMARY radius control. One tap sets both the
@@ -1050,7 +1007,7 @@ export default function RadiusBuilder({
             type="button"
             onClick={requestMyLocation}
             aria-label={myLoc ? "Recenter on your location" : "Use my location"}
-            className="tactile fixed right-4 grid h-10 w-10 place-items-center rounded-full shadow-[var(--app-shadow-2)] transition active:scale-[0.94]"
+            className="tactile tap-44 fixed right-4 grid h-11 w-11 place-items-center rounded-full shadow-[var(--app-shadow-2)] transition active:scale-[0.94]"
             style={{
               bottom: `calc(${SNAP_COLLAPSED} + 16px)`,
               zIndex: "var(--z-map-control)",
@@ -1062,22 +1019,6 @@ export default function RadiusBuilder({
           </button>
         )}
 
-        {/* Mode toggle, surfaced. It also lives in the sheet body (shown
-            when expanded), but radius mode is the DEFAULT and the sheet
-            opens collapsed — so the only way to reach "Whole county" used
-            to be a hidden tap behind "Adjust". A modest floating copy over
-            the collapsed map keeps radius-first primary while making the
-            switch discoverable without expanding. Mirrors the locate
-            control's anchor; left so it clears the locate button at right.
-            Only when collapsed — the body copy takes over once expanded. */}
-        {modeToggle && snap === SNAP_COLLAPSED && (
-          <div
-            className="fixed left-4"
-            style={{ bottom: `calc(${SNAP_COLLAPSED} + 16px)`, zIndex: "var(--z-map-control)" }}
-          >
-            {modeToggle}
-          </div>
-        )}
       </div>
 
       {/* ── MAP CONTROL SHEET — the radar's controls + results, collapsed
@@ -1097,47 +1038,75 @@ export default function RadiusBuilder({
           // — or to a drag that fought the map. One big honest target,
           // with the pill kept as a visual affordance (a span, not a
           // nested button).
-          <button
-            type="button"
-            onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
-            aria-expanded={snap !== SNAP_COLLAPSED}
-            aria-label={snap === SNAP_COLLAPSED ? "Adjust the radius" : "Done adjusting"}
-            className="flex w-full items-center justify-between gap-3 text-left"
-          >
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                {minutes}-min {MODE_VERB[mode]} · {center.label}
-              </p>
-              {!placesReady ? (
-                <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                  Finding places…
-                </p>
-              ) : (
-                <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                  {radiusResultLine(
-                    inside.length,
-                    openNowCount,
-                    openOnly,
-                    mayReportNoneOpen,
-                  )}
-                </p>
-              )}
-            </div>
-            <span
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)", color: "var(--app-ink-2)" }}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
+              aria-expanded={snap !== SNAP_COLLAPSED}
+              aria-label={snap === SNAP_COLLAPSED ? "Adjust the radius" : "Done adjusting"}
+              className="tap-44 flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 text-left"
             >
-              {snap === SNAP_COLLAPSED ? "Adjust" : "Done"}
-              {snap === SNAP_COLLAPSED ? (
-                <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-              )}
-            </span>
-          </button>
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {minutes}-min {MODE_VERB[mode]} · {center.label}
+                </p>
+                {!placesReady ? (
+                  <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    Finding places…
+                  </p>
+                ) : (
+                  <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {radiusResultLine(
+                      inside.length,
+                      openNowCount,
+                      openOnly,
+                      mayReportNoneOpen,
+                    )}
+                  </p>
+                )}
+              </div>
+              <span
+                className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-semibold"
+                style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)", color: "var(--app-ink-2)" }}
+              >
+                {snap === SNAP_COLLAPSED ? "Adjust" : "Done"}
+                {snap === SNAP_COLLAPSED ? (
+                  <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                )}
+              </span>
+            </button>
+            <a
+              href="/map?mode=browse"
+              aria-label="Back to county map"
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                window.history.pushState(null, "", "/map?mode=browse");
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="tactile tactile-interactive inline-flex min-h-11 min-w-[52px] shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-1 text-[9px] font-semibold leading-none"
+              style={{
+                background: "var(--app-bg-elevated-solid)",
+                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <MapIcon className="mb-1 h-4 w-4" strokeWidth={2.1} aria-hidden />
+              County map
+            </a>
+          </div>
         }
       >
-        {modeToggle && <div className="flex justify-center pb-1">{modeToggle}</div>}
         {controlCard}
 
       {/* ── WITHIN REACH — the calm sheet lead. A neutral "Within reach of

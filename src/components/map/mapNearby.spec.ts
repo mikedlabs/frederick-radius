@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearestMapUtilities } from "./mapNearby";
+import { nearestMapUtilities, nearestMapUtilityPoint } from "./mapNearby";
 
 describe("nearestMapUtilities", () => {
   const origin = { lng: -77.4109, lat: 39.4143 };
@@ -29,5 +29,30 @@ describe("nearestMapUtilities", () => {
     );
 
     expect(result.map((item) => item.label)).toEqual(["Seating", "Transit stop"]);
+  });
+
+  it("returns the named nearest point within the selected utility group", () => {
+    const result = nearestMapUtilityPoint(
+      origin,
+      [
+        { ...origin, lng: origin.lng + 0.004, kind: "restroom", name: "Far restroom" },
+        { ...origin, lng: origin.lng + 0.001, kind: "restroom", name: "Carroll Creek restroom" },
+        { ...origin, kind: "water", name: "Bottle fill" },
+      ],
+      new Set(["restroom"]),
+    );
+
+    expect(result?.point.name).toBe("Carroll Creek restroom");
+    expect(result?.distM).toBeGreaterThan(0);
+  });
+
+  it("returns no answer when the selected group has no mapped point", () => {
+    expect(
+      nearestMapUtilityPoint(
+        origin,
+        [{ ...origin, kind: "water" }],
+        new Set(["restroom"]),
+      ),
+    ).toBeNull();
   });
 });

@@ -65,6 +65,51 @@ test("Events interest choices replace legacy exact-category filters", async ({ p
 });
 
 test("Events calendar overflow link navigates instead of opening a detail sheet", async ({ page }) => {
+  // The public feed naturally moves above and below the 40-row inline cap.
+  // Supply a deterministic long tail so this test exercises the navigation
+  // contract instead of depending on how many events happen to be listed.
+  await page.route("**/api/events/browse", async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json() as {
+      events: Array<Record<string, unknown>>;
+      sourceHealth?: Record<string, unknown>;
+      [key: string]: unknown;
+    };
+    const template = payload.events[0];
+    if (!template) {
+      await route.fulfill({ response });
+      return;
+    }
+
+    const laterStart = Date.now() + 45 * 86_400_000;
+    const overflowEvents = Array.from({ length: 48 }, (_, index) => {
+      const startsAt = laterStart + index * 60_000;
+      return {
+        ...template,
+        slug: `calendar-overflow-${index}`,
+        title: `Calendar overflow ${index + 1}`,
+        category: "music",
+        starts_at: new Date(startsAt).toISOString(),
+        ends_at: new Date(startsAt + 7_200_000).toISOString(),
+        is_all_day: false,
+        is_recurring: false,
+      };
+    });
+
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        events: [...payload.events, ...overflowEvents],
+        sourceHealth: {
+          ...payload.sourceHealth,
+          degraded: false,
+          unavailable: [],
+        },
+      },
+    });
+  });
+
   await page.setViewportSize({ width: 1024, height: 800 });
   await page.goto("/events");
 
@@ -112,10 +157,39 @@ test("Saved keeps organizer controls behind one disclosure", async ({ page }) =>
         },
       ]),
     );
+    window.localStorage.setItem(
+      "fr.transit.saved-stops.v1",
+      JSON.stringify([
+        {
+          id: "162950",
+          name: "10th Street at Motter Avenue",
+          lat: 39.42717,
+          lng: -77.40899,
+          savedAt: "2026-07-28T12:00:00.000Z",
+        },
+      ]),
+    );
   });
   await page.goto("/my-radius", { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByRole("heading", { name: "Saved places" })).toBeVisible();
+  const savedPlaces = page.getByRole("heading", { name: "Saved places" });
+  await expect(savedPlaces).toBeVisible();
+  const savedTransit = page.getByRole("region", { name: "Saved transit" });
+  await expect(savedTransit.locator("summary")).toBeVisible();
+  await expect(
+    savedTransit.getByText("10th Street at Motter Avenue").first(),
+  ).toBeHidden();
+  expect((await savedTransit.boundingBox())?.y ?? 0).toBeGreaterThan(
+    (await savedPlaces.boundingBox())?.y ?? 0,
+  );
+  await savedTransit.locator("summary").click();
+  await expect(savedTransit.getByText("10th Street at Motter Avenue").first()).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+
   const organizer = page.locator("#saved-organizer");
   await expect(organizer.locator("summary")).toContainText("Organize and revisit");
   await expect(page.getByRole("tab", { name: "List" })).toBeHidden();

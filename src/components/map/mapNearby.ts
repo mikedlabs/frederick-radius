@@ -2,6 +2,10 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 
 export type NearbyUtilityPoint = LngLat & { kind: string };
 export type NearbyUtility = { label: string; distM: number };
+export type NearestUtilityPoint<T extends NearbyUtilityPoint> = {
+  point: T;
+  distM: number;
+};
 
 const LABEL_BY_KIND: Record<string, string> = {
   restroom: "Restroom",
@@ -47,4 +51,28 @@ export function nearestMapUtilities(
     .map(([label, distM]) => ({ label, distM }))
     .sort((a, b) => a.distM - b.distM || a.label.localeCompare(b.label))
     .slice(0, limit);
+}
+
+/**
+ * Return the actual nearest mapped point for a chosen utility group. This is
+ * the decision counterpart to the small summary above: the map can open one
+ * named result with distance and Directions instead of making a person hunt
+ * through a countywide set of pins.
+ */
+export function nearestMapUtilityPoint<T extends NearbyUtilityPoint>(
+  origin: LngLat,
+  points: T[],
+  allowedKinds: ReadonlySet<string>,
+): NearestUtilityPoint<T> | null {
+  let nearest: NearestUtilityPoint<T> | null = null;
+
+  for (const point of points) {
+    if (!allowedKinds.has(point.kind)) continue;
+    const distM = haversineMeters(origin, point);
+    if (nearest === null || distM < nearest.distM) {
+      nearest = { point, distM };
+    }
+  }
+
+  return nearest;
 }
