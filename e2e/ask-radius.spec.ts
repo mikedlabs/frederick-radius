@@ -79,6 +79,59 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByRole("heading", { name: "Sources behind this answer" })).toHaveCount(0);
   });
 
+  test("keeps a source photo square on a 390px result card", async ({ page }) => {
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer: "Gravel & Grind covers both parts of the request.",
+          sources: [
+            {
+              ...source(1),
+              slug: "gravel-and-grind-frederick",
+              name: "Gravel & Grind",
+              category: "coffee",
+              href: "/places/gravel-and-grind-frederick",
+              reason: "Matches the full request",
+              detail:
+                "This East 6th Street coffee bar and bike shop serves pour-overs up front and sells gravel and road bikes in back.",
+              photo_url: "/history-photos/carroll-creek-park.jpg",
+              rating: 4.8,
+              ratingCount: 394,
+              status: "Hours not posted",
+              phone: "301-555-0100",
+            },
+          ],
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, "coffee and bikes downtown");
+
+    const card = page.locator('[data-ask-source-index="0"]');
+    const media = card.locator("[data-ask-source-media]");
+    await expect(card.getByRole("link", { name: "Gravel & Grind", exact: true })).toBeVisible();
+    await expect(media).toBeVisible();
+
+    const geometry = await media.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        width: rect.width,
+        height: rect.height,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(geometry.viewportWidth).toBe(390);
+    expect(geometry.width).toBeGreaterThanOrEqual(67);
+    expect(geometry.width).toBeLessThanOrEqual(69);
+    expect(Math.abs(geometry.width - geometry.height)).toBeLessThanOrEqual(1);
+
+    const cardBox = await card.boundingBox();
+    expect(cardBox, "expected the source card to have a layout box").not.toBeNull();
+    expect(cardBox!.height).toBeGreaterThan(geometry.height + 44);
+  });
+
   test("renders an editable plan from a mocked response", async ({ page }) => {
     await page.route("**/api/ask", (route) =>
       fulfill(

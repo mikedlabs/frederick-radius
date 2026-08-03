@@ -322,6 +322,7 @@ function PlaceSheetContent({
               <GooglePhotoAttributionLine
                 attribution={heroAttribution}
                 placeGoogleMapsUri={googleMapsUri}
+                touchTarget
               />
             </div>
           </>

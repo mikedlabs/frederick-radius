@@ -26,7 +26,7 @@ import { BRAND } from "@/lib/brand";
 
 // Warm paper scrim (tracks --app-bg) and a field-guide border ink.
 const VEIL = BRAND.colors.paperDeep;
-const VEIL_OPACITY = 0.72;
+const VEIL_OPACITY = 0.58;
 const BORDER = BRAND.colors.controlBorder;
 const BORDER_GLOW = BRAND.colors.brick;
 

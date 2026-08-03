@@ -1,5 +1,52 @@
 import type { FoodTruckScheduleStop } from "./schedule-types";
 
+export type FoodTruckStopTiming = "active" | "upcoming" | "ended";
+
+const STOP_TIMING_PRIORITY: Record<FoodTruckStopTiming, number> = {
+  active: 0,
+  upcoming: 1,
+  ended: 2,
+};
+
+/**
+ * Classify a published schedule without turning it into a live-location claim.
+ * A stop with no usable end time is never called active after its start.
+ */
+export function foodTruckStopTiming(
+  stop: Pick<FoodTruckScheduleStop, "startsAt" | "endsAt">,
+  now: Date,
+): FoodTruckStopTiming {
+  const nowMs = now.getTime();
+  const startsAt = Date.parse(stop.startsAt);
+  if (!Number.isFinite(nowMs) || !Number.isFinite(startsAt)) return "ended";
+  if (startsAt > nowMs) return "upcoming";
+
+  const endsAt = stop.endsAt ? Date.parse(stop.endsAt) : Number.NaN;
+  return Number.isFinite(endsAt) && endsAt > nowMs ? "active" : "ended";
+}
+
+/**
+ * Put the useful answer first while retaining publisher order inside each
+ * timing state. The schedule builder already uses source chronology, so an
+ * index tie-break is more honest than inventing another ranking signal here.
+ */
+export function prioritizeFoodTruckStops(
+  stops: readonly FoodTruckScheduleStop[],
+  now: Date,
+): FoodTruckScheduleStop[] {
+  return stops
+    .map((stop, sourceIndex) => ({
+      stop,
+      sourceIndex,
+      timing: foodTruckStopTiming(stop, now),
+    }))
+    .sort((a, b) => (
+      STOP_TIMING_PRIORITY[a.timing] - STOP_TIMING_PRIORITY[b.timing]
+      || a.sourceIndex - b.sourceIndex
+    ))
+    .map(({ stop }) => stop);
+}
+
 const LEADING_WORDS = new Set(["a", "an", "and", "of", "the"]);
 const VISUAL_TONES = [
   "var(--app-brand-press)",

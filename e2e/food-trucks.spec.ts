@@ -46,6 +46,39 @@ test("food-truck board leads with plans and opens useful vendor details", async 
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("the weekly board promotes useful stops and folds stops that already ended", async ({ page }) => {
+  await page.goto("/food-trucks");
+
+  const leadCards = page.locator(
+    "#this-week > .food-truck-stop-grid > .food-truck-stop-card",
+  );
+  const leadTiming = await leadCards.evaluateAll((cards) =>
+    cards.map((card) => card.getAttribute("data-stop-timing")),
+  );
+  expect(leadTiming).not.toContain("ended");
+  expect(leadTiming).toEqual(
+    [...leadTiming].sort((a, b) => {
+      const priority: Record<string, number> = { active: 0, upcoming: 1 };
+      return (priority[a ?? ""] ?? 2) - (priority[b ?? ""] ?? 2);
+    }),
+  );
+
+  const earlierCards = page.locator(
+    "[data-earlier-food-truck-stops] .food-truck-stop-card",
+  );
+  const earlierCount = await earlierCards.count();
+  if (earlierCount > 0) {
+    const disclosure = page.locator("[data-earlier-food-truck-stops]");
+    await expect(disclosure).not.toHaveAttribute("open", "");
+    await expect(earlierCards.first()).toBeHidden();
+    await disclosure.locator("summary").click();
+    await expect(earlierCards.first()).toBeVisible();
+    expect(await earlierCards.evaluateAll((cards) =>
+      cards.map((card) => card.getAttribute("data-stop-timing")),
+    )).toEqual(Array.from({ length: earlierCount }, () => "ended"));
+  }
+});
+
 test("public visitors can open feedback and the food-truck add form", async ({ page }) => {
   await page.goto("/food-trucks");
 

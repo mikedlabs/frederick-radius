@@ -80,6 +80,7 @@ export default function MapPeek({
   const saved = useIsFollowed(place.slug);
   const toggleSave = useToggleFollow(place.slug, "map_peek");
   const [details, setDetails] = useState<MapCardDetails | null>(null);
+  const [detailsResolvedSlug, setDetailsResolvedSlug] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const activeDetails = details?.slug === place.slug ? details : null;
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
@@ -94,6 +95,7 @@ export default function MapPeek({
   const photoUrl =
     activeDetails?.google_photo_url ??
     activeDetails?.hero_image;
+  const photoPending = !activeDetails && detailsResolvedSlug !== place.slug;
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
   const nameId = useId();
   const descriptionId = useId();
@@ -111,10 +113,12 @@ export default function MapPeek({
       .then((response) => (response.ok ? response.json() : null))
       .then((body: { place?: MapCardDetails | null } | null) => {
         if (body?.place?.slug === place.slug) setDetails(body.place);
+        setDetailsResolvedSlug(place.slug);
       })
       .catch((error: unknown) => {
         if ((error as { name?: string })?.name !== "AbortError") {
           // Pin data still provides the name, status, category, and actions.
+          setDetailsResolvedSlug(place.slug);
         }
       });
     return () => controller.abort();
@@ -162,6 +166,7 @@ export default function MapPeek({
         <button
           type="button"
           className="map-peek-visual"
+          data-loading={photoPending || undefined}
           onClick={onDetails}
           aria-label={`Open details for ${place.name}`}
         >

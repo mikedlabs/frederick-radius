@@ -92,11 +92,12 @@ test("Place field notes lead with visit decisions and disclose the rest", async 
   await expect(primaryRows.nth(0)).toContainText("Happy hour");
   await expect(primaryRows.nth(1)).toContainText("Park");
   await expect(notes.getByText(/Open mic night every Monday/)).toBeHidden();
-  await expect(notes.getByText(/at the source/)).toBeVisible();
+  await expect(notes.getByRole("link", { name: "cafe-nola.com" }).first()).toBeVisible();
+  await expect(notes.getByText(/verified \d+w ago/).first()).toBeVisible();
 
   await notes.locator("summary").click();
   await expect(notes.getByText(/Open mic night every Monday/)).toBeVisible();
-  await expect(notes.getByText(/at the source/)).toBeVisible();
+  await expect(notes.getByRole("link", { name: "cafe-nola.com" }).first()).toBeVisible();
 });
 
 test("Saved keeps organizer controls behind one disclosure", async ({ page }) => {

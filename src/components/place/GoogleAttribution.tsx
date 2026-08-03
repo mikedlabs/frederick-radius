@@ -27,9 +27,11 @@ export function safeGoogleReportUrl(value?: string): string | undefined {
 export function GoogleContentReportLink({
   href,
   label,
+  touchTarget = false,
 }: {
   href?: string;
   label: "Report photo" | "Report review";
+  touchTarget?: boolean;
 }) {
   const safeHref = safeGoogleReportUrl(href);
   return safeHref ? (
@@ -37,13 +39,21 @@ export function GoogleContentReportLink({
       href={safeHref}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-2"
+      className={`${touchTarget ? "tap-44-y inline-flex items-center" : ""} underline underline-offset-2`}
     >
       {label}
     </a>
   ) : null;
 }
-function AuthorLink({ author, showAvatar = false }: { author: GoogleAuthorAttribution; showAvatar?: boolean }) {
+function AuthorLink({
+  author,
+  showAvatar = false,
+  touchTarget = false,
+}: {
+  author: GoogleAuthorAttribution;
+  showAvatar?: boolean;
+  touchTarget?: boolean;
+}) {
   const href = safeGoogleUrl(author.uri);
   const avatar = safeGoogleUrl(author.photo_uri);
   const name = author.display_name?.trim();
@@ -57,7 +67,7 @@ function AuthorLink({ author, showAvatar = false }: { author: GoogleAuthorAttrib
     </>
   );
   return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`${touchTarget ? "tap-44-y" : ""} inline-flex items-center gap-1 underline underline-offset-2`}>
       {content}
     </a>
   ) : <span className="inline-flex items-center gap-1">{content}</span>;
@@ -87,11 +97,13 @@ export function GooglePhotoAttributionLine({
   placeGoogleMapsUri,
   compact = false,
   showAvatar = !compact,
+  touchTarget = false,
 }: {
   attribution?: GooglePhotoAttribution;
   placeGoogleMapsUri?: string;
   compact?: boolean;
   showAvatar?: boolean;
+  touchTarget?: boolean;
 }) {
   const authors = attribution?.authors.filter((author) => author.display_name?.trim()) ?? [];
   const sourceHref = safeGoogleUrl(attribution?.google_maps_uri ?? placeGoogleMapsUri);
@@ -106,13 +118,13 @@ export function GooglePhotoAttributionLine({
           Photo by {authors.map((author, index) => (
             <span key={`${author.uri ?? author.display_name}-${index}`}>
               {index > 0 ? ", " : ""}
-              <AuthorLink author={author} showAvatar={showAvatar} />
+              <AuthorLink author={author} showAvatar={showAvatar} touchTarget={touchTarget} />
             </span>
           ))}{" "}·{" "}
         </>
       )}
       {sourceHref ? (
-        <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+        <a href={sourceHref} target="_blank" rel="noopener noreferrer" className={`${touchTarget ? "tap-44-y inline-flex items-center" : ""} underline underline-offset-2`}>
           <span translate="no">Google Maps</span>
         </a>
       ) : (

@@ -177,7 +177,7 @@ export default function MapEdgeTools({
           className="map-edge-tool map-edge-tool-primary map-edge-tool-locate"
           data-on={located || undefined}
           onClick={onLocate}
-          aria-label="Find me"
+          aria-label={located ? "Center on my location" : "Use my location"}
           aria-busy={locating || undefined}
           title="Move the map to your location"
         >
@@ -192,10 +192,10 @@ export default function MapEdgeTools({
           )}
           <span className="map-edge-tool-label">
             <span className="map-edge-tool-label-long">
-              {locating ? "Finding you…" : "Find me"}
+              {locating ? "Finding you…" : located ? "Your location" : "Find me"}
             </span>
             <span className="map-edge-tool-label-short">
-              {locating ? "Finding…" : "Near me"}
+              {locating ? "Finding…" : located ? "You" : "Near me"}
             </span>
           </span>
         </button>

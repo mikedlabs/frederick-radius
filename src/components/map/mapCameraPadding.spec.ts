@@ -20,7 +20,7 @@ describe("mapCameraPadding", () => {
     });
   });
 
-  it("includes the visible active-state sentence above the phone dock", () => {
+  it("reserves the visible top context rail above fitted geography", () => {
     expect(
       mapCameraPadding({
         viewportWidth: 390,
@@ -29,11 +29,11 @@ describe("mapCameraPadding", () => {
         mapBottom: 760,
         dockTop: 696,
         dockBottom: 748,
-        activeStateTop: 650,
+        contextRailBottom: 214,
       }),
     ).toMatchObject({
-      top: 20,
-      bottom: 126,
+      top: 118,
+      bottom: 84,
     });
   });
 

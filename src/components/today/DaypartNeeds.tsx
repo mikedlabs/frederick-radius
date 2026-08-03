@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
@@ -45,6 +45,39 @@ export type LiveShelf = {
   contextSource: NonNullable<WantAnswer["contextSource"]>;
   mayAssertNoneOpen: boolean;
 };
+
+/**
+ * Weather can add a useful but sparse category (for example museums on a wet
+ * evening) ahead of the daypart's core need. Do not let that empty first row
+ * become the whole shelf: start with the first category that already has a
+ * trustworthy server result, while keeping every category available as a tab.
+ */
+export function initialDaypartCategory(rows: DaypartRow[]): string {
+  return rows.find((row) => row.picks.length > 0)?.category ?? rows[0]?.category ?? "";
+}
+
+/**
+ * If a context-aware refresh removes the current shelf, keep checking the
+ * other needs before settling on an empty answer. Prefer a row that already
+ * has a server fallback so the handoff remains useful while its live result is
+ * checked. Each category is visited at most once per location revision.
+ */
+export function nextUnresolvedDaypartCategory(
+  rows: DaypartRow[],
+  currentCategory: string,
+  resolvedCategories: Record<string, boolean>,
+): string | null {
+  const unresolved = rows.filter(
+    (row) =>
+      row.category !== currentCategory &&
+      resolvedCategories[row.category] !== true,
+  );
+  return (
+    unresolved.find((row) => row.picks.length > 0)?.category ??
+    unresolved[0]?.category ??
+    null
+  );
+}
 
 /**
  * Keep Today's location-aware shelf and its expanded list on the same ranking
@@ -133,6 +166,7 @@ export function daypartEmptyCopy(
   contextLabel: string,
   countywide: boolean,
   mayReportNoneOpen: boolean,
+  groupLabel = "this group",
 ): string {
   const scope =
     countywide
@@ -142,9 +176,10 @@ export function daypartEmptyCopy(
         : contextLabel.startsWith("Near ")
           ? `${contextLabel.charAt(0).toLocaleLowerCase()}${contextLabel.slice(1)}`
           : `in ${contextLabel}`;
+  const group = groupLabel.trim().toLocaleLowerCase() || "this group";
   return mayReportNoneOpen
-    ? `No place is open ${scope} right now.`
-    : `No place ${scope} has current hours showing it open.`;
+    ? `No open match for ${group} ${scope} right now.`
+    : `Current hours do not confirm an open match for ${group} ${scope}.`;
 }
 
 /**
@@ -199,12 +234,14 @@ export function DaypartEmptyState({
   contextLabel = "Across Frederick County",
   countywide = true,
   mayReportNoneOpen = false,
+  groupLabel = "this group",
 }: {
   href?: string;
   label?: string;
   contextLabel?: string;
   countywide?: boolean;
   mayReportNoneOpen?: boolean;
+  groupLabel?: string;
 } = {}) {
   return (
     <section aria-label="Open places right now" className="mt-6">
@@ -229,6 +266,7 @@ export function DaypartEmptyState({
             contextLabel,
             countywide,
             mayReportNoneOpen,
+            groupLabel,
           )}
         </p>
       </div>
@@ -373,10 +411,14 @@ export default function DaypartNeeds({
   rows: DaypartRow[];
   note?: string | null;
 }) {
-  const [selectedCategory, setSelectedCategory] = useState(rows[0]?.category ?? "");
+  const [selectedCategory, setSelectedCategory] = useState(() =>
+    initialDaypartCategory(rows),
+  );
   const [liveShelves, setLiveShelves] = useState<Record<string, LiveShelf>>({});
   const [resolvedCategories, setResolvedCategories] = useState<Record<string, boolean>>({});
   const [contextRevision, setContextRevision] = useState(0);
+  const resolvedCategoriesRef = useRef<Record<string, boolean>>({});
+  const mayAutoAdvanceRef = useRef(true);
 
   const baseActive = rows.find((row) => row.category === selectedCategory) ?? rows[0] ?? null;
   const activeCategory = baseActive?.category ?? "";
@@ -404,6 +446,21 @@ export default function DaypartNeeds({
   useEffect(() => {
     if (!baseActive) return;
     let current = true;
+    const settleCategory = (pickCount: number) => {
+      const resolvedAfter = {
+        ...resolvedCategoriesRef.current,
+        [baseActive.category]: true,
+      };
+      resolvedCategoriesRef.current = resolvedAfter;
+      setResolvedCategories(resolvedAfter);
+      if (pickCount !== 0 || !mayAutoAdvanceRef.current) return;
+      const next = nextUnresolvedDaypartCategory(
+        rows,
+        baseActive.category,
+        resolvedAfter,
+      );
+      if (next) setSelectedCategory(next);
+    };
     getWantAnswer(`cat:${baseActive.category}`, null)
       .then((raw) => {
         if (!current) return;
@@ -413,22 +470,18 @@ export default function DaypartNeeds({
           ...previous,
           [baseActive.category]: shelf,
         }));
+        settleCategory(shelf.picks.length);
       })
       .catch(() => {
+        if (!current) return;
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
-      })
-      .finally(() => {
-        if (!current) return;
-        setResolvedCategories((previous) => ({
-          ...previous,
-          [baseActive.category]: true,
-        }));
+        settleCategory(baseActive.picks.length);
       });
     return () => {
       current = false;
     };
-  }, [activeCategory, activeHref, baseActive, contextRevision]);
+  }, [activeCategory, activeHref, baseActive, contextRevision, rows]);
 
   // A visitor can grant location from the header after this component mounts.
   // Same-tab storage changes are otherwise invisible, so listen to the
@@ -437,6 +490,9 @@ export default function DaypartNeeds({
     const refresh = () => {
       setLiveShelves({});
       setResolvedCategories({});
+      resolvedCategoriesRef.current = {};
+      setSelectedCategory(initialDaypartCategory(rows));
+      mayAutoAdvanceRef.current = true;
       setContextRevision((revision) => revision + 1);
     };
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
@@ -445,7 +501,7 @@ export default function DaypartNeeds({
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
       window.removeEventListener(SCOPE_CHANGE_EVENT, refresh);
     };
-  }, []);
+  }, [rows]);
 
   // Keep one public, actionable place as the offline Today handoff. This never
   // stores the user's coordinates or distance; the offline page labels the
@@ -467,10 +523,10 @@ export default function DaypartNeeds({
 
   if (!active) return null;
 
-  // Once the location-aware ranker has answered, a zero-result shelf should
-  // not keep a heading, tab row, count line, and empty card in prime Today
-  // space. Collapse it to one honest result plus a countywide escape hatch.
-  if (!awaitingLive && active.picks.length === 0) {
+  // A single-category shelf can collapse to one compact answer. A
+  // multi-category shelf must keep its tabs: an empty museum (or coffee) query
+  // says nothing about dinner, breweries, or the other needs beside it.
+  if (!awaitingLive && active.picks.length === 0 && rows.length === 1) {
     const countywide = isDaypartCountywideContext(contextSource);
     const countyHref =
       daypartBrowseHref(active.category, active.label, "county") || active.href;
@@ -481,6 +537,7 @@ export default function DaypartNeeds({
         contextLabel={contextLabel}
         countywide={countywide}
         mayReportNoneOpen={liveActive?.mayAssertNoneOpen === true}
+        groupLabel={active.label}
       />
     );
   }
@@ -523,7 +580,10 @@ export default function DaypartNeeds({
                 aria-selected={selected}
                 aria-controls="daypart-active-panel"
                 tabIndex={selected ? 0 : -1}
-                onClick={() => setSelectedCategory(row.category)}
+                onClick={() => {
+                  mayAutoAdvanceRef.current = false;
+                  setSelectedCategory(row.category);
+                }}
                 onKeyDown={(event) => {
                   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
                   event.preventDefault();
@@ -536,6 +596,7 @@ export default function DaypartNeeds({
                         : event.key === "ArrowRight"
                           ? (currentIndex + 1) % rows.length
                           : (currentIndex - 1 + rows.length) % rows.length;
+                  mayAutoAdvanceRef.current = false;
                   setSelectedCategory(rows[nextIndex].category);
                   const tabs = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
                     '[role="tab"]',
@@ -602,7 +663,34 @@ export default function DaypartNeeds({
               </li>
             ))}
           </ul>
-        ) : null}
+        ) : (
+          <div
+            role="status"
+            className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background: "var(--app-bg-elevated)",
+              boxShadow: "var(--app-hi)",
+            }}
+          >
+            <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+              {daypartEmptyCopy(
+                contextLabel,
+                isDaypartCountywideContext(contextSource),
+                liveActive?.mayAssertNoneOpen === true,
+                active.label,
+              )}
+            </p>
+            <Link
+              href={active.href}
+              prefetch={false}
+              className="tap-44 shrink-0 text-[12px] font-semibold underline decoration-1 underline-offset-4"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Browse
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

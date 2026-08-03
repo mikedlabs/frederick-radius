@@ -14,9 +14,9 @@ import {
   ArrowRight,
   Bookmark,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   History,
-  Home,
   Landmark,
   List,
   MapPinned,
@@ -37,7 +37,6 @@ import {
   type RadiusTool,
   type RadiusToolTone,
 } from "@/data/radius-tools";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 import { haptic } from "@/lib/haptics";
 import { getHomeMuni } from "@/lib/personalize";
@@ -77,6 +76,69 @@ const GROUP_META: Record<
   stories: { icon: History, color: "var(--app-accent-press)" },
   yours: { icon: Bookmark, color: "var(--app-positive)" },
 };
+
+const COMPASS_INTENT_DEFINITIONS = [
+  {
+    id: "decide-now",
+    label: "Decide now",
+    description: "Ask Radius, find something open, or make a plan.",
+    moreLabel: "More for right now",
+    icon: Sparkles,
+    groupIds: ["decide"],
+    featuredIds: ["open-now", "plan", "collections"],
+  },
+  {
+    id: "go-out",
+    label: "Eat, drink & go out",
+    description: "Find restaurants, drinks, food trucks, events, and live music.",
+    moreLabel: "More food, drinks & events",
+    icon: UtensilsCrossed,
+    groupIds: ["food", "events"],
+    featuredIds: ["reserve", "food-trucks", "live-music"],
+  },
+  {
+    id: "get-around",
+    label: "Get around",
+    description: "Open the map, parking, transit, or road cameras.",
+    moreLabel: "More ways to get around",
+    icon: Route,
+    groupIds: ["getting-around"],
+    featuredIds: ["parking", "transit", "road-cameras"],
+  },
+  {
+    id: "local-help",
+    label: "Essentials & local help",
+    description: "Find restrooms, water, public alerts, contacts, and emergency help.",
+    moreLabel: "More essentials & local help",
+    icon: MapPinned,
+    groupIds: ["amenities", "live", "community"],
+    featuredIds: ["restrooms", "emergency", "contacts"],
+  },
+  {
+    id: "explore-yours",
+    label: "Explore & save",
+    description: "Browse towns, history, local data, saved places, and settings.",
+    moreLabel: "More to explore & save",
+    icon: Landmark,
+    groupIds: ["stories", "yours"],
+    featuredIds: ["history", "from-above-preview", "numbers"],
+  },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  description: string;
+  moreLabel: string;
+  icon: LucideIcon;
+  groupIds: readonly ToolDeckGroupId[];
+  featuredIds: readonly string[];
+}>;
+
+type CompassIntentId = (typeof COMPASS_INTENT_DEFINITIONS)[number]["id"];
+type CompassDeckView = ToolDeckGroupId | CompassIntentId | "all";
+
+function isCompassIntentId(value: string): value is CompassIntentId {
+  return COMPASS_INTENT_DEFINITIONS.some((intent) => intent.id === value);
+}
 
 export type DirectoryItem = {
   id: string;
@@ -142,7 +204,6 @@ const TIME_MACHINE: DirectoryItem = {
 /**
  * The tools directory has one resident-facing organization. It resolves every row
  * from the shared registry, then places Ask Radius at the decision front door.
- * A home shortcut is deliberately kept outside the registry count.
  */
 export function buildToolDeckGroups(homeSlug: string | null): ToolDeckGroup[] {
   const itemById = new globalThis.Map(
@@ -248,31 +309,17 @@ function subscribeHomeTown(onChange: () => void) {
 
 const noHomeTown = () => null;
 
-function homeShortcut(homeSlug: string | null): DirectoryItem | null {
-  if (!homeSlug) return null;
-  const home = MUNICIPALITY_BY_SLUG[homeSlug];
-  if (!home) return null;
-  return {
-    id: `home-${home.slug}`,
-    href: `/m/${home.slug}`,
-    label: home.name,
-    description: "Open your home-area guide.",
-    icon: Home,
-    color: "var(--app-brand-press)",
-    keywords: ["home", "my town", "home area"],
-  };
-}
-
-function deckParamFromLocation(): ToolDeckGroupId | "all" | null {
+function deckParamFromLocation(): CompassDeckView | null {
   const value = new URL(window.location.href).searchParams.get("deck");
   if (value === "all") return value;
+  if (value && isCompassIntentId(value)) return value;
   return TOOL_DECK_GROUP_DEFINITIONS.some((group) => group.id === value)
     ? (value as ToolDeckGroupId)
     : null;
 }
 
 function writeDeckUrl(
-  value: ToolDeckGroupId | "all",
+  value: CompassDeckView,
   mode: "push" | "replace",
 ) {
   const url = new URL(window.location.href);
@@ -315,7 +362,6 @@ export default function CompassHub() {
   );
   const groups = useMemo(() => buildToolDeckGroups(homeSlug), [homeSlug]);
   const directory = useMemo(() => buildToolDeckDirectory(groups), [groups]);
-  const shortcut = useMemo(() => homeShortcut(homeSlug), [homeSlug]);
   const itemById = useMemo(
     () =>
       new globalThis.Map(
@@ -331,9 +377,10 @@ export default function CompassHub() {
   );
 
   const [query, setQuery] = useState("");
-  const [deckView, setDeckView] = useState<
-    ToolDeckGroupId | "all" | null
-  >(null);
+  const [deckView, setDeckView] = useState<CompassDeckView | null>(null);
+  const [activeIntent, setActiveIntent] =
+    useState<CompassIntentId | null>("decide-now");
+  const [editingPins, setEditingPins] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([
     ...DEFAULT_TOOL_DECK_PIN_IDS,
   ]);
@@ -371,7 +418,10 @@ export default function CompassHub() {
       setHydrated(true);
     }, 0);
 
-    const onPopState = () => setDeckView(deckParamFromLocation());
+    const onPopState = () => {
+      setDeckView(deckParamFromLocation());
+      setEditingPins(false);
+    };
     window.addEventListener("popstate", onPopState);
     return () => {
       window.clearTimeout(timer);
@@ -431,13 +481,14 @@ export default function CompassHub() {
     );
   };
 
-  const openDeck = (view: ToolDeckGroupId | "all") => {
+  const openDeck = (view: CompassDeckView, managePins = false) => {
     haptic("light");
+    setEditingPins(managePins);
     setDeckView(view);
     writeDeckUrl(view, "push");
   };
 
-  const changeDeckView = (view: ToolDeckGroupId | "all") => {
+  const changeDeckView = (view: CompassDeckView) => {
     haptic("light");
     setDeckView(view);
     writeDeckUrl(view, "replace");
@@ -445,6 +496,7 @@ export default function CompassHub() {
 
   const closeDeck = () => {
     setDeckView(null);
+    setEditingPins(false);
     if (
       window.history.state &&
       typeof window.history.state === "object" &&
@@ -460,17 +512,28 @@ export default function CompassHub() {
     const item = itemById.get(id);
     return item ? [item] : [];
   });
-  const pinnedHrefs = new Set(pinnedItems.map((item) => item.href));
-  const allKnownItems = shortcut
-    ? [shortcut, ...directory.groups.flatMap((group) => group.items)]
-    : directory.groups.flatMap((group) => group.items);
+  const activeIntentDefinition = COMPASS_INTENT_DEFINITIONS.find(
+    (intent) => intent.id === activeIntent,
+  );
+  const visibleDestinationHrefs = new Set([
+    ...pinnedItems.map((item) => item.href),
+    ...(activeIntentDefinition?.featuredIds.flatMap((id) => {
+      const item = itemById.get(id);
+      return item ? [item.href] : [];
+    }) ?? []),
+    "/today",
+    "/map",
+    "/events",
+    "/my-radius",
+  ]);
+  const allKnownItems = directory.groups.flatMap((group) => group.items);
   const itemByHref = new globalThis.Map(
     allKnownItems.map((item) => [item.href, item]),
   );
   const recentItems = recentHrefs
     .flatMap((href) => {
       const item = itemByHref.get(href);
-      return item && !pinnedHrefs.has(href) ? [item] : [];
+      return item && !visibleDestinationHrefs.has(href) ? [item] : [];
     })
     .slice(0, 3);
 
@@ -478,10 +541,19 @@ export default function CompassHub() {
   const searchItems = visibleGroups.flatMap((group) => group.items);
   const normalizedQuery = query.trim();
 
+  const selectedIntent =
+    deckView && deckView !== "all" && isCompassIntentId(deckView)
+      ? COMPASS_INTENT_DEFINITIONS.find((intent) => intent.id === deckView) ?? null
+      : null;
   const selectedGroup =
-    deckView && deckView !== "all"
+    deckView && deckView !== "all" && !isCompassIntentId(deckView)
       ? groups.find((group) => group.id === deckView) ?? null
       : null;
+  const selectedIntentItems = selectedIntent
+    ? selectedIntent.groupIds.flatMap(
+        (groupId) => groups.find((group) => group.id === groupId)?.items ?? [],
+      )
+    : [];
   return (
     <div
       className="space-y-5"
@@ -494,24 +566,16 @@ export default function CompassHub() {
           background: "var(--app-bg-elevated-solid)",
         }}
       >
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p
-              className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Frederick Radius
-            </p>
-            <h1 className="mt-0.5 text-[28px] font-semibold leading-none tracking-[-0.035em]">
-              Compass
-            </h1>
-          </div>
+        <div>
           <p
-            className="hidden max-w-[290px] text-right text-[12px] leading-snug sm:block"
-            style={{ color: "var(--app-ink-3)" }}
+            className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-brand-press)" }}
           >
-            Choose what you need and go straight there.
+            Compass
           </p>
+          <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
+            What do you need?
+          </h1>
         </div>
 
         <label className="mt-4 block">
@@ -529,8 +593,8 @@ export default function CompassHub() {
               enterKeyHint="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search parking, buses, scanner, events…"
-              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-11 text-[14px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              placeholder="Try parking, live music, a restroom…"
+              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-11 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
                 borderColor: "var(--app-border)",
                 color: "var(--app-ink)",
@@ -563,18 +627,19 @@ export default function CompassHub() {
         <>
           <PinnedTools
             items={pinnedItems}
-            home={shortcut}
-            pinNotice={pinNotice}
             intentProps={intentProps}
-            onManage={() => openDeck("all")}
+            onManage={() => openDeck("all", true)}
           />
 
           {recentItems.length > 0 ? (
             <RecentTools items={recentItems} intentProps={intentProps} />
           ) : null}
 
-          <BrowseToolGroups
-            directory={directory}
+          <CompassIntentBoard
+            intents={COMPASS_INTENT_DEFINITIONS}
+            itemById={itemById}
+            activeIntent={activeIntent}
+            onActiveIntentChange={setActiveIntent}
             onOpen={openDeck}
             intentProps={intentProps}
           />
@@ -583,15 +648,22 @@ export default function CompassHub() {
 
       <ToolDeckDialog
         open={deckView !== null}
-        title={selectedGroup?.label ?? "All tools"}
+        title={
+          selectedIntent?.label ??
+          selectedGroup?.label ??
+          (editingPins ? "Manage shortcuts" : "All tools")
+        }
         description={
-          selectedGroup?.description ??
-          "Choose a category, then open or pin the tool you need."
+          editingPins
+            ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
+            : selectedIntent?.description ??
+              selectedGroup?.description ??
+              "Choose a category and go straight to the tool you need."
         }
         onClose={closeDeck}
       >
         <div className="space-y-4 py-4">
-          {selectedGroup ? (
+          {selectedGroup || selectedIntent ? (
             <button
               type="button"
               onClick={() => changeDeckView("all")}
@@ -599,24 +671,35 @@ export default function CompassHub() {
               style={{ color: "var(--app-brand-press)" }}
             >
               <ArrowLeft className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-              All categories
+              All tools
             </button>
           ) : null}
 
-          <p
-            aria-live="polite"
-            className={`min-h-4 text-[11px] ${pinNotice ? "" : "sr-only"}`}
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {pinNotice || "Pin changes will be announced here."}
-          </p>
+          {editingPins ? (
+            <p
+              aria-live="polite"
+              className={`min-h-4 text-[11px] ${pinNotice ? "" : "sr-only"}`}
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {pinNotice || "Pin changes will be announced here."}
+            </p>
+          ) : null}
 
-          {selectedGroup ? (
+          {selectedIntent ? (
+            <ToolLedger
+              items={selectedIntentItems}
+              pinnedIds={pinnedIds}
+              onTogglePin={togglePin}
+              intentProps={intentProps}
+              showPinControls={editingPins}
+            />
+          ) : selectedGroup ? (
             <ToolLedger
               items={selectedGroup.items}
               pinnedIds={pinnedIds}
               onTogglePin={togglePin}
               intentProps={intentProps}
+              showPinControls={editingPins}
             />
           ) : (
             <DeckGroupDirectory
@@ -632,61 +715,44 @@ export default function CompassHub() {
 
 function PinnedTools({
   items,
-  home,
-  pinNotice,
   intentProps,
   onManage,
 }: {
   items: DirectoryItem[];
-  home: DirectoryItem | null;
-  pinNotice: string;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
   onManage: () => void;
 }) {
-  const visibleItems = home ? [home, ...items] : items;
-
   return (
-    <section aria-labelledby="compass-pinned-heading" className="space-y-2">
+    <section aria-labelledby="compass-pinned-heading" className="space-y-1.5">
       <div className="flex min-h-11 items-center justify-between gap-3">
-        <div>
-          <h2
-            id="compass-pinned-heading"
-            className="text-[15px] font-semibold tracking-[-0.01em]"
-          >
-            Shortcuts
-          </h2>
-          <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            Saved on this device.
-          </p>
-        </div>
+        <h2
+          id="compass-pinned-heading"
+          className="text-[15px] font-semibold tracking-[-0.01em]"
+        >
+          Shortcuts
+        </h2>
         <button
           type="button"
           onClick={onManage}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold"
+          className="inline-flex min-h-11 items-center rounded-full px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
-          Edit
-          <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+          Manage
         </button>
       </div>
 
-      {visibleItems.length > 0 ? (
-        <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {visibleItems.map((item) => {
-            const isHome = item.id.startsWith("home-");
-            return (
-              <li
-                key={item.id}
-                className="w-[78px] shrink-0"
-              >
+      {items.length > 0 ? (
+        <ul className="grid grid-cols-4 gap-1">
+          {items.map((item) => (
+              <li key={item.id} className="min-w-0">
                 <Link
                   href={item.href}
                   prefetch={false}
                   {...intentProps(item)}
-                  className="tactile-interactive flex min-h-[76px] flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 >
                   <span
-                    className="grid h-10 w-10 place-items-center rounded-[12px] border"
+                    className="grid h-9 w-9 place-items-center rounded-[11px] border"
                     style={{
                       color: item.color,
                       borderColor: "var(--app-border)",
@@ -694,19 +760,17 @@ function PinnedTools({
                     }}
                   >
                     <item.icon
-                      className="h-[18px] w-[18px]"
+                      className="h-[17px] w-[17px]"
                       strokeWidth={2.05}
                       aria-hidden
                     />
                   </span>
-                  <span className="line-clamp-2 text-[10.5px] font-semibold leading-[1.15]">
+                  <span className="line-clamp-2 max-w-full text-[10.5px] font-semibold leading-[1.15]">
                     {item.label}
                   </span>
-                  {isHome ? <span className="sr-only"> Home guide</span> : null}
                 </Link>
               </li>
-            );
-          })}
+          ))}
         </ul>
       ) : (
         <button
@@ -725,13 +789,6 @@ function PinnedTools({
         </button>
       )}
 
-      <p
-        aria-live="polite"
-        className={pinNotice ? "text-[11px]" : "sr-only"}
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {pinNotice || "Pin changes will be announced here."}
-      </p>
     </section>
   );
 }
@@ -780,49 +837,136 @@ function RecentTools({
   );
 }
 
-function BrowseToolGroups({
-  directory,
+function CompassIntentBoard({
+  intents,
+  itemById,
+  activeIntent,
+  onActiveIntentChange,
   onOpen,
   intentProps,
 }: {
-  directory: ToolDeckDirectory;
-  onOpen: (view: ToolDeckGroupId | "all") => void;
+  intents: typeof COMPASS_INTENT_DEFINITIONS;
+  itemById: ReadonlyMap<string, DirectoryItem>;
+  activeIntent: CompassIntentId | null;
+  onActiveIntentChange: (value: CompassIntentId | null) => void;
+  onOpen: (view: CompassDeckView, managePins?: boolean) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <div>
-          <h2
-            id="compass-browse-heading"
-            className="text-[16px] font-semibold tracking-[-0.01em]"
-          >
-            Browse by need
-          </h2>
-          <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            Open a tool now or see the rest of its category.
-          </p>
-        </div>
-        <span
-          className="shrink-0 font-mono text-[10px] tabular-nums"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {directory.total} tools
-        </span>
-      </div>
+    <section aria-labelledby="compass-browse-heading" className="space-y-2.5">
+      <h2
+        id="compass-browse-heading"
+        className="text-[16px] font-semibold tracking-[-0.01em]"
+      >
+        Choose a direction
+      </h2>
 
       <div
-        className="divide-y divide-[var(--app-border)] border-y"
-        style={{ borderColor: "var(--app-border)" }}
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+        style={{ borderColor: "var(--app-border-strong)" }}
       >
-        {directory.groups.map((group) => (
-          <ToolGroupLauncher
-            key={group.id}
-            group={group}
-            onOpen={onOpen}
-            intentProps={intentProps}
-          />
-        ))}
+        {intents.map((intent, index) => {
+          const expanded = activeIntent === intent.id;
+          const featured = intent.featuredIds.flatMap((id) => {
+            const item = itemById.get(id);
+            return item ? [item] : [];
+          });
+          const regionId = `compass-intent-${intent.id}`;
+
+          return (
+            <section
+              key={intent.id}
+              className="border-b last:border-b-0"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={regionId}
+                onClick={() => {
+                  haptic("light");
+                  onActiveIntentChange(expanded ? null : intent.id);
+                }}
+                className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                style={{
+                  background: expanded
+                    ? "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))"
+                    : "var(--app-bg-elevated-solid)",
+                }}
+              >
+                <span
+                  className="font-mono w-6 shrink-0 text-[10px] font-semibold tabular-nums"
+                  style={{ color: expanded ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+                  aria-hidden
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
+                    {intent.label}
+                  </span>
+                  <span
+                    className="mt-1 block text-[11.5px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {intent.description}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${
+                    expanded ? "rotate-180" : ""
+                  }`}
+                  style={{ color: expanded ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+                  strokeWidth={2.1}
+                  aria-hidden
+                />
+              </button>
+
+              {expanded ? (
+                <div
+                  id={regionId}
+                  className="border-t"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <ul className="grid grid-cols-3 divide-x" style={{ borderColor: "var(--app-border)" }}>
+                    {featured.map((item) => (
+                      <li key={item.id} className="min-w-0">
+                        <Link
+                          href={item.href}
+                          prefetch={false}
+                          {...intentProps(item)}
+                          className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 px-1.5 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                        >
+                          <item.icon
+                            className="h-[17px] w-[17px] shrink-0"
+                            style={{ color: "var(--app-brand-press)" }}
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                          <span className="line-clamp-2 text-[11px] font-semibold leading-[1.15]">
+                            {item.label}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(intent.id)}
+                    className="tactile-interactive flex min-h-11 w-full items-center justify-between border-t px-3 text-left text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-brand-press)",
+                    }}
+                  >
+                    {intent.moreLabel}
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
       </div>
       <button
         type="button"
@@ -840,84 +984,12 @@ function BrowseToolGroups({
           <List className="h-4 w-4" strokeWidth={2.1} />
         </span>
         <span className="min-w-0 flex-1">All tools</span>
-        <span
-          className="font-mono text-[10px] font-normal tabular-nums"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {directory.total}
-        </span>
         <ChevronRight
           className="h-4 w-4 shrink-0"
           strokeWidth={2.1}
           aria-hidden
         />
       </button>
-    </section>
-  );
-}
-
-// Compass is an intent router, not the complete directory. Two representative
-// actions keep every need scannable on a phone; the category drawer owns the
-// rest of the inventory.
-const GROUP_PREVIEW_LIMIT = 2;
-
-function ToolGroupLauncher({
-  group,
-  onOpen,
-  intentProps,
-}: {
-  group: ToolDeckGroup;
-  onOpen: (view: ToolDeckGroupId | "all") => void;
-  intentProps: (item: DirectoryItem) => LinkIntentProps;
-}) {
-  const meta = GROUP_META[group.id];
-  const Icon = meta.icon;
-  return (
-    <section className="py-2.5" aria-labelledby={`compass-group-${group.id}`}>
-      <div className="flex min-h-9 items-center gap-2">
-        <Icon
-          className="h-[17px] w-[17px] shrink-0"
-          style={{ color: meta.color }}
-          strokeWidth={2.05}
-          aria-hidden
-        />
-        <h3
-          id={`compass-group-${group.id}`}
-          className="min-w-0 flex-1 text-[13px] font-semibold"
-        >
-          {group.label}
-        </h3>
-        <button
-          type="button"
-          onClick={() => onOpen(group.id)}
-          aria-label={`See all ${group.label}`}
-          className="inline-flex min-h-9 items-center gap-0.5 rounded-full px-1.5 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ color: "var(--app-brand-press)" }}
-        >
-          See all
-          <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-        </button>
-      </div>
-      <ul className="mt-1 grid grid-cols-2 gap-x-2">
-        {group.items.slice(0, GROUP_PREVIEW_LIMIT).map((item) => (
-          <li key={item.id}>
-            <Link
-              href={item.href}
-              prefetch={false}
-              {...intentProps(item)}
-              className="tactile-interactive flex min-h-11 min-w-0 items-center gap-2 rounded-[var(--app-radius-sm)] px-1.5 text-[11.5px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-            >
-              <item.icon
-                className="h-4 w-4 shrink-0"
-                style={{ color: item.color }}
-                strokeWidth={2}
-                aria-hidden
-              />
-              <span className="truncate">{item.label}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }
@@ -985,19 +1057,32 @@ function ToolSearchResults({
   onTogglePin: (item: DirectoryItem) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
+  const queryHref = `/search?q=${encodeURIComponent(query)}`;
+  const resolvedItems = items.map((item) =>
+    item.id === "search"
+      ? {
+          ...item,
+          href: queryHref,
+          label: `Search Frederick for “${query.length > 28 ? `${query.slice(0, 27)}…` : query}”`,
+        }
+      : item,
+  );
+
   return (
     <section aria-labelledby="compass-search-heading" className="space-y-4">
       <div className="flex items-baseline justify-between gap-3">
         <h2
           id="compass-search-heading"
+          role="status"
+          aria-live="polite"
           className="text-[17px] font-semibold tracking-[-0.01em]"
         >
-          {items.length} {items.length === 1 ? "tool" : "tools"} for “{query}”
+          {resolvedItems.length} {resolvedItems.length === 1 ? "tool" : "tools"} for “{query}”
         </h2>
       </div>
-      {items.length > 0 ? (
+      {resolvedItems.length > 0 ? (
         <ToolLedger
-          items={items}
+          items={resolvedItems}
           pinnedIds={pinnedIds}
           onTogglePin={onTogglePin}
           intentProps={intentProps}
@@ -1005,7 +1090,11 @@ function ToolSearchResults({
       ) : (
         <EmptySearch query={query} />
       )}
-      <CompassSearchActions query={query} intentProps={intentProps} />
+      <CompassSearchActions
+        query={query}
+        matchedItems={resolvedItems}
+        intentProps={intentProps}
+      />
     </section>
   );
 }
@@ -1029,9 +1118,11 @@ function EmptySearch({ query }: { query: string }) {
 
 function CompassSearchActions({
   query,
+  matchedItems,
   intentProps,
 }: {
   query: string;
+  matchedItems: DirectoryItem[];
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   const searchItem: DirectoryItem = {
@@ -1048,10 +1139,22 @@ function CompassSearchActions({
     href: `/ask?q=${encodeURIComponent(query)}`,
     label: "Ask Radius about this",
   };
+  const hasSearch = matchedItems.some(
+    (item) => item.id === "search" || item.href.startsWith("/search?"),
+  );
+  const hasAsk = matchedItems.some(
+    (item) => item.id === "ask-radius" || item.href === "/ask",
+  );
+  const alternateItems = [
+    ...(hasSearch ? [] : [searchItem]),
+    ...(hasAsk ? [] : [askItem]),
+  ];
+
+  if (alternateItems.length === 0) return null;
 
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      {[searchItem, askItem].map((item) => (
+      {alternateItems.map((item) => (
         <Link
           key={item.id}
           href={item.href}
@@ -1093,11 +1196,13 @@ function ToolLedger({
   pinnedIds,
   onTogglePin,
   intentProps,
+  showPinControls = false,
 }: {
   items: DirectoryItem[];
   pinnedIds: string[];
   onTogglePin: (item: DirectoryItem) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
+  showPinControls?: boolean;
 }) {
   return (
     <ul
@@ -1142,24 +1247,26 @@ function ToolLedger({
                 aria-hidden
               />
             </Link>
-            <button
-              type="button"
-              aria-label={`${pinned ? "Unpin" : "Pin"} ${item.label}`}
-              aria-pressed={pinned}
-              onClick={() => onTogglePin(item)}
-              className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{
-                color: pinned
-                  ? "var(--app-brand-press)"
-                  : "var(--app-ink-3)",
-              }}
-            >
-              <Pin
-                className={`h-3.5 w-3.5 ${pinned ? "fill-current" : ""}`}
-                strokeWidth={2}
-                aria-hidden
-              />
-            </button>
+            {showPinControls ? (
+              <button
+                type="button"
+                aria-label={`${pinned ? "Unpin" : "Pin"} ${item.label}`}
+                aria-pressed={pinned}
+                onClick={() => onTogglePin(item)}
+                className="grid min-h-11 w-12 shrink-0 place-items-center self-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                style={{
+                  color: pinned
+                    ? "var(--app-brand-press)"
+                    : "var(--app-ink-3)",
+                }}
+              >
+                <Pin
+                  className={`h-3.5 w-3.5 ${pinned ? "fill-current" : ""}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </button>
+            ) : null}
           </li>
         );
       })}

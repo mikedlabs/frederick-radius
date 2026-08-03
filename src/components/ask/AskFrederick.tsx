@@ -443,15 +443,18 @@ function AskSourceCard({
         background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
       }}
     >
-      <div className="grid grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[104px_minmax(0,1fr)]">
-        <div className="relative min-h-[112px] overflow-hidden bg-[var(--app-bg-sunken)]">
+      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
+        <div
+          data-ask-source-media
+          className="relative m-3 mr-0 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
+        >
           {displayPhoto && source.photo_url ? (
             <>
               <Image
                 src={source.photo_url}
                 alt=""
                 fill
-                sizes="(max-width: 640px) 80px, 104px"
+                sizes="(max-width: 639px) 68px, 104px"
                 unoptimized={source.photo_url.startsWith("/api/place-photo")}
                 placeholder="blur"
                 blurDataURL={PAPER_CREAM_BLUR}

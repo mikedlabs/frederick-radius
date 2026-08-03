@@ -56,9 +56,43 @@ export default function TopBar() {
   const searchOpenerRef = useRef<HTMLElement | null>(null);
   const searchLayerIdRef = useRef("");
   const searchPathRef = useRef<string | null>(null);
+  const searchReturnScrollYRef = useRef<number | null>(null);
+  const pointerScrollYRef = useRef<number | null>(null);
+  const scrollTrailRef = useRef({ previous: 0, current: 0, changedAt: 0 });
   const pathname = usePathname();
   const router = useRouter();
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  // Sticky-header activation can make a browser reposition the document just
+  // before it dispatches pointerdown (automation and mobile focus handling
+  // both do this). Retain the immediately preceding coordinate so Find can
+  // still return to the chapter the person was actually reading.
+  useEffect(() => {
+    const y = window.scrollY;
+    scrollTrailRef.current = { previous: y, current: y, changedAt: 0 };
+    const remember = () => {
+      const next = window.scrollY;
+      const trail = scrollTrailRef.current;
+      if (Math.abs(next - trail.current) < 1) return;
+      scrollTrailRef.current = {
+        previous: trail.current,
+        current: next,
+        changedAt: performance.now(),
+      };
+    };
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, []);
+
+  const capturePointerScroll = useCallback(() => {
+    const trail = scrollTrailRef.current;
+    const recentBrowserReposition =
+      trail.previous - trail.current >= 72 &&
+      performance.now() - trail.changedAt <= 220;
+    pointerScrollYRef.current = recentBrowserReposition
+      ? trail.previous
+      : window.scrollY;
+  }, []);
 
   // Has the user navigated WITHIN the app since arriving? The TopBar lives in
   // the (app) layout, which persists across navigations, so counting pathname
@@ -80,7 +114,10 @@ export default function TopBar() {
   const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
   const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
   const findTarget = topBarFindTarget(pathname);
-  const openPrimaryFind = useCallback((opener: HTMLElement | null) => {
+  const openPrimaryFind = useCallback((
+    opener: HTMLElement | null,
+    returnScrollY = window.scrollY,
+  ) => {
     searchOpenerRef.current = opener;
     if (topBarFindTarget(pathname) === "map") {
       setSearchOpen(false);
@@ -88,6 +125,7 @@ export default function TopBar() {
       return;
     }
     searchPathRef.current = pathname;
+    searchReturnScrollYRef.current = returnScrollY;
     if (!searchOpen) {
       searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
     }
@@ -126,6 +164,7 @@ export default function TopBar() {
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      searchReturnScrollYRef.current = window.scrollY;
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       searchPathRef.current = pathname;
@@ -154,6 +193,7 @@ export default function TopBar() {
         e.preventDefault();
         openPrimaryFind(
           document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          window.scrollY,
         );
       }
       // Forward slash as a quick-open (don't trigger when typing into another input)
@@ -172,6 +212,7 @@ export default function TopBar() {
           e.preventDefault();
           openPrimaryFind(
             document.activeElement instanceof HTMLElement ? document.activeElement : null,
+            window.scrollY,
           );
         }
       }
@@ -183,6 +224,7 @@ export default function TopBar() {
   return (
     <>
       <header
+        data-map-header={pathname === "/map" ? "true" : undefined}
         className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]"
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
@@ -218,14 +260,14 @@ export default function TopBar() {
               prefetch={false}
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
-              aria-label="Frederick Radius beta, home"
+              aria-label={pathname === "/map" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
               className="tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]"
               style={{ color: "var(--app-brand)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
                   on home screens and avatars, not inside the product header. */}
-              <RippleMark size={34} className="shrink-0" />
+              <RippleMark size={pathname === "/map" ? 30 : 34} className="shrink-0" />
               {/* The wordmark yields on the narrowest phones so functional
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
@@ -238,18 +280,20 @@ export default function TopBar() {
               {/* Product status belongs to the brand lockup, not the navigation:
                   it sets expectations without becoming another tool or tap
                   target. Keep it visible when the wordmark yields on phones. */}
-              <span
-                data-product-status="beta"
-                aria-hidden="true"
-                className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
-                style={{
-                  borderColor: "var(--app-brand-tint-22)",
-                  background: "var(--app-brand-tint-6)",
-                  color: "var(--app-brand-press)",
-                }}
-              >
-                Beta
-              </span>
+              {pathname !== "/map" ? (
+                <span
+                  data-product-status="beta"
+                  aria-hidden="true"
+                  className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] border px-1.5 font-sans text-[8px] font-bold uppercase leading-none tracking-[0.16em]"
+                  style={{
+                    borderColor: "var(--app-brand-tint-22)",
+                    background: "var(--app-brand-tint-6)",
+                    color: "var(--app-brand-press)",
+                  }}
+                >
+                  Beta
+                </span>
+              ) : null}
             </Link>
           )}
 
@@ -268,16 +312,10 @@ export default function TopBar() {
               // pins the pulse · Compass cluster to the right edge.
               <div className="ml-1 min-w-0 flex-1">
                 {pathname === "/map" ? (
-                  <>
-                    <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
-                      Frederick County
-                    </span>
-                  </>
-                ) : (
-                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight lg:block" style={{ color: "var(--app-ink)" }}>
-                    Compass
+                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
+                    Frederick County
                   </span>
-                )}
+                ) : null}
               </div>
             ) : (
               // Spacer keeps the right cluster (pulse · Browse) on the right
@@ -292,8 +330,11 @@ export default function TopBar() {
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
               <button
                 type="button"
+                onPointerDown={capturePointerScroll}
                 onClick={(event) => {
-                  openPrimaryFind(event.currentTarget);
+                  const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
+                  pointerScrollYRef.current = null;
+                  openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
                 className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
@@ -319,9 +360,12 @@ export default function TopBar() {
               aria-controls={findTarget === "map" ? "map-search-input" : searchOpen ? "radius-find-dialog" : undefined}
               aria-expanded={findTarget === "map" ? undefined : searchOpen}
               title={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
+              onPointerDown={capturePointerScroll}
               onClick={(event) => {
                 haptic("light");
-                openPrimaryFind(event.currentTarget);
+                const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
+                pointerScrollYRef.current = null;
+                openPrimaryFind(event.currentTarget, returnScrollY);
               }}
               className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
@@ -345,7 +389,9 @@ export default function TopBar() {
               overflow button. Labels appear when the header has room; both
               destinations retain full touch targets and accessible names on
               narrow phones. */}
-          {shouldShowGlobalLocation(pathname) ? <LocationChip /> : null}
+          {shouldShowGlobalLocation(pathname) ? (
+            <LocationChip compact={pathname === "/map"} />
+          ) : null}
 
           {/* Pulse stays named on larger screens. On a phone it appears only
               when active, unavailable, or already open, so safety never gets
@@ -354,7 +400,7 @@ export default function TopBar() {
 
           {/* Compass is the field-guide index. Keep the destination visible on
               its own page so the top navigation does not change shape. */}
-          <div className="hidden sm:contents">
+          <div className="contents">
             <Link
               href="/compass"
               prefetch={false}
@@ -385,6 +431,7 @@ export default function TopBar() {
               onClose={closeSearch}
               openerRef={searchOpenerRef}
               historyLayerId={searchLayerIdRef.current}
+              returnScrollY={searchReturnScrollYRef.current}
             />
           )}
         >
@@ -393,6 +440,7 @@ export default function TopBar() {
             onClose={closeSearch}
             openerRef={searchOpenerRef}
             historyLayerId={searchLayerIdRef.current}
+            returnScrollY={searchReturnScrollYRef.current}
           />
         </Suspense>
       ) : null}
@@ -404,10 +452,12 @@ function SearchOverlayFallback({
   onClose,
   openerRef,
   historyLayerId,
+  returnScrollY,
 }: {
   onClose: () => void;
   openerRef: RefObject<HTMLElement | null>;
   historyLayerId: string;
+  returnScrollY: number | null;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -415,19 +465,22 @@ function SearchOverlayFallback({
 
   const finishDismiss = useCallback(() => {
     onClose();
-    window.requestAnimationFrame(() => openerRef.current?.focus?.());
+    window.requestAnimationFrame(() =>
+      openerRef.current?.focus?.({ preventScroll: true }),
+    );
   }, [onClose, openerRef]);
   const historyLayer = useReversibleHistoryLayer({
     active: true,
     id: historyLayerId,
     onDismiss: finishDismiss,
+    returnScrollY,
   });
   const dismiss = historyLayer.dismiss;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
+    closeRef.current?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;

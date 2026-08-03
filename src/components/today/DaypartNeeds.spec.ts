@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
+  daypartEmptyCopy,
   daypartPhotoSrc,
   daypartPickScopeLabel,
+  initialDaypartCategory,
   isPhotoFailureSignal,
   isDaypartCountywideContext,
   liveShelfFromWantAnswer,
+  nextUnresolvedDaypartCategory,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -58,6 +61,92 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Second Loaf");
   });
 
+  it("does not let an empty weather category suppress a useful daypart category", () => {
+    const rows = [
+      {
+        category: "museum",
+        label: "Museums & indoors",
+        href: "/category/museum",
+        picks: [],
+      },
+      {
+        category: "restaurant",
+        label: "Dinner",
+        href: "/category/restaurant",
+        picks: [
+          {
+            slug: "downtown-dinner",
+            name: "Downtown Dinner",
+            rating: 4.7,
+            where: "Frederick",
+            confidence: "confirmed" as const,
+          },
+        ],
+      },
+      {
+        category: "bar",
+        label: "Bars",
+        href: "/category/bar",
+        picks: [],
+      },
+    ];
+
+    expect(initialDaypartCategory(rows)).toBe("restaurant");
+
+    const html = renderToStaticMarkup(createElement(DaypartNeeds, { rows }));
+    expect(html).toContain("Downtown Dinner");
+    expect(html).toContain("Museums &amp; indoors");
+    expect(html).toContain("Bars");
+    expect(html).not.toContain("No place across Frederick County");
+  });
+
+  it("checks another category after a live zero instead of treating one zero as global", () => {
+    const rows = [
+      {
+        category: "museum",
+        label: "Museums & indoors",
+        href: "/category/museum",
+        picks: [],
+      },
+      {
+        category: "book-store",
+        label: "Bookstores & cozy corners",
+        href: "/category/book-store",
+        picks: [],
+      },
+      {
+        category: "restaurant",
+        label: "Dinner",
+        href: "/category/restaurant",
+        picks: [
+          {
+            slug: "downtown-dinner",
+            name: "Downtown Dinner",
+            rating: 4.7,
+            confidence: "confirmed" as const,
+          },
+        ],
+      },
+    ];
+
+    expect(
+      nextUnresolvedDaypartCategory(rows, "museum", { museum: true }),
+    ).toBe("restaurant");
+    expect(
+      nextUnresolvedDaypartCategory(rows, "restaurant", {
+        museum: true,
+        restaurant: true,
+      }),
+    ).toBe("book-store");
+    expect(
+      nextUnresolvedDaypartCategory(rows, "book-store", {
+        museum: true,
+        "book-store": true,
+        restaurant: true,
+      }),
+    ).toBeNull();
+  });
+
   it("keeps an empty server shelf mounted while the live location-aware answer loads", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
@@ -85,7 +174,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Places open now");
     expect(html).toContain("Across Frederick County");
     expect(html).toContain(
-      "No place across Frederick County has current hours showing it open.",
+      "Current hours do not confirm an open match for this group across Frederick County.",
     );
     expect(html).toContain("Browse places");
     expect(html).toContain('href="/open-now"');
@@ -104,7 +193,7 @@ describe("DaypartNeeds", () => {
     );
 
     expect(html).toContain(
-      "No place in Urbana has current hours showing it open.",
+      "Current hours do not confirm an open match for this group in Urbana.",
     );
     expect(html).toContain("Expand to county");
     expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
@@ -119,8 +208,24 @@ describe("DaypartNeeds", () => {
       }),
     );
 
-    expect(html).toContain("No place is open in Urbana right now.");
+    expect(html).toContain("No open match for this group in Urbana right now.");
     expect(html).not.toContain("hours showing it open");
+  });
+
+  it("states an empty category narrowly instead of making a countywide claim", () => {
+    expect(
+      daypartEmptyCopy(
+        "Across Frederick County",
+        true,
+        false,
+        "Museums & indoors",
+      ),
+    ).toBe(
+      "Current hours do not confirm an open match for museums & indoors across Frederick County.",
+    );
+    expect(
+      daypartEmptyCopy("Urbana", false, true, "Coffee"),
+    ).toBe("No open match for coffee in Urbana right now.");
   });
 
   it("treats ranking origins as countywide and only a town as a hard scope", () => {

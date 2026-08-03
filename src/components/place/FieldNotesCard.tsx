@@ -68,7 +68,7 @@ function Row({
                 href={evidence.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
+                className="tap-44-y inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
               >
                 {host}
                 <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />

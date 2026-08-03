@@ -463,7 +463,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             <div className="absolute inset-x-0 top-0 flex items-start justify-end gap-3 p-4">
               <div className="flex shrink-0 items-center gap-1">
                 <EventActions event={event} actions={["share"]} />
-                <SaveButton refType="event" refId={event.slug} label={event.title} />
+                <div className="hidden lg:block">
+                  <SaveButton refType="event" refId={event.slug} label={event.title} />
+                </div>
               </div>
             </div>
             {/* Bottom: category eyebrow + title */}
@@ -493,7 +495,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {/* Top-right action cluster */}
             <div className="absolute right-3 top-3 z-10 flex shrink-0 items-center gap-1">
               <EventActions event={event} actions={["share"]} />
-              <SaveButton refType="event" refId={event.slug} label={event.title} />
+              <div className="hidden lg:block">
+                <SaveButton refType="event" refId={event.slug} label={event.title} />
+              </div>
             </div>
             <div className="absolute inset-x-0 bottom-0 p-5">
               <p

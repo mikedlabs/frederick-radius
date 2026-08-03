@@ -28,7 +28,7 @@ import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, ty
  * Dropdown uses inline state + a click-outside listener (vs a popover lib) —
  * the menu is small enough that the dependency wouldn't earn its bytes.
  */
-export default function LocationChip() {
+export default function LocationChip({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { state, request } = useGeolocation();
   const [open, setOpen] = useState(false);
@@ -88,7 +88,7 @@ export default function LocationChip() {
 
   // The chip label follows the scope first; "near me" borrows the live
   // geolocation readout so it still reads "Near Brunswick" once granted.
-  let label = scope ? scopeLabel(scope) : "Frederick, MD";
+  let label = scope ? scopeLabel(scope) : compact ? "Frederick County" : "Frederick, MD";
   let LabelIcon = MapPin;
   let labelColor: string = scope ? "var(--app-ink-2)" : "var(--app-ink-3)";
   if (scope === "nearme") {
@@ -114,6 +114,8 @@ export default function LocationChip() {
   return (
     <div ref={wrapRef} className="relative min-w-0 shrink-0">
       <button
+        data-location-chip
+        data-compact={compact || undefined}
         type="button"
         onClick={() => {
           haptic("light");

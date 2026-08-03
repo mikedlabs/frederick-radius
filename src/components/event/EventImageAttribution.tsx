@@ -34,6 +34,7 @@ export default function EventImageAttribution({
           }}
           compact={compact}
           showAvatar={!compact}
+          touchTarget
         />
         {attribution.flag_content_uri ? (
           <>
@@ -41,6 +42,7 @@ export default function EventImageAttribution({
             <GoogleContentReportLink
               href={attribution.flag_content_uri}
               label="Report photo"
+              touchTarget
             />
           </>
         ) : null}

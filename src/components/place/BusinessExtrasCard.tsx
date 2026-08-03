@@ -89,7 +89,7 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
         href={source.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-flex items-center gap-1 text-[11px]"
+        className="tap-44-y mt-3 inline-flex items-center gap-1 text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
         via {host}

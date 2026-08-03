@@ -60,6 +60,7 @@ import {
 } from "@/lib/walkTime";
 import {
   GEOLOCATION_CHANGE_EVENT,
+  readCachedGeoPosition,
   readCachedPosition,
   useGeolocation,
 } from "@/hooks/useGeolocation";
@@ -96,6 +97,9 @@ import StopArrivalsPopup, {
 // each photo was taken in the county.
 import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
+import MapLoadingScene from "./MapLoadingScene";
+import { clampLocationAccuracy } from "./mapLocationAccuracy";
+import { mapPaintTransitionDuration, mapPlaceVisualState } from "./mapVisualState";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -192,7 +196,10 @@ function hasWebGL(): boolean {
 // Other embedded maps remain unclustered so a small, already-scoped set never
 // gets collapsed unnecessarily.
 const COUNTY_CURATED_CLUSTER_RADIUS = 58;
-const COUNTY_CURATED_CLUSTER_MAX_ZOOM = 13;
+// Downtown remains aggregated until the user reaches a true street-reading
+// scale. Releasing the full county catalog earlier created a confetti field
+// before individual storefronts could be understood.
+const COUNTY_CURATED_CLUSTER_MAX_ZOOM = 15;
 const COMPACT_CURATED_CLUSTER_RADIUS = 46;
 const COMPACT_CURATED_CLUSTER_MAX_ZOOM = 12;
 
@@ -374,8 +381,9 @@ function countyFitPadding(measureDock = true): { top: number; right: number; bot
     ? document.querySelector<HTMLElement>("[data-map-dock]")
     : null;
   const dockRect = dock?.getBoundingClientRect();
-  const activeStateRect = dock
-    ?.querySelector<HTMLElement>(".dock-active-state")
+  const contextRailRect = dock
+    ?.closest<HTMLElement>(".dock-host")
+    ?.querySelector<HTMLElement>(".map-context-rail")
     ?.getBoundingClientRect();
   const paneRect =
     dock?.classList.contains("dock-open") === true
@@ -391,7 +399,7 @@ function countyFitPadding(measureDock = true): { top: number; right: number; bot
     mapBottom: mapRect?.bottom ?? window.innerHeight,
     dockTop: dockRect?.top,
     dockBottom: dockRect?.bottom,
-    activeStateTop: activeStateRect?.top,
+    contextRailBottom: contextRailRect?.bottom,
     paneTop: paneRect?.top,
   });
 }
@@ -795,6 +803,7 @@ export default function AppMap({
   // This flag deliberately promises only that the load handler ran. Initial
   // amenity/selection camera work may still follow, so do not call it settled.
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapVisualReady, setMapVisualReady] = useState(false);
   // A browser with no WebGL (locked-down corporate profile, a headless/bot
   // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
   // renders an empty rectangle, which is exactly the "map failed to load" a
@@ -1001,6 +1010,13 @@ export default function AppMap({
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
   const [userLoc, setUserLoc] = useState<LngLat | null>(locationSeed.ranking);
+  const [userAccuracyM, setUserAccuracyM] = useState<number | null>(() => {
+    const cached = readCachedGeoPosition();
+    return cached && Number.isFinite(cached.accuracy) ? cached.accuracy : null;
+  });
+  const [locationFixTimestamp, setLocationFixTimestamp] = useState<number | null>(() =>
+    readCachedGeoPosition()?.timestamp ?? null,
+  );
   // Ranking fallback when there's no device fix: the saved home town's
   // centroid. Privacy-free (client-local preference, no prompt), and it makes
   // "closest to you first" true for home-town users who never shared location.
@@ -1013,16 +1029,46 @@ export default function AppMap({
   const {
     state: sharedGeolocationState,
     requestHighAccuracy: requestSharedGeolocation,
+    requestIfGranted: refreshGrantedGeolocation,
   } = useGeolocation();
   const locateRequestedRef = useRef(false);
+  const automaticLocationCheckRef = useRef(false);
+
+  // A returning visitor who already granted location should never have their
+  // results ranked from an invisible map-center fallback. Refresh the fix
+  // silently, but preserve the county overview until they explicitly tap the
+  // locate control. First-time visitors are never prompted from this effect.
+  useEffect(() => {
+    const cached = readCachedPosition();
+    if (
+      !isBrowseMap ||
+      automaticLocationCheckRef.current ||
+      (cached && isInFrederickCounty(cached.lng, cached.lat))
+    ) {
+      return;
+    }
+
+    automaticLocationCheckRef.current = true;
+    void refreshGrantedGeolocation();
+  }, [isBrowseMap, refreshGrantedGeolocation]);
 
   // Location can be granted from Ask, Today, or the map itself. The shared
   // same-tab event keeps map ranking current without moving the camera.
   useEffect(() => {
     const syncRankingLocation = () => {
-      const cached = readCachedPosition();
+      const cached = readCachedGeoPosition();
       setUserLoc(
         cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null,
+      );
+      setUserAccuracyM(
+        cached && isInFrederickCounty(cached.lng, cached.lat)
+          ? cached.accuracy
+          : null,
+      );
+      setLocationFixTimestamp(
+        cached && isInFrederickCounty(cached.lng, cached.lat)
+          ? cached.timestamp
+          : null,
       );
     };
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
@@ -1057,6 +1103,8 @@ export default function AppMap({
 
       if (!isInFrederickCounty(loc.lng, loc.lat)) {
         setUserLoc(null);
+        setUserAccuracyM(null);
+        setLocationFixTimestamp(null);
         setGeoMsg(
           "You are outside Frederick County. Showing downtown Frederick.",
         );
@@ -1073,6 +1121,8 @@ export default function AppMap({
 
       setGeoMsg(null);
       setUserLoc(loc);
+      setUserAccuracyM(sharedGeolocationState.position.accuracy);
+      setLocationFixTimestamp(sharedGeolocationState.position.timestamp);
       mapRef.current?.getMap().flyTo({
         center: [loc.lng, loc.lat],
         zoom: 14,
@@ -1365,6 +1415,7 @@ export default function AppMap({
   // Mapbox paint transitions ignore the prefers-reduced-motion media
   // query, so gate the cross-fade duration ourselves to honor it.
   const aerialFade = (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) ? 0 : 450;
+  const mapPaintDuration = mapPaintTransitionDuration(prefersReducedMotion());
   // Tap-a-town: the municipality under the last empty-map tap (name +
   // tap point for the popup anchor). Null when no town sheet is open.
   const [civicTown, setCivicTown] = useState<CivicTownSelection | null>(null);
@@ -2085,9 +2136,14 @@ export default function AppMap({
    * Other embeds keep every already-scoped place individually represented. */
   const curatedGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
-    features: filteredPlaces.map((p) => ({
-      type: "Feature" as const,
-      properties: {
+    features: filteredPlaces.map((p) => {
+      const visual = mapPlaceVisualState(p.slug, {
+        amenitiesActive: amenityGroups.size > 0,
+        matchSlugs: visualMatchSet,
+      });
+      return {
+        type: "Feature" as const,
+        properties: {
         slug: p.slug,
         name: p.name,
         category: p.category,
@@ -2108,19 +2164,16 @@ export default function AppMap({
         pri: p.is_verified ? 0 : 1,
         // Faded when an active What/Open-now filter doesn't match this pin
         // (interaction: the map reacts to the dock, not just the count).
-        dimmed:
-          amenityGroups.size > 0 ||
-          (visualMatchSet ? !visualMatchSet.has(p.slug) : false),
+        dimmed: visual.dimmed,
         // Emphasized: a MATCH while a filter is active. Drives the icon-size
         // boost so matches grow and dominate over the shrunk, faded rest —
         // weak contrast (matches at full, rest at 0.28) read as barely
         // filtered before. false on the clean, unfiltered map.
-        emph:
-          amenityGroups.size === 0 &&
-          (visualMatchSet ? visualMatchSet.has(p.slug) : false),
-      },
-      geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
-    })),
+        emph: visual.emph,
+        },
+        geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
+      };
+    }),
   }), [amenityGroups, filteredPlaces, visualMatchSet]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
@@ -2131,6 +2184,8 @@ export default function AppMap({
   // Reapplied whenever the source data changes (Mapbox clears feature-state on
   // setData) or the hour moves; cleared when the scrubber turns off.
   const clientHoursRef = useRef<globalThis.Map<string, { hours: PlaceCardData["hours"]; verified: boolean }> | null>(null);
+  const scrubDimStateRef = useRef(new globalThis.Map<string, boolean>());
+  const scrubSourceRef = useRef<typeof curatedGeoJson | null>(null);
   useEffect(() => {
     let cancelled = false;
     async function apply() {
@@ -2138,6 +2193,8 @@ export default function AppMap({
       if (!m || !m.getSource("curated-places")) return;
       if (scrubHour == null) {
         m.removeFeatureState({ source: "curated-places" });
+        scrubDimStateRef.current.clear();
+        scrubSourceRef.current = curatedGeoJson;
         return;
       }
       if (!clientHoursRef.current) {
@@ -2152,11 +2209,21 @@ export default function AppMap({
       }
       const hoursBySlug = clientHoursRef.current;
       if (!hoursBySlug) return;
+      // setData clears Mapbox feature-state. A changed GeoJSON object therefore
+      // needs one complete reapply; ordinary playback ticks only write places
+      // whose open/closed result changed since the previous step.
+      if (scrubSourceRef.current !== curatedGeoJson) {
+        scrubDimStateRef.current.clear();
+        scrubSourceRef.current = curatedGeoJson;
+      }
       const at = scrubInstant(scrubHour);
       for (const p of filteredPlaces) {
         const h = hoursBySlug.get(p.slug);
         const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
-        m.setFeatureState({ source: "curated-places", id: p.slug }, { dim: !open });
+        const dim = !open;
+        if (scrubDimStateRef.current.get(p.slug) === dim) continue;
+        m.setFeatureState({ source: "curated-places", id: p.slug }, { dim });
+        scrubDimStateRef.current.set(p.slug, dim);
       }
     }
     const m = mapRef.current?.getMap();
@@ -2165,20 +2232,29 @@ export default function AppMap({
     return () => { cancelled = true; };
   }, [scrubHour, curatedGeoJson, filteredPlaces]);
 
-  // The single selected place — drives a soft glow ring under its icon.
+  const selectedPlace = useMemo(
+    () => (selectedSlug ? places.find((place) => place.slug === selectedSlug) ?? null : null),
+    [places, selectedSlug],
+  );
+
+  // The single selected place uses the Radius brick regardless of category.
+  // Category remains visible on the result card; the map itself gains one
+  // predictable selection color instead of making every tap feel different.
   const selectedGeoJson = useMemo(() => {
-    const p = selectedSlug ? places.find((x) => x.slug === selectedSlug) : null;
     return {
       type: "FeatureCollection" as const,
-      features: p
+      features: selectedPlace
         ? [{
             type: "Feature" as const,
-            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#B5462B" },
-            geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
+            properties: { color: BRAND.colors.brick },
+            geometry: {
+              type: "Point" as const,
+              coordinates: [selectedPlace.geom.lng, selectedPlace.geom.lat],
+            },
           }]
         : [],
     };
-  }, [selectedSlug, places]);
+  }, [selectedPlace]);
 
   /**
    * Municipality centroids as label points. County GIS polygons provide the
@@ -3016,11 +3092,21 @@ export default function AppMap({
     router.push(r.href);
   };
 
-  // Near-me radius ring
+  // Near-me reach ring plus the browser's separate accuracy halo. The first
+  // answers "what is within my Radius"; the second quietly shows how exact
+  // the device fix really is so the center dot never overclaims precision.
   const ringGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
     features: userLoc ? [circlePolygon(userLoc, RADIUS_M)] : [],
   }), [userLoc]);
+  const clampedAccuracyM = clampLocationAccuracy(userAccuracyM);
+  const accuracyGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features:
+      userLoc && clampedAccuracyM
+        ? [circlePolygon(userLoc, clampedAccuracyM)]
+        : [],
+  }), [clampedAccuracyM, userLoc]);
   const dotGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
     features: userLoc
@@ -3030,10 +3116,6 @@ export default function AppMap({
 
   // Directions: a direct connector from you to the selected place, with
   // real distance + drive estimate and a one-tap handoff to native maps.
-  const selectedPlace = useMemo(
-    () => (selectedSlug ? places.find((x) => x.slug === selectedSlug) ?? null : null),
-    [selectedSlug, places],
-  );
   // Real walking minutes for the SELECTED place only (Mapbox Directions
   // via /api/walk-time — never fetched per pin). The chip renders the
   // straight-line estimate immediately and swaps the routed figure in
@@ -3489,6 +3571,9 @@ export default function AppMap({
       data-map-peek={dock && selectionOpen ? "open" : undefined}
       data-map-error={mapError || undefined}
       data-map-loaded={dock && mapLoaded ? "true" : undefined}
+      data-map-location-accuracy={
+        dock && userLoc && clampedAccuracyM ? clampedAccuracyM : undefined
+      }
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
@@ -3626,7 +3711,7 @@ export default function AppMap({
             <span role="status" aria-live="polite">{geoMsg}</span>
             <button
               type="button"
-              className="tap-44 grid shrink-0 place-items-center rounded-full"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => setGeoMsg(null)}
               aria-label="Dismiss location message"
               style={{ color: "var(--app-ink-3)" }}
@@ -3662,7 +3747,10 @@ export default function AppMap({
         )}
         {/* Directions chip — distance + drive estimate + native handoff */}
         {routeInfo && (
-          <div className="absolute inset-x-0 top-3 z-[var(--z-map-control)] flex justify-center px-3">
+          <div
+            className="map-route-chip-wrap absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3"
+            data-map-top-surface="route"
+          >
             <a
               href={routeInfo.href}
               target="_blank"
@@ -3670,7 +3758,7 @@ export default function AppMap({
               onClick={() => haptic("light")}
               // Capped so a long venue name can't stretch the chip into the
               // top-right zoom controls; the name itself truncates within it.
-              className="inline-flex max-w-[calc(100%-7rem)] items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
+              className="map-top-action inline-flex max-w-[calc(100%-7rem)] items-center gap-2 px-3.5 text-[12px] font-semibold"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
               <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
@@ -3721,9 +3809,13 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Use Map view to choose
-          places, nearby essentials, live conditions, time, or area.
+          or minus to zoom when the map has focus. Use the Change view button
+          to choose places, nearby essentials, live conditions, time, or area.
         </p>
+
+        {dock && !mapError && (
+          <MapLoadingScene height="100%" ready={mapVisualReady} />
+        )}
 
         <Map
           ref={attachMapRef}
@@ -3941,6 +4033,7 @@ export default function AppMap({
             setSelectionUrlReady(true);
           }}
           onIdle={(e) => {
+            if (dock && !mapVisualReady) setMapVisualReady(true);
             if (!dock) return;
             if (places.length > 0 && placeMarksHealth !== "ready") {
               try {
@@ -4664,28 +4757,22 @@ export default function AppMap({
                     : BRAND.colors.creek,
                   "circle-radius": compactSubjectMap
                     ? [
-                        "interpolate",
-                        ["linear"],
-                        ["get", "point_count"],
-                        2,
-                        18,
-                        12,
-                        25,
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 18, 12, 25],
+                        11.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 18, 12, 25],
+                        12, ["interpolate", ["linear"], ["get", "point_count"], 2, 13.3, 12, 18.5],
                       ]
                     : [
-                        "interpolate",
-                        ["linear"],
-                        ["get", "point_count"],
-                        2,
-                        17,
-                        25,
-                        24,
-                        100,
-                        31,
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 13, 25, 21, 100, 27],
+                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 13, 25, 21, 100, 27],
+                        15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9.1, 25, 14.7, 100, 18.9],
                       ],
                   "circle-opacity":
                     amenityLayerActive && dock ? 0.04 : 0.18,
                   "circle-blur": 0.55,
+                  "circle-radius-transition": { duration: mapPaintDuration },
+                  "circle-opacity-transition": { duration: mapPaintDuration },
                 }}
               />
             )}
@@ -4700,29 +4787,25 @@ export default function AppMap({
                     : BRAND.colors.creek,
                   "circle-radius": compactSubjectMap
                     ? [
-                        "interpolate",
-                        ["linear"],
-                        ["get", "point_count"],
-                        2,
-                        12,
-                        12,
-                        18,
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 12, 12, 18],
+                        11.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 12, 12, 18],
+                        12, ["interpolate", ["linear"], ["get", "point_count"], 2, 8.6, 12, 13],
                       ]
                     : [
-                        "interpolate",
-                        ["linear"],
-                        ["get", "point_count"],
-                        2,
-                        12,
-                        25,
-                        17,
-                        100,
-                        22,
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
+                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
+                        15, ["interpolate", ["linear"], ["get", "point_count"], 2, 4.8, 4, 6.1, 25, 10.2, 100, 13.6],
                       ],
                   "circle-opacity":
                     amenityLayerActive && dock ? 0.12 : 0.92,
-                  "circle-stroke-color": "#FAF3E2",
-                  "circle-stroke-width": 2,
+                  "circle-stroke-color": compactSubjectMap
+                    ? "#FAF3E2"
+                    : "#F7F2E8",
+                  "circle-stroke-width": compactSubjectMap ? 2 : 1.6,
+                  "circle-radius-transition": { duration: mapPaintDuration },
+                  "circle-opacity-transition": { duration: mapPaintDuration },
                 }}
               />
             )}
@@ -4730,7 +4813,7 @@ export default function AppMap({
               <Layer
                 id="curated-cluster-counts"
                 type="symbol"
-                filter={["has", "point_count"]}
+                filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
                 layout={{
                   "text-field": ["get", "point_count_abbreviated"],
                   "text-size": 11,
@@ -4742,11 +4825,25 @@ export default function AppMap({
                   "text-ignore-placement": true,
                 }}
                 paint={{
-                  "text-color": compactSubjectMap ? "#2B2117" : "#FFFFFF",
-                  "text-halo-color": "rgba(250,243,226,0.28)",
-                  "text-halo-width": 0.7,
-                  "text-opacity":
-                    amenityLayerActive && dock ? 0.12 : 1,
+                  "text-color": compactSubjectMap ? "#2B2117" : "#FFFDF7",
+                  "text-halo-color": compactSubjectMap
+                    ? "rgba(250,243,226,0.28)"
+                    : "rgba(24,48,49,0.2)",
+                  "text-halo-width": compactSubjectMap ? 0.7 : 0.6,
+                  "text-opacity": compactSubjectMap
+                    ? [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, amenityLayerActive && dock ? 0.12 : 1,
+                        11.25, amenityLayerActive && dock ? 0.12 : 1,
+                        12, amenityLayerActive && dock ? 0.02 : 0.18,
+                      ]
+                    : [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, amenityLayerActive && dock ? 0.12 : 1,
+                        14.25, amenityLayerActive && dock ? 0.12 : 1,
+                        15, amenityLayerActive && dock ? 0.02 : 0.18,
+                      ],
+                  "text-opacity-transition": { duration: mapPaintDuration },
                 }}
               />
             )}
@@ -4757,6 +4854,7 @@ export default function AppMap({
             <Layer
               id="curated-lastcall"
               type="circle"
+              minzoom={15.8}
               filter={["all", ["!", ["has", "point_count"]], ["==", ["get", "closing"], true]]}
               paint={{
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 9, 15, 15, 18, 20],
@@ -4777,29 +4875,22 @@ export default function AppMap({
               paint={{
                 "circle-color": compactSubjectMap
                   ? ["get", "color"]
-                  : [
-                      "interpolate",
-                      ["linear"],
-                      ["zoom"],
-                      8.5,
-                      "#74766F",
-                      11.5,
-                      "#777970",
-                      13.6,
-                      ["get", "color"],
-                    ],
+                  : "#536A68",
                 "circle-radius": compactSubjectMap
                   ? ["interpolate", ["linear"], ["zoom"], 7.5, 4, 12, 5.5, 16, 7]
                   : [
                       "interpolate", ["linear"], ["zoom"],
                       8.5, ["*", 1.4, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                       11, ["*", 1.9, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
-                      13.5, ["*", 2.6, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
-                      17, ["*", 3.1, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
+                      13.5, ["*", 2.8, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
+                      15.2, ["*", 3.5, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
+                      17, ["*", 4.1, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                     ],
                 "circle-stroke-color": "#FAF3E2",
-                "circle-stroke-width": compactSubjectMap ? 1.6 : 0.7,
-                "circle-opacity": amenityLayerActive && dock
+                "circle-stroke-width": compactSubjectMap ? 1.6 : 1,
+                "circle-opacity": selectedSlug && dock
+                  ? 0.2
+                  : amenityLayerActive && dock
                   ? 0.1
                   : compactSubjectMap
                   ? 0.96
@@ -4807,9 +4898,11 @@ export default function AppMap({
                       "case",
                       ["==", ["get", "dimmed"], true], 0.18,
                       ["==", ["get", "emph"], true], 0.96,
-                      0.68,
+                      0.78,
                     ],
                 "circle-stroke-opacity": compactSubjectMap ? 0.95 : 0.72,
+                "circle-radius-transition": { duration: mapPaintDuration },
+                "circle-opacity-transition": { duration: mapPaintDuration },
               }}
             />
             {/* A deliberate search/category/amenity task can reveal its
@@ -4833,14 +4926,19 @@ export default function AppMap({
                 "symbol-sort-key": ["get", "pri"],
               }}
               paint={{
-                "icon-opacity": amenityLayerActive && dock ? 0.12 : 1,
+                "icon-opacity": selectedSlug && dock
+                  ? 0.2
+                  : amenityLayerActive && dock
+                    ? 0.12
+                    : 1,
+                "icon-opacity-transition": { duration: mapPaintDuration },
               }}
             />
             <Layer
               id="curated-icons"
               type="symbol"
               filter={["all", ["!", ["has", "point_count"]], ["!=", ["get", "emph"], true]]}
-              minzoom={14}
+              minzoom={15.8}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -4884,10 +4982,10 @@ export default function AppMap({
                 // on the clean map. Dropped 0.28 → 0.15 so the shrunk
                 // non-matches recede hard and the grown matches carry the eye.
                 //
-                "icon-opacity": amenityLayerActive && dock ? 0.1 : [
+                "icon-opacity": selectedSlug && dock ? 0.16 : amenityLayerActive && dock ? 0.1 : [
                   "interpolate", ["linear"], ["zoom"],
-                  14, 0,
-                  14.5, [
+                  15.8, 0,
+                  16.2, [
                     "case",
                     [
                       "any",
@@ -4898,6 +4996,7 @@ export default function AppMap({
                     1,
                   ],
                 ],
+                "icon-opacity-transition": { duration: mapPaintDuration },
               }}
             />
             {/* Invisible tap-target pad — expands each curated pin's
@@ -4948,14 +5047,38 @@ export default function AppMap({
                 "text-color": "#3A362B",
                 "text-halo-color": "#FAFAF7",
                 "text-halo-width": 1.1,
-                "text-opacity": amenityLayerActive && dock ? 0.14 : [
-                  "interpolate", ["linear"], ["zoom"],
-                  13, 0.85,
-                  15, 1,
-                ],
+                "text-opacity": selectedSlug && dock
+                  ? 0.14
+                  : amenityLayerActive && dock
+                    ? 0.14
+                    : [
+                        "case",
+                        ["==", ["get", "emph"], true],
+                        1,
+                        ["==", ["get", "dimmed"], true],
+                        0.12,
+                        [
+                          "interpolate", ["linear"], ["zoom"],
+                          15.8, 0,
+                          16.3, 0.82,
+                          17, 1,
+                        ],
+                      ],
               }}
             />
           </Source>
+
+          {selectedPlace && (
+            <Marker
+              key={`place-lock:${selectedPlace.slug}`}
+              longitude={selectedPlace.geom.lng}
+              latitude={selectedPlace.geom.lat}
+              anchor="center"
+              style={{ pointerEvents: "none" }}
+            >
+              <span className="map-selection-lock" data-map-selection-lock aria-hidden />
+            </Marker>
+          )}
 
           {/* Selected place glow — declared last (no sibling shift) but
               ordered beneath the icons via beforeId. */}
@@ -4975,6 +5098,8 @@ export default function AppMap({
                 "circle-stroke-opacity": 0.6,
                 "circle-stroke-width": 2,
                 "circle-blur": 0.3,
+                "circle-opacity-transition": { duration: mapPaintDuration },
+                "circle-radius-transition": { duration: mapPaintDuration },
               }}
             />
             <Layer
@@ -4986,6 +5111,28 @@ export default function AppMap({
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 3,
                 "circle-opacity": 1,
+                "circle-opacity-transition": { duration: mapPaintDuration },
+                "circle-radius-transition": { duration: mapPaintDuration },
+              }}
+            />
+          </Source>
+
+          {/* GPS precision sits under the larger user-selected reach ring. */}
+          <Source id="location-accuracy" type="geojson" data={accuracyGeoJson}>
+            <Layer
+              id="location-accuracy-fill"
+              type="fill"
+              beforeId="curated-lastcall"
+              paint={{ "fill-color": "#285D73", "fill-opacity": 0.1 }}
+            />
+            <Layer
+              id="location-accuracy-line"
+              type="line"
+              beforeId="curated-lastcall"
+              paint={{
+                "line-color": "#285D73",
+                "line-width": 1.25,
+                "line-opacity": 0.38,
               }}
             />
           </Source>
@@ -5027,6 +5174,17 @@ export default function AppMap({
               }}
             />
           </Source>
+          {userLoc && locationFixTimestamp && (
+            <Marker
+              key={`location-lock:${locationFixTimestamp}`}
+              longitude={userLoc.lng}
+              latitude={userLoc.lat}
+              anchor="center"
+              style={{ pointerEvents: "none" }}
+            >
+              <span className="map-location-lock" data-map-location-lock aria-hidden />
+            </Marker>
+          )}
           <Source id="near-route" type="geojson" data={routeGeoJson}>
             <Layer
               id="route-line"
@@ -5493,8 +5651,9 @@ export default function AppMap({
           showResultsHere && (
             <button
               type="button"
-              className="map-results-here tap-44"
+              className="map-results-here map-top-action tap-44"
               onClick={commitCurrentResultArea}
+              data-map-top-surface="results"
             >
               <span className="map-results-here-dot" aria-hidden />
               Show results here
@@ -5632,6 +5791,7 @@ export default function AppMap({
               if (discovery) showDiscovery(discovery);
             }}
             onPaneOpenChange={handleDockPaneOpenChange}
+            suppressContextRail={selectionOpen || showResultsHere || !mapLoaded}
           />
           </div>
         )}

@@ -17,17 +17,7 @@ import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
-import { safeReturnLink, type ReturnBridgeValueKind } from "@/lib/return-bridge";
-
-function promptTitle(valueKind: ReturnBridgeValueKind | null): string {
-  if (valueKind === "transit-stop") return "Keep this stop easy to find";
-  if (valueKind === "transit-bus") return "Find this bus again";
-  if (valueKind === "home-area") return "Keep your Frederick guide handy";
-  if (valueKind === "place" || valueKind === "event" || valueKind === "radius") {
-    return "Keep what you saved";
-  }
-  return "Keep Frederick Radius handy";
-}
+import { safeReturnLink } from "@/lib/return-bridge";
 
 async function copyLink(url: string): Promise<boolean> {
   try {
@@ -68,7 +58,6 @@ export default function InstallPrompt() {
   const {
     show,
     surface,
-    valueKind,
     embeddedApp,
     manual,
     prompting,
@@ -81,9 +70,13 @@ export default function InstallPrompt() {
 
   const suppressed = isInstallPromptSuppressedPath(pathname) && !manual;
   const visible = show && !suppressed && !blockingModalOpen;
-  // `show` starts false for SSR and turns true only after the client platform
-  // check, so reading this capability here cannot create hydration drift.
-  const canShare = visible && typeof navigator.share === "function";
+
+  useEffect(() => {
+    document.documentElement.dataset.returnBridgeReady = "true";
+    return () => {
+      delete document.documentElement.dataset.returnBridgeReady;
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) recordOfferShown();
@@ -146,25 +139,8 @@ export default function InstallPrompt() {
     completeAlternative("copy");
   };
 
-  const handleShare = async () => {
-    if (!navigator.share) {
-      await handleCopy();
-      return;
-    }
-    try {
-      await navigator.share({
-        title: "Frederick Radius",
-        text: "Keep this Frederick Radius link handy.",
-        url: currentLink(),
-      });
-      completeAlternative("share");
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      await handleCopy();
-    }
-  };
-
   const embedded = surface === "embedded-ios" || surface === "embedded-android";
+  const showCopyFallback = embedded || surface === "desktop";
   const manualInstall =
     surface === "ios-safari"
     || surface === "ios-chrome"
@@ -185,7 +161,7 @@ export default function InstallPrompt() {
         bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 68px)",
         maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-bottomnav-reserve, 0px) - 80px)",
         borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
+        background: "var(--app-bg-elevated-solid)",
         boxShadow: "var(--app-elev-3), var(--app-hi)",
       }}
     >
@@ -200,18 +176,21 @@ export default function InstallPrompt() {
         <X className="h-4 w-4" strokeWidth={2} aria-hidden />
       </button>
 
-      <div className="flex items-start gap-3 p-4 pr-11">
-        <RippleMark size={44} tile detail="full" className="shrink-0" />
-
-        <div className="min-w-0 flex-1">
+      <div className="p-4">
+        <div className="flex items-center gap-3 pr-10">
+          <RippleMark size={40} tile detail="full" className="shrink-0" />
           <p
             id="keep-radius-title"
-            className="font-sans text-[15px] font-semibold leading-tight"
+            className="min-w-0 font-sans text-[17px] font-semibold leading-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            {promptTitle(valueKind)}
+            {surface === "desktop"
+              ? "Put Radius on your phone"
+              : "Add Radius to your Home Screen"}
           </p>
+        </div>
 
+        <div className="mt-3 min-w-0">
           {surface === "native" ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -266,18 +245,20 @@ export default function InstallPrompt() {
           ) : embedded ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                This page is open inside {embeddedApp}. Use its menu to open the
-                page in your phone&rsquo;s browser, or save the link now.
+                {embeddedApp} cannot add Radius directly. Open this page in your
+                phone&rsquo;s browser, then choose Add to Home Screen.
               </p>
               <Step icon={<ExternalLink className="h-4 w-4" aria-hidden />}>
-                Open in browser, then add Radius to your Home Screen.
+                Open in browser
+                <ChevronRight className="inline h-3 w-3" aria-hidden />
+                Add to Home Screen
               </Step>
             </>
           ) : surface === "mobile-browser" ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 Open this browser&rsquo;s menu and choose Install app or Add to Home
-                Screen. You can also save the link below.
+                Screen.
               </p>
               <Step icon={<Download className="h-4 w-4" aria-hidden />}>
                 Browser menu
@@ -295,8 +276,8 @@ export default function InstallPrompt() {
                 style={{ borderColor: "var(--app-border)" }}
               />
               <p className="text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Scan with your phone, bookmark this page with Command-D or
-                Control-D, or copy the link.
+                Scan with your phone, then choose Add to Home Screen in its
+                browser. You can also bookmark or copy this page.
               </p>
             </div>
           )}
@@ -310,29 +291,20 @@ export default function InstallPrompt() {
                 style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                I added it
+                I added Radius
               </button>
             ) : null}
-            {canShare ? (
+            {showCopyFallback ? (
               <button
                 type="button"
-                onClick={() => void handleShare()}
+                onClick={() => void handleCopy()}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
-                <Share2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                Share link
+                <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Copy link
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => void handleCopy()}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Copy link
-            </button>
             <button
               type="button"
               onClick={dismiss}

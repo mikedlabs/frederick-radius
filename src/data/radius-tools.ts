@@ -705,8 +705,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "keep-radius",
-        label: "Keep Radius handy",
-        description: "Add Radius to this device or save a return link.",
+        label: "Add Radius to Home Screen",
+        description: "Open Radius like an app with one tap from your phone.",
         href: "/settings#keep-radius",
         icon: "download",
         tone: "brand",

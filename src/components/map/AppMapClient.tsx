@@ -2,48 +2,26 @@
 
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import type { ParkingPin } from "@/lib/map/parking";
+import MapLoadingScene from "./MapLoadingScene";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
-  // Map-like skeleton instead of a bare "Loading map" line. The Mapbox
-  // canvas cannot paint until its JS chunk arrives, but a tinted,
-  // softly-pulsing field with a centered pin reads as "the map is
-  // arriving" rather than "nothing has started," which makes the wait
-  // feel intentional and shorter.
+  // Use the same Frederick-specific scene before and after the AppMap chunk
+  // arrives. A generic pin skeleton followed by a second loader made the map
+  // feel as though it restarted halfway through loading.
   loading: () => (
     <div
-      className="relative grid w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{
-        height: "var(--app-browse-map-height)",
-        borderColor: "var(--app-border)",
-        background:
-          "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 70%)",
-      }}
-      aria-busy="true"
-      aria-label="Loading the map"
+      data-map-dynamic-loading
+      className="relative w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+      style={{ height: "var(--app-browse-map-height)" }}
     >
-      <div className="flex animate-pulse flex-col items-center gap-2">
-        <span
-          aria-hidden
-          className="grid h-11 w-11 place-items-center rounded-full"
-          style={{
-            background: "color-mix(in srgb, var(--app-cool) 18%, var(--app-bg-elevated))",
-            color: "var(--app-cool)",
-          }}
-        >
-          <MapPin className="h-5 w-5" strokeWidth={2} />
-        </span>
-        <p className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-          Bringing up the map
-        </p>
-      </div>
+      <MapLoadingScene height="100%" />
     </div>
   ),
 });

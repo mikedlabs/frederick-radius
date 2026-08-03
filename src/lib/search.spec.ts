@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { qualifiedSearch, search } from "./search";
+import { isEventSearchIntent, qualifiedSearch, search } from "./search";
 import type { Event } from "@/data/events";
 import { coffeeIntentTier } from "@/lib/category-ranking";
 
@@ -58,6 +58,36 @@ describe("search — normalize drops noise but keeps real keywords", () => {
 
   it("does not invent a fuzzy result from unrelated multi-word fragments", () => {
     expect(search("zzzxxyy-no-match", 5)).toHaveLength(0);
+  });
+
+  it("does not turn a two-letter conversational fragment into nearby names", () => {
+    const query = "qzxv no such thing 999";
+
+    expect(search(query, 5)).toHaveLength(0);
+    expect(
+      qualifiedSearch(query, 5, undefined, {
+        origin: { lng: -77.4105, lat: 39.4143 },
+      }).hits,
+    ).toHaveLength(0);
+  });
+
+  it("still finds a real business whose name contains the ignored word No", () => {
+    expect(
+      search("New Market Grange No.", 5).some(
+        (hit) =>
+          hit.type === "place" && hit.place.slug === "new-market-grange-no-362-new-market",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps event intent when every query word is conversational", () => {
+    expect(isEventSearchIntent("things to do")).toBe(true);
+    expect(
+      search("things to do", 5).some((hit) => hit.type === "event"),
+    ).toBe(true);
+    expect(
+      search("things to do tonight", 5).some((hit) => hit.type === "event"),
+    ).toBe(true);
   });
 
   it("keeps useful one-word and complete multi-word typo recovery", () => {

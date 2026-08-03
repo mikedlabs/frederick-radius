@@ -65,6 +65,7 @@ export default function PlacePhotoGallery({
                   attribution={attribution}
                   placeGoogleMapsUri={placeGoogleMapsUri}
                   compact
+                  touchTarget
                 />
               </span>
             </div>

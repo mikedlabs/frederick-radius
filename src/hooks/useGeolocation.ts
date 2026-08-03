@@ -64,7 +64,7 @@ export function cacheGeolocationPosition(position: GeoPosition): void {
  * permission prompt: if there's no cached fix, the caller falls back to
  * the city center. Safe to call during a client render (SSR-guarded).
  */
-export function readCachedPosition(): { lng: number; lat: number } | null {
+export function readCachedGeoPosition(): GeoPosition | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
@@ -75,12 +75,20 @@ export function readCachedPosition(): { lng: number; lat: number } | null {
       Number.isFinite(cached.lat) &&
       Date.now() - cached.timestamp < TTL_MS
     ) {
-      return { lng: cached.lng, lat: cached.lat };
+      return cached;
     }
   } catch {
     // ignore parse / storage errors — treat as no fix
   }
   return null;
+}
+
+/** Coordinate-only compatibility reader for ranking consumers that should not
+ * need to know about GPS precision. The map uses the full reader so it can
+ * visualize the browser's honest accuracy instead of implying a perfect fix. */
+export function readCachedPosition(): { lng: number; lat: number } | null {
+  const cached = readCachedGeoPosition();
+  return cached ? { lng: cached.lng, lat: cached.lat } : null;
 }
 
 /**
@@ -162,6 +170,35 @@ export function useGeolocation() {
     () => requestPosition(true),
     [requestPosition],
   );
+  /**
+   * Refresh an already-granted location without opening a browser prompt.
+   *
+   * This is intentionally separate from request(): map and search surfaces can
+   * quietly restore local ranking for a returning visitor, while a first-time
+   * visitor still gets context before deciding whether to share location.
+   */
+  const requestIfGranted = useCallback(async (): Promise<boolean> => {
+    if (
+      typeof navigator === "undefined" ||
+      !("permissions" in navigator) ||
+      typeof navigator.permissions?.query !== "function"
+    ) {
+      return false;
+    }
+
+    try {
+      const permission = await navigator.permissions.query({
+        name: "geolocation",
+      });
+      if (permission.state !== "granted") return false;
+      requestPosition(false);
+      return true;
+    } catch {
+      // Safari and privacy-hardened browsers can reject Permissions queries.
+      // Falling back to the explicit locate control preserves consent.
+      return false;
+    }
+  }, [requestPosition]);
 
   const clear = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -171,5 +208,5 @@ export function useGeolocation() {
     announceLocationChange();
   }, []);
 
-  return { state, request, requestHighAccuracy, clear };
+  return { state, request, requestHighAccuracy, requestIfGranted, clear };
 }

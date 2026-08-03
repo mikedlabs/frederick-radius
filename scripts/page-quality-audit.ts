@@ -200,7 +200,7 @@ const ROUTES: AuditRoute[] = [
   { id: "trails", path: "/trails", group: "guide", description: "Outdoor guide" },
   { id: "place-detail", path: "/places/cafe-nola", group: "template", description: "Place detail template" },
   { id: "place-detail-unincorporated", path: "/places/whiskey-creek-golf-club-ijamsville", group: "template", description: "Unincorporated place detail and coordinate-based area link" },
-  { id: "event-detail", path: "/events/first-friday-june-2026-frederick", group: "template", description: "Event detail template" },
+  { id: "event-detail", path: "/events/__current__", group: "template", description: "Current event detail template" },
   { id: "category", path: "/category/coffee", group: "template", description: "Category template" },
   { id: "town", path: "/m/frederick", group: "template", description: "Municipality template" },
   { id: "collection", path: "/collections/frederick-without-a-plan", group: "template", description: "Editorial collection template" },
@@ -240,6 +240,41 @@ const NAVIGATION_TIMEOUT_MS = positiveNumber(process.env.AUDIT_TIMEOUT_MS, 45_00
 const SETTLE_MS = positiveNumber(process.env.AUDIT_SETTLE_MS, 800);
 const IMAGE_LOAD_TIMEOUT_MS = positiveNumber(process.env.AUDIT_IMAGE_TIMEOUT_MS, 6_000);
 const TOUCH_TARGET_MIN_PX = positiveNumber(process.env.TOUCH_TARGET_MIN_PX, 44);
+
+async function resolveRuntimeRoutes(routes: AuditRoute[]): Promise<AuditRoute[]> {
+  if (!routes.some((route) => route.id === "event-detail")) return routes;
+
+  const configuredPath = process.env.EVENT_AUDIT_PATH?.trim();
+  if (configuredPath?.startsWith("/events/")) {
+    return routes.map((route) => (
+      route.id === "event-detail" ? { ...route, path: configuredPath } : route
+    ));
+  }
+
+  const endpoint = new URL("/api/events/browse?limit=24", `${BASE_URL}/`);
+  const response = await fetch(endpoint, {
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(NAVIGATION_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Could not select a current event-detail audit route: ${endpoint} returned HTTP ${response.status}.`);
+  }
+
+  const payload = await response.json() as { events?: Array<{ slug?: unknown }> };
+  const slugValue = payload.events?.find((event) => (
+    typeof event.slug === "string" && event.slug.trim().length > 0
+  ))?.slug;
+  if (typeof slugValue !== "string" || slugValue.trim().length === 0) {
+    throw new Error(`Could not select a current event-detail audit route: ${endpoint} returned no usable event slug.`);
+  }
+  const slug = slugValue.trim();
+
+  return routes.map((route) => (
+    route.id === "event-detail"
+      ? { ...route, path: `/events/${encodeURIComponent(slug)}` }
+      : route
+  ));
+}
 const INTERACTIVE_REVIEW_THRESHOLD = 80;
 const PAGE_HEIGHT_REVIEW_SCREENS = 6;
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, "-");
@@ -1262,7 +1297,7 @@ function buildMarkdown(report: AuditReport): string {
 }
 
 async function main(): Promise<void> {
-  const routes = selectedRoutes(ROUTE_FILTER);
+  const routes = await resolveRuntimeRoutes(selectedRoutes(ROUTE_FILTER));
   if (routes.length === 0) {
     throw new Error(`No routes match ROUTE_FILTER=${JSON.stringify(ROUTE_FILTER)}. Available ids: ${ROUTES.map((route) => route.id).join(", ")}`);
   }

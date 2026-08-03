@@ -51,6 +51,11 @@ const STOP = new Set([
   "me", "my", "we", "you", "your", "i'm", "im",
   "need", "want", "wanna", "looking", "look", "find", "show", "get", "give", "browse", "browsing",
   "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
+  // Generic conversational fragments are not discovery evidence. Keeping
+  // these terms made a nonsense sentence such as "no such thing" rank a
+  // business whose blurb happened to say "such as" and a name ending in
+  // "No." Real multi-word names still match on their distinguishing words.
+  "no", "such", "thing", "things",
   // Time and preference language constrains the decision but is not evidence
   // that a place satisfies the requested thing. Keeping "tonight" as a
   // search term, for example, makes a beer-and-food place look like it only
@@ -250,8 +255,15 @@ function fieldScore(haystack: string, terms: string[]): number {
     let best = 0;
     for (const variant of termVariants(t)) {
       if (lower === variant) best = Math.max(best, 3);
-      else if (lower.startsWith(variant)) best = Math.max(best, 2);
-      else if (words.includes(variant)) best = Math.max(best, 1);
+      // Two-letter fragments are not enough evidence for a prefix match.
+      // Without this floor, conversational noise such as "no" made Noah,
+      // North, and Noma look relevant to "no such thing". Exact two-letter
+      // words still match through `words.includes`, so real names such as
+      // "No Thyme to Cook" remain searchable without manufacturing nearby
+      // results from an unrelated fragment.
+      else if (variant.length >= 3 && lower.startsWith(variant)) {
+        best = Math.max(best, 2);
+      } else if (words.includes(variant)) best = Math.max(best, 1);
     }
     score += best;
   }
@@ -579,11 +591,15 @@ export function search(
   options: SearchOptions = {},
 ): SearchHit[] {
   const terms = normalize(query);
-  if (terms.length === 0 && !options.includeMatchingPlaces) return [];
+  const eventIntent = detectEventIntent(query);
+  if (
+    terms.length === 0 &&
+    !options.includeMatchingPlaces &&
+    !eventIntent
+  ) return [];
 
   const hits: SearchHit[] = [];
   const intent = detectIntent(query);
-  const eventIntent = detectEventIntent(query);
   const expansion = expandQuery(query);
   const shortIntent = recognizedShortIntent(query);
   const genericCoffeeIntent = isGenericCoffeeIntent(query);
