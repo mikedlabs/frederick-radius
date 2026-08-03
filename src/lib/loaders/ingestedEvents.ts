@@ -271,6 +271,7 @@ function occurrenceToCard(
       source,
       source_id: occ.sourceUid,
       source_url: occ.sourceUrl,
+      last_verified_at: occ.verifiedAt,
     }),
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name:

@@ -3,6 +3,7 @@ import {
   venueEventsToCards,
   type VenueEvent,
 } from "@/lib/loaders/venueEvents";
+import { prepareEventArchiveRows } from "@/lib/events/event-archive-batch";
 
 function event(overrides: Partial<VenueEvent> = {}): VenueEvent {
   return {
@@ -102,6 +103,12 @@ describe("venue event durable identity", () => {
       "venue:unmatched-test-venue:2026-08-12T23:00:00.000Z",
     ]);
     expect(new Set(cards.map((card) => card.source_id))).toHaveLength(2);
+    const archive = prepareEventArchiveRows(cards);
+    expect(archive.truncated).toBe(false);
+    expect(archive.rows.map((row) => row.source_uid)).toEqual([
+      "venue:unmatched-test-venue:2026-08-05T23:00:00.000Z",
+      "venue:unmatched-test-venue:2026-08-12T23:00:00.000Z",
+    ]);
   });
 
   it("keeps the same identity when publisher copy changes but the slot does not", () => {
