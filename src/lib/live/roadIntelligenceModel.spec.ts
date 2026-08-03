@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRoadIntelligenceSnapshot,
+  roadAttentionStatusLabel,
   selectRoadWorkZoneFeatureCollection,
   selectTodayRoadSignal,
   type RoadIntelligenceSources,
@@ -86,6 +87,58 @@ describe("road intelligence model", () => {
       severity: "emergency",
     });
     expect(snapshot.attention[1]?.kind).toBe("work-zone-closure");
+  });
+
+  it("uses closed and avoid language for an all-lanes work-zone closure", () => {
+    const sources = quietSources();
+    sources.workZones.data = [{
+      id: "wz-closure",
+      road: "US 15BU",
+      roadNames: ["US 15BU"],
+      description: "US 15 NORTH/SOUTH AT MM 1.0",
+      direction: "northbound",
+      status: "active",
+      startAt: NOW.toISOString(),
+      endAt: "2026-07-28T18:00:00.000Z",
+      updatedAt: NOW.toISOString(),
+      geometry: {
+        type: "LineString",
+        coordinates: [[-77.42, 39.41], [-77.41, 39.42]],
+      },
+      lanes: { total: 2, closed: 2, summary: "all-lanes-closed" },
+      positionConfidence: "verified",
+      sourceUrl: MDOT_WZDX_SOURCE_URL,
+    }];
+
+    const snapshot = buildRoadIntelligenceSnapshot({ sources, now: NOW });
+    const signal = snapshot.attention[0];
+
+    expect(signal).toMatchObject({
+      kind: "work-zone-closure",
+      severity: "warning",
+      detail:
+        "All lanes are closed. Avoid this route. US 15 NORTH/SOUTH AT MM 1.0",
+    });
+    expect(roadAttentionStatusLabel(signal!)).toBe(
+      "Closed · avoid this route",
+    );
+  });
+
+  it("keeps generic warning signals at use-caution language", () => {
+    expect(
+      roadAttentionStatusLabel({
+        id: "condition-1",
+        kind: "road-condition",
+        priority: 55,
+        severity: "warning",
+        title: "Travel may be restricted",
+        detail: "Snow-covered primary roads",
+        scope: "Primary roads",
+        sourceLabel: "MDOT CHART road conditions",
+        sourceUrl: CHART_ROAD_SOURCES.roadConditions,
+        observedAt: NOW.toISOString(),
+      }),
+    ).toBe("Use caution");
   });
 
   it("ships only the map-safe WZDx projection to the browser", () => {

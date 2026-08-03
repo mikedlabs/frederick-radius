@@ -41,7 +41,10 @@ import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
-import { selectRoadTravelSummary } from "@/lib/live/roadIntelligenceModel";
+import {
+  roadAttentionStatusLabel,
+  selectRoadTravelSummary,
+} from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
@@ -647,7 +650,7 @@ export default async function PulsePage() {
     heroActionLabel = "Check the road details";
     heroFacts = [
       { label: "Area", value: roadLead.scope },
-      { label: "Status", value: roadLead.severity === "emergency" ? "Emergency" : "Use caution" },
+      { label: "Status", value: roadAttentionStatusLabel(roadLead) },
       { label: "Source", value: roadLead.sourceLabel },
       {
         label: "Observed",
