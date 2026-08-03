@@ -22,6 +22,10 @@ import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
 import type { NearbyUtility } from "./mapNearby";
+import {
+  buildMapPeekDecisionCue,
+  mapDecisionFreshnessLabel,
+} from "./mapDecisionScenes";
 import MapResultSurface from "./MapResultSurface";
 
 type MapCardDetails = {
@@ -82,6 +86,9 @@ export default function MapPeek({
   const [details, setDetails] = useState<MapCardDetails | null>(null);
   const [detailsResolvedSlug, setDetailsResolvedSlug] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
+  // A fixed card clock keeps ranking deterministic for the life of this peek
+  // and avoids changing event copy between unrelated photo/details updates.
+  const [decisionClock] = useState(() => new Date().toISOString());
   const activeDetails = details?.slug === place.slug ? details : null;
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
   const status = activeDetails?.open_status ?? place.open_status;
@@ -104,6 +111,24 @@ export default function MapPeek({
     (hostedEvent ? 1 : 0) +
     (nearestGarage ? 1 : 0) +
     nearbyUtilities.length;
+  const decisionCue = buildMapPeekDecisionCue({
+    place,
+    hostedEvent,
+    nearestGarage,
+    nearbyUtilities,
+    now: decisionClock,
+  });
+  const decisionSourceDate = mapDecisionFreshnessLabel(decisionCue?.observedAt);
+  const decisionCueLabel = decisionCue?.kind === "event"
+    ? "Next here"
+    : decisionCue?.kind === "special"
+      ? "Special"
+      : decisionCue?.kind === "utility"
+        ? "Closest useful point"
+        : "Getting here";
+  const remainingUtilities = decisionCue?.kind === "utility"
+    ? nearbyUtilities.slice(1)
+    : nearbyUtilities;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -229,13 +254,35 @@ export default function MapPeek({
       {aroundCount > 0 && (
         <details className="map-peek-around">
           <summary>
-            Around here
+            {decisionCue?.headline ?? "Around here"}
             <span>{aroundCount}</span>
             <ChevronDown className="h-4 w-4" strokeWidth={2.2} aria-hidden />
           </summary>
           <div className="map-peek-around-body">
-            {place.deal_hook && <p><strong>Special</strong> {place.deal_hook}</p>}
-            {hostedEvent && (
+            {decisionCue && (
+              <p data-map-decision-cue={decisionCue.kind}>
+                <strong>{decisionCueLabel}</strong> {decisionCue.detail}
+              </p>
+            )}
+            {decisionCue?.sourceLabel && (
+              <p>
+                <strong>Source</strong>{" "}
+                {decisionCue.sourceUrl ? (
+                  <a
+                    href={decisionCue.sourceUrl}
+                    className="underline underline-offset-2"
+                    {...(decisionCue.sourceUrl.startsWith("http")
+                      ? { target: "_blank", rel: "noreferrer" }
+                      : {})}
+                  >
+                    {decisionCue.sourceLabel}
+                  </a>
+                ) : decisionCue.sourceLabel}
+                {decisionSourceDate ? ` · checked ${decisionSourceDate}` : ""}
+              </p>
+            )}
+            {place.deal_hook && decisionCue?.kind !== "special" && <p><strong>Special</strong> {place.deal_hook}</p>}
+            {hostedEvent && decisionCue?.kind !== "event" && (
               <p>
                 <strong>Next event</strong>{" "}
                 {hostedEvent.title} ·{" "}
@@ -247,16 +294,16 @@ export default function MapPeek({
                 }).format(new Date(hostedEvent.starts_at))}
               </p>
             )}
-            {nearestGarage && (
+            {nearestGarage && decisionCue?.kind !== "parking" && (
               <p>
                 <strong>Parking</strong> {nearestGarage.name} · {formatDistance(nearestGarage.distM)}
                 {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
               </p>
             )}
-            {nearbyUtilities.length > 0 && (
+            {remainingUtilities.length > 0 && (
               <p>
                 <strong>Nearby</strong>{" "}
-                {nearbyUtilities
+                {remainingUtilities
                   .map((item) => `${item.label} ${formatDistance(item.distM)}`)
                   .join(" · ")}
               </p>

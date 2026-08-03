@@ -9,7 +9,7 @@
  * Served via the `styleimagemissing` event so it survives style reloads
  * and mount ordering. Drawn at 2x for retina crispness.
  */
-import type { Map as GLMap } from "mapbox-gl";
+import type { ExpressionSpecification, Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
 
@@ -109,17 +109,108 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
  *  breweries, wineries, coffee and 15 other buckets counted toward NOTHING:
  *  an all-brewery cluster fell to the mx==0 vermilion fallback, and two
  *  restaurants outvoted ten breweries — broken exactly where Frederick is
- *  most distinctive. Every curated-place bucket now rolls into one of seven
+ *  most distinctive. Every curated-place bucket now rolls into one of eight
  *  families; the tally + tint expressions in AppMap read this one table. */
-export const CLUSTER_FAMILIES: ReadonlyArray<{ key: string; buckets: readonly Bucket[]; color: string }> = [
-  { key: "cf_food", buckets: ["food", "bakery"], color: BRAND.colors.brick },
-  { key: "cf_drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber },
-  { key: "cf_coffee", buckets: ["coffee"], color: "#8B5A2B" },
-  { key: "cf_outdoors", buckets: ["outdoors"], color: BRAND.colors.forest },
-  { key: "cf_culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum },
-  { key: "cf_shops", buckets: ["shopping", "services", "wellness", "lodging"], color: BRAND.colors.functionalAmber },
-  { key: "cf_civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek },
+export const CLUSTER_FAMILIES: ReadonlyArray<{
+  key: string;
+  label: string;
+  buckets: readonly Bucket[];
+  color: string;
+}> = [
+  { key: "cf_food", label: "Food", buckets: ["food", "bakery"], color: BRAND.colors.brick },
+  { key: "cf_drink", label: "Drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber },
+  { key: "cf_coffee", label: "Coffee", buckets: ["coffee"], color: "#8B5A2B" },
+  { key: "cf_outdoors", label: "Outdoors", buckets: ["outdoors"], color: BRAND.colors.forest },
+  { key: "cf_culture", label: "Culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum },
+  { key: "cf_shops", label: "Shops", buckets: ["shopping"], color: BRAND.colors.functionalAmber },
+  { key: "cf_services", label: "Services", buckets: ["services", "wellness", "lodging"], color: BRAND.colors.mutedInk },
+  { key: "cf_civic", label: "Civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek },
 ];
+
+/** Supercluster reductions generated from the same family table that paints
+ * the marks. This prevents taxonomy changes from quietly falling back to one
+ * generic county color. */
+export function curatedClusterProperties(): Record<string, unknown[]> {
+  return Object.fromEntries(
+    CLUSTER_FAMILIES.map((family) => [
+      family.key,
+      [
+        "+",
+        [
+          "case",
+          [
+            "in",
+            ["get", "bucket"],
+            ["literal", [...family.buckets]],
+          ],
+          1,
+          0,
+        ],
+      ],
+    ]),
+  );
+}
+
+function dominantFamilyCondition(familyKey: string): unknown[] {
+  const ownCount = ["coalesce", ["get", familyKey], 0];
+  return [
+    "all",
+    [">", ownCount, 0],
+    ...CLUSTER_FAMILIES.filter((family) => family.key !== familyKey).map(
+      (family) => [
+        ">=",
+        ownCount,
+        ["coalesce", ["get", family.key], 0],
+      ],
+    ),
+  ];
+}
+
+/** Mapbox expression selecting the family with the most places. Ties follow
+ * the stable family order above, so cluster color never flickers between
+ * frames at the same zoom. */
+export function curatedClusterColorExpression(
+  fallback = BRAND.colors.creek,
+): ExpressionSpecification {
+  return [
+    "case",
+    ...CLUSTER_FAMILIES.flatMap((family) => [
+      dominantFamilyCondition(family.key),
+      family.color,
+    ]),
+    fallback,
+  ] as ExpressionSpecification;
+}
+
+/** A short semantic label for accessible hover/click descriptions and the
+ * town-level cluster face. */
+export function curatedClusterLabelExpression(
+  fallback = "Places",
+): ExpressionSpecification {
+  return [
+    "case",
+    ...CLUSTER_FAMILIES.flatMap((family) => [
+      dominantFamilyCondition(family.key),
+      family.label,
+    ]),
+    fallback,
+  ] as ExpressionSpecification;
+}
+
+export function dominantClusterFamilyLabel(
+  properties: Readonly<Record<string, unknown>>,
+): string | null {
+  let winner: (typeof CLUSTER_FAMILIES)[number] | null = null;
+  let winnerCount = 0;
+  for (const family of CLUSTER_FAMILIES) {
+    const count = Number(properties[family.key] ?? 0);
+    if (Number.isFinite(count) && count > winnerCount) {
+      winner = family;
+      winnerCount = count;
+    }
+  }
+  return winner?.label ?? null;
+}
 
 function colorOf(slug: string): string {
   if (slug === "_default") return DEFAULT_COLOR;

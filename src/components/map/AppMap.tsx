@@ -21,7 +21,11 @@ import Map, {
 } from "react-map-gl/mapbox";
 // (GeolocateControl stays imported for DOCK-LESS embeds only — on /map
 // browse the dock's Where pane is locate's one home.)
-import type { GeoJSONSource, StyleSpecification } from "mapbox-gl";
+import type {
+  GeoJSONSource,
+  Map as MapboxMap,
+  StyleSpecification,
+} from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { useMode } from "@/hooks/useMode";
@@ -39,7 +43,14 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
-import { setScope, SCOPE_PARAM } from "@/lib/scope";
+import {
+  getScope,
+  parseScope,
+  setScope,
+  subscribeScopeChange,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -88,7 +99,14 @@ import {
   nearestMapUtilityPoint,
   type NearbyUtilityPoint,
 } from "./mapNearby";
-import { installCategoryMarkers, bucketOf } from "./categoryMarkers";
+import {
+  bucketOf,
+  curatedClusterColorExpression,
+  curatedClusterLabelExpression,
+  curatedClusterProperties,
+  dominantClusterFamilyLabel,
+  installCategoryMarkers,
+} from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import StopArrivalsPopup, {
@@ -209,6 +227,9 @@ const COUNTY_CURATED_CLUSTER_RADIUS = 58;
 const COUNTY_CURATED_CLUSTER_MAX_ZOOM = 15;
 const COMPACT_CURATED_CLUSTER_RADIUS = 46;
 const COMPACT_CURATED_CLUSTER_MAX_ZOOM = 12;
+const CURATED_CLUSTER_PROPERTIES = curatedClusterProperties();
+const CURATED_CLUSTER_COLOR = curatedClusterColorExpression();
+const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
 
 // Types, constants, and popup components are kept in focused siblings so this
 // file can own map state, effects, and layout.
@@ -231,7 +252,12 @@ import {
   type SnowRouteFC,
   type TransitStopPin,
 } from "./types";
-import { immediateMapPlaceResults } from "./mapLocalPlaceSearch";
+import {
+  confidentLocalMapPlaceResult,
+  immediateMapPlaceResults,
+  reconcileMapSearchResults,
+} from "./mapLocalPlaceSearch";
+import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -427,6 +453,19 @@ function countyFitPadding(measureDock = true): { top: number; right: number; bot
   });
 }
 
+/** Fit the visible map to the same one-mile reach used by the result set and
+ * ring. One definition keeps the camera, pins, count, URL, and share state in
+ * agreement instead of using an arbitrary zoom number. */
+function fitNearbyRadius(map: MapboxMap, origin: LngLat): void {
+  map.fitBounds(nearbyReachBounds(origin, RADIUS_M), {
+    padding: countyFitPadding(),
+    maxZoom: 14.5,
+    duration: prefersReducedMotion() ? 0 : 900,
+    easing: CAM_EASE,
+    essential: true,
+  });
+}
+
 const SHORT_LANDSCAPE_MAX_BOUNDS: [[number, number], [number, number]] = [
   [-179, -80],
   [179, 80],
@@ -591,6 +630,20 @@ export default function AppMap({
   const isBrowseMap = Boolean(dock);
   const routeSearchParams = useSearchParams();
   const routeSearch = routeSearchParams.toString();
+  const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
+  const [resultScope, setResultScope] = useState<Scope>(() =>
+    parseScope(routeScopeParam) ?? "county",
+  );
+  useEffect(() => {
+    setResultScope(parseScope(routeScopeParam) ?? "county");
+  }, [routeScopeParam]);
+  useEffect(
+    () =>
+      subscribeScopeChange((nextScope) =>
+        setResultScope(nextScope ?? "county"),
+      ),
+    [],
+  );
   const standardPreview = isMapboxStandardPreviewEnabled(routeSearch);
   const attachMapRef = useCallback((instance: MapRef | null) => {
     mapRef.current = instance;
@@ -1025,6 +1078,7 @@ export default function AppMap({
   const searchSessionLastUsedRef = useRef(0);
   const searchSessionSuggestCountRef = useRef(0);
   const searchRouteRef = useRef<string | null>(null);
+  const autoFocusedSearchResultRef = useRef<string | null>(null);
   // A global Find result can hand the map both a camera point and a place slug.
   // The camera is seeded by BrowseMapClient; this slug opens the same compact
   // peek a direct pin tap would once the map style is ready.
@@ -1153,17 +1207,22 @@ export default function AppMap({
         setUserLoc(null);
         setUserAccuracyM(null);
         setLocationFixTimestamp(null);
-        setGeoMsg("You are outside Frederick County. Showing the whole county.");
-        if (isBrowseMap) {
+        const nearbyLensActive = isBrowseMap && getScope() === "nearme";
+        setGeoMsg(
+          nearbyLensActive
+            ? "You are outside Frederick County. Showing the whole county."
+            : "You are outside Frederick County. Keeping your current map view.",
+        );
+        if (nearbyLensActive) {
           setScope("county");
           replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+          mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+            padding: countyFitPadding(),
+            duration: prefersReducedMotion() ? 0 : 900,
+            easing: CAM_EASE,
+            essential: true,
+          });
         }
-        mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
-          padding: countyFitPadding(),
-          duration: prefersReducedMotion() ? 0 : 900,
-          easing: CAM_EASE,
-          essential: true,
-        });
         return;
       }
 
@@ -1171,18 +1230,13 @@ export default function AppMap({
       setUserLoc(loc);
       setUserAccuracyM(sharedGeolocationState.position.accuracy);
       setLocationFixTimestamp(sharedGeolocationState.position.timestamp);
-      mapRef.current?.getMap().flyTo({
-        center: [loc.lng, loc.lat],
-        zoom: 14,
-        duration: prefersReducedMotion() ? 0 : 1100,
-        curve: 1.25,
-        easing: CAM_EASE,
-        essential: true,
-      });
+      const map = mapRef.current?.getMap();
+      if (map) fitNearbyRadius(map, loc);
       return;
     }
 
-    if (isBrowseMap) {
+    const nearbyLensActive = isBrowseMap && getScope() === "nearme";
+    if (nearbyLensActive) {
       // A failed permission request cannot leave a shareable `in=nearme`
       // promise in the URL or dock. Fall back to the actual county frame and
       // let the shared-scope event update MapDock's header immediately.
@@ -1197,8 +1251,12 @@ export default function AppMap({
     }
     setGeoMsg(
       sharedGeolocationState.status === "denied"
-        ? "Location is off. Showing the whole county. Enable it in your browser to use Near me."
-        : "Couldn't get your location. Showing the whole county.",
+        ? nearbyLensActive
+          ? "Location is off. Showing the whole county. Enable it in your browser to use Near me."
+          : "Location is off. Enable it in your browser to recenter the map."
+        : nearbyLensActive
+          ? "Couldn't get your location. Showing the whole county."
+          : "Couldn't get your location. Keeping your current map view.",
     );
   }, [isBrowseMap, sharedGeolocationState]);
   const [showCivic, setShowCivic] = useState(
@@ -1887,12 +1945,25 @@ export default function AppMap({
     [filteredPlaces, matchSet],
   );
 
+  // The Near me lens is the one-mile Radius drawn around the device fix. It
+  // narrows both the source and the result contract, so the dock cannot claim
+  // a countywide catalog while the camera is showing a walkable local frame.
+  // Until a fix arrives, the existing county set stays visible and the normal
+  // permission flow remains honest about what it can establish.
+  const resultScopedPlaces = useMemo(
+    () =>
+      resultScope === "nearme" && userLoc
+        ? placesWithinReach(visiblePlaces, userLoc, RADIUS_M)
+        : visiblePlaces,
+    [resultScope, userLoc, visiblePlaces],
+  );
+
   // Viewport-scoped counts for the dock's count line. O(n) point-in-box
   // per settled move over ≤1.7k pins — negligible next to the GeoJSON
   // rebuild the same states already trigger.
   const inViewPlaces = useMemo(() => {
-    if (!viewBounds) return visiblePlaces;
-    return visiblePlaces.filter(
+    if (!viewBounds) return resultScopedPlaces;
+    return resultScopedPlaces.filter(
       (p) =>
         p.geom &&
         p.geom.lng >= viewBounds.w &&
@@ -1900,7 +1971,7 @@ export default function AppMap({
         p.geom.lat >= viewBounds.s &&
         p.geom.lat <= viewBounds.n,
     );
-  }, [visiblePlaces, viewBounds]);
+  }, [resultScopedPlaces, viewBounds]);
 
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
@@ -1980,7 +2051,7 @@ export default function AppMap({
     manualViewportGestureRef.current = false;
     cameraControlGestureRef.current = false;
 
-    const inside = visiblePlaces
+    const inside = resultScopedPlaces
       .filter(
         (place) =>
           place.geom.lng >= viewport.bounds.west &&
@@ -2289,7 +2360,7 @@ export default function AppMap({
    * Other embeds keep every already-scoped place individually represented. */
   const curatedGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
-    features: visiblePlaces.map((p) => {
+    features: resultScopedPlaces.map((p) => {
       const visual = mapPlaceVisualState(p.slug, {
         amenitiesActive: amenityGroups.size > 0,
         matchSlugs: visualMatchSet,
@@ -2323,11 +2394,15 @@ export default function AppMap({
         // weak contrast (matches at full, rest at 0.28) read as barely
         // filtered before. false on the clean, unfiltered map.
         emph: visual.emph,
+        // Search is a narrower visual contract than a category filter. A
+        // quiet Radius ring identifies the actual named result at street
+        // zoom without turning every filtered category pin into a beacon.
+        searchMatch: searchPlaceSet?.has(p.slug) ?? false,
         },
         geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
       };
     }),
-  }), [amenityGroups, visiblePlaces, visualMatchSet]);
+  }), [amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -2370,7 +2445,7 @@ export default function AppMap({
         scrubSourceRef.current = curatedGeoJson;
       }
       const at = scrubInstant(scrubHour);
-      for (const p of visiblePlaces) {
+      for (const p of resultScopedPlaces) {
         const h = hoursBySlug.get(p.slug);
         const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
         const dim = !open;
@@ -2383,7 +2458,7 @@ export default function AppMap({
     if (m && m.isSourceLoaded("curated-places")) apply();
     else if (m) m.once("idle", apply);
     return () => { cancelled = true; };
-  }, [scrubHour, curatedGeoJson, visiblePlaces]);
+  }, [scrubHour, curatedGeoJson, resultScopedPlaces]);
 
   const selectedPlace = useMemo(
     () => (selectedSlug ? visiblePlaces.find((place) => place.slug === selectedSlug) ?? null : null),
@@ -2687,6 +2762,10 @@ export default function AppMap({
       f.layer.id === "amenity-clusters"
     ) {
       const count = Number(props.point_count);
+      const family =
+        f.layer.id === "curated-clusters"
+          ? dominantClusterFamilyLabel(props)
+          : null;
       next = {
         lng,
         lat,
@@ -2697,6 +2776,7 @@ export default function AppMap({
           : f.layer.id === "amenity-clusters"
             ? "A cluster of amenities"
             : "A cluster of places",
+        sub: family ? `Mostly ${family.toLocaleLowerCase()}` : undefined,
       };
     } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-active-icons" || f.layer.id === "curated-hit") {
       const p = places.find((x) => x.slug === props.slug);
@@ -2787,6 +2867,49 @@ export default function AppMap({
       origin,
       6,
     );
+    const confidentImmediate = confidentLocalMapPlaceResult(
+      immediateMatches,
+      term,
+    );
+    if (!confidentImmediate) autoFocusedSearchResultRef.current = null;
+    const focusConfidentImmediate = () => {
+      if (
+        !confidentImmediate ||
+        requestId !== searchRequestRef.current ||
+        autoFocusedSearchResultRef.current === confidentImmediate.id
+      ) {
+        return;
+      }
+      const place = places.find(
+        (candidate) =>
+          candidate.slug === confidentImmediate.id.replace(/^place:/, ""),
+      );
+      const map = mapRef.current?.getMap();
+      if (!place || !map) return;
+
+      autoFocusedSearchResultRef.current = confidentImmediate.id;
+      if (
+        resultScope === "nearme" &&
+        userLoc &&
+        haversineMeters(userLoc, place.geom) > RADIUS_M
+      ) {
+        setResultScope("county");
+        if (getScope() !== "county") setScope("county");
+        replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+      }
+      cameraIntentRef.current = true;
+      smoothFocus(map, [place.geom.lng, place.geom.lat], {
+        // County clusters stop at z15. An exact business search must resolve
+        // to the actual branded pin, not leave the answer buried inside a
+        // neighborhood count bubble.
+        minZoom: 15.5,
+        maxStep: 7.5,
+      });
+      setResultAreaAnnouncement((current) => ({
+        message: `Showing ${place.name} on the map.`,
+        nonce: current.nonce + 1,
+      }));
+    };
     // A result from the previous phrase must never remain tappable while this
     // phrase waits for its debounce or network response. A strong name match
     // from the already-loaded Radius pin set may replace it immediately.
@@ -2798,6 +2921,7 @@ export default function AppMap({
       setSearchSettledQuery(immediateMatches.length > 0 ? term : "");
     }
     if (term.length < 2) {
+      autoFocusedSearchResultRef.current = null;
       setSearchSettledQuery(term);
       searchSessionRef.current = null;
       searchSessionStartedRef.current = false;
@@ -2807,6 +2931,9 @@ export default function AppMap({
     }
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
+      // A decisive local name should move the map and result deck together,
+      // without waiting for network enrichment or opening a modal card.
+      focusConfidentImmediate();
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
@@ -2824,11 +2951,17 @@ export default function AppMap({
         if (!Array.isArray(body.results)) {
           throw new Error("Radius search returned an invalid response");
         }
-        const local = body.results;
+        const local = reconcileMapSearchResults(
+          immediateMatches,
+          body.results,
+          term,
+          6,
+        );
 
         if (local.length > 0) {
           setSearchMatches(local);
           setSearchSettledQuery(term);
+          focusConfidentImmediate();
           const routedCandidates = userLoc
             ? local
                 .filter(
@@ -3017,7 +3150,7 @@ export default function AppMap({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [isBrowseMap, places, q, searchAttempt, userLoc]);
+  }, [isBrowseMap, places, q, resultScope, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3477,6 +3610,16 @@ export default function AppMap({
     setShowResultsHere(false);
     manualViewportGestureRef.current = false;
     cameraControlGestureRef.current = false;
+    // A fresh cached/shared fix makes Near me instant. Still ask the shared
+    // geolocation hook to refresh it in the background; a newer fix will
+    // simply refit the same honest one-mile area when it arrives.
+    if (userLoc) {
+      const map = mapRef.current?.getMap();
+      if (map) {
+        cameraIntentRef.current = true;
+        fitNearbyRadius(map, userLoc);
+      }
+    }
     locateRequestedRef.current = true;
     setLocating(true);
     setGeoMsg(null);
@@ -3488,6 +3631,11 @@ export default function AppMap({
   // not buried three levels into Filters. cameraIntentRef stays false: this is
   // a return to the default frame, not a user pan the leash should preserve.
   const fitCounty = () => {
+    setResultScope("county");
+    if (getScope() !== "county") setScope("county");
+    if (isBrowseMap) {
+      replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+    }
     cameraIntentRef.current = false;
     setShowResultsHere(false);
     manualViewportGestureRef.current = false;
@@ -3976,7 +4124,7 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Use Show to find nearby
+          or minus to zoom when the map has focus. Use Browse to find nearby
           places, check today and tonight, see conditions, or add Frederick details.
         </p>
 
@@ -4917,6 +5065,9 @@ export default function AppMap({
             cluster={curatedClusters}
             clusterRadius={curatedClusterRadius}
             clusterMaxZoom={curatedClusterMaxZoom}
+            clusterProperties={
+              curatedClusters ? CURATED_CLUSTER_PROPERTIES : undefined
+            }
           >
             {curatedClusters && (
               <Layer
@@ -4926,7 +5077,7 @@ export default function AppMap({
                 paint={{
                   "circle-color": compactSubjectMap
                     ? BRAND.colors.functionalAmber
-                    : BRAND.colors.creek,
+                    : CURATED_CLUSTER_COLOR,
                   "circle-radius": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
@@ -4956,7 +5107,7 @@ export default function AppMap({
                 paint={{
                   "circle-color": compactSubjectMap
                     ? BRAND.colors.functionalAmber
-                    : BRAND.colors.creek,
+                    : CURATED_CLUSTER_COLOR,
                   "circle-radius": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
@@ -4987,8 +5138,41 @@ export default function AppMap({
                 type="symbol"
                 filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
                 layout={{
-                  "text-field": ["get", "point_count_abbreviated"],
-                  "text-size": 11,
+                  "text-field": compactSubjectMap
+                    ? ["get", "point_count_abbreviated"]
+                    : [
+                        "step",
+                        ["zoom"],
+                        ["get", "point_count_abbreviated"],
+                        10.5,
+                        [
+                          "case",
+                          ["<=", ["get", "point_count"], 40],
+                          [
+                            "concat",
+                            ["get", "point_count_abbreviated"],
+                            "\n",
+                            CURATED_CLUSTER_LABEL,
+                          ],
+                          ["get", "point_count_abbreviated"],
+                        ],
+                      ],
+                  "text-size": compactSubjectMap
+                    ? 11
+                    : [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        7,
+                        11,
+                        10.49,
+                        11,
+                        10.5,
+                        8.5,
+                        14.5,
+                        8.5,
+                      ],
+                  "text-line-height": compactSubjectMap ? 1.2 : 0.92,
                   "text-font": [
                     "DIN Pro Medium",
                     "Arial Unicode MS Regular",
@@ -5019,6 +5203,37 @@ export default function AppMap({
                 }}
               />
             )}
+            {/* A named search should land on an unmistakable point. This ring
+                is reserved for the small search result set, not broad place
+                filters, so it adds orientation without covering the street. */}
+            <Layer
+              id="curated-search-halo"
+              type="circle"
+              minzoom={12.5}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "searchMatch"], true],
+              ]}
+              paint={{
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  12.5,
+                  8,
+                  15.5,
+                  13,
+                  18,
+                  17,
+                ],
+                "circle-color": BRAND.colors.brick,
+                "circle-opacity": 0.12,
+                "circle-stroke-color": BRAND.colors.brick,
+                "circle-stroke-width": 2,
+                "circle-stroke-opacity": 0.92,
+              }}
+            />
             {/* Last call — a soft amber halo under places open now but
                 closing within the hour. Calm by design (a warm glow, no
                 countdown, no pulse): a glance catches what's about to

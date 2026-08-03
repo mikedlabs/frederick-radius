@@ -20,15 +20,21 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
 
   const search = page.getByRole("combobox", { name: "Search this map" });
   await search.focus();
-  const shortcuts = page.getByRole("group", { name: "Map shortcuts" });
-  await expect(shortcuts).toBeVisible();
-  await expect(shortcuts.getByRole("button")).toHaveCount(4);
+  // Focusing an empty search should leave the map calm. The old four-button
+  // shortcut tray duplicated Browse and covered the very map people came to
+  // use.
+  await expect(page.getByRole("group", { name: "Map shortcuts" })).toHaveCount(0);
+  await expect(page.locator(".dock-search-results")).toHaveCount(0);
   await page.screenshot({
-    path: "output/playwright/map-polish-search-start-390x844.png",
+    path: "output/playwright/map-polish-search-ready-390x844.png",
     fullPage: true,
   });
 
-  await shortcuts.getByRole("button", { name: "Conditions" }).click();
+  const browse = page.getByRole("button", { name: "Choose what to see" });
+  await expect(browse).toContainText("Browse");
+  await browse.click();
+  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  await chooser.getByRole("button", { name: "Check travel and live conditions" }).click();
   const conditions = page.getByRole("region", { name: "Travel & conditions" });
   await expect(conditions).toBeVisible();
   await expect(conditions.getByText("Choose a layer to add live context.")).toBeVisible();
@@ -40,9 +46,7 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   });
   await conditions.getByRole("button", { name: "Done" }).click();
 
-  const show = page.getByRole("button", { name: "Choose what to see" });
-  await show.click();
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  await browse.click();
   await expect(chooser.getByRole("button", { name: "Find something nearby" })).toBeVisible();
   await expect(
     chooser.getByRole("button", { name: "See what is happening today and tonight" }),
@@ -63,6 +67,17 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await expect(find.getByRole("button", { name: "See what is within reach" })).toBeVisible();
   await expect(find.getByRole("button", { name: "Find a nearby essential" })).toBeVisible();
   await expect(find.getByText("All place categories")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.sessionStorage.getItem("fr_geo_v1")), {
+      timeout: 10_000,
+    })
+    .not.toBeNull();
+  await expect
+    .poll(() => {
+      const camera = new URL(page.url()).searchParams.get("c");
+      return Number(camera?.split(",")[2] ?? 0);
+    }, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(12);
   await page.screenshot({
     path: "output/playwright/map-polish-find-390x844.png",
     fullPage: true,
@@ -77,10 +92,9 @@ test("the same command model fits the narrowest supported phone", async ({ page 
   });
   const search = page.getByRole("combobox", { name: "Search this map" });
   await search.focus();
-  const shortcuts = page.getByRole("group", { name: "Map shortcuts" });
-  await expect(shortcuts).toBeVisible();
-  for (const shortcut of await shortcuts.getByRole("button").all()) {
-    const box = await shortcut.boundingBox();
+  await expect(page.getByRole("group", { name: "Map shortcuts" })).toHaveCount(0);
+  for (const control of await page.locator("[data-map-dock] .dock-head > button").all()) {
+    const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
   const overflow = await page.evaluate(
@@ -88,9 +102,73 @@ test("the same command model fits the narrowest supported phone", async ({ page 
   );
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({
-    path: "output/playwright/map-polish-search-start-320x568.png",
+    path: "output/playwright/map-polish-search-ready-320x568.png",
     fullPage: true,
   });
+});
+
+test("an active query uses the full mobile command width without stacking overlays", async ({
+  page,
+}) => {
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {
+    timeout: 20_000,
+  });
+
+  const search = page.getByRole("combobox", { name: "Search this map" });
+  await search.fill("Gravel and Grind");
+  const results = page.locator(".dock-search-results");
+  await expect(results).toBeVisible({ timeout: 10_000 });
+  await expect(results.getByText("Gravel & Grind", { exact: true })).toBeVisible();
+  await expect(results.getByText(/Grindstone/i)).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Choose what to see" })).toBeHidden();
+
+  // A decisive local business name should move the map to that place without
+  // requiring a second tap. The camera URL is the same state used by sharing
+  // and return navigation, so this proves both the visible move and its
+  // continuity contract.
+  await expect
+    .poll(() => {
+      const camera = new URL(page.url()).searchParams.get("c");
+      return Number(camera?.split(",")[2] ?? 0);
+    }, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(15.3);
+
+  const geometry = await page.evaluate(() => {
+    const dock = document.querySelector<HTMLElement>("[data-map-dock]");
+    const head = document.querySelector<HTMLElement>("[data-map-dock] .dock-head");
+    const panel = document.querySelector<HTMLElement>(".dock-search-results");
+    const input = document.querySelector<HTMLElement>("#map-search-input");
+    if (!dock || !head || !panel || !input) return null;
+    const dockBox = dock.getBoundingClientRect();
+    const headBox = head.getBoundingClientRect();
+    const panelBox = panel.getBoundingClientRect();
+    return {
+      queryActive: dock.dataset.queryActive,
+      inputWidth: input.getBoundingClientRect().width,
+      panelWidth: panelBox.width,
+      headWidth: headBox.width,
+      panelInsideViewport: panelBox.left >= 0 && panelBox.right <= window.innerWidth,
+      panelAlignedToDock: Math.abs(panelBox.left - dockBox.left) <= 1,
+    };
+  });
+
+  expect(geometry).not.toBeNull();
+  expect(geometry?.queryActive).toBe("true");
+  expect(geometry?.inputWidth ?? 0).toBeGreaterThan(130);
+  // Borders and the Chromium overlay scrollbar can account for a few device
+  // pixels. The result surface should still read as the full command width.
+  expect(Math.abs((geometry?.panelWidth ?? 0) - (geometry?.headWidth ?? 0))).toBeLessThanOrEqual(6);
+  expect(geometry?.panelInsideViewport).toBe(true);
+  expect(geometry?.panelAlignedToDock).toBe(true);
+  await page.screenshot({
+    path: "output/playwright/map-polish-active-search-390x844.png",
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "Choose what to see" }).click();
+  await expect(results).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
 });
 
 test("the Radius summary clears the bottom nav on the narrowest supported phone", async ({

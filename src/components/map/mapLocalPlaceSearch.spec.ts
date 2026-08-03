@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { MapPinPlace } from "./types";
-import { immediateMapPlaceResults } from "./mapLocalPlaceSearch";
+import {
+  confidentLocalMapPlaceResult,
+  immediateMapPlaceResults,
+  mapPlaceNameConfidence,
+  reconcileMapSearchResults,
+} from "./mapLocalPlaceSearch";
 
 function place(
   value: Pick<MapPinPlace, "slug" | "name" | "category" | "geom">,
@@ -57,5 +62,73 @@ describe("immediateMapPlaceResults", () => {
   it("prefers an exact normalized name over a looser word match", () => {
     const results = immediateMapPlaceResults(places, "gravel grind", null);
     expect(results[0]?.id).toBe("place:gravel-and-grind-frederick");
+  });
+
+  it("treats punctuation and connector-free business names as exact", () => {
+    expect(mapPlaceNameConfidence("Gravel & Grind", "gravel grind")).toBe(
+      "exact",
+    );
+    expect(mapPlaceNameConfidence("The Common Market", "common market")).toBe(
+      "exact",
+    );
+  });
+
+  it("only promotes a prefix when it identifies one known place", () => {
+    const ambiguous = immediateMapPlaceResults(places, "grav", null);
+    expect(confidentLocalMapPlaceResult(ambiguous, "grav")).toBeNull();
+
+    const specific = immediateMapPlaceResults(places, "gravel and gr", null);
+    expect(confidentLocalMapPlaceResult(specific, "gravel and gr")?.id).toBe(
+      "place:gravel-and-grind-frederick",
+    );
+  });
+
+  it("preserves a canonical exact result and drops server fragment noise", () => {
+    const immediate = immediateMapPlaceResults(
+      places,
+      "Gravel and Grind",
+      null,
+    );
+    const merged = reconcileMapSearchResults(
+      immediate,
+      [
+        {
+          type: "place",
+          id: "place:gravelly-point-example",
+          title: "Gravelly Point",
+          subtitle: "Park",
+          href: "/places/gravelly-point-example",
+        },
+        {
+          type: "action",
+          id: "action:map-coffee",
+          title: "Show coffee on the map",
+          subtitle: "Map action",
+          href: "/map?intent=coffee",
+        },
+      ],
+      "Gravel and Grind",
+    );
+
+    expect(merged.map((result) => result.id)).toEqual([
+      "place:gravel-and-grind-frederick",
+      "action:map-coffee",
+    ]);
+  });
+
+  it("keeps the server's ranking when there is no confident local name", () => {
+    const immediate = immediateMapPlaceResults(places, "gravel", null);
+    const server = [
+      {
+        type: "category" as const,
+        id: "category:outdoors",
+        title: "Parks & trails",
+        subtitle: "Category",
+        href: "/category/outdoors",
+      },
+    ];
+    expect(reconcileMapSearchResults(immediate, server, "gravel")[0]?.id).toBe(
+      "category:outdoors",
+    );
   });
 });

@@ -59,7 +59,11 @@ test.describe("mobile discovery shell", () => {
     const contentsButton = page.getByRole("button", { name: "Choose what to see" });
     await expect(contentsButton).toBeVisible();
     await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
-    await expect(page.getByRole("button", { name: "Use my location" })).toBeVisible();
+    const locate = page.getByRole("button", { name: "Use my location" });
+    await expect(locate).toBeVisible();
+    await expect(locate).toContainText("Locate");
+    await expect(locate).not.toHaveAttribute("aria-pressed");
+    await expect(locate).not.toHaveAttribute("data-on");
     await expect(page.locator(".map-edge-tool-essential")).toBeHidden();
     const focusedDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     // A focus event alone does not prove that a software keyboard opened.
@@ -115,7 +119,7 @@ test.describe("mobile discovery shell", () => {
     await expect(layersPane).toBeVisible();
     await layersPane.getByRole("button", { name: "Done" }).click();
     await expect(contentsButton).toBeFocused();
-    await expect(contentsButton).toContainText("Show");
+    await expect(contentsButton).toContainText("Browse");
     await expect(contentsButton.locator(".dock-layer-count")).toHaveText("1");
 
     const contextRail = page.getByRole("group", { name: "Current map view" });
@@ -193,7 +197,7 @@ test.describe("mobile discovery shell", () => {
     });
     await withinReach.click();
     await expect(placesPane).toBeHidden();
-    await expect(page).toHaveURL(/\/map\?mode=radius$/);
+    await expect(page).toHaveURL(/\/map\?mode=radius(?:&c=[^&]+)?$/);
     const countyMap = page.getByRole("link", { name: "Back to county map" });
     await expect(countyMap).toBeVisible();
     await countyMap.click();

@@ -3043,7 +3043,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. The cold map exposes one search and one options door; every other
+   dock-*. The cold map exposes one search and one Browse door; every other
    choice is progressively disclosed in one phone panel or desktop inspector.
    ========================================================================== */
 
@@ -3134,6 +3134,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13.5px;
   color: var(--app-ink);
 }
+.dock-search-input:focus-visible {
+  outline: none;
+}
+.dock-head:has(.dock-search-input:focus-visible) {
+  border-color: var(--app-brand);
+  box-shadow:
+    inset 0 0 0 1px var(--app-brand),
+    0 0 0 3px color-mix(in srgb, var(--app-brand) 13%, transparent),
+    var(--app-shadow-2);
+}
 @media (max-width: 1023.98px) {
   .dock-search-input {
     /* Prevent iOS Safari from zooming the page when the map search focuses. */
@@ -3182,8 +3192,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-search-results {
+    left: 0;
+    right: auto;
     top: auto;
     bottom: calc(100% + 5px);
+    width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-width: 680px;
     margin-top: 0;
   }
 }
@@ -3289,55 +3303,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-brand-press);
   color: var(--app-on-brand);
 }
-.dock-search-start {
-  padding: 11px;
-}
-@media (max-width: 1023.98px) {
-  .dock-search-start {
-    /* The popup is positioned from the search cell, but the four starting
-       jobs belong to the whole command bar. Let it use the dock width so the
-       labels never crush together on a phone. */
-    left: 0;
-    right: auto;
-    width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
-    max-width: 680px;
-  }
-}
-.dock-search-start-title {
-  padding: 1px 3px 8px;
-  color: var(--app-ink-3);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.dock-search-start-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-.dock-search-start-grid button {
-  min-width: 0;
-  min-height: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 3px;
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--app-bg-elevated);
-  color: var(--app-ink-2);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.dock-search-start-grid button:active {
-  background: color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated));
-  transform: scale(0.97);
-}
 @media (max-width: 520px) {
   .dock-search-results {
     max-height: 190px;
@@ -3349,7 +3314,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* The pinned head: one search plus one explicit options door. */
+/* The pinned head: one search, one camera action, and one Browse door. */
 .dock-head {
   position: relative;
   z-index: 2;
@@ -3370,7 +3335,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-head {
-    grid-template-columns: minmax(0, 1fr) minmax(44px, auto) minmax(72px, auto);
+    grid-template-columns: minmax(0, 1fr) 52px 80px;
     border-radius: 14px;
     border-color: color-mix(in srgb, var(--app-ink) 14%, transparent);
     background: color-mix(in srgb, var(--app-bg-elevated-solid) 91%, transparent);
@@ -3390,9 +3355,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     padding-inline: 14px 8px;
   }
   .dock-contents {
-    min-width: 72px;
+    min-width: 80px;
     border-radius: 0 13px 13px 0;
     font-size: 11.5px;
+  }
+}
+
+/* Once someone is typing, the query deserves the available line length. The
+   two neighboring actions keep their full touch targets and accessible names,
+   while their visible labels compact to icons until the query is cleared. */
+@media (max-width: 430px) {
+  .dock[data-query-active="true"] .dock-head {
+    grid-template-columns: minmax(0, 1fr) 48px 52px;
+  }
+  .dock[data-query-active="true"] .dock-locate {
+    width: 48px;
+  }
+  .dock[data-query-active="true"] .dock-contents {
+    min-width: 52px;
+    padding-inline: 4px;
+  }
+  .dock[data-query-active="true"] .dock-contents-label {
+    display: none;
   }
 }
 
@@ -3409,7 +3393,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     align-items: center;
     justify-content: center;
     gap: 5px;
-    width: 44px;
+    width: 52px;
     height: 52px;
     border-inline: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
     color: var(--app-ink-2);
@@ -3418,12 +3402,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-locate:active {
     transform: scale(0.97);
   }
-  .dock-locate[data-on="true"] {
-    color: var(--app-cool-2);
-    background: color-mix(in srgb, var(--app-cool) 8%, transparent);
-  }
 }
-@media (min-width: 370px) and (max-width: 1023.98px) {
+@media (min-width: 560px) and (max-width: 1023.98px) {
   .dock-locate {
     width: auto;
     padding-inline: 9px;
@@ -3434,6 +3414,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     font-weight: 700;
     white-space: nowrap;
   }
+}
+
+/* The command is a single rounded instrument. Keyboard focus stays inside
+   that shape instead of drawing a harsh rectangular ring across the map. */
+.dock-locate:focus-visible,
+.dock-contents:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-brand);
 }
 
 .map-context-rail {
@@ -3535,18 +3523,36 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: calc(var(--z-sticky) + 2);
   max-height: var(--map-pane-cap, 116px);
   overflow: hidden;
-  background: var(--app-bg-elevated-solid);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--app-bg-elevated-solid) 96%, white),
+      var(--app-bg-elevated-solid) 88px
+    );
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 1px solid var(--app-border);
-  border-radius: calc(var(--app-radius-md) + 4px);
-  box-shadow: var(--app-shadow-3);
+  border-radius: calc(var(--app-radius-md) + 8px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 72%, transparent) inset,
+    var(--app-shadow-3);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(24px) scale(0.985);
   transform-origin: bottom center;
   transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.28s;
+}
+.dock-pane:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--app-brand),
+    var(--app-shadow-3);
+}
+.dock-pane :is(button, [role="button"]):focus-visible,
+.dock-search-results button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-brand);
 }
 .dock-pane::before {
   position: absolute;
@@ -3685,7 +3691,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   top: 0;
   z-index: 3;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-inline: -2px;
   padding: 0 4px;
@@ -3944,7 +3950,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* Highlights is the map's synthesis tool, not another map layer. Its cards
-   stay inside Map options until the viewport has evidence worth showing. */
+   stay inside Browse until the viewport has evidence worth showing. */
 .dock-discoveries {
   padding-top: 2px;
 }
@@ -4415,7 +4421,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     bottom: 4px;
   }
   .dock-head {
-    grid-template-columns: minmax(0, 1fr) 72px;
+    grid-template-columns: minmax(0, 1fr) 48px 72px;
   }
   .dock-search-wrap {
     min-width: 170px;
@@ -4428,6 +4434,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-contents {
     min-width: 72px;
     padding-inline: 8px;
+  }
+  .dock-locate {
+    width: 48px;
+    height: 48px;
   }
   .dock-contents > span:not(.dock-layer-count) {
     display: none;
