@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "npm@10.9.8",
   "scripts": {
+    "predev": "npm run build:client-places",
     "dev": "next dev",
     "prebuild": "npm run build:source-registry && npm run audit:sources && npm run build:client-places && npm run audit:county-data && npm run gates",
     "build": "next build",
@@ -26,8 +27,10 @@
     "build:place-hues": "tsx --tsconfig tsconfig.json scripts/build-place-hues.ts",
     "perf": "tsx --tsconfig tsconfig.json scripts/lighthouse-audit.ts",
     "shots": "node scripts/screenshots.mjs",
+    "pretest": "npm run build:client-places",
     "test": "vitest run",
     "test:all": "npm run test && npm run test:node",
+    "pretest:watch": "npm run build:client-places",
     "test:watch": "vitest",
     "test:node": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
