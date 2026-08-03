@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapUrlAfterMutation, replaceMapUrl } from "./map-url-state";
+import {
+  mapUrlAfterMutation,
+  replaceMapUrl,
+  replaceMapUrlSilently,
+} from "./map-url-state";
 
 describe("map URL state", () => {
   afterEach(() => {
@@ -42,5 +46,28 @@ describe("map URL state", () => {
 
     expect(next?.pathname).toBe("/map");
     expect(replaceState).toHaveBeenCalledWith(null, "", next);
+  });
+
+  it("keeps Next's history marker for presentation-only selection state", () => {
+    const nextHistoryState = { __NA: true, tree: "mounted map" };
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", {
+      location: {
+        href: "https://frederickradius.app/map?c=-77.4100%2C39.4150%2C12.4&q=coffee",
+      },
+      history: {
+        state: nextHistoryState,
+        replaceState,
+      },
+    });
+
+    const next = replaceMapUrlSilently((params) => {
+      params.set("place", "gravel-and-grind-frederick");
+    });
+
+    expect(next?.searchParams.get("place")).toBe(
+      "gravel-and-grind-frederick",
+    );
+    expect(replaceState).toHaveBeenCalledWith(nextHistoryState, "", next);
   });
 });

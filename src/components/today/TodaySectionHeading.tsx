@@ -63,7 +63,7 @@ export default function TodaySectionHeading({
           <Link
             href={href}
             aria-label={`${cta}: ${title}`}
-            className="today-section-heading__cta tap-44-y -my-2 inline-flex shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
+            className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
             style={{
               color:
                 "var(--today-section-ink, var(--app-brand-press))",

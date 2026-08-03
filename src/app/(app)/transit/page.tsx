@@ -249,7 +249,6 @@ function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout
         href={intent.href}
         target={intent.external ? "_blank" : undefined}
         rel={intent.external ? "noopener noreferrer" : undefined}
-        aria-label={`${intent.label}: ${intent.hint}`}
         className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
         style={{
           borderColor: "var(--app-border)",

@@ -184,6 +184,24 @@ export function countLine(args: {
 }
 
 /**
+ * The layer panes describe layer state, not the place inventory underneath
+ * them. Reusing countLine here made a travel control read like a restaurant
+ * filter ("1,573 places · 3 close within the hour"), which was both noisy and
+ * unrelated to the decision the person was making.
+ */
+export function layerStatusLine(
+  layerCount: number,
+  kind: "travel" | "local" = "travel",
+): string {
+  if (layerCount <= 0) {
+    return kind === "travel"
+      ? "Choose a layer to add live context."
+      : "Choose a layer to add local detail.";
+  }
+  return `${layerCount.toLocaleString("en-US")} map ${layerCount === 1 ? "layer" : "layers"} showing.`;
+}
+
+/**
  * Whether the dock shows the single × (anything to clear). The
  * time-aware DEFAULT window is not dirt — only an explicit ?t= is.
  * A moved camera isn't dirt either (Where clears only when the user

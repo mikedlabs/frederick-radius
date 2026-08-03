@@ -8,7 +8,7 @@
 import { sql, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions } from "@/lib/db/schema";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { isMunicipalitySlug } from "@/data/municipalities";
 import {
   PUSH_BODY_LIMITS,
   guardPushMutation,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   if (
     homeProvided &&
     body.home_town !== null &&
-    (typeof body.home_town !== "string" || !MUNICIPALITY_BY_SLUG[body.home_town])
+    !isMunicipalitySlug(body.home_town)
   ) {
     return pushJson({ error: "Invalid home town." }, { status: 400 });
   }

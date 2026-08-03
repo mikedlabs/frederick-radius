@@ -34,7 +34,9 @@ describe("horizonOf", () => {
   it("buckets today, weekend, this-week, and later", () => {
     expect(horizonOf(ev("tonight", 6 * HOUR), bounds)).toBe("today");
     expect(horizonOf(ev("sat", 2 * DAY), bounds)).toBe("weekend"); // Sat
-    expect(horizonOf(ev("nextwed", 6 * DAY), bounds)).toBe("week");
+    // On Thursday, next Wednesday is after the upcoming weekend. Calling it
+    // "Later this week" would put a later date before the weekend shelf.
+    expect(horizonOf(ev("nextwed", 6 * DAY), bounds)).toBe("later");
     expect(horizonOf(ev("nextmonth", 30 * DAY), bounds)).toBe("later");
   });
 
@@ -72,7 +74,6 @@ describe("groupByHorizon", () => {
       "live",
       "today",
       "weekend",
-      "week",
       "later",
     ]);
     const total = groups.reduce((n, g) => n + g.events.length, 0);

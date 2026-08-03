@@ -13,6 +13,7 @@ import { useBeenList } from "@/hooks/useBeenHere";
 // /saved's client bundle no longer ships places-client.json (~2MB).
 // Place data is hydrated via /api/places/by-slugs on mount.
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
@@ -153,7 +154,19 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   };
 }
 
-export default function SavedList({ userEmail }: { userEmail?: string | null }) {
+export default function SavedList({
+  userId,
+  userEmail,
+  initialFollowSlugs,
+  initialFollowsTruncated = false,
+  initialPlaces = [],
+}: {
+  userId?: string | null;
+  userEmail?: string | null;
+  initialFollowSlugs?: string[];
+  initialFollowsTruncated?: boolean;
+  initialPlaces?: PlaceCardData[];
+}) {
   const mounted = useMounted();
   const items = useSavedList();
   const {
@@ -175,7 +188,20 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // else epoch (sorts oldest under "Recent": honest, we don't know when).
   // While hydrating, and for anonymous users, local refs pass through
   // untouched. Events, radii, and beer saves stay device-local by contract.
-  const { slugs: followedSlugs, loading: followsLoading, authed: followsAuthed } = useFollowedSlugs();
+  const followBootstrap = useMemo(
+    () => ({
+      user: userId ? { id: userId, email: userEmail ?? null } : null,
+      slugs: initialFollowSlugs,
+      truncated: initialFollowsTruncated,
+    }),
+    [initialFollowSlugs, initialFollowsTruncated, userEmail, userId],
+  );
+  const {
+    slugs: followedSlugs,
+    loading: followsLoading,
+    authed: followsAuthed,
+    truncated: followsTruncated,
+  } = useFollowedSlugs(followBootstrap);
   const placeRefsAll = useMemo<SavedRef[]>(() => {
     const local = items.filter((i) => i.type === "place");
     if (!followsAuthed || followsLoading) return local;
@@ -225,13 +251,17 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // the server shell. When saved slugs hydrate, `placesPending` below detects
   // missing records and swaps in the stable loading region until one request
   // resolves them.
-  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData>>(() => new Map());
+  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData>>(
+    () => new Map(initialPlaces.map((place) => [place.slug, place])),
+  );
   // Which slugsKey the by-slugs request has ANSWERED (success or collapse).
   // Pending must key off this, not off every slug being present in the map:
   // the API quietly drops unknown slugs, so a single stale ref (a place
   // later removed from the catalog) would otherwise pin the whole page on
   // the loading skeleton forever.
-  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(
+    initialFollowSlugs ? initialFollowSlugs.join(",") : null,
+  );
 
   useEffect(() => {
     if (!mounted) return;
@@ -244,9 +274,11 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { places: PlaceCardData[] }) => {
-        const m = new Map<string, PlaceCardData>();
-        for (const p of data.places) m.set(p.slug, p);
-        setPlacesBySlug(m);
+        setPlacesBySlug((previous) => {
+          const next = new Map(previous);
+          for (const place of data.places) next.set(place.slug, place);
+          return next;
+        });
         setResolvedKey(slugsKey);
       })
       .catch((err) => {
@@ -609,7 +641,15 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   }, [items]);
 
   const placesPending = slugsToFetch.length > 0 && resolvedKey !== slugsKey;
-  if (placesPending) {
+  // The server already knows whether this request belongs to an account.
+  // Use that signal to prevent a signed-in visitor from seeing the anonymous
+  // empty state while /api/follows is still hydrating. Anonymous visitors do
+  // not wait on the background auth check; after the one hydration frame,
+  // their device-local saves render immediately.
+  const hasAccountBootstrap = Boolean(userId) && initialFollowSlugs !== undefined;
+  const savedStatePending =
+    (!mounted && !hasAccountBootstrap) || (Boolean(userId) && followsLoading);
+  if (savedStatePending || placesPending) {
     return (
       <div aria-busy="true" className="space-y-4">
         <Masthead stand="Loading saved places" />
@@ -706,6 +746,21 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           </>
         }
       />
+
+      {followsTruncated && (
+        <p
+          role="status"
+          className="rounded-xl border px-3 py-2 text-[12px] leading-relaxed"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          Showing your {MAX_FOLLOWED_PLACES} most recent saved places. Older
+          saves are still in your account.
+        </p>
+      )}
 
       {(liveNowPlaces.length > 0 || eventsToday.length > 0) && (
         <section aria-labelledby="saved-useful-now" className="space-y-2">

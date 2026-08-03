@@ -30,6 +30,13 @@ describe("parseScope", () => {
     expect(parseScope(null)).toBeNull();
     expect(parseScope(undefined)).toBeNull();
   });
+
+  it("rejects inherited object keys instead of treating them as towns", () => {
+    expect(parseScope("constructor")).toBeNull();
+    expect(parseScope("town:constructor")).toBeNull();
+    expect(parseScope("__proto__")).toBeNull();
+    expect(parseScope("toString")).toBeNull();
+  });
 });
 
 describe("scope helpers", () => {
@@ -82,6 +89,8 @@ describe("effectiveOriginSlug (server rank resolution)", () => {
     expect(effectiveOriginSlug(null, "middletown")).toBe("middletown");
     expect(effectiveOriginSlug(null, "atlantis")).toBeNull();
     expect(effectiveOriginSlug(null, null)).toBeNull();
+    expect(effectiveOriginSlug(null, "constructor")).toBeNull();
+    expect(effectiveOriginSlug(null, "__proto__")).toBeNull();
   });
 });
 

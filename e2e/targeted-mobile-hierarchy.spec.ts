@@ -16,8 +16,10 @@ test("Events keeps one discovery doorway visible and nests filter and display ch
   await page.goto("/events");
 
   await expect(page.getByRole("group", { name: "When" })).toBeVisible();
-  const filters = page.getByRole("button", { name: /^Filters:/ });
+  const filters = page.getByRole("button", { name: /^Filters/ });
   await expect(filters).toBeVisible();
+  await expect(filters).not.toHaveAttribute("aria-label");
+  await expect(page.locator('main article a[href^="/events/"][aria-label]')).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Event filters" })).toBeHidden();
   const dockBox = await page.locator(".eb-dock").boundingBox();
   expect(dockBox, "expected the compact event controls to have a layout box").not.toBeNull();
@@ -262,7 +264,7 @@ test.describe("compact page entrances", () => {
       }),
     ).toBe(true);
 
-    const filters = page.getByRole("button", { name: /Filters:.*This weekend/ });
+    const filters = page.getByRole("button", { name: /Filters.*This weekend/ });
     await expect(filters).toBeVisible();
     expect(
       await filters.evaluate((node) =>
@@ -270,5 +272,31 @@ test.describe("compact page entrances", () => {
         node.scrollHeight <= node.clientHeight + 1
       ),
     ).toBe(true);
+  });
+
+  test("Events keeps the final category above the fixed bottom navigation", async ({ page }) => {
+    await page.goto("/events", { waitUntil: "domcontentloaded" });
+    const filters = page.getByRole("button", { name: /^Filters/ });
+    await filters.click();
+
+    const dialog = page.getByRole("dialog", { name: "Event filters" });
+    const categoryButtons = dialog.locator(".eb-chips").nth(1).locator("button");
+    const finalCategory = categoryButtons.last();
+    await expect(finalCategory).toBeVisible();
+    await finalCategory.scrollIntoViewIfNeeded();
+
+    const categoryBox = await finalCategory.boundingBox();
+    const navBox = await page.getByRole("navigation", { name: "Primary" }).boundingBox();
+    expect(categoryBox, "expected the final event category to have a layout box").not.toBeNull();
+    expect(navBox, "expected the fixed bottom navigation to have a layout box").not.toBeNull();
+    expect(categoryBox!.y + categoryBox!.height).toBeLessThanOrEqual(navBox!.y);
+
+    await page.screenshot({
+      path: "output/playwright/events-filter-final-option-320x568.png",
+      fullPage: false,
+    });
+
+    await finalCategory.click();
+    await expect(finalCategory).toHaveAttribute("aria-pressed", "true");
   });
 });

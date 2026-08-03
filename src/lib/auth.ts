@@ -24,9 +24,12 @@ export type ServerUser = {
  * Return the current authenticated user, or null if no session.
  * Read-only — safe to call inside Server Components.
  *
- * Uses supabase.auth.getUser() (which validates the token with the
- * Supabase auth server) NOT getSession() (which trusts the cookie).
- * The former is the safe default for any server-side authz check.
+ * Uses supabase.auth.getClaims(), which verifies the JWT signature and expiry.
+ * With Supabase's asymmetric signing keys that verification is local after the
+ * JWKS cache is warm; older symmetric projects safely fall back to the Auth
+ * server. This preserves the verified-identity contract without forcing a
+ * network round trip on every page and route that already crossed middleware.
+ * We deliberately do NOT use getSession(), which only trusts cookie storage.
  */
 export async function getServerUser(): Promise<ServerUser | null> {
   let supabase;
@@ -41,13 +44,23 @@ export async function getServerUser(): Promise<ServerUser | null> {
     // aren't present in the build environment.
     return null;
   }
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) return null;
-  return {
-    id: data.user.id,
-    email: data.user.email ?? null,
-    last_sign_in_at: data.user.last_sign_in_at ?? null,
-  };
+  try {
+    const { data, error } = await supabase.auth.getClaims();
+    if (error || !data?.claims?.sub) return null;
+    return {
+      id: data.claims.sub,
+      email:
+        typeof data.claims.email === "string" ? data.claims.email : null,
+      // The JWT intentionally does not promise the Auth user record's
+      // last_sign_in_at field. Nothing currently consumes it, so keep the
+      // honest unknown instead of relabeling the token-issued timestamp.
+      last_sign_in_at: null,
+    };
+  } catch {
+    // Auth transport/JWKS failure is anonymous for read surfaces and therefore
+    // fails closed for every write route that requires a user id.
+    return null;
+  }
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   TIME_WINDOWS,
   countLine,
   dockDirty,
+  layerStatusLine,
   layersCaption,
   whatCaption,
   whenCaption,
@@ -34,6 +35,7 @@ import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
+import { mapSearchResultLimit } from "./mapSearchVisibility";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -79,7 +81,7 @@ const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
 );
 
 /** The map begins as an observation surface. These controls are revealed only
- *  after a person opens Map options; none compete with the county on load. */
+ *  after a person opens Browse; none compete with the county on load. */
 type Pane = "contents" | "what" | "amenities" | "when" | "where" | "discover" | "layers" | "localLayers";
 type PlaceReveal = "categories";
 
@@ -113,14 +115,14 @@ function whereSelectionForScope(
 }
 
 /**
- * MapDock — the calm control surface for /map. Search and Map options are the
+ * MapDock — the calm control surface for /map. Search and Browse are the
  * only cold controls. A deliberate options tap reveals the deeper choices in
  * a compact phone tray or desktop inspector while the map remains visible.
  *
  *   - Places and amenities are stable catalogs, never reordered predictions.
  *   - Events remain absent until a person chooses a time.
- *   - Area moves the camera; it never silently filters results.
- *   - Layers and source-backed connections live behind Map options.
+ *   - Towns move the camera; an explicit Near me choice uses the one-mile Radius.
+ *   - Layers and source-backed connections live behind Browse.
  *
  * State split:
  *   - URL params (?intent/?sub/?open/?t) are written here via
@@ -235,6 +237,9 @@ export type MapDockProps = {
   goNearMe: () => void;
   flyTo: (center: [number, number], zoom: number) => void;
   fitCounty: () => void;
+  /** Camera read directly from Mapbox at share time. The address bar may
+   * still hold the last committed result area while a person is panning. */
+  shareCameraParam: () => string | null;
 
   // ── Highlights: evidence-backed connections already in the viewport. ──
   discoveries: MapDiscovery[];
@@ -373,6 +378,7 @@ export default function MapDock(props: MapDockProps) {
     query: props.q,
     index: -1,
   });
+  const [searchResultLimit, setSearchResultLimit] = useState<3 | 4>(4);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   // The Layers tab's Key grid is collapsed by default; one small control
   // reveals it without creating another horizontal rail.
@@ -384,7 +390,7 @@ export default function MapDock(props: MapDockProps) {
     initialScope === "nearme",
   );
   // Focus management for the disclosure panel: focus lands inside it when it
-  // opens, and the Map options trigger is restored when it closes.
+  // opens, and the Browse trigger is restored when it closes.
   const paneRef = useRef<HTMLDivElement>(null);
   const paneScrollRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -463,6 +469,19 @@ export default function MapDock(props: MapDockProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const updateLimit = () => {
+      setSearchResultLimit(mapSearchResultLimit(window.innerWidth));
+    };
+    updateLimit();
+    window.addEventListener("resize", updateLimit, { passive: true });
+    window.addEventListener("orientationchange", updateLimit, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateLimit);
+      window.removeEventListener("orientationchange", updateLimit);
+    };
+  }, []);
+
   // Keep later scope changes in sync with the camera and readout. The explicit
   // URL scope already seeds local state above; this subscription handles
   // changes made elsewhere in the app without capturing first-render actions.
@@ -482,9 +501,15 @@ export default function MapDock(props: MapDockProps) {
     });
   }, []);
 
+  const searchOverlayOpen =
+    pane === null && searchPanelOpen && props.q.trim().length >= 2;
+
   useEffect(() => {
-    onPaneOpenChange(pane !== null);
-  }, [pane, onPaneOpenChange]);
+    // AppMap owns the other bottom surfaces (selected results, map tools, and
+    // the result-area action). Treat search results and Browse as one shared
+    // control layer so only one bottom overlay can be active at a time.
+    onPaneOpenChange(pane !== null || searchOverlayOpen);
+  }, [onPaneOpenChange, pane, searchOverlayOpen]);
   // A panel should never make the map feel captured. Touching the uncovered
   // canvas dismisses the panel before the pan continues; there is no scrim or
   // separate close step between the person and the map.
@@ -501,7 +526,7 @@ export default function MapDock(props: MapDockProps) {
     if (!searchPanelOpen) return;
     const dismissSearchOutside = (event: PointerEvent | WheelEvent) => {
       const target = event.target;
-      // The Show button belongs to the same command instrument. Let its
+      // The Browse button belongs to the same command instrument. Let its
       // own click close search and open the sheet; closing during capture
       // would move the bottom dock before the click lands on touch devices.
       if (target instanceof Node && dockRef.current?.contains(target)) return;
@@ -845,12 +870,14 @@ export default function MapDock(props: MapDockProps) {
   const activeOptionCount =
     refinementCount + (props.selectedDiscoveryId ? 1 : 0);
 
-  const line = countLine({
-    places: props.placeCount,
-    events: props.eventCount,
-    closingSoon: props.closingSoonCount,
-    scrubHour: props.scrubHour,
-  });
+  const line = props.locating && nearMeRequested && !props.userLoc
+    ? "Finding places near you…"
+    : countLine({
+        places: props.placeCount,
+        events: props.eventCount,
+        closingSoon: props.closingSoonCount,
+        scrubHour: props.scrubHour,
+      });
 
   const clearAll = () => {
     haptic("light");
@@ -998,6 +1025,8 @@ export default function MapDock(props: MapDockProps) {
 
   const shareCurrentView = async () => {
     const shareUrl = new URL(window.location.href);
+    const camera = props.shareCameraParam();
+    if (camera) shareUrl.searchParams.set("c", camera);
     // An explicit empty layer state is still meaningful. Without this marker,
     // a recipient's saved device preferences could add layers the sender never
     // chose and make the shared map look different.
@@ -1032,7 +1061,7 @@ export default function MapDock(props: MapDockProps) {
     }
   };
 
-  const visibleSearchMatches = props.searchMatches.slice(0, 4);
+  const visibleSearchMatches = props.searchMatches.slice(0, searchResultLimit);
   const searchResultsVisible =
     pane === null &&
     searchPanelOpen &&
@@ -1059,10 +1088,6 @@ export default function MapDock(props: MapDockProps) {
     !props.searchUnavailable &&
     !props.searchPending &&
     visibleSearchMatches.length === 0;
-  const searchStartVisible =
-    pane === null &&
-    searchPanelOpen &&
-    props.q.trim().length === 0;
   const visibleTimeWindows = TIME_WINDOWS.filter(
     (window) =>
       (browse.eventWindowCounts[window.key] ?? 0) > 0 ||
@@ -1168,11 +1193,12 @@ export default function MapDock(props: MapDockProps) {
         className={`dock${pane ? " dock-open" : ""}`}
         data-map-dock
         data-pane={pane ?? undefined}
+        data-query-active={props.q.trim().length > 0 ? "true" : undefined}
         data-search-open={pane === null && searchPanelOpen ? "true" : undefined}
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
-        {/* The only persistent map choices: search and Map options. */}
+        {/* The only persistent map choices: search, recenter, and Browse. */}
         <div className="dock-head">
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
@@ -1276,54 +1302,6 @@ export default function MapDock(props: MapDockProps) {
                 </button>
               )}
             </div>
-            {searchStartVisible && (
-              <div
-                className="dock-search-results dock-search-start"
-                onPointerDown={(event) => {
-                  // Keep the input focused until the chosen task takes over.
-                  // This prevents a mobile blur from closing the panel before
-                  // the button's click can run.
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <p className="dock-search-start-title">Start with what you need</p>
-                <div className="dock-search-start-grid" role="group" aria-label="Map shortcuts">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closeSearchPanel();
-                      pickNearMe();
-                    }}
-                  >
-                    <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    Near me
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openContentsPane("when")}
-                  >
-                    <Clock className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    Right now
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openContentsPane("amenities")}
-                  >
-                    <Toilet className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    Essentials
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openContentsPane("layers")}
-                  >
-                    <Layers3 className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    Conditions
-                  </button>
-                </div>
-              </div>
-            )}
             {searchResultsVisible && (
               <div
                 className="dock-search-results"
@@ -1405,7 +1383,7 @@ export default function MapDock(props: MapDockProps) {
                     );
                   })}
                 </ul>
-                {props.searchMatches.length > 4 && (
+                {props.searchMatches.length > searchResultLimit && (
                   <div className="dock-search-more-item">
                     <button
                       type="button"
@@ -1543,7 +1521,6 @@ export default function MapDock(props: MapDockProps) {
           <button
             type="button"
             className="dock-locate tap-44"
-            data-on={props.userLoc ? "true" : undefined}
             onClick={props.goNearMe}
             aria-label={props.userLoc ? "Center on my location" : "Use my location"}
             aria-busy={props.locating || undefined}
@@ -1558,7 +1535,9 @@ export default function MapDock(props: MapDockProps) {
             ) : (
               <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
             )}
-            <span className="dock-locate-label">Near me</span>
+            <span className="dock-locate-label">
+              {props.locating ? "Locating" : props.userLoc ? "Recenter" : "Locate"}
+            </span>
           </button>
 
           <button
@@ -1574,7 +1553,7 @@ export default function MapDock(props: MapDockProps) {
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
-              Show
+              Browse
             </span>
             {activeOptionCount > 0 && (
               <span className="dock-layer-count" aria-hidden>
@@ -1632,8 +1611,13 @@ export default function MapDock(props: MapDockProps) {
                 <div className="dock-countline" aria-live="polite">
                   {pane === "discover"
                     ? `${props.discoveries.length} highlight${props.discoveries.length === 1 ? "" : "s"} in this view.`
-                    : line}
-                  {pane !== "discover" && (
+                    : isLayerPane
+                      ? layerStatusLine(
+                          visibleLayerCount,
+                          pane === "localLayers" ? "local" : "travel",
+                        )
+                      : line}
+                  {pane !== "discover" && !isLayerPane && (
                     <span className="sr-only">
                       {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
                     </span>
@@ -2044,8 +2028,8 @@ export default function MapDock(props: MapDockProps) {
                       : "Find me"}
                 </button>
                 <p className="dock-hint">
-                  Your location sorts the map by what&rsquo;s close. It moves the camera; it
-                  never hides anything.
+                  Near me shows the one-mile Radius around you. Choose Whole county
+                  whenever you want the full map again.
                 </p>
                 {props.geoMsg && (
                   <p className="dock-hint" role="status" style={{ color: "var(--app-warning-press)" }}>

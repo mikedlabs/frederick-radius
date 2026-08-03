@@ -36,6 +36,9 @@ export type SpatialMirrorAudit = {
   actualHash: string;
   stateHash: string | null;
   stateCount: number | null;
+  actualHashMatchesExpected: boolean;
+  stateHashMatchesExpected: boolean;
+  stateCountMatchesExpected: boolean;
   missing: string[];
   extra: string[];
   coordinateMismatches: string[];
@@ -115,15 +118,23 @@ async function auditWithSql(
   const actualHash = hashSpatialPlaces(actual);
   const state = states[0];
   const stateCount = state ? Number(state.place_count) : null;
+  const actualHashMatchesExpected = actualHash === expected.hash;
+  const stateHashMatchesExpected = state?.catalog_hash === expected.hash;
+  const stateCountMatchesExpected = stateCount === expected.count;
   const current =
     missing.length === 0 &&
     extra.length === 0 &&
     coordinateMismatches.length === 0 &&
     missingLocations.length === 0 &&
     actual.length === expected.count &&
-    actualHash === expected.hash &&
-    state?.catalog_hash === expected.hash &&
-    stateCount === expected.count;
+    // Row coordinates already use the explicit sub-millimeter tolerance
+    // above. An exact JSON hash can differ after a valid double-precision
+    // database round trip even when every coordinate is inside that contract.
+    // Keep the exact hash as a diagnostic, but do not let it contradict the
+    // row-level comparison. The stamped deploy hash remains mandatory, so a
+    // genuinely stale or interrupted sync still fails closed.
+    stateHashMatchesExpected &&
+    stateCountMatchesExpected;
 
   return {
     expectedCount: expected.count,
@@ -132,6 +143,9 @@ async function auditWithSql(
     actualHash,
     stateHash: state?.catalog_hash ?? null,
     stateCount,
+    actualHashMatchesExpected,
+    stateHashMatchesExpected,
+    stateCountMatchesExpected,
     missing,
     extra,
     coordinateMismatches,
@@ -335,7 +349,13 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
         `(expected=${audit.expectedCount}, active=${audit.activeCount}, ` +
         `missing=${audit.missing.length}, extra=${audit.extra.length}, ` +
         `coordinate_mismatches=${audit.coordinateMismatches.length}, ` +
-        `missing_locations=${audit.missingLocations.length}).`,
+        `missing_locations=${audit.missingLocations.length}, ` +
+        `actual_hash_match=${audit.actualHashMatchesExpected}, ` +
+        `state_hash_match=${audit.stateHashMatchesExpected}, ` +
+        `state_count_match=${audit.stateCountMatchesExpected}, ` +
+        `expected_hash=${audit.expectedHash.slice(0, 12)}, ` +
+        `actual_hash=${audit.actualHash.slice(0, 12)}, ` +
+        `state_hash=${audit.stateHash?.slice(0, 12) ?? "missing"}).`,
     );
   }
   return {

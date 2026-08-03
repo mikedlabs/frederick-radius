@@ -177,8 +177,10 @@ export function countLine(args: {
   events: number;
   townName: string | null;
   townCount: number;
+  /** False when the board has only a partial/degraded collection in memory. */
+  complete?: boolean;
 }): string {
-  const ev = `${args.events} ${args.events === 1 ? "event" : "events"}`;
+  const ev = `${args.events} ${args.events === 1 ? "event" : "events"}${args.complete === false ? " loaded" : ""}`;
   const where =
     args.townName ??
     `${args.townCount} ${args.townCount === 1 ? "town" : "towns"}`;

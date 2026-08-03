@@ -62,6 +62,7 @@ import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
+import { shouldRenderTodayEventSection } from "@/lib/today-events";
 
 /**
  * Now — the daily briefing.
@@ -159,26 +160,16 @@ export default async function HomePage() {
   // 650ms, falls back to curated rows, and carries an honest degraded signal.
   const eventsPromise = loadTodayEventSnapshot(now);
 
-  // WEATHER-CONDITIONAL COMPOSITION — the page already knows the sky; let it
-  // reshape the answer, not just the headline. A wet hour sits the golden-hour
-  // beat down (no golden hour in a thunderstorm) and leads the daypart shelf
-  // with indoor picks; a 92°+ hour adds cool-down picks. Bounded await: the
-  // NWS forecast rides Next's fetch cache, so this is ~0ms warm, and the 800ms
-  // race means a slow feed can never hold the shell hostage — it just means an
-  // ordinary-day composition.
-  const forecastForLean = await Promise.race([
+  // WEATHER-CONDITIONAL COMPOSITION — a wet hour leads the daypart shelf with
+  // indoor picks; a 92°+ hour adds cool-down picks. Start the cached NWS read
+  // now, but do not await it in the page root. The ordinary shelf is the
+  // immediate Suspense fallback and the weather-aware ordering streams within
+  // 400ms, so a slow provider cannot delay the document shell or masthead.
+  const forecastForLean = Promise.race([
     getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
   ]);
-  const lean = leanFromForecast(forecastForLean, now);
-
-  const daypartRows = buildDaypartRows(now, lean);
-  const daypartNote =
-    lean === "wet"
-      ? "Storms are close by, so indoor picks lead."
-      : lean === "hot"
-        ? "It is a hot one, so cool-down picks lead."
-        : null;
+  const baseDaypartRows = buildDaypartRows(now, null);
 
   // Keep the location-aware answer mounted on every render. LocationChip's
   // shared town lens is applied by DaypartNeeds through /api/want; replacing
@@ -186,7 +177,13 @@ export default async function HomePage() {
   // inert on any day with a promoted draw. Events still get their editorial
   // feature, but inside the explicitly countywide What's-on program below.
   const decisionLead = (
-    <OpenPlaceLead rows={daypartRows} note={daypartNote} />
+    <Suspense fallback={<OpenPlaceLead rows={baseDaypartRows} note={null} />}>
+      <WeatherAwareOpenPlaceLead
+        now={now}
+        baseRows={baseDaypartRows}
+        forecastPromise={forecastForLean}
+      />
+    </Suspense>
   );
 
   // These are useful today, but not all of them are live: a first pitch,
@@ -380,11 +377,9 @@ export default async function HomePage() {
         </Suspense>
       </PageChapter>
 
-      {lean !== "wet" && (
-        <Suspense fallback={null}>
-          <WeatherSafeGoldenHour now={now} />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <WeatherSafeGoldenHour now={now} />
+      </Suspense>
 
       {/* Secondary doors share one deliberate reveal. The old lower page also
           repeated generated collections, a rotating place list, and a taste
@@ -395,7 +390,7 @@ export default async function HomePage() {
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         headingLevel={2}
-        className="today-disclosure mt-6 border-t pt-2"
+        className="today-disclosure mt-6 border-t pt-2 [&>h2>button]:min-h-11"
       >
         <div className="space-y-5">
           <TodayLocalGuides
@@ -439,6 +434,29 @@ function OpenPlaceLead({
   note: string | null;
 }) {
   return <DaypartNeeds rows={rows} note={note} />;
+}
+
+/** Weather-aware ordering is a progressive enhancement. The ordinary local
+ * shelf paints immediately while the cached forecast settles; a cold weather
+ * provider can never delay Today's document shell or masthead. */
+async function WeatherAwareOpenPlaceLead({
+  now,
+  baseRows,
+  forecastPromise,
+}: {
+  now: Date;
+  baseRows: DaypartRows;
+  forecastPromise: ReturnType<typeof getNwsForecast>;
+}) {
+  const lean = leanFromForecast(await forecastPromise, now);
+  const rows = lean ? buildDaypartRows(now, lean) : baseRows;
+  const note =
+    lean === "wet"
+      ? "Storms are close by, so indoor picks lead."
+      : lean === "hot"
+        ? "It is a hot one, so cool-down picks lead."
+        : null;
+  return <OpenPlaceLead rows={rows} note={note} />;
 }
 
 /** Upgrade only the food-truck sentence from the cron-built snapshot. The row
@@ -666,6 +684,19 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
       easternStartHour(e.starts_at) >= 17,
   ).length;
 
+  // A degraded archive with no usable rows is an unknown calendar state, not
+  // an empty day. Do not leave a heading with a blank body or claim that
+  // nothing is happening; the full Events board remains available in the
+  // global navigation while this optional briefing section stays quiet.
+  if (!shouldRenderTodayEventSection({
+    degraded: sourceHealth.degraded,
+    featurePromoted: featureIsPromoted,
+    programCount: program.length,
+    earlierCount: remainingEarlierToday.length,
+  })) {
+    return null;
+  }
+
   return (
     <section className="mt-5 space-y-3" aria-label="Events today">
       <DismissibleSection
@@ -676,28 +707,16 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         flat
         meta={
           visibleTodayCount > 0
-            ? `${visibleTodayCount} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""} · Countywide`
-            : undefined
+            ? `${visibleTodayCount} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""} · Countywide${sourceHealth.degraded ? " · Partial coverage" : ""}`
+            : sourceHealth.degraded
+              ? "Partial calendar coverage"
+              : undefined
         }
       >
-        {/* Honest partial-data signal. assembleUnifiedEvents returns
-            sourceHealth so the UI never presents a set shrunk by a feed
-            timeout as a complete "quiet day" — the same contract /events
-            honors. When some calendar didn't answer, say so before the list,
-            and drop the completeness claims below. */}
-        {sourceHealth.degraded && (
-          <p
-            role="status"
-            className="mb-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
-            style={{
-              borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
-              background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
-              color: "var(--app-ink-2)",
-            }}
-          >
-            Some live calendars didn&rsquo;t answer, so today&rsquo;s list may be incomplete.
-          </p>
-        )}
+        {/* Keep degraded-source honesty in the section's own metadata rather
+            than repeating the Events page's full warning card. Today stays
+            calm and scannable; the board remains the place to retry feeds and
+            inspect the complete coverage state. */}
         {/* A real draw can still earn the editorial feature, but it belongs to
             the explicitly countywide event program. It must never displace the
             town-aware place answer above or make the shared town control feel

@@ -30,6 +30,8 @@ jobs:
     environment: "Data Enrichment"
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
     steps:
       - name: Require venue extraction configuration
         env:
@@ -116,11 +118,18 @@ jobs:
           install -D -m 0644 src/data/venue-events.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-events.json"
           install -D -m 0644 src/data/venue-event-source-state.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-state.json"
 
+      - name: Pin review artifact name to this generator attempt
+        id: artifact-name
+        if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
+        env:
+          ARTIFACT_NAME: venue-event-review-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Upload isolated review artifact
         if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: venue-event-review-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/automated-pr-output
           if-no-files-found: error
           retention-days: 1
@@ -139,7 +148,7 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/publish-automated-pr.yml
     with:
-      artifact: venue-event-review-${{ github.run_id }}-${{ github.run_attempt }}
+      artifact: ${{ needs.ingest.outputs.artifact_name }}
       base_sha: ${{ github.sha }}
       branch: bot/venue-event-refresh
       allowed_paths: |

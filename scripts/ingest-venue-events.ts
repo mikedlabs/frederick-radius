@@ -56,6 +56,7 @@ import {
 } from "./lib/venue-event-promotion";
 import { normalizeVenueEventTimes } from "./lib/venue-event-time";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
+import { lintSourceText } from "./style-lint";
 
 const OUT = resolve("src/data/venue-events.json");
 const SOURCE_INVENTORY_OUT = resolve(
@@ -134,15 +135,16 @@ const SHAPE =
   `Extract UPCOMING events from this venue's page as a JSON array. Each item:\n` +
   `{ "title": string, "starts_at": string (date and time as published, ISO if possible; use the America/New_York offset), ` +
   `"ends_at"?: string, "description"?: string (one complete, neutral sentence), "price"?: string, "ticket_url"?: string (absolute) }\n` +
-  `Copy each published title exactly. A description must use only facts from the source and must not use fragments, ` +
-  `slogans, promotional filler, or an invented three-part list. Preserve a factual list when the source requires it. ` +
+  `Copy each published title exactly. A description must use only concrete facts from the source and must not use fragments, ` +
+  `slogans, promotional filler, vague claims, the phrase "live experience," or an invented three-part list. ` +
+  `Name the performer, format, genre, age rule, price, or another published fact instead. Preserve a factual list when the source requires it. ` +
   `Only include events clearly listed on the page with a real date. Skip past events. If none, return [].`;
 
 const IMAGE_SHAPE =
   `This image is a venue's monthly events/music calendar. Extract every event legibly shown as a JSON array. Each item:\n` +
   `{ "title": string, "starts_at": string (date, with time if shown; include the year ${new Date().getFullYear()} if the image omits it and use the America/New_York offset), ` +
   `"description"?: string (one complete, neutral sentence using only legible facts) }\n` +
-  `Copy each published title exactly. Do not use fragments, promotional filler, or an invented three-part list. ` +
+  `Copy each published title exactly. Do not use fragments, promotional filler, vague claims, the phrase "live experience," or an invented three-part list. ` +
   `Only events you can actually read in the image, with a real date. If none are legible, return [].`;
 
 /** Resolve the collection method, honoring the legacy render flag. */
@@ -167,6 +169,45 @@ function publishableRawEvents(events: RawEvent[]): RawEvent[] {
     }
     const normalized = normalizeVenueEventTimes(event as RawEvent);
     return normalized ? [normalized] : [];
+  });
+}
+
+/**
+ * Model-written copy is optional; the event identity, time, and source are not.
+ * Apply the same voice rules used by CI before a generated description enters
+ * the review artifact. If the model drifts, keep the useful event and omit only
+ * the unsafe sentence instead of blocking every venue's refresh.
+ */
+export function withSafeRadiusSummaries(events: RawEvent[]): RawEvent[] {
+  return events.map((event) => {
+    const description = event.description?.trim();
+    if (!description) {
+      const rest = { ...event };
+      delete rest.description;
+      delete rest.description_origin;
+      return rest;
+    }
+
+    const findings = lintSourceText(
+      "src/data/venue-event-summary.json",
+      JSON.stringify({ description }),
+    );
+    if (findings.length > 0) {
+      const rest = { ...event };
+      delete rest.description;
+      delete rest.description_origin;
+      console.log(
+        `  - omitted generated description for ${event.title ?? "untitled event"}: ` +
+          findings.map((finding) => finding.rule).join(", "),
+      );
+      return rest;
+    }
+
+    return {
+      ...event,
+      description,
+      description_origin: "radius-summary",
+    };
   });
 }
 
@@ -317,12 +358,7 @@ export async function collect(
     const n = publishableEvents.length;
     console.log(`  ✓ ${n} event(s) from image ${venue.imageUrl}`);
     return {
-      events: publishableEvents.map((event) => ({
-        ...event,
-        ...(event.description
-          ? { description_origin: "radius-summary" as const }
-          : {}),
-      })),
+      events: withSafeRadiusSummaries(publishableEvents),
       source: directSource(venue.urls[0] ?? venue.imageUrl),
       status: "complete",
     };
@@ -454,12 +490,7 @@ export async function collect(
     if (publishableEvents.length) {
       console.log(`  ✓ ${publishableEvents.length} event(s) from ${url}`);
       return {
-        events: publishableEvents.map((event) => ({
-          ...event,
-          ...(event.description
-            ? { description_origin: "radius-summary" as const }
-            : {}),
-        })),
+        events: withSafeRadiusSummaries(publishableEvents),
         source: {
           url: snapshot.requestedUrl,
           requestedUrl: snapshot.requestedUrl,

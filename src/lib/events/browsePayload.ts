@@ -66,8 +66,9 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
 }
 
 /**
- * Collapse repeated occurrences only in the long-tail `later` horizon. Nearer
- * dates remain individual, because their exact day is decision-useful.
+ * Collapse an explicitly recurring series to its next useful occurrence on
+ * the whole board. Unmarked repetitions remain distinct nearby and collapse
+ * only in the long-tail `later` horizon, preserving exact near-term dates.
  */
 export function collapseLaterSeries(
   events: EventWithMeta[],
@@ -84,7 +85,7 @@ export function collapseLaterSeries(
     const horizon = horizonOf(event, bounds);
     // Do not serialize already-ended rows merely for the client to discard.
     if (!horizon) continue;
-    if (horizon !== "later") {
+    if (horizon !== "later" && !event.is_recurring) {
       out.push(event);
       continue;
     }
@@ -105,21 +106,66 @@ export function collapseLaterSeries(
     return {
       ...event,
       is_recurring: true,
-      recurrence_text: event.recurrence_text ?? `${count} upcoming dates`,
+      recurrence_text: recurrenceContext(event.recurrence_text, count),
     };
   });
 }
 
-function seriesKey(event: Pick<EventWithMeta, "title" | "venue_name">): string {
-  return `${event.title.trim().toLowerCase()}@@${event.venue_name.trim().toLowerCase()}`;
+function normalizedSeriesPart(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-/** Complete, compact event collection used by the initial window and API. */
+/**
+ * Publishers often append the weekly act after a pipe or middle dot. Those
+ * changing act names must not turn one recurring series into twenty cards.
+ * This stem is used only when the source explicitly marks the rows recurring.
+ */
+function recurringTitleStem(title: string): string {
+  const [candidate] = title.split(/\s+(?:\||·)\s+/u);
+  return candidate
+    .replace(/:\s*(?:opening night|season finale)$/i, "")
+    .trim();
+}
+
+function seriesKey(
+  event: Pick<
+    EventWithMeta,
+    "title" | "venue_name" | "municipality" | "is_recurring" | "recurrence_text"
+  >,
+): string {
+  const title = event.is_recurring
+    ? recurringTitleStem(event.title)
+    : event.title;
+  return [
+    normalizedSeriesPart(title),
+    normalizedSeriesPart(event.venue_name),
+    normalizedSeriesPart(event.municipality),
+    event.is_recurring ? normalizedSeriesPart(event.recurrence_text ?? "") : "",
+  ].join("@@");
+}
+
+function recurrenceContext(current: string | undefined, count: number): string {
+  const text = current?.trim();
+  const countText = `${count} upcoming dates`;
+  if (!text) return countText;
+  if (/\b(?:upcoming\s+dates?|runs?\s+most\s+days)\b/i.test(text)) return text;
+  return `${text} · ${countText}`;
+}
+
+/**
+ * Complete, compact occurrence collection used by the deferred API and every
+ * date-aware view. Keep each dated occurrence here: collapsing at this layer
+ * made later dates disappear from the Calendar and day filters. The default
+ * editorial list applies `collapseLaterSeries` only when it chooses rows to
+ * render.
+ */
 export function prepareEventsForBrowse(
   events: EventWithMeta[],
   bounds: HorizonBounds,
 ): EventWithMeta[] {
-  return collapseLaterSeries(events.map(slimEventForBrowse), bounds);
+  return events
+    .map(slimEventForBrowse)
+    .filter((event) => horizonOf(event, bounds) !== null);
 }
 
 /**
@@ -133,8 +179,13 @@ export function initialEventsForBrowse(
   bounds: HorizonBounds,
   perHorizon = INITIAL_EVENTS_PER_HORIZON,
 ): EventWithMeta[] {
-  const crowd = events.filter((event) => !isUtilityEvent(event));
-  const utility = events.filter(isUtilityEvent).slice(0, INITIAL_UTILITY_EVENTS);
+  // The first paint is the default editorial list, so repeated series can be
+  // represented by their next occurrence here. The complete occurrence corpus
+  // remains behind /api/events/browse for Calendar, day filters, alternate
+  // sorts, and maps.
+  const displayEvents = collapseLaterSeries(events, bounds);
+  const crowd = displayEvents.filter((event) => !isUtilityEvent(event));
+  const utility = displayEvents.filter(isUtilityEvent).slice(0, INITIAL_UTILITY_EVENTS);
   const selected = new Set<string>();
 
   for (const group of groupByHorizon(crowd, bounds)) {
@@ -144,7 +195,7 @@ export function initialEventsForBrowse(
   }
   for (const event of utility) selected.add(eventIdentity(event));
 
-  return events.filter((event) => selected.has(eventIdentity(event)));
+  return displayEvents.filter((event) => selected.has(eventIdentity(event)));
 }
 
 export function summarizeEventsForBrowse(

@@ -391,7 +391,7 @@ describe("GET /api/cron/data-health", () => {
     expect(body.note).toContain("separately scheduled");
   });
 
-  it("returns 503 when the archive worker has no current heartbeat", async () => {
+  it("returns a completed degraded report when the archive heartbeat is missing", async () => {
     mocks.getRecentIngestRuns.mockResolvedValue([
       healthyPhaseRun("data-health:feeds"),
     ]);
@@ -399,7 +399,12 @@ describe("GET /api/cron/data-health", () => {
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
+    expect(body.summary).toMatchObject({
+      status: "degraded",
+      degraded: true,
+      required_phase_unavailable: true,
+    });
     expect(body.summary.gates).toContainEqual({
       name: "event-archive",
       green: false,
@@ -420,13 +425,13 @@ describe("GET /api/cron/data-health", () => {
     );
   });
 
-  it("returns 503 and reports a missing feed-worker heartbeat", async () => {
+  it("reports a missing feed-worker heartbeat without failing the reporter", async () => {
     mocks.getRecentIngestRuns.mockResolvedValue([]);
 
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(body.summary.gates).toContainEqual({
       name: "feed-worker",
       green: false,
@@ -456,7 +461,7 @@ describe("GET /api/cron/data-health", () => {
 
     const response = await GET(request());
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
       expect.objectContaining({
         anomalies: expect.arrayContaining([
@@ -494,7 +499,7 @@ describe("GET /api/cron/data-health", () => {
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(body.phases.retention).toMatchObject({
       enabled: true,
       green: false,
@@ -517,5 +522,17 @@ describe("GET /api/cron/data-health", () => {
     expect(response.status).toBe(503);
     expect(bodyText).not.toContain("user:secret");
     expect(bodyText).toContain("reporter deadline");
+  });
+
+  it("returns 503 when the reporter cannot record its own completion", async () => {
+    mocks.finishIngestRunStrict.mockRejectedValue(
+      new Error("completion write failed"),
+    );
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.summary.reporter_heartbeat_recorded).toBe(false);
   });
 });

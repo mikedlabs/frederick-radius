@@ -7,6 +7,11 @@ import {
 } from "./cravings";
 
 describe("canonical craving eligibility", () => {
+  it("does not expose inherited object keys as URL-selectable cravings", () => {
+    expect(CRAVING_BY_KEY.toString).toBeUndefined();
+    expect(CRAVING_BY_KEY.constructor).toBeUndefined();
+  });
+
   it("matches H Mart and Giant Eagle as grocery everywhere", () => {
     const grocery = CRAVING_BY_KEY.grocery;
     expect(matchesCraving(grocery, { category: "shopping", name: "H Mart Frederick" })).toBe(true);

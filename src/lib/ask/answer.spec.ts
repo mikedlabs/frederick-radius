@@ -196,6 +196,174 @@ describe("askFrederick structured answers", () => {
     }
   });
 
+  it("recommends only verified-open ice cream after the requested time", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "where can I take my kids for ice cream after 8pm tonight",
+        downtown,
+      );
+
+      expect(result.intent).toMatchObject({
+        kind: "place",
+        requestedTime: "8:00 PM",
+        requestedDateTime: "2026-08-04T00:00:00.000Z",
+      });
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.some((source) => source.name === "Zoe's Chocolate Company")).toBe(false);
+      expect(
+        result.sources.every((source) =>
+          /^At 8:00 PM · (?:Open|Closing soon)\b/.test(
+            source.status ?? "",
+          ),
+        ),
+      ).toBe(true);
+      expect(result.answer).not.toContain("Zoe's Chocolate Company");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never calls a place open past midnight unless fresh hours confirm it", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "what is open past midnight tonight",
+        downtown,
+      );
+
+      expect(result.intent).toMatchObject({
+        kind: "place",
+        requestedTime: "12:00 AM",
+        requestedDateTime: "2026-08-04T04:00:00.000Z",
+      });
+      expect(result.sources.some((source) => source.name === "Dancing Bear Toys and Games")).toBe(false);
+      expect(
+        result.sources.every((source) =>
+          /^At 12:00 AM · (?:Open|Closing soon)\b/.test(
+            source.status ?? "",
+          ),
+        ),
+      ).toBe(true);
+      if (result.sources.length === 0) {
+        expect(result.answer).toContain("couldn’t verify");
+      }
+      expect(result.answer).not.toContain("Dancing Bear Toys and Games");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("filters the full nearby catalog for the requested time before applying the result cap", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "what is open past midnight near me",
+        {
+          origin: downtown.origin,
+          municipality: "frederick",
+          contextLabel: "your location",
+          canShowDistance: true,
+        },
+      );
+
+      expect(result.sources.some((source) => source.name === "Cafe Nola")).toBe(true);
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) =>
+        /^At 12:00 AM · (?:Open|Closing soon)\b/.test(source.status ?? "")
+      )).toBe(true);
+      expect(result.sources[0]?.distance).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("treats a future date word as scheduling, not a place-search keyword", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "what is open past midnight tomorrow",
+        downtown,
+      );
+
+      expect(result.intent).toMatchObject({
+        kind: "place",
+        requestedDateTime: "2026-08-05T04:00:00.000Z",
+      });
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) =>
+        /^At 12:00 AM · (?:Open|Closing soon)\b/.test(source.status ?? "")
+      )).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses downtown as a ranking scope without exposing center-point distances", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "what is open past midnight downtown Frederick",
+        {
+          origin: downtown.origin,
+          contextLabel: "your location",
+          canShowDistance: true,
+        },
+      );
+
+      expect(result.context).toBe("Downtown Frederick");
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) => source.distance == null)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("answers a nonexistent DST wall time with a clarification, not a mislabeled hours claim", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-01T17:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "what is open after 2:30am March 8 2026",
+        downtown,
+      );
+
+      expect(result.status).toBe("empty");
+      expect(result.sources).toEqual([]);
+      expect(result.answer).toContain("does not occur in Frederick");
+      expect(result.answer).toContain("clocks move forward");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a stale-hours exact match only as an unconfirmed alternative", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "Monocacy National Battlefield nearby after 10pm August 19 2026",
+        downtown,
+      );
+
+      expect(result.sources).toContainEqual(
+        expect.objectContaining({
+          slug: "monocacy-national-battlefield-frederick",
+          status: "At 10:00 PM · Hours not confirmed",
+        }),
+      );
+      expect(result.answer).toContain("couldn’t verify");
+      expect(result.answer).not.toContain("It's open");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps an open-now restaurant request nearby when fresh hours are unavailable", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));

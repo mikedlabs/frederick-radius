@@ -15,4 +15,14 @@ describe("place detail nearby recommendations", () => {
       ),
     ).toBe(false);
   });
+
+  it("pairs a coffee stop with relevant nearby destinations before personal services", () => {
+    const place = getPlaceBySlug("frederick-coffee-company-frederick");
+
+    expect(place).not.toBeNull();
+    expect(place?.nearby_places[0]?.slug).toBe("beans-bagels-frederick");
+    expect(
+      place?.nearby_places.some((nearby) => nearby.category === "salon"),
+    ).toBe(false);
+  });
 });

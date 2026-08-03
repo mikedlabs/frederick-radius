@@ -52,4 +52,27 @@ describe("SavedList empty state", () => {
     expect(source).toContain('href="/transit"');
     expect(source).toContain("Open for live status.");
   });
+
+  it("does not render an empty account before saved state has hydrated", () => {
+    const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
+
+    expect(source).toContain(
+      "const hasAccountBootstrap = Boolean(userId) && initialFollowSlugs !== undefined",
+    );
+    expect(source).toContain("(!mounted && !hasAccountBootstrap)");
+    expect(source).toContain("if (savedStatePending || placesPending)");
+  });
+
+  it("hydrates a signed-in saved page from the server snapshot before client effects", () => {
+    const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
+
+    expect(source).toContain("initialFollowSlugs?: string[]");
+    expect(source).toContain("initialPlaces?: PlaceCardData[]");
+    expect(source).toContain(
+      "new Map(initialPlaces.map((place) => [place.slug, place]))",
+    );
+    expect(source).toContain(
+      'initialFollowSlugs ? initialFollowSlugs.join(",") : null',
+    );
+  });
 });

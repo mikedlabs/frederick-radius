@@ -275,4 +275,16 @@ describe("Ask response hierarchy", () => {
       "Open the official source for lane details.",
     );
   });
+
+  it("keeps a numbered street address together across a cardinal abbreviation", () => {
+    const decorated = withAskResponsePresentation(result({
+      answer:
+        "The event is at 3 N. Main St. starting at 4:00 PM tonight. Doors open at 3:30 PM.",
+    }), "What is on tonight?");
+
+    expect(decorated.presentation?.summary).toBe(
+      "The event is at 3 N. Main St. starting at 4:00 PM tonight.",
+    );
+    expect(decorated.presentation?.detail).toBe("Doors open at 3:30 PM.");
+  });
 });

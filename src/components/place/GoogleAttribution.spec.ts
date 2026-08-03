@@ -62,4 +62,14 @@ describe("Google content reporting links", () => {
     expect(photoHtml).toContain("Report photo");
     expect(reviewHtml).toContain("Report review");
   });
+
+  it("keeps the tiny review avatar out of the hero loading path", () => {
+    const html = renderToStaticMarkup(createElement(GoogleReviewAttribution, {
+      author: "Frederick Neighbor",
+      authorPhotoUri: "https://lh3.googleusercontent.com/a/example",
+    }));
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('decoding="async"');
+    expect(html.toLowerCase()).toContain('fetchpriority="low"');
+  });
 });

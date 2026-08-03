@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { publicPlaces } from "@/lib/loaders/places";
-import { EVENTS } from "@/data/events";
+import { allUpcoming } from "@/lib/loaders/events";
+import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
+import { upcomingArchivedEventRoutes } from "@/lib/events/event-identity";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES, categoryRouteOverride, isAmenityCategory } from "@/data/categories";
 import { COLLECTIONS } from "@/data/collections";
@@ -8,7 +10,9 @@ import { CIVIC_MOMENTS } from "@/data/civic-moments";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
   // /today (the answer surface is now the home entry), and /now + /radius +
@@ -61,12 +65,35 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // own start, not a single build timestamp.
   const nowMs = +now;
   const WINDOW_MS = 60 * 864e5;
-  const events = EVENTS.filter((e) => {
-    const t = Date.parse(e.starts_at);
-    return Number.isFinite(t) && t >= nowMs - 864e5 && t <= nowMs + WINDOW_MS;
-  }).map((e) => ({
-    url: `${BASE}/events/${e.slug}`,
-    lastModified: new Date(e.starts_at),
+  const fallbackEvents = [...allUpcoming(now), ...venueEventsAsCards(now)];
+  const archivedEvents = await upcomingArchivedEventRoutes({
+    now,
+    horizonDays: 60,
+    timeoutMs: 700,
+  });
+  const eventRoutes = new Map<
+    string,
+    { slug: string; startsAt: string; lastModified: string }
+  >();
+  for (const event of fallbackEvents) {
+    const t = Date.parse(event.starts_at);
+    if (!Number.isFinite(t) || t < nowMs - 864e5 || t > nowMs + WINDOW_MS) continue;
+    eventRoutes.set(event.slug, {
+      slug: event.slug,
+      startsAt: event.starts_at,
+      lastModified: event.last_verified_at ?? event.starts_at,
+    });
+  }
+  for (const event of archivedEvents) {
+    eventRoutes.set(event.slug, {
+      slug: event.slug,
+      startsAt: event.startsAt,
+      lastModified: event.lastModifiedAt,
+    });
+  }
+  const events = [...eventRoutes.values()].map((event) => ({
+    url: `${BASE}/events/${event.slug}`,
+    lastModified: new Date(event.lastModified),
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));

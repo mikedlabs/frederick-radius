@@ -1,9 +1,18 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { compactWeatherRead, WeatherUnavailable } from "./TodayCard";
+import {
+  compactWeatherRead,
+  TODAY_SAFETY_GLANCE_DEADLINE_MS,
+  WeatherUnavailable,
+} from "./TodayCard";
 
 describe("TodayCard fallback", () => {
+  it("keeps the above-the-fold safety glance within a one-second budget", () => {
+    expect(TODAY_SAFETY_GLANCE_DEADLINE_MS).toBeGreaterThanOrEqual(500);
+    expect(TODAY_SAFETY_GLANCE_DEADLINE_MS).toBeLessThanOrEqual(1_000);
+  });
+
   it("turns a forecast miss into a compact live-conditions handoff", () => {
     const html = renderToStaticMarkup(createElement(WeatherUnavailable));
 

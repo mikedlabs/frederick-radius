@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/Button";
 import { Compass } from "lucide-react";
 import SearchInput from "@/components/search/SearchInput";
+
+export const metadata: Metadata = {
+  title: "Page not found",
+  description:
+    "That Frederick Radius page could not be found. Search the guide or return to Today.",
+  robots: { index: false, follow: true },
+};
 
 /** A few popular doorways back into the app, for a lost visitor. */
 const DOORWAYS: Array<{ label: string; href: string }> = [

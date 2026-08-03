@@ -367,6 +367,71 @@ describe("scheduled data workflow contracts", () => {
     expect(extraction).toBeGreaterThan(copyBoundary);
   });
 
+  it.each([
+    ["data-steward.yml", "steward", "steward-publish"],
+    ["data-steward.yml", "transit", "transit-publish"],
+    ["ingest-business-info.yml", "ingest", "publish"],
+    ["ingest-civic.yml", "ingest", "publish"],
+    ["ingest-venues.yml", "ingest", "publish"],
+    ["refresh-commerce-links.yml", "refresh", "publish"],
+    ["data-refresh.yml", "refresh", "publish"],
+  ])(
+    "%s carries the exact %s artifact name into %s",
+    (name, generatorName, publisherName) => {
+      type ArtifactStep = {
+        id?: string;
+        uses?: string;
+        with?: { name?: string };
+      };
+      type ArtifactJob = {
+        outputs?: { artifact_name?: string };
+        steps?: ArtifactStep[];
+        with?: { artifact?: string };
+      };
+      type ArtifactWorkflow = { jobs?: Record<string, ArtifactJob> };
+
+      const workflow = parse(workflowText(name)) as ArtifactWorkflow;
+      const generator = workflow.jobs?.[generatorName];
+      const publisher = workflow.jobs?.[publisherName];
+      const upload = generator?.steps?.find((step) =>
+        step.uses?.startsWith("actions/upload-artifact@"),
+      );
+
+      expect(generator?.outputs?.artifact_name).toBe(
+        "${{ steps.artifact-name.outputs.name }}",
+      );
+      expect(generator?.steps?.some((step) => step.id === "artifact-name")).toBe(
+        true,
+      );
+      expect(upload?.with?.name).toBe("${{ steps.artifact-name.outputs.name }}");
+      expect(publisher?.with?.artifact).toBe(
+        `\${{ needs.${generatorName}.outputs.artifact_name }}`,
+      );
+      expect(publisher?.with?.artifact).not.toContain("github.run_attempt");
+    },
+  );
+
+  it("carries data-refresh diagnostic artifact names across failed-job reruns", () => {
+    const refresh = workflowText("data-refresh.yml");
+    const publisher = workflowText("publish-data-snapshot.yml");
+
+    expect(refresh).toContain(
+      "logs_artifact_name: ${{ steps.artifact-name.outputs.logs }}",
+    );
+    expect(refresh).toContain(
+      "name: ${{ needs.refresh.outputs.logs_artifact_name }}",
+    );
+    expect(refresh).toContain(
+      "name: ${{ needs.publish.outputs.logs_artifact_name }}",
+    );
+    expect(publisher).toContain(
+      "value: ${{ jobs.publish.outputs.logs_artifact_name }}",
+    );
+    expect(publisher).toContain(
+      "name: ${{ steps.artifact-name.outputs.name }}",
+    );
+  });
+
   it("isolates rollback-capable production canaries by trigger type", () => {
     const workflow = parse(
       workflowText("production-canary.yml"),

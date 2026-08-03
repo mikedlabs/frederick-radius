@@ -18,6 +18,21 @@ type PlaceMedallionProps = {
 };
 
 /**
+ * Compact portraits have their own honest fallback already: the place's
+ * category mark. Ask the photo proxy for its transparent 1px failure signal
+ * instead of the text-heavy artwork intended for hero images. The category
+ * mark remains underneath the photo, so a failed request reveals a deliberate
+ * branded medallion rather than a cropped "PHOTO NOT AVAILABLE" plate.
+ */
+export function medallionPhotoSrc(src: string, size: number): string {
+  const narrowed = proxyPhotoAtWidth(src, size);
+  if (!narrowed.startsWith("/api/place-photo")) return narrowed;
+  const url = new URL(narrowed, "https://frederickradius.local");
+  url.searchParams.set("fallback", "signal");
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+/**
  * A compact, decorative place portrait for dense rows and wallet lockups.
  * Approved place photos lead when present; the category mark is the honest
  * fallback. The adjacent place name carries the accessible label.
@@ -33,6 +48,7 @@ export function PlaceMedallion({
     CATEGORY_BY_SLUG[place.category]?.color ?? "var(--app-brand)";
   const inverse = surface === "inverse";
   const photo = place.google_photo_url;
+  const photoSrc = photo ? medallionPhotoSrc(photo, size) : null;
 
   return (
     <span
@@ -56,30 +72,29 @@ export function PlaceMedallion({
           : `inset 0 0 0 1px color-mix(in srgb, ${categoryColor} 20%, transparent), var(--app-edge)`,
       }}
     >
-      {photo ? (
+      <CategoryIcon
+        slug={place.category}
+        strokeWidth={1.9}
+        style={{
+          color: inverse ? "currentColor" : categoryColor,
+          width: Math.round(size * 0.44),
+          height: Math.round(size * 0.44),
+        }}
+      />
+      {photoSrc ? (
         <Image
           // Proxy responses are unoptimized (Next cannot resize an opaque
           // route), so `sizes` alone would still pull the stored 800px hero
           // down to paint a 40px circle. Ask the proxy for the real size.
-          src={proxyPhotoAtWidth(photo, size)}
+          src={photoSrc}
           alt=""
           fill
           loading="lazy"
           sizes={`${size}px`}
-          unoptimized={photo.startsWith("/api/place-photo")}
+          unoptimized={photoSrc.startsWith("/api/place-photo")}
           className="object-cover"
         />
-      ) : (
-        <CategoryIcon
-          slug={place.category}
-          strokeWidth={1.9}
-          style={{
-            color: inverse ? "currentColor" : categoryColor,
-            width: Math.round(size * 0.44),
-            height: Math.round(size * 0.44),
-          }}
-        />
-      )}
+      ) : null}
     </span>
   );
 }

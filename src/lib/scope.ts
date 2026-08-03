@@ -24,7 +24,11 @@
  * safe to import in a server component. Only get/set touch the browser.
  */
 import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  isMunicipalitySlug,
+  MUNICIPALITIES,
+  MUNICIPALITY_BY_SLUG,
+} from "@/data/municipalities";
 
 export type Scope = "nearme" | "county" | `town:${string}`;
 
@@ -53,7 +57,7 @@ export function parseScope(raw: string | null | undefined): Scope | null {
   const v = raw.trim().toLowerCase();
   if (v === "nearme" || v === "county") return v;
   const slug = v.startsWith("town:") ? v.slice("town:".length) : v;
-  return slug && MUNICIPALITY_BY_SLUG[slug] ? (`town:${slug}` as Scope) : null;
+  return isMunicipalitySlug(slug) ? (`town:${slug}` as Scope) : null;
 }
 
 /** The short URL-param form of a scope ("nearme" | "county" | "<slug>"). */
@@ -106,7 +110,7 @@ export function effectiveOriginSlug(
   const town = scopeTownSlug(scope);
   if (town) return town;
   if (scope === "county") return null;
-  return homeMuniRaw && MUNICIPALITY_BY_SLUG[homeMuniRaw] ? homeMuniRaw : null;
+  return isMunicipalitySlug(homeMuniRaw) ? homeMuniRaw : null;
 }
 
 export type DecisionOriginSource =
@@ -212,7 +216,7 @@ export function resolveDecisionContext({
     };
   }
 
-  const home = homeMuniRaw && MUNICIPALITY_BY_SLUG[homeMuniRaw]
+  const home = isMunicipalitySlug(homeMuniRaw)
     ? MUNICIPALITY_BY_SLUG[homeMuniRaw]
     : null;
 

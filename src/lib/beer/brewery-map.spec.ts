@@ -27,6 +27,34 @@ describe("brewery map", () => {
     ).toBe(true);
   });
 
+  it("keeps photo attribution details out of list payloads", () => {
+    const full = {
+      ...breweryPlaces()[0],
+      google_photo_attribution: {
+        photo_name: "places/example/photos/one",
+        google_maps_uri: "https://maps.google.com/example",
+        authors: [{ display_name: "Photographer" }],
+      },
+      google_photo_attributions: [
+        {
+          photo_name: "places/example/photos/one",
+          google_maps_uri: "https://maps.google.com/example",
+          authors: [{ display_name: "Photographer" }],
+        },
+      ],
+      google_photos: ["/one.jpg", "/two.jpg"],
+      google_hours: ["Monday: 9:00 AM to 5:00 PM"],
+    } as PlaceCardData;
+
+    const slim = slimForList(full);
+
+    expect(slim.google_photo_url).toBe(full.google_photo_url);
+    expect(slim).not.toHaveProperty("google_photo_attribution");
+    expect(slim).not.toHaveProperty("google_photo_attributions");
+    expect(slim).not.toHaveProperty("google_photos");
+    expect(slim).not.toHaveProperty("google_hours");
+  });
+
   it("opens on bounds containing every brewery instead of a downtown default", () => {
     const places = breweryPlaces();
     const bounds = breweryMapBounds(places);

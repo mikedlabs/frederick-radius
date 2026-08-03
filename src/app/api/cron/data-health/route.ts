@@ -340,6 +340,9 @@ async function runDataHealthReport() {
     summary: {
       headline,
       gates,
+      status: red.length === 0 ? "healthy" : "degraded",
+      degraded: red.length > 0,
+      required_phase_unavailable: requiredPhaseUnavailable,
       github_delivery: githubDelivery,
       reporter_heartbeat_recorded: reporterHeartbeatRecorded,
     },
@@ -462,9 +465,12 @@ async function runDataHealthReport() {
     },
     note: "This final reporter is read-mostly. Feed snapshot writes and optional retention run in separately scheduled, bounded workers.",
   }, {
+    // This route is a reporter. A red gate is valid report data, not an HTTP
+    // execution failure. Return 503 only when the reporter cannot evaluate the
+    // database or cannot durably record that it finished; all degraded gates
+    // remain explicit in the headline, summary, phase detail, and alerts.
     status:
       dbHealth.status === "unavailable"
-      || requiredPhaseUnavailable
       || !reporterHeartbeatRecorded
         ? 503
         : 200,

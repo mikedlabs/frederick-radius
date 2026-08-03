@@ -19,6 +19,7 @@
 import "server-only";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
+import { isInFrederickCountyArea } from "@/lib/geo";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:searchNearby";
 
@@ -296,6 +297,10 @@ function sanitize(p: GoogleNearbyPlace): DiscoveredPlace | null {
   // Hard requirements: id, name, coords. Without any of these the
   // result can't render as a discovery card.
   if (!id || !name || typeof lat !== "number" || typeof lng !== "number") return null;
+  // Address strings can be stale or ambiguous around the county line. The
+  // same reviewed county polygon used by every public Radius loader is the
+  // final placement gate for temporary Google discoveries too.
+  if (!isInFrederickCountyArea(lng, lat)) return null;
 
   return {
     google_place_id: id,
@@ -370,10 +375,23 @@ export async function searchNearby(q: NearbyQuery): Promise<NearbyResult | Nearb
 
     if (res.ok) {
       const json = (await res.json()) as { places?: GoogleNearbyPlace[] };
-      const expectedMuni = muni?.name;
+      // Radius's editorial name is "Frederick City"; Google's locality value
+      // is plain "Frederick". Passing the editorial label here caused every
+      // otherwise valid ?muni=frederick result to be discarded.
+      const expectedMuni = muni?.slug === "frederick" ? "Frederick" : muni?.name;
       let droppedOOC = 0;
       const out: DiscoveredPlace[] = [];
       for (const raw of json.places ?? []) {
+        const rawLat = raw.location?.latitude;
+        const rawLng = raw.location?.longitude;
+        if (
+          typeof rawLat === "number" &&
+          typeof rawLng === "number" &&
+          !isInFrederickCountyArea(rawLng, rawLat)
+        ) {
+          droppedOOC++;
+          continue;
+        }
         if (!isInFrederickCounty(raw.addressComponents, raw.formattedAddress, expectedMuni)) {
           droppedOOC++;
           continue;

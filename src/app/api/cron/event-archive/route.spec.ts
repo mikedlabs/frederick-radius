@@ -114,6 +114,8 @@ describe("GET /api/cron/event-archive", () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       ok: true,
+      completed: true,
+      healthy: true,
       phase: "event-archive",
       status: "ok",
       heartbeat_recorded: true,
@@ -414,7 +416,7 @@ describe("GET /api/cron/event-archive", () => {
     );
   });
 
-  it("keeps partial source evidence conservative and operationally red", async () => {
+  it("keeps partial source evidence conservative without failing the completed worker", async () => {
     mocks.getCachedLiveEvents.mockResolvedValue({
       events: [
         { id: "publisher-uid-44", source: "celebrate" },
@@ -427,9 +429,13 @@ describe("GET /api/cron/event-archive", () => {
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(body).toMatchObject({
       ok: false,
+      completed: true,
+      healthy: false,
+      degraded: true,
+      retryable: false,
       status: "partial",
       failures: ["live-partial"],
       sources: {
@@ -445,6 +451,34 @@ describe("GET /api/cron/event-archive", () => {
         ],
       }),
     );
+  });
+
+  it("archives available rows when the unified board reports a degraded source", async () => {
+    mocks.assembleUnifiedEvents.mockResolvedValue({
+      unified: [publicCard],
+      publicEvents: [publicCard],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["one publisher"],
+      },
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: false,
+      status: "partial",
+      degraded: true,
+      retryable: false,
+      failures: ["unified-partial"],
+      archive: {
+        accepted: 1,
+        upserted: 1,
+        records_complete: true,
+      },
+    });
   });
 
   it("reports cleanup rejection without claiming the event rows were incomplete", async () => {

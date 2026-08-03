@@ -1,7 +1,6 @@
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
@@ -23,9 +22,9 @@ import CategorySection from "./CategorySection";
  * and navigation can move without losing useful browsing paths.
  *
  * The point this proves: the page ranks from the user's town for real
- * (the "Worth your time" lead uses the balanced `categoryScore`), it is honest when it
- * has no context ("Using Downtown Frederick as the default"), and it makes
- * small towns visible without digging ("Across the county").
+ * (the "Worth your time" lead uses the balanced `categoryScore`), ranks by
+ * quality across the county when it has no location context, and makes small
+ * towns visible without digging ("Across the county").
  */
 export default function CategoryView({
   category,
@@ -36,7 +35,11 @@ export default function CategoryView({
   homeMuni: string | null;
 }) {
   const town = homeMuni ? (MUNICIPALITY_BY_SLUG[homeMuni] ?? null) : null;
-  const origin: LngLat = town?.centroid ?? FREDERICK_CENTER;
+  // No location means no distance origin. Quietly substituting Downtown made
+  // the page's countywide language false and promoted Frederick-city results
+  // for every new visitor. rankPlaces already has a quality-first countywide
+  // path when origin is undefined.
+  const origin = town?.centroid;
   const ctx = { town: town?.slug ?? null, category: category.slug };
 
   // One ranked, distance-decorated set from the resolved origin; every
@@ -60,11 +63,11 @@ export default function CategoryView({
   // stay the complete tail. See lib/category-ranking selectCuratedStack.
   const { best, openNow, favs, nearby } = selectCuratedStack(rec, ctx);
 
-  // Across the county: every town EXCEPT the user's (or downtown when no
-  // town is set), one top pick each — the anti-downtown-bias section.
-  const homeSlug = town?.slug ?? "frederick";
+  // Across the county: every town except the user's, one top pick each. With
+  // no town context, do not silently treat Frederick City as home; include it
+  // on equal terms with the rest of the county.
   const county = groupByMunicipality(rec, ctx)
-    .filter((g) => g.municipality !== homeSlug)
+    .filter((g) => !town || g.municipality !== town.slug)
     .slice(0, 8);
 
   const municipalities = MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }));

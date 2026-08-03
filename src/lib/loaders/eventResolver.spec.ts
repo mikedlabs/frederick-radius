@@ -146,6 +146,24 @@ describe("resolveEventMetadataBySlugWithSources", () => {
 });
 
 describe("resolveEventPageBySlugWithSources", () => {
+  it.each([
+    "__proto__",
+    "constructor",
+    "Event With Spaces",
+    `event-${"x".repeat(220)}`,
+  ])("rejects impossible public slug %s without touching a data source", async (slug) => {
+    const loaders = sources();
+
+    await expect(
+      resolveEventPageBySlugWithSources(slug, new Date(), loaders),
+    ).resolves.toBeNull();
+    expect(loaders.seed).not.toHaveBeenCalled();
+    expect(loaders.archive).not.toHaveBeenCalled();
+    expect(loaders.unified).not.toHaveBeenCalled();
+    expect(loaders.live).not.toHaveBeenCalled();
+    expect(loaders.ingested).not.toHaveBeenCalled();
+  });
+
   it("resolves the exact incident URL from the durable archive without rebuilding event feeds", async () => {
     const retained = event("game-time-urbana-2026-07-27");
     const loaders = sources({

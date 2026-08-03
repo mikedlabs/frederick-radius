@@ -9,10 +9,10 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
-import { isUpcomingEvent } from "@/lib/events/visible";
+import { isInNextSevenDayTownWindow } from "@/lib/guided/town-event-window";
 
 /**
- * Per-municipality "what's on this week" counts for the town cards.
+ * Per-municipality rolling seven-day event counts for the town cards.
  *
  * The town picker used to count from `allUpcoming` (the curated seed set
  * ONLY), so a town whose only events came from a live feed read "No events
@@ -23,7 +23,7 @@ import { isUpcomingEvent } from "@/lib/events/visible";
  * county/municipal iCal feeds (where town farmers markets, markets and the
  * like live) + scraped venue lineups — deduped the same way, classified so
  * only PUBLIC events count (meetings/rentals are laned out, never inflate a
- * town's "what's on"), within the next 7 days, grouped by the event's
+ * town's listing count), within the next 7 days, grouped by the event's
  * inferred municipality.
  *
  * Deliberately NOT pulling the Ticketmaster/Bandsintown music feeds: those
@@ -32,9 +32,8 @@ import { isUpcomingEvent } from "@/lib/events/visible";
  * Cached (revalidate hourly, tagged "events") so /towns never pays the live
  * fetch on a normal render.
  */
-async function buildWeeklyPublicEventCounts(): Promise<Record<string, number>> {
+async function buildNextSevenDayPublicEventCounts(): Promise<Record<string, number>> {
   const now = new Date();
-  const weekEndMs = now.getTime() + 7 * 86_400_000;
 
   const curatedUpcoming = allUpcoming(now);
   const venueCards = venueEventsAsCards(now);
@@ -59,10 +58,7 @@ async function buildWeeklyPublicEventCounts(): Promise<Record<string, number>> {
     // private rentals are laned out so a council meeting never reads as a
     // thing to do this week.
     if (!isPublicEvent(e)) continue;
-    const t = Date.parse(e.starts_at);
-    if (!Number.isFinite(t) || t > weekEndMs || !isUpcomingEvent(e, now)) {
-      continue;
-    }
+    if (!isInNextSevenDayTownWindow(e, now)) continue;
     const muni = e.municipality;
     if (muni) counts[muni] = (counts[muni] ?? 0) + 1;
   }
@@ -74,8 +70,8 @@ async function buildWeeklyPublicEventCounts(): Promise<Record<string, number>> {
  * pinned to the deploy SHA and revalidates hourly; tagged "events" so an
  * events refresh flips it alongside the other event surfaces.
  */
-export const getWeeklyPublicEventCountsByMunicipality = unstable_cache(
-  buildWeeklyPublicEventCounts,
-  ["town-event-counts", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+export const getNextSevenDayPublicEventCountsByMunicipality = unstable_cache(
+  buildNextSevenDayPublicEventCounts,
+  ["town-event-counts-next-seven-days", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["events"] },
 );

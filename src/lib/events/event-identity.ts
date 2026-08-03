@@ -30,6 +30,18 @@ type IdentityRow = {
   canonical_slug: string;
 };
 
+type EventRouteRow = {
+  canonical_slug: string;
+  starts_at: string | Date;
+  snapshot_at: string | Date;
+};
+
+export type UpcomingEventRoute = {
+  slug: string;
+  startsAt: string;
+  lastModifiedAt: string;
+};
+
 type JsonValue =
   | null
   | string
@@ -197,6 +209,66 @@ export async function archivedEventBySlug(
         ? row.last_seen_at.toISOString()
         : String(row.last_seen_at),
   };
+}
+
+/**
+ * A bounded list of durable, currently useful event routes for sitemap output.
+ * This reads the same canonical archive that resolves shared event links, so
+ * discovery never advertises a dynamic-feed slug the detail route cannot open.
+ * Missing schema, an unavailable pool, or a slow query safely returns no rows;
+ * the sitemap caller retains its committed curated/venue fallback.
+ */
+export async function upcomingArchivedEventRoutes(options: {
+  now?: Date;
+  horizonDays?: number;
+  timeoutMs?: number;
+} = {}): Promise<UpcomingEventRoute[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const now = options.now ?? new Date();
+  const horizonDays = Math.min(120, Math.max(1, options.horizonDays ?? 60));
+  const since = new Date(now.getTime() - 86_400_000).toISOString();
+  const until = new Date(now.getTime() + horizonDays * 86_400_000).toISOString();
+  const pending = sql<EventRouteRow[]>`
+    select
+      canonical.canonical_slug,
+      canonical.starts_at,
+      canonical.snapshot_at
+    from public.event_canonical_records as canonical
+    join public.event_slug_aliases as alias
+      on alias.slug = canonical.canonical_slug
+     and alias.canonical_event_id = canonical.id
+    left join public.event_tombstones as tombstone
+      on tombstone.canonical_event_id = canonical.id
+    where canonical.event_status = 'scheduled'
+      and tombstone.canonical_event_id is null
+      and coalesce(canonical.ends_at, canonical.starts_at) >= ${since}
+      and canonical.starts_at <= ${until}
+    order by canonical.starts_at asc
+    limit 4000
+  `;
+  const rows = await beforeDeadline(
+    pending,
+    options.timeoutMs ?? EVENT_IDENTITY_READ_TIMEOUT_MS,
+  );
+  return (rows ?? [])
+    .filter((row) => EVENT_SLUG.test(row.canonical_slug))
+    .map((row) => ({
+      slug: row.canonical_slug,
+      startsAt:
+        row.starts_at instanceof Date
+          ? row.starts_at.toISOString()
+          : String(row.starts_at),
+      lastModifiedAt:
+        row.snapshot_at instanceof Date
+          ? row.snapshot_at.toISOString()
+          : String(row.snapshot_at),
+    }))
+    .filter(
+      (row) =>
+        Number.isFinite(Date.parse(row.startsAt)) &&
+        Number.isFinite(Date.parse(row.lastModifiedAt)),
+    );
 }
 
 function snapshotObject(event: EventWithMeta, slug: string): JsonValue {

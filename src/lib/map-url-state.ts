@@ -32,3 +32,18 @@ export function replaceMapUrl(mutate: MapUrlMutation): URL | null {
   return next;
 }
 
+/**
+ * Replace presentation-only map state without asking Next to re-render the
+ * route.
+ *
+ * Camera and foreground selections already live in the mounted map. They only
+ * need to be reflected in the address bar for sharing and return links. Keep
+ * Next's private history marker for these updates so selecting a pin cannot
+ * turn a responsive map into a route refresh while a detail sheet is opening.
+ */
+export function replaceMapUrlSilently(mutate: MapUrlMutation): URL | null {
+  if (typeof window === "undefined") return null;
+  const next = mapUrlAfterMutation(window.location.href, mutate);
+  window.history.replaceState(window.history.state, "", next);
+  return next;
+}

@@ -174,12 +174,25 @@ async function runDataHealthFeeds(request: Request) {
   );
   const heartbeatRecorded =
     Boolean(runId) && finish.status === "fulfilled";
-  const responseStatus =
-    status === "ok" && heartbeatRecorded ? 200 : 503;
+  // HTTP answers whether the worker itself completed. Named provider
+  // failures are persisted as partial evidence and stay non-green in the
+  // final report, but they must not make a successfully completed probe look
+  // like a crashed cron. Phase/database failures remain 503 and retryable.
+  const executionCompleted =
+    phaseFailures.length === 0 && heartbeatRecorded;
+  const healthy = status === "ok" && executionCompleted;
+  const responseStatus = executionCompleted ? 200 : 503;
 
   return NextResponse.json({
     phase: "feeds",
     status,
+    // HTTP/completed describes whether the bounded worker finished. `ok` and
+    // healthy describe source health, matching the sibling archive worker.
+    ok: healthy,
+    completed: executionCompleted,
+    healthy,
+    degraded: status !== "ok",
+    retryable: !executionCompleted,
     heartbeat_recorded: heartbeatRecorded,
     sources: {
       succeeded: live.sources_succeeded.length,

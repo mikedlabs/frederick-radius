@@ -171,6 +171,37 @@ describe("parseAskIntent", () => {
     });
   });
 
+  it("keeps ice cream and a requested after-time on the place path", () => {
+    const now = new Date("2026-08-03T16:00:00.000Z");
+    expect(
+      parseAskIntent(
+        "where can I take my kids for ice cream after 8pm tonight",
+        now,
+      ),
+    ).toMatchObject({
+      kind: "place",
+      label: "Ice cream",
+      audience: "family",
+      timeNeed: "tonight",
+      requestedTime: "8:00 PM",
+      requestedDate: "2026-08-03",
+      requestedDateTime: "2026-08-04T00:00:00.000Z",
+    });
+  });
+
+  it("turns past midnight tonight into a next-day place boundary", () => {
+    const now = new Date("2026-08-03T16:00:00.000Z");
+    expect(
+      parseAskIntent("what is open past midnight tonight", now),
+    ).toMatchObject({
+      kind: "place",
+      timeNeed: "tonight",
+      requestedTime: "12:00 AM",
+      requestedDate: "2026-08-04",
+      requestedDateTime: "2026-08-04T04:00:00.000Z",
+    });
+  });
+
   it("treats gluten-free as dietary language, not a zero-dollar budget", () => {
     expect(parseAskIntent("Find a gluten-free dinner")).toMatchObject({
       kind: "place",

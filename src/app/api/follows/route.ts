@@ -1,8 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { follows, user_profiles } from "@/lib/db/schema";
 import { getServerUserId } from "@/lib/auth";
+import {
+  addFollowWithinLimit,
+  readFollowedPlaceSnapshot,
+} from "@/lib/follows.server";
+import {
+  MAX_FOLLOWED_PLACES,
+  MAX_FOLLOW_SLUG_LENGTH,
+} from "@/lib/follows-contract";
 import {
   hasJsonContentType,
   isSameOriginMutationRequest,
@@ -108,13 +116,8 @@ export async function GET() {
   const dbr = requireDb();
   if (!dbr.ok) return dbr.response;
 
-  const rows = await dbr.db
-    .select({ slug: follows.place_slug })
-    .from(follows)
-    .where(eq(follows.user_id, auth.userId))
-    .orderBy(follows.created_at);
   return NextResponse.json(
-    { slugs: rows.map((r) => r.slug) },
+    await readFollowedPlaceSnapshot(dbr.db, auth.userId),
     { headers: noStore() },
   );
 }
@@ -129,19 +132,28 @@ export async function POST(req: NextRequest) {
 
   const body = input.body;
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
-  if (!slug || slug.length > 120) {
+  if (!slug || slug.length > MAX_FOLLOW_SLUG_LENGTH) {
     return NextResponse.json({ error: "invalid-slug" }, { status: 400, headers: noStore() });
   }
   const source = typeof body.source === "string" ? body.source.slice(0, 32) : null;
 
   await ensureProfile(auth.userId);
-  await dbr.db
-    .insert(follows)
-    .values({ user_id: auth.userId, place_slug: slug, source: source ?? undefined })
-    .onConflictDoNothing({
-      target: [follows.user_id, follows.place_slug],
-    });
-  return NextResponse.json({ ok: true, slug }, { headers: noStore() });
+  const result = await addFollowWithinLimit(
+    dbr.db,
+    auth.userId,
+    slug,
+    source ?? undefined,
+  );
+  if (result === "limit") {
+    return NextResponse.json(
+      { error: "follow-limit", limit: MAX_FOLLOWED_PLACES },
+      { status: 409, headers: noStore() },
+    );
+  }
+  return NextResponse.json(
+    { ok: true, slug, existing: result === "existing" },
+    { headers: noStore() },
+  );
 }
 
 export async function DELETE(req: NextRequest) {
@@ -154,7 +166,7 @@ export async function DELETE(req: NextRequest) {
 
   const body = input.body;
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
-  if (!slug) {
+  if (!slug || slug.length > MAX_FOLLOW_SLUG_LENGTH) {
     return NextResponse.json({ error: "invalid-slug" }, { status: 400, headers: noStore() });
   }
 
@@ -163,6 +175,3 @@ export async function DELETE(req: NextRequest) {
     .where(and(eq(follows.user_id, auth.userId), eq(follows.place_slug, slug)));
   return NextResponse.json({ ok: true, slug }, { headers: noStore() });
 }
-
-// Suppress unused-import warning for `sql` if the bundler is strict.
-void sql;

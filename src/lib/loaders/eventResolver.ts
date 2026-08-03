@@ -90,6 +90,19 @@ const DEFAULT_SOURCES: EventResolverSources = {
 export const EVENT_DEEP_LINK_TIMEOUT_MS = 2_500;
 export const EVENT_ARCHIVE_HEAD_START_MS = 450;
 
+/**
+ * All generated and legacy event aliases are lowercase URL slugs. Reject an
+ * impossible or abusive value before touching the durable archive or any live
+ * provider; it cannot be a real event and should take the cheap miss path.
+ */
+function eventLookupSlugIsSafe(slug: string): boolean {
+  return (
+    slug !== "constructor" &&
+    slug !== "prototype" &&
+    /^[a-z0-9][a-z0-9-]{0,199}$/.test(slug)
+  );
+}
+
 type AsyncEventSource = Exclude<EventResolutionKind, "seed">;
 type DirectEventSource = Extract<
   AsyncEventSource,
@@ -187,6 +200,17 @@ const PRODUCTION_PAGE_SOURCES: EventResolverSources = {
       allowNetwork: false,
     });
   },
+  // Never cold-fill the countywide ingested-series cache from an event detail
+  // request. That broad database read cannot be cancelled after Next starts a
+  // shared cache fill and was able to outlive the resolver's 2.5-second UI
+  // deadline. Discovery and the archive warmer own that work; detail pages use
+  // their served snapshot or durable archive, then fail soft (never false-404)
+  // when a dated event has not reached either store yet.
+  ingested: (slug, context) =>
+    getIngestedCardBySlug(slug, {
+      ...context,
+      allowSeriesScan: false,
+    }),
 };
 
 export class EventResolutionTimeoutError extends Error {
@@ -312,6 +336,7 @@ export async function resolveEventMetadataBySlugWithSources(
   slug: string,
   sources: Pick<EventResolverSources, "seed" | "archive">,
 ): Promise<ResolvedEventPage | null> {
+  if (!eventLookupSlugIsSafe(slug)) return null;
   try {
     const seed = sources.seed(slug);
     if (seed && hasActionableAttendance(seed)) {
@@ -354,6 +379,7 @@ export async function resolveEventPageBySlugWithSources(
   now: Date,
   sources: EventResolverSources,
 ): Promise<ResolvedEventPage | null> {
+  if (!eventLookupSlugIsSafe(slug)) return null;
   const seed = sources.seed(slug);
   if (seed && hasActionableAttendance(seed)) {
     return { event: seed, kind: "seed" };

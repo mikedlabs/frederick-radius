@@ -111,10 +111,13 @@ function firstCompleteSentence(value: string): string {
     // Do not turn a road, place, or honorific abbreviation into a sentence.
     const remainder = text.slice(match.index + 1).trimStart();
     const honorific = /\b(?:Mr|Mrs|Ms|Dr)\.$/i.test(candidate);
+    const addressDirection =
+      /\b\d+\s+(?:N|S|E|W)\.$/i.test(candidate) &&
+      /^[A-Z0-9]/.test(remainder);
     const contextualAbbreviation =
       /\b(?:St|Mt|Ave|Rd|U\.S|D\.C)\.$/i.test(candidate) &&
       (candidate.length <= 5 || /^[a-z0-9]/.test(remainder));
-    if (honorific || contextualAbbreviation) {
+    if (honorific || addressDirection || contextualAbbreviation) {
       continue;
     }
     return candidate;

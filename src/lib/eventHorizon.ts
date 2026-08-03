@@ -142,13 +142,33 @@ export function horizonOf<E extends EventLike>(
   if (start >= b.weekendStart && start < b.weekendEnd) return "weekend";
 
   const weekEnd = b.now + 7 * 24 * 60 * 60 * 1000;
-  if (start >= b.now && start < weekEnd) return "week";
+  const weekendIsNow = b.now >= b.weekendStart && b.now < b.weekendEnd;
+  // Keep semantic shelves chronological. Before the weekend, "Later this
+  // week" ends when the weekend begins; dates after that belong in Coming up.
+  // During the weekend, the same seven-day window is correctly "Next week."
+  if (
+    start >= b.now &&
+    start < weekEnd &&
+    (weekendIsNow || start < b.weekendStart)
+  ) {
+    return "week";
+  }
   return "later";
 }
 
 export type EventGroup<E> = { key: Horizon; label: string; events: E[] };
 
-const ORDER: Horizon[] = ["live", "today", "weekend", "week", "later"];
+/**
+ * The weekend is a future horizon Monday through Thursday, but it is the
+ * immediate horizon Friday evening through Sunday. A fixed order put
+ * "This weekend" (Fri-Sun) before "Later this week" (Tue-Thu) on a Monday.
+ */
+function horizonOrder(b: HorizonBounds): Horizon[] {
+  const weekendIsNow = b.now >= b.weekendStart && b.now < b.weekendEnd;
+  return weekendIsNow
+    ? ["live", "today", "weekend", "week", "later"]
+    : ["live", "today", "week", "weekend", "later"];
+}
 
 /**
  * Partition events into ordered, non-empty horizon groups. Within each
@@ -169,9 +189,12 @@ export function groupByHorizon<E extends EventLike>(
     if (arr) arr.push(e);
     else byKey.set(h, [e]);
   }
-  return ORDER.filter((k) => byKey.has(k)).map((k) => ({
+  return horizonOrder(b).filter((k) => byKey.has(k)).map((k) => ({
     key: k,
-    label: HORIZON_LABEL[k],
+    label:
+      k === "week" && b.now >= b.weekendStart && b.now < b.weekendEnd
+        ? "Next week"
+        : HORIZON_LABEL[k],
     events: byKey.get(k)!,
   }));
 }

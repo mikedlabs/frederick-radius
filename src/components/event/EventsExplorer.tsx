@@ -13,7 +13,10 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
-import type { EventBrowseSummary } from "@/lib/events/browsePayload";
+import {
+  collapseLaterSeries,
+  type EventBrowseSummary,
+} from "@/lib/events/browsePayload";
 import {
   eventIntentOf,
   countByIntent,
@@ -193,6 +196,54 @@ export function eventGroupRenderState({
   };
 }
 
+export function initialBrowseIsComplete(
+  loadedCount: number,
+  summaryCount: number,
+  sourceHealth: Pick<EventSourceHealth, "degraded">,
+): boolean {
+  return loadedCount >= summaryCount && !sourceHealth.degraded;
+}
+
+export function eventsMastheadCountState({
+  loadedCount,
+  summaryCount,
+  dataComplete,
+  anyFilter,
+  sourceDegraded,
+}: {
+  loadedCount: number;
+  summaryCount: number;
+  dataComplete: boolean;
+  anyFilter: boolean;
+  sourceDegraded: boolean;
+}): { eventCount: number; complete: boolean; usesCompleteSummary: boolean } {
+  const usesCompleteSummary =
+    !dataComplete && !anyFilter && !sourceDegraded;
+  return {
+    eventCount: usesCompleteSummary ? summaryCount : loadedCount,
+    complete: dataComplete || usesCompleteSummary,
+    usesCompleteSummary,
+  };
+}
+
+export function eventsForDefaultList({
+  events,
+  view,
+  sort,
+  anyFilter,
+  bounds,
+}: {
+  events: EventWithMeta[];
+  view: ViewKey;
+  sort: EventSortKey;
+  anyFilter: boolean;
+  bounds: Parameters<typeof collapseLaterSeries>[1];
+}): EventWithMeta[] {
+  return view === "list" && sort === "recommended" && !anyFilter
+    ? collapseLaterSeries(events, bounds)
+    : events;
+}
+
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
 // ViewState shape has no free-text field. "all" and the forward-compat
@@ -276,7 +327,9 @@ export default function EventsExplorer({
   // out of React Flight and fetched only after explicit browsing intent.
   const [eventPool, setEventPool] = useState(events);
   const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
-  const [dataComplete, setDataComplete] = useState(events.length >= summary.totalCount);
+  const [dataComplete, setDataComplete] = useState(
+    initialBrowseIsComplete(events.length, summary.totalCount, sourceHealth),
+  );
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const requestRef = useRef<Promise<void> | null>(null);
@@ -565,18 +618,99 @@ export default function EventsExplorer({
       .sort(sortFn);
   }, [baseFiltered, intent, sub, cat, sort, nowISO]);
 
-  // Split the filtered set by TYPE so the grouped list leads with what
+  // A healthy server snapshot knows the complete unfiltered totals even
+  // though the first React payload contains only a bounded preview. Once a
+  // query narrows that preview—or a source reports degradation—the board can
+  // only claim what is currently loaded. This prevents a partial 27/3 result
+  // from presenting itself like a countywide total before the continuation
+  // replaces it with (for example) 838/10.
+  const mastheadCount = eventsMastheadCountState({
+    loadedCount: filtered.length,
+    summaryCount: summary.totalCount,
+    dataComplete,
+    anyFilter,
+    sourceDegraded: currentSourceHealth.degraded,
+  });
+  const filteredTownCount = useMemo(
+    () => new Set(filtered.map((event) => event.municipality).filter(Boolean)).size,
+    [filtered],
+  );
+
+  // A recovered continuation can contain towns/categories that were absent
+  // from a degraded server snapshot. Rebuild the facet vocabulary from the
+  // current pool so the count and filter sheet recover together.
+  const availableTowns = useMemo(() => {
+    const bySlug = new Map(towns.map((item) => [item.slug, item]));
+    for (const event of eventPool) {
+      if (!event.municipality) continue;
+      bySlug.set(event.municipality, {
+        slug: event.municipality,
+        name:
+          MUNICIPALITY_BY_SLUG[event.municipality]?.name ??
+          event.municipality_name ??
+          event.municipality,
+      });
+    }
+    return [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [eventPool, towns]);
+  const availableCategories = useMemo(() => {
+    const bySlug = new Map(categories.map((item) => [item.slug, item]));
+    for (const event of eventPool) {
+      if (!event.category) continue;
+      bySlug.set(event.category, {
+        slug: event.category,
+        name: event.category_name ?? event.category,
+      });
+    }
+    return [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories, eventPool]);
+  const mastheadTownCount = mastheadCount.usesCompleteSummary
+    ? availableTowns.length
+    : filteredTownCount;
+
+  // Collapse repeated series only for the untouched Recommended list. The
+  // master `filtered` collection deliberately keeps every dated occurrence so
+  // Calendar, day links, map, search, and explicit filters can reach them.
+  const defaultListEvents = useMemo(
+    () =>
+      eventsForDefaultList({
+        events: filtered,
+        view,
+        sort,
+        anyFilter,
+        bounds: {
+          now,
+          next24: +new Date(next24ISO),
+          weekendStart: +new Date(weekendStartISO),
+          weekendEnd: +new Date(weekendEndISO),
+          live,
+        },
+      }),
+    [
+      anyFilter,
+      filtered,
+      live,
+      next24ISO,
+      now,
+      sort,
+      view,
+      weekendEndISO,
+      weekendStartISO,
+    ],
+  );
+
+  // Split the visible default-list set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
   // below (still one tap away). Only the default "list" view splits —
   // the Compact / Calendar / Map lenses keep the full set, since those
   // are deliberate "show me everything" modes.
   const crowdFiltered = useMemo(
-    () => filtered.filter((e) => !isUtilityEvent(e)),
-    [filtered],
+    () => defaultListEvents.filter((e) => !isUtilityEvent(e)),
+    [defaultListEvents],
   );
   const utilityFiltered = useMemo(
-    () => filtered.filter((e) => isUtilityEvent(e)),
-    [filtered],
+    () => defaultListEvents.filter((e) => isUtilityEvent(e)),
+    [defaultListEvents],
   );
 
   // Group the CROWD list into human horizons so the default view is
@@ -729,9 +863,11 @@ export default function EventsExplorer({
       <EventsBoardDock
         nowISO={nowISO}
         dayCounts={summary.dayCounts}
-        filteredCount={!dataComplete && !anyFilter ? summary.totalCount : filtered.length}
-        categories={categories}
-        towns={towns}
+        filteredCount={mastheadCount.eventCount}
+        resultTownCount={mastheadTownCount}
+        countComplete={mastheadCount.complete}
+        categories={availableCategories}
+        towns={availableTowns}
         intent={intent}
         setIntent={setIntent}
         sub={sub}
@@ -848,7 +984,7 @@ export default function EventsExplorer({
             <button
               type="button"
               onClick={() => void ensureAllEvents()}
-              className="tap-44-y shrink-0 font-semibold underline"
+              className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
               style={{ color: "var(--app-cool)" }}
             >
               Check again
@@ -876,7 +1012,7 @@ export default function EventsExplorer({
           <button
             type="button"
             onClick={() => void ensureAllEvents()}
-            className="tap-44-y shrink-0 font-semibold underline"
+            className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
             style={{ color: "var(--app-cool)" }}
           >
             Retry
@@ -1131,6 +1267,7 @@ export default function EventsExplorer({
               count={!dataComplete && !anyFilter ? summary.utilityCount : utilityFiltered.length}
               storageKey="fr.events.civic"
               defaultOpen={false}
+              className="[&>button]:min-h-11"
             >
               <ol
                 className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"

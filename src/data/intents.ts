@@ -591,6 +591,16 @@ export const INTENTS: Intent[] = [
   },
 ];
 
-export const INTENT_BY_KEY: Record<IntentKey, Intent> = Object.fromEntries(
-  INTENTS.map((i) => [i.key, i]),
-) as Record<IntentKey, Intent>;
+// URL parameters index this dictionary on /map. Keep it free of Object's
+// inherited keys so values such as "constructor" and "__proto__" can never
+// masquerade as a real intent.
+export const INTENT_BY_KEY: Record<IntentKey, Intent> = Object.assign(
+  Object.create(null) as Record<IntentKey, Intent>,
+  Object.fromEntries(INTENTS.map((i) => [i.key, i])),
+);
+
+/** Resolve an untrusted URL value to a real intent. */
+export function getIntentByKey(value: string | null | undefined): Intent | null {
+  if (!value || !Object.hasOwn(INTENT_BY_KEY, value)) return null;
+  return INTENT_BY_KEY[value as IntentKey] ?? null;
+}

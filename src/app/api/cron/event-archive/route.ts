@@ -71,6 +71,16 @@ type ArchiveFailure =
   | "archive-incomplete"
   | "archive-truncated";
 
+// A provider-level partial result is still a completed archive pass: the
+// writer only tombstones sources whose full inventory succeeded, so the
+// available rows can be preserved without treating one upstream outage as a
+// failed HTTP invocation. Every database, schema, completeness, and empty-set
+// failure remains retryable and returns 503.
+const NONFATAL_SOURCE_FAILURES = new Set<ArchiveFailure>([
+  "unified-partial",
+  "live-partial",
+]);
+
 function failureSummary(failures: readonly ArchiveFailure[]): string | null {
   return failures.length > 0
     ? `Archive checks failed: ${failures.join(", ")}.`
@@ -413,8 +423,13 @@ async function runEventArchive(request: Request) {
   );
   const heartbeatRecorded = finish.status === "fulfilled";
   const ok = status === "ok" && heartbeatRecorded;
+  const fatalFailures = failureList.filter(
+    (failure) => !NONFATAL_SOURCE_FAILURES.has(failure),
+  );
+  const executionCompleted =
+    heartbeatRecorded && fatalFailures.length === 0;
 
-  if (!ok) {
+  if (!executionCompleted) {
     if (archive?.failure) {
       // Sentry keeps the full operational context, while this bounded record
       // leaves the safe SQLSTATE / failure stage in Vercel runtime logs for
@@ -443,6 +458,10 @@ async function runEventArchive(request: Request) {
 
   return NextResponse.json({
     ok,
+    completed: executionCompleted,
+    healthy: ok,
+    degraded: status !== "ok",
+    retryable: !executionCompleted,
     phase: "event-archive",
     status,
     heartbeat_recorded: heartbeatRecorded,
@@ -490,5 +509,5 @@ async function runEventArchive(request: Request) {
         heartbeat: EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS,
       },
     },
-  }, { status: ok ? 200 : 503 });
+  }, { status: executionCompleted ? 200 : 503 });
 }

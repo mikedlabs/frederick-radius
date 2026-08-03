@@ -34,6 +34,7 @@ jobs:
     permissions:
       contents: read
     outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
       review_required: ${{ steps.hours-review.outputs.review_required }}
       public_additions: ${{ steps.hours-review.outputs.public_additions }}
       public_removals: ${{ steps.hours-review.outputs.public_removals }}
@@ -166,11 +167,21 @@ jobs:
             install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
           done
 
+      # Pin the upload name to the attempt that actually generated it. A
+      # failed-jobs-only rerun skips this successful job, so its publisher must
+      # consume this preserved output instead of recomputing run_attempt.
+      - name: Pin core artifact name to this generator attempt
+        id: artifact-name
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        env:
+          ARTIFACT_NAME: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Upload exact core outputs
         if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/data-steward-core-output
           if-no-files-found: error
           retention-days: 1
@@ -212,6 +223,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -250,10 +263,16 @@ jobs:
             install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
           done
 
+      - name: Pin transit artifact name to this generator attempt
+        id: artifact-name
+        env:
+          ARTIFACT_NAME: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Upload exact transit outputs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/data-steward-transit-output
           if-no-files-found: error
           retention-days: 1
@@ -266,7 +285,7 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/publish-automated-pr.yml
     with:
-      artifact: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+      artifact: ${{ needs.steward.outputs.artifact_name }}
       base_sha: ${{ github.sha }}
       branch: bot/data-steward
       allowed_paths: |
@@ -315,7 +334,7 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/publish-automated-pr.yml
     with:
-      artifact: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+      artifact: ${{ needs.transit.outputs.artifact_name }}
       base_sha: ${{ github.sha }}
       branch: bot/transit-steward
       allowed_paths: |

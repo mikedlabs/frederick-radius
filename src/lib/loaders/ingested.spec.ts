@@ -15,6 +15,7 @@ vi.mock("@/lib/db/client", () => ({
 import { getIngestedSeries } from "./ingested";
 import {
   getIngestedCardBySlug,
+  IngestedEventDetailColdScanDisabledError,
   ingestedSeriesToCards,
 } from "./ingestedEvents";
 
@@ -191,5 +192,39 @@ describe("multi-day all-day ingested visibility", () => {
       municipality_name: "Frederick City",
       geo_confidence: "unknown",
     });
+  });
+
+  it("does not start the countywide series scan on a dated detail request", async () => {
+    const sql = vi.fn();
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(
+      getIngestedCardBySlug("deaf-fest-2026-09-19", {
+        allowSeriesScan: false,
+      }),
+    ).rejects.toBeInstanceOf(IngestedEventDetailColdScanDisabledError);
+    await expect(
+      getIngestedCardBySlug("library-movie-fcpl-20260919", {
+        allowSeriesScan: false,
+      }),
+    ).rejects.toBeInstanceOf(IngestedEventDetailColdScanDisabledError);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("keeps an undated cold-scan miss definitive without touching the database", async () => {
+    const sql = vi.fn();
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(
+      getIngestedCardBySlug("not-a-published-event", {
+        allowSeriesScan: false,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      getIngestedCardBySlug("not-a-published-event-2026-02-31", {
+        allowSeriesScan: false,
+      }),
+    ).resolves.toBeNull();
+    expect(sql).not.toHaveBeenCalled();
   });
 });

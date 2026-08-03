@@ -111,9 +111,14 @@ export const CATEGORIES: Category[] = [
   { slug: "shelter", name: "Shelters", parent: "amenities", icon: "Tent", color: "#4A4A48", display_order: 111, blurb: "Mapped shelters include trail shelters and covered waiting areas." },
 ];
 
-export const CATEGORY_BY_SLUG = Object.fromEntries(
-  CATEGORIES.map((c) => [c.slug, c])
-) as Record<string, Category>;
+// Category slugs arrive through public URLs and search actions. Inherited
+// object keys are not categories; keeping this dictionary prototype-free lets
+// `/category/__proto__` follow the normal not-found path instead of rendering
+// a phantom object and crashing later in the page.
+export const CATEGORY_BY_SLUG: Record<string, Category> = Object.assign(
+  Object.create(null) as Record<string, Category>,
+  Object.fromEntries(CATEGORIES.map((c) => [c.slug, c])),
+);
 
 export const TOP_CATEGORIES = CATEGORIES.filter((c) => !c.parent);
 

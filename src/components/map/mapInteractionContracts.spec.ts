@@ -50,10 +50,16 @@ describe("map interaction state contracts", () => {
     const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
     const clientSource = readFileSync("src/components/map/AppMapClient.tsx", "utf8");
     const sceneSource = readFileSync("src/components/map/MapLoadingScene.tsx", "utf8");
+    const mapPageSource = readFileSync("src/app/(app)/map/page.tsx", "utf8");
 
-    expect(clientSource).toContain('<MapLoadingScene height="100%" />');
-    expect(mapSource).toContain('<MapLoadingScene height="100%" ready={mapVisualReady} />');
-    expect(mapSource).toContain("if (dock && !mapVisualReady) setMapVisualReady(true)");
+    expect(clientSource).toContain('<MapLoadingScene height="100%" ready={mapVisualReady} />');
+    expect(clientSource).toContain("onVisualReady={handleMapVisualReady}");
+    expect(clientSource).toContain("hasReportedMapVisualReady.current");
+    expect(clientSource).toContain("<MapChunkBoundary");
+    expect(mapSource).toContain("onVisualReady?.();");
+    expect(mapSource).not.toContain('<MapLoadingScene height="100%" ready={mapVisualReady} />');
+    expect(mapPageSource).toContain('<MapLoadingScene height="100%" />');
+    expect(mapPageSource).toContain("fallback={<MapLoadingSurface />}");
     expect(sceneSource).toContain('data-state={ready ? "ready" : "loading"}');
     expect(sceneSource).toContain("aria-hidden={ready || undefined}");
   });

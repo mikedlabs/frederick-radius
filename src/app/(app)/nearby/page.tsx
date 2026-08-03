@@ -1,17 +1,41 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
-import { isCravingPlace } from "@/data/cravings";
+import {
+  publicPlaces,
+  decoratePlace,
+  slimForNearby,
+} from "@/lib/loaders/places";
+import { CRAVING_BY_KEY, isCravingPlace } from "@/data/cravings";
 import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
 import { isRecommendable } from "@/lib/relevance";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/nearby" },
-  title: "Nearby",
-  description: "Find open places across Frederick County, ranked from your location when available.",
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}): Promise<Metadata> {
+  const { c } = await searchParams;
+  const hasKnownCraving = Boolean(
+    c && Object.prototype.hasOwnProperty.call(CRAVING_BY_KEY, c),
+  );
+  const craving = hasKnownCraving && c ? CRAVING_BY_KEY[c] : undefined;
+  const title = c === "movies" && craving
+    ? "Movies"
+    : craving
+      ? `${craving.label} nearby`
+      : "Nearby";
+  return {
+    alternates: {
+      canonical: craving && c ? `/nearby?c=${encodeURIComponent(c)}` : "/nearby",
+    },
+    title,
+    description: craving
+      ? `Find ${craving.label.toLowerCase()} across Frederick County, ranked from your location when available.`
+      : "Find useful places across Frederick County, with location-aware ranking and recently confirmed hours when available.",
+  };
+}
 
 // open_status is time-sensitive: a cached page would say "open" after close.
 export const dynamic = "force-dynamic";
@@ -28,19 +52,6 @@ export const dynamic = "force-dynamic";
  * craving-eligible places keeps the SSR payload a fraction of the full
  * catalog.
  */
-function slim(p: PlaceCardData): PlaceCardData {
-  return {
-    ...p,
-    google_photos: [],
-    description: undefined,
-    review_snippet: undefined,
-    review_author: undefined,
-    google_hours: undefined,
-    hours: undefined,
-    amenities: undefined,
-  };
-}
-
 export default async function NowPage({
   searchParams,
 }: {
@@ -78,7 +89,7 @@ export default async function NowPage({
     // which is the whole point of this page, so we deliberately do NOT cache it.
     .filter((p) => isCravingPlace(p))
     .map((p) => decoratePlace(p))
-    .map(slim);
+    .map(slimForNearby);
 
   return (
     <RightNow

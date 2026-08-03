@@ -417,11 +417,6 @@ export default function EventCard({
         <Link
           href={`/events/${event.slug}`}
           prefetch={false}
-          aria-label={
-            date.time
-              ? `${event.title} on ${date.weekday} ${date.month} ${date.day} at ${date.time}`
-              : `${event.title} on ${date.weekday} ${date.month} ${date.day}`
-          }
           className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
           style={{ color: "var(--app-ink)" }}
         >

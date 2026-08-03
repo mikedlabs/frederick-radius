@@ -32,7 +32,7 @@ export type AskIntent = {
 const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole|county office|department|phone number|pay (?:a|my)|animal control|zoning|property tax|public records?|courthouse|(?:district|circuit|county) court|sheriff|police|county government|city government)\b/i;
 const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happening|calendar)\b/i;
 const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
-const PLACE_RE = /\b(food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|pharmacy|drugstore|gas station|fuel station|atm|cash machine|hotel|motel|lodging|place to stay|museum|patio|bike|bikes|bicycle|bicycles|cycling|open|nearby|near me)\b/i;
+const PLACE_RE = /\b(food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|ice ?cream|gelato|frozen (?:custard|yogurt)|froyo|dessert|beer|brewery|bar|park|trail|shop|store|grocery|pharmacy|drugstore|gas station|fuel station|atm|cash machine|hotel|motel|lodging|place to stay|museum|patio|bike|bikes|bicycle|bicycles|cycling|open|nearby|near me)\b/i;
 const PLACE_SEEKING_RE =
   /\b(?:where\s+(?:can|could|should|do)\s+(?:i|we|you)\s+(?:find|get|rent|buy|borrow|visit|go|grab|use|charge|park|pick\s+up)|find\s+me\s+(?:a|an|some))\b/i;
 const GENERAL_INFORMATION_RE =
@@ -116,6 +116,7 @@ function labelFor(kind: AskIntentKind, q: string): string {
   if (/breakfast sandwich|egg sandwich|bagel sandwich/i.test(q)) return "Breakfast sandwich";
   if (/\bsteak(?:house)?\b/i.test(q)) return "Steak dinner";
   if (/coffee|cafe/i.test(q)) return "Coffee";
+  if (/\b(?:ice ?cream|gelato|frozen (?:custard|yogurt)|froyo)\b/i.test(q)) return "Ice cream";
   if (/\b(?:pharmacy|drugstore)\b/i.test(q)) return "Pharmacies";
   if (/\b(?:gas station|fuel station)\b/i.test(q)) return "Gas stations";
   if (/\b(?:atm|cash machine)\b/i.test(q)) return "ATMs";

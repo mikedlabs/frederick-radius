@@ -143,4 +143,67 @@ describe("venue source alternatives", () => {
       expect(result.events).toEqual([]);
     },
   );
+
+  it.each(["render", "fetch"] as const)(
+    "keeps a valid %s event but omits a model-written description that fails the voice gate",
+    async (method) => {
+      vi.spyOn(console, "log").mockImplementation(() => undefined);
+      const result = await collect(
+        { ...venue(method), urls: [PRIMARY_URL] },
+        emptyVenueSourceState(),
+        modelReady,
+        false,
+        dependencies({
+          fetchPageSnapshot: async (url) => ({
+            text: "TolumiDE performs on August 8 at 7:30 p.m.",
+            links: [],
+            requestedUrl: url,
+            finalUrl: url,
+          }),
+          extractTextEvents: async () => [{
+            title: "TolumiDE",
+            starts_at: "2026-08-08T19:30:00-04:00",
+            description:
+              "An intimate and uplifting live experience that blends soul and Afropop.",
+          }],
+        }),
+      );
+
+      expect(result.status).toBe("complete");
+      expect(result.events).toEqual([{
+        title: "TolumiDE",
+        starts_at: "2026-08-08T19:30:00-04:00",
+      }]);
+    },
+  );
+
+  it("retains a concrete model-written description with explicit provenance", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const result = await collect(
+      { ...venue("fetch"), urls: [PRIMARY_URL] },
+      emptyVenueSourceState(),
+      modelReady,
+      false,
+      dependencies({
+        fetchPageSnapshot: async (url) => ({
+          text: "TolumiDE performs soul and Afropop on August 8 at 7:30 p.m.",
+          links: [],
+          requestedUrl: url,
+          finalUrl: url,
+        }),
+        extractTextEvents: async () => [{
+          title: "TolumiDE",
+          starts_at: "2026-08-08T19:30:00-04:00",
+          description: "TolumiDE performs soul and Afropop.",
+        }],
+      }),
+    );
+
+    expect(result.events).toEqual([{
+      title: "TolumiDE",
+      starts_at: "2026-08-08T19:30:00-04:00",
+      description: "TolumiDE performs soul and Afropop.",
+      description_origin: "radius-summary",
+    }]);
+  });
 });

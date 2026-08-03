@@ -5,7 +5,6 @@ import {
   Bike,
   ChevronDown,
   ChevronRight,
-  Mailbox,
   Map as MapIcon,
   MapPin,
   Package,
@@ -134,6 +133,8 @@ export default async function AmenitiesPage({
     shipGroups.find((group) => group.kind === "usps")?.list.length ?? 0;
   const shipStores =
     shipGroups.find((group) => group.kind === "ship_store")?.list.length ?? 0;
+  const shipMailboxes =
+    shipGroups.find((group) => group.kind === "mailbox")?.list.length ?? 0;
 
   return (
     <div className="relative mx-auto max-w-lg space-y-5 py-5 sm:py-7">
@@ -272,8 +273,7 @@ export default async function AmenitiesPage({
               Mail and shipping
             </span>
             <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {shipOffices} post offices, {shipStores} shipping counters, and{" "}
-              <Mailbox className="mb-0.5 inline h-3 w-3" strokeWidth={2} aria-hidden /> mailboxes
+              {shipOffices} post offices, {shipStores} shipping counters, and {shipMailboxes} blue mailboxes
             </span>
           </span>
           <ChevronRight

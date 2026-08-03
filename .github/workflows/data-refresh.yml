@@ -23,11 +23,22 @@ jobs:
     permissions:
       contents: read
     outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+      logs_artifact_name: ${{ steps.artifact-name.outputs.logs }}
       restore_outcome: ${{ steps.restore.outcome }}
       fetch_outcome: ${{ steps.fetch.outcome }}
       finalization_outcome: ${{ steps.finalization.outcome }}
       artifact_outcome: ${{ steps.snapshot-artifact.outcome }}
     steps:
+      - name: Pin artifact names to this generator attempt
+        id: artifact-name
+        env:
+          SNAPSHOT_ARTIFACT_NAME: pipeline-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          LOGS_ARTIFACT_NAME: pipeline-logs-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          echo "name=$SNAPSHOT_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          echo "logs=$LOGS_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Checkout trusted pipeline code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,7 +132,7 @@ jobs:
         if: ${{ always() && steps.restore.outcome == 'success' && steps.finalization.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pipeline-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: ${{ runner.temp }}/pipeline-snapshot
           if-no-files-found: error
           retention-days: 1
@@ -130,7 +141,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pipeline-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.artifact-name.outputs.logs }}
           path: |
             restore-state.log
             pipeline-run.log
@@ -145,7 +156,7 @@ jobs:
       contents: write
     uses: ./.github/workflows/publish-data-snapshot.yml
     with:
-      artifact: pipeline-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+      artifact: ${{ needs.refresh.outputs.artifact_name }}
       base_sha: ${{ github.sha }}
 
   report:
@@ -168,14 +179,14 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: pipeline-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.refresh.outputs.logs_artifact_name }}
           path: workflow-logs
 
       - name: Download snapshot publisher log
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: snapshot-publisher-log-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.publish.outputs.logs_artifact_name }}
           path: workflow-logs
 
       - name: Update the single refresh health issue

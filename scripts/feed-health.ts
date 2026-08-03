@@ -93,7 +93,9 @@ const ENDPOINTS: Endpoint[] = [
   ...RUNTIME_SOURCE_ENDPOINTS,
   ...HIGH_VALUE_SOURCE_ENDPOINTS,
   ...approvedCountyHealthEndpoints(),
-];
+].map((endpoint) =>
+  endpoint.critical ? { ...endpoint, attempts: 2 } : endpoint,
+);
 
 async function main() {
   console.log(`Feed health: probing ${ENDPOINTS.length} endpoints...\n`);

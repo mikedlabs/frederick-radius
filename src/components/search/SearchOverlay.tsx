@@ -893,7 +893,11 @@ export default function SearchOverlay({
               carries the zero-result case. */}
           <p role="status" aria-live="polite">
             {results.length > 0
-              ? `${results.length} match${results.length === 1 ? "" : "es"}`
+              // This overlay intentionally returns a small, ranked window.
+              // Call it what is on screen rather than presenting the window
+              // size as the countywide total ("3 matches" beside a surface
+              // showing four qualifying places read like a data conflict).
+              ? `${results.length} shown`
               : !query.trim()
                 ? ""
                 : hasAnswer

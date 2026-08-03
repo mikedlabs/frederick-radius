@@ -72,6 +72,20 @@ describe("location API privacy grid", () => {
     );
   });
 
+  it.each([
+    "https://frederickradius.app/api/nearby",
+    "https://frederickradius.app/api/nearby?lng=&lat=",
+    "https://frederickradius.app/api/nearby?lng=-77.411",
+    "https://frederickradius.app/api/nearby?lat=39.414",
+  ])("rejects a missing or blank coordinate instead of treating it as zero: %s", async (url) => {
+    const response = await nearby(new Request(url, {
+      headers: { Referer: "https://frederickradius.app/today" },
+    }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.nearbyNow).not.toHaveBeenCalled();
+  });
+
   it("passes only the rounded origin to an enabled PostGIS read", async () => {
     const distances = new Map([["alpha", 42]]);
     mocks.postgisNearbyMode.mockReturnValue("on");

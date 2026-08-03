@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRoadIntelligenceSnapshot,
+  roadAttentionScopeLabel,
   selectRoadWorkZoneFeatureCollection,
   selectTodayRoadSignal,
   type RoadIntelligenceSources,
@@ -123,5 +124,28 @@ describe("road intelligence model", () => {
       sourceUrl: MDOT_WZDX_SOURCE_URL,
     });
     expect(feature.properties).not.toHaveProperty("positionConfidence");
+  });
+
+  it("labels a highway-message scope as the sign location, not the incident area", () => {
+    const sources = quietSources();
+    sources.messages.data = [{
+      id: "dms-70-52",
+      location: "I-70 East prior to exit 52 US 15",
+      message: "CRASH PAST EXIT 82 US 40 ALL LANES CLOSED",
+      lng: -77.46,
+      lat: 39.39,
+      observedAt: NOW.toISOString(),
+      beaconsEnabled: true,
+      evidence: "device-observation",
+      sourceUrl: CHART_ROAD_SOURCES.messages,
+    }];
+
+    const signal = buildRoadIntelligenceSnapshot({ sources, now: NOW }).attention[0];
+
+    expect(signal).toMatchObject({
+      kind: "highway-message",
+      scope: "I-70 East prior to exit 52 US 15",
+    });
+    expect(roadAttentionScopeLabel(signal!)).toBe("Sign location");
   });
 });

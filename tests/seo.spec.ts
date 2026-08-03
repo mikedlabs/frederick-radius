@@ -3,8 +3,9 @@ import sitemap from "@/app/sitemap";
 import { generateMetadata as muniMeta } from "@/app/(app)/m/[municipality]/page";
 import { generateMetadata as catMeta } from "@/app/(app)/category/[slug]/page";
 
+const entries = await sitemap();
+
 describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () => {
-  const entries = sitemap();
   const urls = entries.map((e) => String(e.url));
 
   it("lists no redirecting routes (/now, /radius, bare root)", () => {

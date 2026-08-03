@@ -44,7 +44,12 @@ import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
 import SourceBadge from "@/components/place/SourceBadge";
-import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
+import {
+  absoluteSiteUrl,
+  breadcrumbJsonLd,
+  jsonLdScript,
+  openingHoursJsonLd,
+} from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
@@ -244,7 +249,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     telephone: place.phone,
     email: place.email,
     url: place.website,
+    image: absoluteSiteUrl(place.google_photo_url ?? place.hero_image),
     priceRange: place.price_band ? "$".repeat(place.price_band) : undefined,
+    openingHoursSpecification: openingHoursJsonLd(place.hours),
   };
 
   return (

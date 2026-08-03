@@ -104,6 +104,9 @@ describe("GET /api/cron/data-health-feeds", () => {
     expect(body).toMatchObject({
       phase: "feeds",
       status: "ok",
+      ok: true,
+      completed: true,
+      healthy: true,
       heartbeat_recorded: true,
       snapshots: { expected: 2, persisted: 2 },
       source_failure_evidence: { expected: 0, persisted: 0 },
@@ -198,13 +201,18 @@ describe("GET /api/cron/data-health-feeds", () => {
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(mocks.recordSourceProbeFailuresStrict).toHaveBeenCalledWith(
       ["city-frederick"],
       expect.any(String),
     );
     expect(body).toMatchObject({
       status: "partial",
+      ok: false,
+      completed: true,
+      healthy: false,
+      degraded: true,
+      retryable: false,
       sources: {
         succeeded: 1,
         failed: ["city-frederick"],
@@ -296,9 +304,14 @@ describe("GET /api/cron/data-health-feeds", () => {
       | undefined;
 
     expect(signal?.aborted).toBe(true);
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(body).toMatchObject({
       status: "partial",
+      ok: false,
+      completed: true,
+      healthy: false,
+      degraded: true,
+      retryable: false,
       sources: { succeeded: 0, failed: ["county"] },
       source_failure_evidence: { expected: 1, persisted: 1 },
     });

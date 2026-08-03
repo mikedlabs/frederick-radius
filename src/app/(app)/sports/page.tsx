@@ -12,8 +12,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import PageChapter from "@/components/ui/PageChapter";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { getLocalSportsGames } from "@/lib/integrations/local-sports";
+import { loadSportsPageData } from "@/lib/loaders/sportsPage";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CRAVING_BY_KEY, matchesCraving } from "@/data/cravings";
@@ -91,10 +90,10 @@ function townOf(p: PlaceCardData): string | undefined {
 
 export default function SportsPage() {
   const now = new Date();
-  // ONE assembly, shared by both event sections' Suspense boundaries — the
-  // same promise-sharing shape /today uses, so the feed work runs once.
-  const eventsPromise = assembleUnifiedEvents(now);
-  const localSportsPromise = getLocalSportsGames(now);
+  // One bounded assembly, shared by both event sections' Suspense boundaries.
+  // The loaders already cap their individual providers; this page boundary is
+  // the final guarantee that an ISR refresh cannot consume the 300s runtime.
+  const { eventsPromise, localSportsPromise } = loadSportsPageData(now);
 
   const places = clientPlaces();
   // The Play groups reuse the shipped craving matchers (the same sets the

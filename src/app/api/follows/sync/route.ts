@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { follows, user_profiles } from "@/lib/db/schema";
+import { user_profiles } from "@/lib/db/schema";
 import { getServerUserId } from "@/lib/auth";
+import {
+  MAX_FOLLOWED_PLACES,
+  normalizeFollowSlugs,
+} from "@/lib/follows-contract";
+import { syncFollowsWithinLimit } from "@/lib/follows.server";
 import {
   hasJsonContentType,
   isSameOriginMutationRequest,
@@ -49,18 +54,20 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body.slugs)) {
     return NextResponse.json({ error: "slugs-must-be-array" }, { status: 400 });
   }
-  const slugs = (body.slugs as unknown[])
-    .filter((s): s is string => typeof s === "string")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && s.length <= 120);
+  // The browser sends most-recent first so a legacy device list larger than
+  // the account budget keeps the saves that are most likely to matter now.
+  const slugs = normalizeFollowSlugs(body.slugs as unknown[]);
 
   if (slugs.length === 0) {
-    return NextResponse.json({ ok: true, inserted: 0 });
+    return NextResponse.json({
+      ok: true,
+      inserted: 0,
+      acceptedSlugs: [],
+      skipped: 0,
+      atLimit: false,
+      limit: MAX_FOLLOWED_PLACES,
+    });
   }
-
-  // Cap sync at 500 to avoid pathological imports — far more than
-  // any real user's localStorage list and a sensible safety belt.
-  const capped = slugs.slice(0, 500);
 
   // Ensure profile exists before inserting follows.
   await db
@@ -68,16 +75,6 @@ export async function POST(req: NextRequest) {
     .values({ id: userId })
     .onConflictDoNothing({ target: user_profiles.id });
 
-  await db
-    .insert(follows)
-    .values(
-      capped.map((slug) => ({
-        user_id: userId,
-        place_slug: slug,
-        source: "synced" as const,
-      })),
-    )
-    .onConflictDoNothing({ target: [follows.user_id, follows.place_slug] });
-
-  return NextResponse.json({ ok: true, inserted: capped.length });
+  const result = await syncFollowsWithinLimit(db, userId, slugs);
+  return NextResponse.json({ ok: true, ...result });
 }

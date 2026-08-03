@@ -177,6 +177,7 @@ export default function RadiusMap({
 }) {
   const accentHex = MODE_HEX[mode] ?? ACCENTS.slate;
   const mapRef = useRef<MapRef | null>(null);
+  const [categoryMarkersReady, setCategoryMarkersReady] = useState(false);
   // Map layers in the DEFAULT (Nearby) map — the GIS overlays were only
   // reachable in Whole-county mode before, so the field-guide layers
   // (parks, markets, public art, historic, covered bridges) never met
@@ -513,7 +514,7 @@ export default function RadiusMap({
   return (
     <section
       aria-label="Radius map"
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+      className="radius-map-canvas relative overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
@@ -566,6 +567,11 @@ export default function RadiusMap({
         // any category not eagerly added, and survives style reloads.
         onLoad={(e) => {
           installCategoryMarkers(e.target);
+          // Install the generated sprite images before mounting the symbol
+          // layer. Depending on styleimagemissing alone makes Mapbox log one
+          // warning per category during the first render even though the
+          // handler repairs the image a moment later.
+          setCategoryMarkersReady(true);
           // Repaint stock light-v11 into the Frederick brand: paper-cream
           // land, Carroll Creek slate water, sage parks, warm-ink labels,
           // Catoctin/South Mountain hillshade — and POI clutter hidden so
@@ -613,7 +619,7 @@ export default function RadiusMap({
               lose collisions and the map would read empty. Beyond-reach
               pins are smaller AND faded so the eye lands on what's close
               first, without losing the sense of the wider county. */}
-          <Layer
+          {categoryMarkersReady && <Layer
             id="radius-places-dots"
             type="symbol"
             layout={{
@@ -650,7 +656,7 @@ export default function RadiusMap({
               // clearly leads the eye — present, not shouting.
               "icon-opacity": ["case", ["==", ["get", "inReach"], 1], 1, 0.42],
             }}
-          />
+          />}
           {/* Invisible Fitts-friendly tap pad — keeps a ~36px touch target
               even when an icon shrinks at low zoom. Same source, so the
               click handler resolves back to the place via props.slug. */}

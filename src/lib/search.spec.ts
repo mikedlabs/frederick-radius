@@ -364,6 +364,33 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
     expect(places[0]?.distance_m).toBeLessThan(1_000);
   });
 
+  it("puts the strong independent coffee match at the reader's feet ahead of farther chains", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: { lng: -77.4108, lat: 39.4143 },
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("cafe-nola");
+    const nolaIndex = places.findIndex((place) => place.slug === "cafe-nola");
+    const chainIndex = places.findIndex((place) => /^starbucks\b/i.test(place.name));
+    expect(nolaIndex).toBeGreaterThanOrEqual(0);
+    expect(chainIndex).toBeGreaterThan(nolaIndex);
+  });
+
+  it("keeps a chain at the reader's exact location prominent", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: { lng: -77.41064, lat: 39.41556 },
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("starbucks-844");
+    expect(places[0]?.distance_m).toBe(0);
+  });
+
   it("hard-filters an unconstrained search to the selected town", () => {
     const { hits, meta } = qualifiedSearch("MZ Art Studio", 12, undefined, {
       origin: { lng: -77.3523, lat: 39.3276 },

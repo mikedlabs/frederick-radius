@@ -2874,9 +2874,13 @@ const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
   }));
 PLACES.push(...PLACES_DISCOVERED);
 
-export const PLACE_BY_SLUG = Object.fromEntries(
-  PLACES.map((p) => [p.slug, p])
-) as Record<string, Place>;
+// Public detail, calendar, saved, and OG routes all read this index with an
+// untrusted slug. A null-prototype dictionary prevents inherited properties
+// (`constructor`, `toString`, `__proto__`) from masquerading as place rows.
+export const PLACE_BY_SLUG: Record<string, Place> = Object.assign(
+  Object.create(null) as Record<string, Place>,
+  Object.fromEntries(PLACES.map((p) => [p.slug, p])),
+);
 
 export function placesByCategory(slug: string): Place[] {
   return PLACES.filter(

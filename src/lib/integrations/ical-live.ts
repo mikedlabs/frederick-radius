@@ -542,12 +542,103 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "civic", words: ["council", "meeting", "public hearing", "town hall", "voting", "planning commission"] },
 ];
 
+function containsCategoryKeyword(text: string, keyword: string): boolean {
+  const escaped = keyword
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s+");
+  if (!escaped) return false;
+  // Category words describe concepts, not arbitrary substrings. The previous
+  // `includes("art")` classified "Partner Hours" as a gallery event and
+  // `includes("bar")` could classify "library" as nightlife. Word-aware
+  // matching keeps phrases such as "first Saturday" while refusing those
+  // accidental fragments.
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(text);
+}
+
 function inferCategory(title: string, description: string, fallback: string): string {
   const text = `${title} ${description}`.toLowerCase();
   for (const { slug, words } of CATEGORY_KEYWORDS) {
-    if (words.some((w) => text.includes(w))) return slug;
+    if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
   }
   return fallback;
+}
+
+const RECURRING_WEEKDAY_RE =
+  /\b(?:every|each|(?:the\s+)?(?:first|second|third|fourth|last|1st|2nd|3rd|4th))\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/i;
+
+const CADENCE_TITLE_STOP_WORDS = new Set([
+  "about",
+  "county",
+  "frederick",
+  "maryland",
+  "event",
+  "program",
+  "the",
+  "with",
+]);
+
+function cadenceSentenceBelongsToEvent(title: string, sentence: string): boolean {
+  const titleTokens = title
+    .toLowerCase()
+    .match(/[a-z0-9]+/g)
+    ?.filter((token) => token.length >= 4 && !CADENCE_TITLE_STOP_WORDS.has(token)) ?? [];
+  const sentenceTokens = new Set(sentence.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+  if (titleTokens.some((token) => sentenceTokens.has(token))) return true;
+
+  // "Partner Hours at Centro Hispano" is described as the team being "in
+  // office on third Thursdays." The wording differs, but both clauses plainly
+  // describe an office-hours program. Keep this semantic bridge narrow so a
+  // festival description that merely mentions a venue's Tuesday office hours
+  // cannot make the Saturday festival disappear.
+  const titleIsHoursProgram =
+    /\b(?:partner|office|service|business|drop-?in|walk-?in)\s+hours?\b|\bhours?\s+(?:at|with)\b/i.test(
+      title,
+    );
+  const sentenceDescribesHoursProgram =
+    /\b(?:office|hours?|walk-?ins?|availability|team\s+will\s+be)\b/i.test(
+      sentence,
+    );
+  return titleIsHoursProgram && sentenceDescribesHoursProgram;
+}
+
+function statedRecurringWeekday(title: string, description: string): string | null {
+  const titleWeekday = title.match(RECURRING_WEEKDAY_RE)?.[1];
+  if (titleWeekday) return titleWeekday.toLowerCase();
+
+  // Descriptions often contain unrelated venue schedules. Only trust a
+  // cadence from the sentence that can be tied back to the event title.
+  const sentences = description.split(/(?:\r?\n)+|(?<=[.!?])\s+/);
+  for (const sentence of sentences) {
+    const weekday = sentence.match(RECURRING_WEEKDAY_RE)?.[1];
+    if (weekday && cadenceSentenceBelongsToEvent(title, sentence)) {
+      return weekday.toLowerCase();
+    }
+  }
+  return null;
+}
+
+/**
+ * Some CivicPlus rows publish a concrete date that contradicts the cadence in
+ * their own description (for example, a Tuesday date followed by "third
+ * Thursdays"). Radius cannot choose which half is true, so the safest public
+ * behavior is to quarantine that occurrence until the publisher corrects it.
+ */
+export function hasPublishedWeekdayConflict(
+  title: string,
+  description: string,
+  startsAt: Date,
+): boolean {
+  const expected = statedRecurringWeekday(title, description);
+  if (!expected || Number.isNaN(startsAt.getTime())) return false;
+  const actual = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+  })
+    .format(startsAt)
+    .toLowerCase();
+  return actual !== expected;
 }
 
 function inferMunicipality(address: string | undefined, fallback: string): string {
@@ -1199,6 +1290,12 @@ async function fetchRssFeed(
         }
       }
       if (!start || isNaN(start.getTime())) continue;
+      if (hasPublishedWeekdayConflict(title, description, start)) {
+        console.warn(
+          `[ical-live] ${feed.source}: skipped an event whose published date conflicts with its stated weekday (${title})`,
+        );
+        continue;
+      }
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
       if (!isEventWithinReadWindow(
         { starts_at: start.toISOString(), ends_at: end.toISOString() },

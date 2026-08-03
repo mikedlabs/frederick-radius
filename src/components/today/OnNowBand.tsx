@@ -172,7 +172,7 @@ export default async function OnNowBand({
             storageKey="fr.today.on-now-more"
             defaultOpen={false}
             headingLevel={3}
-            className="border-t pt-1"
+            className="border-t pt-1 [&>h3>button]:min-h-11"
           >
             <div className="space-y-4 pt-1">
               {additional.map(({ key, node }) => (

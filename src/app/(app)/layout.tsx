@@ -10,7 +10,6 @@ import PageViewTracker from "@/components/analytics/PageViewTracker";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import { EventSheetProvider } from "@/components/event/EventSheetProvider";
-import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
@@ -34,11 +33,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               every page — see .app-paper-fx. Sits below content; purely
               decorative. */}
           <div className="app-paper-fx" aria-hidden />
-          {/* Fires the optional geolocation-based mode suggestion on
-              first mount. Renders nothing; the map paints with the
-              default mode immediately and quietly flips to Resident
-              only when the user is inside the Frederick County bbox. */}
-          <ModeBootstrap />
           {/* One bounded, privacy-safe IndexedDB handoff for the generic
               offline page. It stores aggregate Saved counts and coarse
               preference ids only; personalized HTML remains network-only. */}

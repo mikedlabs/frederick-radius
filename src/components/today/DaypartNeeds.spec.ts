@@ -346,7 +346,8 @@ describe("DaypartNeeds", () => {
     expect(html).toContain(
       "Countywide picks · Posted hours; check before going",
     );
-    expect(html).toContain("Likely Cup, likely open");
+    expect(html).not.toContain('aria-label="Likely Cup');
+    expect(html).toContain("Likely Cup");
     expect(html).toContain("Likely open");
     expect(html).not.toContain("confirmed open");
   });

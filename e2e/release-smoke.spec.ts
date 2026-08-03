@@ -203,6 +203,63 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
+test.describe("Today hydration clock boundary", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    serviceWorkers: "block",
+  });
+
+  test("keeps the first client render stable when its clock crosses a minute", async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+    const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
+    const issues = installRuntimeGuards(page, appOrigin);
+
+    // ISR HTML and the browser never share an exact wall clock. Move the
+    // browser ninety seconds ahead so any Today client component that reads
+    // Date during its first render crosses a minute boundary relative to the
+    // server. Live labels must use a server timestamp or wait until mount;
+    // otherwise React reports hydration error #418 here.
+    await page.addInitScript(({ offsetMs }) => {
+      const NativeDate = window.Date;
+      const OffsetDate = new Proxy(NativeDate, {
+        apply(target, thisArg, args) {
+          return Reflect.apply(
+            target,
+            thisArg,
+            args.length > 0 ? args : [target.now() + offsetMs],
+          );
+        },
+        construct(target, args) {
+          return Reflect.construct(
+            target,
+            args.length > 0 ? args : [target.now() + offsetMs],
+          );
+        },
+      });
+      Object.defineProperty(window, "Date", {
+        configurable: true,
+        value: OffsetDate,
+      });
+    }, { offsetMs: 90_000 });
+
+    const response = await page.goto("/today", {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("main h1")).toHaveCount(1);
+    await expect(page.locator('[aria-label="Today in Frederick"]')).toBeVisible();
+    await expect(
+      page.locator('[data-collapsible-interaction-ready="true"]'),
+    ).toBeAttached();
+
+    expect(issues, "Today browser runtime failures across clock drift").toEqual([]);
+  });
+});
+
 test("map search keeps its exact state through place details and Back", async ({
   page,
   baseURL,

@@ -95,6 +95,14 @@ describe("countLine", () => {
       "12 events · Brunswick",
     );
   });
+  it("labels a partial collection as loaded instead of implying a total", () => {
+    expect(
+      countLine({ events: 27, townName: null, townCount: 3, complete: false }),
+    ).toBe("27 events loaded · 3 towns");
+    expect(
+      countLine({ events: 1, townName: "Frederick", townCount: 1, complete: false }),
+    ).toBe("1 event loaded · Frederick");
+  });
 });
 
 describe("nextMastheadCollapsed (scroll-collapse threshold)", () => {

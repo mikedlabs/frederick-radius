@@ -2,6 +2,7 @@ import type { Event } from "@/data/events";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventEnded, isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
+import { eventTrust } from "@/lib/trust";
 
 export type TodayEventMoment = "Now" | "Later" | "Tonight" | "Today";
 
@@ -20,6 +21,25 @@ export type TodayEventResponse = {
   events: TodayEvent[];
   partial: boolean;
 };
+
+export function shouldRenderTodayEventSection({
+  degraded,
+  featurePromoted,
+  programCount,
+  earlierCount,
+}: {
+  degraded: boolean;
+  featurePromoted: boolean;
+  programCount: number;
+  earlierCount: number;
+}): boolean {
+  return !(
+    degraded &&
+    !featurePromoted &&
+    programCount === 0 &&
+    earlierCount === 0
+  );
+}
 
 const TIMED_TITLE_ON_ALL_DAY_RE = /\b(?:night|evening|after\s+dark|happy\s+hour|trivia|bingo)\b/i;
 
@@ -46,9 +66,16 @@ function momentFor(event: Event, now: Date): TodayEventMoment {
 }
 
 /** Today is editorially stricter than the full calendar. A prime homepage
- * card needs a real venue, trustworthy timing, and an active verified row. */
+ * card needs a real venue, trustworthy timing, and a source-backed row.
+ * `is_verified` means Radius manually checked the listing; an event published
+ * on a recognized government or organizer calendar is independently
+ * trustworthy without rewriting that field to true. */
 export function isStrongTodayEvent(event: Event, now: Date): boolean {
-  if (!event.is_verified || event.status === "cancelled" || event.status === "postponed") return false;
+  if (
+    eventTrust(event).level !== "verified" ||
+    event.status === "cancelled" ||
+    event.status === "postponed"
+  ) return false;
   if (!event.venue_name?.trim()) return false;
   if (!isEventToday(event.starts_at, now) || isEventEnded(event, now)) return false;
   if (isUtilityEvent(event) || isRoutineProgram(event)) return false;

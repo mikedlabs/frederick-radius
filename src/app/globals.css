@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* The only current Public Sans italic treatment is a revealed field note.
+ * Load that specialty face on demand instead of preloading it on every route. */
+@font-face {
+  font-family: "Public Sans Radius Italic";
+  src: url("/brand/fonts/public-sans-variable-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   /* Self-hosted Frederick Radius type system. Public Sans carries the
    * product, including tabular numerals. Caslon is an explicit signature,
@@ -1000,6 +1010,21 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     bottom: auto !important;
     top: 10px !important;
   }
+
+  /* /radius is an embedded planning canvas, not the full-screen browse map.
+     Its lower sheet covers both conventional bottom corners, while the reach
+     readout and camera rail occupy the first upper shelf. Give Mapbox's legal
+     marks their own visible shelves below those controls. */
+  .radius-map-canvas .mapboxgl-ctrl-bottom-left {
+    top: 82px !important;
+    bottom: auto !important;
+    left: 8px !important;
+  }
+  .radius-map-canvas .mapboxgl-ctrl-bottom-right {
+    top: 162px !important;
+    right: 8px !important;
+    bottom: auto !important;
+  }
 }
 
 /* Marketing route group keeps its night-sky aesthetic. */
@@ -1063,35 +1088,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding-block: .55rem;
 }
 
-/* Celestial body — a soft sun (day) or moon (night) glow that arcs
-   across the hero by the hour (position via --cel-x / --cel-y, set by
-   SkyHero). It's blurred ambient light, never a clip-art disc, so it
-   stays calm. Hidden in heavy weather (data-celestial="none"). The
-   position eases too, so it glides as the day moves. */
-.sky-hero[data-celestial="sun"]::after,
-.sky-hero[data-celestial="moon"]::after {
-  content: "";
-  position: absolute;
-  left: var(--cel-x, 50%);
-  top: var(--cel-y, 30%);
-  width: 220px;
-  height: 220px;
-  transform: translate(-50%, -50%);
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 1;
-  transition: left 3s var(--app-ease-out, ease), top 3s var(--app-ease-out, ease);
-}
-.sky-hero[data-celestial="sun"]::after {
-  background: radial-gradient(circle, rgba(255,247,224,0.85) 0%, rgba(255,236,189,0.45) 28%, rgba(255,224,160,0.12) 55%, transparent 72%);
-  filter: blur(6px);
-}
-.sky-hero[data-celestial="moon"]::after {
-  width: 150px;
-  height: 150px;
-  background: radial-gradient(circle, rgba(232,238,255,0.55) 0%, rgba(208,220,245,0.22) 38%, transparent 68%);
-  filter: blur(8px);
-}
 .sky-hero::before {
   content: "";
   position: absolute;
@@ -1118,7 +1114,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sky-hero > * { position: relative; z-index: 2; }
 
 /* Fine film grain over the sky — premium materiality. Sits at z-1
- * (above gradient/drift/celestial, below content at z-2). Soft-light
+ * (above gradient/drift, below content at z-2). Soft-light
  * blend so it textures the light without muddying color; ~9% so it's
  * felt, not seen. This is the "is this a native app?" detail. */
 .sky-hero > .sky-grain {
@@ -2801,7 +2797,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-facebody { margin-top: 14px; display: none; }
 .sw-card.is-open .sw-facebody { display: block; animation: sw-reveal .34s ease .06s both; }
 .sw-tip {
-  font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif; font-style: italic;
+  font-family: "Public Sans Radius Italic", var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif; font-style: italic;
   font-size: 14.5px; line-height: 1.45; max-width: 19.5rem;
   color: var(--app-ink-inverse); text-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
@@ -3047,7 +3043,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. The cold map exposes one search and one options door; every other
+   dock-*. The cold map exposes one search and one Browse door; every other
    choice is progressively disclosed in one phone panel or desktop inspector.
    ========================================================================== */
 
@@ -3138,6 +3134,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13.5px;
   color: var(--app-ink);
 }
+.dock-search-input:focus-visible {
+  outline: none;
+}
+.dock-head:has(.dock-search-input:focus-visible) {
+  border-color: var(--app-brand);
+  box-shadow:
+    inset 0 0 0 1px var(--app-brand),
+    0 0 0 3px color-mix(in srgb, var(--app-brand) 13%, transparent),
+    var(--app-shadow-2);
+}
 @media (max-width: 1023.98px) {
   .dock-search-input {
     /* Prevent iOS Safari from zooming the page when the map search focuses. */
@@ -3186,8 +3192,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-search-results {
+    left: 0;
+    right: auto;
     top: auto;
     bottom: calc(100% + 5px);
+    width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-width: 680px;
     margin-top: 0;
   }
 }
@@ -3293,55 +3303,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-brand-press);
   color: var(--app-on-brand);
 }
-.dock-search-start {
-  padding: 11px;
-}
-@media (max-width: 1023.98px) {
-  .dock-search-start {
-    /* The popup is positioned from the search cell, but the four starting
-       jobs belong to the whole command bar. Let it use the dock width so the
-       labels never crush together on a phone. */
-    left: 0;
-    right: auto;
-    width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
-    max-width: 680px;
-  }
-}
-.dock-search-start-title {
-  padding: 1px 3px 8px;
-  color: var(--app-ink-3);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.dock-search-start-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-.dock-search-start-grid button {
-  min-width: 0;
-  min-height: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 3px;
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--app-bg-elevated);
-  color: var(--app-ink-2);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.dock-search-start-grid button:active {
-  background: color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated));
-  transform: scale(0.97);
-}
 @media (max-width: 520px) {
   .dock-search-results {
     max-height: 190px;
@@ -3353,7 +3314,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* The pinned head: one search plus one explicit options door. */
+/* The pinned head: one search, one camera action, and one Browse door. */
 .dock-head {
   position: relative;
   z-index: 2;
@@ -3374,7 +3335,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (max-width: 1023.98px) {
   .dock-head {
-    grid-template-columns: minmax(0, 1fr) minmax(44px, auto) minmax(72px, auto);
+    grid-template-columns: minmax(0, 1fr) 52px 80px;
     border-radius: 14px;
     border-color: color-mix(in srgb, var(--app-ink) 14%, transparent);
     background: color-mix(in srgb, var(--app-bg-elevated-solid) 91%, transparent);
@@ -3394,9 +3355,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     padding-inline: 14px 8px;
   }
   .dock-contents {
-    min-width: 72px;
+    min-width: 80px;
     border-radius: 0 13px 13px 0;
     font-size: 11.5px;
+  }
+}
+
+/* Once someone is typing, the query deserves the available line length. The
+   two neighboring actions keep their full touch targets and accessible names,
+   while their visible labels compact to icons until the query is cleared. */
+@media (max-width: 430px) {
+  .dock[data-query-active="true"] .dock-head {
+    grid-template-columns: minmax(0, 1fr) 48px 52px;
+  }
+  .dock[data-query-active="true"] .dock-locate {
+    width: 48px;
+  }
+  .dock[data-query-active="true"] .dock-contents {
+    min-width: 52px;
+    padding-inline: 4px;
+  }
+  .dock[data-query-active="true"] .dock-contents-label {
+    display: none;
   }
 }
 
@@ -3413,7 +3393,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     align-items: center;
     justify-content: center;
     gap: 5px;
-    width: 44px;
+    width: 52px;
     height: 52px;
     border-inline: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
     color: var(--app-ink-2);
@@ -3422,12 +3402,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-locate:active {
     transform: scale(0.97);
   }
-  .dock-locate[data-on="true"] {
-    color: var(--app-cool-2);
-    background: color-mix(in srgb, var(--app-cool) 8%, transparent);
-  }
 }
-@media (min-width: 370px) and (max-width: 1023.98px) {
+@media (min-width: 560px) and (max-width: 1023.98px) {
   .dock-locate {
     width: auto;
     padding-inline: 9px;
@@ -3438,6 +3414,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     font-weight: 700;
     white-space: nowrap;
   }
+}
+
+/* The command is a single rounded instrument. Keyboard focus stays inside
+   that shape instead of drawing a harsh rectangular ring across the map. */
+.dock-locate:focus-visible,
+.dock-contents:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-brand);
 }
 
 .map-context-rail {
@@ -3539,18 +3523,36 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: calc(var(--z-sticky) + 2);
   max-height: var(--map-pane-cap, 116px);
   overflow: hidden;
-  background: var(--app-bg-elevated-solid);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--app-bg-elevated-solid) 96%, white),
+      var(--app-bg-elevated-solid) 88px
+    );
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 1px solid var(--app-border);
-  border-radius: calc(var(--app-radius-md) + 4px);
-  box-shadow: var(--app-shadow-3);
+  border-radius: calc(var(--app-radius-md) + 8px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 72%, transparent) inset,
+    var(--app-shadow-3);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(24px) scale(0.985);
   transform-origin: bottom center;
   transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.28s;
+}
+.dock-pane:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--app-brand),
+    var(--app-shadow-3);
+}
+.dock-pane :is(button, [role="button"]):focus-visible,
+.dock-search-results button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-brand);
 }
 .dock-pane::before {
   position: absolute;
@@ -3689,7 +3691,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   top: 0;
   z-index: 3;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-inline: -2px;
   padding: 0 4px;
@@ -3948,7 +3950,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* Highlights is the map's synthesis tool, not another map layer. Its cards
-   stay inside Map options until the viewport has evidence worth showing. */
+   stay inside Browse until the viewport has evidence worth showing. */
 .dock-discoveries {
   padding-top: 2px;
 }
@@ -4419,7 +4421,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     bottom: 4px;
   }
   .dock-head {
-    grid-template-columns: minmax(0, 1fr) 72px;
+    grid-template-columns: minmax(0, 1fr) 48px 72px;
   }
   .dock-search-wrap {
     min-width: 170px;
@@ -4432,6 +4434,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-contents {
     min-width: 72px;
     padding-inline: 8px;
+  }
+  .dock-locate {
+    width: 48px;
+    height: 48px;
   }
   .dock-contents > span:not(.dock-layer-count) {
     display: none;
@@ -5303,6 +5309,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   -webkit-line-clamp: 2;
 }
 .map-peek-title-button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   max-width: 100%;
   text-align: left;
 }
@@ -5336,7 +5345,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-peek-details-link {
   width: fit-content;
-  min-height: 24px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -6385,7 +6394,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 @media (max-width: 360px) {
   .eb-filter-summary {
-    display: none;
+    /* Keep the active filter summary in the button's accessible name even
+       when the 320px layout cannot afford it visually. `display:none` made
+       screen readers hear only "Filters" and hid the selected time/scope. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
@@ -6452,18 +6472,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .eb-dock.eb-open .eb-pane {
   max-height: min(
     70dvh,
-    calc(100dvh - var(--app-topbar-offset) - 112px),
+    calc(
+      100dvh - var(--app-topbar-offset) -
+      var(--app-bottomnav-reserve, 0px) -
+      env(safe-area-inset-bottom, 0px) - 112px
+    ),
     560px
   );
 }
 .eb-pane-scroll {
   max-height: min(
     70dvh,
-    calc(100dvh - var(--app-topbar-offset) - 112px),
+    calc(
+      100dvh - var(--app-topbar-offset) -
+      var(--app-bottomnav-reserve, 0px) -
+      env(safe-area-inset-bottom, 0px) - 112px
+    ),
     560px
   );
   overflow-y: auto;
-  padding: 10px 15px 16px;
+  padding: 10px 15px max(16px, env(safe-area-inset-bottom, 0px));
   scrollbar-width: thin;
 }
 
