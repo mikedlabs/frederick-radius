@@ -88,7 +88,13 @@ const DEFAULT_SOURCES: EventResolverSources = {
 };
 
 export const EVENT_DEEP_LINK_TIMEOUT_MS = 2_500;
-export const EVENT_ARCHIVE_HEAD_START_MS = 450;
+// A cold serverless instance may need to establish its pooled Postgres
+// connection before this small indexed lookup can run. The previous 450 ms
+// window was shorter than that handshake in production, so valid archived
+// library links fell through to the source-unavailable state even though their
+// snapshots were present. Keep the read bounded and leave more than half of
+// the full detail deadline available for direct-source recovery.
+export const EVENT_ARCHIVE_HEAD_START_MS = 1_200;
 
 /**
  * All generated and legacy event aliases are lowercase URL slugs. Reject an

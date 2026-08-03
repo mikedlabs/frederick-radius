@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import type { ArchivedEventIdentity } from "@/lib/events/event-identity";
 import {
   EVENT_ARCHIVE_HEAD_START_MS,
   EVENT_DEEP_LINK_TIMEOUT_MS,
@@ -185,6 +186,48 @@ describe("resolveEventPageBySlugWithSources", () => {
     ).resolves.toEqual({ event: retained, kind: "archive" });
     expect(loaders.live).not.toHaveBeenCalled();
     expect(loaders.ingested).not.toHaveBeenCalled();
+  });
+
+  it("keeps a valid archive hit that arrives after the old cold-read cutoff", async () => {
+    vi.useFakeTimers();
+    try {
+      const retained = event("fcpl-film-festival-dog-man-fcpl-20260804");
+      const loaders = sources({
+        archive: vi.fn(
+          () =>
+            new Promise<ArchivedEventIdentity>((resolve) => {
+              setTimeout(
+                () =>
+                  resolve({
+                    id: "identity-cold-read",
+                    canonicalSlug: retained.slug,
+                    event: retained,
+                    tombstoned: false,
+                    lastSeenAt: "2026-08-03T22:49:04.620Z",
+                  }),
+                700,
+              );
+            }),
+        ),
+      });
+      const pending = resolveEventPageBySlugWithSources(
+        retained.slug,
+        new Date("2026-08-03T22:50:00.000Z"),
+        loaders,
+      );
+
+      await vi.advanceTimersByTimeAsync(700);
+
+      await expect(pending).resolves.toEqual({
+        event: retained,
+        kind: "archive",
+      });
+      expect(loaders.unified).not.toHaveBeenCalled();
+      expect(loaders.live).not.toHaveBeenCalled();
+      expect(loaders.ingested).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("resolves an old slug alias to the current canonical snapshot", async () => {
@@ -575,7 +618,7 @@ describe("resolveEventPageBySlugWithSources", () => {
         name: "EventResolutionTimeoutError",
         sources: ["archive"],
       } satisfies Partial<EventResolutionTimeoutError>);
-      await vi.advanceTimersByTimeAsync(450);
+      await vi.advanceTimersByTimeAsync(EVENT_ARCHIVE_HEAD_START_MS);
       await rejection;
       expect(loaders.live).toHaveBeenCalledOnce();
     } finally {
