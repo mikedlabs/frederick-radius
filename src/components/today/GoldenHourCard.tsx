@@ -29,20 +29,25 @@ export default function GoldenHourCard({ now }: { now: Date }) {
 
   return (
     <section aria-label="Golden hour" className="mt-4">
+      {/* Amber, not Plum. This card is the app's literal sunlight moment, and
+          Amber is the token the palette DEFINES as sunlight; Plum is the
+          reserved arts/editorial accent and had no business on a sunset.
+          Text and glyph use --app-amber-text (#925E16), the darkened
+          text-safe Amber — raw --app-amber fails AA as type on Cream. */}
       <div
         className="flex items-center gap-3 rounded-[var(--app-radius-lg)] border px-4 py-3"
         style={{
-          borderColor: "color-mix(in srgb, var(--app-accent) 30%, var(--app-border))",
-          background: "color-mix(in srgb, var(--app-accent) 7%, var(--app-bg-elevated))",
+          borderColor: "color-mix(in srgb, var(--app-amber) 34%, var(--app-border))",
+          background: "color-mix(in srgb, var(--app-amber) 8%, var(--app-bg-elevated))",
           boxShadow: "var(--app-edge), var(--app-hi)",
         }}
       >
         <span
           aria-hidden
           className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-accent) 16%, transparent)" }}
+          style={{ background: "color-mix(in srgb, var(--app-amber) 18%, transparent)" }}
         >
-          <Sun className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-accent)" }} />
+          <Sun className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-amber-text)" }} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-sans text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -56,7 +61,7 @@ export default function GoldenHourCard({ now }: { now: Date }) {
             targetIso={win.goldenStart.toISOString()}
             prefix="Golden hour in"
             className="mt-0.5 block font-mono text-[11px] font-bold tabular-nums"
-            style={{ color: "var(--app-accent-press)" }}
+            style={{ color: "var(--app-amber-text)" }}
           />
         </div>
         <span className="shrink-0 text-right font-mono text-[11px] tabular-nums leading-tight" style={{ color: "var(--app-ink-3)" }}>
