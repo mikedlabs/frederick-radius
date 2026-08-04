@@ -164,8 +164,3 @@ export function savedDateLabel(iso?: string): string | null {
   }).format(new Date(t));
 }
 
-/** Pl. I, II, III… — the stack position as a field-guide plate number. */
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-export function plate(i: number): string {
-  return i >= 0 && i < ROMAN.length ? ROMAN[i] : String(i + 1);
-}

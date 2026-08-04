@@ -2722,28 +2722,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px),
   repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px); }
 
-/* Holographic foil — an iridescent band swept across a raised card. soft-light
-   keeps it a tint, not a rainbow decal, so the brand ground still reads. */
-.sw-holo {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
-  mix-blend-mode: soft-light; border-radius: inherit;
-  background: linear-gradient(115deg, transparent 22%, rgba(120,200,255,.55) 38%, rgba(255,224,130,.5) 46%, rgba(206,130,255,.55) 54%, rgba(120,255,205,.45) 62%, transparent 78%);
-  background-size: 260% 100%; background-position: 120% 0;
-  transition: opacity .45s ease;
-}
-.sw-card.is-open .sw-holo { opacity: .2; animation: sw-holo 4.8s ease-in-out infinite; }
-
-/* Foil edge — a 1px metallic rim tracing the card's cut edge (bright at the
-   light corner, dim in the vignette), the lamination's finishing pass. */
-.sw-foil-edge {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  border-radius: inherit; padding: 1px; opacity: .5;
-  background: linear-gradient(140deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.08) 30%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.3) 100%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask-composite: exclude;
-}
+/* The holographic foil sweep and the metallic foil edge that used to render
+   here were deleted on purpose: an infinite rainbow loop and a fake laminated
+   rim were the interface advertising itself (brand guide: a card should not
+   look inflated or glossy; no looping decorative motion). The motif + glyph
+   watermark above are the card's one texture idea. */
 
 /* Open-now cards carry a soft vermilion glow-edge so you can spot what you can
    actually go to right now while scanning the deck. */
@@ -2816,9 +2799,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-top: 5px; font-family: var(--font-mono, monospace); font-size: 8.5px;
   letter-spacing: .14em; text-transform: uppercase; opacity: .7;
 }
-/* Gold-foil tags: the deal tag on the face and the plate seal on the stub
-   share one pressed-foil treatment — radial sheen, inset ring, letterpress. */
-.sw-dealtag, .sw-plateseal {
+/* Gold-foil deal tag: pressed-foil treatment (radial sheen, inset ring,
+   letterpress) reserved for a REAL verified deal — never decoration. The
+   "Pl. VII" plate seal that used to share this styling was a fake plate
+   number, decoration dressed as data, and is gone. */
+.sw-dealtag {
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase; color: #2a1d05;
@@ -2863,23 +2848,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-cell-wide { grid-column: 1 / -1; }
 .sw-star { color: var(--app-accent-press); }
 .sw-dollar-off { color: var(--app-border); }
-/* The right rail: plate seal on top, the Radius Points slot beneath it. */
-.sw-rail { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-/* Radius Points — a designed promise: a gold-ruled slot where the number
-   will print. Dashed rule + "soon", never a fake score. */
-.sw-pts {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--font-mono, monospace); font-size: 9px; font-weight: 700;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--app-accent-press);
-  border: 1px dashed color-mix(in srgb, var(--app-accent) 55%, transparent);
-  border-radius: 5px; padding: 3px 7px;
-  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
-}
-.sw-pts i {
-  font-style: normal; font-size: 8px; letter-spacing: .14em; color: var(--app-ink-3);
-  border-left: 1px solid var(--app-border); padding-left: 5px;
-}
-
 /* Stub actions — ONE primary (Open page), a quiet Directions link, and the
    disabled Notify bell (a promise with a mono tag, not a broken button). */
 .sw-actions {
@@ -2916,7 +2884,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes sw-deal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes sw-sweep { to { transform: translateX(125%); } }
 @keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 rgba(225,67,40,.5); } 70%, 100% { box-shadow: 0 0 0 6px rgba(225,67,40,0); } }
-@keyframes sw-holo { 0% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
 @keyframes sw-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2924,8 +2891,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .sw-card.is-open::before { animation: none; }
   .sw-card.is-open .sw-facebody, .sw-card.is-open .sw-stub { animation: none; }
   .sw-dot { animation: none; }
-  /* Keep a still, subtle holo sheen — no sweep. */
-  .sw-card.is-open .sw-holo { animation: none; opacity: .12; background-position: 40% 0; }
 }
 
 /* ============================================================================

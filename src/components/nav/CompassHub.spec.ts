@@ -12,6 +12,7 @@ import {
   buildToolDeckGroups,
   compassShortcutGridClass,
   commonCompassTasks,
+  liveLineForIntent,
   searchToolDeckGroups,
 } from "./CompassHub";
 
@@ -202,4 +203,42 @@ describe("Compass feature gates", () => {
       expect(occurrences(ids, TIME_MACHINE_ID)).toBe(expectedCount);
     },
   );
+});
+
+describe("compass live lines", () => {
+  const key = (id: string, value: string, label: string, status = "ok") => ({
+    id,
+    status,
+    faces: [{ value, label }],
+  });
+
+  it("states the live fact for an intent from the county's own feeds", () => {
+    expect(
+      liveLineForIntent("get-around", [key("buses", "10", "buses moving")]),
+    ).toBe("10 buses moving");
+    expect(
+      liveLineForIntent("local-help", [key("weather", "78°", "partly sunny")]),
+    ).toBe("78° partly sunny");
+  });
+
+  it("falls through the intent's priority order when the lead feed is down", () => {
+    expect(
+      liveLineForIntent("get-around", [
+        key("buses", "10", "buses moving", "unavailable"),
+        key("traffic", "17 min", "I-70 to the county line"),
+      ]),
+    ).toBe("17 min I-70 to the county line");
+  });
+
+  it("stays silent rather than rendering a placeholder", () => {
+    // A row with no live fact keeps its plain registry sentence. An honest
+    // absence, never "—" or "loading".
+    expect(liveLineForIntent("get-around", [])).toBeNull();
+    expect(
+      liveLineForIntent("get-around", [
+        key("buses", "", "buses moving"),
+      ]),
+    ).toBeNull();
+    expect(liveLineForIntent("decide-now", [key("buses", "10", "buses moving")])).toBeNull();
+  });
 });
