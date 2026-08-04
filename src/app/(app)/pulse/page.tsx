@@ -42,8 +42,10 @@ import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import {
+  leadTravelTime,
   roadAttentionScopeLabel,
   selectRoadTravelSummary,
+  travelMinutes,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
@@ -476,6 +478,24 @@ export default async function PulsePage() {
   const supportingWorkZones = activeWorkZones.filter(
     (zone) => zone.lanes.summary !== "all-lanes-closed",
   );
+  // MDOT publishes a measured travel time for the county's interstate
+  // corridors on every poll, already narrowed to Frederick County segments and
+  // dropped once older than 15 minutes (mdot-road-feeds.ts). The tile read that
+  // selector and kept only its work zones, so a quiet road hour rendered "No
+  // major impact" while real numbers sat unread in memory. A quiet road is
+  // still a road with a drive time on it, and the drive time is the more
+  // useful thing to say.
+  //
+  // Lead with a corridor that is trending longer, because a rising number is
+  // the one worth seeing first; otherwise lead with the longest drive.
+  //
+  // The trend compares against MDOT's own PREVIOUS READING, not against a
+  // typical day. The feed publishes no free-flow baseline, so nothing here may
+  // say "slower than usual" — only that the last reading was shorter.
+  const roadTravelTimes = [...roadTravel.travelTimes].sort(
+    (a, b) => b.travelTimeSeconds - a.travelTimeSeconds,
+  );
+  const leadTravel = leadTravelTime(roadTravelTimes);
   const roadTrafficActive = highTraffic.length > 0 || Boolean(roadLead);
   const roadCheckComplete =
     trafficAvailable && roadIntelligence.summary.coverage === "complete";
@@ -1225,9 +1245,11 @@ export default async function PulsePage() {
         ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}`
         : activeWorkZones.length > 0
           ? `${activeWorkZones.length} active ${activeWorkZones.length === 1 ? "work zone" : "work zones"}`
-          : roadCheckComplete
-            ? "No major impact"
-            : "Check incomplete",
+          : leadTravel
+            ? `${travelMinutes(leadTravel.travelTimeSeconds)} min`
+            : roadCheckComplete
+              ? "No major impact"
+              : "Check incomplete",
       accent: roadTrafficActive || !roadCheckComplete ? "var(--app-warning)" : "var(--app-cool)",
       active: roadTrafficActive,
       attention: situationActive.traffic,
@@ -1241,13 +1263,20 @@ export default async function PulsePage() {
           ? `${traffic[0].road || traffic[0].location}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
           : activeWorkZones.length > 0
             ? `${activeWorkZones.length} official work ${activeWorkZones.length === 1 ? "zone" : "zones"} in Frederick County`
-            : roadCheckComplete
-              ? "No major road impact appears in the checked feeds"
-              : "At least one official road feed could not be checked",
+            : leadTravel
+              ? `${leadTravel.name} is averaging ${Math.round(leadTravel.averageSpeedMph)} mph${
+                  leadTravel.trend === "longer"
+                    ? " and the drive is getting longer"
+                    : ""
+                }`
+              : roadCheckComplete
+                ? "No major road impact appears in the checked feeds"
+                : "At least one official road feed could not be checked",
       body:
         roadIntelligence.attention.length > 0 ||
         supportingWorkZones.length > 0 ||
-        traffic.length > 0
+        traffic.length > 0 ||
+        roadTravelTimes.length > 0
           ? (
             <>
               {roadIntelligence.attention.slice(0, 5).map((signal) => (
@@ -1303,6 +1332,37 @@ export default async function PulsePage() {
                   : undefined,
               ]}
             />
+              ))}
+              {roadIntelligence.attention.length === 0 &&
+              supportingWorkZones.length === 0 &&
+              traffic.length === 0
+                ? emptyNote(
+                    roadCheckComplete
+                      ? "The official feeds report no major traffic incident, severe road condition, or active work-zone closure in Frederick County."
+                      : "At least one official road feed could not be checked. Open MDOT CHART before relying on this result.",
+                  )
+                : null}
+              {/* The measured drive, listed after whatever is wrong. On a quiet
+                  hour these rows are the whole answer; during an incident they
+                  say what the rest of the county's roads are still doing. */}
+              {roadTravelTimes.map((segment) => (
+                <Row
+                  key={`travel-time-${segment.id}`}
+                  tone={segment.trend === "longer" ? "warning" : "muted"}
+                  title={segment.name}
+                  body={`${travelMinutes(segment.travelTimeSeconds)} min for ${segment.distanceMiles.toFixed(1)} miles, averaging ${Math.round(segment.averageSpeedMph)} mph.`}
+                  meta={[
+                    // Against MDOT's previous reading, never against a typical
+                    // day. The feed carries no free-flow baseline to support
+                    // the "slower than usual" claim a reader would infer.
+                    segment.trend === "longer"
+                      ? "Longer than the last reading"
+                      : segment.trend === "shorter"
+                        ? "Shorter than the last reading"
+                        : "Steady since the last reading",
+                    timeAgo(segment.observedAt),
+                  ]}
+                />
               ))}
             </>
           )

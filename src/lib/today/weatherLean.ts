@@ -27,18 +27,93 @@ export function weatherLean(
   return null;
 }
 
+type HourlyPeriod = NwsForecast["hourly"][number];
+
+function periodLean(period: HourlyPeriod): WeatherLean {
+  const temp =
+    period.temperatureUnit === "C"
+      ? (period.temperature * 9) / 5 + 32
+      : period.temperature;
+  return weatherLean(
+    period.shortForecast,
+    temp,
+    period.probabilityOfPrecipitation ?? null,
+  );
+}
+
+/** Index of the hourly period covering `now`, else 0 (the first period). */
+function currentPeriodIndex(forecast: NwsForecast, now: Date): number {
+  const t = now.getTime();
+  const found = forecast.hourly.findIndex((p) => {
+    const start = Date.parse(p.startTime);
+    const end = Date.parse(p.endTime);
+    return Number.isFinite(start) && Number.isFinite(end) && start <= t && t < end;
+  });
+  return found === -1 ? 0 : found;
+}
+
 /** The lean for the hour we're in: the hourly period covering `now`, falling
  *  back to the first hourly period. Null forecast (feed down) → null lean —
  *  a data failure must never masquerade as a weather read. */
 export function leanFromForecast(forecast: NwsForecast | null, now: Date): WeatherLean {
   if (!forecast || forecast.hourly.length === 0) return null;
-  const t = now.getTime();
-  const period =
-    forecast.hourly.find((p) => {
-      const start = Date.parse(p.startTime);
-      const end = Date.parse(p.endTime);
-      return Number.isFinite(start) && Number.isFinite(end) && start <= t && t < end;
-    }) ?? forecast.hourly[0];
-  const temp = period.temperatureUnit === "C" ? (period.temperature * 9) / 5 + 32 : period.temperature;
-  return weatherLean(period.shortForecast, temp, period.probabilityOfPrecipitation ?? null);
+  return periodLean(forecast.hourly[currentPeriodIndex(forecast, now)]);
+}
+
+/**
+ * When the wet stretch ends, from the same hourly array the lean was read
+ * from. Walks forward from the current period to the first one this module no
+ * longer calls "wet" and returns its startTime.
+ *
+ * The page awaited a full hourly forecast to extract one word and threw the
+ * rest away, so it could only say storms were "close by" while the hour they
+ * clear sat in the array. Returns null when the current hour is not wet, when
+ * the feed's window ends while it is still raining (an unknown end is not a
+ * forecast), or when the period carries no usable start time.
+ */
+export function wetWindowEnd(
+  forecast: NwsForecast | null,
+  now: Date,
+): { endsAtLabel: string; noun: string } | null {
+  if (!forecast || forecast.hourly.length === 0) return null;
+  const start = currentPeriodIndex(forecast, now);
+  const current = forecast.hourly[start];
+  if (periodLean(current) !== "wet") return null;
+
+  for (let i = start + 1; i < forecast.hourly.length; i += 1) {
+    if (periodLean(forecast.hourly[i]) === "wet") continue;
+    const parsed = Date.parse(forecast.hourly[i].startTime);
+    if (!Number.isFinite(parsed)) return null;
+    return {
+      endsAtLabel: easternHourLabel(new Date(parsed)),
+      noun: wetNoun(current.shortForecast),
+    };
+  }
+  return null;
+}
+
+/** "7pm" in Frederick's timezone, matching how the rest of the app writes
+ *  a clock hour (lib/hours.ts formatTime), regardless of the device. */
+function easternHourLabel(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    hour12: true,
+  })
+    .format(d)
+    .replace(/\s?(AM|PM)/, (_, ampm: string) => ampm.toLowerCase());
+}
+
+/**
+ * What to call the wet weather, taken from the NWS phrase rather than
+ * hardcoded. WET_RE also matches drizzle, snow, sleet, and ice, so a fixed
+ * "Storms" mislabels four of the six conditions that set the lean.
+ */
+function wetNoun(shortForecast: string | null | undefined): string {
+  const text = shortForecast ?? "";
+  if (/thunder|storm/i.test(text)) return "Storms are";
+  if (/snow/i.test(text)) return "Snow is";
+  if (/sleet|ice\b/i.test(text)) return "Ice is";
+  if (/drizzle/i.test(text)) return "Drizzle is";
+  return "Rain is";
 }

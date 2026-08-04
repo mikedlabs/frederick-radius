@@ -36,6 +36,7 @@ import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
 import { plate, savedDateLabel } from "@/components/saved/walletFacts";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
+import { statusLabel } from "@/lib/event-status";
 
 /**
  * The background MOTIF per event-category family — reuses the place wallet's
@@ -95,6 +96,21 @@ function Card({
   const town = MUNICIPALITY_BY_SLUG[event.municipality]?.name ?? null;
   const kind = cat?.name ?? "Event";
   const fact = eventLipFact(event, now);
+  // The app already pushes a cancellation notice to this reader's phone, and
+  // /api/events/by-slugs runs a 60-second edge window specifically so a
+  // cancelled row cannot sit stale in a saved deck. The card then never read
+  // the field, so the notice arrived and the card still said FRI JUL 8. A
+  // saved event is the one place a person is relying on the app to have
+  // noticed, so this outranks the lip's normal fact.
+  const status = event.status ?? "scheduled";
+  const statusText = statusLabel(status);
+  // Cream ON a filled chip, not colored text. Both tokens are sized for cream
+  // backgrounds (--app-danger #B4231E, --app-warning-press #7A4D12), so as
+  // TEXT on this card's dark category ground they measure about 2.5:1 and
+  // 2.3:1. As a fill under cream they measure 5.7:1 and 6.3:1, which is what
+  // the token's own comment means by "Cream-on-warning fill".
+  const statusFill =
+    status === "cancelled" ? "var(--app-danger)" : "var(--app-warning-press)";
   const when = eventWhenParts(event);
   const price = eventPriceLabel(event);
   const saved = savedDateLabel(savedAt);
@@ -157,12 +173,23 @@ function Card({
         <div className="sw-top">
           <span className="sw-brand">
             <CategoryIcon slug={event.category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
-            <span className="sw-name">{event.title}</span>
+            <span className={`sw-name${statusText ? " is-struck" : ""}`}>
+              {event.title}
+            </span>
           </span>
-          <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
-            {fact.live && <b className="sw-dot" aria-hidden />}
-            {fact.text}
-          </span>
+          {statusText ? (
+            // Replaces the lip fact rather than joining it. A cancelled show
+            // has no useful "when" left, and the struck title beside this
+            // carries the same meaning for anyone who reads shape before text.
+            <span className="sw-lipfact is-status" style={{ background: statusFill }}>
+              {statusText}
+            </span>
+          ) : (
+            <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
+              {fact.live && <b className="sw-dot" aria-hidden />}
+              {fact.text}
+            </span>
+          )}
           <span className="sw-tier">{kind.toUpperCase()}</span>
         </div>
       </div>
@@ -173,7 +200,11 @@ function Card({
         <div className="sw-stub-grid">
           <dl className="sw-ledger">
             <div className="sw-cell sw-cell-wide">
-              <dt>When</dt>
+              {/* Past tense in the label, not a second copy of the state: the
+                  lip chip and the struck title already say which state it is,
+                  and a "Cancelled" label over a date would not describe its
+                  own value. */}
+              <dt>{statusText ? "Was" : "When"}</dt>
               <dd>
                 {when.date}
                 {when.time ? ` · ${when.time}` : ""}

@@ -2780,6 +2780,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   white-space: nowrap; opacity: .95; display: inline-flex; align-items: center; gap: 6px;
 }
 .sw-lipfact.is-dim { opacity: .62; font-weight: 600; }
+/* Cancelled or postponed: the lip's one slot goes to the lifecycle state.
+   Cream on a filled chip, because --app-danger and --app-warning-press are
+   built for cream backgrounds and would sit near 2.5:1 as text on this card's
+   dark category ground. Inline-block on the chip so the fill hugs the word. */
+.sw-lipfact.is-status {
+  padding: 3px 7px 2px; border-radius: 999px; opacity: 1;
+  color: var(--app-ink-inverse); font-weight: 800;
+}
+.sw-name.is-struck { text-decoration: line-through; opacity: .78; }
 .sw-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand);
   flex: none; box-shadow: 0 0 0 0 rgba(225,67,40,.5);

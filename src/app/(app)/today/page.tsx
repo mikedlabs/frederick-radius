@@ -47,7 +47,7 @@ import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { leanFromForecast } from "@/lib/today/weatherLean";
+import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
@@ -448,11 +448,20 @@ async function WeatherAwareOpenPlaceLead({
   baseRows: DaypartRows;
   forecastPromise: ReturnType<typeof getNwsForecast>;
 }) {
-  const lean = leanFromForecast(await forecastPromise, now);
+  const forecast = await forecastPromise;
+  const lean = leanFromForecast(forecast, now);
   const rows = lean ? buildDaypartRows(now, lean) : baseRows;
+  // Say when the rain stops, not just that it is out there. The full hourly
+  // forecast is already awaited here for a one-word lean; wetWindowEnd walks
+  // the same array to the first hour that is no longer wet. It returns null
+  // when the feed's window ends while it is still raining, so an unknown end
+  // stays unstated rather than becoming a guess.
+  const wetEnd = lean === "wet" ? wetWindowEnd(forecast, now) : null;
   const note =
     lean === "wet"
-      ? "Storms are close by, so indoor picks lead."
+      ? wetEnd
+        ? `${wetEnd.noun} around until ${wetEnd.endsAtLabel}, so indoor picks lead.`
+        : "Rain is around for a while, so indoor picks lead."
       : lean === "hot"
         ? "It is a hot one, so cool-down picks lead."
         : null;

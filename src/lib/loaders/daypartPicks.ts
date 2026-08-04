@@ -1,6 +1,6 @@
 import "server-only";
 import { likelyOpenPlaces, rankPlaces } from "@/lib/loaders/places";
-import { isOpenNow } from "@/lib/hours";
+import { formatHoursLine, isOpenNow } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
@@ -91,7 +91,21 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
           MUNICIPALITY_BY_SLUG[place.municipality]?.name ||
           "Frederick County",
         distance: null,
-        fact: confidence === "likely" ? "Likely open" : null,
+        // The closing time, not the fact that it is open. `isOpenNow` already
+        // ran on this exact object nine lines up to build `confirmed`, and
+        // formatHoursLine turns the same open_status into "Open until 9pm" or
+        // "Closing soon · 10pm". Leaving this null made DaypartNeeds fall back
+        // to the literal string "Open now" on all four tiles, so the one
+        // location-aware answer on Today opened by saying the same two words
+        // four times while the closing time sat in hand.
+        //
+        // These strings are deliberately the ones /api/want substitutes on its
+        // live refresh (want-answer.ts toRow), so the first paint now matches
+        // what replaces it instead of visibly changing a moment later.
+        fact:
+          confidence === "likely"
+            ? "Likely open · check hours"
+            : formatHoursLine(place.open_status),
         confidence,
       }));
     })(),
