@@ -13,9 +13,12 @@ import { easternDayKey } from "@/lib/tz";
 import {
   archivedEventBySlug,
   persistEventIdentity,
-  type ArchivedEventIdentity,
   type PersistedEventIdentity,
 } from "@/lib/events/event-identity";
+import {
+  archivedEventBySlugForRender,
+  type RenderableArchivedEvent,
+} from "@/lib/events/event-archive-lookup";
 import { servedEventBySlug } from "@/lib/events/served-event-snapshot";
 
 export type EventResolutionKind =
@@ -40,7 +43,7 @@ type EventResolverSources = {
   archive: (
     slug: string,
     context: EventLookupContext,
-  ) => Promise<ArchivedEventIdentity | null>;
+  ) => Promise<RenderableArchivedEvent | null>;
   live: (
     slug: string,
     context: EventLookupContext,
@@ -70,17 +73,15 @@ export const EVENT_ARCHIVE_HEAD_START_MS = 2_250;
 
 type ArchiveReader = (
   slug: string,
-) => Promise<ArchivedEventIdentity | null>;
+) => Promise<RenderableArchivedEvent | null>;
 
 type ArchiveReaderMemoizer = (read: ArchiveReader) => ArchiveReader;
 
 /**
  * Metadata and the page body can resolve concurrently in one Next request.
- * Supabase's transaction pool is intentionally limited to one connection per
- * serverless instance, so two identical cold archive reads can queue behind
- * each other and both miss their deadline. Coalesce only the in-flight work;
- * settled values are removed immediately so event updates never become a
- * process-local cache.
+ * Coalesce overlapping metadata and page reads before either the Data API or
+ * its direct-database fallback does duplicate work. Settled values are removed
+ * immediately so event updates never become a process-local cache.
  *
  * The underlying read owns its bounded timeout and is not tied to either
  * caller's AbortSignal. One consumer may stop waiting without cancelling the
@@ -89,7 +90,7 @@ type ArchiveReaderMemoizer = (read: ArchiveReader) => ArchiveReader;
 export function createCoalescedArchiveReader(
   read: ArchiveReader,
 ): ArchiveReader {
-  const inFlight = new Map<string, Promise<ArchivedEventIdentity | null>>();
+  const inFlight = new Map<string, Promise<RenderableArchivedEvent | null>>();
 
   return (slug) => {
     const existing = inFlight.get(slug);
@@ -106,8 +107,7 @@ export function createCoalescedArchiveReader(
 /**
  * React cache is the request-scoped half of this path: it lets metadata settle
  * first and the page body still reuse that answer. The in-flight reader below
- * also protects concurrent requests from opening duplicate pooled connections,
- * but deliberately forgets a value as soon as it settles.
+ * protects overlapping work and deliberately forgets a value once it settles.
  */
 export function createMemoizedArchiveSource(
   read: ArchiveReader,
@@ -119,7 +119,7 @@ export function createMemoizedArchiveSource(
 
 const productionArchiveSource = createMemoizedArchiveSource(
   (slug) =>
-    archivedEventBySlug(slug, {
+    archivedEventBySlugForRender(slug, {
       timeoutMs: EVENT_ARCHIVE_HEAD_START_MS,
     }),
   cache,

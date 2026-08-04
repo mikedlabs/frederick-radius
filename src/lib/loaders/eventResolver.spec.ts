@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { ArchivedEventIdentity } from "@/lib/events/event-identity";
+import type { RenderableArchivedEvent } from "@/lib/events/event-archive-lookup";
 import {
   EVENT_ARCHIVE_HEAD_START_MS,
   EVENT_DEEP_LINK_TIMEOUT_MS,
@@ -100,8 +101,8 @@ describe("production archive read sharing", () => {
       lastSeenAt: "2026-08-03T22:49:04.620Z",
     };
     const read = vi.fn(async () => stored);
-    const requestMemo = (reader: (slug: string) => Promise<ArchivedEventIdentity | null>) => {
-      const values = new Map<string, Promise<ArchivedEventIdentity | null>>();
+    const requestMemo = (reader: (slug: string) => Promise<RenderableArchivedEvent | null>) => {
+      const values = new Map<string, Promise<RenderableArchivedEvent | null>>();
       return (slug: string) => {
         const existing = values.get(slug);
         if (existing) return existing;

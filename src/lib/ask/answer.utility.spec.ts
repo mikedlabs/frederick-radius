@@ -2,6 +2,58 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { askFrederick } from "./answer";
 
+vi.mock("@/lib/loaders/places-client", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/lib/loaders/places-client")
+  >();
+
+  function withDeterministicPharmacyStatus(
+    place: ReturnType<typeof actual.clientPlaceBySlug>,
+  ) {
+    if (!place) return place;
+    const isPharmacy = [
+      place.category,
+      place.primary_type,
+      ...(place.subcategories ?? []),
+      ...(place.tags ?? []),
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.toLowerCase().replace(/_/g, "-"))
+      .some((value) => value === "pharmacy" || value === "drugstore");
+    if (!isPharmacy) return place;
+    if (place.slug === "whitesell-pharmacy") {
+      return {
+        ...place,
+        hours_verified: true,
+        open_status: {
+          state: "open" as const,
+          closesAt: "17:00",
+          closingSoon: false,
+        },
+      };
+    }
+    return {
+      ...place,
+      hours_verified: true,
+      open_status: {
+        state: "closed" as const,
+        opensAt: "14:00",
+        opensToday: true,
+      },
+    };
+  }
+
+  return {
+    ...actual,
+    clientPlaces: () =>
+      actual.clientPlaces().map((place) =>
+        withDeterministicPharmacyStatus(place),
+      ),
+    clientPlaceBySlug: (slug: string) =>
+      withDeterministicPharmacyStatus(actual.clientPlaceBySlug(slug)),
+  };
+});
+
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
   municipality: "frederick",
