@@ -40,7 +40,6 @@ import { BRAND } from "@/lib/brand";
 import {
   distanceLabel,
   lipFact,
-  plate,
   priceGlyphs,
   savedDateLabel,
   todayHoursLine,
@@ -174,25 +173,24 @@ function Card({
         {
           // The card wears its brand hue as a darkened gradient so cream text
           // always clears AA — never the raw hue, never near-black (owner:
-          // "can the cards not be so dark"). The calm comes from the deck
+          // "can the cards not be so dark"). The dark stop mixes toward Ink,
+          // the palette's own dark, at a 40% hue floor: the old literal
+          // #0c0a06 was darker than Ink itself, off-palette, and exactly the
+          // "so dark" the owner flagged. The calm comes from the deck
           // starting fully CLOSED (no card raised until tapped), not from
           // draining the color.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #221C15), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, var(--app-ink)), color-mix(in srgb, ${hue} 40%, var(--app-ink)))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
         } as CSSProperties
       }
     >
       {/* Full-card artwork — a DISTINCT motif per category family (swirl / facet
-          / emboss / topo / strata / grid), the field-guide answer to the Citi
-          swirl / UOB facets / DBS emboss that make each Wallet card its own. */}
+          / emboss / topo / strata / grid). The motif and the watermark glyph
+          below are the card's ONE texture idea (brand guide: one visual idea
+          at a time). The holographic sweep and metallic foil edge that used to
+          stack on top were the interface advertising itself and are gone. */}
       <span className={`sw-art ${motifClass(place.category)}`} aria-hidden />
-      {/* Holographic foil — an iridescent band swept across a raised card.
-          Reduced-motion users get a still, subtle sheen. */}
-      <span className="sw-holo" aria-hidden />
-      {/* Foil edge — a hairline metallic rim that reads as the card's
-          laminated cut edge. Pure decoration, brand-neutral. */}
-      <span className="sw-foil-edge" aria-hidden />
       {/* Big category glyph as the card's watermark "logo". */}
       <span className="sw-glyph" aria-hidden>
         <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />
@@ -295,9 +293,6 @@ function Card({
               </div>
             )}
           </dl>
-          <div className="sw-rail">
-            <span className="sw-plateseal">Pl. {plate(index)}</span>
-          </div>
         </div>
         <div className="sw-actions">
           <Link href={`/places/${place.slug}`} onClick={stop} tabIndex={open ? 0 : -1} className="sw-act-primary">

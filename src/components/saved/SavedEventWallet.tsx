@@ -34,7 +34,7 @@ import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
-import { plate, savedDateLabel } from "@/components/saved/walletFacts";
+import { savedDateLabel } from "@/components/saved/walletFacts";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
 
@@ -152,17 +152,17 @@ function Card({
       className={`sw-card${open ? " is-open" : ""}${fact.live ? " sw-live-card" : ""}`}
       style={
         {
-          // Darkened category ground so cream text always clears AA — never the raw hue.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #221C15), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          // Darkened category ground so cream text always clears AA — never
+          // the raw hue. Mixed toward Ink (the palette's dark), with a 40%
+          // hue floor so the tail never goes blacker than the brand allows.
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, var(--app-ink)), color-mix(in srgb, ${hue} 40%, var(--app-ink)))`,
           "--sw-i": index,
         } as CSSProperties
       }
     >
-      {/* Same full-card motif / holo / foil-edge / watermark treatment the
-          place cards wear, so the two decks read as one wallet. */}
+      {/* Same full-card motif + watermark treatment the place cards wear, so
+          the two decks read as one wallet. One texture idea per card. */}
       <span className={`sw-art ${eventMotifClass(event.category)}`} aria-hidden />
-      <span className="sw-holo" aria-hidden />
-      <span className="sw-foil-edge" aria-hidden />
       <span className="sw-glyph" aria-hidden>
         <CategoryIcon slug={event.category} className="h-full w-full" strokeWidth={1.5} />
       </span>
@@ -233,9 +233,6 @@ function Card({
               </div>
             )}
           </dl>
-          <div className="sw-rail">
-            <span className="sw-plateseal">Pl. {plate(index)}</span>
-          </div>
         </div>
         <div className="sw-actions">
           <Link href={`/events/${event.slug}`} onClick={stop} tabIndex={open ? 0 : -1} className="sw-act-primary">

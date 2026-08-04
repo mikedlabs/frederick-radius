@@ -4,7 +4,6 @@ import {
   fmtClock,
   fmtClockShort,
   lipFact,
-  plate,
   priceGlyphs,
   savedDateLabel,
   todayHoursLine,
@@ -133,10 +132,5 @@ describe("ledger helpers", () => {
     expect(savedDateLabel("1970-01-01T00:00:00.000Z")).toBeNull();
     expect(savedDateLabel("not a date")).toBeNull();
     expect(savedDateLabel(undefined)).toBeNull();
-  });
-  it("plate numbers climb in roman numerals then fall back to digits", () => {
-    expect(plate(0)).toBe("I");
-    expect(plate(5)).toBe("VI");
-    expect(plate(12)).toBe("13");
   });
 });
