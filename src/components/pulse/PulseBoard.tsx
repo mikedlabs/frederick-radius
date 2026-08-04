@@ -139,7 +139,10 @@ export function pulseStatusWord({
   tone: PulseHeroChip["tone"];
 }): string {
   if (degraded) return "Partial data";
-  if (allClear) return "Checked";
+  // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
+  // row, and the same word twice in one line read as a stutter. This word's
+  // job is the county's state; the freshness stamp owns the checking.
+  if (allClear) return "All quiet";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
@@ -160,6 +163,17 @@ export type PulseTile = {
   /** More precise source state for tiles that remain useful with partial data
    * or whose integration is intentionally not connected. */
   availability?: "current" | "partial" | "unavailable" | "not-connected";
+  /**
+   * True when the tile carries an ambient MEASUREMENT — a number that exists
+   * whether or not anything is wrong (temperature, AQI, river feet, a drive
+   * time). These stay on the open board even when quiet, because "78° and
+   * partly sunny" is the answer a person came for, not an absence to file.
+   * Counter tiles (outages, reports, alerts) stay unmarked: their quiet state
+   * IS an absence ("No major outage") and belongs behind the disclosure.
+   * The page sets this only on branches that hold a real current value, so a
+   * degraded fallback never claims to be a reading.
+   */
+  reading?: boolean;
   kind: "feature" | "gauge" | "status";
   peek?: string;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
@@ -219,14 +233,24 @@ export function pulseTileBanks(tiles: PulseTile[]): PulseTileBank[] {
 export type PulseDisplayGroups = {
   attention: PulseTile[];
   actionable: PulseTile[];
+  /** Ambient measurements that stay on the open board on a calm day. */
+  readings: PulseTile[];
   quiet: PulseTile[];
 };
 
 /**
  * The mobile board is a decision surface, not a feed inventory. Keep genuine
- * situations in front; move calm readings and integration health into one
+ * situations in front; move absences and integration health into one
  * disclosure. A degraded source can never promote itself by also carrying an
  * old `active` flag.
+ *
+ * The split between `readings` and `quiet` is measurement versus absence,
+ * not fine versus wrong. The county's ambient numbers (weather, air, rivers,
+ * drive times) render open on every visit, because hiding them behind a
+ * "sources are quiet" strip meant the best-composed facts on the page were
+ * two taps deep precisely when nothing was wrong — which is most days. Tiles
+ * whose quiet state is an absence ("No major outage", "No open reports") and
+ * feeds that did not answer are what the disclosure is FOR.
  */
 export function pulseDisplayGroups(
   tiles: PulseTile[],
@@ -240,6 +264,7 @@ export function pulseDisplayGroups(
 ): PulseDisplayGroups {
   const attention: PulseTile[] = [];
   const actionable: PulseTile[] = [];
+  const readings: PulseTile[] = [];
   const quiet: PulseTile[] = [];
 
   for (const tile of tiles) {
@@ -247,10 +272,14 @@ export function pulseDisplayGroups(
     const state = pulseTileState(tile);
     if (state === "Attention") attention.push(tile);
     else if (state === "Active") actionable.push(tile);
+    // Only a CURRENT reading earns the open board. A reading-flagged tile in
+    // any degraded state has no number to show, and a live one is already in
+    // the groups above.
+    else if (tile.reading && state === "Current") readings.push(tile);
     else quiet.push(tile);
   }
 
-  return { attention, actionable, quiet };
+  return { attention, actionable, readings, quiet };
 }
 
 /**
@@ -643,12 +672,20 @@ function PulseSmartBlock({
               strokeWidth: 2.15,
             })}
           </span>
-          <span
-            className="min-w-0 truncate text-[8.5px] font-bold uppercase tracking-[0.105em]"
-            style={{ color: stateColor }}
-          >
-            {state}
-          </span>
+          {/* "Current" is the neutral state and stays unwritten on the face:
+              stamping it on every calm tile turned the quiet grid into a wall
+              of CURRENT. Every OTHER state still prints beside its color (the
+              written-state rule exists so a non-neutral state never relies on
+              tint alone), and the aria-label above always carries the state
+              for assistive tech. */}
+          {state !== "Current" && (
+            <span
+              className="min-w-0 truncate text-[8.5px] font-bold uppercase tracking-[0.105em]"
+              style={{ color: stateColor }}
+            >
+              {state}
+            </span>
+          )}
         </span>
 
         {unavailable ? (
@@ -774,26 +811,41 @@ function PulseSmartBlock({
   );
 }
 
+/** "Power out, 311 reports, and Schools" — names, so the closed strip says
+ *  what it holds instead of how many things it holds. */
+export function nameListSentence(names: readonly string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
 function SecondarySignals({
   updates,
-  visibleUpdates,
-  showAllUpdates,
-  onToggleUpdates,
   onOpen,
 }: {
   updates: PulseTile[];
-  visibleUpdates: PulseTile[];
-  showAllUpdates: boolean;
-  onToggleUpdates: () => void;
   onOpen: (key: string) => void;
 }) {
   if (updates.length === 0) return null;
-  const degradedCount = updates.filter((tile) => {
+  const degraded = updates.filter((tile) => {
     const state = pulseTileState(tile);
     return state === "Partial data" || state === "Feed unavailable" || state === "Not connected";
-  }).length;
-  const quietCount = updates.length - degradedCount;
-  const total = updates.length;
+  });
+  const quiet = updates.filter((tile) => !degraded.includes(tile));
+
+  // Names, not a count. "12 sources are quiet" made a reader open the strip
+  // just to learn whether the thing they cared about was in it; naming the
+  // sources answers that from the closed state. The set is short by
+  // construction now that the ambient readings live on the open board.
+  const quietSentence =
+    quiet.length > 0
+      ? `${nameListSentence(quiet.map((tile) => tile.label))} ${quiet.length === 1 ? "is" : "are"} quiet.`
+      : null;
+  const degradedSentence =
+    degraded.length > 0
+      ? `${nameListSentence(degraded.map((tile) => tile.label))} ${degraded.length === 1 ? "needs" : "need"} a refresh.`
+      : null;
 
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
@@ -804,8 +856,8 @@ function SecondarySignals({
           background: "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
         }}
       >
-        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
-          {degradedCount > 0 ? (
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+          {degraded.length > 0 ? (
             <AlertTriangle
               aria-hidden
               className="h-4 w-4 shrink-0"
@@ -822,12 +874,10 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Other checked signals
+              Nothing reported
             </span>
-            <span className="mt-0.5 block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {degradedCount > 0
-                ? `${quietCount} ${quietCount === 1 ? "source is" : "sources are"} quiet. ${degradedCount} ${degradedCount === 1 ? "needs" : "need"} a refresh.`
-                : `${total} ${total === 1 ? "source is" : "sources are"} current and quiet.`}
+            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {[quietSentence, degradedSentence].filter(Boolean).join(" ")}
             </span>
           </span>
           <ChevronDown
@@ -837,21 +887,12 @@ function SecondarySignals({
         </summary>
 
         <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
-          <div className="mb-2 flex items-center gap-2">
-            <Newspaper aria-hidden className="h-3.5 w-3.5" style={{ color: "var(--app-ink-3)" }} />
-            <h3
-              className="text-[9.5px] font-semibold uppercase tracking-[0.1em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Source details
-            </h3>
-          </div>
           <ul
             id="pulse-local-updates"
             data-pulse-bank="local-pulse"
             className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
           >
-            {visibleUpdates.map((tile, index) => (
+            {updates.map((tile, index) => (
               <PulseSmartBlock
                 key={tile.key}
                 tile={tile}
@@ -861,19 +902,6 @@ function SecondarySignals({
               />
             ))}
           </ul>
-          {updates.length > 4 && (
-            <button
-              type="button"
-              onClick={onToggleUpdates}
-              aria-expanded={showAllUpdates}
-              aria-controls="pulse-local-updates"
-              className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              {showAllUpdates ? "Show fewer updates" : `${updates.length - 4} more updates`}
-              <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
-            </button>
-          )}
         </div>
       </details>
     </section>
@@ -923,7 +951,6 @@ export default function PulseBoard({
   breaking?: ReactNode;
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [showAllUpdates, setShowAllUpdates] = useState(false);
   const pushedOpen = useRef(false);
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
@@ -993,9 +1020,6 @@ export default function PulseBoard({
   });
   const attention = displayGroups.attention;
   const quietSignals = displayGroups.quiet;
-  const visibleQuietSignals = showAllUpdates
-    ? quietSignals
-    : quietSignals.slice(0, 4);
   const attentionCount = attention.length + attentionChips.length + (showAlertData ? 1 : 0);
   const hasAttention = attentionCount > 0;
   const statusWord = pulseStatusWord({
@@ -1131,13 +1155,27 @@ export default function PulseBoard({
           </section>
         )}
 
-        <SecondarySignals
-          updates={quietSignals}
-          visibleUpdates={visibleQuietSignals}
-          showAllUpdates={showAllUpdates}
-          onToggleUpdates={() => setShowAllUpdates((value) => !value)}
-          onOpen={openTile}
-        />
+        {displayGroups.readings.length > 0 && (
+          <section aria-labelledby="pulse-readings-heading" className="min-w-0 space-y-2.5">
+            <GroupHeading id="pulse-readings-heading" title="Current conditions" />
+            <ul
+              data-pulse-bank="readings"
+              className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+            >
+              {displayGroups.readings.map((tile, index) => (
+                <PulseSmartBlock
+                  key={tile.key}
+                  tile={tile}
+                  bankKey="readings"
+                  index={index}
+                  onOpen={() => openTile(tile.key)}
+                />
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <SecondarySignals updates={quietSignals} onOpen={openTile} />
       </div>
 
       <style>{`
