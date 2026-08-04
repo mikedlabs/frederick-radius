@@ -11,6 +11,16 @@ vi.mock("@/lib/loaders/places-client", async (importOriginal) => {
     place: ReturnType<typeof actual.clientPlaceBySlug>,
   ) {
     if (!place) return place;
+    const isPharmacy = [
+      place.category,
+      place.primary_type,
+      ...(place.subcategories ?? []),
+      ...(place.tags ?? []),
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.toLowerCase().replace(/_/g, "-"))
+      .some((value) => value === "pharmacy" || value === "drugstore");
+    if (!isPharmacy) return place;
     if (place.slug === "whitesell-pharmacy") {
       return {
         ...place,
@@ -22,18 +32,15 @@ vi.mock("@/lib/loaders/places-client", async (importOriginal) => {
         },
       };
     }
-    if (place.slug === "cvs-pharmacy-95") {
-      return {
-        ...place,
-        hours_verified: true,
-        open_status: {
-          state: "closed" as const,
-          opensAt: "14:00",
-          opensToday: true,
-        },
-      };
-    }
-    return place;
+    return {
+      ...place,
+      hours_verified: true,
+      open_status: {
+        state: "closed" as const,
+        opensAt: "14:00",
+        opensToday: true,
+      },
+    };
   }
 
   return {
