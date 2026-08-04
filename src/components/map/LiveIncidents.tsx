@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { AlertTriangle } from "lucide-react";
 import type {
@@ -55,6 +56,7 @@ export default function LiveIncidents({
   onSnapshot,
   focusIncidentId,
   onFocusIncidentChange,
+  gate,
 }: {
   show: boolean;
   /** Main /map probes quietly while the layer is off so its edge control can
@@ -64,6 +66,8 @@ export default function LiveIncidents({
   probe?: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
   onSnapshot?: (items: LiveIncidentSignal[]) => void;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
   /** Edge-tool selection. Derived during render so focusing an already-probed
    * report opens its popup without a state-setting synchronization effect. */
   focusIncidentId?: string | null;
@@ -71,6 +75,7 @@ export default function LiveIncidents({
 }) {
   const [incidents, setIncidents] = useState<LiveIncidentSignal[]>([]);
   const [selected, setSelected] = useState<LiveIncidentSignal | null>(null);
+  useLiveLayerGate(gate, () => setSelected(null));
   const incidentsRef = useRef<LiveIncidentSignal[]>([]);
   // Wall-clock now (ms) for the "X min ago" label, stamped on poll/tick so no
   // Date.now() runs during render (react-hooks purity).
@@ -181,6 +186,7 @@ export default function LiveIncidents({
             onClick={(ev) => {
               ev.stopPropagation();
               onFocusIncidentChange?.(null);
+              gate?.onWillOpen();
               setSelected(inc);
             }}
             aria-label={`${inc.kind} near ${inc.location}${isPast ? " (past)" : ""}`}

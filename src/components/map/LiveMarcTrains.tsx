@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { TrainFront } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -74,10 +75,18 @@ type Tween = {
   moving: boolean;
 };
 
-export default function LiveMarcTrains({ show }: { show: boolean }) {
+export default function LiveMarcTrains({
+  show,
+  gate,
+}: {
+  show: boolean;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
+}) {
   const [vehicles, setVehicles] = useState<MarcVehicle[]>([]);
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  useLiveLayerGate(gate, () => setSelected(null));
   // Wall-clock now (ms), refreshed on the 1s tick — drives the age gate and
   // the "updated Xs ago" stamp WITHOUT a Date.now() in render. Starts 0
   // until the first poll stamps it (nothing renders before that anyway).
@@ -176,7 +185,7 @@ export default function LiveMarcTrains({ show }: { show: boolean }) {
           >
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.tripId); }}
+              onClick={(e) => { e.stopPropagation(); haptic("light"); gate?.onWillOpen(); setSelected(v.tripId); }}
               aria-label={`MARC ${v.line} train ${v.tripId}, ${p.moving ? "moving now" : "holding"}`}
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-train-in 260ms ease-out both" }}
             >
