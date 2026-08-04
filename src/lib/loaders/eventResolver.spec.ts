@@ -6,6 +6,8 @@ import {
   EVENT_DEEP_LINK_TIMEOUT_MS,
   EventResolutionTimeoutError,
   EventResolutionUnavailableError,
+  createCoalescedArchiveReader,
+  createMemoizedArchiveSource,
   eventFromUnifiedSnapshot,
   isOperationalEventResolutionError,
   resolveEventMetadataBySlugWithSources,
@@ -27,6 +29,102 @@ describe("isOperationalEventResolutionError", () => {
     expect(isOperationalEventResolutionError(new Error("render bug"))).toBe(
       false,
     );
+  });
+});
+
+describe("production archive read sharing", () => {
+  it("coalesces overlapping reads, then releases the result", async () => {
+    let finish: ((value: ArchivedEventIdentity | null) => void) | undefined;
+    const retained = event("shared-event-2026-08-14");
+    const read = vi.fn(
+      () =>
+        new Promise<ArchivedEventIdentity | null>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const archive = createCoalescedArchiveReader(read);
+
+    const metadataRead = archive(retained.slug);
+    const pageRead = archive(retained.slug);
+    expect(read).toHaveBeenCalledOnce();
+
+    const stored: ArchivedEventIdentity = {
+      id: "shared-identity",
+      canonicalSlug: retained.slug,
+      event: retained,
+      tombstoned: false,
+      lastSeenAt: "2026-08-03T22:49:04.620Z",
+    };
+    finish?.(stored);
+
+    await expect(Promise.all([metadataRead, pageRead])).resolves.toEqual([
+      stored,
+      stored,
+    ]);
+
+    read.mockResolvedValueOnce(stored);
+    await expect(archive(retained.slug)).resolves.toEqual(stored);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases a failed read so the next request can retry", async () => {
+    const retained = event("retry-event-2026-08-14");
+    const read = vi
+      .fn<() => Promise<ArchivedEventIdentity | null>>()
+      .mockRejectedValueOnce(new Error("cold connection failed"))
+      .mockResolvedValueOnce({
+        id: "retry-identity",
+        canonicalSlug: retained.slug,
+        event: retained,
+        tombstoned: false,
+        lastSeenAt: "2026-08-03T22:49:04.620Z",
+      });
+    const archive = createCoalescedArchiveReader(read);
+
+    await expect(archive(retained.slug)).rejects.toThrow(
+      "cold connection failed",
+    );
+    await expect(archive(retained.slug)).resolves.toMatchObject({
+      canonicalSlug: retained.slug,
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets sequential metadata and page calls share one request memo", async () => {
+    const retained = event("sequential-event-2026-08-14");
+    const stored: ArchivedEventIdentity = {
+      id: "sequential-identity",
+      canonicalSlug: retained.slug,
+      event: retained,
+      tombstoned: false,
+      lastSeenAt: "2026-08-03T22:49:04.620Z",
+    };
+    const read = vi.fn(async () => stored);
+    const requestMemo = (reader: (slug: string) => Promise<ArchivedEventIdentity | null>) => {
+      const values = new Map<string, Promise<ArchivedEventIdentity | null>>();
+      return (slug: string) => {
+        const existing = values.get(slug);
+        if (existing) return existing;
+        const pending = reader(slug);
+        values.set(slug, pending);
+        return pending;
+      };
+    };
+    const archive = createMemoizedArchiveSource(read, requestMemo);
+    const metadataContext = {
+      signal: new AbortController().signal,
+      deadline: Date.now() + EVENT_ARCHIVE_HEAD_START_MS,
+    };
+    const pageContext = {
+      signal: new AbortController().signal,
+      deadline: Date.now() + EVENT_DEEP_LINK_TIMEOUT_MS,
+    };
+
+    await expect(archive(retained.slug, metadataContext)).resolves.toEqual(
+      stored,
+    );
+    await expect(archive(retained.slug, pageContext)).resolves.toEqual(stored);
+    expect(read).toHaveBeenCalledOnce();
   });
 });
 
@@ -188,7 +286,7 @@ describe("resolveEventPageBySlugWithSources", () => {
     expect(loaders.ingested).not.toHaveBeenCalled();
   });
 
-  it("keeps a valid archive hit that arrives after the old cold-read cutoff", async () => {
+  it("keeps a valid archive hit that arrives late in the cold-read window", async () => {
     vi.useFakeTimers();
     try {
       const retained = event("fcpl-film-festival-dog-man-fcpl-20260804");
@@ -205,7 +303,7 @@ describe("resolveEventPageBySlugWithSources", () => {
                     tombstoned: false,
                     lastSeenAt: "2026-08-03T22:49:04.620Z",
                   }),
-                700,
+                EVENT_ARCHIVE_HEAD_START_MS - 200,
               );
             }),
         ),
@@ -216,7 +314,7 @@ describe("resolveEventPageBySlugWithSources", () => {
         loaders,
       );
 
-      await vi.advanceTimersByTimeAsync(700);
+      await vi.advanceTimersByTimeAsync(EVENT_ARCHIVE_HEAD_START_MS - 200);
 
       await expect(pending).resolves.toEqual({
         event: retained,
