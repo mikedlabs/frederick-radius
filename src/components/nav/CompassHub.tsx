@@ -566,12 +566,11 @@ export default function CompassHub() {
       className="space-y-5"
       data-compass-ready={hydrated ? "true" : "false"}
     >
+      {/* Title and search sit directly on Cream — the canvas, not a slab.
+          The border-b is the one boundary the header keeps. */}
       <header
-        className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0 lg:rounded-[var(--app-radius-lg)] lg:border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated-solid)",
-        }}
+        className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0"
+        style={{ borderColor: "var(--app-border)" }}
       >
         <div>
           <p
@@ -758,16 +757,15 @@ function PinnedTools({
                   {...intentProps(item)}
                   className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 >
+                  {/* The glyph in its own color, directly on Cream. The old
+                      bordered-and-filled tile was a box inside a box: the
+                      grid cell already bounds the target. */}
                   <span
-                    className="grid h-9 w-9 place-items-center rounded-[11px] border"
-                    style={{
-                      color: item.color,
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated-solid)",
-                    }}
+                    className="grid h-9 w-9 place-items-center"
+                    style={{ color: item.color }}
                   >
                     <item.icon
-                      className="h-[17px] w-[17px]"
+                      className="h-[19px] w-[19px]"
                       strokeWidth={2.05}
                       aria-hidden
                     />
@@ -850,6 +848,71 @@ function RecentTools({
   );
 }
 
+/**
+ * One live fact per intent row, read from /api/deck after mount.
+ *
+ * Compass sits on top of eleven live feeds and used to state no live fact at
+ * all — every row was a fixed registry sentence, which is why the page read
+ * as a table of contents. This is deliberately ONE fetch, not the poll the
+ * old DeckBoard ran: Compass is a navigation index a person passes through,
+ * not a dashboard they leave open, and each upstream integration behind the
+ * route carries its own revalidate window so the call is usually a cache
+ * read. It is equally deliberately NOT awaited in the server component: the
+ * route fans out to twelve integrations behind a 6s ceiling, and blocking a
+ * navigation index on that would be a worse regression than the silence.
+ *
+ * Each intent names the deck keys that can speak for it, in priority order.
+ * A key only speaks when its feed answered (status "ok") and it has a face
+ * value; otherwise the row keeps its plain sentence — an honest absence, not
+ * a placeholder.
+ */
+const INTENT_LIVE_KEYS: Partial<Record<CompassIntentId, readonly string[]>> = {
+  "go-out": ["events"],
+  "get-around": ["buses", "traffic", "trains"],
+  "local-help": ["weather", "power", "schools"],
+};
+
+type DeckLiveFace = { value: string; label: string };
+type DeckLiveKey = { id: string; status: string; faces: DeckLiveFace[] };
+
+export function liveLineForIntent(
+  intentId: CompassIntentId,
+  keys: readonly DeckLiveKey[],
+): string | null {
+  for (const keyId of INTENT_LIVE_KEYS[intentId] ?? []) {
+    const key = keys.find((candidate) => candidate.id === keyId);
+    const face = key?.faces?.[0];
+    if (key?.status === "ok" && face?.value && face.label) {
+      return `${face.value} ${face.label}`;
+    }
+  }
+  return null;
+}
+
+function useDeckLiveLines(): Partial<Record<CompassIntentId, string>> {
+  const [lines, setLines] = useState<Partial<Record<CompassIntentId, string>>>({});
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/deck", { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { keys?: DeckLiveKey[] }) => {
+        const keys = Array.isArray(data.keys) ? data.keys : [];
+        const next: Partial<Record<CompassIntentId, string>> = {};
+        for (const intent of COMPASS_INTENT_DEFINITIONS) {
+          const line = liveLineForIntent(intent.id, keys);
+          if (line) next[intent.id] = line;
+        }
+        setLines(next);
+      })
+      .catch(() => {
+        // The rows keep their registry sentences. A degraded deck costs the
+        // page its live garnish, never its function.
+      });
+    return () => ctrl.abort();
+  }, []);
+  return lines;
+}
+
 function CompassIntentBoard({
   intents,
   itemById,
@@ -865,6 +928,7 @@ function CompassIntentBoard({
   onOpen: (view: CompassDeckView, managePins?: boolean) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
+  const liveLines = useDeckLiveLines();
   return (
     <section aria-labelledby="compass-browse-heading" className="space-y-2.5">
       <h2
@@ -874,11 +938,11 @@ function CompassIntentBoard({
         Choose a direction
       </h2>
 
-      <div
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
-        style={{ borderColor: "var(--app-border-strong)" }}
-      >
-        {intents.map((intent, index) => {
+      {/* Rows separated by hairline rules on Cream, not a filled panel inside
+          a strong border. Cream is the product canvas; the old elevated slab
+          made this the one page where it never appeared. */}
+      <div className="overflow-hidden">
+        {intents.map((intent) => {
           const expanded = activeIntent === intent.id;
           const featured = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
@@ -900,20 +964,22 @@ function CompassIntentBoard({
                   haptic("light");
                   onActiveIntentChange(expanded ? null : intent.id);
                 }}
-                className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                 style={{
                   background: expanded
-                    ? "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))"
-                    : "var(--app-bg-elevated-solid)",
+                    ? "color-mix(in srgb, var(--app-brand) 6%, transparent)"
+                    : "transparent",
                 }}
               >
-                <span
-                  className="font-mono w-6 shrink-0 text-[10px] font-semibold tabular-nums"
+                {/* The intent's own icon, in the slot the decorative 01-05
+                    ordinals used to occupy. The numbers implied a sequence
+                    that never existed; the icon says what the row is. */}
+                <intent.icon
+                  className="h-5 w-5 shrink-0"
+                  strokeWidth={2}
                   style={{ color: expanded ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
                   aria-hidden
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
                     {intent.label}
@@ -924,6 +990,16 @@ function CompassIntentBoard({
                   >
                     {intent.description}
                   </span>
+                  {liveLines[intent.id] && (
+                    // The one live fact this intent can currently state, from
+                    // the county's own feeds. Creek, because it is data.
+                    <span
+                      className="mt-1 block text-[11px] font-medium tabular-nums leading-snug"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      {liveLines[intent.id]}
+                    </span>
+                  )}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${
