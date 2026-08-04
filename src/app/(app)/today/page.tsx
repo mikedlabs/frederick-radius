@@ -282,18 +282,17 @@ export default async function HomePage() {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
           <header className="mb-3 px-0.5">
-            {/* Dateline, not the daypart: the h1 already names the moment
-                ("This afternoon…"), so a daypart kicker here just said it
-                twice. The date is the one thing the header wasn't showing and
-                the field-guide way to date the front door. */}
-            <div aria-hidden className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
-              <span className="h-[3px] w-7 rounded-full" style={{ background: "var(--app-brand)" }} />
-              {formatEasternDateline(now)}
-            </div>
-            <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
+            {/* The page title, at page-title size. At 22px it sat two pixels
+                above its own 20px section headings, so the masthead read as
+                just another section. 30/32 restores the ladder: page over
+                section over row, with typography carrying the hierarchy
+                (brand rule) instead of the deleted brick dash. The date now
+                rides the scope line below — one supporting line instead of a
+                decorated eyebrow above the title. */}
+            <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
               {frame.title}
             </h1>
-            <TodayScopeStatus />
+            <TodayScopeStatus dateline={formatEasternDateline(now)} />
           </header>
         );
       })()}
