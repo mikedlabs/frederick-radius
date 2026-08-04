@@ -1,0 +1,1101 @@
+{
+  "issues": [
+    {
+      "id": 22413941,
+      "status": "Acknowledged",
+      "summary": "Roadway Pavement Maintenance",
+      "description": "Bowers road was just recently dug up and patched all the way across the road. The patch is extremely rough as it has settled. I do not know if the county did this or a contractor, but it need attention sooner than later. We certainly pay enough tax money to have decent roads! ",
+      "rating": 2,
+      "lat": 39.42583211264841,
+      "lng": -77.47355984753122,
+      "address": "6900-6920 Bowers Rd Frederick, MD, 21702, USA",
+      "created_at": "2026-08-03T21:02:06-04:00",
+      "acknowledged_at": "2026-08-03T21:02:10-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-04T07:40:31-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22413941",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.47355984753122,
+          39.42583211264841
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22413941",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40762,
+        "title": "Roadway Pavement Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40762",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.42583211264841&lng=-77.47355984753122&request_types=40762&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22413941/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22413941/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22413213,
+      "status": "Acknowledged",
+      "summary": "Illegal Debris Removal",
+      "description": "Looks like someone dumped a big box and trash into the tree row off the Waterside walking path nearby. Tire tracks go down the hill from around 8046 Captain Ct, Frederick MD, across the walking trail and into the tree row. Happened sometime between August 2nd after 5 PM and August 3rd 6 PM.",
+      "rating": 2,
+      "lat": 39.45684840958292,
+      "lng": -77.37514155214802,
+      "address": "8046 Captains Ct Frederick, MD, 21701, USA",
+      "created_at": "2026-08-03T19:13:02-04:00",
+      "acknowledged_at": "2026-08-03T19:13:07-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T19:13:07-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22413213",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.37514155214802,
+          39.45684840958292
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22413213",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40759,
+        "title": "Illegal Debris Removal",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40759",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.45684840958292&lng=-77.37514155214802&request_types=40759&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22413213/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22413213/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/tree-dde3541ec612fcdf09413e99a627d32c887f9dd5599e78f23f5b67319970b4bc.png"
+      }
+    },
+    {
+      "id": 22411279,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "Hi,\nI live in the subdivision in Players Walk Holly Hills in Ijamsville. The road Ritchie Drive is a speed violation road. I currently only see one sign ( near the Holly Hills Club) turning on Ritchie from Mussetter that is posted at 25 mph. \nCar speeds on that road are extremely fast and whip around the curve.  I pass cars coming home. I am concern for public and wildlife safety. I would guess speeds up to 50 mph plus. Also, residents do walk the sides of the road. If possible, could you post more 25 mph signs or put a speed monitor to collect data.  I believe the one sign is not sufficient. \nAlso, outside of Ritchie and Musseter/Ijamsville Road the bushes are overgrowing where the cars that quickly come down Ijamsville Road are not seen if you are looking to turn left. Sorry for two requests. The first one is more important.\n\nThanks,\nMichelle ",
+      "rating": 2,
+      "lat": 39.390439512105054,
+      "lng": -77.320694479775,
+      "address": "Ritchie Dr Ijamsville, Maryland, 21754",
+      "created_at": "2026-08-03T16:14:14-04:00",
+      "acknowledged_at": "2026-08-03T16:15:17-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T16:15:17-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22411279",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.320694479775,
+          39.390439512105054
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22411279",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.390439512105054&lng=-77.320694479775&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22411279/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22411279/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 4277265,
+        "name": "Michelle Cooper",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/4277265",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22410727,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "Needs to finish painting the lines on road.  This intersection is very dangerous. Lots of people run through the stop sign   Can we get flashing stop sign to help people realize there’s a stop sign there. ",
+      "rating": 2,
+      "lat": 39.36509189632,
+      "lng": -77.437858189194,
+      "address": "English Muffin Way & Tennison Dr Frederick, MD, 21703, USA",
+      "created_at": "2026-08-03T15:34:57-04:00",
+      "acknowledged_at": "2026-08-03T15:35:07-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T15:35:08-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22410727",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.437858189194,
+          39.36509189632
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22410727",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.36509189632&lng=-77.437858189194&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22410727/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22410727/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 4277169,
+        "name": "dbrown7759",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/4277169",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNzQ0NzcsInB1ciI6ImJsb2JfaWQifX0=--aa438cbd528165a6bd0bfb2fcf5eded74d9610b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/bd606739-b3d6-4abf-b6ab-b4c60c05177a_2026-08-03T15-29-12-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNzQ0NzcsInB1ciI6ImJsb2JfaWQifX0=--aa438cbd528165a6bd0bfb2fcf5eded74d9610b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/bd606739-b3d6-4abf-b6ab-b4c60c05177a_2026-08-03T15-29-12-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNzQ0NzcsInB1ciI6ImJsb2JfaWQifX0=--aa438cbd528165a6bd0bfb2fcf5eded74d9610b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/bd606739-b3d6-4abf-b6ab-b4c60c05177a_2026-08-03T15-29-12-04-00.jpg"
+      }
+    },
+    {
+      "id": 22410469,
+      "status": "Closed",
+      "summary": "Roadway General Request",
+      "description": "there is a trailer left in almost the middle of the road no signs, no cones. no warning down to a one-lane road",
+      "rating": 2,
+      "lat": 39.399103061016,
+      "lng": -77.556065655107,
+      "address": "3303 Sumantown Rd Middletown, Maryland, 21769",
+      "created_at": "2026-08-03T15:15:36-04:00",
+      "acknowledged_at": "2026-08-03T15:15:39-04:00",
+      "closed_at": "2026-08-03T16:30:53-04:00",
+      "reopened_at": null,
+      "updated_at": "2026-08-03T16:30:54-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22410469",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.556065655107,
+          39.399103061016
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22410469",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.399103061016&lng=-77.556065655107&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22410469/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22410469/flag",
+      "transitions": {
+        "open_url": "https://seeclickfix.com/api/v2/issues/22410469/open"
+      },
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22410328,
+      "status": "Acknowledged",
+      "summary": "Roadway Pavement Maintenance",
+      "description": "Road was recently patched, however with the recent storms' areas repaired have been washed out and needs to be refilled. ",
+      "rating": 2,
+      "lat": 39.46455843974529,
+      "lng": -77.43243627130632,
+      "address": "8310 Jordan Valley Way Frederick, Maryland, 21702",
+      "created_at": "2026-08-03T15:07:20-04:00",
+      "acknowledged_at": "2026-08-03T15:07:23-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-04T07:30:30-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22410328",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.43243627130632,
+          39.46455843974529
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22410328",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40762,
+        "title": "Roadway Pavement Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40762",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.46455843974529&lng=-77.43243627130632&request_types=40762&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22410328/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22410328/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22410194,
+      "status": "Acknowledged",
+      "summary": "Roadway Drainage Maintenance",
+      "description": "Drainage area at this location is backed up and needs to be cleared.",
+      "rating": 2,
+      "lat": 39.36619932052734,
+      "lng": -77.17874062116199,
+      "address": "13870 Old National Pike Mount Airy, Maryland, 21771",
+      "created_at": "2026-08-03T14:58:35-04:00",
+      "acknowledged_at": "2026-08-03T14:58:39-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T16:11:00-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22410194",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.17874062116199,
+          39.36619932052734
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22410194",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40760,
+        "title": "Roadway Drainage Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40760",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.36619932052734&lng=-77.17874062116199&request_types=40760&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22410194/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22410194/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22409392,
+      "status": "Closed",
+      "summary": "Roadway Drainage Maintenance",
+      "description": "Finally at 1:55 they put up a road closed sign. Pitiful!",
+      "rating": 3,
+      "lat": 39.444,
+      "lng": -77.4757,
+      "address": "7716 Edgewood Church Rd Frederick, Maryland, 21702",
+      "created_at": "2026-08-03T14:02:21-04:00",
+      "acknowledged_at": "2026-08-03T14:02:34-04:00",
+      "closed_at": "2026-08-03T14:15:27-04:00",
+      "reopened_at": null,
+      "updated_at": "2026-08-03T14:15:29-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22409392",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.4757,
+          39.444
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22409392",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40760,
+        "title": "Roadway Drainage Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40760",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.444&lng=-77.4757&request_types=40760&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22409392/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22409392/flag",
+      "transitions": {
+        "open_url": "https://seeclickfix.com/api/v2/issues/22409392/open"
+      },
+      "reporter": {
+        "id": 3244969,
+        "name": "Citizen",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/3244969",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjk3NzIsInB1ciI6ImJsb2JfaWQifX0=--e345549197f2a17dedd3a5951cdbfe836d2f943f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/062f7b8d-6022-407a-8c49-52aa1678fb52_2026-08-03T13-53-45-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjk3NzIsInB1ciI6ImJsb2JfaWQifX0=--e345549197f2a17dedd3a5951cdbfe836d2f943f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/062f7b8d-6022-407a-8c49-52aa1678fb52_2026-08-03T13-53-45-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjk3NzIsInB1ciI6ImJsb2JfaWQifX0=--e345549197f2a17dedd3a5951cdbfe836d2f943f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/062f7b8d-6022-407a-8c49-52aa1678fb52_2026-08-03T13-53-45-04-00.jpg"
+      }
+    },
+    {
+      "id": 22409115,
+      "status": "Acknowledged",
+      "summary": "Roadway Tree Maintenance",
+      "description": "The tree on the property at 10328 Old Annapolis Rd near McKaig has branches that lean over the road and obstructs the view of the vehicles",
+      "rating": 2,
+      "lat": 39.45226046000713,
+      "lng": -77.30933331111333,
+      "address": "7949 Mckaig Rd Frederick, MD, 21701, USA",
+      "created_at": "2026-08-03T13:44:52-04:00",
+      "acknowledged_at": "2026-08-03T13:44:56-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T13:44:56-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22409115",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.30933331111333,
+          39.45226046000713
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22409115",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40763,
+        "title": "Roadway Tree Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40763",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.45226046000713&lng=-77.30933331111333&request_types=40763&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22409115/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22409115/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22408384,
+      "status": "Acknowledged",
+      "summary": "Roadway Drainage Maintenance",
+      "description": "Drainage pipe at property address needs to be cleared. AW",
+      "rating": 2,
+      "lat": 39.56133233152488,
+      "lng": -77.57499953618972,
+      "address": "11942 Pleasant Walk Rd Myersville, Maryland, 21773",
+      "created_at": "2026-08-03T12:56:46-04:00",
+      "acknowledged_at": "2026-08-03T12:56:50-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T15:21:00-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22408384",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.57499953618972,
+          39.56133233152488
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22408384",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40760,
+        "title": "Roadway Drainage Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40760",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.56133233152488&lng=-77.57499953618972&request_types=40760&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22408384/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22408384/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22407868,
+      "status": "Acknowledged",
+      "summary": "Roadway Sign Maintenance",
+      "description": "This intersection was recently repaved however the markings are not done. The stop lines are missing and people are constantly blowing through the stop sign. This intersection has been an issue for a long time as people come at a high speed from a traffic like and dont see there is a stop sign. I personally have almost been hit there twice. There is a car crash there weekly. We need this intersection improved with better markings and better signs. Traffic light would be the best option.",
+      "rating": 3,
+      "lat": 39.36509189632,
+      "lng": -77.437858189194,
+      "address": "Tennison Dr & English Muffin Way Frederick, MD, 21703, USA",
+      "created_at": "2026-08-03T12:22:57-04:00",
+      "acknowledged_at": "2026-08-03T12:23:13-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T12:23:13-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22407868",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.437858189194,
+          39.36509189632
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22407868",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40771,
+        "title": "Roadway Sign Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40771",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.36509189632&lng=-77.437858189194&request_types=40771&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22407868/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22407868/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjU1MTgsInB1ciI6ImJsb2JfaWQifX0=--4dd589e4b4e1fd9c86c5b47f6b6508d7c02c5dec/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/cbb0c54f-026a-443c-a7dd-85360f94186a_2026-08-03T12-15-48-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjU1MTgsInB1ciI6ImJsb2JfaWQifX0=--4dd589e4b4e1fd9c86c5b47f6b6508d7c02c5dec/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/cbb0c54f-026a-443c-a7dd-85360f94186a_2026-08-03T12-15-48-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNjU1MTgsInB1ciI6ImJsb2JfaWQifX0=--4dd589e4b4e1fd9c86c5b47f6b6508d7c02c5dec/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/cbb0c54f-026a-443c-a7dd-85360f94186a_2026-08-03T12-15-48-04-00.jpg"
+      }
+    },
+    {
+      "id": 22407551,
+      "status": "Acknowledged",
+      "summary": "Roadway Drainage Maintenance",
+      "description": "Constituent at 9300 Bethel Rd wants to get a flattened speed bump issue addressed. Also, he would like to have someone to look at an area in his yard that the county created a large whole that is now filling with debris.  ",
+      "rating": 2,
+      "lat": 39.488204375342505,
+      "lng": -77.45605915666374,
+      "address": "9300 Bethel Rd Frederick, Maryland, 21702",
+      "created_at": "2026-08-03T12:03:13-04:00",
+      "acknowledged_at": "2026-08-03T12:03:16-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-04T06:50:40-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22407551",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.45605915666374,
+          39.488204375342505
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22407551",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40760,
+        "title": "Roadway Drainage Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40760",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.488204375342505&lng=-77.45605915666374&request_types=40760&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22407551/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22407551/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22407353,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "The road was replaced recently but there are still no lines on the road. The talk of the neighborhood is dramatic increased frequency of people blowing through the stop signs on English Muffin Way. This intersection is already unsafe and the county has ignored previous requests for better traffic control. In the last four days, I have avoided two accidents where I would been t-boned had I not assumed that the people coming down EM Way would blow the sign. You guys need to do something about that intersection before someone gets killed. The fact that you have left it unpainted since the repaving is borderline negligent. ",
+      "rating": 2,
+      "lat": 39.365331357228,
+      "lng": -77.43777542202932,
+      "address": "6476-6498 Tennison Dr Frederick, Maryland, 21703",
+      "created_at": "2026-08-03T11:51:51-04:00",
+      "acknowledged_at": "2026-08-03T11:51:55-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T11:51:55-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22407353",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.43777542202932,
+          39.365331357228
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22407353",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.365331357228&lng=-77.43777542202932&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22407353/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22407353/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 4276637,
+        "name": "WellingtonTraceResident",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/4276637",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22406125,
+      "status": "Acknowledged",
+      "summary": "Roadway Pavement Maintenance",
+      "description": "Constituent states that on either side of the driveway the dropoff is steep. Although workers came out last week to and filled in the area, no cover was placed on the dirt (straw or seed) so the recent rainstorm has washed everything away. Resident would like for this issue to be addressed.",
+      "rating": 2,
+      "lat": 39.43357469273985,
+      "lng": -77.14909919404849,
+      "address": "7227 Talbot Run Rd Mount Airy, Maryland, 21771",
+      "created_at": "2026-08-03T10:38:52-04:00",
+      "acknowledged_at": "2026-08-03T10:38:56-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T16:30:46-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22406125",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.14909919404849,
+          39.43357469273985
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22406125",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40762,
+        "title": "Roadway Pavement Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40762",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.43357469273985&lng=-77.14909919404849&request_types=40762&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22406125/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22406125/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22406043,
+      "status": "Acknowledged",
+      "summary": "Noxious Weed",
+      "description": "A lot of Johnson Grass located near the intersection of Graceham Rd and 77. Caller says it is behind the fence line and would like to know if there is anything DHO can do. Please give her a call.",
+      "rating": 2,
+      "lat": 39.61442163568309,
+      "lng": -77.38166557503024,
+      "address": "13825-13837 Graceham Rd Graceham, MD, 21788, USA",
+      "created_at": "2026-08-03T10:32:37-04:00",
+      "acknowledged_at": "2026-08-03T10:32:41-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T10:32:42-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22406043",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.38166557503024,
+          39.61442163568309
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22406043",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 70548,
+        "title": "Noxious Weed",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/70548",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.61442163568309&lng=-77.38166557503024&request_types=70548&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22406043/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22406043/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories_trans/no-image-3afd5fe0adb47a63f5b051604db11d882955257f2b16ddde9e931b0a065ae59f.png"
+      }
+    },
+    {
+      "id": 22406022,
+      "status": "Acknowledged",
+      "summary": "Roadway Mowing Request",
+      "description": "Resident states that Graceham Rd needs mowing again. She is also requesting the 'bank South of address' be mowed as well.",
+      "rating": 2,
+      "lat": 39.611470194124195,
+      "lng": -77.3813831887121,
+      "address": "13804 Graceham Rd Thurmont, Maryland, 21788",
+      "created_at": "2026-08-03T10:30:56-04:00",
+      "acknowledged_at": "2026-08-03T10:31:02-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T15:20:48-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22406022",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.3813831887121,
+          39.611470194124195
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22406022",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40761,
+        "title": "Roadway Mowing Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40761",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.611470194124195&lng=-77.3813831887121&request_types=40761&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22406022/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22406022/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22405972,
+      "status": "Acknowledged",
+      "summary": "Roadway Pavement Maintenance",
+      "description": "The intersection of English Mufffin way and Tennison drive (the entrance to the Wellington Trace neighborhood) was recently paved. This was already a dangerous intersection with drivers on English Muffin blowing through the stop signs, but with the new paving the white lines associated with the stop signs were not adequately remarked. They need to be repainted and the need to stop emphasized for the safety of all drivers ",
+      "rating": 2,
+      "lat": 39.36535407730542,
+      "lng": -77.43775566188174,
+      "address": "6476-6498 Tennison Dr Frederick, Maryland, 21703",
+      "created_at": "2026-08-03T10:27:44-04:00",
+      "acknowledged_at": "2026-08-03T10:27:48-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T10:27:48-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22405972",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.43775566188174,
+          39.36535407730542
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22405972",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40762,
+        "title": "Roadway Pavement Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40762",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.36535407730542&lng=-77.43775566188174&request_types=40762&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22405972/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22405972/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 4276456,
+        "name": "Alexandra Gray",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/4276456",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22405830,
+      "status": "Acknowledged",
+      "summary": "Roadway Tree Maintenance",
+      "description": "On Sigler Rd near Lander Rd entrance, there is a low hanging tree branch that doesn't allow for clearance by SUVs and trucks. Constituent would like highway to take down hanging branches",
+      "rating": 2,
+      "lat": 39.34646591065015,
+      "lng": -77.5539769267449,
+      "address": "Sigler Rd Jefferson, Maryland, 21755",
+      "created_at": "2026-08-03T10:17:16-04:00",
+      "acknowledged_at": "2026-08-03T10:17:20-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T10:17:20-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22405830",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.5539769267449,
+          39.34646591065015
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22405830",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40763,
+        "title": "Roadway Tree Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40763",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.34646591065015&lng=-77.5539769267449&request_types=40763&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22405830/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22405830/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22405640,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "After a paving project at Tennison Drive/English Muffin Way a few weeks ago, no white STOP bar lines were painted. People are driving straight through the intersection without stopping. Stop signs are barely noticeable if not familiar with the road or at night. I was almost hit FOUR different times yesterday when going through the intersection from people not stopping at the stop signs. Extremely dangerous at a well traveled intersection. Need lines painted, lighted stop signs or rumble strips immediately. This is my neighborhood. Lots of pedestrian traffic as well, that cars are not stopping for. ",
+      "rating": 3,
+      "lat": 39.365170878222,
+      "lng": -77.436888091638,
+      "address": "English Muffin Way Frederick, MD, 21703, USA",
+      "created_at": "2026-08-03T10:04:57-04:00",
+      "acknowledged_at": "2026-08-03T10:05:07-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T10:05:07-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22405640",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.436888091638,
+          39.365170878222
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22405640",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.365170878222&lng=-77.436888091638&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22405640/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22405640/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTgyOTgsInB1ciI6ImJsb2JfaWQifX0=--a139634a97221bbcc9799aecd9cdcecb551b4a03/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/00073a34-0c63-45a0-96ab-4e7b2bcc8560_2026-08-03T09-49-27-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTgyOTgsInB1ciI6ImJsb2JfaWQifX0=--a139634a97221bbcc9799aecd9cdcecb551b4a03/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/00073a34-0c63-45a0-96ab-4e7b2bcc8560_2026-08-03T09-49-27-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTgyOTgsInB1ciI6ImJsb2JfaWQifX0=--a139634a97221bbcc9799aecd9cdcecb551b4a03/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/00073a34-0c63-45a0-96ab-4e7b2bcc8560_2026-08-03T09-49-27-04-00.jpg"
+      }
+    },
+    {
+      "id": 22405470,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "Hello! For over a month now there has been roadwork on old Middletown road that the residents who live in this location were never informed about. Several of us have driveways that are blocked or obstructed by the daily work that are the ONLY entrance/exit points to getting into our homes. There have been several days where I’ve had to wait 10 minutes to simply pull into or get out of my driveway, adding extra delays into my morning, causing disruption to my childcare and work schedule. Additionally, signs have been posted directly up against my house, putting pressure on my fence that has now begun to lean, and blocking me from being able to mow along the side of my house. My vehicle is taking a hit due to having to go over large bumps and about a 2 inch gap from the bottom of my driveway onto the road. This morning the paving vehicle fully went up against/onto the sidewalk on the side of my house, causing my entire home to shake and further damage to my fencing losing stability. This morning I was also alarmed by the sound of banging against the side of my house, realizing that workers were leaning equipment against my house. \n\nWhile I understand that roadwork needs to happen and that the workers are simply doing their jobs, this is also incredibly frustrating. Looking for more clarity and transparency on the timeline of this road work and what can be done about my grass and fencing. ",
+      "rating": 3,
+      "lat": 39.361415216402,
+      "lng": -77.537724626035,
+      "address": "3802 Jefferson Pike Jefferson, MD, 21755, USA",
+      "created_at": "2026-08-03T09:53:28-04:00",
+      "acknowledged_at": "2026-08-03T09:53:42-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-03T09:53:42-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22405470",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.537724626035,
+          39.361415216402
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22405470",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.361415216402&lng=-77.537724626035&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22405470/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22405470/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTc2NzEsInB1ciI6ImJsb2JfaWQifX0=--58b4205ee1126e1bebf7fa9844025e24d836edfa/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/9f149ad9-3be8-4a66-8ced-ae16e9a0dd2e_2026-08-03T09-38-12-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTc2NzEsInB1ciI6ImJsb2JfaWQifX0=--58b4205ee1126e1bebf7fa9844025e24d836edfa/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/9f149ad9-3be8-4a66-8ced-ae16e9a0dd2e_2026-08-03T09-38-12-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMyNTc2NzEsInB1ciI6ImJsb2JfaWQifX0=--58b4205ee1126e1bebf7fa9844025e24d836edfa/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/9f149ad9-3be8-4a66-8ced-ae16e9a0dd2e_2026-08-03T09-38-12-04-00.jpg"
+      }
+    }
+  ],
+  "metadata": {
+    "pagination": {
+      "entries": 454,
+      "page": 1,
+      "per_page": 20,
+      "pages": 23,
+      "next_page": 2,
+      "next_page_url": "https://seeclickfix.com/api/v2/issues?page=2&per_page=50&place_url=frederick-county&sort=created_at&sort_direction=DESC",
+      "previous_page": null,
+      "previous_page_url": null
+    }
+  },
+  "errors": {}
+}
