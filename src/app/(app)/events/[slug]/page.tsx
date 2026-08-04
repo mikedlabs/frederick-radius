@@ -73,6 +73,7 @@ import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
 import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
 import { eventHasTrustworthyEnd } from "@/lib/events/format";
+import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
@@ -334,6 +335,16 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const whenTime = whenSep >= 0 ? when.slice(whenSep + 3) : null;
   // Lifecycle status — drives the cancellation banner + a dimmed hero.
   const eventStatus = event.status ?? "scheduled";
+  // The durable archive keeps an event page alive long after the event — a
+  // shared link from June should still resolve in August. But resolved-from-
+  // archive must not mean rendered-as-upcoming: this page used to give a
+  // months-past event the full forward treatment (Tickets as the vermilion
+  // primary, Add to calendar, no statement that it happened). isEventEnded is
+  // the shared gate every listing surface uses, including its multi-day and
+  // capped-runtime rules. A cancelled or postponed event keeps its own louder
+  // treatment; ended-ness only speaks for events that actually ran.
+  const hasEnded =
+    eventStatus === "scheduled" && isEventEnded(event, new Date());
   const eventVisual = eventCardVisual(event);
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
@@ -383,6 +394,19 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
        *  notice carries an advisory (still on, but know this first).
        *  A notice adds its one-line detail + the organizer's own
        *  announcement link, so the claim always shows its source. */}
+      {/* Ended notice — calm and factual, never the alarm treatment: a past
+          event is a record, not a problem. States the fact in Ink so the rest
+          of the page (which stays fully readable as an archive) cannot be
+          mistaken for an invitation. */}
+      {hasEnded && (
+        <div
+          className="flex items-center gap-2 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-medium"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)", background: "var(--app-bg-elevated)" }}
+        >
+          <Calendar className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          This event has already happened.
+        </div>
+      )}
       {(eventStatus !== "scheduled" || notice) && (() => {
         const tone = eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)";
         const BannerIcon = eventStatus === "scheduled" ? AlertTriangle : Ban;
@@ -650,6 +674,42 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   Organizer&rsquo;s announcement
                 </a>
               )}
+              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
+                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
+                Find something else
+              </Link>
+            </div>
+          );
+        })()
+      ) : hasEnded ? (
+        // A past event must not keep selling the plan either: Tickets,
+        // Add-to-calendar, and Directions all invite a trip whose moment is
+        // gone. The record stays; the actions become the venue's page (the
+        // durable thing a reader can still visit) and a way back to tonight.
+        (() => {
+          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
+          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
+          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
+          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
+          const recordAction =
+            event.venue_place_slug
+              ? { href: `/places/${event.venue_place_slug}`, external: false, label: "Venue page" }
+              : event.source_url
+                ? { href: event.source_url, external: true, label: "Official page" }
+                : null;
+          return (
+            <div className={`hidden ${recordAction ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+              {recordAction && (recordAction.external ? (
+                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
+                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                  {recordAction.label}
+                </a>
+              ) : (
+                <Link href={recordAction.href} className={quietCls} style={quietStyle}>
+                  <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                  {recordAction.label}
+                </Link>
+              ))}
               <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
                 <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
                 Find something else
@@ -956,6 +1016,24 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 label="Announcement"
                 ariaLabel={`Organizer's announcement for ${event.title}`}
                 external
+              />
+            )}
+            <MobileBarLink
+              href="/events?lens=today"
+              icon={Calendar}
+              label="What's on"
+              ariaLabel="Find something else on today"
+              primary
+            />
+          </>
+        ) : hasEnded ? (
+          <>
+            {event.venue_place_slug && (
+              <MobileBarLink
+                href={`/places/${event.venue_place_slug}`}
+                icon={MapPin}
+                label="Venue"
+                ariaLabel={`Venue page for ${event.title}`}
               />
             )}
             <MobileBarLink
