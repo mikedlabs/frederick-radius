@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   AlertDataPanel,
+  nameListSentence,
   pulseClearedKeys,
   pulseDisplayGroups,
   pulseStatusWord,
@@ -64,12 +65,14 @@ describe("Pulse status language", () => {
   });
 
   it("keeps verified quiet conditions separate from advisories", () => {
+    // "All quiet", not "Checked" — PulseFreshness already prints "Checked Nm
+    // ago" in the same masthead row, and the repeated word read as a stutter.
     expect(pulseStatusWord({
       allClear: true,
       degraded: false,
       hasLead: false,
       tone: "positive",
-    })).toBe("Checked");
+    })).toBe("All quiet");
 
     expect(pulseStatusWord({
       allClear: false,
@@ -211,5 +214,47 @@ describe("Pulse smart blocks", () => {
       "weather",
       "scanner",
     ]);
+  });
+
+  it("keeps ambient measurements on the open board instead of behind the strip", () => {
+    // The calm-day regression this split exists to prevent: the county's
+    // temperature, AQI, and river height were the best-composed facts on the
+    // page and rendered two taps deep inside "sources are quiet" — precisely
+    // when nothing was wrong, which is most days.
+    const weather: PulseTile = { ...tile("weather"), reading: true, kind: "feature" };
+    const air: PulseTile = { ...tile("air"), reading: true, kind: "gauge" };
+    const powerQuiet = tile("power");
+
+    const groups = pulseDisplayGroups([weather, air, powerQuiet]);
+
+    expect(groups.readings.map((entry) => entry.key)).toEqual(["weather", "air"]);
+    expect(groups.quiet.map((entry) => entry.key)).toEqual(["power"]);
+  });
+
+  it("never lets a degraded or live tile claim the readings row", () => {
+    // A reading flag describes the data a branch HOLDS. A feed that did not
+    // answer has no number to show, and a live situation already outranks the
+    // ambient row — so neither may render as a calm measurement.
+    const degradedAir: PulseTile = { ...tile("air"), reading: true, degraded: true };
+    const activeTraffic: PulseTile = { ...tile("traffic", { active: true }), reading: true };
+
+    const groups = pulseDisplayGroups([degradedAir, activeTraffic]);
+
+    expect(groups.readings).toEqual([]);
+    expect(groups.quiet.map((entry) => entry.key)).toEqual(["air"]);
+    expect(groups.actionable.map((entry) => entry.key)).toEqual(["traffic"]);
+  });
+});
+
+describe("Pulse quiet-strip naming", () => {
+  it("names what the strip holds instead of counting it", () => {
+    // "12 sources are quiet" made a reader open the strip just to learn
+    // whether the thing they cared about was inside.
+    expect(nameListSentence(["Power out"])).toBe("Power out");
+    expect(nameListSentence(["Power out", "Schools"])).toBe("Power out and Schools");
+    expect(nameListSentence(["Power out", "311 reports", "Schools"])).toBe(
+      "Power out, 311 reports, and Schools",
+    );
+    expect(nameListSentence([])).toBe("");
   });
 });

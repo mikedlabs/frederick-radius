@@ -995,8 +995,15 @@ export default async function PulsePage() {
 
   const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
   const riverFloodRef = riverPeekSite?.floodStages?.minor ?? null;
-  const riverPct =
-    riverPeekHeight != null ? clampPercent((riverPeekHeight / (riverFloodRef || 15)) * 100) : 0;
+  // The ring is a stage CLAIM: how far the water sits from NWS minor flood
+  // stage. Only forecast points carry official stages, and floodStage.ts is
+  // explicit that inventing one for the other gauges would be unsafe — the
+  // old `|| 15` fallback did exactly that. A site without a stage renders as
+  // a plain reading (height + trend), never as a fraction of a made-up flood.
+  const riverHasStage = riverPeekHeight != null && riverFloodRef != null;
+  const riverPct = riverHasStage
+    ? clampPercent((riverPeekHeight / riverFloodRef) * 100)
+    : 0;
 
   const fixitPct = clampPercent((fixit.length / 25) * 100);
   const activeOfficialAlertCount =
@@ -1062,6 +1069,7 @@ export default async function PulsePage() {
           accent: "var(--app-cool)",
           active: false,
           attention: false,
+          reading: true,
           kind: "feature",
           feature: {
             temp: wxCur.temperature,
@@ -1079,14 +1087,19 @@ export default async function PulsePage() {
     ...(aqiWorst
       ? [{
           key: "air",
-          label: aqiPollutantTitle ? `Current ${aqiPollutant}` : "Current AQI",
+          // One face, each fact once. The old strings put "ozone" in the
+          // label, the count, and the unit, and the number in two of them —
+          // the tile read as an echo. Label is the stable subject, the gauge
+          // carries the number, the unit names the pollutant and its category.
+          label: "Air quality",
           iconName: "Wind",
           countLabel: aqiObservationLabel(aqiWorst.parameter, aqiWorst.aqi),
           accent: aqiAccent,
           active: aqiActive,
           attention: situationActive.air,
+          reading: true,
           kind: "gauge",
-          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `Latest ${aqiPollutant ?? "AQI"} · ${aqiShort(aqiWorst.category.id)}` },
+          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `${aqiPollutantTitle ?? "AQI"} · ${aqiShort(aqiWorst.category.id)}` },
           sourceLabel: "AirNow · EPA",
           body: aqiBody,
         } as PulseTile]
@@ -1254,6 +1267,11 @@ export default async function PulsePage() {
       active: roadTrafficActive,
       attention: situationActive.traffic,
       degraded: !roadCheckComplete,
+      // A measured drive time keeps Traffic on the open board even when
+      // nothing is wrong: quiet roads still have a number worth seeing.
+      // During an incident the active/attention grouping outranks this, and
+      // without a fresh segment the tile is an absence like any other.
+      reading: Boolean(leadTravel),
       kind: "status",
       sourceLabel: "MDOT CHART + Maryland WZDx",
       peek:
@@ -1669,8 +1687,13 @@ export default async function PulsePage() {
       active: false,
       attention: false,
       availability: riversAvailable ? "current" : "unavailable",
-      kind: riverPeekHeight != null ? "gauge" : "status",
-      ...(riverPeekHeight != null
+      // Only a real gauge height is a reading; "No data" is an absence.
+      reading: riverPeekHeight != null,
+      // The RING requires an official NWS flood stage to be a fraction of.
+      // A site without one still shows its height and trend as plain text,
+      // per floodStage.ts: making no stage claim is the honest render.
+      kind: riverHasStage ? "gauge" : "status",
+      ...(riverHasStage
         ? {
             gauge: {
               value: riverPeekHeight,
