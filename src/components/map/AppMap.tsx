@@ -283,6 +283,7 @@ import {
 } from "./constants";
 import MapOverlays from "./MapOverlays";
 import LiveBuses from "./LiveBuses";
+import { createLiveLayerCloserRegistry, type LiveLayerGate } from "./liveLayerGate";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LightningDensity from "./LightningDensity";
@@ -1545,11 +1546,19 @@ export default function AppMap({
   const [civicTown, setCivicTown] = useState<CivicTownSelection | null>(null);
   const [spotSelection, setSpotSelection] = useState<MapSpotSelection | null>(null);
 
+  /** Closers for the live layers that own their popup state internally
+   * (buses, MARC, incidents, rotorcraft, work zones, snow routes, flood
+   * context). Registered through the LiveLayerGate so the one-foreground
+   * promise below actually covers them; before this seam existed a bus
+   * popup and a place card could sit open at once, in either order. */
+  const liveLayerClosersRef = useRef(createLiveLayerCloserRegistry());
+
   /** The browse map has many data kinds, but only one foreground result. Keep
    * the existing domain-specific states for their specialized renderers while
    * coordinating every transition through one gate so stale cards can never
    * reappear under the next selection. */
   const clearMapSelection = useCallback(() => {
+    liveLayerClosersRef.current.closeAll();
     setSelected(null);
     setRawSelectionContext(null);
     setSelectedSlug(null);
@@ -1567,6 +1576,15 @@ export default function AppMap({
     setSpotSelection(null);
     setHover(null);
   }, []);
+
+  /** One stable object per mount, so layers don't re-register every render. */
+  const liveLayerGate = useMemo<LiveLayerGate>(
+    () => ({
+      register: liveLayerClosersRef.current.register,
+      onWillOpen: clearMapSelection,
+    }),
+    [clearMapSelection],
+  );
 
   const openMapSelection = useCallback(
     (next: MapSelectionRequest) => {
@@ -4526,17 +4544,17 @@ export default function AppMap({
           {/* Static high-water areas and warning infrastructure are context,
               never a live flood claim. They share the Roads view and sit
               beneath current work-zone and incident geometry. */}
-          {showTraffic ? <FloodContext show data={floodContext} /> : null}
+          {showTraffic ? <FloodContext show data={floodContext} gate={liveLayerGate} /> : null}
 
           {/* SnowCommand reports route operations, not moving plows or road
               safety. Current reports share the Roads view so winter context
               never adds another primary map control. */}
-          {showTraffic ? <SnowRoutes show data={snowRoutes} /> : null}
+          {showTraffic ? <SnowRoutes show data={snowRoutes} gate={liveLayerGate} /> : null}
 
           {/* Official lane-level roadwork belongs to Traffic, not another
               switch. A wide transparent hit line makes the geometry easy to
               inspect on a phone without covering congestion or incident pins. */}
-          {showTraffic ? <RoadWorkZones show data={roadWorkZones} /> : null}
+          {showTraffic ? <RoadWorkZones show data={roadWorkZones} gate={liveLayerGate} /> : null}
 
           {/* Live public scanner incidents — caution pins (crashes, wires
               down, fires) that self-refresh and age out. Empty until the
@@ -4548,6 +4566,7 @@ export default function AppMap({
             onSnapshot={setLiveIncidents}
             focusIncidentId={focusedIncidentId}
             onFocusIncidentChange={setFocusedIncidentId}
+            gate={liveLayerGate}
           />
 
           {/* Public helicopter activity. Trooper flights are county-level
@@ -4557,6 +4576,7 @@ export default function AppMap({
             show={showRotorcraft}
             probe={Boolean(dock)}
             onStatus={setRotorcraftStatus}
+            gate={liveLayerGate}
           />
 
           {/* MDOT CHART traffic cameras — pinned where they are; tap to watch
@@ -4700,11 +4720,11 @@ export default function AppMap({
           {/* Live vehicles and route lines are one honest Transit layer. The
               old always-on vehicles made the dock say "No layers" while buses
               were visibly moving on the map. */}
-          <LiveBuses show={visibleTransit} />
+          <LiveBuses show={visibleTransit} gate={liveLayerGate} />
           {/* MARC trains ride the SAME Transit toggle — one honest layer.
               DOM markers sit above the canvas, so a train at Point of Rocks
               never hides beneath its marc-station pin. */}
-          <LiveMarcTrains show={visibleTransit} />
+          <LiveMarcTrains show={visibleTransit} gate={liveLayerGate} />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"

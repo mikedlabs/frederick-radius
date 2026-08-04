@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
@@ -208,16 +209,20 @@ export default function LiveBuses({
   highlightRouteId,
   focusVehicleId,
   focusRequestId,
+  gate,
 }: {
   show: boolean;
   highlightRouteId?: string;
   focusVehicleId?: string;
   focusRequestId?: number;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
   const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "stale" | "error">("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  useLiveLayerGate(gate, () => setSelected(null));
   const [dismissedFocusKey, setDismissedFocusKey] =
     useState<string | null>(null);
   const [watching, setWatching] = useState<string | null>(null);
@@ -537,6 +542,7 @@ export default function LiveBuses({
                 e.stopPropagation();
                 haptic("light");
                 setDismissedFocusKey(focusKey);
+                gate?.onWillOpen();
                 setSelected(v.vehicleId);
                 setSaveNotice(null);
               }}

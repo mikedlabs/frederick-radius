@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { ExternalLink, Info, Waves, X } from "lucide-react";
 import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
 import type { FloodContextFC } from "./types";
@@ -25,12 +26,16 @@ type ContextPopup = FloodContextFC["features"][number]["properties"] & {
 export default function FloodContext({
   show,
   data,
+  gate,
 }: {
   show: boolean;
   data: FloodContextFC;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const { current: map } = useMap();
   const [popup, setPopup] = useState<ContextPopup | null>(null);
+  useLiveLayerGate(gate, () => setPopup(null));
 
   useEffect(() => {
     const instance = map?.getMap();
@@ -57,6 +62,7 @@ export default function FloodContext({
               lat: (feature.geometry as GeoJSON.Point).coordinates[1],
             }
           : { lng: event.lngLat.lng, lat: event.lngLat.lat };
+      gate?.onWillOpen();
       setPopup({
         ...at,
         id: value("id") ?? `${kind}-${at.lng}-${at.lat}`,
@@ -95,7 +101,7 @@ export default function FloodContext({
         instance.off("mouseleave", id, leave);
       }
     };
-  }, [data, map, show]);
+  }, [data, gate, map, show]);
 
   if (!show || data.features.length === 0) return null;
 

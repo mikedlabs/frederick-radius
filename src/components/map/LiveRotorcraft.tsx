@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Layer, Marker, Popup, Source } from "react-map-gl/mapbox";
 import { Cross, Helicopter } from "lucide-react";
 import {
@@ -110,17 +111,21 @@ export default function LiveRotorcraft({
   probe = false,
   onHealth,
   onStatus,
+  gate,
 }: {
   show: boolean;
   probe?: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
   onStatus?: (status: RotorcraftLayerStatus) => void;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const [signals, setSignals] = useState<RotorcraftSignal[]>([]);
   const [fmhActivity, setFmhActivity] = useState<FmhActivitySummary>(() =>
     emptyFmhActivity(),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useLiveLayerGate(gate, () => setSelectedId(null));
   const [fmhOpen, setFmhOpen] = useState(false);
   const [receivedAt, setReceivedAt] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
@@ -367,8 +372,11 @@ export default function LiveRotorcraft({
               event.stopPropagation();
               haptic("light");
               setFmhOpen(false);
-              setSelectedId((selectedId) =>
-                selectedId === signal.id ? null : signal.id,
+              // A toggle-closed tap must not clear the rest of the map, so
+              // the gate only runs on the OPEN half.
+              if (selectedId !== signal.id) gate?.onWillOpen();
+              setSelectedId((current) =>
+                current === signal.id ? null : signal.id,
               );
             }}
             className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
