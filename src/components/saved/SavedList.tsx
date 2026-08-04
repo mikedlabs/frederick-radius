@@ -1,6 +1,5 @@
 "use client";
 
-import { stampEventProvenance } from "@/lib/provenance";
 import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
@@ -14,7 +13,12 @@ import { useBeenList } from "@/hooks/useBeenHere";
 // Place data is hydrated via /api/places/by-slugs on mount.
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
-import { EVENT_BY_SLUG } from "@/data/events";
+// Saved events hydrate the same way saved places do — via an API, not an
+// in-bundle index. The only event index a client could hold is the ~30-row
+// curated seed set in src/data/events.ts, and ingested/live slugs are
+// namespaced so they can never appear in it. Reading that map here meant
+// every event saved from a real feed silently vanished from this page.
+import type { EventWithMeta } from "@/lib/loaders/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
 import SavedWallet from "@/components/saved/SavedWallet";
@@ -44,7 +48,6 @@ import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
-import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { isUpcomingEvent } from "@/lib/events/visible";
 import Passport from "@/components/saved/Passport";
@@ -87,7 +90,10 @@ function planTokenFromSaved(slugs: string[]): string {
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-type DecoratedEvent = ReturnType<typeof decorateEvent>;
+/** /api/events/by-slugs returns rows already decorated at the loader
+ *  boundary (provenance, geo confidence, category and town names), so this
+ *  surface renders them rather than re-deriving anything. */
+type DecoratedEvent = EventWithMeta;
 
 /** Compact event date/time parts for the sv-evrow calendar plate,
  *  rendered in Frederick's timezone regardless of the device. */
@@ -141,17 +147,6 @@ function Masthead({ stand }: { stand: ReactNode }) {
       </Link>
     </header>
   );
-}
-
-function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
-  return {
-    ...e,
-    ...stampEventProvenance(e, e.last_verified_at),
-    distance_m: undefined,
-    geo_confidence: eventGeoConfidence(e),
-    category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
-    municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
-  };
 }
 
 export default function SavedList({
@@ -292,6 +287,54 @@ export default function SavedList({
       });
     return () => ctrl.abort();
   }, [mounted, slugsKey, slugsToFetch.length]);
+
+  // ── Saved events, hydrated the same way. Events are device-local by
+  // contract, so the local refs ARE the truth about which slugs to ask for;
+  // the server owns what each slug resolves to.
+  const { eventSlugsToFetch, eventSlugsKey } = useMemo(() => {
+    const eventSlugsToFetch = Array.from(
+      new Set(items.filter((i) => i.type === "event").map((i) => i.id)),
+    );
+    return { eventSlugsToFetch, eventSlugsKey: eventSlugsToFetch.join(",") };
+  }, [items]);
+
+  const [eventsBySlug, setEventsBySlug] = useState<Map<string, EventWithMeta>>(
+    () => new Map(),
+  );
+  // Unlike the place gate above, this records only that a FIRST answer has
+  // arrived. Saving another event must not blank a deck the reader is already
+  // looking at: the newly requested slug lands when it resolves, and every
+  // card already hydrated keeps rendering in the meantime.
+  const [eventsResolved, setEventsResolved] = useState(false);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (eventSlugsToFetch.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- a device with no saved events has nothing to wait for; this releases the section's loading state
+      setEventsResolved(true);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetch(`/api/events/by-slugs?slugs=${encodeURIComponent(eventSlugsKey)}`, {
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { events: EventWithMeta[] }) => {
+        setEventsBySlug((previous) => {
+          const next = new Map(previous);
+          for (const event of data.events) next.set(event.slug, event);
+          return next;
+        });
+        setEventsResolved(true);
+      })
+      .catch((err) => {
+        // AbortError = navigated/unmounted; ignore. Any other failure keeps
+        // whatever already hydrated and releases the section, so a degraded
+        // events API costs the reader a card, never the whole page.
+        if (err && err.name !== "AbortError") setEventsResolved(true);
+      });
+    return () => ctrl.abort();
+  }, [mounted, eventSlugsKey, eventSlugsToFetch.length]);
 
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
@@ -452,7 +495,7 @@ export default function SavedList({
     if (!placesBySlug) {
       return {
         places: [] as PlaceCardData[],
-        events: [] as ReturnType<typeof decorateEvent>[],
+        events: [] as DecoratedEvent[],
         byCategory: new Map<string, PlaceCardData[]>(),
         byTown: new Map<string, PlaceCardData[]>(),
         townTally: new Map<string, number>(),
@@ -514,11 +557,13 @@ export default function SavedList({
     }
     const places = sorted.map((x) => x.place);
 
+    // Saved-order in, saved-order out. A slug the API could not resolve is
+    // simply absent; it is not rendered as a broken card and it does not
+    // block the ones that did resolve.
     const events = items
       .filter((i) => i.type === "event")
-      .map((i) => EVENT_BY_SLUG[i.id])
-      .filter(Boolean)
-      .map(decorateEvent);
+      .map((i) => eventsBySlug.get(i.id))
+      .filter((event): event is DecoratedEvent => Boolean(event));
 
     // Bucket places by their top-level category — gives the page a
     // "shape" so the user can scan what kind of Frederick they're
@@ -550,7 +595,7 @@ export default function SavedList({
     }
 
     return { places, events, byCategory, byTown, townTally };
-  }, [items, placeRefsAll, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
+  }, [items, eventsBySlug, placeRefsAll, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
 
   // Saved events happening TODAY — the other half of the actionable lead. The
   // full Events section below keeps the whole saved set; this is just "tonight".
@@ -641,6 +686,14 @@ export default function SavedList({
   }, [items]);
 
   const placesPending = slugsToFetch.length > 0 && resolvedKey !== slugsKey;
+  // Events resolve in their own section, NOT in the whole-page gate above.
+  // Their tail can reach the durable archive for a long-past save, and no
+  // reader should wait on that to see their places, notes, or transit saves.
+  const eventsPending = eventSlugsToFetch.length > 0 && !eventsResolved;
+  // The section renders whenever the device HAS saved events, even before any
+  // resolve, so it can own its own loading and failure states instead of
+  // disappearing and reappearing under the reader.
+  const hasSavedEvents = eventSlugsToFetch.length > 0;
   // The server already knows whether this request belongs to an account.
   // Use that signal to prevent a signed-in visitor from seeing the anonymous
   // empty state while /api/follows is still hydrating. Anonymous visitors do
@@ -840,8 +893,12 @@ export default function SavedList({
 
       {/* Upcoming remains part of the default page, before any organizer or
           collection-history controls. */}
-      {events.length > 0 && (
-        <section aria-label="Upcoming saved events" className="space-y-2">
+      {(events.length > 0 || hasSavedEvents) && (
+        <section
+          aria-label="Upcoming saved events"
+          className="space-y-2"
+          aria-busy={eventsPending || undefined}
+        >
           <header className="flex items-baseline gap-2.5">
             <span
               aria-hidden
@@ -854,15 +911,30 @@ export default function SavedList({
             >
               Upcoming
             </h2>
-            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {upcomingEvents.length}
-            </span>
+            {!eventsPending && (
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {upcomingEvents.length}
+              </span>
+            )}
           </header>
-          {upcomingEvents.length > 0 ? (
+          {eventsPending ? (
+            <div className="space-y-2">
+              <Skeleton.Block height={62} round="var(--app-radius-md)" />
+              <Skeleton.Block height={62} round="var(--app-radius-md)" />
+            </div>
+          ) : upcomingEvents.length > 0 ? (
             <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
-          ) : (
+          ) : events.length > 0 ? (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               There are no upcoming events. Your saved events have all passed.
+            </p>
+          ) : (
+            // Every saved slug came back unresolved. Say so rather than
+            // rendering an empty section: the reader saved these, and a blank
+            // space would read as though the app had lost them.
+            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              We could not load your saved events right now. Reload the page to
+              try again.
             </p>
           )}
           {pastEvents.length > 0 && (
