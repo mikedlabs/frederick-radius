@@ -219,6 +219,13 @@
       "production_state": "migration_recorded",
       "migration_record": "feed_source_health_rollups",
       "note": "Supabase migration history records feed_source_health_rollups at version 20260730031339. A live check confirmed the RLS-protected projection exists and contains current source-health rows."
+    },
+    {
+      "file": "0040_public_event_archive_by_slug.sql",
+      "sha256": "801eeab0947bad1c917e5f3a76c6411eb86637f2d3dd59ee0c07029ef928fe88",
+      "production_state": "migration_recorded",
+      "migration_record": "public_event_archive_by_slug",
+      "note": "Supabase migration history records public_event_archive_by_slug at version 20260804022701. Live checks confirmed the exact-slug RPC returns only canonical_slug and snapshot, invalid slugs return no rows, anon and authenticated cannot select the archive tables, and only the function is executable."
     }
   ]
 }

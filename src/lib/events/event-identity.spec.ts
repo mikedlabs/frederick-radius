@@ -84,6 +84,26 @@ describe("event identity archive", () => {
     expect(sql).toContain("FROM anon, authenticated");
   });
 
+  it("opens only the minimal exact-slug event snapshot RPC", () => {
+    const sql = readFileSync(
+      new URL(
+        "../../../drizzle/0040_public_event_archive_by_slug.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(sql).toContain("RETURNS TABLE (\n  canonical_slug text,\n  snapshot jsonb");
+    expect(sql).toContain("STABLE\nSTRICT\nSECURITY DEFINER");
+    expect(sql).toContain("SET search_path = ''");
+    expect(sql).toContain("ROWS 1");
+    expect(sql).toContain("coalesce(tombstone.last_snapshot, canonical.snapshot)");
+    expect(sql).toContain("OPERATOR(pg_catalog.~) '^[a-z0-9][a-z0-9-]{0,199}$'");
+    expect(sql).toContain("requested_slug NOT IN ('constructor', 'prototype')");
+    expect(sql).toContain("FROM PUBLIC, anon, authenticated, service_role");
+    expect(sql).toContain("TO anon, authenticated, service_role");
+    expect(sql).not.toContain("RETURNS TABLE (\n  id uuid");
+  });
+
   it("returns only valid canonical routes for the bounded sitemap read", async () => {
     const sql = vi.fn(() =>
       Promise.resolve([
