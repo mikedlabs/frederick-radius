@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { leanFromForecast, weatherLean } from "./weatherLean";
+import { leanFromForecast, weatherLean, wetWindowEnd } from "./weatherLean";
 import { daypartNeeds } from "./daypart-needs";
 import type { NwsForecast } from "@/lib/integrations/nws";
 
@@ -55,6 +55,73 @@ describe("weatherLean", () => {
       daily: [],
     } as unknown as NwsForecast;
     expect(leanFromForecast(fc, now)).toBe("wet");
+  });
+});
+
+describe("wetWindowEnd", () => {
+  /** Hourly periods on the hour, Eastern-friendly UTC, from a list of labels. */
+  function hourly(startUtcHour: number, forecasts: string[]): NwsForecast {
+    return {
+      asOf: "2026-07-21T00:00:00Z",
+      hourly: forecasts.map((shortForecast, i) => ({
+        startTime: `2026-07-21T${String(startUtcHour + i).padStart(2, "0")}:00:00Z`,
+        endTime: `2026-07-21T${String(startUtcHour + i + 1).padStart(2, "0")}:00:00Z`,
+        temperature: 70,
+        temperatureUnit: "F",
+        shortForecast,
+        windSpeed: "5 mph",
+        windDirection: "N",
+        icon: "",
+      })),
+      daily: [],
+    } as unknown as NwsForecast;
+  }
+
+  it("names the hour the rain clears, in Frederick's timezone", () => {
+    // 18:00Z through 22:00Z is 2pm to 6pm Eastern in July (UTC-4).
+    const fc = hourly(18, ["Rain Showers", "Rain Showers", "Partly Sunny"]);
+    expect(wetWindowEnd(fc, new Date("2026-07-21T18:30:00Z"))).toEqual({
+      endsAtLabel: "4pm",
+      noun: "Rain is",
+    });
+  });
+
+  it("takes the noun from the forecast instead of always saying storms", () => {
+    expect(
+      wetWindowEnd(hourly(18, ["Snow", "Sunny"]), new Date("2026-07-21T18:30:00Z")),
+    ).toMatchObject({ noun: "Snow is" });
+    expect(
+      wetWindowEnd(
+        hourly(18, ["Scattered Thunderstorms", "Sunny"]),
+        new Date("2026-07-21T18:30:00Z"),
+      ),
+    ).toMatchObject({ noun: "Storms are" });
+    expect(
+      wetWindowEnd(hourly(18, ["Freezing Drizzle", "Sunny"]), new Date("2026-07-21T18:30:00Z")),
+    ).toMatchObject({ noun: "Drizzle is" });
+  });
+
+  it("says nothing when the feed's window ends while it is still raining", () => {
+    // An unknown end is not a forecast. Better a vaguer sentence than an
+    // invented clock time the data cannot support.
+    const fc = hourly(18, ["Rain Showers", "Rain Showers", "Thunderstorms"]);
+    expect(wetWindowEnd(fc, new Date("2026-07-21T18:30:00Z"))).toBeNull();
+  });
+
+  it("says nothing on a dry hour or a missing feed", () => {
+    expect(
+      wetWindowEnd(hourly(18, ["Sunny", "Rain Showers"]), new Date("2026-07-21T18:30:00Z")),
+    ).toBeNull();
+    expect(wetWindowEnd(null, new Date())).toBeNull();
+  });
+
+  it("agrees with leanFromForecast about which hour is now", () => {
+    // The two read the same array; a disagreement would print a rain-clearing
+    // time on a page that did not reorder for rain.
+    const fc = hourly(18, ["Sunny", "Rain Showers", "Sunny"]);
+    const duringRain = new Date("2026-07-21T19:30:00Z");
+    expect(leanFromForecast(fc, duringRain)).toBe("wet");
+    expect(wetWindowEnd(fc, duringRain)).toMatchObject({ endsAtLabel: "4pm" });
   });
 });
 

@@ -4,10 +4,15 @@ import {
   roadAttentionScopeLabel,
   selectRoadWorkZoneFeatureCollection,
   selectTodayRoadSignal,
+  leadTravelTime,
+  travelMinutes,
   type RoadIntelligenceSources,
 } from "./roadIntelligenceModel";
 import { MDOT_WZDX_SOURCE_URL } from "@/lib/integrations/mdot-wzdx";
-import { CHART_ROAD_SOURCES } from "@/lib/integrations/mdot-road-feeds";
+import {
+  CHART_ROAD_SOURCES,
+  type ChartTravelTime,
+} from "@/lib/integrations/mdot-road-feeds";
 
 const NOW = new Date("2026-07-28T16:00:00.000Z");
 
@@ -147,5 +152,65 @@ describe("road intelligence model", () => {
       scope: "I-70 East prior to exit 52 US 15",
     });
     expect(roadAttentionScopeLabel(signal!)).toBe("Sign location");
+  });
+});
+
+describe("leadTravelTime", () => {
+  function segment(
+    name: string,
+    seconds: number,
+    trend: ChartTravelTime["trend"],
+  ): ChartTravelTime {
+    return {
+      id: name,
+      name,
+      distanceMiles: 10,
+      travelTimeSeconds: seconds,
+      averageSpeedMph: Math.round((10 / (seconds / 3600)) * 10) / 10,
+      trend,
+      observedAt: NOW.toISOString(),
+      roads: [name],
+      evidence: "computed-from-road-sensors",
+      sourceUrl: CHART_ROAD_SOURCES.travelTimes,
+    };
+  }
+
+  it("leads with a corridor that is getting worse, not merely the longest", () => {
+    // A rising number is the one a person needs first. The longest drive of the
+    // day is normal; a drive that just grew is news.
+    const lead = leadTravelTime([
+      segment("I-70 east", 900, "steady"),
+      segment("I-270 south", 600, "longer"),
+    ]);
+    expect(lead?.name).toBe("I-270 south");
+  });
+
+  it("falls back to the longest drive when nothing is trending longer", () => {
+    const lead = leadTravelTime([
+      segment("I-270 south", 600, "shorter"),
+      segment("I-70 east", 900, "steady"),
+    ]);
+    expect(lead?.name).toBe("I-70 east");
+  });
+
+  it("has nothing to say when the feed carried no segments", () => {
+    // The tile falls back to its all-clear wording; it must never invent one.
+    expect(leadTravelTime([])).toBeNull();
+  });
+
+  it("never rounds a real drive down to zero minutes", () => {
+    expect(travelMinutes(20)).toBe(1);
+    expect(travelMinutes(89)).toBe(1);
+    expect(travelMinutes(90)).toBe(2);
+    expect(travelMinutes(1_020)).toBe(17);
+  });
+
+  it("is a pure read, leaving the caller's array order alone", () => {
+    const input = [
+      segment("I-270 south", 600, "steady"),
+      segment("I-70 east", 900, "steady"),
+    ];
+    leadTravelTime(input);
+    expect(input.map((s) => s.name)).toEqual(["I-270 south", "I-70 east"]);
   });
 });

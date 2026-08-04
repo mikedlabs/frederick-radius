@@ -24,8 +24,52 @@ describe("buildDaypartRows", () => {
     expect(
       picks
         .filter((pick) => pick.confidence === "likely")
-        .every((pick) => pick.fact === "Likely open"),
+        // The exact string /api/want's live refresh substitutes, so the
+        // server paint does not visibly change a moment after it lands.
+        .every((pick) => pick.fact === "Likely open · check hours"),
     ).toBe(true);
+  });
+
+  it("never leaves a pick without a fact, so the 'Open now' fallback is dead", () => {
+    // The shipped bug: confirmed picks arrived with fact === null, so
+    // DaypartNeeds fell back to the literal string "Open now" and Today's one
+    // location-aware answer opened by saying the same two words four times.
+    // isOpenNow had already run on those exact objects to select them.
+    //
+    // Asserted as an invariant over every hour rather than against a fixture
+    // date. Whether any given hour yields confirmed or likely picks depends on
+    // the committed hours snapshot, but "every pick states something" must
+    // hold at 3am and at noon alike, and it is the condition that makes the
+    // component's fallback unreachable.
+    for (const hour of [8, 12, 17, 21]) {
+      const rows = buildDaypartRows(
+        new Date(`2026-08-02T${String(hour).padStart(2, "0")}:00:00.000Z`),
+      );
+      const picks = rows.flatMap((row) => row.picks);
+      expect(picks.length).toBeGreaterThan(0);
+      for (const pick of picks) {
+        expect(pick.fact).toBeTruthy();
+        expect(pick.fact).not.toBe("Open now");
+      }
+    }
+  });
+
+  it("uses formatHoursLine's own vocabulary for a confirmed pick", () => {
+    // Guards the SHAPE of the confirmed string without asserting that any
+    // particular hour has confirmed picks. A confirmed pick is by definition
+    // one isOpenNow accepted, so only the open-state phrasings are reachable.
+    const confirmed = [8, 12, 17, 21]
+      .flatMap((hour) =>
+        buildDaypartRows(
+          new Date(`2026-08-02T${String(hour).padStart(2, "0")}:00:00.000Z`),
+        ),
+      )
+      .flatMap((row) => row.picks)
+      .filter((pick) => pick.confidence === "confirmed");
+
+    for (const pick of confirmed) {
+      expect(pick.fact).toMatch(/^(Open until .+|Open 24 hours|Closing soon · .+)$/);
+    }
   });
 
   it("starts the morning coffee shelf with coffee destinations, not boba", () => {

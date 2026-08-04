@@ -331,3 +331,37 @@ export function selectRoadTravelSummary(
       null,
   };
 }
+
+/**
+ * The corridor a status tile should name when nothing is wrong on the roads.
+ *
+ * MDOT publishes a measured travel time for the county's interstate segments
+ * on every poll, already narrowed to Frederick County and dropped once older
+ * than fifteen minutes. Pulse read the selector above and kept only its work
+ * zones, so a quiet hour rendered "No major impact" while real numbers sat
+ * unread. A quiet road is still a road with a drive time on it.
+ *
+ * A corridor that is trending longer leads, because a rising number is the one
+ * worth seeing first; otherwise the longest drive leads.
+ *
+ * `trend` compares against MDOT's own PREVIOUS READING, not against a typical
+ * day. The feed carries no free-flow baseline, so no caller may render this as
+ * "slower than usual" — only that the last reading was shorter.
+ */
+export function leadTravelTime(
+  travelTimes: readonly ChartTravelTime[],
+): ChartTravelTime | null {
+  if (travelTimes.length === 0) return null;
+  const longestFirst = [...travelTimes].sort(
+    (a, b) => b.travelTimeSeconds - a.travelTimeSeconds,
+  );
+  return (
+    longestFirst.find((segment) => segment.trend === "longer") ??
+    longestFirst[0]
+  );
+}
+
+/** Whole minutes for a measured drive, never rounding a real drive to zero. */
+export function travelMinutes(seconds: number): number {
+  return Math.max(1, Math.round(seconds / 60));
+}

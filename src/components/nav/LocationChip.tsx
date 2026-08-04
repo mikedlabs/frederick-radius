@@ -7,6 +7,7 @@ import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ArrowUpRi
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { formatDistance } from "@/lib/geo";
 import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 
 /**
@@ -52,20 +53,26 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     router.refresh();
   };
 
-  // Find nearest municipality center if we have a position (labels "near me").
-  const nearestMuni = useMemo(() => {
+  // Every town, sorted by how far it is from the reader. This loop already ran
+  // over all thirteen and kept one, which meant the menu below listed towns in
+  // file order with no distances while the answer to "which of these is
+  // actually close to me" had just been computed and dropped.
+  const townsByDistance = useMemo(() => {
     if (state.status !== "granted") return null;
-    let best: { slug: string; name: string; distance_km: number } | null = null;
-    for (const m of MUNICIPALITIES) {
-      const dx = (m.centroid.lng - state.position.lng) * 111 * Math.cos((state.position.lat * Math.PI) / 180);
+    return MUNICIPALITIES.map((m) => {
+      const dx =
+        (m.centroid.lng - state.position.lng) *
+        111 *
+        Math.cos((state.position.lat * Math.PI) / 180);
       const dy = (m.centroid.lat - state.position.lat) * 111;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (!best || d < best.distance_km) {
-        best = { slug: m.slug, name: m.name, distance_km: d };
-      }
-    }
-    return best;
+      return {
+        slug: m.slug,
+        name: m.name,
+        distance_km: Math.sqrt(dx * dx + dy * dy),
+      };
+    }).sort((a, b) => a.distance_km - b.distance_km);
   }, [state]);
+  const nearestMuni = townsByDistance?.[0] ?? null;
 
   // Click-outside / Escape to close.
   useEffect(() => {
@@ -93,9 +100,11 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   let labelColor: string = scope ? "var(--app-ink-2)" : "var(--app-ink-3)";
   if (scope === "nearme") {
     if (state.status === "granted" && nearestMuni) {
+      // Miles and feet, through the same helper the other 119 call sites use.
+      // This chip was the one place in a Maryland app that reported kilometers.
       label = nearestMuni.distance_km < 1
         ? `Near ${nearestMuni.name}`
-        : `${nearestMuni.distance_km.toFixed(1)} km from ${nearestMuni.name}`;
+        : `${formatDistance(nearestMuni.distance_km * 1000)} from ${nearestMuni.name}`;
       LabelIcon = Navigation;
       labelColor = "var(--app-cool)";
     } else if (state.status === "loading") {
@@ -133,6 +142,12 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           strokeWidth={2}
           aria-hidden
         />
+        {/* Deliberately hidden below 390px: TopBar drops its own wordmark at
+            the same breakpoint so the narrowest header carries brand mark,
+            location, and search and nothing else (TopBar.spec.ts pins both
+            halves of that budget). The distances now in the menu below make
+            this less costly than it was, since the scope is one tap away
+            rather than unavailable. */}
         <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
           {label}
         </span>
@@ -180,12 +195,18 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
 
           <div className="border-t" style={{ borderColor: "var(--app-border)" }} />
 
-          {/* Towns — each SETS the scope in place. The nearest town (when
-              located) is hinted; the active scope town carries the check. */}
+          {/* Towns — each SETS the scope in place. Once the reader has shared a
+              location the list is ordered by distance and states it, so the
+              menu answers "which of these am I near" instead of making a person
+              read thirteen names in file order. Without a location it keeps
+              file order and says nothing it cannot support. */}
           <ul className="max-h-[46vh] overflow-y-auto py-1">
-            {MUNICIPALITIES.map((m) => {
+            {(townsByDistance ?? MUNICIPALITIES).map((m) => {
               const isActive = scopeTown === m.slug;
-              const isNearest = scope === "nearme" && nearestMuni?.slug === m.slug;
+              const distance =
+                townsByDistance && "distance_km" in m
+                  ? formatDistance(m.distance_km * 1000)
+                  : null;
               return (
                 <li key={m.slug}>
                   <button
@@ -201,9 +222,14 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
                       <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     )}
                     <span className="font-medium">{m.name}</span>
-                    {isNearest && !isActive && (
-                      <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-cool)" }}>
-                        Nearest
+                    {/* No "Nearest" tag: position one in a distance-sorted list
+                        already says it, and the number says it better. */}
+                    {distance && (
+                      <span
+                        className="ml-auto text-[11px] tabular-nums"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {distance}
                       </span>
                     )}
                   </button>
