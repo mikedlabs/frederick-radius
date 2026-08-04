@@ -14,8 +14,25 @@ import VENUE_EVENTS from "@/data/venue-events.json";
 import FIELD_NOTES from "@/data/field-notes.json";
 import CLIFFNOTES from "@/data/town-cliffnotes.json";
 import HOURS_REFRESH from "@/data/places-hours-refresh.json";
+import { HOURS_MAX_AGE_DAYS } from "@/lib/hours-freshness";
 
 const DAY = 86_400_000;
+
+/**
+ * How old the newest hours row may get before the board goes red.
+ *
+ * Sized to fire a full day before the outage, which takes two subtractions
+ * rather than the obvious one. isHoursFresh publishes while `age <= 7 days`
+ * (HOURS_MAX_AGE_DAYS), so coverage collapses to zero the instant the newest
+ * row passes 7.0. snapshotFreshnessAnomaly compares `floor(ageInDays) >
+ * maxAgeDays`, so a threshold of N first goes red at age N+1.
+ *
+ * That makes 8 — what shipped — red at 9.0, a full day AFTER every open and
+ * closed claim in the app has already gone dark. It makes 6 red at exactly
+ * 7.0, simultaneous with the cliff and worth minutes of warning. 5 goes red
+ * at 6.0, which is the day of daylight this alarm exists to provide.
+ */
+export const HOURS_SNAPSHOT_MAX_AGE_DAYS = HOURS_MAX_AGE_DAYS - 2;
 
 /** last_verified strings are "YYYY-MM" or "YYYY-MM-DD"; parse leniently. */
 function ageDays(verified: string | undefined, now: Date): number | null {
@@ -76,13 +93,21 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
   const hoursEntries = Object.entries(
     HOURS_REFRESH as Record<string, unknown>,
   ).filter(([key]) => !key.startsWith("_"));
+  // The window is one day TIGHTER than the publication window on purpose.
+  // HOURS_MAX_AGE_DAYS is 7 (src/lib/hours-freshness.ts), so a row stops
+  // being publishable exactly 7 days after its own stamp, and when the
+  // NEWEST row crosses that line the catalog's verified-hours coverage is
+  // zero — every open/closed claim in the app goes dark at once. This alarm
+  // previously used 8, which meant it fired a full day AFTER that happened.
+  // A warning that arrives after the outage is not a warning. Six gives a
+  // day of daylight to notice a stalled writer and re-run the refresh.
   const hoursAnomaly = snapshotFreshnessAnomaly(
     "places-hours-refresh.json",
     hoursEntries.map(
       ([, value]) => (value as { refreshed_at?: string })?.refreshed_at,
     ),
     now,
-    8,
+    HOURS_SNAPSHOT_MAX_AGE_DAYS,
     "Run the hours-refresh cron through a full cycle, then pull and merge the data-steward PR.",
   );
   if (hoursAnomaly) out.push(hoursAnomaly);

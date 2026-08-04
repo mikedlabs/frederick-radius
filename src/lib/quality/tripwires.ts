@@ -23,6 +23,8 @@ import {
 import ENRICHMENT from "@/data/places-enrichment.json" with { type: "json" };
 import BUSINESS_INFO from "@/data/business-info.json" with { type: "json" };
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
+import HOURS_REFRESH from "@/data/places-hours-refresh.json" with { type: "json" };
+import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -298,6 +300,20 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
     (VENUE_EVENTS as Array<{ source?: { fetchedAt?: string } }>).map((v) => v.source?.fetchedAt),
     10,
     "Check the ingest-venues workflow and the ANTHROPIC_API_KEY repo secret.",
+  );
+  // The most load-bearing committed artifact in the repo, and until now the
+  // only one this watchdog did not watch. Every open/closed claim the app
+  // makes comes from these rows, and they expire 7 days after their own
+  // stamps (HOURS_MAX_AGE_DAYS) — so when the writer stalls, coverage does
+  // not decay gently, it reaches zero the day the newest row ages out. A
+  // six-day window is one day of daylight before that.
+  check(
+    "places-hours-refresh",
+    Object.entries(HOURS_REFRESH as Record<string, unknown>)
+      .filter(([key]) => !key.startsWith("_"))
+      .map(([, value]) => (value as { refreshed_at?: string })?.refreshed_at),
+    HOURS_SNAPSHOT_MAX_AGE_DAYS,
+    "The Vercel hours cron has stopped landing rows. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL and CRON_SECRET in Production, then run the data-steward workflow.",
   );
   return out;
 }
