@@ -1522,9 +1522,15 @@ export default function MapDock(props: MapDockProps) {
             type="button"
             className="dock-locate tap-44"
             onClick={props.goNearMe}
-            aria-label={props.userLoc ? "Center on my location" : "Use my location"}
+            aria-label={
+              props.locating
+                ? "Locating you"
+                : props.userLoc
+                  ? "Recenter on my location"
+                  : "Locate me on the map"
+            }
             aria-busy={props.locating || undefined}
-            title={props.userLoc ? "Center on my location" : "Use my location"}
+            title={props.userLoc ? "Recenter on my location" : "Locate me on the map"}
           >
             {props.locating ? (
               <LoaderCircle
@@ -1547,7 +1553,7 @@ export default function MapDock(props: MapDockProps) {
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label="Choose what to see"
+            aria-label="Browse map contents"
             title={contentsSummary}
             onClick={() => togglePane("contents")}
           >
@@ -1628,7 +1634,6 @@ export default function MapDock(props: MapDockProps) {
                     type="button"
                     className="dock-clear tap-44"
                     onClick={isLayerPane ? clearLayers : clearAll}
-                    aria-label={isLayerPane ? "Hide all map layers" : "Clear all filters"}
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
                     <span>{isLayerPane ? "Clear layers" : "Reset"}</span>
@@ -1643,7 +1648,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="Find something nearby"
                   onClick={() => {
                     // "Nearby" should actually start nearby. Preserve a town
                     // the person deliberately chose, but use the map's normal
@@ -1664,7 +1668,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="See what is happening today and tonight"
                   data-on={timeActive || undefined}
                   onClick={() => openContentsPane("when")}
                 >
@@ -1680,7 +1683,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="Check travel and live conditions"
                   data-on={visibleLayerCount > 0 || undefined}
                   onClick={() => openContentsPane("layers")}
                 >
@@ -1700,7 +1702,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  aria-label="See Frederick details on the map"
                   data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
                   onClick={() => openContentsPane("localLayers")}
                 >
@@ -1718,7 +1719,6 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"
-                    aria-label="Choose a town or area"
                     data-on={activeWhereSel.kind !== "county" || undefined}
                     onClick={() => openContentsPane("where")}
                   >
@@ -1734,7 +1734,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-secondary"
-                  aria-label="Share this map view"
                   onClick={() => void shareCurrentView()}
                 >
                   <span className="dock-content-icon" aria-hidden>
@@ -1816,7 +1815,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-reveal"
-                  aria-label="See what is within reach"
                   onClick={() => {
                     haptic("light");
                     track("map_dock", { pane: "what", pick: "within-reach" });
@@ -1840,7 +1838,6 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-reveal"
-                    aria-label="Find a nearby essential"
                     onClick={() => setPane("amenities")}
                   >
                     <span className="dock-content-icon" aria-hidden>
