@@ -60,6 +60,71 @@ type EventResolverSources = {
   ) => Promise<PersistedEventIdentity | null>;
 };
 
+export const EVENT_DEEP_LINK_TIMEOUT_MS = 4_000;
+// A cold serverless instance may need to establish its pooled Postgres
+// connection before this small indexed lookup can run. Production has shown
+// that 1.2 seconds is not always enough when metadata and the page body begin
+// together. Give the durable archive a reliable first chance while preserving
+// a separate 1.75-second window for the direct-source recovery race.
+export const EVENT_ARCHIVE_HEAD_START_MS = 2_250;
+
+type ArchiveReader = (
+  slug: string,
+) => Promise<ArchivedEventIdentity | null>;
+
+type ArchiveReaderMemoizer = (read: ArchiveReader) => ArchiveReader;
+
+/**
+ * Metadata and the page body can resolve concurrently in one Next request.
+ * Supabase's transaction pool is intentionally limited to one connection per
+ * serverless instance, so two identical cold archive reads can queue behind
+ * each other and both miss their deadline. Coalesce only the in-flight work;
+ * settled values are removed immediately so event updates never become a
+ * process-local cache.
+ *
+ * The underlying read owns its bounded timeout and is not tied to either
+ * caller's AbortSignal. One consumer may stop waiting without cancelling the
+ * same promise while the other still needs it.
+ */
+export function createCoalescedArchiveReader(
+  read: ArchiveReader,
+): ArchiveReader {
+  const inFlight = new Map<string, Promise<ArchivedEventIdentity | null>>();
+
+  return (slug) => {
+    const existing = inFlight.get(slug);
+    if (existing) return existing;
+
+    const pending = read(slug).finally(() => {
+      if (inFlight.get(slug) === pending) inFlight.delete(slug);
+    });
+    inFlight.set(slug, pending);
+    return pending;
+  };
+}
+
+/**
+ * React cache is the request-scoped half of this path: it lets metadata settle
+ * first and the page body still reuse that answer. The in-flight reader below
+ * also protects concurrent requests from opening duplicate pooled connections,
+ * but deliberately forgets a value as soon as it settles.
+ */
+export function createMemoizedArchiveSource(
+  read: ArchiveReader,
+  memoize: ArchiveReaderMemoizer,
+): EventResolverSources["archive"] {
+  const readForRequest = memoize(createCoalescedArchiveReader(read));
+  return (slug) => readForRequest(slug);
+}
+
+const productionArchiveSource = createMemoizedArchiveSource(
+  (slug) =>
+    archivedEventBySlug(slug, {
+      timeoutMs: EVENT_ARCHIVE_HEAD_START_MS,
+    }),
+  cache,
+);
+
 const DEFAULT_SOURCES: EventResolverSources = {
   seed: (slug) => {
     const event = getEventBySlug(slug);
@@ -86,15 +151,6 @@ const DEFAULT_SOURCES: EventResolverSources = {
       : getIngestedCardBySlug(slug, context),
   persist: (event, aliases) => persistEventIdentity(event, aliases),
 };
-
-export const EVENT_DEEP_LINK_TIMEOUT_MS = 2_500;
-// A cold serverless instance may need to establish its pooled Postgres
-// connection before this small indexed lookup can run. The previous 450 ms
-// window was shorter than that handshake in production, so valid archived
-// library links fell through to the source-unavailable state even though their
-// snapshots were present. Keep the read bounded and leave more than half of
-// the full detail deadline available for direct-source recovery.
-export const EVENT_ARCHIVE_HEAD_START_MS = 1_200;
 
 /**
  * All generated and legacy event aliases are lowercase URL slugs. Reject an
@@ -191,6 +247,7 @@ function isPastDatedEventSlug(slug: string, now: Date): boolean {
 
 const PRODUCTION_PAGE_SOURCES: EventResolverSources = {
   ...DEFAULT_SOURCES,
+  archive: productionArchiveSource,
   // A discovery surface may have published this event moments ago. Reuse its
   // exact in-process board snapshot without calling assembleUnifiedEvents or
   // starting another countywide provider fanout. The durable archive remains
@@ -504,7 +561,10 @@ async function resolveEventPageBySlugUncached(
 async function resolveEventMetadataBySlugUncached(
   slug: string,
 ): Promise<ResolvedEventPage | null> {
-  return resolveEventMetadataBySlugWithSources(slug, DEFAULT_SOURCES);
+  return resolveEventMetadataBySlugWithSources(slug, {
+    ...DEFAULT_SOURCES,
+    archive: productionArchiveSource,
+  });
 }
 
 // Page-body lookups are memoized within a render so downstream page work does
