@@ -28,13 +28,18 @@ export default function TodaysDealsStack({
   now: Date;
   embedded?: boolean;
 }) {
-  const shown = deals
+  // One denominator for "specials": everything still actionable today (live
+  // now, later, or unclocked-today). The footer used to count ALL of today's
+  // deals including the ones already over, so the band's "3 specials" meta
+  // and a "See all 31 specials" footer could disagree on the same screen.
+  const actionable = deals
     .map((deal, index) => ({
       deal,
       index,
       availability: todayDealAvailability(deal.hours, weekday, now),
     }))
-    .filter(({ availability }) => availability.state !== "earlier")
+    .filter(({ availability }) => availability.state !== "earlier");
+  const shown = actionable
     .sort((a, b) => a.availability.rank - b.availability.rank || a.index - b.index)
     .slice(0, MAX_ROWS);
   if (shown.length === 0) return null;
@@ -154,7 +159,9 @@ export default function TodaysDealsStack({
         className="tap-44 flex min-h-11 items-center justify-between px-0.5 text-[13px] font-semibold"
         style={{ color: "var(--app-brand-press)" }}
       >
-        See all {deals.length} {deals.length === 1 ? "special" : "specials"}
+        {actionable.length > shown.length
+          ? `See all ${actionable.length} specials still on today`
+          : "See the full week of specials"}
         <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       </Link>
     </section>

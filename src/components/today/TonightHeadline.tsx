@@ -13,6 +13,7 @@ import { eventCardVisual } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
+import { eventTown } from "@/lib/events/eventTown";
 
 /**
  * TonightHeadline — the ONE headline of /today, rendered only when the day
@@ -62,11 +63,11 @@ export default function TonightHeadline({
   const label = tonight ? "Tonight's pick" : "Today's pick";
 
   const venue = event.venue_name?.trim();
-  // "Frederick · Frederick": some feeds stamp the town as the venue name, and
-  // "Downtown Frederick" overclaims for many City-of-Frederick venues — the
-  // same two calls the program rows make.
-  const rawTown = event.municipality_name?.trim();
-  const town = rawTown === "Downtown Frederick" ? "Frederick" : rawTown;
+  // Same town label the program rows print (shared eventTown helper). This
+  // component used to un-map "Downtown Frederick" back to "Frederick" via a
+  // guard that no longer matched anything, so the headliner and the rows
+  // below could name the same city two different ways on one screen.
+  const town = eventTown(event);
   const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
     .filter(Boolean)
     .join(" · ");

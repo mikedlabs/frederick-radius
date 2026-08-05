@@ -164,9 +164,13 @@ export default async function OnNowBand({
       />
       <div className="space-y-4">
         <div key={lead.key}>{lead.node}</div>
+        {/* "Also running today", not "More available today": the page-level
+            disclosure at the bottom is already titled "More for today", and
+            two near-identical "More …" doors on one page read as the same
+            door twice. */}
         {additional.length > 0 ? (
           <CollapsibleSection
-            title="More available today"
+            title="Also running today"
             count={additional.length}
             countLabel={additional.length === 1 ? "section" : "sections"}
             storageKey="fr.today.on-now-more"
