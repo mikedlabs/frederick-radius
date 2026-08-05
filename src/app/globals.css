@@ -3823,13 +3823,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dock-reveal-count {
-  flex: none;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  color: var(--app-ink-3);
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-}
 
 .dock-cat-grid {
   display: grid;
@@ -4109,10 +4102,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-chip[data-on] .dock-chip-n {
   opacity: 0.85;
 }
-.dock-chip-soon {
-  font-size: 9px;
-  opacity: 0.8;
-}
 
 /* Sub-intents, amenity kinds, and aerial seasons wrap inside the panel.
    Nothing in the map controls creates a second sideways gesture surface. */
@@ -4336,19 +4325,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
   background: transparent;
 }
-.dock-layer-count {
-  min-width: 18px;
-  height: 18px;
-  display: inline-grid;
-  place-items: center;
-  padding-inline: 5px;
-  border-radius: 999px;
-  background: var(--app-brand);
-  color: var(--app-on-brand);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  line-height: 1;
-}
 /* The count row inside the panel: the living mono count line + the clear ×. */
 .dock-countbar {
   display: flex;
@@ -4413,7 +4389,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     width: 48px;
     height: 48px;
   }
-  .dock-contents > span:not(.dock-layer-count) {
+  .dock-contents > span {
     display: none;
   }
   .dock-open:not([data-pane="contents"]) .dock-head {

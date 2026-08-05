@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
@@ -594,9 +595,13 @@ export default function EventsExplorer({
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
   // Recommended and Soonest both retain the human time horizons. A→Z and
   // Venue are deliberate directory modes and render as flat lists below.
+  // Owner-featured slugs float to the top of Recommended. Resolved once per
+  // mount; the JSON is tiny and day-keyed, so a session never needs to poll.
+  const [featured] = useState(() => featuredEventSlugs(new Date()));
+
   const filtered = useMemo(() => {
     const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
-      if (sort === "recommended") return compareForLead(a, b);
+      if (sort === "recommended") return compareForLead(a, b, featured);
       if (sort === "az")
         return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
       if (sort === "venue") {
@@ -616,7 +621,7 @@ export default function EventsExplorer({
         return true;
       })
       .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sort, nowISO]);
+  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured]);
 
   // A healthy server snapshot knows the complete unfiltered totals even
   // though the first React payload contains only a bounded preview. Once a

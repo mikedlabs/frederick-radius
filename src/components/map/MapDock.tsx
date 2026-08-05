@@ -176,7 +176,6 @@ export type MapDockProps = {
   civicAvailable: boolean;
   showCivic: boolean;
   setShowCivic: SetState<boolean>;
-  transitCount: number;
   transitHealth: LiveLayerHealth;
   showTransit: boolean;
   setShowTransit: SetState<boolean>;
@@ -259,11 +258,8 @@ function Chip({
   on,
   color,
   inkOnFill = false,
-  disabled = false,
-  soon = false,
   title,
   onClick,
-  ariaExpanded,
   children,
   count,
 }: {
@@ -271,11 +267,8 @@ function Chip({
   color?: string;
   /** Gold-family fills need ink text, not white (AA). */
   inkOnFill?: boolean;
-  disabled?: boolean;
-  soon?: boolean;
   title?: string;
   onClick: () => void;
-  ariaExpanded?: boolean;
   children: ReactNode;
   count?: number | null;
 }) {
@@ -283,21 +276,18 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       title={title}
       aria-pressed={on}
-      aria-expanded={ariaExpanded}
       className="dock-chip tap-44-y"
       data-on={on || undefined}
       data-ink={inkOnFill || undefined}
-      style={{ "--c": color, opacity: disabled ? 0.5 : 1 } as React.CSSProperties}
+      style={{ "--c": color } as React.CSSProperties}
     >
       {color && <span aria-hidden className="dock-chip-dot" />}
       {children}
       {typeof count === "number" && (
         <span className="dock-chip-n">{count.toLocaleString("en-US")}</span>
       )}
-      {soon && <span className="dock-chip-soon">soon</span>}
     </button>
   );
 }
@@ -318,8 +308,6 @@ function HeadRow({
     label: string;
     count?: number;
     on: boolean;
-    disabled?: boolean;
-    soon?: boolean;
   }>;
   onPick: (key: string) => void;
 }) {
@@ -329,15 +317,12 @@ function HeadRow({
         <button
           key={it.key}
           type="button"
-          onClick={() => !it.disabled && onPick(it.key)}
-          disabled={it.disabled}
+          onClick={() => onPick(it.key)}
           aria-pressed={it.on}
           data-on={it.on || undefined}
-          style={{ opacity: it.disabled ? 0.5 : 1 }}
         >
           {it.label}
           {typeof it.count === "number" && <span className="dock-chip-n">{it.count}</span>}
-          {it.soon && <span className="dock-chip-soon">soon</span>}
         </button>
       ))}
     </div>
@@ -380,9 +365,6 @@ export default function MapDock(props: MapDockProps) {
   });
   const [searchResultLimit, setSearchResultLimit] = useState<3 | 4>(4);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
-  // The Layers tab's Key grid is collapsed by default; one small control
-  // reveals it without creating another horizontal rail.
-  const [keyOpen, setKeyOpen] = useState(false);
   const [whereSel, setWhereSel] = useState<WhereSel>(() =>
     whereSelectionForScope(initialScope, props.userLoc),
   );
@@ -1561,11 +1543,11 @@ export default function MapDock(props: MapDockProps) {
             <span className="dock-contents-label">
               Browse
             </span>
-            {activeOptionCount > 0 && (
-              <span className="dock-layer-count" aria-hidden>
-                {Math.min(activeOptionCount, 99)}
-              </span>
-            )}
+            {/* No numeral badge: data-on already tints the button and the
+                context rail states the same state IN WORDS ("Downtown ·
+                Eat & drink"). A unitless sum of intents, flags, and layers
+                is not a quantity anyone can act on — counts are supporting
+                detail, never the headline. */}
           </button>
         </div>
 
@@ -1887,7 +1869,6 @@ export default function MapDock(props: MapDockProps) {
                     <strong>All place categories</strong>
                     <small>Food, parks, shops, and more</small>
                   </span>
-                  <span className="dock-reveal-count">{INTENTS.length}</span>
                   <ChevronDown
                     className={`h-4 w-4 transition-transform${placeReveal === "categories" ? " rotate-180" : ""}`}
                     strokeWidth={2.2}
@@ -2060,7 +2041,7 @@ export default function MapDock(props: MapDockProps) {
             {pane === "discover" && (
               <div className="dock-discoveries">
                 <p className="dock-discovery-intro">
-                  These highlights connect what is happening with what is nearby. Open one to see the mapped facts behind it.
+                  These highlights connect what is happening with what is nearby.
                 </p>
                 {props.discoveries.length > 0 ? (
                   <div className="dock-discovery-list">
@@ -2231,40 +2212,53 @@ export default function MapDock(props: MapDockProps) {
                           : "No current reports."}
                       </p>
                     )}
-                    {props.showTraffic && (
+                    {/* ONE Roads-now paragraph. The master chip flips traffic,
+                        civic, and scanner together, and this list used to
+                        answer with five stacked bold-lead paragraphs (and,
+                        via the aria-live wrapper, read all five aloud at
+                        once). Every honesty branch survives — the flow
+                        legend, the official-source line, the scanner health
+                        states, the privacy sentence, and the not-current
+                        disclaimers — as sentences of one paragraph. */}
+                    {props.roadsNowActive && (
                       <p className="dock-layer-status">
-                        <strong>Road flow</strong> · Mapbox congestion with
-                        amber Maryland WZDx work zones. Orange and red traffic
-                        lines show heavier flow; dashed red marks provider-listed
-                        closures. Tap a work zone for its official details.
-                      </p>
-                    )}
-                    {props.showTraffic && props.floodContextCount > 0 && (
-                      <p className="dock-layer-status">
-                        <strong>High-water reference</strong> · {props.floodContextCount} mapped risk areas, warning signs, and past-rescue locations provide background context. They are not current flooding or road-closure reports.
-                      </p>
-                    )}
-                    {props.showTraffic && props.snowRouteCount > 0 && (
-                      <p className="dock-layer-status">
-                        <strong>Snow routes</strong> · {props.snowRouteCount} current County route-operation report{props.snowRouteCount === 1 ? "" : "s"}. These are not plow locations or proof that a road is safe.
-                      </p>
-                    )}
-                    {props.showCivic && props.civicAvailable && (
-                      <p className="dock-layer-status"><strong>Official road reports</strong> · Maryland CHART incidents, WZDx work zones, and county-published issues.</p>
-                    )}
-                    {props.showIncidents && (
-                      <p className="dock-layer-status">
-                        <strong>Scanner reports</strong> · {props.incidentHealth.status === "unavailable"
-                          ? "The latest Frederick Scanner request failed. Retrying automatically."
-                          : props.incidentHealth.status === "stale"
-                          ? `Showing ${props.incidentHealth.count} incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
-                          : props.incidentHealth.status === "disabled"
-                            ? "Loading the latest public incidents…"
-                          : props.incidentHealth.status === "empty"
-                          ? (props.incidentHealth.notShownCount ?? 0) > 0
-                            ? `${props.incidentHealth.notShownCount} public report${props.incidentHealth.notShownCount === 1 ? " is" : "s are"} on the latest scanner board. This road view shows only reports with a safe block-level map location and likely travel impact.`
-                            : "No current public incidents in the latest FrederickScanner response."
-                          : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
+                        <strong>Roads now</strong> ·{" "}
+                        {props.showTraffic &&
+                          "Orange and red lines show heavier flow, dashed red marks provider-listed closures, and amber marks Maryland WZDx work zones. "}
+                        {props.showCivic && props.civicAvailable &&
+                          "Official reports come from Maryland CHART, WZDx, and county-published issues. "}
+                        {props.showIncidents && (
+                          <>
+                            {props.incidentHealth.status === "unavailable"
+                              ? "The latest Frederick Scanner request failed. Retrying automatically."
+                              : props.incidentHealth.status === "stale"
+                              ? `Showing ${props.incidentHealth.count} scanner incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
+                              : props.incidentHealth.status === "disabled"
+                                ? "Loading the latest public incidents…"
+                              : props.incidentHealth.status === "empty"
+                              ? (props.incidentHealth.notShownCount ?? 0) > 0
+                                ? `${props.incidentHealth.notShownCount} public report${props.incidentHealth.notShownCount === 1 ? " is" : "s are"} on the latest scanner board. This road view shows only reports with a safe block-level map location and likely travel impact.`
+                                : "No current public incidents in the latest FrederickScanner response."
+                              : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`}{" "}
+                            Medical and personal calls stay hidden.
+                          </>
+                        )}
+                        {props.showTraffic && (props.floodContextCount > 0 || props.snowRouteCount > 0) && (
+                          <>
+                            {" "}Background reference only:{" "}
+                            {[
+                              props.floodContextCount > 0
+                                ? `${props.floodContextCount} mapped high-water risk areas and past-rescue locations`
+                                : null,
+                              props.snowRouteCount > 0
+                                ? `${props.snowRouteCount} county route-operation report${props.snowRouteCount === 1 ? "" : "s"}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" and ")}
+                            . These are context, not current flooding, closures, or plow locations.
+                          </>
+                        )}
                       </p>
                     )}
                     {props.showRotorcraft && (
@@ -2414,41 +2408,11 @@ export default function MapDock(props: MapDockProps) {
                   </button>
                 )}
 
-                {/* The key — a field guide has a legend. Collapsed by
-                    default so the panel stays low; read-only. */}
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={keyOpen || undefined}
-                  aria-expanded={keyOpen}
-                  onClick={() => setKeyOpen((v) => !v)}
-                >
-                  Key
-                  <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{keyOpen ? "▲" : "▼"}</span>
-                </button>
-                {keyOpen && (
-                <div
-                  className="grid grid-cols-2 gap-x-3 gap-y-1 px-1 pb-1"
-                  role="list"
-                  aria-label="Pin color key"
-                >
-                  {INTENTS.map((i) => (
-                    <span
-                      key={i.key}
-                      role="listitem"
-                      className="inline-flex items-center gap-1.5 text-[11.5px]"
-                      style={{ color: "var(--app-ink-2)" }}
-                    >
-                      <span
-                        aria-hidden
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: i.color }}
-                      />
-                      {i.label}
-                    </span>
-                  ))}
-                </div>
-                )}
+                {/* The Key legend was cut in the Aug 2026 earn-its-place pass:
+                    it repeated the same intent-color dictionary the "All place
+                    categories" grid already renders as tinted, labeled tiles —
+                    and it wore the Open-now filter's visual affordance for a
+                    read-only list. One dictionary, rendered once. */}
               </div>
             )}
           </div>

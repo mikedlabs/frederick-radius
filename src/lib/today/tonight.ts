@@ -15,6 +15,7 @@
  * If nothing qualifies, it returns null: honest beats padded.
  */
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { featuredEventSlugs } from "@/lib/events/featured";
 import { eventLeadTier, eventProminence, pickLeadEvent } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 
@@ -37,13 +38,17 @@ export function isSameTodayListing(
 }
 
 export function pickTonightEvent(now: Date, pool: EventWithMeta[]): EventWithMeta | null {
+  const featured = featuredEventSlugs(now);
   const tonight = pool.filter(
     (e) =>
       isEventToday(e.starts_at, now) &&
       !isEventEnded(e, now) &&
       !NON_PUBLIC_EVENT.test(e.title ?? ""),
   );
-  const bestOverall = pickLeadEvent(tonight);
+  const bestOverall = pickLeadEvent(tonight, featured);
+  // An owner-featured pick is editorial and holds the hero while it is still
+  // catchable; the live-draw tiebreak below only applies to heuristic picks.
+  if (bestOverall?.slug && featured.has(bestOverall.slug)) return bestOverall;
 
   // "Right now" breaks a close contest; it does not make every small live
   // listing the day's headline. A live club walk previously displaced Alive

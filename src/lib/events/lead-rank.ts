@@ -72,7 +72,20 @@ export function eventProminence(e: LeadRankable): number {
 
 /** Comparator: lead tier, then prominence (bigger draw), then has-imagery,
  *  then soonest. Stable, pure. */
-export function compareForLead(a: LeadRankable, b: LeadRankable): number {
+export function compareForLead(
+  a: LeadRankable & { slug?: string },
+  b: LeadRankable & { slug?: string },
+  featured?: ReadonlySet<string>,
+): number {
+  // The owner-editorial override, finally passed by callers (it existed
+  // only as pickLeadEvent's unused parameter for weeks): a featured slug
+  // sorts ahead of everything; ties among featured rows fall through to
+  // the same heuristic below.
+  if (featured && featured.size > 0) {
+    const fa = a.slug && featured.has(a.slug) ? 0 : 1;
+    const fb = b.slug && featured.has(b.slug) ? 0 : 1;
+    if (fa !== fb) return fa - fb;
+  }
   const ta = eventLeadTier(a);
   const tb = eventLeadTier(b);
   if (ta !== tb) return ta - tb;
@@ -97,8 +110,8 @@ export function pickLeadEvent<T extends LeadRankable & { slug?: string }>(
   if (featured && featured.size > 0) {
     const editorial = pool
       .filter((e) => e.slug && featured.has(e.slug))
-      .sort(compareForLead)[0];
+      .sort((a, b) => compareForLead(a, b))[0];
     if (editorial) return editorial;
   }
-  return [...pool].sort(compareForLead)[0];
+  return [...pool].sort((a, b) => compareForLead(a, b))[0];
 }
