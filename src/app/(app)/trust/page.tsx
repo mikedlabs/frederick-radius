@@ -6,6 +6,9 @@ import CLIENT_PLACES from "@/data/places-client.json";
 import CostTransparency from "@/components/trust/CostTransparency";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { summarizeCoverage } from "@/lib/quality/coverage";
+import { getDb } from "@/lib/db/client";
+import { commerce_link_reports } from "@/lib/db/schema";
+import { count, eq } from "drizzle-orm";
 
 /**
  * /trust — the plain-English explanation of where the data comes
@@ -35,7 +38,27 @@ export const revalidate = 86_400;
 const pct = (part: number, total: number): string =>
   total === 0 ? "0%" : `${Math.round((part / total) * 100)}%`;
 
-export default function TrustPage() {
+/** Reader reports resolved as fixed — the public half of the correction
+ *  loop (/admin/link-reports is the private half). Fail-soft null: a
+ *  missing database must never break the trust page, and zero reports is
+ *  rendered as silence, not a hollow claim. */
+async function fixedReportCount(): Promise<number | null> {
+  try {
+    const db = getDb();
+    if (!db) return null;
+    const rows = await db
+      .select({ n: count() })
+      .from(commerce_link_reports)
+      .where(eq(commerce_link_reports.status, "fixed"));
+    const n = rows[0]?.n ?? 0;
+    return n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function TrustPage() {
+  const fixedReports = await fixedReportCount();
   const placeCount = new Intl.NumberFormat("en-US").format(CLIENT_PLACES.length);
   // The same measurements the internal coverage board runs — shown here so
   // this page proves its claims instead of asserting them. Aggregate only.
@@ -321,9 +344,20 @@ export default function TrustPage() {
           >
             hello@frederickradius.app
           </a>{" "}
-          with what you saw and where. We review correction messages and update
-          records by hand.
+          with what you saw and where, or use the report option beside a
+          place&apos;s ordering and menu links. We review correction messages
+          and update records by hand.
         </p>
+        {fixedReports !== null && (
+          <p
+            className="mt-2 text-[14px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            So far, reader reports have led to{" "}
+            {fixedReports.toLocaleString("en-US")} fixed{" "}
+            {fixedReports === 1 ? "listing" : "listings"}.
+          </p>
+        )}
       </section>
 
       {/* What it cost to build — the no-ads, no-investors civic read. */}
