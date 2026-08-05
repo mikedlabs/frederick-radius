@@ -1405,29 +1405,25 @@ sources:
     refresh_cadence: hourly
     license: US federal government open data, public domain
     contact: https://aviationweather.gov
-    status: active
-    collection: runtime
+    status: scaffold
+    collection: null
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: src/lib/integrations/aviationweather.ts
+    transform_file: null
     notes: |
-      Active runtime integration, not a daily-worker source. getKfdkMetar()
-      reads the hourly METAR and the AlmanacFooter on /now surfaces a
-      dewpoint comfort label ("Sticky" / "Muggy" / "Oppressive" /
-      "Very dry") ONLY at the edges of the comfort spectrum — the
-      "comfortable" middle band is silent so we don't add noise on a
-      normal day.
+      Retired from runtime in the 2026-08 dead-code sweep: its only
+      consumer (the AlmanacFooter dewpoint comfort chip) had been
+      unmounted from /today for weeks, so the integration
+      (src/lib/integrations/aviationweather.ts) fetched for nobody and
+      was deleted with it. Both are in git history.
 
-      The signal it adds over the regional NWS forecast is DEWPOINT,
-      which the NWS hourly response doesn't expose cleanly. Dewpoint
-      maps to comfort better than temperature: 72°F at 50°F dewpoint
-      feels great; 72°F at 70°F dewpoint feels oppressive.
-
-      No API key required (public-domain US federal data). 15-minute
-      revalidate cache via next/fetch. Failure is silent —
-      getKfdkMetar() returns null and the chip is hidden. Fully
-      inert when aviationweather.gov is unreachable.
+      Kept as scaffold rather than dropped because the source itself is
+      still the right call if a surface wants dewpoint again: the signal
+      it adds over the regional NWS forecast is DEWPOINT, which the NWS
+      hourly response doesn't expose cleanly, and it needs no API key
+      (public-domain US federal data). The transforms/kfdk_metars.ts
+      snapshot transform and its spec remain for the pipeline.
 
   - id: adsb_lol_rotorcraft
     name: ADSB.lol — Frederick County Rotorcraft Observations
