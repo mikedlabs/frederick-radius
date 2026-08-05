@@ -32,7 +32,6 @@ import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
@@ -325,7 +324,6 @@ type Props = {
    *  so SavedList/radius callers pass full records; /map browse passes the
    *  slim set and the sheet hydrates the full card on tap (openPlaceSheet). */
   places: MapPinPlace[];
-  osmPlaces?: OsmPlace[];
   height?: string;
   /** Full-bleed layout: drop the rounded border, fill the parent. The
    *  /map route uses this so the map IS the page, not a card on it. */
@@ -346,13 +344,6 @@ type Props = {
   /** Single-subject county overview. Its small place set is clustered at wide
    * zoom, all resulting marks are tappable, and location furniture stays off. */
   compactSubjectMap?: boolean;
-  /** Fires when a result area is committed with curated places inside it,
-   *  nearest-to-origin first. Gesture-driven cameras wait for the explicit
-   *  "Show results here" action; programmatic cameras commit automatically. */
-  onPlacesInView?: (slugs: string[]) => void;
-  /** Tap a result in the synced list → fly the map there and glow it.
-   *  `n` is a nonce so re-tapping the same place re-triggers. */
-  focus?: { slug: string; n: number } | null;
   /** Live civic points (traffic incidents, 311 reports) for the overlay. */
   civic?: CivicPin[];
   /** Server-fetched amenity points (Mapillary trash detections) merged
@@ -438,7 +429,6 @@ type Props = {
 
 export default function AppMap({
   places,
-  osmPlaces: osmFromProps,
   height = "78vh",
   fullBleed = false,
   initialCenter = FREDERICK,
@@ -450,8 +440,6 @@ export default function AppMap({
   compactSubjectMap = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
-  onPlacesInView,
-  focus,
   civic = [],
   extraAmenities = [],
   amenities = [],
@@ -965,14 +953,6 @@ export default function AppMap({
   const [locationFixTimestamp, setLocationFixTimestamp] = useState<number | null>(() =>
     readCachedGeoPosition()?.timestamp ?? null,
   );
-  // Ranking fallback when there's no device fix: the saved home town's
-  // centroid. Privacy-free (client-local preference, no prompt), and it makes
-  // "closest to you first" true for home-town users who never shared location.
-  // Read once per mount — a home-town change lands on the next visit.
-  const homeCentroid = useMemo(() => {
-    const slug = getHomeMuni();
-    return slug ? MUNICIPALITIES.find((m) => m.slug === slug)?.centroid ?? null : null;
-  }, []);
   const [locating, setLocating] = useState(false);
   const {
     state: sharedGeolocationState,
@@ -1154,7 +1134,6 @@ export default function AppMap({
   }, [amenityGroups, selectedDiscovery]);
   const amenityLayerActive = visibleAmenityGroups.size > 0;
   const { osmPlaces, osmLoading, osmError } = useOsmPlaces({
-    osmFromProps,
     wantsOsmInitially,
     activeAmenityGroupCount: visibleAmenityGroups.size,
   });
@@ -1512,27 +1491,6 @@ export default function AppMap({
   // (Categories were already removed from this sync for the same reason.)
   // (The OSM enrichment fetch itself lives in useOsmPlaces, called above.)
 
-  // Tap a result in the synced list → fly there, glow it, light haptic.
-  useEffect(() => {
-    if (!focus) return;
-    const p = places.find((x) => x.slug === focus.slug);
-    const map = mapRef.current?.getMap();
-    if (!p || !map) return;
-    setSelectedSlug(p.slug);
-    haptic("light");
-    cameraIntentRef.current = true;
-    // Pan to the result without zooming in — the user already chose
-    // their zoom level; we just move the camera to put the pin in
-    // view. This is the change that kills "the map keeps jumping
-    // around" on mobile.
-    map.easeTo({
-      center: [p.geom.lng, p.geom.lat],
-      duration: 600,
-      easing: CAM_EASE,
-      essential: true,
-    });
-  }, [focus, places]);
-
   const filteredPlaces = useMemo(() => {
     let base = places;
     // Field-notes lens narrows the base set first, so it intersects cleanly
@@ -1712,21 +1670,6 @@ export default function AppMap({
       }));
     }
 
-    if (!onPlacesInView) return inside.length;
-    // Rank from the reader's own fix when we have one (cached or granted),
-    // else their saved home town's centroid, else the map center. Squared-
-    // degree distance is enough to ORDER at county scale (same metric the
-    // center sort has always used).
-    const ref = userLoc ?? homeCentroid ?? viewport.center;
-    const ranked = inside
-      .map((place) => ({
-        slug: place.slug,
-        d: (place.geom.lng - ref.lng) ** 2 + (place.geom.lat - ref.lat) ** 2,
-      }))
-      .sort((a, z) => a.d - z.d)
-      .slice(0, 60)
-      .map((x) => x.slug);
-    onPlacesInView(ranked);
     return inside.length;
   };
 
@@ -1945,16 +1888,8 @@ export default function AppMap({
     if (layer === "transit-stop-hit") {
       const props = (feature.properties ?? {}) as { id?: string; name?: string };
       if (feature.geometry.type === "Point" && props.id != null) {
-        // A stop is the one active map result. Clear every competing peek so
-        // closing its drawer cannot reveal a stale card from an earlier tap.
-        setSelected(null);
-        setSelectedSlug(null);
-        setPeekPlace(null);
-        setParkingPeek(null);
-        setFoodTruckPeek(null);
-        setMarcPeek(null);
-        setSelectedAerial(null);
-        setSelectedCemetery(null);
+        // A stop is the one active map result; openMapSelection's
+        // clearMapSelection wipes every competing peek before it opens.
         const [lng, lat] = feature.geometry.coordinates as [number, number];
         openMapSelection({
           kind: "transit",
