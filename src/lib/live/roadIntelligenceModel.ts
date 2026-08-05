@@ -365,3 +365,111 @@ export function leadTravelTime(
 export function travelMinutes(seconds: number): number {
   return Math.max(1, Math.round(seconds / 60));
 }
+
+// ── Travel-time ↔ live-incident join ─────────────────────────────────────────
+//
+// Pulse showed a corridor trending "longer" and, elsewhere on the same page, a
+// crash on that corridor — two tiles telling one story with the connection left
+// to the reader. The join below attaches the freshest matching public incident
+// to each "longer" segment so the row can say both facts in one place.
+//
+// CHART travel-time segments carry no geometry, only route designators, so the
+// only honest join is by route number: a token like US 15 / I-70 / MD 26 must
+// appear on BOTH sides. Bare numbers never match (a "12200 block" address is
+// not a route), and the join claims temporal adjacency only — the caller's copy
+// must say "dispatched", never "closed" or "because of".
+
+/** The slice of a fused road incident the join needs. Structurally satisfied
+ *  by FusedRoadIncident without importing the fusion module. */
+export type RoadIncidentForJoin = {
+  id: string;
+  kind: string;
+  /** Block-level, already-sanitized scanner location. */
+  location: string;
+  firstReportedAt: string;
+  lastReportedAt: string;
+};
+
+type RouteToken = { system: "I" | "US" | "MD" | null; number: string };
+
+/** Route designators in a road name, segment list, or dispatch location.
+ *  Prefix REQUIRED: "US 15", "Us15", "I-70", "MD 26", "Route 40". A bare
+ *  number is a block address or an exit, never a match key. RT/ROUTE keeps a
+ *  null system and may match any prefixed token with the same number. */
+export function routeTokens(text: string): RouteToken[] {
+  const out: RouteToken[] = [];
+  const re = /\b(I|US|MD|RT|ROUTE)[\s.-]*(\d{1,3})\b/gi;
+  for (const m of text.matchAll(re)) {
+    const p = m[1].toUpperCase();
+    out.push({
+      system: p === "RT" || p === "ROUTE" ? null : (p as "I" | "US" | "MD"),
+      number: String(parseInt(m[2], 10)),
+    });
+  }
+  return out;
+}
+
+function tokensMatch(a: RouteToken, b: RouteToken): boolean {
+  if (a.number !== b.number) return false;
+  return a.system === null || b.system === null || a.system === b.system;
+}
+
+/** How stale a dispatch may be and still explain a live reading. */
+export const TRAVEL_CAUSE_FRESH_MS = 90 * 60_000;
+
+/**
+ * For every segment trending "longer", the freshest public incident whose
+ * route designator matches the segment's. Conservative on purpose: segments
+ * that are steady or shorter get no cause, incidents older than the freshness
+ * window get no voice, and a location without a route number can never match.
+ */
+export function explainLongerSegments(
+  travelTimes: readonly ChartTravelTime[],
+  incidents: readonly RoadIncidentForJoin[],
+  now: Date | string | number,
+  freshForMs: number = TRAVEL_CAUSE_FRESH_MS,
+): Map<string, RoadIncidentForJoin> {
+  const out = new Map<string, RoadIncidentForJoin>();
+  const nowMs = new Date(now).getTime();
+  if (!Number.isFinite(nowMs)) return out;
+  const fresh = incidents
+    .map((incident) => ({
+      incident,
+      lastMs: Date.parse(incident.lastReportedAt),
+      tokens: routeTokens(incident.location),
+    }))
+    .filter(
+      ({ lastMs, tokens }) =>
+        Number.isFinite(lastMs) &&
+        nowMs - lastMs >= 0 &&
+        nowMs - lastMs <= freshForMs &&
+        tokens.length > 0,
+    )
+    .sort((a, b) => b.lastMs - a.lastMs);
+  if (fresh.length === 0) return out;
+
+  for (const segment of travelTimes) {
+    if (segment.trend !== "longer") continue;
+    const segmentTokens = [
+      ...routeTokens(segment.name),
+      ...segment.roads.flatMap((road) => routeTokens(road)),
+    ];
+    if (segmentTokens.length === 0) continue;
+    const match = fresh.find(({ tokens }) =>
+      tokens.some((t) => segmentTokens.some((s) => tokensMatch(t, s))),
+    );
+    if (match) out.set(segment.id, match.incident);
+  }
+  return out;
+}
+
+/** The incident kind as a plain noun phrase for a sentence: "a crash",
+ *  "wires down", "a pedestrian-struck call". */
+export function incidentNoun(kind: string): string {
+  const k = kind.toLowerCase();
+  if (k === "wires down" || k === "flooding") return k;
+  if (k === "pedestrian struck") return "a pedestrian-struck call";
+  if (k === "hazmat") return "a hazmat call";
+  if (k === "rescue") return "a rescue call";
+  return /^[aeiou]/.test(k) ? `an ${k}` : `a ${k}`;
+}

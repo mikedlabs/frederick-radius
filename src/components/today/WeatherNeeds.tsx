@@ -7,6 +7,8 @@ import {
 import { nwsDisplaySeverity } from "@/components/today/CivicAlerts";
 import { prioritizeAlerts } from "@/lib/alert-priority";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import { getScannerIncidents } from "@/lib/integrations/scannerIncidents";
+import { stormActivityLine } from "@/lib/scanner/stormActivity";
 
 /**
  * WeatherNeeds — the "what you need" layer that appears ONLY during an active
@@ -154,6 +156,23 @@ export default async function WeatherNeeds() {
   const h = HAZARDS[hazard];
   const HazardIcon = h.icon;
 
+  // What the storm is ACTUALLY doing, from the public scanner feed: one calm
+  // sentence of counts (wires-down / flooding / crash calls in the last three
+  // hours), gated on the same active warning as the rest of this layer.
+  // Aggregate counts only — no locations, no added precision — and fail-soft:
+  // a scanner outage must never break the safety panel.
+  let scannerLine: string | null = null;
+  try {
+    const calls = await getScannerIncidents();
+    scannerLine = stormActivityLine(
+      calls.map((call) => ({ kind: call.kind, at: call.at })),
+      hazard,
+      new Date(),
+    );
+  } catch {
+    scannerLine = null;
+  }
+
   return (
     <details
       className="group overflow-hidden rounded-[var(--app-radius-md)] border"
@@ -207,6 +226,21 @@ export default async function WeatherNeeds() {
         >
           {h.advice}
         </p>
+        {scannerLine ? (
+          <p
+            className="px-3.5 pb-1 text-[12.5px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {scannerLine}{" "}
+            <Link
+              href="/scanner"
+              className="font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-cool)" }}
+            >
+              See the public log.
+            </Link>
+          </p>
+        ) : null}
         <ul className="px-2 pb-2">
           {h.rows.map((r) => {
             const Icon = r.icon;
