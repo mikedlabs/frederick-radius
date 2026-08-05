@@ -22,7 +22,10 @@ describe("Today decision hierarchy", () => {
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
     const title = renderedPage.indexOf("{frame.title}");
-    const scope = renderedPage.indexOf("<TodayScopeStatus />");
+    // Matched loosely: the component now carries the dateline as a prop, and
+    // this test guards ORDER (title, then scope line, then weather), not the
+    // element's exact attribute list.
+    const scope = renderedPage.indexOf("<TodayScopeStatus");
     const weather = renderedPage.indexOf("<SkyHero");
 
     expect(title).toBeGreaterThan(-1);
