@@ -23,7 +23,6 @@ import Map, {
 // browse the dock's Where pane is locate's one home.)
 import type {
   GeoJSONSource,
-  Map as MapboxMap,
   StyleSpecification,
 } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -61,14 +60,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // (the rule that closed the 12MB bundle leak) the points arrive as a
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
-import { haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
-import {
-  WALK_LABEL_MAX_METERS,
-  shouldFetchWalkTime,
-  walkTimeQuery,
-  type WalkRouteCoordinates,
-  type WalkTimeResponse,
-} from "@/lib/walkTime";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 import {
   GEOLOCATION_CHANGE_EVENT,
   readCachedGeoPosition,
@@ -80,8 +72,6 @@ import { sizedImage } from "@/lib/format/img";
 // map's curated-vs-OSM de-dupe now uses the exact same contract as
 // the canonical loader, so "the same thing twice" is closed by one
 // rule on every surface instead of a weaker map-only heuristic.
-import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
-import { isKnownClosed } from "@/lib/integrations/closures";
 import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
@@ -100,7 +90,6 @@ import {
   type NearbyUtilityPoint,
 } from "./mapNearby";
 import {
-  bucketOf,
   curatedClusterColorExpression,
   curatedClusterLabelExpression,
   curatedClusterProperties,
@@ -112,108 +101,59 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
 import StopArrivalsPopup, {
   type SelectedStop,
 } from "@/components/transit/StopArrivalsPopup";
-// Aerial photo manifest — extracted from EXIF GPS by
-// scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
-// across the seasons folders. Powers the "Aerial photos" overlay,
-// which is unique to Frederick Radius — no other map shows where
-// each photo was taken in the county.
-import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
-import { mapPaintTransitionDuration, mapPlaceVisualState } from "./mapVisualState";
-import {
-  backgroundPlacesForMapSource,
-  curatedPlacesForMapSource,
-} from "./mapSourceFilter";
+import { mapPaintTransitionDuration } from "./mapVisualState";
+import { curatedPlacesForMapSource } from "./mapSourceFilter";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
 // graphics failure never turns the page into a generic dead-end link.
 const MapList = dynamic(() => import("./MapList"), { ssr: false });
 
-type AerialPhoto = {
-  src: string;
-  lat: number;
-  lng: number;
-  altM: number | null;
-  bearing: number | null;
-  takenAt: string | null;
-  season: "spring" | "summer" | "fall" | "winter";
-};
-const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
-
-type CameraSnapshot = {
-  getZoom: () => number;
-  getCenter: () => { lng: number; lat: number };
-};
-
-type ResultViewportMap = CameraSnapshot & {
-  getBounds: () => {
-    getWest: () => number;
-    getEast: () => number;
-    getSouth: () => number;
-    getNorth: () => number;
-  } | null;
-};
-
-/** A county overview is a camera state, not a hard-coded zoom. A person can
- * pan the county offscreen without changing zoom, so the recovery control also
- * compares the settled camera with the center of the county fit. A small
- * tolerance avoids flashing the control after an accidental finger wobble. */
-function isCountyOverview(map: CameraSnapshot): boolean {
-  const [[west, south], [east, north]] = FREDERICK_COUNTY_BOUNDS;
-  const center = map.getCenter();
-  const centerLng = (west + east) / 2;
-  const centerLat = (south + north) / 2;
-  return (
-    map.getZoom() <= 10.6 &&
-    Math.abs(center.lng - centerLng) <= (east - west) * 0.12 &&
-    Math.abs(center.lat - centerLat) <= (north - south) * 0.12
-  );
-}
-
-// The aerial "time machine": scrub the drone archive by season. Colors
-// mirror the season tint on the pins (the decorative season palette) so a
-// chip reads as the same season as the dots it controls. DOM chips, so
-// var() is fine for the neutral "All".
-type AerialSeason = "all" | "spring" | "summer" | "fall" | "winter";
-// One season → hue map for the chips, the GL dot paint, and the selected
-// label, so the three can never drift apart. Shared hues come from ACCENTS.
-const SEASON_HEX = {
-  spring: "#859076",
-  summer: ACCENTS.amber,
-  fall: ACCENTS.terracotta,
-  winter: ACCENTS.slate,
-} as const;
-const AERIAL_SEASONS: { key: AerialSeason; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "var(--app-ink-2)" },
-  { key: "spring", label: "Spring", color: SEASON_HEX.spring },
-  { key: "summer", label: "Summer", color: SEASON_HEX.summer },
-  { key: "fall", label: "Fall", color: SEASON_HEX.fall },
-  { key: "winter", label: "Winter", color: SEASON_HEX.winter },
-];
-const AERIAL_SEASON_COUNTS: Record<string, number> = AERIAL_PHOTOS.reduce(
-  (acc, p) => ((acc[p.season] = (acc[p.season] ?? 0) + 1), acc),
-  {} as Record<string, number>,
-);
-
-// Does this browser have a usable WebGL context? Mapbox GL needs one; without
-// it the canvas stays blank. mapbox-gl v3 dropped the old `supported()` helper,
-// so probe directly. Conservative: any throw or missing context → treat as no
-// WebGL and fall back to the list view. SSR returns true so we never flash the
-// fallback during hydration — the real check runs in a mount effect.
-function hasWebGL(): boolean {
-  if (typeof document === "undefined" || typeof window === "undefined") return true;
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
-  } catch {
-    return false;
-  }
-}
+// Aerial archive + camera/environment helpers were extracted to focused
+// siblings (#77): mapAerialArchive.ts and mapCameraHelpers.ts.
+import {
+  AERIAL_PHOTOS,
+  AERIAL_SEASONS,
+  AERIAL_SEASON_COUNTS,
+  SEASON_HEX,
+  type AerialPhoto,
+  type AerialSeason,
+} from "./mapAerialArchive";
+import {
+  AERIAL_GEOJSON,
+  MUNI_LABELS_GEOJSON,
+  activeAmenityCategorySlugs,
+  buildAccuracyGeoJson,
+  buildAmenityGeoJson,
+  buildAmenitySelectionPoints,
+  buildCemeteryGeoJson,
+  buildCivicGeoJson,
+  buildCuratedGeoJson,
+  buildDotGeoJson,
+  buildEventScrubTimes,
+  buildFilteredOsmGeoJson,
+  buildPlaceDupeIndex,
+  buildRingGeoJson,
+  buildRouteGeoJson,
+  buildSelectedGeoJson,
+  buildUtilityPoints,
+  makeOsmDupeCheck,
+} from "./mapGeoJsonSources";
+import { useLiveFoodTrucks } from "./useLiveFoodTrucks";
+import { useOsmPlaces } from "./useOsmPlaces";
+import { useWalkRoute } from "./useWalkRoute";
+import {
+  SHORT_LANDSCAPE_MAX_BOUNDS,
+  countyFitPadding,
+  fitNearbyRadius,
+  hasWebGL,
+  isCountyOverview,
+  prefersReducedMotion,
+  scrubInstant,
+  type ResultViewportMap,
+} from "./mapCameraHelpers";
 
 // Curated-place semantic zoom has two deliberately separate profiles:
 // - the main dock map clusters the full county catalog until street zoom;
@@ -257,13 +197,11 @@ import {
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
-import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
+import { placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
   CAM_EASE,
-  DUPE_K,
-  EMPTY_FC,
   FREDERICK,
   FREDERICK_COUNTY_BOUNDS,
   FREDERICK_MAX_BOUNDS,
@@ -273,12 +211,7 @@ import {
   MAP_BAKED_STYLE,
   RADIUS_M,
   STYLE_URL,
-  circlePolygon,
-  dupeCellKey,
   isAmenity,
-  isTrustedOsm,
-  loadCachedOsm,
-  saveCachedOsm,
   smoothFocus,
 } from "./constants";
 import MapOverlays from "./MapOverlays";
@@ -342,16 +275,14 @@ import {
 } from "./mapboxStandardPreview";
 import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
-import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
+import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
-import { activeFoodTruckPins } from "./foodTruckPins";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
-import { mapCameraPadding } from "./mapCameraPadding";
 import { rememberMapSelectionOpener } from "./mapSelectionFocus";
 import {
   mapCameraParam,
@@ -374,17 +305,6 @@ type CivicTownSelection = {
   lat: number;
 };
 
-function municipalityDisplayName(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  return (
-    MUNICIPALITIES.find(
-      (municipality) =>
-        municipality.slug === normalized ||
-        municipality.name.toLowerCase() === normalized,
-    )?.name ?? value
-  );
-}
-
 type MapSelectionRequest =
   | { kind: "place"; value: MapPinPlace }
   | { kind: "raw"; value: NonNullable<Selected>; contextLabel?: string }
@@ -399,78 +319,6 @@ type MapSelectionRequest =
   | { kind: "food-truck"; value: FoodTruckMapPin }
   | { kind: "discovery"; value: MapDiscovery }
   | { kind: "spot"; value: MapSpotSelection };
-
-/** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
- *  from "now" by the delta so getOpenStatus (which reads Frederick time)
- *  evaluates hours at the scrubbed hour without constructing a zoned date. */
-function scrubInstant(scrubHour: number): Date {
-  const local = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const curH = local.getHours() + local.getMinutes() / 60;
-  return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
-}
-
-/** True when the viewer asked for reduced motion. The CSS `*` gate can't
- *  reach Mapbox's JS-driven camera, so camera moves check this and pass
- *  duration:0 (instant, no glide). */
-function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined"
-    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-}
-
-/** Keep the county outline clear of whichever edge owns the map instrument.
- * Mobile is bottom-mounted; desktop is top-mounted. A manual refit measures
- * the live controls while first paint uses the same responsive fallback. */
-function countyFitPadding(measureDock = true): { top: number; right: number; bottom: number; left: number } {
-  if (typeof window === "undefined") {
-    return { top: 96, right: 32, bottom: 64, left: 32 };
-  }
-  const mapRect = measureDock
-    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect()
-    : undefined;
-  const dock = measureDock
-    ? document.querySelector<HTMLElement>("[data-map-dock]")
-    : null;
-  const dockRect = dock?.getBoundingClientRect();
-  const contextRailRect = dock
-    ?.closest<HTMLElement>(".dock-host")
-    ?.querySelector<HTMLElement>(".map-context-rail")
-    ?.getBoundingClientRect();
-  const paneRect =
-    dock?.classList.contains("dock-open") === true
-      ? dock
-          .querySelector<HTMLElement>('.dock-pane[aria-hidden="false"]')
-          ?.getBoundingClientRect()
-      : undefined;
-
-  return mapCameraPadding({
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    mapTop: mapRect?.top ?? 0,
-    mapBottom: mapRect?.bottom ?? window.innerHeight,
-    dockTop: dockRect?.top,
-    dockBottom: dockRect?.bottom,
-    contextRailBottom: contextRailRect?.bottom,
-    paneTop: paneRect?.top,
-  });
-}
-
-/** Fit the visible map to the same one-mile reach used by the result set and
- * ring. One definition keeps the camera, pins, count, URL, and share state in
- * agreement instead of using an arbitrary zoom number. */
-function fitNearbyRadius(map: MapboxMap, origin: LngLat): void {
-  map.fitBounds(nearbyReachBounds(origin, RADIUS_M), {
-    padding: countyFitPadding(),
-    maxZoom: 14.5,
-    duration: prefersReducedMotion() ? 0 : 900,
-    easing: CAM_EASE,
-    essential: true,
-  });
-}
-
-const SHORT_LANDSCAPE_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-179, -80],
-  [179, 80],
-];
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
@@ -880,9 +728,7 @@ export default function AppMap({
   // through the URL (?intent/?sub) like every shareable view. Stored cats
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
-  const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
-  const [osmLoading, setOsmLoading] = useState(wantsOsmInitially && osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
@@ -907,7 +753,6 @@ export default function AppMap({
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
-  const [osmError, setOsmError] = useState<string | null>(null);
   // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
   // decision above) so the map opens as the live town, not a wall of pins. The
   // mode toggle still applies its curated layers when the user picks a mode.
@@ -1324,47 +1169,7 @@ export default function AppMap({
   );
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
   const [foodTruckPeek, setFoodTruckPeek] = useState<FoodTruckMapPin | null>(null);
-  const [currentFoodTruckPins, setCurrentFoodTruckPins] = useState(foodTruckPins);
-  const [foodTruckClock, setFoodTruckClock] = useState(() => Date.now());
-  useEffect(() => setCurrentFoodTruckPins(foodTruckPins), [foodTruckPins]);
-  useEffect(() => {
-    // Only the full browse map needs a minute-by-minute public read. Embeds do
-    // not poll unless they were explicitly given a live pin.
-    if (!isBrowseMap && foodTruckPins.length === 0) return;
-    let active = true;
-    const refresh = async () => {
-      try {
-        const response = await fetch("/api/food-trucks/live", { cache: "no-store" });
-        if (!response.ok) return;
-        const body = (await response.json()) as { pins?: FoodTruckMapPin[] };
-        if (active && Array.isArray(body.pins)) setCurrentFoodTruckPins(body.pins);
-      } catch {
-        // Keep the server-provided snapshot. Live pins are an enhancement;
-        // a temporary read failure must never disturb the rest of the map.
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(refresh, 60_000);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  // BrowseMapClient rebuilds its descriptive `dock` object when shareable URL
-  // state changes. Depend on its stable presence, not object identity, or each
-  // camera/query URL update restarts this poll and can create a request loop.
-  }, [foodTruckPins.length, isBrowseMap]);
-  useEffect(() => {
-    if (currentFoodTruckPins.length === 0) return;
-    const timer = window.setInterval(() => setFoodTruckClock(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, [currentFoodTruckPins.length]);
-  const liveFoodTruckPins = useMemo(
-    () => activeFoodTruckPins(currentFoodTruckPins, foodTruckClock),
-    [currentFoodTruckPins, foodTruckClock],
-  );
+  const liveFoodTruckPins = useLiveFoodTrucks(foodTruckPins, isBrowseMap);
   useEffect(() => {
     if (foodTruckPeek && !liveFoodTruckPins.some((pin) => pin.slug === foodTruckPeek.slug)) {
       setFoodTruckPeek(null);
@@ -1380,6 +1185,11 @@ export default function AppMap({
     return next;
   }, [amenityGroups, selectedDiscovery]);
   const amenityLayerActive = visibleAmenityGroups.size > 0;
+  const { osmPlaces, osmLoading, osmError } = useOsmPlaces({
+    osmFromProps,
+    wantsOsmInitially,
+    activeAmenityGroupCount: visibleAmenityGroups.size,
+  });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
@@ -1851,49 +1661,7 @@ export default function AppMap({
   // (restroom + trails) and re-clutter the clean open. Mode still scopes the
   // events + closures (via defaultsFor in mode-scope), just not the layer set.
   // (Categories were already removed from this sync for the same reason.)
-
-  useEffect(() => {
-    if (osmFromProps) {
-      setOsmPlaces(osmFromProps);
-      saveCachedOsm(osmFromProps);
-      setOsmLoading(false);
-      return;
-    }
-    if (osmPlaces.length > 0) {
-      setOsmLoading(false);
-      return;
-    }
-    // Overpass is an optional enrichment source. The curated county map is
-    // complete on cold open, so do not download the county-wide dataset until
-    // the user activates an amenity group (or arrives via an amenity link).
-    if (visibleAmenityGroups.size === 0) {
-      setOsmLoading(false);
-      setOsmError(null);
-      return;
-    }
-    let cancelled = false;
-    setOsmLoading(true);
-    setOsmError(null);
-    (async () => {
-      try {
-        const response = await fetch("/api/map/osm", {
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) throw new Error("OpenStreetMap enrichment is unavailable");
-        const payload: unknown = await response.json();
-        const data = Array.isArray(payload) ? payload as OsmPlace[] : [];
-        if (cancelled) return;
-        setOsmPlaces(data);
-        saveCachedOsm(data);
-      } catch (err) {
-        if (cancelled) return;
-        setOsmError(err instanceof Error ? err.message : "Failed to load OSM data");
-      } finally {
-        if (!cancelled) setOsmLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [osmFromProps, visibleAmenityGroups.size]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (The OSM enrichment fetch itself lives in useOsmPlaces, called above.)
 
   // Tap a result in the synced list → fly there, glow it, light haptic.
   useEffect(() => {
@@ -2123,221 +1891,43 @@ export default function AppMap({
 
   // Spatial hash of curated places (as DedupeRecords) for the OSM
   // de-dupe — keyed so a ±1 neighborhood spans the shared rule radius.
-  const placeDupeIndex = useMemo(() => {
-    // Plain object, not Map — `Map` is the react-map-gl component here.
-    const idx: Record<string, DedupeRecord[]> = {};
-    for (const p of places) {
-      const rec: DedupeRecord = {
-        slug: p.slug,
-        name: p.name,
-        geom: p.geom,
-        source: p.source,
-        google_place_id: p.google_place_id,
-        feature_score: p.feature_score,
-      };
-      (idx[dupeCellKey(p.geom.lat, p.geom.lng)] ??= []).push(rec);
-    }
-    return idx;
-  }, [places]);
+  const placeDupeIndex = useMemo(() => buildPlaceDupeIndex(places), [places]);
 
-  const osmDupesCurated = useMemo(() => {
-    return (p: OsmPlace): boolean => {
-      if (!p.name) return false;
-      // Same contract as the canonical loader — the safelist inside
-      // isSamePlace is what keeps "Carroll Creek Parking Deck" from
-      // ever folding into "Carroll Creek Park".
-      const osm: DedupeRecord = {
-        slug: `osm:${p.osm_id}`,
-        name: p.name,
-        geom: { lng: p.lng, lat: p.lat },
-      };
-      const cy = Math.round(p.lat * DUPE_K);
-      const cx = Math.round(p.lng * DUPE_K);
-      for (let dz = -1; dz <= 1; dz++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const bucket = placeDupeIndex[`${cy + dz},${cx + dx}`];
-          if (!bucket) continue;
-          for (const q of bucket) {
-            if (isSamePlace(osm, q)) return true;
-          }
-        }
-      }
-      return false;
-    };
-  }, [placeDupeIndex]);
+  const osmDupesCurated = useMemo(
+    () => makeOsmDupeCheck(placeDupeIndex),
+    [placeDupeIndex],
+  );
 
-  const filteredOsmGeoJson = useMemo(() => {
-    // Default: only show OSM data we trust (parks/libraries/fire/transit/civic).
-    // Commercial businesses (restaurants/shops/bars) only show when user opts in.
-    // Amenities (restrooms, water, trash, dog stations) only show when user opts in
-    // (these are useful but dense — would clutter the map otherwise).
-    // Always filter known-closed places (manual denylist) — even from the
-    // unverified opt-in view. We never want to show a closed business as open.
-    // Trusted-only: the "+N unverified" opt-in was retired — exposing
-    // weaker-quality OSM data violated the editorial promise.
-    let pool = osmPlaces.filter((p) => !isKnownClosed(p.name));
-    pool = pool.filter(isTrustedOsm);
-    // Micro-amenities never ride the clustered business source — they get
-    // their own zoom-gated layer so they declutter the wide view.
-    pool = pool.filter((p) => !isAmenity(p));
-    // Drop OSM pins that duplicate a curated place (same name within
-    // ~150 m) — the fix for "still duplicates on the map".
-    pool = pool.filter((p) => !osmDupesCurated(p));
-    pool = backgroundPlacesForMapSource(pool, matchSet !== null);
-    return {
-      type: "FeatureCollection" as const,
-      features: pool.map((p) => ({
-        type: "Feature" as const,
-        properties: {
-          osm_id: p.osm_id,
-          name: p.name,
-          category: p.category_slug,
-          osm_tag: p.osm_tag,
-          color: CATEGORY_BY_SLUG[p.category_slug]?.color ?? "#7A7975",
-          address: p.address ?? "",
-          city: p.city ?? "",
-          phone: p.phone ?? "",
-          website: p.website ?? "",
-          opening_hours: p.opening_hours ?? "",
-          cuisine: p.cuisine ?? "",
-          observed_at: p.observed_at ?? "",
-        },
-        geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
-      })),
-    };
-  }, [matchSet, osmPlaces, osmDupesCurated]);
+  const filteredOsmGeoJson = useMemo(
+    () => buildFilteredOsmGeoJson(osmPlaces, matchSet !== null, osmDupesCurated),
+    [matchSet, osmPlaces, osmDupesCurated],
+  );
 
   // Which raw amenity category slugs are active, from the selected groups.
-  const activeAmenityCats = useMemo(() => {
-    const s = new Set<string>();
-    for (const g of AMENITY_GROUPS) {
-      if (visibleAmenityGroups.has(g.key)) for (const c of g.cats) s.add(c);
-    }
-    return s;
-  }, [visibleAmenityGroups]);
+  const activeAmenityCats = useMemo(
+    () => activeAmenityCategorySlugs(visibleAmenityGroups),
+    [visibleAmenityGroups],
+  );
 
   // Amenities live in their own source, rendered only past street zoom
   // (see the amenity-icons layer minzoom). Empty until the user opts in,
   // so the default map is exactly as uncluttered as before.
-  const amenityGeoJson = useMemo(() => {
-    if (activeAmenityCats.size === 0) return EMPTY_FC;
-    // The deterministic amenity snapshot and the live Overpass response can
-    // contain the exact same OSM object. Prefer the snapshot so a refreshed
-    // water/trash/bench point never renders twice when Overpass is healthy.
-    const curatedOsmIds = new Set(
-      amenities.flatMap((amenity) => {
-        const match = amenity.id.match(/-(n|w|r)-(\d+)$/);
-        if (!match) return [];
-        const type = match[1] === "n" ? "node" : match[1] === "w" ? "way" : "relation";
-        return [`${type}/${match[2]}`];
-      }),
-    );
-    // Merge server-fetched Mapillary trash detections in with OSM
-    // amenities — same OsmPlace shape, category_slug "trash", so they
-    // ride the existing "Trash" toggle with no special-casing.
-    const feats = [...osmPlaces, ...extraAmenities]
-      .filter(
-        (p) =>
-          isAmenity(p) &&
-          activeAmenityCats.has(p.category_slug) &&
-          !isKnownClosed(p.name) &&
-          !curatedOsmIds.has(p.osm_id)
-      )
-      .map((p) => ({
-        type: "Feature" as const,
-        properties: {
-          osm_id: p.osm_id,
-          name: p.name,
-          category: p.category_slug,
-          osm_tag: p.osm_tag,
-          address: p.address ?? "",
-          city: p.city ?? "",
-          phone: p.phone ?? "",
-          website: p.website ?? "",
-          opening_hours: p.opening_hours ?? "",
-          cuisine: "",
-          // Carries a community-report's reference photo through to the popup
-          // (OSM amenities have none; the field reports the /report tool adds do).
-          photo: p.photo ?? "",
-          observed_at: p.observed_at ?? "",
-        },
-        geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
-      }));
-    // Curated amenities.json — the deterministic, always-present set
-    // (the restrooms / Wi-Fi / EV / bike / picnic / playgrounds the
-    // owner "added but couldn't see"). Same feature shape, mapped onto
-    // the hyphenated category slug so they share the marker language
-    // and the same active-group filter as the live OSM amenities.
-    const curated = amenities
-      .map((a) => ({ a, cat: AMENITY_KIND_TO_CAT[a.kind] }))
-      .filter(({ cat }) => activeAmenityCats.has(cat))
-      .map(({ a, cat }) => ({
-        type: "Feature" as const,
-        properties: {
-          osm_id: a.id,
-          name: a.name,
-          category: cat,
-          osm_tag: "",
-          address: a.detail ?? "",
-          city: municipalityDisplayName(a.municipality),
-          phone: "",
-          website: "",
-          opening_hours: "",
-          cuisine: "",
-          // Reference photo (field-collected points only) — surfaced in the
-          // popup. Empty string for OSM/static amenities.
-          photo: a.photo ?? "",
-          observed_at: "",
-        },
-        geometry: { type: "Point" as const, coordinates: [a.lng, a.lat] },
-      }));
-    return { type: "FeatureCollection" as const, features: [...feats, ...curated] };
-  }, [osmPlaces, extraAmenities, amenities, activeAmenityCats]);
+  const amenityGeoJson = useMemo(
+    () =>
+      buildAmenityGeoJson({ activeAmenityCats, amenities, osmPlaces, extraAmenities }),
+    [osmPlaces, extraAmenities, amenities, activeAmenityCats],
+  );
 
   // Every place peek can quietly answer the next practical question without
   // forcing the user to close it and rebuild an amenity filter. This joins the
   // deterministic amenity snapshot, fresh OSM/field points, and transit stops;
   // the peek helper deduplicates kinds and keeps only a short walk away.
   const utilityPoints = useMemo<NearbyUtilityPoint[]>(
-    () => [
-      ...amenities.map((a) => ({
-        lng: a.lng,
-        lat: a.lat,
-        kind: AMENITY_KIND_TO_CAT[a.kind],
-      })),
-      ...[...osmPlaces, ...extraAmenities]
-        .filter(isAmenity)
-        .map((p) => ({ lng: p.lng, lat: p.lat, kind: p.category_slug })),
-      ...transitStops.map((stop) => ({ lng: stop.lng, lat: stop.lat, kind: "transit" })),
-    ],
+    () => buildUtilityPoints({ amenities, osmPlaces, extraAmenities, transitStops }),
     [amenities, extraAmenities, osmPlaces, transitStops],
   );
   const amenitySelectionPoints = useMemo(
-    () => [
-      ...amenities.map((amenity) => {
-        const category = AMENITY_KIND_TO_CAT[amenity.kind];
-        return {
-          _kind: "osm" as const,
-          osm_id: amenity.id,
-          name: amenity.name,
-          category_slug: category,
-          osm_tag: "",
-          lng: amenity.lng,
-          lat: amenity.lat,
-          address: amenity.detail,
-          city: municipalityDisplayName(amenity.municipality),
-          photo: amenity.photo,
-          kind: category,
-        };
-      }),
-      ...[...osmPlaces, ...extraAmenities]
-        .filter(isAmenity)
-        .map((place) => ({
-          ...place,
-          _kind: "osm" as const,
-          kind: place.category_slug,
-        })),
-    ],
+    () => buildAmenitySelectionPoints({ amenities, osmPlaces, extraAmenities }),
     [amenities, extraAmenities, osmPlaces],
   );
 
@@ -2376,51 +1966,15 @@ export default function AppMap({
   /** Curated places use semantic zoom on the county and compact subject maps:
    * clusters at broad/town zoom, then individual dots and category pucks.
    * Other embeds keep every already-scoped place individually represented. */
-  const curatedGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: resultScopedPlaces.map((p) => {
-      const visual = mapPlaceVisualState(p.slug, {
+  const curatedGeoJson = useMemo(
+    () =>
+      buildCuratedGeoJson(resultScopedPlaces, {
         amenitiesActive: amenityGroups.size > 0,
-        matchSlugs: visualMatchSet,
-      });
-      return {
-        type: "Feature" as const,
-        properties: {
-        slug: p.slug,
-        name: p.name,
-        category: p.category,
-        // Category color as a literal hex on the feature (GL paint can't
-        // read var(--app-*)). Mirrors colorOf() in categoryMarkers.ts —
-        // leaf color, else the parent category's color, else brand — so the
-        // wide-zoom dot matches the puck it cross-fades into.
-        color:
-          CATEGORY_BY_SLUG[p.category]?.color
-          ?? CATEGORY_BY_SLUG[CATEGORY_BY_SLUG[p.category]?.parent ?? ""]?.color
-          ?? "#B5462B",
-        bucket: bucketOf(p.category),
-        // "Last call" — open now but closing within the hour. Drives a
-        // soft amber halo so a glance catches what's about to close.
-        closing: p.open_status?.state === "closing-soon",
-        // Draw order within the curated tier: verified places first so
-        // the strongest pins win the spot when icons stack.
-        pri: p.is_verified ? 0 : 1,
-        // Faded when an active What/Open-now filter doesn't match this pin
-        // (interaction: the map reacts to the dock, not just the count).
-        dimmed: visual.dimmed,
-        // Emphasized: a MATCH while a filter is active. Drives the icon-size
-        // boost so matches grow and dominate over the shrunk, faded rest —
-        // weak contrast (matches at full, rest at 0.28) read as barely
-        // filtered before. false on the clean, unfiltered map.
-        emph: visual.emph,
-        // Search is a narrower visual contract than a category filter. A
-        // quiet Radius ring identifies the actual named result at street
-        // zoom without turning every filtered category pin into a beacon.
-        searchMatch: searchPlaceSet?.has(p.slug) ?? false,
-        },
-        geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
-      };
-    }),
-  }), [amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet]);
+        visualMatchSet,
+        searchPlaceSet,
+      }),
+    [amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet],
+  );
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -2489,39 +2043,14 @@ export default function AppMap({
   // The single selected place uses the Radius brick regardless of category.
   // Category remains visible on the result card; the map itself gains one
   // predictable selection color instead of making every tap feel different.
-  const selectedGeoJson = useMemo(() => {
-    return {
-      type: "FeatureCollection" as const,
-      features: selectedPlace
-        ? [{
-            type: "Feature" as const,
-            properties: { color: BRAND.colors.brick },
-            geometry: {
-              type: "Point" as const,
-              coordinates: [selectedPlace.geom.lng, selectedPlace.geom.lat],
-            },
-          }]
-        : [],
-    };
-  }, [selectedPlace]);
+  const selectedGeoJson = useMemo(
+    () => buildSelectedGeoJson(selectedPlace),
+    [selectedPlace],
+  );
 
-  /**
-   * Municipality centroids as label points. County GIS polygons provide the
-   * boundaries; priority tiers let the dock map reveal smaller municipalities
-   * progressively instead of forcing all labels into the county overview.
-   */
-  const muniLabelsGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: MUNICIPALITIES.map((m) => ({
-      type: "Feature" as const,
-      properties: {
-        name: m.name,
-        slug: m.slug,
-        labelPriority: m.population >= 6_000 ? 0 : m.population >= 1_500 ? 1 : 2,
-      },
-      geometry: { type: "Point" as const, coordinates: [m.centroid.lng, m.centroid.lat] },
-    })),
-  }), []);
+  // Municipality centroid labels — static data, built once in
+  // mapGeoJsonSources.ts (stable identity, no memo needed).
+  const muniLabelsGeoJson = MUNI_LABELS_GEOJSON;
 
   // Auto-fit retired. Earlier behavior fitBounds-ed the camera on every
   // category change, which on mobile reads as the map jumping around
@@ -3413,24 +2942,13 @@ export default function AppMap({
   // Near-me reach ring plus the browser's separate accuracy halo. The first
   // answers "what is within my Radius"; the second quietly shows how exact
   // the device fix really is so the center dot never overclaims precision.
-  const ringGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: userLoc ? [circlePolygon(userLoc, RADIUS_M)] : [],
-  }), [userLoc]);
+  const ringGeoJson = useMemo(() => buildRingGeoJson(userLoc), [userLoc]);
   const clampedAccuracyM = clampLocationAccuracy(userAccuracyM);
-  const accuracyGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features:
-      userLoc && clampedAccuracyM
-        ? [circlePolygon(userLoc, clampedAccuracyM)]
-        : [],
-  }), [clampedAccuracyM, userLoc]);
-  const dotGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: userLoc
-      ? [{ type: "Feature" as const, properties: {}, geometry: { type: "Point" as const, coordinates: [userLoc.lng, userLoc.lat] } }]
-      : [],
-  }), [userLoc]);
+  const accuracyGeoJson = useMemo(
+    () => buildAccuracyGeoJson(userLoc, clampedAccuracyM),
+    [clampedAccuracyM, userLoc],
+  );
+  const dotGeoJson = useMemo(() => buildDotGeoJson(userLoc), [userLoc]);
 
   // Directions: a direct connector from you to the selected place, with
   // real distance + drive estimate and a one-tap handoff to native maps.
@@ -3442,89 +2960,23 @@ export default function AppMap({
   // walk" is the routed truth. Gated on a real geolocation fix plus
   // walkable range (shouldFetchWalkTime); reselecting aborts the
   // in-flight fetch, and the slug key drops any stale late response.
-  const [realWalk, setRealWalk] = useState<{
-    slug: string;
-    minutes: number;
-    meters: number | null;
-    coordinates?: WalkRouteCoordinates;
-  } | null>(null);
-  useEffect(() => {
-    setRealWalk(null);
-    if (!userLoc || !selectedPlace) return;
-    if (!shouldFetchWalkTime(haversineMeters(userLoc, selectedPlace.geom))) return;
-    const slug = selectedPlace.slug;
-    const ctrl = new AbortController();
-    fetch(
-      `/api/walk-time?${walkTimeQuery(userLoc, selectedPlace.geom, { geometry: true })}`,
-      { signal: ctrl.signal },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: WalkTimeResponse | null) => {
-        if (d?.ok && d.minutes >= 1) {
-          setRealWalk({
-            slug,
-            minutes: Math.round(d.minutes),
-            meters: d.meters,
-            coordinates: d.coordinates,
-          });
-        }
-      })
-      .catch(() => {
-        /* aborted or offline — the straight-line estimate stands */
-      });
-    return () => ctrl.abort();
-  }, [userLoc, selectedPlace]);
-  const routedWalkActive =
-    Boolean(
-      selectedPlace &&
-        realWalk?.slug === selectedPlace.slug &&
-        realWalk.coordinates &&
-        realWalk.coordinates.length >= 2,
-    );
-  const routeGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: userLoc && selectedPlace
-      ? [{
-          type: "Feature" as const,
-          properties: { routed: routedWalkActive },
-          geometry: {
-            type: "LineString" as const,
-            coordinates:
-              routedWalkActive && realWalk?.coordinates
-                ? realWalk.coordinates
-                : [
-                    [userLoc.lng, userLoc.lat],
-                    [selectedPlace.geom.lng, selectedPlace.geom.lat],
-                  ],
-          },
-        }]
-      : [],
-  }), [realWalk, routedWalkActive, selectedPlace, userLoc]);
+  const { realWalk, routedWalkActive, routeInfo } = useWalkRoute(userLoc, selectedPlace);
+  const routeGeoJson = useMemo(
+    () =>
+      buildRouteGeoJson({
+        userLoc,
+        selectedPlace,
+        routedWalkActive,
+        routedCoordinates: realWalk?.coordinates,
+      }),
+    [realWalk, routedWalkActive, selectedPlace, userLoc],
+  );
   useEffect(() => {
     searchRouteRef.current =
       routedWalkActive && realWalk?.coordinates
         ? encodePolyline(realWalk.coordinates, 6)
         : null;
   }, [realWalk, routedWalkActive]);
-  const routeInfo = useMemo(() => {
-    if (!userLoc || !selectedPlace) return null;
-    const m = haversineMeters(userLoc, selectedPlace.geom);
-    // Honest mode for the estimate: downtown the answer is a WALK ("~1 min
-    // drive" for a place 300m away read as parody). Under ~800m show walk
-    // minutes; beyond that, drive.
-    const walkable = m <= WALK_LABEL_MAX_METERS;
-    const mins = Math.max(1, Math.round(metersToMinutes(walkable ? "walk" : "drive", m)));
-    const routedMin =
-      walkable && realWalk && realWalk.slug === selectedPlace.slug ? realWalk.minutes : null;
-    return {
-      dist: formatDistance(
-        routedMin != null && realWalk?.meters != null ? realWalk.meters : m,
-      ),
-      eta: routedMin != null ? `${routedMin} min walk` : `~${mins} min ${walkable ? "walk" : "drive"}`,
-      href: `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.geom.lat},${selectedPlace.geom.lng}`,
-      name: selectedPlace.name,
-    };
-  }, [userLoc, selectedPlace, realWalk]);
 
   // Mode-aware scoping for civic pins. Visitor mode keeps only
   // major closures (Closed / Detour / Crash / Down …) and hides 311
@@ -3542,14 +2994,7 @@ export default function AppMap({
   // missed `mode`, so flipping Visitor↔Resident could leave the
   // GeoJSON pointing at the previous scoping until the next civic
   // update landed.
-  const civicGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: scopedCivic.map((c) => ({
-      type: "Feature" as const,
-      properties: { kind: c.kind, label: c.label },
-      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
-    })),
-  }), [scopedCivic]);
+  const civicGeoJson = useMemo(() => buildCivicGeoJson(scopedCivic), [scopedCivic]);
 
   // The spot reader may summarize civic context even when its overlay is off,
   // but it must use the same visitor/resident privacy scope as the visible
@@ -3600,29 +3045,13 @@ export default function AppMap({
     [events, parking, places, spotCivic, spotSelection, transitStops],
   );
 
-  // Aerial photo GeoJSON. Built once at module mount since the
-  // manifest doesn't change between renders. The `idx` carried in
-  // properties lets the click handler resolve back to the manifest
-  // entry without storing each photo's URL in feature properties.
-  const aerialGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: AERIAL_PHOTOS.map((p, idx) => ({
-      type: "Feature" as const,
-      properties: { idx, season: p.season },
-      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
-    })),
-  }), []);
+  // Aerial photo GeoJSON — static manifest, built once in
+  // mapGeoJsonSources.ts (stable identity, no memo needed).
+  const aerialGeoJson = AERIAL_GEOJSON;
 
   // Historic cemeteries GeoJSON. `name` in properties powers the generic
   // hover preview; the click handler reads the full pin back by `id`.
-  const cemeteryGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: cemeteries.map((c) => ({
-      type: "Feature" as const,
-      properties: { id: c.id, name: c.name },
-      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
-    })),
-  }), [cemeteries]);
+  const cemeteryGeoJson = useMemo(() => buildCemeteryGeoJson(cemeteries), [cemeteries]);
 
   const goNearMe = () => {
     setShowResultsHere(false);
@@ -3674,21 +3103,7 @@ export default function AppMap({
   // prop (deterministic over fixed timestamps). The scrubber filters same-day
   // events to those live/soon at the chosen hour; other-day events stay put so
   // a weekend event isn't hidden while scrubbing today.
-  const eventScrubTimes = useMemo(
-    () =>
-      events.map((e) => {
-        const start = new Date(e.starts_at);
-        const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
-        const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
-        let endH = NaN;
-        if (e.ends_at) {
-          const localEnd = new Date(new Date(e.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" }));
-          endH = easternHourFloat({ hour: localEnd.getHours(), minute: localEnd.getMinutes() });
-        }
-        return { startH, endH, dayKey: easternDayKey(start) };
-      }),
-    [events],
-  );
+  const eventScrubTimes = useMemo(() => buildEventScrubTimes(events), [events]);
   const scrubTodayKey = easternDayKey(new Date());
   const visibleEvents =
     scrubHour == null
