@@ -403,6 +403,15 @@ type Props = {
   showSearchControls?: boolean;
   /** The first usable map frame painted, or a stable fallback took over. */
   onVisualReady?: () => void;
+  /** Map program phase 1: the moment-aware cold-open default from
+   *  smartMapDefault (computed server-side with live signals). Layer keys
+   *  seed the toggle bank as the WEAKEST voice (deep link > stored choice >
+   *  smart seed); view keys (music-tonight) surface as the reason line's
+   *  one-tap action instead of auto-flipping a shareable lens. */
+  smartDefault?: {
+    layers: ReadonlyArray<string>;
+    reason: string;
+  } | null;
 };
 
 export default function AppMap({
@@ -440,6 +449,7 @@ export default function AppMap({
   activeSlugs = null,
   showSearchControls = true,
   onVisualReady,
+  smartDefault = null,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
@@ -956,6 +966,29 @@ export default function AppMap({
         cameraControlGestureRef.current = false;
       },
     });
+  // The smart default's layer keys, expanded once to the toggle bank's
+  // vocabulary with stable identity ("roads-now" is the composite alias, the
+  // same expansion the `roads` deep link uses). View keys (music-tonight)
+  // are deliberately NOT here — a lens must reproduce from its URL, so the
+  // reason line offers it as a one-tap action instead.
+  const [smartNoteDismissed, setSmartNoteDismissed] = useState(false);
+  const [smartLayerSeeds] = useState<
+    ReadonlySet<"radar" | "parking" | "civic" | "traffic" | "incidents">
+  >(() => {
+    const seeds = new Set<
+      "radar" | "parking" | "civic" | "traffic" | "incidents"
+    >();
+    for (const key of smartDefault?.layers ?? []) {
+      if (key === "radar") seeds.add("radar");
+      else if (key === "parking") seeds.add("parking");
+      else if (key === "roads-now") {
+        seeds.add("civic");
+        seeds.add("traffic");
+        seeds.add("incidents");
+      }
+    }
+    return seeds;
+  });
   // The eleven reference-layer switches plus their persistence and URL
   // mirror live in useMapLayerToggles; destructured back into the same
   // local names so every consumer below reads unchanged.
@@ -980,6 +1013,7 @@ export default function AppMap({
     trailsLayerDefault,
     transitDefaultOn: initialDefaults.lineLayers.includes("transit"),
     isBrowseMap,
+    smartLayers: smartLayerSeeds,
   });
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(deepLinkedAerial);
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
@@ -3099,6 +3133,45 @@ export default function AppMap({
               className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
               onClick={() => setGeoMsg(null)}
               aria-label="Dismiss location message"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />
+            </button>
+          </div>
+        )}
+        {/* The smart default explains itself in one sentence (map program
+            phase 1). Typography only, one dismiss, and when the suggestion
+            is tonight's music it offers the lens as a one-tap deep link
+            instead of silently flipping shareable state. */}
+        {dock && smartDefault && !smartNoteDismissed && !hasExplicitLayerView && (
+          <div
+            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex max-w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-[var(--app-radius-md)] border bg-white/95 py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-1)] backdrop-blur"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            <span role="status">{smartDefault.reason}</span>
+            {smartDefault.layers.includes("music-tonight") && (
+              <Link
+                href="/map?music=tonight"
+                className="tap-44-y shrink-0 rounded-full px-2 py-1 font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                See tonight&apos;s shows
+              </Link>
+            )}
+            <button
+              type="button"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+              onClick={() => {
+                setSmartNoteDismissed(true);
+                // Saying no is a real choice: the seeded layers turn off and
+                // persist off, exactly as if each toggle had been tapped.
+                if (smartLayerSeeds.has("radar")) setShowRadar(false);
+                if (smartLayerSeeds.has("parking")) setShowParking(false);
+                if (smartLayerSeeds.has("civic")) setShowCivic(false);
+                if (smartLayerSeeds.has("traffic")) setShowTraffic(false);
+                if (smartLayerSeeds.has("incidents")) setShowIncidents(false);
+              }}
+              aria-label="Dismiss the suggested view"
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2.3} aria-hidden />

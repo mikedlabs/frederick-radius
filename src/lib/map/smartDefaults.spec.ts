@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { easternMoment, smartMapDefault, type SmartMapSignals } from "./smartDefaults";
 
@@ -68,5 +69,36 @@ describe("easternMoment", () => {
     const m = easternMoment(new Date("2026-08-05T02:00:00.000Z"));
     expect(m.hour).toBe(22);
     expect(m.weekday).toBe(2);
+  });
+});
+
+describe("smart default wiring contracts (map program phase 1)", () => {
+  const read = (path: string) => readFileSync(path, "utf8");
+
+  it("seeds only true layers and never auto-flips a shareable lens", () => {
+    const appMap = read("src/components/map/AppMap.tsx");
+    // The composite roads-now expands exactly like the `roads` deep link.
+    expect(appMap).toContain('seeds.add("civic");');
+    expect(appMap).toContain('seeds.add("traffic");');
+    expect(appMap).toContain('seeds.add("incidents");');
+    // music-tonight surfaces as the reason line's one-tap deep link, so the
+    // lens always reproduces from its URL.
+    expect(appMap).toContain('href="/map?music=tonight"');
+    expect(appMap).not.toContain('seeds.add("music-tonight")');
+  });
+
+  it("keeps the suggestion from fossilizing into a stored preference", () => {
+    const toggles = read("src/components/map/useMapLayerToggles.ts");
+    expect(toggles).toContain("smartSeeded && !userTouchedRef.current");
+    // Prefs beat the smart seed key by key: ?? ordering is the contract.
+    expect(toggles).toContain('layerPrefs.radar ?? smart.has("radar")');
+  });
+
+  it("stays silent whenever the URL already carries a view", () => {
+    const browse = read("src/components/map/BrowseMapClient.tsx");
+    for (const key of ["\"show\"", "\"t\"", "\"music\"", "\"deals\"", "\"intent\"", "\"q\"", "\"at\""]) {
+      expect(browse).toContain(key);
+    }
+    expect(browse).toContain("explicitStateKeys.some((key) => sp.has(key))");
   });
 });

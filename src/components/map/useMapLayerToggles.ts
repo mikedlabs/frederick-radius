@@ -10,7 +10,7 @@
 // consumer of these values, which destructures them back into the same
 // local names.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import { writeMapLayerPrefs, type MapLayerPrefs } from "./mapLayerPrefs";
 
@@ -23,6 +23,7 @@ export function useMapLayerToggles({
   trailsLayerDefault,
   transitDefaultOn,
   isBrowseMap,
+  smartLayers,
 }: {
   compactSubjectMap: boolean;
   deepLinkLayers: ReadonlySet<string>;
@@ -32,14 +33,31 @@ export function useMapLayerToggles({
   trailsLayerDefault: boolean;
   transitDefaultOn: boolean;
   isBrowseMap: boolean;
+  /** Smart cold-open seeds (map program phase 1): the moment-aware default
+   *  from smartMapDefault, expanded to dock layer keys. Weakest voice in the
+   *  seed order — a deep link or ANY stored choice for that key beats it, so
+   *  it only ever speaks on a clean first look. */
+  smartLayers?: ReadonlySet<"radar" | "parking" | "civic" | "traffic" | "incidents">;
 }) {
+  const smart = smartLayers ?? new Set<string>();
+  // A smart seed is a suggestion, not a choice. Until the visitor touches a
+  // toggle themselves, the persistence write below stays silent so the
+  // moment-aware default can never fossilize into a stored preference and
+  // greet every future visit regardless of moment.
+  const smartSeeded = smart.size > 0;
+  const userTouchedRef = useRef(false);
+  const touch = <T,>(setter: Dispatch<SetStateAction<T>>) =>
+    (value: SetStateAction<T>) => {
+      userTouchedRef.current = true;
+      setter(value);
+    };
   const [showCivic, setShowCivic] = useState(
     () =>
       shouldInitializeReferenceLayer(
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("civic") ||
-          (!hasExplicitLayerView && (layerPrefs.civic ?? false)),
+          (!hasExplicitLayerView && (layerPrefs.civic ?? smart.has("civic"))),
       ),
   );
   const [showTrails, setShowTrails] = useState(
@@ -87,7 +105,7 @@ export function useMapLayerToggles({
       shouldInitializeReferenceLayer(
         compactSubjectMap,
         deepLinkLayers.has("parking") ||
-          (!hasExplicitLayerView && (layerPrefs.parking ?? false)),
+          (!hasExplicitLayerView && (layerPrefs.parking ?? smart.has("parking"))),
       ),
   );
   // Animated weather radar (RainViewer) — opt-in raster drape under the pins.
@@ -96,7 +114,7 @@ export function useMapLayerToggles({
       shouldInitializeReferenceLayer(
         compactSubjectMap,
         deepLinkLayers.has("radar") ||
-          (!hasExplicitLayerView && (layerPrefs.radar ?? false)),
+          (!hasExplicitLayerView && (layerPrefs.radar ?? smart.has("radar"))),
       ),
   );
   const [showTraffic, setShowTraffic] = useState(
@@ -105,7 +123,7 @@ export function useMapLayerToggles({
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("traffic") ||
-          (!hasExplicitLayerView && (layerPrefs.traffic ?? false)),
+          (!hasExplicitLayerView && (layerPrefs.traffic ?? smart.has("traffic"))),
       ),
   );
   // Live public scanner incidents (crashes, wires down, fires) — opt-in,
@@ -116,7 +134,7 @@ export function useMapLayerToggles({
         compactSubjectMap,
         deepLinkLayers.has("roads") ||
           deepLinkLayers.has("incidents") ||
-          (!hasExplicitLayerView && (layerPrefs.incidents ?? false)),
+          (!hasExplicitLayerView && (layerPrefs.incidents ?? smart.has("incidents"))),
       ),
   );
   // Public ADS-B rotorcraft activity. The server keeps Trooper identification
@@ -147,6 +165,9 @@ export function useMapLayerToggles({
   // saved map setup.
   useEffect(() => {
     if (hasExplicitLayerView) return;
+    // With smart seeds active, only a real interaction may persist: the
+    // suggestion itself must never become a stored preference.
+    if (smartSeeded && !userTouchedRef.current) return;
     writeMapLayerPrefs({
       civic: showCivic,
       transit: showTransit,
@@ -160,7 +181,7 @@ export function useMapLayerToggles({
       aviation: showRotorcraft,
       cameras: showCameras,
     });
-  }, [hasExplicitLayerView, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
+  }, [hasExplicitLayerView, smartSeeded, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
 
   // Every deliberate reference layer is first-class share/deep-link state.
   // Expand the composite `roads` alias into explicit members so turning one
@@ -214,16 +235,16 @@ export function useMapLayerToggles({
   ]);
 
   return {
-    showCivic, setShowCivic,
-    showTrails, setShowTrails,
-    showTransit, setShowTransit,
-    showAerial, setShowAerial,
-    showCemeteries, setShowCemeteries,
-    showParking, setShowParking,
-    showRadar, setShowRadar,
-    showTraffic, setShowTraffic,
-    showIncidents, setShowIncidents,
-    showRotorcraft, setShowRotorcraft,
-    showCameras, setShowCameras,
+    showCivic, setShowCivic: touch(setShowCivic),
+    showTrails, setShowTrails: touch(setShowTrails),
+    showTransit, setShowTransit: touch(setShowTransit),
+    showAerial, setShowAerial: touch(setShowAerial),
+    showCemeteries, setShowCemeteries: touch(setShowCemeteries),
+    showParking, setShowParking: touch(setShowParking),
+    showRadar, setShowRadar: touch(setShowRadar),
+    showTraffic, setShowTraffic: touch(setShowTraffic),
+    showIncidents, setShowIncidents: touch(setShowIncidents),
+    showRotorcraft, setShowRotorcraft: touch(setShowRotorcraft),
+    showCameras, setShowCameras: touch(setShowCameras),
   };
 }

@@ -136,6 +136,7 @@ export default function AppMapClient({
   floodContext = EMPTY_FLOOD_CONTEXT_FC,
   snowRoutes = EMPTY_SNOW_ROUTE_FC,
   fullBleed = false,
+  smartDefault = null,
   recenterToKnownLocation = false,
   pinpointDefault = false,
   initialCenter,
@@ -201,6 +202,12 @@ export default function AppMapClient({
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
   fullBleed?: boolean;
+  /** Map program phase 1: the moment-aware cold-open default, passed
+   *  through to AppMap on the full-bleed browse map only. */
+  smartDefault?: {
+    layers: ReadonlyArray<string>;
+    reason: string;
+  } | null;
   /** Center the camera (and measure list distances) from the user's
    *  last-known location when we already have a cached fix — so the
    *  list reads closest-first "from where you're standing." Never
@@ -301,6 +308,7 @@ export default function AppMapClient({
             activeSlugs={activeSlugs}
             showSearchControls={showSearchControls}
             onVisualReady={handleMapVisualReady}
+            smartDefault={smartDefault}
           />
         </MapChunkBoundary>
       </div>

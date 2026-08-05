@@ -29,6 +29,7 @@ import {
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { getIntentByKey, INTENTS } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
+import { easternMoment, smartMapDefault } from "@/lib/map/smartDefaults";
 import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
@@ -136,6 +137,7 @@ export default function BrowseMapClient({
   roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
   floodContext = EMPTY_FLOOD_CONTEXT_FC,
   snowRoutes = EMPTY_SNOW_ROUTE_FC,
+  smartSignals = null,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
@@ -166,6 +168,13 @@ export default function BrowseMapClient({
   floodContext?: FloodContextFC;
   /** Current SnowCommand route-operation reports, shown with Roads. */
   snowRoutes?: SnowRouteFC;
+  /** Server-computed live signals for the smart cold-open default (map
+   *  program phase 1). Null keeps the map's old quiet cold open. */
+  smartSignals?: {
+    activeWeatherAlert: boolean;
+    marketsOpenTodayCount: number;
+    roadsTrendingLongerCount: number;
+  } | null;
 }) {
   const sp = useSearchParams();
   const intentParam = sp.get("intent") ?? undefined;
@@ -377,6 +386,26 @@ export default function BrowseMapClient({
   const anyPlaceFilter = Boolean(intent || activeSub || openNow || dealsOn);
   const activeSlugs = anyPlaceFilter ? places.map((p) => p.slug) : null;
 
+  // Map program phase 1: the moment-aware cold-open default. It may speak
+  // ONLY on a truly clean arrival — any URL-carried view (layers, windows,
+  // lenses, filters, searches, targets) means the visitor or a shared link
+  // already chose, and the smart default stays silent. Latched once per
+  // mount: the visibility-refresh `now` must not flip suggestions under a
+  // person mid-session.
+  const [smartDefault] = useState(() => {
+    const explicitStateKeys = [
+      "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
+      "c", "in", "amenity", "aerial",
+    ];
+    if (!smartSignals) return null;
+    if (explicitStateKeys.some((key) => sp.has(key))) return null;
+    return smartMapDefault(easternMoment(now), {
+      ...smartSignals,
+      musicTonightCount,
+      parkingCount: parking.length,
+    });
+  });
+
   return (
     <AppMapClient
       places={allPlaces}
@@ -397,6 +426,7 @@ export default function BrowseMapClient({
       roadWorkZones={roadWorkZones}
       floodContext={floodContext}
       snowRoutes={snowRoutes}
+      smartDefault={smartDefault}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope
