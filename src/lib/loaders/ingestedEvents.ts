@@ -16,6 +16,7 @@
  * it (getIngestedCardBySlug).
  */
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { audienceFromText } from "@/lib/events/audienceSignals";
 import { getIngestedSeries, type IngestedSeries } from "@/lib/loaders/ingested";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -255,7 +256,7 @@ function occurrenceToCard(
     geom,
     municipality,
     category,
-    audience: [],
+    audience: audienceFromText(s.title, s.description),
     // No reliable admission signal on these feeds — withhold the "Free" claim
     // rather than mislabel a bingo buy-in as free.
     is_free: false,

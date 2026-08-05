@@ -1,4 +1,5 @@
 import { stampEventProvenance } from "@/lib/provenance";
+import { audienceFromText } from "@/lib/events/audienceSignals";
 import RAW from "@/data/venue-events.json" with { type: "json" };
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -188,7 +189,7 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     geom,
     municipality,
     category,
-    audience: [],
+    audience: audienceFromText(e.title, e.description),
     is_free: isFree,
     price_text: e.price,
     ticket_url: e.ticket_url,
