@@ -14,6 +14,7 @@ export type RadiusToolIcon =
   | "coffee"
   | "compass"
   | "dog"
+  | "fuel"
   | "download"
   | "history"
   | "landmark"
@@ -57,6 +58,9 @@ export type RadiusTool = {
   icon: RadiusToolIcon;
   tone: RadiusToolTone;
   featured?: boolean;
+  /** Off-app destination (opens in a new tab). The description must name the
+   *  outside source so the door never pretends the data is ours. */
+  external?: boolean;
   /** Words and short phrases a resident might type to reach this tool. Every
    *  keyword is a claim the destination answers it, so keep them honest. */
   keywords?: string[];
@@ -227,6 +231,16 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "bus",
         tone: "cool",
         keywords: ["bus", "transit", "marc", "commuter"],
+      },
+      {
+        id: "gas-prices",
+        label: "Gas prices",
+        description: "Check current Frederick station prices on GasBuddy.",
+        href: "https://www.gasbuddy.com/gasprices/maryland/frederick",
+        icon: "fuel",
+        tone: "cool",
+        external: true,
+        keywords: ["gas", "gas prices", "fuel", "cheapest gas", "diesel"],
       },
       {
         id: "shipping",

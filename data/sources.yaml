@@ -2536,3 +2536,30 @@ sources:
       activation; absent either setting, fetchMapillaryTrash() returns [].
       Every Mapillary popup names
       and links the source rather than mislabeling it as OpenStreetMap.
+
+  - id: gasbuddy_frederick
+    name: GasBuddy — Frederick station gas prices
+    owner: GasBuddy (PDI Technologies)
+    url: https://www.gasbuddy.com/gasprices/maryland/frederick
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: hourly
+    license: proprietary; user-submitted prices, licensed commercially (OPIS); no public API; scraping prohibited by ToS
+    contact: https://www.gasbuddy.com/business
+    status: pending_approval
+    collection: null
+    last_validated: 2026-08-05
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Owner ask (2026-08-05): surface Frederick gas prices in the app.
+      Phase 1 shipped the honest version: a "Gas prices" tool door that
+      OPENS GasBuddy's Frederick page in a new tab (outbound link only,
+      no data reuse — the description names GasBuddy so the door never
+      pretends the data is ours). This ledger row exists so the licensed
+      path is tracked, not forgotten: station-level data requires a
+      commercial agreement (GasBuddy business / OPIS). Do NOT scrape.
+      A public-domain alternative for a supporting number is the EIA
+      weekly Maryland average (state-level only, no station or county
+      granularity) — register it separately if we ever want it.

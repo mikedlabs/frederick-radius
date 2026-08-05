@@ -155,6 +155,8 @@ export type DirectoryItem = {
   icon: LucideIcon;
   color: string;
   keywords?: string[];
+  /** Off-app destination: opens in a new tab with the standard rel guard. */
+  external?: boolean;
 };
 
 export type ToolDeckGroup = {
@@ -185,7 +187,16 @@ function toDirectoryItem(tool: RadiusTool): DirectoryItem {
     icon: TOOL_ICONS[tool.icon],
     color: TONE_COLOR[tool.tone],
     keywords: tool.keywords,
+    external: tool.external,
   };
+}
+
+/** Anchor attributes for an off-app tool; {} for in-app destinations so the
+ *  Link renders exactly as before. */
+function externalLinkProps(item: Pick<DirectoryItem, "external">) {
+  return item.external
+    ? ({ target: "_blank", rel: "noopener noreferrer" } as const)
+    : ({} as const);
 }
 
 const ASK_RADIUS: DirectoryItem = {
@@ -754,6 +765,7 @@ function PinnedTools({
                 <Link
                   href={item.href}
                   prefetch={false}
+                  {...externalLinkProps(item)}
                   {...intentProps(item)}
                   className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 >
@@ -821,6 +833,7 @@ function RecentTools({
               <Link
                 href={item.href}
                 prefetch={false}
+                {...externalLinkProps(item)}
                 {...intentProps(item)}
                 className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
@@ -1023,6 +1036,7 @@ function CompassIntentBoard({
                         <Link
                           href={item.href}
                           prefetch={false}
+                          {...externalLinkProps(item)}
                           {...intentProps(item)}
                           className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 px-1.5 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                         >
@@ -1248,6 +1262,7 @@ function CompassSearchActions({
           key={item.id}
           href={item.href}
           prefetch={false}
+          {...externalLinkProps(item)}
           {...intentProps(item)}
           className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ borderColor: "var(--app-border)" }}
@@ -1309,6 +1324,7 @@ function ToolLedger({
             <Link
               href={item.href}
               prefetch={false}
+              {...externalLinkProps(item)}
               {...intentProps(item)}
               className="tactile-interactive group flex min-w-0 flex-1 items-center gap-3 px-1 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
             >

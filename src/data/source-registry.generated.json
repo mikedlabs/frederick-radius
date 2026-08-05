@@ -691,6 +691,17 @@
     "rowsRequired": false
   },
   {
+    "id": "gasbuddy_frederick",
+    "name": "GasBuddy — Frederick station gas prices",
+    "owner": "GasBuddy (PDI Technologies)",
+    "status": "pending_approval",
+    "collection": null,
+    "refreshCadence": "hourly",
+    "manifestLastSuccess": null,
+    "evidenceAliases": [],
+    "rowsRequired": false
+  },
+  {
     "id": "google_civic",
     "name": "Google Civic Information",
     "owner": "Google",
