@@ -161,16 +161,31 @@ describe("Compass Tool Deck model", () => {
     }
   });
 
-  it("keeps every registered tool destination in global page search", () => {
+  it("keeps every registered in-app tool destination in global page search", () => {
     const appPagePaths = new Set(
       APP_PAGES.map((page) => pathname(page.href)),
     );
 
     for (const tool of RADIUS_TOOLS) {
+      // Off-app doors (external: true) open another site in a new tab; an
+      // outside URL can never be an APP_PAGE and must not be forced into
+      // the internal search index.
+      if (tool.external) continue;
       expect(
         appPagePaths,
         `registered tool missing from APP_PAGES: ${pathname(tool.href)}`,
       ).toContain(pathname(tool.href));
+    }
+  });
+
+  it("requires every off-app tool to name its outside source in the description", () => {
+    for (const tool of RADIUS_TOOLS) {
+      if (!tool.external) continue;
+      expect(tool.href).toMatch(/^https:\/\//);
+      // "on GasBuddy" style attribution: the hostname's brand must appear in
+      // the door's description so the door never pretends the data is ours.
+      const brand = new URL(tool.href).hostname.replace(/^www\./, "").split(".")[0];
+      expect(tool.description.toLowerCase()).toContain(brand.toLowerCase());
     }
   });
 });

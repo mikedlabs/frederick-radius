@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getNearbyWikipedia } from "@/lib/integrations/wikiContext";
 
 /**
@@ -39,36 +40,51 @@ export default async function NearbyContext({
       </h2>
       <ul className="space-y-3">
         {items.map((p) => (
-          <li key={p.pageId} className="flex flex-col gap-0.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <a
-                href={p.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tap-44-y inline-flex items-center font-serif text-[15px] font-semibold leading-snug hover:underline"
-                style={{ color: "var(--app-ink)" }}
+          <li key={p.pageId} className="flex items-start gap-3">
+            {/* The article's own lead image — requested from the API since the
+                start and dropped at render until Aug 2026. Decorative next to
+                the linked title, so empty alt; self-hides when absent. */}
+            {p.thumbnail ? (
+              <Image
+                src={p.thumbnail}
+                alt=""
+                width={56}
+                height={56}
+                className="mt-0.5 h-14 w-14 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
+                style={{ boxShadow: "var(--app-edge)" }}
+              />
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-44-y inline-flex items-center font-serif text-[15px] font-semibold leading-snug hover:underline"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  {p.title}
+                </a>
+                <span
+                  className="shrink-0 font-mono text-[11px] tabular-nums"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {distanceLabel(p.distanceM)}
+                </span>
+              </div>
+              <p
+                className="text-[13px] leading-relaxed"
+                style={{
+                  color: "var(--app-ink-2)",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                  overflow: "hidden",
+                }}
               >
-                {p.title}
-              </a>
-              <span
-                className="shrink-0 font-mono text-[11px] tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {distanceLabel(p.distanceM)}
-              </span>
+                {p.extract}
+              </p>
             </div>
-            <p
-              className="text-[13px] leading-relaxed"
-              style={{
-                color: "var(--app-ink-2)",
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-                overflow: "hidden",
-              }}
-            >
-              {p.extract}
-            </p>
           </li>
         ))}
       </ul>

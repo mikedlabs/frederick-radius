@@ -9,6 +9,7 @@
  * /events/<slug> link resolves instead of hitting notFound().
  */
 import { stampEventProvenance } from "@/lib/provenance";
+import { audienceFromText } from "@/lib/events/audienceSignals";
 import { getCachedLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -215,7 +216,9 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     geom: e.geom,
     municipality: e.municipality,
     category: e.category,
-    audience: [],
+    // Publisher words → shared audience vocabulary; empty stays honest
+    // uncertainty (see lib/events/audienceSignals).
+    audience: audienceFromText(title, e.description),
     is_free: e.is_free,
     price_text: e.price_text,
     attendance_mode,

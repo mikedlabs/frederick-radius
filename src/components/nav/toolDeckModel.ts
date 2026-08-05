@@ -58,6 +58,7 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
       "parking",
       "transit",
       "road-cameras",
+      "gas-prices",
       "amenities-guide",
     ],
   },

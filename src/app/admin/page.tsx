@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Inbox, Flag, PenLine, Copy as CopyIcon, GitCompare, Sparkles,
   BarChart3, LayoutDashboard, KeyRound, Mail, Megaphone,
-  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX, Nfc, Radar,
+  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX, Nfc, Radar, Link2,
 } from "lucide-react";
 import Link from "next/link";
 import { easternDayKey } from "@/lib/tz";
@@ -48,6 +48,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
     doors: [
       { href: "/admin/claims", title: "Submissions", icon: Inbox },
       { href: "/admin/reports", title: "Reports", icon: Flag },
+      { href: "/admin/link-reports", title: "Links", icon: Link2 },
       { href: "/admin/food-trucks", title: "Truck claims", icon: Truck },
       { href: "/admin/dear-frederick", title: "Letters", icon: Mail },
       { href: "/admin/copy-review", title: "Copy", icon: PenLine },

@@ -51,8 +51,15 @@ describe("Radius tool registry", () => {
     expect(radiusJourneyForPath("/search")).toBeNull();
   });
 
-  it("only exposes working internal tool routes", () => {
+  it("only exposes working internal tool routes, or declared external doors", () => {
     for (const tool of RADIUS_TOOLS) {
+      // An off-app door must SAY so (external: true) and must be https —
+      // then it is exempt from the route-file check because there is no
+      // route. Everything else stays a working internal path.
+      if (tool.external) {
+        expect(tool.href).toMatch(/^https:\/\//);
+        continue;
+      }
       expect(tool.href).toMatch(/^\//);
       expect(tool.href).not.toMatch(
         /^\/(?:admin(?:\/|$)|collect(?:\/|$)|proto(?:\/|$)|business\/claim(?:\/|$)|from-above\/time-machine(?:\/|$))/,
