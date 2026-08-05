@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { ExternalLink, Info, Snowflake, X } from "lucide-react";
 import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
 import type { SnowRouteFC } from "./types";
@@ -51,12 +52,16 @@ function reportedTime(value: string | undefined): string | null {
 export default function SnowRoutes({
   show,
   data,
+  gate,
 }: {
   show: boolean;
   data: SnowRouteFC;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const { current: map } = useMap();
   const [popup, setPopup] = useState<SnowPopup | null>(null);
+  useLiveLayerGate(gate, () => setPopup(null));
 
   useEffect(() => {
     const instance = map?.getMap();
@@ -79,6 +84,7 @@ export default function SnowRoutes({
       ) {
         return;
       }
+      gate?.onWillOpen();
       setPopup({
         id: text("id") ?? "county-snow-route",
         district: text("district"),
@@ -107,7 +113,7 @@ export default function SnowRoutes({
       instance.off("mouseenter", HIT_ID, enter);
       instance.off("mouseleave", HIT_ID, leave);
     };
-  }, [data, map, show]);
+  }, [data, gate, map, show]);
 
   if (!show || data.features.length === 0) return null;
 

@@ -35,6 +35,7 @@ import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
 import { savedDateLabel } from "@/components/saved/walletFacts";
+import { useToggleSave } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
 
@@ -96,6 +97,10 @@ function Card({
   const town = MUNICIPALITY_BY_SLUG[event.municipality]?.name ?? null;
   const kind = cat?.name ?? "Event";
   const fact = eventLipFact(event, now);
+  // Un-save from the card itself, the same device-local toggle the save
+  // side wrote with. One tap, no confirm: events are device-local by
+  // contract and re-saving costs one tap on the event page.
+  const toggleSave = useToggleSave("event", event.slug);
   // The app already pushes a cancellation notice to this reader's phone, and
   // /api/events/by-slugs runs a 60-second edge window specifically so a
   // cancelled row cannot sit stale in a saved deck. The card then never read
@@ -261,11 +266,24 @@ function Card({
               onClick={stop}
               tabIndex={open ? 0 : -1}
               className="sw-act-quiet"
-              style={{ marginLeft: "auto" }}
             >
               Tickets
             </a>
           )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic("light");
+              toggleSave();
+            }}
+            tabIndex={open ? 0 : -1}
+            className="sw-act-quiet"
+            style={{ marginLeft: "auto" }}
+            aria-label={`Remove ${event.title} from saved`}
+          >
+            Remove
+          </button>
         </div>
       </div>
     </div>

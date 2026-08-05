@@ -685,7 +685,16 @@ export default function SavedList({
     return m;
   }, [items]);
 
-  const placesPending = slugsToFetch.length > 0 && resolvedKey !== slugsKey;
+  // The whole-page skeleton is for ARRIVAL only: the first paint on a device
+  // whose saved slugs have not resolved yet. It used to gate on the exact
+  // slug set (resolvedKey !== slugsKey), which meant every LATER save — tap
+  // save on a place page, come back here — blanked the entire page to
+  // skeleton while one slug fetched. Once anything has resolved, the page
+  // keeps rendering what it has and the new card simply appears when its
+  // fetch lands; the by-slugs effect above refetches on every change either
+  // way. The unknown-slug protection (task #45) is untouched: resolvedKey is
+  // still set on success AND on collapse, so a stale ref cannot pin arrival.
+  const placesPending = slugsToFetch.length > 0 && resolvedKey === null;
   // Events resolve in their own section, NOT in the whole-page gate above.
   // Their tail can reach the durable archive for a long-past save, and no
   // reader should wait on that to see their places, notes, or transit saves.

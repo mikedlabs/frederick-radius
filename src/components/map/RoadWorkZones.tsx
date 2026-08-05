@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { ExternalLink, TrafficCone, X } from "lucide-react";
 import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
 import type { RoadWorkZoneFC } from "./types";
@@ -40,12 +41,16 @@ function timeLabel(value?: string): string | null {
 export default function RoadWorkZones({
   show,
   data,
+  gate,
 }: {
   show: boolean;
   data: RoadWorkZoneFC;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const { current: map } = useMap();
   const [popup, setPopup] = useState<WorkZonePopup | null>(null);
+  useLiveLayerGate(gate, () => setPopup(null));
 
   useEffect(() => {
     const instance = map?.getMap();
@@ -60,6 +65,7 @@ export default function RoadWorkZones({
           ? String(properties[key])
           : undefined;
       const road = string("road") ?? "Frederick County road";
+      gate?.onWillOpen();
       setPopup({
         lng: event.lngLat.lng,
         lat: event.lngLat.lat,
@@ -100,7 +106,7 @@ export default function RoadWorkZones({
         instance.off("mouseleave", id, leave);
       }
     };
-  }, [data, map, show]);
+  }, [data, gate, map, show]);
 
   if (!show || data.features.length === 0) return null;
 
