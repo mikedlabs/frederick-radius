@@ -60,14 +60,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // (the rule that closed the 12MB bundle leak) the points arrive as a
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
-import { haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
-import {
-  WALK_LABEL_MAX_METERS,
-  shouldFetchWalkTime,
-  walkTimeQuery,
-  type WalkRouteCoordinates,
-  type WalkTimeResponse,
-} from "@/lib/walkTime";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 import {
   GEOLOCATION_CHANGE_EVENT,
   readCachedGeoPosition,
@@ -148,6 +141,9 @@ import {
   buildUtilityPoints,
   makeOsmDupeCheck,
 } from "./mapGeoJsonSources";
+import { useLiveFoodTrucks } from "./useLiveFoodTrucks";
+import { useOsmPlaces } from "./useOsmPlaces";
+import { useWalkRoute } from "./useWalkRoute";
 import {
   SHORT_LANDSCAPE_MAX_BOUNDS,
   countyFitPadding,
@@ -216,8 +212,6 @@ import {
   RADIUS_M,
   STYLE_URL,
   isAmenity,
-  loadCachedOsm,
-  saveCachedOsm,
   smoothFocus,
 } from "./constants";
 import MapOverlays from "./MapOverlays";
@@ -284,7 +278,6 @@ import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
-import { activeFoodTruckPins } from "./foodTruckPins";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
@@ -735,9 +728,7 @@ export default function AppMap({
   // through the URL (?intent/?sub) like every shareable view. Stored cats
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
-  const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
-  const [osmLoading, setOsmLoading] = useState(wantsOsmInitially && osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
@@ -762,7 +753,6 @@ export default function AppMap({
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
-  const [osmError, setOsmError] = useState<string | null>(null);
   // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
   // decision above) so the map opens as the live town, not a wall of pins. The
   // mode toggle still applies its curated layers when the user picks a mode.
@@ -1179,47 +1169,7 @@ export default function AppMap({
   );
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
   const [foodTruckPeek, setFoodTruckPeek] = useState<FoodTruckMapPin | null>(null);
-  const [currentFoodTruckPins, setCurrentFoodTruckPins] = useState(foodTruckPins);
-  const [foodTruckClock, setFoodTruckClock] = useState(() => Date.now());
-  useEffect(() => setCurrentFoodTruckPins(foodTruckPins), [foodTruckPins]);
-  useEffect(() => {
-    // Only the full browse map needs a minute-by-minute public read. Embeds do
-    // not poll unless they were explicitly given a live pin.
-    if (!isBrowseMap && foodTruckPins.length === 0) return;
-    let active = true;
-    const refresh = async () => {
-      try {
-        const response = await fetch("/api/food-trucks/live", { cache: "no-store" });
-        if (!response.ok) return;
-        const body = (await response.json()) as { pins?: FoodTruckMapPin[] };
-        if (active && Array.isArray(body.pins)) setCurrentFoodTruckPins(body.pins);
-      } catch {
-        // Keep the server-provided snapshot. Live pins are an enhancement;
-        // a temporary read failure must never disturb the rest of the map.
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(refresh, 60_000);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  // BrowseMapClient rebuilds its descriptive `dock` object when shareable URL
-  // state changes. Depend on its stable presence, not object identity, or each
-  // camera/query URL update restarts this poll and can create a request loop.
-  }, [foodTruckPins.length, isBrowseMap]);
-  useEffect(() => {
-    if (currentFoodTruckPins.length === 0) return;
-    const timer = window.setInterval(() => setFoodTruckClock(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, [currentFoodTruckPins.length]);
-  const liveFoodTruckPins = useMemo(
-    () => activeFoodTruckPins(currentFoodTruckPins, foodTruckClock),
-    [currentFoodTruckPins, foodTruckClock],
-  );
+  const liveFoodTruckPins = useLiveFoodTrucks(foodTruckPins, isBrowseMap);
   useEffect(() => {
     if (foodTruckPeek && !liveFoodTruckPins.some((pin) => pin.slug === foodTruckPeek.slug)) {
       setFoodTruckPeek(null);
@@ -1235,6 +1185,11 @@ export default function AppMap({
     return next;
   }, [amenityGroups, selectedDiscovery]);
   const amenityLayerActive = visibleAmenityGroups.size > 0;
+  const { osmPlaces, osmLoading, osmError } = useOsmPlaces({
+    osmFromProps,
+    wantsOsmInitially,
+    activeAmenityGroupCount: visibleAmenityGroups.size,
+  });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
@@ -1706,49 +1661,7 @@ export default function AppMap({
   // (restroom + trails) and re-clutter the clean open. Mode still scopes the
   // events + closures (via defaultsFor in mode-scope), just not the layer set.
   // (Categories were already removed from this sync for the same reason.)
-
-  useEffect(() => {
-    if (osmFromProps) {
-      setOsmPlaces(osmFromProps);
-      saveCachedOsm(osmFromProps);
-      setOsmLoading(false);
-      return;
-    }
-    if (osmPlaces.length > 0) {
-      setOsmLoading(false);
-      return;
-    }
-    // Overpass is an optional enrichment source. The curated county map is
-    // complete on cold open, so do not download the county-wide dataset until
-    // the user activates an amenity group (or arrives via an amenity link).
-    if (visibleAmenityGroups.size === 0) {
-      setOsmLoading(false);
-      setOsmError(null);
-      return;
-    }
-    let cancelled = false;
-    setOsmLoading(true);
-    setOsmError(null);
-    (async () => {
-      try {
-        const response = await fetch("/api/map/osm", {
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) throw new Error("OpenStreetMap enrichment is unavailable");
-        const payload: unknown = await response.json();
-        const data = Array.isArray(payload) ? payload as OsmPlace[] : [];
-        if (cancelled) return;
-        setOsmPlaces(data);
-        saveCachedOsm(data);
-      } catch (err) {
-        if (cancelled) return;
-        setOsmError(err instanceof Error ? err.message : "Failed to load OSM data");
-      } finally {
-        if (!cancelled) setOsmLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [osmFromProps, visibleAmenityGroups.size]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (The OSM enrichment fetch itself lives in useOsmPlaces, called above.)
 
   // Tap a result in the synced list → fly there, glow it, light haptic.
   useEffect(() => {
@@ -3047,45 +2960,7 @@ export default function AppMap({
   // walk" is the routed truth. Gated on a real geolocation fix plus
   // walkable range (shouldFetchWalkTime); reselecting aborts the
   // in-flight fetch, and the slug key drops any stale late response.
-  const [realWalk, setRealWalk] = useState<{
-    slug: string;
-    minutes: number;
-    meters: number | null;
-    coordinates?: WalkRouteCoordinates;
-  } | null>(null);
-  useEffect(() => {
-    setRealWalk(null);
-    if (!userLoc || !selectedPlace) return;
-    if (!shouldFetchWalkTime(haversineMeters(userLoc, selectedPlace.geom))) return;
-    const slug = selectedPlace.slug;
-    const ctrl = new AbortController();
-    fetch(
-      `/api/walk-time?${walkTimeQuery(userLoc, selectedPlace.geom, { geometry: true })}`,
-      { signal: ctrl.signal },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: WalkTimeResponse | null) => {
-        if (d?.ok && d.minutes >= 1) {
-          setRealWalk({
-            slug,
-            minutes: Math.round(d.minutes),
-            meters: d.meters,
-            coordinates: d.coordinates,
-          });
-        }
-      })
-      .catch(() => {
-        /* aborted or offline — the straight-line estimate stands */
-      });
-    return () => ctrl.abort();
-  }, [userLoc, selectedPlace]);
-  const routedWalkActive =
-    Boolean(
-      selectedPlace &&
-        realWalk?.slug === selectedPlace.slug &&
-        realWalk.coordinates &&
-        realWalk.coordinates.length >= 2,
-    );
+  const { realWalk, routedWalkActive, routeInfo } = useWalkRoute(userLoc, selectedPlace);
   const routeGeoJson = useMemo(
     () =>
       buildRouteGeoJson({
@@ -3102,25 +2977,6 @@ export default function AppMap({
         ? encodePolyline(realWalk.coordinates, 6)
         : null;
   }, [realWalk, routedWalkActive]);
-  const routeInfo = useMemo(() => {
-    if (!userLoc || !selectedPlace) return null;
-    const m = haversineMeters(userLoc, selectedPlace.geom);
-    // Honest mode for the estimate: downtown the answer is a WALK ("~1 min
-    // drive" for a place 300m away read as parody). Under ~800m show walk
-    // minutes; beyond that, drive.
-    const walkable = m <= WALK_LABEL_MAX_METERS;
-    const mins = Math.max(1, Math.round(metersToMinutes(walkable ? "walk" : "drive", m)));
-    const routedMin =
-      walkable && realWalk && realWalk.slug === selectedPlace.slug ? realWalk.minutes : null;
-    return {
-      dist: formatDistance(
-        routedMin != null && realWalk?.meters != null ? realWalk.meters : m,
-      ),
-      eta: routedMin != null ? `${routedMin} min walk` : `~${mins} min ${walkable ? "walk" : "drive"}`,
-      href: `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.geom.lat},${selectedPlace.geom.lng}`,
-      name: selectedPlace.name,
-    };
-  }, [userLoc, selectedPlace, realWalk]);
 
   // Mode-aware scoping for civic pins. Visitor mode keeps only
   // major closures (Closed / Detour / Crash / Down …) and hides 311
