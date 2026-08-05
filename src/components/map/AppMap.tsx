@@ -83,7 +83,7 @@ import { installCountySpotlight } from "./countySpotlight";
 // runtime path since mapStyle only references it behind the flag).
 import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
-import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
+import { readMapLayerPrefs } from "./mapLayerPrefs";
 import {
   nearestMapUtilities,
   nearestMapUtilityPoint,
@@ -101,7 +101,6 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
 import StopArrivalsPopup, {
   type SelectedStop,
 } from "@/components/transit/StopArrivalsPopup";
-import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
@@ -142,6 +141,7 @@ import {
   makeOsmDupeCheck,
 } from "./mapGeoJsonSources";
 import { useLiveFoodTrucks } from "./useLiveFoodTrucks";
+import { useMapLayerToggles } from "./useMapLayerToggles";
 import { useOsmPlaces } from "./useOsmPlaces";
 import { useWalkRoute } from "./useWalkRoute";
 import {
@@ -1105,68 +1105,36 @@ export default function AppMap({
           : "Couldn't get your location. Keeping your current map view.",
     );
   }, [isBrowseMap, sharedGeolocationState]);
-  const [showCivic, setShowCivic] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("roads") ||
-          deepLinkLayers.has("civic") ||
-          (!hasExplicitLayerView && (layerPrefs.civic ?? false)),
-      ),
-  );
-  const [showTrails, setShowTrails] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("trails") ||
-          (!hasExplicitLayerView && (layerPrefs.trails ?? trailsLayerDefault)),
-      ),
-  );
-  const [showTransit, setShowTransit] = useState(
-    // Transit is a deliberate map layer, never cold-open furniture. Deep-link
-    // mode defaults can still request it; ordinary county browse stays quiet.
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("transit") ||
-          (!hasExplicitLayerView && (layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit"))),
-      ),
-  );
-  // Aerial photo overlay — the Frederick Radius moat. Off by default
-  // since 104 pins is a lot to render until the user opts in. Tapping
-  // one opens a Popup with the photo thumbnail + season + date.
-  const [showAerial, setShowAerial] = useState(() =>
-    shouldInitializeReferenceLayer(
-      compactSubjectMap,
-      deepLinkLayers.has("aerial") ||
-        Boolean(deepLinkedAerial) ||
-        (!hasExplicitLayerView && (layerPrefs.aerial ?? false)),
-    ),
-  );
+  // The eleven reference-layer switches plus their persistence and URL
+  // mirror live in useMapLayerToggles; destructured back into the same
+  // local names so every consumer below reads unchanged.
+  const {
+    showCivic, setShowCivic,
+    showTrails, setShowTrails,
+    showTransit, setShowTransit,
+    showAerial, setShowAerial,
+    showCemeteries, setShowCemeteries,
+    showParking, setShowParking,
+    showRadar, setShowRadar,
+    showTraffic, setShowTraffic,
+    showIncidents, setShowIncidents,
+    showRotorcraft, setShowRotorcraft,
+    showCameras, setShowCameras,
+  } = useMapLayerToggles({
+    compactSubjectMap,
+    deepLinkLayers,
+    hasExplicitLayerView,
+    layerPrefs,
+    deepLinkedAerialPresent: Boolean(deepLinkedAerial),
+    trailsLayerDefault,
+    transitDefaultOn: initialDefaults.lineLayers.includes("transit"),
+    isBrowseMap,
+  });
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(deepLinkedAerial);
-  // Historic cemeteries — opt-in heritage overlay (county GIS). OFF by
-  // default: 250+ pins of local history is a deliberate interest, not
-  // part of the clean cold open. Tapping one opens a small popup.
-  const [showCemeteries, setShowCemeteries] = useState(() =>
-    shouldInitializeReferenceLayer(
-      compactSubjectMap,
-      deepLinkLayers.has("cemeteries") ||
-        (!hasExplicitLayerView && (layerPrefs.cemeteries ?? false)),
-    ),
-  );
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
-  // Downtown parking garages — opt-in Parking layer, OFF by default (five
-  // garage markers tinted by live availability). Tapping one raises the
-  // parking peek; live numbers hydrate from the server-fetched snapshot when
-  // the feed is configured, otherwise the markers stay neutral (no fake count).
-  const [showParking, setShowParking] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("parking") ||
-          (!hasExplicitLayerView && (layerPrefs.parking ?? false)),
-      ),
-  );
+  // Tapping a parking garage raises the parking peek; live numbers hydrate
+  // from the server-fetched snapshot when the feed is configured, otherwise
+  // the markers stay neutral (no fake count).
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
   const [foodTruckPeek, setFoodTruckPeek] = useState<FoodTruckMapPin | null>(null);
   const liveFoodTruckPins = useLiveFoodTrucks(foodTruckPins, isBrowseMap);
@@ -1194,41 +1162,12 @@ export default function AppMap({
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
-  // Animated weather radar (RainViewer) — opt-in raster drape under the
-  // pins. OFF by default; the tray's toggle stamps the newest frame's time
-  // so nobody mistakes minutes-old radar for real time.
-  const [showRadar, setShowRadar] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("radar") ||
-          (!hasExplicitLayerView && (layerPrefs.radar ?? false)),
-      ),
-  );
-  const [showTraffic, setShowTraffic] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("roads") ||
-          deepLinkLayers.has("traffic") ||
-          (!hasExplicitLayerView && (layerPrefs.traffic ?? false)),
-      ),
-  );
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
+  // (The radar toggle itself stamps time so nobody mistakes minutes-old
+  // radar for real time.)
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
   const [radarHealth, setRadarHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "RainViewer", disabled: true }),
-  );
-  // Live public scanner incidents (crashes, wires down, fires) — opt-in,
-  // OFF by default. Empty until the FredScanner feed is configured.
-  const [showIncidents, setShowIncidents] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("roads") ||
-          deepLinkLayers.has("incidents") ||
-          (!hasExplicitLayerView && (layerPrefs.incidents ?? false)),
-      ),
   );
   const [incidentHealth, setIncidentHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "FrederickScanner", disabled: true }),
@@ -1237,28 +1176,8 @@ export default function AppMap({
   const [focusedIncidentId, setFocusedIncidentId] = useState<string | null>(
     null,
   );
-  // Public ADS-B rotorcraft activity. The server keeps Trooper identification
-  // aggregate-only and turns FMH trajectories into a fixed-heliport signal;
-  // the browser never receives an exact public-safety aircraft position.
-  const [showRotorcraft, setShowRotorcraft] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("air") ||
-          (!hasExplicitLayerView && (layerPrefs.aviation ?? false)),
-      ),
-  );
   const [rotorcraftStatus, setRotorcraftStatus] =
     useState<RotorcraftLayerStatus | null>(null);
-  // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
-  const [showCameras, setShowCameras] = useState(
-    () =>
-      shouldInitializeReferenceLayer(
-        compactSubjectMap,
-        deepLinkLayers.has("cameras") ||
-          (!hasExplicitLayerView && (layerPrefs.cameras ?? false)),
-      ),
-  );
   const [cameraHealth, setCameraHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "Maryland CHART", disabled: true }),
   );
@@ -1512,78 +1431,8 @@ export default function AppMap({
     }
   }, [visibleAerial, aerialFade]);
 
-  // Remember the user's explicit layer choices (per device) so a customized map
-  // survives reload. Transient focus filters (saved-only / field-notes-only)
-  // are intentionally excluded — see mapLayerPrefs. A shared `show=` view is
-  // authoritative for this visit but must not overwrite the recipient's own
-  // saved map setup.
-  useEffect(() => {
-    if (hasExplicitLayerView) return;
-    writeMapLayerPrefs({
-      civic: showCivic,
-      transit: showTransit,
-      trails: showTrails,
-      aerial: showAerial,
-      cemeteries: showCemeteries,
-      parking: showParking,
-      radar: showRadar,
-      traffic: showTraffic,
-      incidents: showIncidents,
-      aviation: showRotorcraft,
-      cameras: showCameras,
-    });
-  }, [hasExplicitLayerView, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
-
-  // Every deliberate reference layer is first-class share/deep-link state.
-  // Expand the composite `roads` alias into explicit members so turning one
-  // member back off cannot be undone by a stale alias on the next reload.
-  useEffect(() => {
-    if (!isBrowseMap) return;
-    const url = new URL(window.location.href);
-    const shown = new Set(
-      (url.searchParams.get("show") ?? "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    );
-    shown.delete("roads");
-    shown.delete("none");
-    const shareableLayers: ReadonlyArray<readonly [string, boolean]> = [
-      ["civic", showCivic],
-      ["transit", showTransit],
-      ["trails", showTrails],
-      ["aerial", showAerial],
-      ["cemeteries", showCemeteries],
-      ["parking", showParking],
-      ["radar", showRadar],
-      ["traffic", showTraffic],
-      ["incidents", showIncidents],
-      ["air", showRotorcraft],
-      ["cameras", showCameras],
-    ];
-    for (const [key, visible] of shareableLayers) {
-      if (visible) shown.add(key);
-      else shown.delete(key);
-    }
-    if (shown.size > 0) url.searchParams.set("show", [...shown].join(","));
-    else if (hasExplicitLayerView) url.searchParams.set("show", "none");
-    else url.searchParams.delete("show");
-    window.history.replaceState(window.history.state, "", url.toString());
-  }, [
-    isBrowseMap,
-    hasExplicitLayerView,
-    showAerial,
-    showCameras,
-    showCemeteries,
-    showCivic,
-    showIncidents,
-    showParking,
-    showRadar,
-    showRotorcraft,
-    showTraffic,
-    showTrails,
-    showTransit,
-  ]);
+  // (Layer-choice persistence and the shareable `show=` URL mirror live in
+  // useMapLayerToggles, called above.)
 
   // An explicitly selected public-essential layer is the foreground task.
   // Keep its clusters/icons above the always-on place dots; otherwise the
