@@ -6130,7 +6130,6 @@ export default function AppMap({
             civicAvailable={civic.length > 0}
             showCivic={showCivic}
             setShowCivic={setShowCivic}
-            transitCount={transitLines.features.length}
             transitHealth={transitHealth}
             showTransit={showTransit}
             setShowTransit={setShowTransit}
