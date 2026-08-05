@@ -42,6 +42,8 @@ import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import {
+  explainLongerSegments,
+  incidentNoun,
   leadTravelTime,
   roadAttentionScopeLabel,
   selectRoadTravelSummary,
@@ -496,6 +498,16 @@ export default async function PulsePage() {
     (a, b) => b.travelTimeSeconds - a.travelTimeSeconds,
   );
   const leadTravel = leadTravelTime(roadTravelTimes);
+  // A corridor trending longer and a fresh public dispatch on the same route
+  // are one story; join them so the reader doesn't have to. Route-number match
+  // only, and the copy below says "dispatched" — a CAD call is never a
+  // confirmed closure or a proven cause.
+  const travelCauses = explainLongerSegments(
+    roadTravelTimes,
+    liveRoadIncidents,
+    requestNow,
+  );
+  const leadTravelCause = leadTravel ? travelCauses.get(leadTravel.id) ?? null : null;
   const roadTrafficActive = highTraffic.length > 0 || Boolean(roadLead);
   const roadCheckComplete =
     trafficAvailable && roadIntelligence.summary.coverage === "complete";
@@ -1286,6 +1298,10 @@ export default async function PulsePage() {
                   leadTravel.trend === "longer"
                     ? " and the drive is getting longer"
                     : ""
+                }${
+                  leadTravelCause
+                    ? ` · ${leadTravelCause.kind} dispatched near ${leadTravelCause.location}`
+                    : ""
                 }`
               : roadCheckComplete
                 ? "No major road impact appears in the checked feeds"
@@ -1363,25 +1379,36 @@ export default async function PulsePage() {
               {/* The measured drive, listed after whatever is wrong. On a quiet
                   hour these rows are the whole answer; during an incident they
                   say what the rest of the county's roads are still doing. */}
-              {roadTravelTimes.map((segment) => (
-                <Row
-                  key={`travel-time-${segment.id}`}
-                  tone={segment.trend === "longer" ? "warning" : "muted"}
-                  title={segment.name}
-                  body={`${travelMinutes(segment.travelTimeSeconds)} min for ${segment.distanceMiles.toFixed(1)} miles, averaging ${Math.round(segment.averageSpeedMph)} mph.`}
-                  meta={[
-                    // Against MDOT's previous reading, never against a typical
-                    // day. The feed carries no free-flow baseline to support
-                    // the "slower than usual" claim a reader would infer.
-                    segment.trend === "longer"
-                      ? "Longer than the last reading"
-                      : segment.trend === "shorter"
-                        ? "Shorter than the last reading"
-                        : "Steady since the last reading",
-                    timeAgo(segment.observedAt),
-                  ]}
-                />
-              ))}
+              {roadTravelTimes.map((segment) => {
+                const cause = travelCauses.get(segment.id);
+                return (
+                  <Row
+                    key={`travel-time-${segment.id}`}
+                    tone={segment.trend === "longer" ? "warning" : "muted"}
+                    title={segment.name}
+                    body={`${travelMinutes(segment.travelTimeSeconds)} min for ${segment.distanceMiles.toFixed(1)} miles, averaging ${Math.round(segment.averageSpeedMph)} mph.${
+                      // The one story told once: a rising reading and a fresh
+                      // public dispatch on the same route number. "Dispatched"
+                      // is the whole claim — a CAD call is not a confirmed
+                      // closure and the join proves adjacency, not cause.
+                      cause
+                        ? ` The scanner shows ${incidentNoun(cause.kind)} near ${cause.location}, dispatched ${timeAgo(cause.firstReportedAt)}.`
+                        : ""
+                    }`}
+                    meta={[
+                      // Against MDOT's previous reading, never against a typical
+                      // day. The feed carries no free-flow baseline to support
+                      // the "slower than usual" claim a reader would infer.
+                      segment.trend === "longer"
+                        ? "Longer than the last reading"
+                        : segment.trend === "shorter"
+                          ? "Shorter than the last reading"
+                          : "Steady since the last reading",
+                      timeAgo(segment.observedAt),
+                    ]}
+                  />
+                );
+              })}
             </>
           )
           : emptyNote(

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRoadIntelligenceSnapshot,
+  explainLongerSegments,
+  incidentNoun,
   roadAttentionScopeLabel,
   selectRoadWorkZoneFeatureCollection,
   selectTodayRoadSignal,
@@ -212,5 +214,113 @@ describe("leadTravelTime", () => {
     ];
     leadTravelTime(input);
     expect(input.map((s) => s.name)).toEqual(["I-270 south", "I-70 east"]);
+  });
+});
+
+describe("explainLongerSegments", () => {
+  const NOW = new Date("2026-08-05T02:00:00.000Z");
+  const min = (n: number) => new Date(NOW.getTime() - n * 60_000).toISOString();
+
+  function segment(
+    id: string,
+    name: string,
+    roads: string[],
+    trend: ChartTravelTime["trend"],
+  ): ChartTravelTime {
+    return {
+      id,
+      name,
+      distanceMiles: 10,
+      travelTimeSeconds: 900,
+      averageSpeedMph: 40,
+      trend,
+      observedAt: NOW.toISOString(),
+      roads,
+      evidence: "computed-from-road-sensors",
+      sourceUrl: CHART_ROAD_SOURCES.travelTimes,
+    };
+  }
+
+  function incident(id: string, location: string, agoMin: number) {
+    return {
+      id,
+      kind: "Crash",
+      location,
+      firstReportedAt: min(agoMin + 5),
+      lastReportedAt: min(agoMin),
+    };
+  }
+
+  it("attaches a fresh same-route dispatch to a segment trending longer", () => {
+    const causes = explainLongerSegments(
+      [segment("s1", "US 15 SB from Motter Ave to I-70", ["US 15"], "longer")],
+      [incident("i1", "Us15 At Motter Ave", 20)],
+      NOW,
+    );
+    expect(causes.get("s1")?.id).toBe("i1");
+  });
+
+  it("never explains a steady or improving segment", () => {
+    const causes = explainLongerSegments(
+      [
+        segment("s1", "US 15 SB", ["US 15"], "steady"),
+        segment("s2", "US 15 NB", ["US 15"], "shorter"),
+      ],
+      [incident("i1", "Us15 At Motter Ave", 20)],
+      NOW,
+    );
+    expect(causes.size).toBe(0);
+  });
+
+  it("requires a route designator on both sides — a block address never matches", () => {
+    const causes = explainLongerSegments(
+      [segment("s1", "I-70 EB", ["I-70"], "longer")],
+      [
+        incident("i1", "12200 block Coppermine Rd", 10),
+        incident("i2", "700 block N Market St", 10),
+      ],
+      NOW,
+    );
+    expect(causes.size).toBe(0);
+  });
+
+  it("ages a dispatch out of the explanation window", () => {
+    const causes = explainLongerSegments(
+      [segment("s1", "US 15 SB", ["US 15"], "longer")],
+      [incident("i1", "Us15 At Motter Ave", 120)],
+      NOW,
+    );
+    expect(causes.size).toBe(0);
+  });
+
+  it("matches a prefixless Route designator by number, and prefers the freshest", () => {
+    const causes = explainLongerSegments(
+      [segment("s1", "US 40 WB", ["US 40"], "longer")],
+      [
+        incident("older", "Route 40 At Baughmans Ln", 60),
+        incident("newer", "Route 40 At Ridgeville Blvd", 5),
+      ],
+      NOW,
+    );
+    expect(causes.get("s1")?.id).toBe("newer");
+  });
+
+  it("never crosses route systems on the same number", () => {
+    const causes = explainLongerSegments(
+      [segment("s1", "I-270 NB", ["I-270"], "longer")],
+      [incident("i1", "Md270 Service Rd", 10)],
+      NOW,
+    );
+    expect(causes.size).toBe(0);
+  });
+});
+
+describe("incidentNoun", () => {
+  it("turns kinds into plain noun phrases", () => {
+    expect(incidentNoun("Crash")).toBe("a crash");
+    expect(incidentNoun("Wires down")).toBe("wires down");
+    expect(incidentNoun("Flooding")).toBe("flooding");
+    expect(incidentNoun("Pedestrian struck")).toBe("a pedestrian-struck call");
+    expect(incidentNoun("Outside fire")).toBe("an outside fire");
   });
 });
