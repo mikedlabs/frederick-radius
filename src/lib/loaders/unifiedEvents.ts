@@ -521,6 +521,10 @@ const cachedAssemble = unstable_cache(
       compactUnifiedEvents(await assembleRaw(new Date(bucket * 300_000))),
     );
   },
+  // v28: live events now carry inferred audience tags, iCal CATEGORIES
+  // join the category inference, and a published per-event GEO earns the
+  // geocoded placement — cached rows' audience/category/geom/placement
+  // change in place.
   // v27: the ticketed adapters (Ticketmaster/SeatGeek/Eventbrite/
   // Bandsintown) now emit real descriptions (promoter blurbs, logistics
   // notes, support lineups) instead of "" — cached rows' description
@@ -543,7 +547,7 @@ const cachedAssemble = unstable_cache(
   // identity instead of the old empty-slug fallback. The persistent cache is
   // shared across deployments, so this version change is required for the
   // archive worker to receive the corrected source IDs immediately.
-  ["unified-events-v27"],
+  ["unified-events-v28"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

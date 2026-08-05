@@ -955,7 +955,27 @@ type ParsedVEvent = {
   allDay?: boolean;
   /** iCal STATUS property (CONFIRMED / TENTATIVE / CANCELLED). */
   status?: string;
+  /** iCal CATEGORIES values (comma-separated per line, may repeat). The
+   *  publisher's own topical/audience words — feed them to the category
+   *  keyword inference and the audience signals instead of dropping them. */
+  categories?: string[];
+  /** iCal GEO ("lat;lon") — a per-event coordinate. Rare, but when a feed
+   *  publishes one it is more precise than the venue centroid. */
+  geo?: { lat: number; lng: number };
 };
+
+/** Parse an iCal GEO value ("39.41;-77.41"). Null on anything malformed or
+ *  outside plausible Frederick County bounds — a bad GEO must never move an
+ *  event off its venue centroid. */
+function parseICalGeo(value: string): { lat: number; lng: number } | null {
+  const m = value.trim().match(/^(-?\d+(?:\.\d+)?);(-?\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  // Frederick County envelope (same bounds the ticketed adapters enforce).
+  if (lat < 39.2 || lat > 39.75 || lng < -77.75 || lng > -77.05) return null;
+  return { lat, lng };
+}
 
 function parseICalEvents(text: string): ParsedVEvent[] {
   const lines = unfoldIcalLines(text);
@@ -992,6 +1012,18 @@ function parseICalEvents(text: string): ParsedVEvent[] {
           break;
         case "DTEND": cur.end = parseICalDate(value, params) ?? undefined; break;
         case "STATUS": cur.status = value.trim(); break;
+        case "CATEGORIES":
+          cur.categories = [
+            ...(cur.categories ?? []),
+            ...value
+              .split(",")
+              .map((part) => unescapeIcalText(part).trim())
+              .filter(Boolean),
+          ];
+          break;
+        case "GEO":
+          cur.geo = parseICalGeo(value) ?? undefined;
+          break;
       }
     }
   }
@@ -1175,7 +1207,15 @@ async function fetchIcalFeed(
       // cleanDescription runs cleanFeedText AND strips dumped "Event date:
       // … Time: … Location:" metadata at the live source (see normalize.ts).
       const cleanedDesc = clampDescription(cleanDescription(description), 300);
-      const inferredCategory = feedCategory(feed, title, description);
+      // The publisher's own CATEGORIES words join the keyword inference input
+      // (same mechanism, one more honest signal) — a "Music" or "Kids" tag a
+      // feed took the trouble to publish should count.
+      const categoriesText = (item.categories ?? []).join(" ");
+      const inferredCategory = feedCategory(
+        feed,
+        title,
+        categoriesText ? `${description} ${categoriesText}` : description,
+      );
 
       const candidate = {
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
@@ -1187,7 +1227,11 @@ async function fetchIcalFeed(
         is_all_day: allDay,
         venue_name: venue,
         address,
-        geom: feed.default_geom,
+        // A published per-event GEO (bounds-checked) beats the venue
+        // centroid and earns the "geocoded" placement so cards may show a
+        // real distance; absent one, behaviour is unchanged.
+        geom: item.geo ? { lng: item.geo.lng, lat: item.geo.lat } : feed.default_geom,
+        ...(item.geo ? { placement: "geocoded" as const } : {}),
         municipality: inferMunicipality(address, feed.default_municipality),
         category: inferredCategory,
         organizer: feed.source_label,
