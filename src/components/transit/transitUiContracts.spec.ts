@@ -53,12 +53,18 @@ describe("transit UI interaction contracts", () => {
 
   it("makes stops on the main map tappable and opens the shared arrival detail", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    // The arrivals drawer itself moved to the selection-surfaces child (#77);
+    // the tappable hit layer and its selection state stay in AppMap.
+    const surfaces = readFileSync(
+      "src/components/map/AppMapSelectionSurfaces.tsx",
+      "utf8",
+    );
 
     expect(source).toContain('"transit-stop-hit"');
     expect(source).toContain('id="transit-stop-hit"');
     expect(source).toContain("setSelectedTransitStop");
-    expect(source).toContain("<StopArrivalsPopup");
-    expect(source).toContain("Live Frederick County TransIT arrivals");
+    expect(surfaces).toContain("<StopArrivalsPopup");
+    expect(surfaces).toContain("Live Frederick County TransIT arrivals");
   });
 
   it("offers a non-canvas stop lookup with location ranking and the same arrival detail", () => {
