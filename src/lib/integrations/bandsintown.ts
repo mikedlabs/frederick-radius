@@ -45,8 +45,29 @@ type BitEvent = {
   /** Feed-side event title (often empty) — the one place a publisher
    *  writes "CANCELLED"; our display title is the curated artist name. */
   title?: string;
+  /** Publisher-written show notes, when the artist or venue wrote any. */
+  description?: string;
+  /** The full bill for the night. The curated artist is our title; the
+   *  other names on the lineup are real information for a listener. */
+  lineup?: string[];
   venue?: { name?: string; latitude?: number | string; longitude?: number | string; city?: string };
 };
+
+/** The show's own words: the publisher description, then the rest of the
+ *  bill beyond the curated artist. Empty when the feed carries neither. */
+export function bitDescription(ev: BitEvent, artist: string): string {
+  const others = (ev.lineup ?? [])
+    .map((name) => name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .filter((name) => name.toLowerCase() !== artist.toLowerCase());
+  return [
+    ev.description?.trim(),
+    others.length > 0 ? `With ${others.join(", ")}.` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX;
@@ -71,7 +92,7 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
     out.push({
       id: `bit-${ev.id}`,
       title: artist,
-      description: "",
+      description: bitDescription(ev, artist),
       starts_at: when,
       ends_at: when,
       venue_name: ev.venue?.name ?? "Live music",

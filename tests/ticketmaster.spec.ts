@@ -134,3 +134,58 @@ describe("ticketFloorText + pickTmImage (2026-07-17 unused-data audit)", () => {
     );
   });
 });
+
+describe("tmDescription", () => {
+  it("joins the editorial blurb, logistics note, and support lineup as sentences", () => {
+    const out = normalizeTicketmaster(
+      wrap([
+        tmEvent({
+          info: "An evening of original songs.",
+          pleaseNote: "Doors at 7 PM.",
+          _embedded: {
+            venues: [
+              {
+                name: "Sky Stage",
+                city: { name: "Frederick" },
+                location: { latitude: "39.4143", longitude: "-77.4105" },
+              },
+            ],
+            attractions: [
+              { name: "The Local Band" },
+              { name: "The Opener" },
+              { name: "Second Support" },
+            ],
+          },
+        }),
+      ]),
+    );
+    expect(out[0].description).toBe(
+      "An evening of original songs. Doors at 7 PM. With The Opener, Second Support.",
+    );
+  });
+
+  it("stays empty when the promoter wrote nothing and the bill is one act", () => {
+    const out = normalizeTicketmaster(wrap([tmEvent()]));
+    expect(out[0].description).toBe("");
+  });
+
+  it("never repeats the headliner as its own support act", () => {
+    const out = normalizeTicketmaster(
+      wrap([
+        tmEvent({
+          _embedded: {
+            venues: [
+              {
+                name: "Sky Stage",
+                city: { name: "Frederick" },
+                location: { latitude: "39.4143", longitude: "-77.4105" },
+              },
+            ],
+            attractions: [{ name: "The Local Band" }],
+          },
+        }),
+      ]),
+    );
+    expect(out[0].description).toBe("");
+  });
+});

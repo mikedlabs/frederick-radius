@@ -60,8 +60,25 @@ type SgEvent = {
   venue?: SgVenue;
   stats?: { lowest_price?: number | null };
   taxonomies?: Array<{ name?: string }>;
-  performers?: Array<{ image?: string | null }>;
+  performers?: Array<{ name?: string; image?: string | null; primary?: boolean }>;
 };
+
+/** The bill as one plain sentence, or undefined when the title already says
+ *  it all. SeatGeek's title usually names the headliner (or the whole "A with
+ *  B" phrasing), so only performers the title does NOT mention are worth a
+ *  sentence — repeating the title in the body is noise, not information. */
+export function sgLineupSentence(
+  performers: SgEvent["performers"],
+  title: string,
+): string | undefined {
+  const t = title.toLowerCase();
+  const extras = (performers ?? [])
+    .map((p) => p?.name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .filter((name) => !t.includes(name.toLowerCase()));
+  if (extras.length === 0) return undefined;
+  return `With ${extras.join(", ")}.`;
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
@@ -122,7 +139,7 @@ export function normalizeSeatGeek(raw: unknown): LiveEvent[] {
     out.push({
       id: `sg-${ev.id}`,
       title: ev.title,
-      description: "",
+      description: sgLineupSentence(ev.performers, ev.title) ?? "",
       starts_at: when,
       ends_at: when,
       venue_name: ev.venue?.name ?? "Live event",
