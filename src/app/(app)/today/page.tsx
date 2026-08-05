@@ -11,10 +11,9 @@ import SkyHero from "@/components/today/SkyHero";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
 // clock) now lives in TodayCard inside the SkyHero — without a second
-// editorial verdict on top of
-// the WeatherHero's own conditions line. AdaptiveGreeting still
-// lives at src/components/today/AdaptiveGreeting.tsx if we want to
-// surface it elsewhere later.
+// editorial verdict on top of the weather card's own conditions line.
+// (The component itself was deleted in the 2026-08 dead-code sweep;
+// it is in git history if we ever want it back.)
 import CivicAlerts from "@/components/today/CivicAlerts";
 import WeatherNeeds from "@/components/today/WeatherNeeds";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
