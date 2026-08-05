@@ -60,12 +60,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import {
-  GEOLOCATION_CHANGE_EVENT,
-  readCachedGeoPosition,
-  readCachedPosition,
-  useGeolocation,
-} from "@/hooks/useGeolocation";
+import { readCachedPosition } from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
 // map's curated-vs-OSM de-dupe now uses the exact same contract as
@@ -138,6 +133,7 @@ import {
 import { useLiveFoodTrucks } from "./useLiveFoodTrucks";
 import { useMapLayerToggles } from "./useMapLayerToggles";
 import AppMapSelectionSurfaces from "./AppMapSelectionSurfaces";
+import { useMapLocation } from "./useMapLocation";
 import { useOsmPlaces } from "./useOsmPlaces";
 import { useWalkRoute } from "./useWalkRoute";
 import {
@@ -203,7 +199,6 @@ import {
   FREDERICK_MAX_BOUNDS,
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
-  isInFrederickCounty,
   MAP_BAKED_STYLE,
   RADIUS_M,
   STYLE_URL,
@@ -928,146 +923,39 @@ export default function AppMap({
   // visible bounds matter: a pan can clip the county without changing zoom.
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
-  const [userLoc, setUserLoc] = useState<LngLat | null>(locationSeed.ranking);
-  const [userAccuracyM, setUserAccuracyM] = useState<number | null>(() => {
-    const cached = readCachedGeoPosition();
-    return cached && Number.isFinite(cached.accuracy) ? cached.accuracy : null;
-  });
-  const [locationFixTimestamp, setLocationFixTimestamp] = useState<number | null>(() =>
-    readCachedGeoPosition()?.timestamp ?? null,
-  );
-  const [locating, setLocating] = useState(false);
-  const {
-    state: sharedGeolocationState,
-    requestHighAccuracy: requestSharedGeolocation,
-    requestIfGranted: refreshGrantedGeolocation,
-  } = useGeolocation();
-  const locateRequestedRef = useRef(false);
-  const automaticLocationCheckRef = useRef(false);
-
-  // A returning visitor who already granted location should never have their
-  // results ranked from an invisible map-center fallback. Refresh the fix
-  // silently, but preserve the county overview until they explicitly tap the
-  // locate control. First-time visitors are never prompted from this effect.
-  useEffect(() => {
-    const cached = readCachedPosition();
-    if (
-      !isBrowseMap ||
-      automaticLocationCheckRef.current ||
-      (cached && isInFrederickCounty(cached.lng, cached.lat))
-    ) {
-      return;
-    }
-
-    automaticLocationCheckRef.current = true;
-    void refreshGrantedGeolocation();
-  }, [isBrowseMap, refreshGrantedGeolocation]);
-
-  // Location can be granted from Ask, Today, or the map itself. The shared
-  // same-tab event keeps map ranking current without moving the camera.
-  useEffect(() => {
-    const syncRankingLocation = () => {
-      const cached = readCachedGeoPosition();
-      setUserLoc(
-        cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null,
-      );
-      setUserAccuracyM(
-        cached && isInFrederickCounty(cached.lng, cached.lat)
-          ? cached.accuracy
-          : null,
-      );
-      setLocationFixTimestamp(
-        cached && isInFrederickCounty(cached.lng, cached.lat)
-          ? cached.timestamp
-          : null,
-      );
-    };
-    window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
-    return () =>
-      window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
-  }, []);
-
-  // Only an explicit tap on Locate may move the camera. Hook hydration can
-  // update ranking silently, but it never enters this branch.
-  useEffect(() => {
-    if (!locateRequestedRef.current) return;
-    if (
-      sharedGeolocationState.status === "idle" ||
-      sharedGeolocationState.status === "loading"
-    ) {
-      return;
-    }
-
-    locateRequestedRef.current = false;
-    setLocating(false);
-
-    if (sharedGeolocationState.status === "granted") {
-      const loc = {
-        lng: sharedGeolocationState.position.lng,
-        lat: sharedGeolocationState.position.lat,
-      };
-      cameraIntentRef.current = true;
-      haptic("light");
-      track("map_locate", {
-        in_county: isInFrederickCounty(loc.lng, loc.lat),
-      });
-
-      if (!isInFrederickCounty(loc.lng, loc.lat)) {
-        setUserLoc(null);
-        setUserAccuracyM(null);
-        setLocationFixTimestamp(null);
-        const nearbyLensActive = isBrowseMap && getScope() === "nearme";
-        setGeoMsg(
-          nearbyLensActive
-            ? "You are outside Frederick County. Showing the whole county."
-            : "You are outside Frederick County. Keeping your current map view.",
-        );
-        if (nearbyLensActive) {
-          setScope("county");
-          replaceMapUrl((params) => params.delete(SCOPE_PARAM));
-          mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
-            padding: countyFitPadding(),
-            duration: prefersReducedMotion() ? 0 : 900,
-            easing: CAM_EASE,
-            essential: true,
-          });
+  const { userLoc, userAccuracyM, locationFixTimestamp, locating, goNearMe } =
+    useMapLocation({
+      isBrowseMap,
+      rankingSeed: locationSeed.ranking,
+      setGeoMsg,
+      markCameraIntent: () => {
+        cameraIntentRef.current = true;
+      },
+      fitNearbyCamera: (loc) => {
+        const map = mapRef.current?.getMap();
+        if (map) fitNearbyRadius(map, loc);
+      },
+      fitNearbyWithIntent: (loc) => {
+        const map = mapRef.current?.getMap();
+        if (map) {
+          cameraIntentRef.current = true;
+          fitNearbyRadius(map, loc);
         }
-        return;
-      }
-
-      setGeoMsg(null);
-      setUserLoc(loc);
-      setUserAccuracyM(sharedGeolocationState.position.accuracy);
-      setLocationFixTimestamp(sharedGeolocationState.position.timestamp);
-      const map = mapRef.current?.getMap();
-      if (map) fitNearbyRadius(map, loc);
-      return;
-    }
-
-    const nearbyLensActive = isBrowseMap && getScope() === "nearme";
-    if (nearbyLensActive) {
-      // A failed permission request cannot leave a shareable `in=nearme`
-      // promise in the URL or dock. Fall back to the actual county frame and
-      // let the shared-scope event update MapDock's header immediately.
-      setScope("county");
-      replaceMapUrl((params) => params.delete(SCOPE_PARAM));
-      mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
-        padding: countyFitPadding(),
-        duration: prefersReducedMotion() ? 0 : 900,
-        easing: CAM_EASE,
-        essential: true,
-      });
-    }
-    setGeoMsg(
-      sharedGeolocationState.status === "denied"
-        ? nearbyLensActive
-          ? "Location is off. Showing the whole county. Enable it in your browser to use Near me."
-          : "Location is off. Enable it in your browser to recenter the map."
-        : nearbyLensActive
-          ? "Couldn't get your location. Showing the whole county."
-          : "Couldn't get your location. Keeping your current map view.",
-    );
-  }, [isBrowseMap, sharedGeolocationState]);
+      },
+      fitCountyCamera: () => {
+        mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+          padding: countyFitPadding(),
+          duration: prefersReducedMotion() ? 0 : 900,
+          easing: CAM_EASE,
+          essential: true,
+        });
+      },
+      onBeforeNearMe: () => {
+        setShowResultsHere(false);
+        manualViewportGestureRef.current = false;
+        cameraControlGestureRef.current = false;
+      },
+    });
   // The eleven reference-layer switches plus their persistence and URL
   // mirror live in useMapLayerToggles; destructured back into the same
   // local names so every consumer below reads unchanged.
@@ -2820,25 +2708,7 @@ export default function AppMap({
   // hover preview; the click handler reads the full pin back by `id`.
   const cemeteryGeoJson = useMemo(() => buildCemeteryGeoJson(cemeteries), [cemeteries]);
 
-  const goNearMe = () => {
-    setShowResultsHere(false);
-    manualViewportGestureRef.current = false;
-    cameraControlGestureRef.current = false;
-    // A fresh cached/shared fix makes Near me instant. Still ask the shared
-    // geolocation hook to refresh it in the background; a newer fix will
-    // simply refit the same honest one-mile area when it arrives.
-    if (userLoc) {
-      const map = mapRef.current?.getMap();
-      if (map) {
-        cameraIntentRef.current = true;
-        fitNearbyRadius(map, userLoc);
-      }
-    }
-    locateRequestedRef.current = true;
-    setLocating(true);
-    setGeoMsg(null);
-    requestSharedGeolocation();
-  };
+  // (goNearMe lives in useMapLocation, called above.)
 
   // Reframe the whole county. Shared by the dock's Where control and the
   // map-surface reset FAB so "get me un-lost" is one tap from either place,
