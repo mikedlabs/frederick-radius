@@ -40,6 +40,13 @@ const contentSecurityPolicy = [
     // NOAA nowCOAST serves the current county-bounded lightning-density
     // image that Mapbox GL loads as an image source.
     "https://nowcoast.noaa.gov",
+    // The admin-only branded-basemap spike (/admin/basemap): PMTiles range
+    // requests to the Protomaps demo bucket, plus its hosted glyphs and
+    // sprites. MapLibre fetches all three via XHR. Remove alongside the
+    // spike, or replace the bucket host with our own when a self-hosted
+    // county extract ships.
+    "https://demo-bucket.protomaps.com",
+    "https://protomaps.github.io",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://plausible.io",
