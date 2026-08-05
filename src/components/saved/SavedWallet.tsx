@@ -34,6 +34,7 @@ import placeHues from "@/data/place-hues.json";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
+import { useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
@@ -115,8 +116,14 @@ function Card({
 }) {
   const router = useRouter();
   const cat = CATEGORY_BY_SLUG[place.category];
-  // Brand-first: the business's own extracted hue, then the category's
-  // wallet ground, then the category ink, then a civic blue.
+  // Un-save, from the card itself. This deck is where a person curates their
+  // collection, and until now removing a card meant leaving for the place
+  // page to find its save control. The toggle is the same auth-aware seam
+  // the save side uses (DB when signed in, localStorage otherwise), so the
+  // stores update and the card leaves the deck without a reload. One tap, no
+  // confirm: re-saving is a single tap on the place page, so the mistake
+  // costs less than a dialog on every intended removal.
+  const toggleFollow = useToggleFollow(place.slug, "saved_wallet");
   const hue =
     PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#285D73";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
@@ -311,6 +318,20 @@ function Card({
           >
             Directions
           </a>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic("light");
+              void toggleFollow();
+            }}
+            tabIndex={open ? 0 : -1}
+            className="sw-act-quiet"
+            style={{ marginLeft: "auto" }}
+            aria-label={`Remove ${place.name} from saved`}
+          >
+            Remove
+          </button>
         </div>
       </div>
     </div>
