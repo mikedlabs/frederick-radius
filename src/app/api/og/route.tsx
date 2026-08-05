@@ -16,6 +16,7 @@ import {
 } from "@/lib/almanac";
 import { easternDayKey } from "@/lib/tz";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { archivedEventBySlugForRender } from "@/lib/events/event-archive-lookup";
 import { BRAND, RIPPLE_GEOMETRY } from "@/lib/brand";
 
 // Token → hex mapping for the OG image runtime, which has no DOM
@@ -86,7 +87,22 @@ export async function GET(request: Request) {
       accent = CATEGORY_BY_SLUG[p.category]?.color ?? accent;
     }
   } else if (type === "event") {
-    const e = EVENT_BY_SLUG[slug];
+    // Seed first (free), then the durable archive. EVENT_BY_SLUG holds only
+    // the ~30 hand-authored seed rows, and ingested/live slugs are namespaced
+    // so they can NEVER appear in it — which meant every share of a real feed
+    // event rendered the generic site card: default title, no venue, no date.
+    // The archive is the right second source for a crawler: an event page was
+    // VIEWED before it was shared, and viewing persists the snapshot, so the
+    // row is nearly always there; the bounded read keeps a cold crawler fetch
+    // from hanging, and a miss falls through to the honest generic card
+    // rather than an invented one.
+    const seed = EVENT_BY_SLUG[slug];
+    const archived = seed
+      ? null
+      : await archivedEventBySlugForRender(slug, { timeoutMs: 2_000 }).catch(
+          () => null,
+        );
+    const e = seed ?? archived?.event;
     if (e) {
       title = e.title;
       kicker = `${e.venue_name} · ${new Date(e.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric" })}`;
