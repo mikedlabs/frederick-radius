@@ -185,12 +185,18 @@ export default function EventPosterCard({
         >
           {categoryLabel}
         </span>
+        {/* Amber fill with Ink on top — the brand table's own spec for the
+            live/caution state (5.7:1, clears AA). It was the positive green
+            with white text, which made LIVE and Free the same signal. */}
         {live && (
           <span
-            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white"
-            style={{ background: "var(--app-positive)" }}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
+            style={{ background: "var(--app-amber)", color: "var(--app-ink)" }}
           >
-            <span className="live-dot h-1.5 w-1.5 rounded-full bg-white" />
+            <span
+              className="live-dot h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--app-ink)" }}
+            />
             Live
           </span>
         )}

@@ -176,10 +176,12 @@ export default async function HourlyForecast() {
                   >
                     {sunClock(c.time)}
                   </span>
+                  {/* Amber, matching GoldenHourCard: one sun, one color
+                      across Today. Plum is the arts accent, not the sky. */}
                   <SunIcon
                     className="h-6 w-6"
                     strokeWidth={1.75}
-                    style={{ color: "var(--app-accent)" }}
+                    style={{ color: "var(--app-amber-text)" }}
                     aria-hidden
                   />
                   <span

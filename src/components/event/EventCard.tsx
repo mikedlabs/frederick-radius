@@ -227,12 +227,13 @@ export default function EventCard({
         {/* Category color dot — quiet visual cue tying the row to a
             type. Small enough to scan past, distinct enough that a
             shelf of compact rows shows category rhythm at a glance.
-            When the event is live right now it pulses on the positive
-            green so "happening now" reads even in the dense listing. */}
+            When the event is live right now it pulses on Amber — the
+            palette's live state — so "happening now" reads even in the
+            dense listing without borrowing the positive green. */}
         <span
           aria-hidden
           className={`h-2 w-2 shrink-0 rounded-full${live ? " live-dot" : ""}`}
-          style={{ background: live ? "var(--app-positive)" : accent }}
+          style={{ background: live ? "var(--app-amber)" : accent }}
           title={live ? "Live now" : categoryLabel}
         />
 
@@ -441,15 +442,19 @@ export default function EventCard({
                 className="mt-1 flex flex-wrap items-center gap-x-1.5 font-mono text-[11px] tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
+                {/* Live is AMBER, the palette's real live/caution state.
+                    It was Catoctin Forest, the same green as "Free" forty
+                    lines below, so happening-now and costs-nothing read as
+                    one signal. Text on --app-amber-text (AA on Cream). */}
                 {live && (
                   <span
                     className="inline-flex items-center gap-1 font-medium"
-                    style={{ color: "var(--app-positive)" }}
+                    style={{ color: "var(--app-amber-text)" }}
                   >
                     <span
                       aria-hidden
                       className="live-dot h-1.5 w-1.5 rounded-full"
-                      style={{ background: "var(--app-positive)" }}
+                      style={{ background: "var(--app-amber)" }}
                     />
                     Now
                     <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
