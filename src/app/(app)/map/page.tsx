@@ -61,6 +61,8 @@ import {
   type CurrentSituationSnapshot,
 } from "@/lib/live/currentSituationModel";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import { alertPriority } from "@/lib/alert-priority";
+import { marketsOpenToday } from "@/lib/markets-today";
 import {
   selectRoadWorkZoneFeatureCollection,
   type RoadIntelligenceSnapshot,
@@ -473,6 +475,7 @@ async function BrowseMapArea() {
   const [
     situationSnapshot,
     roadIntelligence,
+    marketsToday,
     countyParkAssets,
     countyFloodContext,
     countySnowRoutes,
@@ -509,6 +512,7 @@ async function BrowseMapArea() {
       4500,
       null,
     ),
+    withTimeout(marketsOpenToday(now), 4500, []),
     withTimeout(getPublicCountyParkAssets(), 4500, null),
     withTimeout(getCountyFloodContext(), 4500, null),
     withTimeout(getCountySnowRoutes(now), 4500, null),
@@ -834,6 +838,18 @@ async function BrowseMapArea() {
         }
         floodContext={floodContext}
         snowRoutes={snowRoutes}
+        // Map program phase 1: live signals for the moment-aware cold-open
+        // default. Each one reads a snapshot this render already fetched;
+        // a missing snapshot degrades to a quiet cold open, never an error.
+        smartSignals={{
+          activeWeatherAlert: (
+            situationSnapshot?.sources.weather.data ?? []
+          ).some((alert) => alertPriority(alert) <= 2),
+          marketsOpenTodayCount: marketsToday.length,
+          roadsTrendingLongerCount: (
+            roadIntelligence?.sources.travelTimes.data ?? []
+          ).filter((segment) => segment.trend === "longer").length,
+        }}
       />
     </div>
   );
