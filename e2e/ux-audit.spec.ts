@@ -67,6 +67,9 @@ const ROUTES = [
   "/scanner",
   "/numbers",
   "/reserve",
+  // /trust carries live coverage numbers since Aug 2026 — a data-bearing
+  // credibility surface belongs under the same zero-violation gate.
+  "/trust",
   // CEO-ready partner concepts still ship on the public runtime. Keep the
   // standalone presentation surface at the same render/accessibility bar.
   "/concept/wlr",
