@@ -25,7 +25,9 @@ import { FREDERICK_FLAVOR } from "@/lib/map/frederickBasemapFlavor";
 
 const CENTER: [number, number] = [-77.4105, 39.4143];
 const ZOOM = 12.5;
-const DEMO_TILES = "https://demo-bucket.protomaps.com/v4.pmtiles";
+// Served same-origin through /admin/basemap/tiles: the Protomaps demo
+// bucket is CORS-locked to protomaps.com domains, so the browser must not
+// read it directly (the pane rendered ground color only — no tiles).
 const ASSET_BASE = "https://protomaps.github.io/basemaps-assets";
 
 export default function BasemapCompare() {
@@ -59,7 +61,7 @@ export default function BasemapCompare() {
           sources: {
             protomaps: {
               type: "vector",
-              url: `pmtiles://${DEMO_TILES}`,
+              url: `pmtiles://${window.location.origin}/admin/basemap/tiles`,
               attribution:
                 '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
             },
@@ -104,6 +106,12 @@ export default function BasemapCompare() {
     const bMove = () => follow(b!, a!);
     a.on("move", aMove);
     b.on("move", bMove);
+    // A tile or style failure must never leave a silent flavor-colored
+    // rectangle again — surface the first real error on the page.
+    b.on("error", (event) => {
+      const message = event?.error?.message;
+      if (message) setError((current) => current ?? message);
+    });
 
     return () => {
       a?.remove();
