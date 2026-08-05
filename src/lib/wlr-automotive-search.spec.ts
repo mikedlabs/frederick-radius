@@ -13,6 +13,15 @@ const WLR_SLUGS = [
   "frederick-auto-spa-express-route-26",
 ] as const;
 
+// The verification stamp these listings carry in the committed snapshot.
+// hours_verified is COMPUTED at read time against the 7-day freshness window,
+// so the provenance test evaluates the loader at a clock pinned just after
+// this stamp — otherwise the assertion starts failing the day the stamp ages
+// out (the 2026-08-05 hours cliff, issue #1529) even though the recorded
+// provenance is unchanged.
+const WLR_VERIFIED_AT = "2026-07-29T12:23:10.000Z";
+const WLR_FRESH_NOW = new Date(Date.parse(WLR_VERIFIED_AT) + 60 * 60 * 1000);
+
 const WLR_COORDINATES = {
   "route-40-lube-center-frederick": { lng: -77.4600143, lat: 39.4199638 },
   "route-85-lube-center-frederick": { lng: -77.408797, lat: 39.39129 },
@@ -51,20 +60,16 @@ describe("WLR Automotive Group place coverage", () => {
 
   it("carries first-party listing and hours provenance on every location", () => {
     for (const slug of WLR_SLUGS) {
-      const place = getPlaceBySlug(slug);
+      const place = getPlaceBySlug(slug, undefined, WLR_FRESH_NOW);
       expect(place, slug).not.toBeNull();
       expect(place?.category, slug).toBe("auto-care");
       expect(place?.website, slug).toMatch(
         /^https:\/\/www\.washluberepair\.com\/location\//,
       );
       expect(place?.source_url, slug).toBe(place?.website);
-      expect(place?.last_verified_at, slug).toBe(
-        "2026-07-29T12:23:10.000Z",
-      );
+      expect(place?.last_verified_at, slug).toBe(WLR_VERIFIED_AT);
       expect(place?.hours_verified, slug).toBe(true);
-      expect(place?.hours_updated_at, slug).toBe(
-        "2026-07-29T12:23:10.000Z",
-      );
+      expect(place?.hours_updated_at, slug).toBe(WLR_VERIFIED_AT);
       expect(place?.geom, slug).toEqual(WLR_COORDINATES[slug]);
     }
   });
