@@ -11,25 +11,17 @@ import type { OsmPlace } from "@/lib/integrations/overpass";
 import { loadCachedOsm, saveCachedOsm } from "./constants";
 
 export function useOsmPlaces({
-  osmFromProps,
   wantsOsmInitially,
   activeAmenityGroupCount,
 }: {
-  osmFromProps: OsmPlace[] | undefined;
   wantsOsmInitially: boolean;
   activeAmenityGroupCount: number;
 }): { osmPlaces: OsmPlace[]; osmLoading: boolean; osmError: string | null } {
-  const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
+  const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(() => loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(wantsOsmInitially && osmPlaces.length === 0);
   const [osmError, setOsmError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (osmFromProps) {
-      setOsmPlaces(osmFromProps);
-      saveCachedOsm(osmFromProps);
-      setOsmLoading(false);
-      return;
-    }
     if (osmPlaces.length > 0) {
       setOsmLoading(false);
       return;
@@ -64,7 +56,7 @@ export function useOsmPlaces({
       }
     })();
     return () => { cancelled = true; };
-  }, [osmFromProps, activeAmenityGroupCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeAmenityGroupCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { osmPlaces, osmLoading, osmError };
 }
