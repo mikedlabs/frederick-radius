@@ -68,3 +68,29 @@ describe("normalizeBandsintown", () => {
     expect(normalizeBandsintown({}, "A")).toEqual([]);
   });
 });
+
+describe("Bandsintown description", () => {
+  const bitShow = (over: Record<string, unknown> = {}) => ({
+    id: "111",
+    url: "https://bandsintown.com/e/111",
+    datetime: "2026-06-01T23:00:00",
+    venue: { name: "Sky Stage", latitude: 39.4143, longitude: -77.4105, city: "Frederick" },
+    ...over,
+  });
+
+  it("carries the publisher note and the rest of the bill", () => {
+    const out = normalizeBandsintown(
+      [bitShow({ description: "Album release show.", lineup: ["The Local Band", "The Opener"] })],
+      "The Local Band",
+    );
+    expect(out[0].description).toBe("Album release show. With The Opener.");
+  });
+
+  it("stays empty when the feed carries neither note nor extra names", () => {
+    const out = normalizeBandsintown(
+      [bitShow({ lineup: ["The Local Band"] })],
+      "The Local Band",
+    );
+    expect(out[0].description).toBe("");
+  });
+});

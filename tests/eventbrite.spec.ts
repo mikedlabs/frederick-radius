@@ -69,3 +69,26 @@ describe("normalizeEventbrite", () => {
     expect(stampEventProvenance({ slug: "x", source: "eventbrite" }).confidence).toBe("scraped");
   });
 });
+
+describe("Eventbrite description", () => {
+  it("prefers the tight summary over the long body", () => {
+    const out = normalizeEventbrite(
+      wrap([
+        ebEvent({
+          summary: "A hands-on cider pressing afternoon.",
+          description: { text: "A much longer body about the cider press." },
+        }),
+      ]),
+    );
+    expect(out[0].description).toBe("A hands-on cider pressing afternoon.");
+  });
+
+  it("falls back to the body text and never fabricates", () => {
+    const withBody = normalizeEventbrite(
+      wrap([ebEvent({ description: { text: "Long-form listing text." } })]),
+    );
+    expect(withBody[0].description).toBe("Long-form listing text.");
+    const bare = normalizeEventbrite(wrap([ebEvent()]));
+    expect(bare[0].description).toBe("");
+  });
+});
