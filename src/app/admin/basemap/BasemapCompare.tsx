@@ -120,16 +120,19 @@ export default function BasemapCompare() {
     };
   }, []);
 
-  if (error) {
-    return (
-      <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>
-        The comparison could not start: {error}
-      </p>
-    );
-  }
-
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div>
+      {error && (
+        // A banner, not a replacement: one pane's failure must not unmount
+        // the other pane mid-judgment.
+        <p
+          className="mb-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[13px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-danger)" }}
+        >
+          A map reported a problem: {error}
+        </p>
+      )}
+      <div className="grid gap-4 lg:grid-cols-2">
       <figure className="min-w-0">
         <figcaption
           className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.08em]"
@@ -156,6 +159,7 @@ export default function BasemapCompare() {
           style={{ borderColor: "var(--app-border)" }}
         />
       </figure>
+      </div>
     </div>
   );
 }
