@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { freshHoursInstant } from "../../tests/utils/freshHoursInstant";
 import {
   buildWantAnswer,
   partitionWant,
@@ -315,11 +316,20 @@ describe("buildWantAnswer context", () => {
   });
 
   it("uses the reviewed want taxonomy instead of raw secondary categories", () => {
+    // Pin the WHOLE clock, not just the `now` argument: clientPlaces()
+    // evaluates hours freshness with its own `new Date()`, so a literal date
+    // here drifts out of the freshness window as the committed hours stamps
+    // move (issue #1529). The instant is derived from the data so a refresh
+    // can never strand it.
+    const pinned = freshHoursInstant(3, 21); // a Wednesday, 5pm Eastern
+    vi.useFakeTimers();
+    vi.setSystemTime(pinned);
+    try {
     const restaurant = buildWantAnswer(
       "cat:restaurant",
       null,
       { lng: -77.4105, lat: 39.4143 },
-      new Date("2026-07-29T21:00:00.000Z"),
+      pinned,
       {
         contextLabel: "Near you",
         contextSource: "device",
@@ -329,7 +339,7 @@ describe("buildWantAnswer context", () => {
       "coffee",
       null,
       { lng: -77.4105, lat: 39.4143 },
-      new Date("2026-07-29T21:00:00.000Z"),
+      pinned,
       {
         contextLabel: "Near you",
         contextSource: "device",
@@ -346,6 +356,9 @@ describe("buildWantAnswer context", () => {
 
     expect(restaurantSlugs).not.toContain("the-original-popcorn-house");
     expect(coffeeSlugs).not.toContain("voila-in-frederick");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("leads with Gravel & Grind for coffee beside its downtown storefront", () => {

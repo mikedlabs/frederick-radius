@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { askFrederick, sourceHasVerifiedOpenStatus } from "./answer";
+import { freshHoursInstant } from "../../../tests/utils/freshHoursInstant";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters } from "@/lib/geo";
 
@@ -885,7 +886,10 @@ describe("askFrederick structured answers", () => {
 
   it("answers happy hour from verified live schedules, not generic bars", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-29T21:00:00.000Z"));
+    // Derived from the committed hours stamps, not a literal date: a literal
+    // drifts out of the 7-day freshness window (or reads newer stamps as
+    // corrupt-future) every time the hours data refreshes — issue #1529.
+    vi.setSystemTime(freshHoursInstant(3, 21)); // a Wednesday, 5pm Eastern
     try {
       const result = await askFrederick(
         "Where is happy hour near me right now?",
