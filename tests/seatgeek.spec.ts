@@ -82,3 +82,32 @@ describe("normalizeSeatGeek", () => {
     expect(stampEventProvenance({ slug: "x", source: "seatgeek" }).confidence).toBe("verified");
   });
 });
+
+describe("SeatGeek lineup description", () => {
+  it("names the performers the title does not already carry", () => {
+    const out = normalizeSeatGeek(
+      wrap([
+        sgEvent({
+          performers: [
+            { name: "The Local Band", primary: true },
+            { name: "The Opener" },
+            { name: "Second Support" },
+          ],
+        }),
+      ]),
+    );
+    expect(out[0].description).toBe("With The Opener, Second Support.");
+  });
+
+  it("stays empty when the title already names the whole bill", () => {
+    const out = normalizeSeatGeek(
+      wrap([
+        sgEvent({
+          title: "The Local Band with The Opener",
+          performers: [{ name: "The Local Band" }, { name: "The Opener" }],
+        }),
+      ]),
+    );
+    expect(out[0].description).toBe("");
+  });
+});

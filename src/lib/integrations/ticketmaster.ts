@@ -48,14 +48,48 @@ type TmEvent = {
   id?: string;
   name?: string;
   url?: string;
+  /** Ticketmaster's editorial blurb for the event, when the promoter wrote one. */
+  info?: string;
+  /** Logistics note ("doors at 7", "clear bag policy"). Real information for
+   *  a person deciding to go; joined after info. */
+  pleaseNote?: string;
   dates?: {
     start?: { dateTime?: string; localDate?: string; localTime?: string };
     status?: { code?: string };
   };
   priceRanges?: Array<{ min?: number }>;
   images?: Array<{ url?: string; width?: number; ratio?: string }>;
-  _embedded?: { venues?: TmVenue[] };
+  _embedded?: {
+    venues?: TmVenue[];
+    /** The bill: headliner plus support. The event name usually carries the
+     *  headliner; names beyond the first are the support acts. */
+    attractions?: Array<{ name?: string }>;
+  };
 };
+
+/** The support acts as one plain sentence, or undefined when the bill is just
+ *  the headliner. The first attraction is the headliner the title already
+ *  names; repeating it would say the same thing twice. */
+export function tmLineupSentence(
+  attractions: NonNullable<TmEvent["_embedded"]>["attractions"],
+): string | undefined {
+  const names = (attractions ?? [])
+    .map((a) => a?.name?.trim())
+    .filter((name): name is string => Boolean(name));
+  if (names.length < 2) return undefined;
+  const support = names.slice(1);
+  return `With ${support.join(", ")}.`;
+}
+
+/** Description from the fields Ticketmaster actually publishes: the editorial
+ *  blurb, the logistics note, and the support lineup, joined as sentences.
+ *  Empty when the promoter wrote nothing — never fabricated. */
+export function tmDescription(ev: TmEvent): string {
+  return [ev.info?.trim(), ev.pleaseNote?.trim(), tmLineupSentence(ev._embedded?.attractions)]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
 
 /** "From $28" / "From $28.50" — only when the feed publishes a real floor
  *  above zero (zero means free and is_free already owns that). */
@@ -164,7 +198,7 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
     out.push({
       id: `tm-${ev.id}`,
       title: status === "scheduled" ? ev.name : stripStatusMarker(ev.name),
-      description: "",
+      description: tmDescription(ev),
       starts_at: start,
       ends_at: start,
       venue_name: v?.name ?? "Live music",

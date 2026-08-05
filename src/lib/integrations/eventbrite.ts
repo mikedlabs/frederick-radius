@@ -57,7 +57,18 @@ type EbEvent = {
   is_free?: boolean;
   status?: string;
   venue?: EbVenue;
+  /** Organizer-written one-paragraph summary; plain text by contract. */
+  summary?: string;
+  /** Longer body; description.text is the plain-text form of the listing. */
+  description?: { text?: string };
 };
+
+/** The organizer's own words, preferring the tight summary over the long
+ *  body. Empty when they wrote nothing — never fabricated. The boundary
+ *  normalizer downstream owns clamping and metadata-dump stripping. */
+export function ebDescription(ev: EbEvent): string {
+  return (ev.summary?.trim() || ev.description?.text?.trim()) ?? "";
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
@@ -85,7 +96,7 @@ export function normalizeEventbrite(raw: unknown): LiveEvent[] {
     out.push({
       id: `eb-${ev.id}`,
       title,
-      description: "",
+      description: ebDescription(ev),
       starts_at: when,
       ends_at: ev.end?.utc ?? when,
       venue_name: ev.venue?.name ?? "Eventbrite event",
