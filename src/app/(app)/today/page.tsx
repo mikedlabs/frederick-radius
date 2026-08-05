@@ -63,6 +63,7 @@ import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import { shouldRenderTodayEventSection } from "@/lib/today-events";
+import { eventTown } from "@/lib/events/eventTown";
 
 /**
  * Now — the daily briefing.
@@ -369,16 +370,21 @@ export default async function HomePage() {
       >
         {availableToday}
 
+        {/* Tonight's light is a scheduled fact like the rest of this chapter.
+            It used to float between this chapter and the collapsed More
+            section as an unnumbered seventh beat; the docblock's six-part
+            spine is a real budget, so it lives here now. Self-hides outside
+            its evening window and in bad weather. */}
+        <Suspense fallback={null}>
+          <WeatherSafeGoldenHour now={now} />
+        </Suspense>
+
         {/* A forward answer for the night owl. Self-hides during the day; once
             the current day is nearly spent it offers one tomorrow move. */}
         <Suspense fallback={null}>
           <TomorrowPreview now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </PageChapter>
-
-      <Suspense fallback={null}>
-        <WeatherSafeGoldenHour now={now} />
-      </Suspense>
 
       {/* Secondary doors share one deliberate reveal. The old lower page also
           repeated generated collections, a rotating place list, and a taste
@@ -456,13 +462,27 @@ async function WeatherAwareOpenPlaceLead({
   // when the feed's window ends while it is still raining, so an unknown end
   // stays unstated rather than becoming a guess.
   const wetEnd = lean === "wet" ? wetWindowEnd(forecast, now) : null;
+  // "Indoor picks lead" is a claim about the shelf, so only say it when the
+  // shelf agrees. DaypartNeeds opens on the first row that HAS picks; on a wet
+  // morning before the museums unlock, coffee leads and the ordering half of
+  // the sentence would be false. The weather fact itself is always true and
+  // always worth a line.
+  const leadCategory = rows.find((row) => row.picks.length > 0)?.category ?? null;
+  const leanLeads =
+    lean != null &&
+    leadCategory != null &&
+    !baseRows.some((row) => row.category === leadCategory);
   const note =
     lean === "wet"
       ? wetEnd
-        ? `${wetEnd.noun} around until ${wetEnd.endsAtLabel}, so indoor picks lead.`
-        : "Rain is around for a while, so indoor picks lead."
+        ? `${wetEnd.noun} around until ${wetEnd.endsAtLabel}${leanLeads ? ", so indoor picks lead." : "."}`
+        : leanLeads
+          ? "Rain is around for a while, so indoor picks lead."
+          : "Rain is around for a while."
       : lean === "hot"
-        ? "It is a hot one, so cool-down picks lead."
+        ? leanLeads
+          ? "It is a hot one, so cool-down picks lead."
+          : "It is a hot one out there."
         : null;
   return <OpenPlaceLead rows={rows} note={note} />;
 }
@@ -486,19 +506,6 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
       asOf={now.toISOString()}
     />
   );
-}
-
-/** Town label for an event. The City of Frederick reads "Downtown Frederick"
- *  (owner call, 2026-07-21: the dividing line is the city/county boundary, not
- *  the tight historic-core geofence — the East Frederick brewery corridor,
- *  Rockwell and Attaboy's taproom included, is downtown). The municipality slug
- *  already encodes that city-vs-county line, so any Frederick-city event carries
- *  the downtown label; other towns pass through. Null when the town is unknown. */
-function eventTown(ev: { municipality_name?: string; municipality?: string }): string | null {
-  const t = ev.municipality_name?.trim();
-  if (!t) return null;
-  if (ev.municipality === "frederick") return "Downtown Frederick";
-  return t;
 }
 
 /** A walk time is only honest for a venue we KNOW the position of — the loader

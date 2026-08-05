@@ -82,19 +82,20 @@ export default async function WeekendPreview({
           <CalendarRange className="h-5 w-5" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="eyebrow block" style={{ color: "var(--app-ink-3)" }}>
-            Looking ahead
+          <span id="weekend-preview-heading" className="eyebrow block" style={{ color: "var(--app-ink-3)" }}>
+            This weekend
           </span>
+          {/* The real thing leads; the count is supporting detail below it
+              (CLAUDE.md: counts are never the headline). */}
           <span
-            id="weekend-preview-heading"
-            className="mt-0.5 block font-sans text-[17px] font-semibold leading-tight tracking-tight"
+            className="mt-0.5 block font-sans text-[17px] font-semibold leading-tight tracking-tight [text-wrap:pretty]"
             style={{ color: "var(--app-ink)" }}
           >
-            This weekend, so far: {weekend.length} things on the calendar
+            {first.title}
+            {first.venue_name ? ` at ${first.venue_name}` : ""}
           </span>
           <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
-            First up {firstWhen}: {first.title}
-            {first.venue_name ? ` at ${first.venue_name}` : ""}
+            First up {firstWhen} · {weekend.length} on the calendar so far
           </span>
         </span>
         <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />

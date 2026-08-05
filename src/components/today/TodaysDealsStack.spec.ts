@@ -27,6 +27,51 @@ function render(photo?: string): string {
   );
 }
 
+describe("TodaysDealsStack footer denominator", () => {
+  const tue6pm = new Date("2026-07-14T18:00:00-04:00");
+  const timedDeal = (slug: string, hours?: string): TodaysDeal => ({
+    ...deal(),
+    slug,
+    name: `Venue ${slug}`,
+    hours,
+  });
+
+  it("counts only specials still actionable today, never the ones already over", () => {
+    const html = renderToStaticMarkup(
+      createElement(TodaysDealsStack, {
+        deals: [
+          timedDeal("live", "5–9 PM"),
+          timedDeal("later", "8–10 PM"),
+          timedDeal("all-day", "All day"),
+          timedDeal("soft", "6 PM"),
+          timedDeal("over-1", "11 AM–2 PM"),
+          timedDeal("over-2", "7–10 AM"),
+        ],
+        weekday: "Tuesday",
+        now: tue6pm,
+      }),
+    );
+
+    // 4 actionable (live/later/all-day/soft), 2 already over. The footer
+    // must agree with the band's split counts, not restate the raw total.
+    expect(html).toContain("See all 4 specials still on today");
+    expect(html).not.toContain("6 specials");
+  });
+
+  it("offers the weekly browser instead of a redundant count when every special is visible", () => {
+    const html = renderToStaticMarkup(
+      createElement(TodaysDealsStack, {
+        deals: [timedDeal("live", "5–9 PM"), timedDeal("later", "8–10 PM")],
+        weekday: "Tuesday",
+        now: tue6pm,
+      }),
+    );
+
+    expect(html).toContain("See the full week of specials");
+    expect(html).not.toContain("See all 2");
+  });
+});
+
 describe("TodaysDealsStack business media", () => {
   it("renders the venue photo carried by the deal row", () => {
     const html = render("/api/place-photo?name=test-special");

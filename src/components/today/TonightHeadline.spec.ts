@@ -32,6 +32,19 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 const now = new Date("2026-07-26T16:00:00.000Z");
 
 describe("TonightHeadline", () => {
+  it("prints the same town label the program rows print for city events", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({ venue_name: "Sky Stage" }),
+        now,
+      }),
+    );
+
+    // municipality "frederick" carries the downtown label everywhere on
+    // Today; the headline must not undo the shared eventTown mapping.
+    expect(html).toContain("Downtown Frederick");
+  });
+
   it("keeps a long title readable and untruncated on narrow screens", () => {
     const longTitle =
       "Frederick County Community Orchestra Summer Concert Along Carroll Creek";
