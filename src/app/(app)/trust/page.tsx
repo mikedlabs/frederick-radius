@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES from "@/data/places-client.json";
+import CostTransparency from "@/components/trust/CostTransparency";
+import { clientPlaces } from "@/lib/loaders/places-client";
+import { summarizeCoverage } from "@/lib/quality/coverage";
 
 /**
  * /trust — the plain-English explanation of where the data comes
@@ -24,8 +27,19 @@ export const metadata: Metadata = {
     "See where Frederick Radius data comes from and what its source labels mean.",
 };
 
+// The coverage numbers below use the wall clock (hours freshness decays), so
+// a purely static render would slowly drift dishonest. Daily is fresh enough
+// for figures that move by single places per day.
+export const revalidate = 86_400;
+
+const pct = (part: number, total: number): string =>
+  total === 0 ? "0%" : `${Math.round((part / total) * 100)}%`;
+
 export default function TrustPage() {
   const placeCount = new Intl.NumberFormat("en-US").format(CLIENT_PLACES.length);
+  // The same measurements the internal coverage board runs — shown here so
+  // this page proves its claims instead of asserting them. Aggregate only.
+  const coverage = summarizeCoverage(clientPlaces());
   return (
     <div className="relative space-y-6">
       <PageBloom variant="cool" />
@@ -204,6 +218,54 @@ export default function TrustPage() {
         </p>
       </section>
 
+      {/* The measured state of the data — the same numbers the internal
+          coverage board runs, so the page proves what it claims. Honest
+          about gaps by construction: a low number renders as a low number. */}
+      <section
+        className="rounded-[var(--app-radius-lg)] border p-5 space-y-3"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+        }}
+      >
+        <h2
+          className="font-serif text-[20px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          The state of the data, measured.
+        </h2>
+        <ul
+          className="space-y-2.5 text-[14px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Hours.</strong>{" "}
+            {coverage.hours.toLocaleString("en-US")} of{" "}
+            {coverage.total.toLocaleString("en-US")} places (
+            {pct(coverage.hours, coverage.total)}) carry posted hours fresh
+            enough for an open-now answer. Everywhere else the app says it does
+            not know instead of guessing.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Photos.</strong>{" "}
+            {coverage.photo.toLocaleString("en-US")} places (
+            {pct(coverage.photo, coverage.total)}) carry a real photo from the
+            venue or its source listing.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>A way to act.</strong>{" "}
+            {coverage.action.toLocaleString("en-US")} places (
+            {pct(coverage.action, coverage.total)}) carry a direct phone,
+            website, menu, ordering, or reservation detail stored with the
+            record.
+          </li>
+        </ul>
+        <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          These figures are measured from the shipped place index and refresh
+          at least daily.
+        </p>
+      </section>
+
       {/* What we don't do */}
       <section
         className="rounded-[var(--app-radius-lg)] border-l-4 p-5 space-y-2"
@@ -263,6 +325,9 @@ export default function TrustPage() {
           records by hand.
         </p>
       </section>
+
+      {/* What it cost to build — the no-ads, no-investors civic read. */}
+      <CostTransparency />
 
       <p
         className="pt-2 text-center text-[11px]"
