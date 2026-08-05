@@ -261,7 +261,8 @@ export default function TrustPage() {
           </li>
         </ul>
         <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-          Measured from the shipped place index and refreshed at least daily.
+          These figures are measured from the shipped place index and refresh
+          at least daily.
         </p>
       </section>
 
