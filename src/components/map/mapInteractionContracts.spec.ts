@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 describe("map interaction state contracts", () => {
   it("uses the shared geolocation request instead of a private map request", () => {
-    const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    // The geolocation cluster moved to useMapLocation (#77); the contract
+    // follows it there, and BOTH files stay free of private browser requests.
+    const source = readFileSync("src/components/map/useMapLocation.ts", "utf8");
+    const appMap = readFileSync("src/components/map/AppMap.tsx", "utf8");
 
     expect(source).toContain("requestHighAccuracy: requestSharedGeolocation");
     expect(source).toContain("requestSharedGeolocation()");
@@ -14,6 +17,7 @@ describe("map interaction state contracts", () => {
     );
     expect(source).toContain("GEOLOCATION_CHANGE_EVENT");
     expect(source).not.toContain("navigator.geolocation.getCurrentPosition");
+    expect(appMap).not.toContain("navigator.geolocation.getCurrentPosition");
   });
 
   it("uses auth-aware place follows in the compact map card", () => {
