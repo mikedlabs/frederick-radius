@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
 import { eventsLive } from "@/lib/loaders/events";
@@ -232,7 +233,12 @@ async function EventsBoard({
   // This is the main /events payload fix: the first response no longer embeds
   // hundreds of event records in both HTML and React Flight data.
   const browseEvents = prepareEventsForBrowse(publicEvents, bounds);
-  const initialEvents = initialEventsForBrowse(browseEvents, bounds);
+  const initialEvents = initialEventsForBrowse(
+    browseEvents,
+    bounds,
+    undefined,
+    featuredEventSlugs(now),
+  );
   const browseSummary = summarizeEventsForBrowse(browseEvents, bounds);
   const friday = new Date(bounds.weekendStart);
   const monday = new Date(bounds.weekendEnd);

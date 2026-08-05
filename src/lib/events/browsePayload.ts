@@ -178,6 +178,9 @@ export function initialEventsForBrowse(
   events: EventWithMeta[],
   bounds: HorizonBounds,
   perHorizon = INITIAL_EVENTS_PER_HORIZON,
+  /** Owner-featured slugs (lib/events/featured) — the caller passes the
+   *  clock-resolved set so this module stays clock-free. */
+  featured?: ReadonlySet<string>,
 ): EventWithMeta[] {
   // The first paint is the default editorial list, so repeated series can be
   // represented by their next occurrence here. The complete occurrence corpus
@@ -189,7 +192,7 @@ export function initialEventsForBrowse(
   const selected = new Set<string>();
 
   for (const group of groupByHorizon(crowd, bounds)) {
-    for (const event of [...group.events].sort(compareForLead).slice(0, perHorizon)) {
+    for (const event of [...group.events].sort((a, b) => compareForLead(a, b, featured)).slice(0, perHorizon)) {
       selected.add(eventIdentity(event));
     }
   }
