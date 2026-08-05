@@ -280,3 +280,20 @@ export type MapPinPlace = Pick<
   Partial<Pick<PlaceCardData, "google_place_id" | "feature_score">> & {
     distance_m?: number;
   };
+
+/** A tapped bare spot on the canvas (or a temporary search result pin) —
+ *  the "At this spot" selection. Extracted from AppMap (#77) so the
+ *  selection-surfaces child can type its props without a circular import. */
+export type MapSpotSelection = { lng: number; lat: number } & {
+  label?: string;
+  temporary?: boolean;
+  attribution?: string;
+};
+
+/** A municipality tapped through its boundary/label — the town peek. */
+export type CivicTownSelection = {
+  name: string;
+  slug: string;
+  lng: number;
+  lat: number;
+};
