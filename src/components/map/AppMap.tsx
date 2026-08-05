@@ -23,7 +23,6 @@ import Map, {
 // browse the dock's Where pane is locate's one home.)
 import type {
   GeoJSONSource,
-  Map as MapboxMap,
   StyleSpecification,
 } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -112,12 +111,6 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
 import StopArrivalsPopup, {
   type SelectedStop,
 } from "@/components/transit/StopArrivalsPopup";
-// Aerial photo manifest — extracted from EXIF GPS by
-// scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
-// across the seasons folders. Powers the "Aerial photos" overlay,
-// which is unique to Frederick Radius — no other map shows where
-// each photo was taken in the county.
-import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration, mapPlaceVisualState } from "./mapVisualState";
@@ -131,89 +124,27 @@ import {
 // graphics failure never turns the page into a generic dead-end link.
 const MapList = dynamic(() => import("./MapList"), { ssr: false });
 
-type AerialPhoto = {
-  src: string;
-  lat: number;
-  lng: number;
-  altM: number | null;
-  bearing: number | null;
-  takenAt: string | null;
-  season: "spring" | "summer" | "fall" | "winter";
-};
-const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
-
-type CameraSnapshot = {
-  getZoom: () => number;
-  getCenter: () => { lng: number; lat: number };
-};
-
-type ResultViewportMap = CameraSnapshot & {
-  getBounds: () => {
-    getWest: () => number;
-    getEast: () => number;
-    getSouth: () => number;
-    getNorth: () => number;
-  } | null;
-};
-
-/** A county overview is a camera state, not a hard-coded zoom. A person can
- * pan the county offscreen without changing zoom, so the recovery control also
- * compares the settled camera with the center of the county fit. A small
- * tolerance avoids flashing the control after an accidental finger wobble. */
-function isCountyOverview(map: CameraSnapshot): boolean {
-  const [[west, south], [east, north]] = FREDERICK_COUNTY_BOUNDS;
-  const center = map.getCenter();
-  const centerLng = (west + east) / 2;
-  const centerLat = (south + north) / 2;
-  return (
-    map.getZoom() <= 10.6 &&
-    Math.abs(center.lng - centerLng) <= (east - west) * 0.12 &&
-    Math.abs(center.lat - centerLat) <= (north - south) * 0.12
-  );
-}
-
-// The aerial "time machine": scrub the drone archive by season. Colors
-// mirror the season tint on the pins (the decorative season palette) so a
-// chip reads as the same season as the dots it controls. DOM chips, so
-// var() is fine for the neutral "All".
-type AerialSeason = "all" | "spring" | "summer" | "fall" | "winter";
-// One season → hue map for the chips, the GL dot paint, and the selected
-// label, so the three can never drift apart. Shared hues come from ACCENTS.
-const SEASON_HEX = {
-  spring: "#859076",
-  summer: ACCENTS.amber,
-  fall: ACCENTS.terracotta,
-  winter: ACCENTS.slate,
-} as const;
-const AERIAL_SEASONS: { key: AerialSeason; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "var(--app-ink-2)" },
-  { key: "spring", label: "Spring", color: SEASON_HEX.spring },
-  { key: "summer", label: "Summer", color: SEASON_HEX.summer },
-  { key: "fall", label: "Fall", color: SEASON_HEX.fall },
-  { key: "winter", label: "Winter", color: SEASON_HEX.winter },
-];
-const AERIAL_SEASON_COUNTS: Record<string, number> = AERIAL_PHOTOS.reduce(
-  (acc, p) => ((acc[p.season] = (acc[p.season] ?? 0) + 1), acc),
-  {} as Record<string, number>,
-);
-
-// Does this browser have a usable WebGL context? Mapbox GL needs one; without
-// it the canvas stays blank. mapbox-gl v3 dropped the old `supported()` helper,
-// so probe directly. Conservative: any throw or missing context → treat as no
-// WebGL and fall back to the list view. SSR returns true so we never flash the
-// fallback during hydration — the real check runs in a mount effect.
-function hasWebGL(): boolean {
-  if (typeof document === "undefined" || typeof window === "undefined") return true;
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
-  } catch {
-    return false;
-  }
-}
+// Aerial archive + camera/environment helpers were extracted to focused
+// siblings (#77): mapAerialArchive.ts and mapCameraHelpers.ts.
+import {
+  AERIAL_PHOTOS,
+  AERIAL_SEASONS,
+  AERIAL_SEASON_COUNTS,
+  SEASON_HEX,
+  type AerialPhoto,
+  type AerialSeason,
+} from "./mapAerialArchive";
+import {
+  SHORT_LANDSCAPE_MAX_BOUNDS,
+  countyFitPadding,
+  fitNearbyRadius,
+  hasWebGL,
+  isCountyOverview,
+  municipalityDisplayName,
+  prefersReducedMotion,
+  scrubInstant,
+  type ResultViewportMap,
+} from "./mapCameraHelpers";
 
 // Curated-place semantic zoom has two deliberately separate profiles:
 // - the main dock map clusters the full county catalog until street zoom;
@@ -257,7 +188,7 @@ import {
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
-import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
+import { placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -351,7 +282,6 @@ import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
-import { mapCameraPadding } from "./mapCameraPadding";
 import { rememberMapSelectionOpener } from "./mapSelectionFocus";
 import {
   mapCameraParam,
@@ -374,17 +304,6 @@ type CivicTownSelection = {
   lat: number;
 };
 
-function municipalityDisplayName(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  return (
-    MUNICIPALITIES.find(
-      (municipality) =>
-        municipality.slug === normalized ||
-        municipality.name.toLowerCase() === normalized,
-    )?.name ?? value
-  );
-}
-
 type MapSelectionRequest =
   | { kind: "place"; value: MapPinPlace }
   | { kind: "raw"; value: NonNullable<Selected>; contextLabel?: string }
@@ -399,78 +318,6 @@ type MapSelectionRequest =
   | { kind: "food-truck"; value: FoodTruckMapPin }
   | { kind: "discovery"; value: MapDiscovery }
   | { kind: "spot"; value: MapSpotSelection };
-
-/** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
- *  from "now" by the delta so getOpenStatus (which reads Frederick time)
- *  evaluates hours at the scrubbed hour without constructing a zoned date. */
-function scrubInstant(scrubHour: number): Date {
-  const local = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const curH = local.getHours() + local.getMinutes() / 60;
-  return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
-}
-
-/** True when the viewer asked for reduced motion. The CSS `*` gate can't
- *  reach Mapbox's JS-driven camera, so camera moves check this and pass
- *  duration:0 (instant, no glide). */
-function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined"
-    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-}
-
-/** Keep the county outline clear of whichever edge owns the map instrument.
- * Mobile is bottom-mounted; desktop is top-mounted. A manual refit measures
- * the live controls while first paint uses the same responsive fallback. */
-function countyFitPadding(measureDock = true): { top: number; right: number; bottom: number; left: number } {
-  if (typeof window === "undefined") {
-    return { top: 96, right: 32, bottom: 64, left: 32 };
-  }
-  const mapRect = measureDock
-    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect()
-    : undefined;
-  const dock = measureDock
-    ? document.querySelector<HTMLElement>("[data-map-dock]")
-    : null;
-  const dockRect = dock?.getBoundingClientRect();
-  const contextRailRect = dock
-    ?.closest<HTMLElement>(".dock-host")
-    ?.querySelector<HTMLElement>(".map-context-rail")
-    ?.getBoundingClientRect();
-  const paneRect =
-    dock?.classList.contains("dock-open") === true
-      ? dock
-          .querySelector<HTMLElement>('.dock-pane[aria-hidden="false"]')
-          ?.getBoundingClientRect()
-      : undefined;
-
-  return mapCameraPadding({
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    mapTop: mapRect?.top ?? 0,
-    mapBottom: mapRect?.bottom ?? window.innerHeight,
-    dockTop: dockRect?.top,
-    dockBottom: dockRect?.bottom,
-    contextRailBottom: contextRailRect?.bottom,
-    paneTop: paneRect?.top,
-  });
-}
-
-/** Fit the visible map to the same one-mile reach used by the result set and
- * ring. One definition keeps the camera, pins, count, URL, and share state in
- * agreement instead of using an arbitrary zoom number. */
-function fitNearbyRadius(map: MapboxMap, origin: LngLat): void {
-  map.fitBounds(nearbyReachBounds(origin, RADIUS_M), {
-    padding: countyFitPadding(),
-    maxZoom: 14.5,
-    duration: prefersReducedMotion() ? 0 : 900,
-    easing: CAM_EASE,
-    essential: true,
-  });
-}
-
-const SHORT_LANDSCAPE_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-179, -80],
-  [179, 80],
-];
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
