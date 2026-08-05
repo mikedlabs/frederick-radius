@@ -245,7 +245,7 @@ export async function readTextBodyWithLimit(
  * to avoid adding the `@upstash/redis` SDK as a dependency. Each
  * `bucket` key gets its own counter — pass different bucket names per
  * route family so e.g. /api/place-photo doesn't share a budget with
- * /api/discover/nearby.
+ * /api/travel-time.
  *
  *   const limited = await isRateLimited(req, "place-photo", 60, 60);
  *   if (limited) return new Response("Too Many Requests", { status: 429 });
