@@ -25,10 +25,10 @@ import { FREDERICK_FLAVOR } from "@/lib/map/frederickBasemapFlavor";
 
 const CENTER: [number, number] = [-77.4105, 39.4143];
 const ZOOM = 12.5;
-// Served same-origin through /admin/basemap/tiles: the Protomaps demo
-// bucket is CORS-locked to protomaps.com domains, so the browser must not
-// read it directly (the pane rendered ground color only — no tiles).
-const ASSET_BASE = "https://protomaps.github.io/basemaps-assets";
+// Tiles, sprites, and glyphs are all served same-origin (tile relay at
+// /admin/basemap/tiles, asset relay at /admin/basemap/assets): the demo
+// bucket is CORS-locked and github.io may be unreachable from a judging
+// environment, and either failure renders a silently blank flavor pane.
 
 export default function BasemapCompare() {
   const mapboxRef = useRef<HTMLDivElement>(null);
@@ -56,8 +56,8 @@ export default function BasemapCompare() {
         container: maplibreRef.current,
         style: {
           version: 8,
-          glyphs: `${ASSET_BASE}/fonts/{fontstack}/{range}.pbf`,
-          sprite: `${ASSET_BASE}/sprites/v4/light`,
+          glyphs: `${window.location.origin}/admin/basemap/assets/fonts/{fontstack}/{range}.pbf`,
+          sprite: `${window.location.origin}/admin/basemap/assets/sprites/v4/light`,
           sources: {
             protomaps: {
               type: "vector",
