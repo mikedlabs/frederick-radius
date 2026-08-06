@@ -17,6 +17,25 @@ import { FREDERICK_FLAVOR } from "@/lib/map/frederickBasemapFlavor";
  */
 export const COUNTY_TILES_PATH = "/basemap/frederick-county.pmtiles";
 
+/**
+ * MapLibre v6 boots its tile worker from `new Worker(new URL(...))`
+ * relative to its own module. Turbopack does not rewrite that pattern,
+ * so the worker was constructed with an EMPTY url and died silently:
+ * the map painted its background, issued the one main-thread TileJSON
+ * read, and never requested a tile (tile fetching lives in the worker).
+ * That was the bench's invisible-flavor bug. The worker and its shared
+ * chunk are vendored in /public/basemap (version-locked to the
+ * maplibre-gl in package.json; re-copy both files from
+ * node_modules/maplibre-gl/dist when upgrading), and every flavor
+ * surface must call this before constructing a map.
+ */
+export function ensureMapLibreWorker(
+  maplibregl: { setWorkerUrl: (url: string) => void },
+  origin: string,
+): void {
+  maplibregl.setWorkerUrl(`${origin}/basemap/maplibre-gl-worker.mjs`);
+}
+
 export function buildFrederickFlavorStyle(
   origin: string,
 ): maplibregl.StyleSpecification {

@@ -8,7 +8,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
-import { buildFrederickFlavorStyle } from "./flavorStyle";
+import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "./flavorStyle";
 
 /**
  * Side-by-side judge's bench for the branded basemap spike (task #36).
@@ -30,6 +30,7 @@ export default function BasemapCompare() {
   useEffect(() => {
     if (!mapboxRef.current || !maplibreRef.current) return;
 
+    ensureMapLibreWorker(maplibregl, window.location.origin);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
 

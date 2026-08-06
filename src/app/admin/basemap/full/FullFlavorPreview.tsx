@@ -5,7 +5,7 @@ import Link from "next/link";
 import * as maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { buildFrederickFlavorStyle } from "../flavorStyle";
+import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "../flavorStyle";
 
 /**
  * Full-viewport preview of the Frederick Radius flavor (task #36).
@@ -22,6 +22,7 @@ export default function FullFlavorPreview() {
 
   useEffect(() => {
     if (!ref.current) return;
+    ensureMapLibreWorker(maplibregl, window.location.origin);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
     let map: maplibregl.Map | null = null;
