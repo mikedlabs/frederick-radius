@@ -46,8 +46,8 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-05T12:00:16.851Z
-    last_success: 2026-08-05T12:00:16.851Z
+    last_validated: 2026-08-06T12:02:51.840Z
+    last_success: 2026-08-06T12:02:51.840Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -69,8 +69,8 @@ sources:
     contact: https://chart.maryland.gov
     status: active
     collection: pipeline
-    last_validated: 2026-08-05T12:00:17.322Z
-    last_success: 2026-08-05T12:00:17.322Z
+    last_validated: 2026-08-06T12:02:52.273Z
+    last_success: 2026-08-06T12:02:52.273Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
@@ -93,8 +93,8 @@ sources:
     contact: https://seeclickfix.com
     status: active
     collection: pipeline
-    last_validated: 2026-08-05T12:00:17.877Z
-    last_success: 2026-08-05T12:00:17.877Z
+    last_validated: 2026-08-06T12:02:52.818Z
+    last_success: 2026-08-06T12:02:52.818Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -103,8 +103,8 @@ sources:
       silently ignored by the SeeClickFix v2 API and returns the
       global feed; the integration also applies a hard in-county bbox
       post-filter as defense in depth.
-    last_changed: 2026-08-05T12:00:17.877Z
-    last_payload_sha256: b029ad3e83bde2a960aacba4b33f2aeeeb9efd8f045513da048d878984ad538b
+    last_changed: 2026-08-06T12:02:52.818Z
+    last_payload_sha256: 38d36f059584027185bed75807de0a67b777f947ce807f22b509652dcc5e2f83
 
   - id: nws_forecast
     name: National Weather Service Forecast, Frederick
@@ -121,15 +121,15 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-05T12:00:19.613Z
-    last_success: 2026-08-05T12:00:19.613Z
+    last_validated: 2026-08-06T12:02:54.339Z
+    last_success: 2026-08-06T12:02:54.339Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
       Two step API. The worker reads the points response, follows
       properties.forecast, then stores the forecast periods.
-    last_changed: 2026-08-05T12:00:19.613Z
-    last_payload_sha256: 7387a06c3f8b4d2df74120cc49b8005128aa1a4e73ded9b317acc91eb139ffc9
+    last_changed: 2026-08-06T12:02:54.339Z
+    last_payload_sha256: 885467ff7b697a10fb9e57b305ba7b7d50c293d7475528d221f407b05ca14258
 
   - id: nws_alerts
     name: National Weather Service Active Alerts, Frederick County
@@ -143,8 +143,8 @@ sources:
     contact: https://www.weather.gov/disclaimer
     status: active
     collection: pipeline
-    last_validated: 2026-08-05T12:00:21.578Z
-    last_success: 2026-08-05T12:00:21.578Z
+    last_validated: 2026-08-06T12:02:54.971Z
+    last_success: 2026-08-06T12:02:54.971Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
