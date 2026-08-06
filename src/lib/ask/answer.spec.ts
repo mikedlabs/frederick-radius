@@ -259,7 +259,10 @@ describe("askFrederick structured answers", () => {
 
   it("filters the full nearby catalog for the requested time before applying the result cap", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    // Clock must postdate the newest hours_updated_at in the snapshot:
+    // a fake time set BEFORE the data's own timestamps reads every
+    // schedule as unverifiable and empties the open-past-midnight set.
+    vi.setSystemTime(new Date("2026-08-06T16:00:00.000Z"));
     try {
       const result = await askFrederick(
         "what is open past midnight near me",
@@ -344,17 +347,22 @@ describe("askFrederick structured answers", () => {
   });
 
   it("keeps a stale-hours exact match only as an unconfirmed alternative", async () => {
+    // Data-coupled premise: the named place must carry a verified schedule
+    // in the current snapshot, and the target date must sit beyond the
+    // 7-day freshness window so the schedule reads as unconfirmed. Monocacy
+    // filled this role until the 2026-08-05 refresh, when Google stopped
+    // returning hours for it; Dutch's Daughter is a stable schedule-carrier.
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-08-06T16:00:00.000Z"));
     try {
       const result = await askFrederick(
-        "Monocacy National Battlefield nearby after 10pm August 19 2026",
+        "Dutch's Daughter nearby after 10pm August 19 2026",
         downtown,
       );
 
       expect(result.sources).toContainEqual(
         expect.objectContaining({
-          slug: "monocacy-national-battlefield-frederick",
+          slug: "dutchs-daughter-frederick",
           status: "At 10:00 PM · Hours not confirmed",
         }),
       );
