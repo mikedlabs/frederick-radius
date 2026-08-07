@@ -41,19 +41,42 @@ const pct = (part: number, total: number): string =>
 /** Reader reports resolved as fixed — the public half of the correction
  *  loop (/admin/link-reports is the private half). Fail-soft null: a
  *  missing database must never break the trust page, and zero reports is
- *  rendered as silence, not a hollow claim. */
+ *  rendered as silence, not a hollow claim.
+ *
+ *  The wait is BOUNDED, and that bound is load-bearing. This page is
+ *  statically exported at build time, where Next allows each page 60
+ *  seconds. A database that refuses a connection throws and lands in the
+ *  catch below; a database that simply never answers does not, so an
+ *  unbounded await silently spends the whole export budget. That is not
+ *  hypothetical: every production deploy from 2c5a0e29 (2026-08-05, the
+ *  commit that added this query) through e83586c2 failed here, and the
+ *  app sat frozen on 2026-08-05's build for two days while ten merges
+ *  reported success. A slow database now costs a missing count, which is
+ *  exactly what this function already promised. */
+const REPORT_COUNT_BUDGET_MS = 5_000;
+
 async function fixedReportCount(): Promise<number | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const db = getDb();
     if (!db) return null;
-    const rows = await db
+    const query = db
       .select({ n: count() })
       .from(commerce_link_reports)
       .where(eq(commerce_link_reports.status, "fixed"));
+    const rows = await Promise.race([
+      query,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), REPORT_COUNT_BUDGET_MS);
+      }),
+    ]);
+    if (!rows) return null;
     const n = rows[0]?.n ?? 0;
     return n > 0 ? n : null;
   } catch {
     return null;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
