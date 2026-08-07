@@ -112,6 +112,10 @@ export function isNonDiscoverable(
  * Deterministic + universal (one type-set, every category inherits it).
  * Pure, unit-tested.
  */
+/** Hand-curated provenance. Everything else (dfp, google, discovered, and
+ *  any bulk source added later) is subject to the institution deny. */
+export const CURATED_SOURCES: ReadonlySet<string> = new Set(["seed", "manual"]);
+
 export const RECOMMENDATION_DENY_TYPES: ReadonlySet<string> = new Set([
   "primary_school",
   "secondary_school",
@@ -198,10 +202,16 @@ export function isRecommendable(p: {
   if (RECOMMEND_ALLOW_SLUGS.has(p.slug)) return true;
   const t = p.primary_type?.trim().toLowerCase();
   if (!t || !RECOMMENDATION_DENY_TYPES.has(t)) return true;
-  // Source guard: a curated seed/manual record is an intentional editorial
-  // choice — never auto-denied. The leak is bulk dfp/google imports.
-  if (p.source !== "dfp" && p.source !== "google") return true;
-  return false;
+  // Source guard: a curated record is an intentional editorial choice and is
+  // never auto-denied; every bulk import is.
+  //
+  // This is an ALLOW-list on purpose. It was written as "deny dfp and
+  // google", which reads the same until a third bulk source appears —
+  // and "discovered" is now the largest source in the catalog (901
+  // records). Eight institutions rode that gap back into recommendations,
+  // which is how Walkersville High School reached the Family lead in the
+  // school-run hours, when the real outings are still closed.
+  return CURATED_SOURCES.has(p.source);
 }
 
 /**
