@@ -34,9 +34,19 @@ export default function BasemapSpikePage() {
             What the flavor does: Cream paper ground, Catoctin Forest greens for
             parks and woods, Creek water, Ink labels, and a warm quiet road
             ladder, so the app&apos;s own pins and live layers sit on the map
-            instead of fighting it. The proposed pane runs on the free Protomaps
-            demo tiles; shipping this for real means self-hosting a county
-            extract, which also ends per-load Mapbox billing on /map.
+            instead of fighting it. The proposed pane now runs on our own county
+            extract (30 MB, zooms 0 to 15, served from this origin). That is the
+            same architecture /map would ship with, ending per-load Mapbox
+            billing.
+          </p>
+          <p className="mt-2">
+            <a
+              href="/admin/basemap/full"
+              className="font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Open the flavor full screen →
+            </a>
           </p>
         </div>
       </div>

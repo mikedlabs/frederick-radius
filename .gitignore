@@ -118,3 +118,7 @@ audit-reports/
 design-review/screenshots/
 # Closure-detector output: a local review artifact, regenerated each run.
 scripts/reports/
+# County basemap extract: ~30MB binary produced at build time by
+# scripts/fetch-basemap.mjs (pinned Protomaps build + bbox). Tracking it
+# would rewrite the whole blob on every refresh; the repo-size gate says no.
+public/basemap/frederick-county.pmtiles

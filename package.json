@@ -6,7 +6,7 @@
   "scripts": {
     "predev": "npm run build:client-places",
     "dev": "next dev",
-    "prebuild": "npm run build:source-registry && npm run audit:sources && npm run build:client-places && npm run audit:county-data && npm run gates",
+    "prebuild": "npm run build:source-registry && npm run audit:sources && npm run build:client-places && npm run audit:county-data && npm run gates && node scripts/fetch-basemap.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -4,31 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import * as maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
-import { layers } from "@protomaps/basemaps";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
-import { FREDERICK_FLAVOR } from "@/lib/map/frederickBasemapFlavor";
+import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "./flavorStyle";
 
 /**
  * Side-by-side judge's bench for the branded basemap spike (task #36).
  * Top pane: the production Mapbox style /map uses today. Bottom pane:
- * MapLibre + Protomaps tiles wearing the Frederick Radius flavor. The
- * viewports stay synchronized both ways so any pan or zoom compares the
- * same ground. Admin-only; nothing here touches /map.
- *
- * Tiles: the Protomaps demo build (planet, hosted by Protomaps) — fine
- * for judging. Production would self-host a county extract (~tens of MB
- * on Blob/R2) so map loads stop billing per-tile entirely.
+ * MapLibre wearing the Frederick Radius flavor over the self-hosted
+ * county PMTiles extract (see flavorStyle.ts). The viewports stay
+ * synchronized both ways so any pan or zoom compares the same ground.
+ * Admin-only; nothing here touches /map.
  */
 
 const CENTER: [number, number] = [-77.4105, 39.4143];
 const ZOOM = 12.5;
-// Served same-origin through /admin/basemap/tiles: the Protomaps demo
-// bucket is CORS-locked to protomaps.com domains, so the browser must not
-// read it directly (the pane rendered ground color only — no tiles).
-const ASSET_BASE = "https://protomaps.github.io/basemaps-assets";
 
 export default function BasemapCompare() {
   const mapboxRef = useRef<HTMLDivElement>(null);
@@ -38,6 +30,7 @@ export default function BasemapCompare() {
   useEffect(() => {
     if (!mapboxRef.current || !maplibreRef.current) return;
 
+    ensureMapLibreWorker(maplibregl, window.location.origin);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
 
@@ -54,25 +47,7 @@ export default function BasemapCompare() {
       });
       b = new maplibregl.Map({
         container: maplibreRef.current,
-        style: {
-          version: 8,
-          glyphs: `${ASSET_BASE}/fonts/{fontstack}/{range}.pbf`,
-          sprite: `${ASSET_BASE}/sprites/v4/light`,
-          sources: {
-            protomaps: {
-              type: "vector",
-              url: `pmtiles://${window.location.origin}/admin/basemap/tiles`,
-              attribution:
-                '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
-            },
-          },
-          // Cast bridges the duplicated @maplibre/maplibre-gl-style-spec
-          // package (one copy under maplibre-gl, one under
-          // @protomaps/basemaps) — identical spec, nominally distinct types.
-          layers: layers("protomaps", FREDERICK_FLAVOR, {
-            lang: "en",
-          }) as unknown as maplibregl.LayerSpecification[],
-        },
+        style: buildFrederickFlavorStyle(window.location.origin),
         center: CENTER,
         zoom: ZOOM,
       });

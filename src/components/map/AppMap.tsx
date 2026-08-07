@@ -3139,14 +3139,17 @@ export default function AppMap({
             </button>
           </div>
         )}
+        {/* Cream fade under the top chrome so pills and rails always sit on
+            quiet ground instead of raw basemap. Paint only. */}
+        {dock && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). Typography only, one dismiss, and when the suggestion
             is tonight's music it offers the lens as a one-tap deep link
             instead of silently flipping shareable state. */}
         {dock && smartDefault && !smartNoteDismissed && !hasExplicitLayerView && (
           <div
-            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex max-w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-[var(--app-radius-md)] border bg-white/95 py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-1)] backdrop-blur"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex max-w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur-md"
+            style={{ color: "var(--app-ink-2)" }}
           >
             <span role="status">{smartDefault.reason}</span>
             {smartDefault.layers.includes("music-tonight") && (
@@ -4419,7 +4422,13 @@ export default function AppMap({
                       17, ["*", 4.1, ["case", ["==", ["get", "emph"], true], 1.6, ["==", ["get", "dimmed"], true], 0.7, 1]],
                     ],
                 "circle-stroke-color": "#FAF3E2",
-                "circle-stroke-width": compactSubjectMap ? 1.6 : 1,
+                // The cream collar: a slightly heavier stroke separates live
+                // dots from the basemap the way a sticker edge does. Dimmed
+                // (closed-at-this-hour) dots lose the collar so open places
+                // read as the brighter tier at a squint.
+                "circle-stroke-width": compactSubjectMap
+                  ? 1.6
+                  : ["case", ["==", ["get", "dimmed"], true], 0.6, 1.4],
                 "circle-opacity": selectedSlug && dock
                   ? 0.2
                   : amenityLayerActive && dock
@@ -4681,11 +4690,14 @@ export default function AppMap({
               id="ring-line"
               type="line"
               beforeId="curated-lastcall"
+              layout={{ "line-cap": "round" }}
               paint={{
                 "line-color": "#B5462B",
-                "line-width": 2,
-                "line-opacity": 0.55,
-                "line-dasharray": [2, 2],
+                "line-width": 1.8,
+                "line-opacity": 0.5,
+                // Round caps + near-zero dash = a fine dotted circle. Reads
+                // as a gentle boundary instead of a construction perimeter.
+                "line-dasharray": [0.1, 2.4],
               }}
             />
           </Source>

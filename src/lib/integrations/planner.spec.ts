@@ -57,10 +57,12 @@ describe("buildPlan", () => {
       audience: "date",
       vibe: "easy",
       duration_hours: 3,
-      // 4:30 AM Eastern: even the genuinely late kitchens in the refreshed
-      // provider snapshot are closed. This keeps the fixture about refusing
-      // an unsupported open claim instead of depending on stale data.
-      start_at: "2026-07-23T08:30:00.000Z",
+      // 4:30 AM Eastern, and the date must postdate the newest
+      // hours_updated_at in the snapshot: a start before the data's own
+      // timestamps makes every schedule unverifiable, and the planner then
+      // falls back to rating listings instead of exercising the
+      // provably-closed refusal this fixture is about.
+      start_at: "2026-08-08T08:30:00.000Z",
       start_near: FREDERICK_CENTER,
       municipality: "frederick",
     });
