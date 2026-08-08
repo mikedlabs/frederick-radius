@@ -6,6 +6,160 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.60106876380793,
+          39.52937980415014
+        ]
+      },
+      "properties": {
+        "external_id": "22451312",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Tree down in the left land on Pleasant Walk Rd near the little store on the corner.",
+        "address": "Pleasant Walk Rd Myersville, Maryland, 21773",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-07T18:35:07.000Z",
+        "url": "https://seeclickfix.com/issues/22451312",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.52336768318125,
+          39.48179879920564
+        ]
+      },
+      "properties": {
+        "external_id": "22450629",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Drainage pipe underneath the driveway near the road needs to be extended.",
+        "address": "9043 Hollow Rd Middletown, Maryland, 21769",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-07T17:39:00.000Z",
+        "url": "https://seeclickfix.com/issues/22450629",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.47084248693234,
+          39.47855701433268
+        ]
+      },
+      "properties": {
+        "external_id": "22450469",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Constituent says culvert is filled with debris and is causing flooding on the roadway",
+        "address": "8813 Indian Springs Rd Frederick, Maryland, 21702",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-07T17:25:42.000Z",
+        "url": "https://seeclickfix.com/issues/22450469",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.47044909671338,
+          39.47905802434816
+        ]
+      },
+      "properties": {
+        "external_id": "22450390",
+        "summary": "Property Damage",
+        "description": "Constituent said mailbox was damaged by snowplow. Someone came out and put a bungy cord around it and said someone else would be out to complete the repair, but it never happened. He said that he want",
+        "address": "8821 Indian Springs Rd Frederick, MD, 21702, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Property Damage",
+        "reported_at": "2026-08-07T17:19:53.000Z",
+        "url": "https://seeclickfix.com/issues/22450390",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4805936158913,
+          39.50636738746176
+        ]
+      },
+      "properties": {
+        "external_id": "22449967",
+        "summary": "Roadway Sign Maintenance",
+        "description": "Requesting stop sign on Hamburg Rd. Caller says we recently installed a guardrail in the area, but says it would be beneficial for a stop sign as well. He said his wife was involved in an accident in",
+        "address": "10023-10181 Hamburg Rd Frederick, MD, 21702, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-08-07T16:49:32.000Z",
+        "url": "https://seeclickfix.com/issues/22449967",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.34469668816062,
+          39.3918158834711
+        ]
+      },
+      "properties": {
+        "external_id": "22447811",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "At 5724 and 5730 Bells Lane, the drainage areas on this road is filled with storm debris which overflows onto the roadway. Constituent would like the county to clean out the culvert and setup a design",
+        "address": "5724 Bells Ln Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-07T14:03:02.000Z",
+        "url": "https://seeclickfix.com/issues/22447811",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.45886797430995,
+          39.525462475379065
+        ]
+      },
+      "properties": {
+        "external_id": "22446670",
+        "summary": "Gravel Road Maintenance",
+        "description": "Constituent requesting the gravel road portion of Mountaindale be visited for repairs AW",
+        "address": "5770-6000 Mountaindale Rd Thurmont, MD, 21788, USA",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Gravel Road Maintenance",
+        "reported_at": "2026-08-07T11:48:45.000Z",
+        "url": "https://seeclickfix.com/issues/22446670",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.36098155256407,
           39.462447289791974
         ]
@@ -284,160 +438,6 @@
         "category": "Roadway Tree Maintenance",
         "reported_at": "2026-08-06T13:31:32.000Z",
         "url": "https://seeclickfix.com/issues/22437644",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.46697164022689,
-          39.473734318701396
-        ]
-      },
-      "properties": {
-        "external_id": "22437536",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Caller was referred from Stormwater Management to call DHO regarding flooding. He states there is no swell protecting his driveway, causing the stone to wash out. He is requesting a call before coming",
-        "address": "8629b Indian Springs Rd Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-06T13:21:09.000Z",
-        "url": "https://seeclickfix.com/issues/22437536",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.41709277844853,
-          39.39149020462311
-        ]
-      },
-      "properties": {
-        "external_id": "22437113",
-        "summary": "Animal Carcass in Public Ways",
-        "description": "Deceased deer in roadway. 5726 Industry Lane.. Reported by Laurae Venezia 240.815.0125",
-        "address": "5726 Industry Ln Frederick, Maryland, 21704",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Animal Carcass in Public Ways",
-        "reported_at": "2026-08-06T12:44:24.000Z",
-        "url": "https://seeclickfix.com/issues/22437113",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.55775427332043,
-          39.37918372673974
-        ]
-      },
-      "properties": {
-        "external_id": "22436446",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "I live at 5355 Carroll Boyer Road, Middletown, MD 21769. Yesterday (8/4/26), the county government was operating equipment on my road (I believe for grass cutting) and gouged/scraped my entire drivewa",
-        "address": "5355 Carroll Boyer Rd Middletown, Maryland, 21769",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-06T10:40:48.000Z",
-        "url": "https://seeclickfix.com/issues/22436446",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.3679,
-          39.6668
-        ]
-      },
-      "properties": {
-        "external_id": "22436435",
-        "summary": "Illegal Debris Removal",
-        "description": "blown out tractor tire dumped in pulloff",
-        "address": "Hemler Rd & Saint Anthony Rd Thurmont, Maryland, 21788",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Illegal Debris Removal",
-        "reported_at": "2026-08-06T10:36:31.000Z",
-        "url": "https://seeclickfix.com/issues/22436435",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.43832009153421,
-          39.39380902413244
-        ]
-      },
-      "properties": {
-        "external_id": "22436409",
-        "summary": "Roadway General Request",
-        "description": "Trees growing into roadway",
-        "address": "5870 Ballenger Creek Pike Frederick, Maryland, 21703",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-06T10:20:14.000Z",
-        "url": "https://seeclickfix.com/issues/22436409",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.443809149779,
-          39.379545933696
-        ]
-      },
-      "properties": {
-        "external_id": "22435649",
-        "summary": "Noxious Weed",
-        "description": "On an empty lot adjacent to the new liberty gas station on the corner of Ballinger Creek Pike, and corporate Drive there’s an area that has not been mowed all season and has interfered with walking on",
-        "address": "Ballenger Creek Pike Frederick, MD, 21703, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Noxious Weed",
-        "reported_at": "2026-08-06T02:35:40.000Z",
-        "url": "https://seeclickfix.com/issues/22435649",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.194645366256,
-          39.352028658312
-        ]
-      },
-      "properties": {
-        "external_id": "22434766",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Stormwater drainage has been flooded for more than a week. Second report and multiple phone calls. The underlying grass is dead and there is a mosquito infestation that is hazardous.",
-        "address": "4405 Robmar Dr Mount Airy, MD, 21771, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-05T23:40:28.000Z",
-        "url": "https://seeclickfix.com/issues/22434766",
         "source": "seeclickfix"
       }
     }

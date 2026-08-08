@@ -6,30 +6,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.52552,
-          39.54632
-        ]
-      },
-      "properties": {
-        "external_id": "3b0083bd32970575006ad32ec4235c0a",
-        "incident_type": "incident",
-        "description": "MD 17 NORTH/SOUTH AT HIGHLAND SCHOOL RD",
-        "county": "Frederick",
-        "road": "MD 17",
-        "direction": "North/South",
-        "location": "MD 17 NORTH/SOUTH AT HIGHLAND SCHOOL RD",
-        "severity": "high",
-        "lanes_affected": "1/1 Southbound-Traffic Lane, Shoulder, 1/1 Northbound-Traffic Lane, Shoulder closed",
-        "started_at": "2026-08-07T08:30:53.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           -77.35535,
           39.324097
         ]
@@ -44,30 +20,6 @@
         "location": "MD 80 (FINGERBOARD RD (WB/L)) @ RAMP 2 FR MD 80 WB TO IS 270 NB [Traffic Control Signal]",
         "severity": "low",
         "started_at": "2026-08-01T19:34:16.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.50258,
-          39.44659
-        ]
-      },
-      "properties": {
-        "external_id": "430173b837af0575006ad32ec4235c0a",
-        "incident_type": "incident",
-        "description": "I-70 WEST AT MM 47.0",
-        "county": "Frederick",
-        "road": "I-70",
-        "direction": "West",
-        "location": "I-70 WEST AT MM 47.0",
-        "severity": "high",
-        "lanes_affected": "2/2 Westbound-both Traffic Lanes, Right Merge Lane, left Shoulder closed",
-        "started_at": "2026-08-07T10:13:12.000Z",
         "expected_end": null,
         "source": "mdot_chart"
       }
