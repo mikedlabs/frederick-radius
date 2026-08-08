@@ -1,9 +1,7 @@
-/** Town label for an event. The City of Frederick reads "Downtown Frederick"
- *  (owner call, 2026-07-21: the dividing line is the city/county boundary, not
- *  the tight historic-core geofence — the East Frederick brewery corridor,
- *  Rockwell and Attaboy's taproom included, is downtown). The municipality slug
- *  already encodes that city-vs-county line, so any Frederick-city event carries
- *  the downtown label; other towns pass through. Null when the town is unknown.
+/** Town label for an event. Municipality data can prove that an event is in
+ *  Frederick, but it cannot prove that it is downtown. Keep the broader label
+ *  unless a future coordinate-backed downtown boundary supplies that evidence.
+ *  Other towns pass through. Null when the town is unknown.
  *
  *  ONE implementation on purpose: the Today program rows and the TonightHeadline
  *  used to make this call separately, and the headline's copy drifted until the
@@ -14,6 +12,5 @@ export function eventTown(ev: {
 }): string | null {
   const t = ev.municipality_name?.trim();
   if (!t) return null;
-  if (ev.municipality === "frederick") return "Downtown Frederick";
   return t;
 }

@@ -5,7 +5,11 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { isRecommendable } from "@/lib/relevance";
-import { coffeeIntentTier, isChainName } from "@/lib/category-ranking";
+import {
+  chainBrandKey,
+  coffeeIntentTier,
+  isChainName,
+} from "@/lib/category-ranking";
 
 /**
  * Server loader for /today's "Right now, around here" section: the daypart's
@@ -31,6 +35,17 @@ export type DaypartPick = {
   confidence: "confirmed" | "likely";
 };
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
+
+function keepOneLocationPerChain<T extends { name: string }>(places: T[]): T[] {
+  const seen = new Set<string>();
+  return places.filter((place) => {
+    const brand = chainBrandKey(place.name);
+    if (!brand) return true;
+    if (seen.has(brand)) return false;
+    seen.add(brand);
+    return true;
+  });
+}
 
 function easternHour(now: Date): number {
   return Number(
@@ -75,9 +90,12 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
         : eligible;
       const confirmed = intentRanked.filter((place) => isOpenNow(place.open_status));
       const confidence = confirmed.length > 0 ? "confirmed" : "likely";
-      const picks = confirmed.length > 0
+      const available = confirmed.length > 0
         ? confirmed
         : intentRanked.filter((place) => likelySlugs.has(place.slug));
+      const picks = need.category === "coffee"
+        ? keepOneLocationPerChain(available)
+        : available;
 
       return picks.slice(0, 4).map((place) => ({
         slug: place.slug,

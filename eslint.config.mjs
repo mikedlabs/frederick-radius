@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     // Defensive: catch any *other* nested .next/ that future tools
     // might emit alongside the project tree.
     "**/.next/**",
+    // Generated MapLibre style and glyph metadata are build artifacts, not
+    // authored source. Linting them created more than a thousand false warnings.
+    "public/basemap/**",
   ]),
   // No em dashes in user-facing copy. CLAUDE.md bans them and cleanFeedText
   // strips them from FEED data, but it never sees hand-typed JSX/strings, so

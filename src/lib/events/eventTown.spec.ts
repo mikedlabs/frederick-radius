@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { eventTown } from "./eventTown";
 
 describe("eventTown", () => {
-  it("labels City-of-Frederick events as Downtown Frederick", () => {
+  it("does not overstate a City-of-Frederick event as downtown", () => {
     expect(
       eventTown({ municipality: "frederick", municipality_name: "Frederick" }),
-    ).toBe("Downtown Frederick");
+    ).toBe("Frederick");
   });
 
   it("passes other towns through unchanged", () => {

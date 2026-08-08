@@ -20,6 +20,9 @@ const SURFACES = [
 
 const CONTROL_SELECTOR = "main a[href], main button, main [role='tab']";
 const TARGET_CONTROLS_PER_SURFACE = 3;
+const DEFAULT_SURFACE_SETTLE_MS = 750;
+const MAP_DOCK_SELECTOR = "[data-map-dock]";
+const MAP_INTERACTIVE_BUDGET_MS = 15_000;
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const OBSERVATIONAL_WRITES = new Set(["/api/track"]);
 
@@ -92,6 +95,41 @@ function candidateKey(candidate: IndexedCandidate): string {
   ].join("|");
 }
 
+async function gotoReadySurface(
+  page: import("@playwright/test").Page,
+  surface: (typeof SURFACES)[number],
+) {
+  const navigationStartedAt = Date.now();
+  await page.goto(surface, {
+    waitUntil: "domcontentloaded",
+    timeout: surface === "/map" ? MAP_INTERACTIVE_BUDGET_MS : 120_000,
+  });
+
+  if (surface !== "/map") {
+    await page.waitForTimeout(DEFAULT_SURFACE_SETTLE_MS);
+    return;
+  }
+
+  // /map mounts its interactive dock from a client-only chunk. A fixed pause
+  // races that chunk on slower CI runners, while an unbounded readiness wait
+  // could hide a genuinely broken map. Count navigation time toward one clear
+  // mobile-interactivity budget and fail if the dock cannot meet it.
+  const elapsedAfterNavigation = Date.now() - navigationStartedAt;
+  const remainingBudget = Math.max(
+    1,
+    MAP_INTERACTIVE_BUDGET_MS - elapsedAfterNavigation,
+  );
+  await expect(
+    page.locator(MAP_DOCK_SELECTOR),
+    `/map should expose its interactive dock within ${MAP_INTERACTIVE_BUDGET_MS}ms`,
+  ).toBeVisible({ timeout: remainingBudget });
+
+  expect(
+    Date.now() - navigationStartedAt,
+    `/map exceeded its ${MAP_INTERACTIVE_BUDGET_MS}ms interaction-readiness budget`,
+  ).toBeLessThanOrEqual(MAP_INTERACTIVE_BUDGET_MS);
+}
+
 test.describe("safe interaction crawler", () => {
   test.use({
     viewport: { width: 390, height: 844 },
@@ -135,12 +173,8 @@ test.describe("safe interaction crawler", () => {
         await route.abort("blockedbyclient");
       });
 
-      await page.goto(surface, {
-        waitUntil: "domcontentloaded",
-        timeout: 120_000,
-      });
+      await gotoReadySurface(page, surface);
       appOrigin = new URL(page.url()).origin;
-      await page.waitForTimeout(750);
 
       const initialSafe = await safeControlHandles(page);
       expect(
@@ -157,11 +191,7 @@ test.describe("safe interaction crawler", () => {
         attempt < 8 && exercised < TARGET_CONTROLS_PER_SURFACE;
         attempt += 1
       ) {
-        await page.goto(surface, {
-          waitUntil: "domcontentloaded",
-          timeout: 120_000,
-        });
-        await page.waitForTimeout(750);
+        await gotoReadySurface(page, surface);
         sameOriginMutations.length = 0;
 
         // Keep the exact ElementHandle that was inspected. Streamed sections

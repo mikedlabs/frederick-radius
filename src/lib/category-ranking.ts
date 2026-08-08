@@ -49,7 +49,13 @@ const DEDICATED_COFFEE_BLURB_RE =
 const LOOSE_COFFEE_NAME_RE = /\b(?:boba|bubble tea|tea)\b/i;
 
 export function isChainName(name: string): boolean {
-  return CHAIN_RE.test(name);
+  return chainBrandKey(name) !== null;
+}
+
+/** Stable brand key for diversity rules. A chain remains eligible, but several
+ * locations of the same chain should not consume one short recommendation row. */
+export function chainBrandKey(name: string): string | null {
+  return name.match(CHAIN_RE)?.[1]?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? null;
 }
 export function isLooseCategory(name: string): boolean {
   return LOOSE_RE.test(name);

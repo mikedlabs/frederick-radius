@@ -11,11 +11,12 @@
  * Uses the `unzip` CLI (build-time only; available on Linux/CI/Vercel).
  */
 import { writeFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   assertTransitValidation,
   validateFrederickTransitArtifacts,
 } from "./lib/transit-data-validation";
+import { fetchValidatedZip } from "./lib/fetch-validated-zip";
 
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
 const OFFICIAL_SCHEDULE_URL =
@@ -56,11 +57,18 @@ function gtfsDate(value: string | undefined): string | undefined {
 }
 
 async function main() {
+  rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
-  const res = await fetch(GTFS_URL);
-  if (!res.ok) { console.error(`  GTFS fetch failed (${res.status})`); process.exit(1); }
-  writeFileSync(`${TMP}/gtfs.zip`, Buffer.from(await res.arrayBuffer()));
-  execSync(`unzip -o ${TMP}/gtfs.zip -d ${TMP}`, { stdio: "ignore" });
+  const archivePath = `${TMP}/gtfs.zip`;
+  const archive = await fetchValidatedZip(GTFS_URL, {
+    onRetry: (message) => console.warn(`  ${message}`),
+    validateArchive(candidate) {
+      writeFileSync(archivePath, candidate);
+      execFileSync("unzip", ["-tq", archivePath], { stdio: "ignore" });
+    },
+  });
+  writeFileSync(archivePath, archive);
+  execFileSync("unzip", ["-o", archivePath, "-d", TMP], { stdio: "ignore" });
 
   const routes = csv("routes.txt").map((r) => ({
     id: r.route_id, short: r.route_short_name, name: r.route_long_name,

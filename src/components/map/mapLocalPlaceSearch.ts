@@ -118,6 +118,7 @@ export function reconcileMapSearchResults(
   limit = 6,
 ): SearchResult[] {
   const confident = confidentLocalMapPlaceResult(immediate, query);
+  const liveLocalById = new Map(immediate.map((result) => [result.id, result]));
   const ordered = confident
     ? [
         confident,
@@ -129,7 +130,20 @@ export function reconcileMapSearchResults(
   const seenNames = new Set<string>();
   const merged: SearchResult[] = [];
 
-  for (const result of ordered) {
+  for (const candidate of ordered) {
+    const liveLocal = liveLocalById.get(candidate.id);
+    // The API intentionally receives a rounded coordinate. Keep its richer
+    // ranking and copy, but preserve the browser's exact distance so the
+    // result row and the selected-place card cannot disagree by a block.
+    const result =
+      candidate.type === "place" && liveLocal?.distance_m != null
+        ? {
+            ...candidate,
+            distance_m: liveLocal.distance_m,
+            lat: liveLocal.lat ?? candidate.lat,
+            lng: liveLocal.lng ?? candidate.lng,
+          }
+        : candidate;
     if (confident && result.type === "place" && result.id !== confident.id) {
       const confidence = mapPlaceNameConfidence(result.title, query);
       if (CONFIDENCE_RANK[confidence] < CONFIDENCE_RANK.phrase) continue;

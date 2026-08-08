@@ -135,6 +135,7 @@ describe("business-info source trust", () => {
         "https://www.touristplaces.info/frederick-md/staley-park/",
         "Staley Park",
       ],
+      ["http://www.friederdental.com/", "Adam J Frieder DDS"],
     ]) {
       expect(businessInfoSourceKind(url, name)).toBeNull();
     }

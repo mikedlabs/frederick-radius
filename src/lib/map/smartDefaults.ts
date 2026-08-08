@@ -31,12 +31,15 @@ export type SmartMapSignals = {
 };
 
 export type SmartMapDefault = {
-  /** Layer keys in the dock's own vocabulary. */
-  layers: ReadonlyArray<
-    "radar" | "music-tonight" | "parking" | "markets" | "roads-now"
-  >;
+  /** Layer keys that AppMap can actually switch on. */
+  layers: ReadonlyArray<"radar" | "parking" | "roads-now">;
   /** One plain sentence the map may show, with a dismiss. */
   reason: string;
+  /** A shareable map view when the suggestion is a lens, not a layer. */
+  action?: {
+    href: string;
+    label: string;
+  };
 } | null;
 
 /** Eastern wall-clock pieces the selector keys on. */
@@ -90,8 +93,12 @@ export function smartMapDefault(
   if ((weekday === 5 || weekday === 6) && hour >= 16 && hour <= 23) {
     if (signals.musicTonightCount > 0) {
       return {
-        layers: signals.parkingCount > 0 ? ["music-tonight", "parking"] : ["music-tonight"],
-        reason: "Live music is on tonight, so tonight's shows lead the map.",
+        layers: signals.parkingCount > 0 ? ["parking"] : [],
+        reason: "Live music is on tonight.",
+        action: {
+          href: "/map?music=tonight",
+          label: "See tonight's shows",
+        },
       };
     }
   }
@@ -99,8 +106,12 @@ export function smartMapDefault(
   // 3. Weekend morning: markets and the outdoors window.
   if (weekend && hour >= 7 && hour <= 12 && signals.marketsOpenTodayCount > 0) {
     return {
-      layers: ["markets"],
-      reason: "A farmers market is open today, so markets lead the map.",
+      layers: [],
+      reason: "A farmers market is open today.",
+      action: {
+        href: "/map?intent=shop&sub=markets",
+        label: "Show markets",
+      },
     };
   }
 
