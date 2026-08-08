@@ -3,10 +3,10 @@
 // The map's geolocation cluster (#77 extraction from AppMap.tsx): the
 // ranking fix (userLoc + accuracy + timestamp), the silent refresh for
 // returning grantees, the cross-surface GEOLOCATION_CHANGE_EVENT sync, the
-// explicit locate response (the only path allowed to move the camera), and
-// goNearMe. Logic is byte-identical to the inline original. Camera work
-// crosses the boundary as callbacks (markCameraIntent / fitNearbyCamera /
-// fitCountyCamera) so the map ref and camera-intent ref never leave AppMap.
+// explicit locate response, direct Near me deep-link hydration, and goNearMe.
+// Camera work crosses the boundary as callbacks (markCameraIntent /
+// fitNearbyCamera / fitCountyCamera) so the map ref and camera-intent ref never
+// leave AppMap.
 
 import { useEffect, useRef, useState } from "react";
 import type { LngLat } from "@/lib/geo";
@@ -25,6 +25,7 @@ import { isInFrederickCounty } from "./constants";
 export function useMapLocation({
   isBrowseMap,
   rankingSeed,
+  autoFitNearbyScope,
   setGeoMsg,
   markCameraIntent,
   fitNearbyCamera,
@@ -34,6 +35,9 @@ export function useMapLocation({
 }: {
   isBrowseMap: boolean;
   rankingSeed: LngLat | null;
+  /** A direct `in=nearme` route should honor its one-mile promise when the
+   * browser has already granted location, without opening a new prompt. */
+  autoFitNearbyScope: boolean;
   setGeoMsg: (message: string | null) => void;
   /** Flag the coming camera move as user-intended (the leash keeps it). */
   markCameraIntent: () => void;
@@ -67,12 +71,24 @@ export function useMapLocation({
     requestIfGranted: refreshGrantedGeolocation,
   } = useGeolocation();
   const locateRequestedRef = useRef(false);
+  const automaticNearbyRequestedRef = useRef(
+    autoFitNearbyScope && rankingSeed === null,
+  );
   const automaticLocationCheckRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // A returning visitor who already granted location should never have their
   // results ranked from an invisible map-center fallback. Refresh the fix
-  // silently, but preserve the county overview until they explicitly tap the
-  // locate control. First-time visitors are never prompted from this effect.
+  // silently. A direct Near me route also fits that fix; other map entries
+  // preserve the county overview until Locate is tapped. First-time visitors
+  // are never prompted from this effect.
   useEffect(() => {
     const cached = readCachedPosition();
     if (
@@ -84,8 +100,27 @@ export function useMapLocation({
     }
 
     automaticLocationCheckRef.current = true;
-    void refreshGrantedGeolocation();
-  }, [isBrowseMap, refreshGrantedGeolocation]);
+    void refreshGrantedGeolocation().then((started) => {
+      if (
+        started ||
+        !mountedRef.current ||
+        !automaticNearbyRequestedRef.current
+      ) {
+        return;
+      }
+
+      // `in=nearme` is a promise about a real device fix. When the browser has
+      // not already granted one, keep consent explicit and make the fallback
+      // truthful instead of leaving a county camera labeled Near me.
+      automaticNearbyRequestedRef.current = false;
+      setScope("county");
+      replaceMapUrl((params) => params.delete(SCOPE_PARAM));
+      fitCountyCamera();
+      setGeoMsg(
+        "Location is not available yet. Showing the whole county. Use the location button to turn on Near me.",
+      );
+    });
+  }, [autoFitNearbyScope, fitCountyCamera, isBrowseMap, refreshGrantedGeolocation, setGeoMsg]);
 
   // Location can be granted from Ask, Today, or the map itself. The shared
   // same-tab event keeps map ranking current without moving the camera.
@@ -111,13 +146,15 @@ export function useMapLocation({
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
   }, []);
 
-  // Only an explicit tap on Locate may move the camera. Hook hydration can
-  // update ranking silently, but it never enters this branch.
-  // Dependencies match the inline original exactly: the effect answers a
-  // change in the shared geolocation state, and the camera callbacks are
-  // stable-by-contract wrappers around AppMap refs.
+  // An explicit Locate tap may move the camera. The only automatic exception
+  // is a direct `in=nearme` route, whose label and one-mile result contract
+  // would otherwise disagree with a countywide camera.
+  // The effect answers a change in shared geolocation state. Camera callbacks
+  // are stable-by-contract wrappers around AppMap refs.
   useEffect(() => {
-    if (!locateRequestedRef.current) return;
+    const explicitLocateRequested = locateRequestedRef.current;
+    const automaticNearbyRequested = automaticNearbyRequestedRef.current;
+    if (!explicitLocateRequested && !automaticNearbyRequested) return;
     if (
       sharedGeolocationState.status === "idle" ||
       sharedGeolocationState.status === "loading"
@@ -126,7 +163,8 @@ export function useMapLocation({
     }
 
     locateRequestedRef.current = false;
-    setLocating(false);
+    automaticNearbyRequestedRef.current = false;
+    if (explicitLocateRequested) setLocating(false);
 
     if (sharedGeolocationState.status === "granted") {
       const loc = {
@@ -134,16 +172,20 @@ export function useMapLocation({
         lat: sharedGeolocationState.position.lat,
       };
       markCameraIntent();
-      haptic("light");
-      track("map_locate", {
-        in_county: isInFrederickCounty(loc.lng, loc.lat),
-      });
+      if (explicitLocateRequested) {
+        haptic("light");
+        track("map_locate", {
+          in_county: isInFrederickCounty(loc.lng, loc.lat),
+        });
+      }
 
       if (!isInFrederickCounty(loc.lng, loc.lat)) {
         setUserLoc(null);
         setUserAccuracyM(null);
         setLocationFixTimestamp(null);
-        const nearbyLensActive = isBrowseMap && getScope() === "nearme";
+        const nearbyLensActive =
+          isBrowseMap &&
+          (getScope() === "nearme" || automaticNearbyRequested);
         setGeoMsg(
           nearbyLensActive
             ? "You are outside Frederick County. Showing the whole county."
@@ -165,7 +207,9 @@ export function useMapLocation({
       return;
     }
 
-    const nearbyLensActive = isBrowseMap && getScope() === "nearme";
+    const nearbyLensActive =
+      isBrowseMap &&
+      (getScope() === "nearme" || automaticNearbyRequested);
     if (nearbyLensActive) {
       // A failed permission request cannot leave a shareable `in=nearme`
       // promise in the URL or dock. Fall back to the actual county frame and
@@ -183,7 +227,7 @@ export function useMapLocation({
           ? "Couldn't get your location. Showing the whole county."
           : "Couldn't get your location. Keeping your current map view.",
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- byte-identical extraction (#77): the camera callbacks wrap AppMap refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- camera callbacks are stable wrappers around AppMap refs
   }, [isBrowseMap, sharedGeolocationState]);
 
   const goNearMe = () => {

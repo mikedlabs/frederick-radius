@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { EmptyState } from "./SavedList";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { EmptyState, fetchSavedEventsBySlugs } from "./SavedList";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("SavedList empty state", () => {
   it("offers clear discovery and transit next steps without repeating the app shell", () => {
@@ -74,5 +78,26 @@ describe("SavedList empty state", () => {
     expect(source).toContain(
       'initialFollowSlugs ? initialFollowSlugs.join(",") : null',
     );
+  });
+
+  it("hydrates event batches with a bounded JSON POST instead of a query string", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ events: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const tooMany = Array.from({ length: 140 }, (_, i) => `event-${i}`);
+    await fetchSavedEventsBySlugs(tooMany);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/events/by-slugs");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(String(init.body)).slugs).toHaveLength(100);
+    expect(url).not.toContain("?slugs=");
   });
 });

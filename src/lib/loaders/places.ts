@@ -78,6 +78,7 @@ import {
 } from "@/lib/hours-availability";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
+import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -465,7 +466,15 @@ const PRE_GATE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
     // it can't masquerade as a postal code; leave a genuinely-empty field empty.
     return cur ? { ...p, postal_code: "" } : p;
   })
-  .map((p) => patchRecord(p, OV_PATCH));
+  .map((p) => patchRecord(p, OV_PATCH))
+  // A scraped directory or marketplace profile is evidence about a place,
+  // not its official website. Apply the policy after human patches so every
+  // canonical consumer, including direct-slug lookup, inherits the same safe
+  // Website action.
+  .map((p) => ({
+    ...p,
+    website: publishablePlaceWebsite(p.website, p.name),
+  }));
 
 export type PlacePlacementReview = Place & {
   rejection_reason: PlacementRejectionReason;
@@ -945,7 +954,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.
     phone: p.phone ?? e.phone,
-    website: p.website ?? e.website,
+    website:
+      publishablePlaceWebsite(p.website, p.name) ??
+      publishablePlaceWebsite(e.website, p.name),
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,

@@ -19,6 +19,7 @@ import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
 // namespaced so they can never appear in it. Reading that map here meant
 // every event saved from a real feed silently vanished from this page.
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
 import SavedWallet from "@/components/saved/SavedWallet";
@@ -94,6 +95,26 @@ function planTokenFromSaved(slugs: string[]): string {
  *  boundary (provenance, geo confidence, category and town names), so this
  *  surface renders them rather than re-deriving anything. */
 type DecoratedEvent = EventWithMeta;
+
+/** Hydrate a bounded saved-event batch without putting personal state in a
+ * query string or risking browser/proxy URL limits. Exported for the focused
+ * client contract test. */
+export async function fetchSavedEventsBySlugs(
+  slugs: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<EventWithMeta[]> {
+  const requested = normalizeRequestedEventSlugList(slugs);
+  const response = await fetch("/api/events/by-slugs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slugs: requested }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = (await response.json()) as { events?: unknown };
+  if (!Array.isArray(data.events)) throw new Error("Invalid events response");
+  return data.events as EventWithMeta[];
+}
 
 /** Compact event date/time parts for the sv-evrow calendar plate,
  *  rendered in Frederick's timezone regardless of the device. */
@@ -291,12 +312,13 @@ export default function SavedList({
   // ── Saved events, hydrated the same way. Events are device-local by
   // contract, so the local refs ARE the truth about which slugs to ask for;
   // the server owns what each slug resolves to.
-  const { eventSlugsToFetch, eventSlugsKey } = useMemo(() => {
-    const eventSlugsToFetch = Array.from(
-      new Set(items.filter((i) => i.type === "event").map((i) => i.id)),
-    );
-    return { eventSlugsToFetch, eventSlugsKey: eventSlugsToFetch.join(",") };
-  }, [items]);
+  const eventSlugsToFetch = useMemo(
+    () =>
+      normalizeRequestedEventSlugList(
+        items.filter((i) => i.type === "event").map((i) => i.id),
+      ),
+    [items],
+  );
 
   const [eventsBySlug, setEventsBySlug] = useState<Map<string, EventWithMeta>>(
     () => new Map(),
@@ -315,14 +337,11 @@ export default function SavedList({
       return;
     }
     const ctrl = new AbortController();
-    fetch(`/api/events/by-slugs?slugs=${encodeURIComponent(eventSlugsKey)}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { events: EventWithMeta[] }) => {
+    fetchSavedEventsBySlugs(eventSlugsToFetch, ctrl.signal)
+      .then((events) => {
         setEventsBySlug((previous) => {
           const next = new Map(previous);
-          for (const event of data.events) next.set(event.slug, event);
+          for (const event of events) next.set(event.slug, event);
           return next;
         });
         setEventsResolved(true);
@@ -334,7 +353,7 @@ export default function SavedList({
         if (err && err.name !== "AbortError") setEventsResolved(true);
       });
     return () => ctrl.abort();
-  }, [mounted, eventSlugsKey, eventSlugsToFetch.length]);
+  }, [mounted, eventSlugsToFetch]);
 
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay

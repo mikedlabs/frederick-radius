@@ -127,6 +127,26 @@ export type PulseHero = {
   actionLabel?: string;
 };
 
+/** Calm measurements belong in Current conditions, never under a heading that
+ *  tells the reader something needs attention. */
+export function pulseAttentionChips(
+  chips: PulseHeroChip[],
+  {
+    allClear,
+    showAlertData,
+    leadKey,
+  }: {
+    allClear: boolean;
+    showAlertData: boolean;
+    leadKey?: string;
+  },
+): PulseHeroChip[] {
+  if (allClear) return [];
+  return chips.filter(
+    (chip) => chip.tone !== "positive" && (!showAlertData || chip.key !== leadKey),
+  );
+}
+
 export function pulseStatusWord({
   allClear,
   degraded,
@@ -820,6 +840,17 @@ export function nameListSentence(names: readonly string[]): string {
   return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
+/** A missing source is not an all-clear. The disclosure headline carries that
+ *  distinction even before a visitor expands the individual checks. */
+export function secondarySignalsHeadline(
+  partialCount: number,
+  unavailableCount: number,
+): string {
+  if (unavailableCount > 0) return "Some checks are unavailable";
+  if (partialCount > 0) return "Some checks are incomplete";
+  return "Nothing reported";
+}
+
 function SecondarySignals({
   updates,
   onOpen,
@@ -828,10 +859,14 @@ function SecondarySignals({
   onOpen: (key: string) => void;
 }) {
   if (updates.length === 0) return null;
-  const degraded = updates.filter((tile) => {
+  const partial = updates.filter(
+    (tile) => pulseTileState(tile) === "Partial data",
+  );
+  const unavailable = updates.filter((tile) => {
     const state = pulseTileState(tile);
-    return state === "Partial data" || state === "Feed unavailable" || state === "Not connected";
+    return state === "Feed unavailable" || state === "Not connected";
   });
+  const degraded = [...partial, ...unavailable];
   const quiet = updates.filter((tile) => !degraded.includes(tile));
 
   // Names, not a count. "12 sources are quiet" made a reader open the strip
@@ -842,9 +877,13 @@ function SecondarySignals({
     quiet.length > 0
       ? `${nameListSentence(quiet.map((tile) => tile.label))} ${quiet.length === 1 ? "is" : "are"} quiet.`
       : null;
-  const degradedSentence =
-    degraded.length > 0
-      ? `${nameListSentence(degraded.map((tile) => tile.label))} ${degraded.length === 1 ? "needs" : "need"} a refresh.`
+  const partialSentence =
+    partial.length > 0
+      ? `${nameListSentence(partial.map((tile) => tile.label))} returned partial data.`
+      : null;
+  const unavailableSentence =
+    unavailable.length > 0
+      ? `${nameListSentence(unavailable.map((tile) => tile.label))} could not be checked right now.`
       : null;
 
   return (
@@ -874,10 +913,12 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Nothing reported
+              {secondarySignalsHeadline(partial.length, unavailable.length)}
             </span>
             <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {[quietSentence, degradedSentence].filter(Boolean).join(" ")}
+              {[quietSentence, partialSentence, unavailableSentence]
+                .filter(Boolean)
+                .join(" ")}
             </span>
           </span>
           <ChevronDown
@@ -1006,9 +1047,11 @@ export default function PulseBoard({
     !hero.allClear &&
     leadUsesMetricPanel &&
     heroFacts.length > 0;
-  const attentionChips = chips.filter(
-    (chip) => chip.tone !== "positive" && (!showAlertData || chip.key !== hero.leadKey),
-  );
+  const attentionChips = pulseAttentionChips(chips, {
+    allClear: hero.allClear,
+    showAlertData,
+    leadKey: hero.leadKey,
+  });
   const summarizedKeys = new Set(
     attentionChips
       .map((chip) => chip.key)

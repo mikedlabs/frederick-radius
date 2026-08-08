@@ -24,7 +24,11 @@ describe("smartMapDefault", () => {
       { hour: 18, weekday: 5 },
       { ...quiet, musicTonightCount: 6, parkingCount: 5 },
     );
-    expect(out?.layers).toEqual(["music-tonight", "parking"]);
+    expect(out?.layers).toEqual(["parking"]);
+    expect(out?.action).toEqual({
+      href: "/map?music=tonight",
+      label: "See tonight's shows",
+    });
   });
 
   it("never suggests music on a night with no shows", () => {
@@ -36,7 +40,11 @@ describe("smartMapDefault", () => {
       { hour: 9, weekday: 6 },
       { ...quiet, marketsOpenTodayCount: 2 },
     );
-    expect(out?.layers).toEqual(["markets"]);
+    expect(out?.layers).toEqual([]);
+    expect(out?.action).toEqual({
+      href: "/map?intent=shop&sub=markets",
+      label: "Show markets",
+    });
   });
 
   it("shows roads at commute time only when a corridor is actually worse", () => {
@@ -81,10 +89,13 @@ describe("smart default wiring contracts (map program phase 1)", () => {
     expect(appMap).toContain('seeds.add("civic");');
     expect(appMap).toContain('seeds.add("traffic");');
     expect(appMap).toContain('seeds.add("incidents");');
-    // music-tonight surfaces as the reason line's one-tap deep link, so the
-    // lens always reproduces from its URL.
-    expect(appMap).toContain('href="/map?music=tonight"');
+    // Lens suggestions surface through a shareable action supplied by the
+    // selector, never through a fake layer key.
+    expect(appMap).toContain("smartDefault.action.href");
     expect(appMap).not.toContain('seeds.add("music-tonight")');
+    expect(appMap).not.toContain('seeds.add("markets")');
+    expect(appMap).toContain("!selectionOpen");
+    expect(appMap).toContain("!q.trim()");
   });
 
   it("keeps the suggestion from fossilizing into a stored preference", () => {

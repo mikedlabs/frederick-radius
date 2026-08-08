@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
 import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
@@ -179,8 +180,9 @@ export const revalidate = 300;
 // /map fans out to ~10 external APIs (Ticketmaster, Bandsintown, Chart
 // traffic, FixIt 311, Mapillary, transit/trail/boundary GIS, USGS).
 // Give the (re)validation render headroom over the platform default so a
-// cold cache doesn't 503 — but the real protection is withTimeout()
-// below, which stops any single slow upstream from blocking the render.
+// cold cache does not 503, but the real protection is
+// withDeadlineFallback() below, which stops any single slow upstream from
+// blocking the render.
 export const maxDuration = 30;
 
 /**
@@ -193,13 +195,6 @@ export const maxDuration = 30;
  * upstream against a timer means the worst case is a missing layer, not
  * a dead page.
  */
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    Promise.resolve(p).catch(() => fallback),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
-}
-
 /**
  * The deduped, sorted upcoming-events set the map shares between its
  * browse and radius branches: curated seed events unioned with the live
@@ -219,7 +214,7 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
   // assembleUnifiedEvents is itself unstable_cache-wrapped and kept hot by
   // the warm-events cron, so this is also FASTER on a cold render. The
   // timeout guard stays: a cache-miss assembly still fans out to feeds.
-  const { publicEvents } = await withTimeout(
+  const { publicEvents } = await withDeadlineFallback(
     assembleUnifiedEvents(now),
     8000,
     {
@@ -384,7 +379,7 @@ function MapLoadingSurface() {
 async function RadiusMode() {
   // Field-collected amenities ride the radius "within reach" set too, so a
   // collected restroom/water/etc. counts toward Nearby, not just browse.
-  const radiusField = await withTimeout(getFieldAmenities(), 6000, []);
+  const radiusField = await withDeadlineFallback(getFieldAmenities(), 6000, []);
   const radiusAmenities = dedupeAmenities(
     [...allAmenities(), ...radiusField],
     await clientDedupeProjection(),
@@ -395,7 +390,7 @@ async function RadiusMode() {
   // identical across modes; ISR caching bounds the cold-path cost.
   const radiusNow = new Date();
   const radiusEvents = getVisibleEvents(
-    await withTimeout(cachedUpcomingEvents(upcomingEventsBucket(radiusNow)), 8000, [] as EventWithMeta[]),
+    await withDeadlineFallback(cachedUpcomingEvents(upcomingEventsBucket(radiusNow)), 8000, [] as EventWithMeta[]),
     radiusNow,
   )
     // Belt-and-suspenders against past events leaking into "within reach":
@@ -498,60 +493,60 @@ async function BrowseMapArea() {
     // upstream can't stall a revalidation render; every one of these
     // self-hides when empty, so a trimmed-out layer degrades exactly as
     // a failed one already did.
-    withTimeout<CurrentSituationSnapshot | null>(
+    withDeadlineFallback<CurrentSituationSnapshot | null>(
       getCurrentSituationSnapshot(),
       4500,
       null,
     ),
-    withTimeout<RoadIntelligenceSnapshot | null>(
+    withDeadlineFallback<RoadIntelligenceSnapshot | null>(
       getRoadIntelligenceSnapshot(),
       4500,
       null,
     ),
-    withTimeout(marketsOpenToday(now), 4500, []),
-    withTimeout(getPublicCountyParkAssets(), 4500, null),
-    withTimeout(getCountyFloodContext(), 4500, null),
-    withTimeout(getCountySnowRoutes(now), 4500, null),
-    withTimeout(getFixItIssues(30), 4500, []),
-    withTimeout(fetchMapillaryTrash(), 3000, []),
-    withTimeout(getFrederickTrailShapes(), 4000, EMPTY_FC),
-    withTimeout(getFrederickTransitRouteShapes(), 4000, EMPTY_FC),
+    withDeadlineFallback(marketsOpenToday(now), 4500, []),
+    withDeadlineFallback(getPublicCountyParkAssets(), 4500, null),
+    withDeadlineFallback(getCountyFloodContext(), 4500, null),
+    withDeadlineFallback(getCountySnowRoutes(now), 4500, null),
+    withDeadlineFallback(getFixItIssues(30), 4500, []),
+    withDeadlineFallback(fetchMapillaryTrash(), 3000, []),
+    withDeadlineFallback(getFrederickTrailShapes(), 4000, EMPTY_FC),
+    withDeadlineFallback(getFrederickTransitRouteShapes(), 4000, EMPTY_FC),
     // County GIS municipal boundary polygons — quiet always-on map
     // outline. Fail-soft to empty so the county server never blocks.
-    withTimeout(getMunicipalBoundaries(), 3000, EMPTY_FC),
+    withDeadlineFallback(getMunicipalBoundaries(), 3000, EMPTY_FC),
     // County boundary outline — committed static GeoJSON, the quiet
     // always-on county edge (6.1). Fail-soft to empty.
-    withTimeout(getCountyBoundary(), 3000, EMPTY_FC),
+    withDeadlineFallback(getCountyBoundary(), 3000, EMPTY_FC),
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
-    withTimeout(getFrederickWaterSites(), 3000, []),
+    withDeadlineFallback(getFrederickWaterSites(), 3000, []),
     // EV charging — authoritative MD iMAP stations (network + connector
     // counts). Upgrades the OSM-crowdsourced ev_charging amenity layer;
     // fail-soft to [] so the map falls back to the OSM points.
-    withTimeout(getEvChargingStations(), 3500, []),
+    withDeadlineFallback(getEvChargingStations(), 3500, []),
     // Historic cemeteries — county GIS heritage layer, opt-in via the
     // Layers panel (OFF by default). Fail-soft to [] so the chip simply
     // doesn't render when the county feed is unreachable.
-    withTimeout(getHistoricCemeteries(), 3000, []),
+    withDeadlineFallback(getHistoricCemeteries(), 3000, []),
     // Field-collected amenities (the /collect walkabout tool). Reads
     // the field_amenities table; fail-soft to [] (no DB / error) so the
     // map degrades to the static + OSM amenity set, never a 503.
-    withTimeout(getFieldAmenities(), 3000, []),
+    withDeadlineFallback(getFieldAmenities(), 3000, []),
     // Community reports (the /report crowdsourced layer). Fail-soft to [] (no
     // DB / table not migrated / error) so the map degrades cleanly.
-    withTimeout(getCommunityReports(), 3000, []),
+    withDeadlineFallback(getCommunityReports(), 3000, []),
     // Live downtown-garage occupancy (the Parking layer). Server-fetched +
     // cached like the other feeds; DORMANT by default (no PARKING_OCCUPANCY_URL
     // env), in which case this resolves to an empty map and every garage shows
     // WITHOUT a fabricated number. Fail-soft to empty so a slow/failed vendor
     // call never blocks the render — the markers still draw from the static
     // garage list, just neutral-tinted.
-    withTimeout(occupancyByGarageSlug(), 3000, new Map()),
+    withDeadlineFallback(occupancyByGarageSlug(), 3000, new Map()),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
-    withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 5000, [] as EventWithMeta[]),
-    withTimeout(getFreshestBeaconByTruck(), 2000, new Map()),
+    withDeadlineFallback(cachedUpcomingEvents(upcomingEventsBucket(now)), 5000, [] as EventWithMeta[]),
+    withDeadlineFallback(getFreshestBeaconByTruck(), 2000, new Map()),
   ]);
   const incidents = situationSnapshot
     ? selectMapRoadPins(situationSnapshot).official

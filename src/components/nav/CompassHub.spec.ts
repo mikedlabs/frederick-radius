@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { APP_PAGES } from "@/data/app-pages";
 import { RADIUS_TOOLS } from "@/data/radius-tools";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
@@ -21,6 +22,15 @@ type ToolDeckItem = ToolDeckGroups[number]["items"][number];
 
 const ASK_RADIUS_ID = "ask-radius";
 const TIME_MACHINE_ID = "time-machine";
+
+describe("Compass search control", () => {
+  it("uses one explicit clear control instead of adding the browser's second X", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    expect(source).toContain('type="text"');
+    expect(source).toContain('role="searchbox"');
+    expect(source).toContain('aria-label="Clear tool search"');
+  });
+});
 
 function flattenTools(groups: ToolDeckGroups): ToolDeckItem[] {
   return groups.flatMap((group) => group.items);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDaypartRows } from "./daypartPicks";
+import { chainBrandKey } from "@/lib/category-ranking";
 
 describe("buildDaypartRows", () => {
   it("keeps the current meal visible while the category browser is collapsed", () => {
@@ -83,6 +84,19 @@ describe("buildDaypartRows", () => {
       ),
     ).toBe(true);
     expect(coffee?.picks[0]?.name).not.toMatch(/\b(?:starbucks|dunkin'?|wawa)\b/i);
+  });
+
+  it("does not spend a short coffee shelf on duplicate chain locations", () => {
+    for (const hour of [8, 12, 17, 21]) {
+      const rows = buildDaypartRows(
+        new Date(`2026-08-08T${String(hour).padStart(2, "0")}:00:00.000Z`),
+      );
+      const coffee = rows.find((row) => row.category === "coffee");
+      const chainKeys = (coffee?.picks ?? [])
+        .map((pick) => chainBrandKey(pick.name))
+        .filter((key): key is string => Boolean(key));
+      expect(new Set(chainKeys).size).toBe(chainKeys.length);
+    }
   });
 
   it("keeps lodging records out of the breakfast bakery shelf", () => {

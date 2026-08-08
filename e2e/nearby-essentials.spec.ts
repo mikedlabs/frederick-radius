@@ -80,4 +80,83 @@ test("Today playgrounds opens the complete layer around the current location", a
   await expect(page).toHaveURL(
     /\/map\?intent=outside&sub=playgrounds&amenity=play&in=nearme$/,
   );
+
+  await expect(page.locator(".dock-host")).toHaveAttribute(
+    "data-map-loaded",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Show the whole county" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: "Recenter on my location" }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("in")).toBe("nearme");
+});
+
+test("a direct Near me link fits an already-granted location without a cached fix", async ({
+  page,
+}) => {
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect(page.locator(".dock-host")).toHaveAttribute(
+    "data-map-loaded",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Show the whole county" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: "Recenter on my location" }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("in")).toBe("nearme");
+});
+
+test("a direct Near me link falls back honestly when location is unavailable", async ({
+  page,
+}) => {
+  await page.context().clearPermissions();
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("in"), {
+      timeout: 15_000,
+    })
+    .toBeNull();
+  await expect(
+    page.getByText(
+      "Location is not available yet. Showing the whole county. Use the location button to turn on Near me.",
+      { exact: true },
+    ).first(),
+  ).toBeVisible();
+});
+
+test("a shared Near me camera cannot survive without this device's location", async ({
+  page,
+}) => {
+  await page.context().clearPermissions();
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme&c=-77.4105,39.4143,15",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("in"), {
+      timeout: 15_000,
+    })
+    .toBeNull();
+  await expect(
+    page.getByText(
+      "Location is not available yet. Showing the whole county. Use the location button to turn on Near me.",
+      { exact: true },
+    ).first(),
+  ).toBeVisible();
 });

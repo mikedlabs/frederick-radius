@@ -604,7 +604,7 @@ export default function CompassHub() {
               aria-hidden
             />
             <input
-              type="search"
+              type="text"
               role="searchbox"
               inputMode="search"
               enterKeyHint="search"

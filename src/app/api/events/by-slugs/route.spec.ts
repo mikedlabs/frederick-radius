@@ -9,13 +9,26 @@ vi.mock("@/lib/loaders/eventsBySlugs", async () => {
   return { ...actual, resolveEventsBySlugs };
 });
 
-const { GET } = await import("./route");
+const { GET, POST } = await import("./route");
 
 function get(slugs: string): Promise<Response> {
   return GET(
     new Request(
       `http://localhost/api/events/by-slugs?slugs=${encodeURIComponent(slugs)}`,
     ),
+  );
+}
+
+function post(
+  body: string,
+  headers: Record<string, string> = { "Content-Type": "application/json" },
+): Promise<Response> {
+  return POST(
+    new Request("http://localhost/api/events/by-slugs", {
+      method: "POST",
+      headers,
+      body,
+    }),
   );
 }
 
@@ -56,5 +69,53 @@ describe("GET /api/events/by-slugs", () => {
     expect(response.headers.get("Cache-Control")).toBe(
       "public, s-maxage=60, stale-while-revalidate=300",
     );
+  });
+});
+
+describe("POST /api/events/by-slugs", () => {
+  beforeEach(() => {
+    resolveEventsBySlugs.mockReset();
+    resolveEventsBySlugs.mockResolvedValue([]);
+  });
+
+  it("hands a normalized JSON slug list to the same loader", async () => {
+    const response = await post(
+      JSON.stringify({ slugs: [" b-event ", "a-event", "b-event", 12] }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveEventsBySlugs).toHaveBeenCalledWith(["b-event", "a-event"]);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("accepts the largest valid batch inside the body ceiling", async () => {
+    const slugs = Array.from(
+      { length: 100 },
+      (_, i) => `event-${String(i).padStart(3, "0")}-${"x".repeat(190)}`,
+    );
+    const response = await post(JSON.stringify({ slugs }));
+
+    expect(response.status).toBe(200);
+    expect(resolveEventsBySlugs).toHaveBeenCalledWith(slugs);
+  });
+
+  it("rejects an oversized body before lookup", async () => {
+    const response = await post(JSON.stringify({ slugs: [] }), {
+      "Content-Type": "application/json",
+      "Content-Length": String(25 * 1024),
+    });
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "body-too-large" });
+    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid JSON, body shape, and media type without lookup", async () => {
+    expect((await post("{")).status).toBe(400);
+    expect((await post(JSON.stringify({ slugs: "a-event" }))).status).toBe(400);
+    expect((await post(JSON.stringify({ slugs: ["a-event"] }), {
+      "Content-Type": "text/plain",
+    })).status).toBe(415);
+    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
   });
 });

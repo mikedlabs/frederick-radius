@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   AlertDataPanel,
   nameListSentence,
+  pulseAttentionChips,
   pulseClearedKeys,
   pulseDisplayGroups,
+  secondarySignalsHeadline,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -32,6 +34,22 @@ function tile(
 }
 
 describe("Pulse status language", () => {
+  it("keeps calm readings out of Needs attention", () => {
+    const calmAir = { tone: "cool", label: "Air good", key: "air" } as const;
+    expect(
+      pulseAttentionChips([calmAir], {
+        allClear: true,
+        showAlertData: false,
+      }),
+    ).toEqual([]);
+    expect(
+      pulseAttentionChips([calmAir], {
+        allClear: false,
+        showAlertData: false,
+      }),
+    ).toEqual([calmAir]);
+  });
+
   it("keeps missing data visually distinct from an active alert", () => {
     expect(pulseStatusWord({
       allClear: false,
@@ -256,5 +274,12 @@ describe("Pulse quiet-strip naming", () => {
       "Power out, 311 reports, and Schools",
     );
     expect(nameListSentence([])).toBe("");
+  });
+
+  it("never describes unavailable checks as all clear", () => {
+    expect(secondarySignalsHeadline(0, 0)).toBe("Nothing reported");
+    expect(secondarySignalsHeadline(2, 0)).toBe("Some checks are incomplete");
+    expect(secondarySignalsHeadline(0, 1)).toBe("Some checks are unavailable");
+    expect(secondarySignalsHeadline(4, 2)).toBe("Some checks are unavailable");
   });
 });

@@ -24,6 +24,7 @@ import Map, {
 import type { GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useFrederickFlavorStyle } from "./useFrederickFlavorStyle";
+import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
@@ -184,7 +185,7 @@ import {
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
-import { placesWithinReach } from "./mapNearbyScope";
+import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -396,10 +397,7 @@ type Props = {
    *  seed the toggle bank as the WEAKEST voice (deep link > stored choice >
    *  smart seed); view keys (music-tonight) surface as the reason line's
    *  one-tap action instead of auto-flipping a shareable lens. */
-  smartDefault?: {
-    layers: ReadonlyArray<string>;
-    reason: string;
-  } | null;
+  smartDefault?: SmartMapDefault;
 };
 
 export default function AppMap({
@@ -516,6 +514,15 @@ export default function AppMap({
     if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
     return { longitude: lng, latitude: lat, zoom: z };
   }, [routeCameraParam]);
+  // Latch the entry contract before camera state starts writing `?c=`. Near me
+  // always needs this device's location, even when a shared or back-stack URL
+  // also carries someone else's last camera.
+  const [autoFitNearbyScope] = useState(
+    () =>
+      isBrowseMap &&
+      parseScope(routeScopeParam) === "nearme" &&
+      recenterToKnownLocation,
+  );
   // A pooled Mapbox instance can emit the camera it retained from an older
   // route before the requested `?c=` camera is restored. Do not let that
   // transient move overwrite the address bar and turn the wrong frame into
@@ -920,17 +927,25 @@ export default function AppMap({
   // visible bounds matter: a pan can clip the county without changing zoom.
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
+  const nearbyRouteCameraAppliedRef = useRef(false);
   const { userLoc, userAccuracyM, locationFixTimestamp, locating, goNearMe } =
     useMapLocation({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
+      autoFitNearbyScope,
       setGeoMsg,
       markCameraIntent: () => {
         cameraIntentRef.current = true;
       },
       fitNearbyCamera: (loc) => {
         const map = mapRef.current?.getMap();
-        if (map) fitNearbyRadius(map, loc);
+        if (map) {
+          fitNearbyRadius(map, loc);
+          // A camera command issued before Mapbox finishes loading can be
+          // superseded by its initial view. The post-load effect below retries
+          // unless the loaded map accepted this move.
+          if (mapLoaded) nearbyRouteCameraAppliedRef.current = true;
+        }
       },
       fitNearbyWithIntent: (loc) => {
         const map = mapRef.current?.getMap();
@@ -953,11 +968,25 @@ export default function AppMap({
         cameraControlGestureRef.current = false;
       },
     });
+  useEffect(() => {
+    if (
+      !autoFitNearbyScope ||
+      !mapLoaded ||
+      !userLoc ||
+      nearbyRouteCameraAppliedRef.current
+    ) {
+      return;
+    }
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    nearbyRouteCameraAppliedRef.current = true;
+    cameraIntentRef.current = true;
+    fitNearbyRadius(map, userLoc);
+  }, [autoFitNearbyScope, mapLoaded, userLoc]);
   // The smart default's layer keys, expanded once to the toggle bank's
   // vocabulary with stable identity ("roads-now" is the composite alias, the
-  // same expansion the `roads` deep link uses). View keys (music-tonight)
-  // are deliberately NOT here — a lens must reproduce from its URL, so the
-  // reason line offers it as a one-tap action instead.
+  // same expansion the `roads` deep link uses). Lenses are deliberately not
+  // represented as layers; the reason line offers a shareable action instead.
   const [smartNoteDismissed, setSmartNoteDismissed] = useState(false);
   const [smartLayerSeeds] = useState<
     ReadonlySet<"radar" | "parking" | "civic" | "traffic" | "incidents">
@@ -3131,22 +3160,29 @@ export default function AppMap({
             quiet ground instead of raw basemap. Paint only. */}
         {dock && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
-            phase 1). Typography only, one dismiss, and when the suggestion
-            is tonight's music it offers the lens as a one-tap deep link
-            instead of silently flipping shareable state. */}
-        {dock && smartDefault && !smartNoteDismissed && !hasExplicitLayerView && (
+            phase 1). A suggestion may include a shareable one-tap lens rather
+            than pretending the lens is a layer that was already switched on. */}
+        {dock &&
+          smartDefault &&
+          !smartNoteDismissed &&
+          !hasExplicitLayerView &&
+          !selectionOpen &&
+          !dockPaneOpen &&
+          !q.trim() && (
           <div
-            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex max-w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur-md"
+            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur-md"
             style={{ color: "var(--app-ink-2)" }}
           >
-            <span role="status">{smartDefault.reason}</span>
-            {smartDefault.layers.includes("music-tonight") && (
+            <span role="status" className="min-w-0 flex-1 text-pretty leading-snug">
+              {smartDefault.reason}
+            </span>
+            {smartDefault.action && (
               <Link
-                href="/map?music=tonight"
-                className="tap-44-y shrink-0 rounded-full px-2 py-1 font-semibold"
+                href={smartDefault.action.href}
+                className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
-                See tonight&apos;s shows
+                {smartDefault.action.label}
               </Link>
             )}
             <button
@@ -3269,9 +3305,11 @@ export default function AppMap({
           initialViewState={
             urlCamera ?? (locationSeed.camera
               ? {
-                  longitude: locationSeed.camera.lng,
-                  latitude: locationSeed.camera.lat,
-                  zoom: initialZoom,
+                  bounds: nearbyReachBounds(locationSeed.camera, RADIUS_M),
+                  fitBoundsOptions: {
+                    padding: initialCountyPadding,
+                    maxZoom: 14.5,
+                  },
                 }
               : initialBounds
               ? {

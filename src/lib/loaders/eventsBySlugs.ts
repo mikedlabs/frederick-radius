@@ -24,18 +24,12 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { archivedEventBySlugForRender } from "@/lib/events/event-archive-lookup";
-
-/** The saved-event deck is a personal collection, not a catalog dump. */
-export const MAX_EVENTS_BY_SLUG = 100;
-
-/**
- * Every generated and legacy event alias is a lowercase URL slug. The length
- * ceiling (200) lives in the pattern so a hostile value is rejected before it
- * reaches the unified snapshot or the durable archive. `constructor` and
- * `prototype` are excluded by name because they read as present on a normal
- * object and would send a non-event through the decorator as if it were real.
- */
-const EVENT_SLUG = /^[a-z0-9][a-z0-9-]{0,199}$/;
+import { MAX_EVENTS_BY_SLUG } from "@/lib/events/eventSlugBatch";
+export {
+  MAX_EVENTS_BY_SLUG,
+  normalizeRequestedEventSlugList,
+  normalizeRequestedEventSlugs,
+} from "@/lib/events/eventSlugBatch";
 
 /**
  * Total budget for the archive tail of one batch. A reader with a long
@@ -75,32 +69,6 @@ const DEFAULT_SOURCES: EventsBySlugsSources = {
     archivedEventBySlugForRender(slug, { timeoutMs }),
   now: () => Date.now(),
 };
-
-/**
- * Parse, bound, and deduplicate a `?slugs=` value. Malformed entries are
- * dropped here rather than at the source boundary so a single bad character
- * in localStorage cannot cost the batch a database round trip.
- */
-export function normalizeRequestedEventSlugs(raw: string): string[] {
-  const slugs: string[] = [];
-  const seen = new Set<string>();
-  for (const part of raw.split(",")) {
-    const slug = part.trim();
-    if (
-      !slug ||
-      slug === "constructor" ||
-      slug === "prototype" ||
-      !EVENT_SLUG.test(slug) ||
-      seen.has(slug)
-    ) {
-      continue;
-    }
-    seen.add(slug);
-    slugs.push(slug);
-    if (slugs.length >= MAX_EVENTS_BY_SLUG) break;
-  }
-  return slugs;
-}
 
 /** Run `work` over `items` at most `limit` at a time, in place. */
 async function drain<T>(

@@ -357,7 +357,15 @@ export default async function PulsePage() {
   const safetyState = sourceDisplayState(safetySource);
   const alertsAvailable = sourceIsCurrent(weatherSource);
   const airAvailable = sourceIsCurrent(airSource);
-  const urgentDegraded = situation.summary.coverage === "partial";
+  const officialAlertsCheckComplete =
+    alertsAvailable &&
+    officialSignals.stormReports.available &&
+    officialSignals.civic.available &&
+    !officialSignals.civic.degraded;
+  const urgentDegraded =
+    situation.summary.coverage === "partial" ||
+    safetyState === "unavailable" ||
+    !officialAlertsCheckComplete;
   const incidentsResult = {
     data: trafficAvailable ? trafficSource.data : [],
     available: trafficAvailable,
@@ -1023,10 +1031,6 @@ export default async function PulsePage() {
   const leadDisplayedAlert = officialAlertShouldLead
     ? leadOfficialAlert
     : leadAlert ?? leadOfficialAlert;
-  const officialAlertsCheckComplete =
-    alertResult.available &&
-    officialSignals.civic.available &&
-    !officialSignals.civic.degraded;
   const officialAlertsDegraded = !officialAlertsCheckComplete;
   const officialAlertsCountLabel = leadDisplayedAlert
     ? "event" in leadDisplayedAlert

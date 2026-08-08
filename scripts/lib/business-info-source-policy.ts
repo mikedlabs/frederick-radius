@@ -2,67 +2,10 @@ export type BusinessInfoSourceKind =
   | "business_website"
   | "official_source";
 
-/**
- * Listing, ticketing, and discovery sites are evidence about a business, not
- * the business's own publication. They must never inherit first-party trust
- * merely because a place record stored one of their URLs as `website`.
- */
-const THIRD_PARTY_SOURCE_HOSTS = [
-  "allmenus.com",
-  "airbnb.com",
-  "atlasobscura.com",
-  "birdeye.com",
-  "booksy.com",
-  "bringfido.com",
-  "businessyab.com",
-  "chamberofcommerce.com",
-  "classpass.com",
-  "doordash.com",
-  "eventbrite.com",
-  "facebook.com",
-  "findlocaltanning.com",
-  "findmenuworld.com",
-  "foursquare.com",
-  "web.frederickchamber.org",
-  "fresha.com",
-  "google.com",
-  "grubhub.com",
-  "goto-where.com",
-  "homelessshelterdirectory.org",
-  "instagram.com",
-  "linktr.ee",
-  "loc8nearme.com",
-  "mapquest.com",
-  "marylandroadtrips.com",
-  "massagebook.com",
-  "menu-world.com",
-  "menupix.com",
-  "menus.fyi",
-  "opentable.com",
-  "postofficehours.us",
-  "princetonreview.com",
-  "restaurantguru.com",
-  "restaurantji.com",
-  "rehabs.com",
-  "resy.com",
-  "roadsideamerica.com",
-  "sirved.com",
-  "songkick.com",
-  "toasttab.com",
-  "touristplaces.info",
-  "tripadvisor.com",
-  "twitter.com",
-  "ubereats.com",
-  "untappd.com",
-  "usarestaurants.info",
-  "usnews.com",
-  "visitfrederick.org",
-  "wheree.com",
-  "x.com",
-  "yahoo.com",
-  "yellowpages.com",
-  "yelp.com",
-] as const;
+import {
+  isKnownThirdPartyPlaceWebsite,
+  publishablePlaceWebsite,
+} from "@/lib/place-website-policy";
 
 /** Government and agency-operated hosts that may support civic place facts. */
 const OFFICIAL_SOURCE_HOSTS = [
@@ -359,11 +302,7 @@ export function isBusinessOwnedWebsite(
 }
 
 export function isKnownThirdPartyBusinessSource(rawUrl: string): boolean {
-  const host = normalizedHostname(rawUrl);
-  return Boolean(
-    host &&
-      THIRD_PARTY_SOURCE_HOSTS.some((domain) => matchesHost(host, domain)),
-  );
+  return isKnownThirdPartyPlaceWebsite(rawUrl);
 }
 
 /**
@@ -376,7 +315,7 @@ export function businessInfoSourceKind(
   businessName?: string,
 ): BusinessInfoSourceKind | null {
   const host = normalizedHostname(rawUrl);
-  if (!host || isKnownThirdPartyBusinessSource(rawUrl)) return null;
+  if (!host || !publishablePlaceWebsite(rawUrl, businessName)) return null;
   if (
     host.endsWith(".gov") ||
     OFFICIAL_SOURCE_HOSTS.some((domain) => matchesHost(host, domain))

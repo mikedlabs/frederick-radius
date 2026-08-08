@@ -4,6 +4,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import {
   EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS,
   MAX_EVENTS_BY_SLUG,
+  normalizeRequestedEventSlugList,
   normalizeRequestedEventSlugs,
   resolveEventsBySlugs,
   type EventsBySlugsSources,
@@ -73,6 +74,30 @@ describe("normalizeRequestedEventSlugs", () => {
       (_, i) => `event-${i}`,
     ).join(",");
     expect(normalizeRequestedEventSlugs(raw)).toHaveLength(MAX_EVENTS_BY_SLUG);
+  });
+});
+
+describe("normalizeRequestedEventSlugList", () => {
+  it("shares the GET validator for JSON arrays", () => {
+    expect(
+      normalizeRequestedEventSlugList([
+        " b-event ",
+        12,
+        "a-event",
+        "b-event",
+        "Not A Slug",
+      ]),
+    ).toEqual(["b-event", "a-event"]);
+  });
+
+  it("caps a JSON batch before source work", () => {
+    const raw = Array.from(
+      { length: MAX_EVENTS_BY_SLUG + 40 },
+      (_, i) => `event-${i}`,
+    );
+    expect(normalizeRequestedEventSlugList(raw)).toHaveLength(
+      MAX_EVENTS_BY_SLUG,
+    );
   });
 });
 
