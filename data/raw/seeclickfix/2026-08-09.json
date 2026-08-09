@@ -1,6 +1,168 @@
 {
   "issues": [
     {
+      "id": 22458466,
+      "status": "Acknowledged",
+      "summary": "Sewer Issue",
+      "description": "utility cover covered in concrete ",
+      "rating": 2,
+      "lat": 39.4189,
+      "lng": -77.4079,
+      "address": "100-198 E 4th St Frederick, Maryland, 21701",
+      "created_at": "2026-08-08T17:33:00-04:00",
+      "acknowledged_at": "2026-08-08T17:33:10-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-08T17:33:10-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22458466",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.4079,
+          39.4189
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22458466",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 35520,
+        "title": "Sewer Issue",
+        "organization": "Water and Sewer",
+        "url": "https://seeclickfix.com/api/v2/request_types/35520",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.4189&lng=-77.4079&request_types=35520&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22458466/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22458466/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMyNjQsInB1ciI6ImJsb2JfaWQifX0=--3047b0daf1ba1010ddcd827ed4b94bb044b9c5b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/23440418-b6c8-4ce3-93c9-f306b406af03_2026-08-08T17-13-46-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMyNjQsInB1ciI6ImJsb2JfaWQifX0=--3047b0daf1ba1010ddcd827ed4b94bb044b9c5b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/23440418-b6c8-4ce3-93c9-f306b406af03_2026-08-08T17-13-46-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMyNjQsInB1ciI6ImJsb2JfaWQifX0=--3047b0daf1ba1010ddcd827ed4b94bb044b9c5b3/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/23440418-b6c8-4ce3-93c9-f306b406af03_2026-08-08T17-13-46-04-00.jpg"
+      }
+    },
+    {
+      "id": 22458375,
+      "status": "Acknowledged",
+      "summary": "Sewer Issue",
+      "description": "Broken gas utility cover",
+      "rating": 2,
+      "lat": 39.4141,
+      "lng": -77.4102,
+      "address": "18 E Patrick St Frederick, Maryland, 21701",
+      "created_at": "2026-08-08T17:12:26-04:00",
+      "acknowledged_at": "2026-08-08T17:12:37-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-08T17:12:37-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22458375",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.4102,
+          39.4141
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22458375",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 35520,
+        "title": "Sewer Issue",
+        "organization": "Water and Sewer",
+        "url": "https://seeclickfix.com/api/v2/request_types/35520",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.4141&lng=-77.4102&request_types=35520&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22458375/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22458375/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMxMjksInB1ciI6ImJsb2JfaWQifX0=--a8a11cf4b763b0a0558bb7f323d04edc1a840720/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/b08573b9-885b-42c6-bbbf-99852ae32d8b_2026-08-08T17-06-19-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMxMjksInB1ciI6ImJsb2JfaWQifX0=--a8a11cf4b763b0a0558bb7f323d04edc1a840720/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/b08573b9-885b-42c6-bbbf-99852ae32d8b_2026-08-08T17-06-19-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0MzMxMjksInB1ciI6ImJsb2JfaWQifX0=--a8a11cf4b763b0a0558bb7f323d04edc1a840720/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/b08573b9-885b-42c6-bbbf-99852ae32d8b_2026-08-08T17-06-19-04-00.jpg"
+      }
+    },
+    {
+      "id": 22458024,
+      "status": "Acknowledged",
+      "summary": "Roadway General Request",
+      "description": "water valve box in roadway is damaged and above the pavement level, potential hazard",
+      "rating": 2,
+      "lat": 39.399820258420384,
+      "lng": -77.34748971342205,
+      "address": "Ridgefield Ln & Spring Ridge Pkwy Spring Ridge, MD, 21701, USA",
+      "created_at": "2026-08-08T15:52:33-04:00",
+      "acknowledged_at": "2026-08-08T15:52:37-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-08T15:52:37-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22458024",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.34748971342205,
+          39.399820258420384
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22458024",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 41878,
+        "title": "Roadway General Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/41878",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.399820258420384&lng=-77.34748971342205&request_types=41878&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22458024/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22458024/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
       "id": 22451312,
       "status": "Acknowledged",
       "summary": "Roadway Tree Maintenance",
@@ -921,175 +1083,11 @@
         "image_square_100x100": null,
         "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
       }
-    },
-    {
-      "id": 22437746,
-      "status": "Closed",
-      "summary": "Animal Carcass in Public Ways",
-      "description": "Dead deer on Gas House Pike at Westwood Drive.",
-      "rating": 2,
-      "lat": 39.472263965000025,
-      "lng": -77.39800738399998,
-      "address": "21701 Frederick, Maryland",
-      "created_at": "2026-08-06T09:41:06-04:00",
-      "acknowledged_at": "2026-08-06T09:41:10-04:00",
-      "closed_at": "2026-08-06T13:20:43-04:00",
-      "reopened_at": null,
-      "updated_at": "2026-08-06T13:20:44-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22437746",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.39800738399998,
-          39.472263965000025
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22437746",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40778,
-        "title": "Animal Carcass in Public Ways",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40778",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.472263965000025&lng=-77.39800738399998&request_types=40778&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22437746/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22437746/flag",
-      "transitions": {
-        "open_url": "https://seeclickfix.com/api/v2/issues/22437746/open"
-      },
-      "reporter": {
-        "id": 0,
-        "name": "An anonymous SeeClickFix user",
-        "role": "Registered User",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/anonymous",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories_trans/no-image-3afd5fe0adb47a63f5b051604db11d882955257f2b16ddde9e931b0a065ae59f.png"
-      }
-    },
-    {
-      "id": 22437659,
-      "status": "Acknowledged",
-      "summary": "Roadway Drainage Maintenance",
-      "description": "Kindly have the county fix / repair the large separation between the sidewalk and the county storm drain concrete covering located at 5629 Broadmoor Terrace, North.   This separation has gotten worse recently and it is a severe hazard for children on bicycles and scooters in the neighborhood.  At the widest portion, the separation is approximately two inches wide and is quite hazardous.  I believe the separation originally started from the county snow plow hitting the corner of the storm drain concrete covering ",
-      "rating": 3,
-      "lat": 39.38213683886725,
-      "lng": -77.32358720028938,
-      "address": "5629 Broadmoor Ter N Ijamsville, Maryland, 21754",
-      "created_at": "2026-08-06T09:32:47-04:00",
-      "acknowledged_at": "2026-08-06T09:32:58-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-06T15:30:37-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22437659",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.32358720028938,
-          39.38213683886725
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22437659",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40760,
-        "title": "Roadway Drainage Maintenance",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40760",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.38213683886725&lng=-77.32358720028938&request_types=40760&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22437659/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22437659/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 2810834,
-        "name": "Jill Feher",
-        "role": "Registered User",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2810834",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMzNjQ1ODgsInB1ciI6ImJsb2JfaWQifX0=--3eacd09851323a3b351bc5ed2e7c2aad58ab8227/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGVnIiwiYXV0b19vcmllbnQiOnRydWUsInN0cmlwIjp0cnVlLCJyZXNpemUiOiI4MDB4NjAwIn0sInB1ciI6InZhcmlhdGlvbiJ9fQ==--a24cd3b9f26082c533845b9cc150d8421a819967/affad7ff-28b9-408a-ad43-20962fd9aa0f_2026-08-06T09-25-50-04-00.jpeg",
-        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMzNjQ1ODgsInB1ciI6ImJsb2JfaWQifX0=--3eacd09851323a3b351bc5ed2e7c2aad58ab8227/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGVnIiwiYXV0b19vcmllbnQiOnRydWUsInN0cmlwIjp0cnVlLCJyZXNpemUiOiIxMDB4MTAwXiIsImdyYXZpdHkiOiJjZW50ZXIiLCJleHRlbnQiOiIxMDB4MTAwIn0sInB1ciI6InZhcmlhdGlvbiJ9fQ==--05cc00cdc285a6131729ac978390fa7276ce7221/affad7ff-28b9-408a-ad43-20962fd9aa0f_2026-08-06T09-25-50-04-00.jpeg",
-        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDMzNjQ1ODgsInB1ciI6ImJsb2JfaWQifX0=--3eacd09851323a3b351bc5ed2e7c2aad58ab8227/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGVnIiwiYXV0b19vcmllbnQiOnRydWUsInN0cmlwIjp0cnVlLCJyZXNpemUiOiIxMDB4MTAwXiIsImdyYXZpdHkiOiJjZW50ZXIiLCJleHRlbnQiOiIxMDB4MTAwIn0sInB1ciI6InZhcmlhdGlvbiJ9fQ==--05cc00cdc285a6131729ac978390fa7276ce7221/affad7ff-28b9-408a-ad43-20962fd9aa0f_2026-08-06T09-25-50-04-00.jpeg"
-      }
-    },
-    {
-      "id": 22437644,
-      "status": "Acknowledged",
-      "summary": "Roadway Tree Maintenance",
-      "description": "Large tree hanging over this road seeming about to fall onto the road. Has been leaning further with each of the recent storms. Possibly needs to be taken down.",
-      "rating": 2,
-      "lat": 39.414280766392814,
-      "lng": -77.48685121536256,
-      "address": "5200-5334 Goldmine Rd Braddock Heights, MD, 21703, USA",
-      "created_at": "2026-08-06T09:31:32-04:00",
-      "acknowledged_at": "2026-08-06T09:31:35-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-06T13:10:41-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22437644",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.48685121536256,
-          39.414280766392814
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22437644",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40763,
-        "title": "Roadway Tree Maintenance",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40763",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.414280766392814&lng=-77.48685121536256&request_types=40763&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22437644/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22437644/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 2002133,
-        "name": "Frederick County, MD Neighbor",
-        "role": "Guest",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2002133",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
     }
   ],
   "metadata": {
     "pagination": {
-      "entries": 462,
+      "entries": 465,
       "page": 1,
       "per_page": 20,
       "pages": 24,

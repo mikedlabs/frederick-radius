@@ -6,6 +6,72 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.4079,
+          39.4189
+        ]
+      },
+      "properties": {
+        "external_id": "22458466",
+        "summary": "Sewer Issue",
+        "description": "utility cover covered in concrete",
+        "address": "100-198 E 4th St Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Sewer Issue",
+        "reported_at": "2026-08-08T21:33:00.000Z",
+        "url": "https://seeclickfix.com/issues/22458466",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4102,
+          39.4141
+        ]
+      },
+      "properties": {
+        "external_id": "22458375",
+        "summary": "Sewer Issue",
+        "description": "Broken gas utility cover",
+        "address": "18 E Patrick St Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Sewer Issue",
+        "reported_at": "2026-08-08T21:12:26.000Z",
+        "url": "https://seeclickfix.com/issues/22458375",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.34748971342205,
+          39.399820258420384
+        ]
+      },
+      "properties": {
+        "external_id": "22458024",
+        "summary": "Roadway General Request",
+        "description": "water valve box in roadway is damaged and above the pavement level, potential hazard",
+        "address": "Ridgefield Ln & Spring Ridge Pkwy Spring Ridge, MD, 21701, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-08T19:52:33.000Z",
+        "url": "https://seeclickfix.com/issues/22458024",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.60106876380793,
           39.52937980415014
         ]
@@ -372,72 +438,6 @@
         "category": "Roadway Tree Maintenance",
         "reported_at": "2026-08-06T14:06:53.000Z",
         "url": "https://seeclickfix.com/issues/22438054",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.39800738399998,
-          39.472263965000025
-        ]
-      },
-      "properties": {
-        "external_id": "22437746",
-        "summary": "Animal Carcass in Public Ways",
-        "description": "Dead deer on Gas House Pike at Westwood Drive.",
-        "address": "21701 Frederick, Maryland",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Animal Carcass in Public Ways",
-        "reported_at": "2026-08-06T13:41:06.000Z",
-        "url": "https://seeclickfix.com/issues/22437746",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.32358720028938,
-          39.38213683886725
-        ]
-      },
-      "properties": {
-        "external_id": "22437659",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Kindly have the county fix / repair the large separation between the sidewalk and the county storm drain concrete covering located at 5629 Broadmoor Terrace, North.   This separation has gotten worse",
-        "address": "5629 Broadmoor Ter N Ijamsville, Maryland, 21754",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-06T13:32:47.000Z",
-        "url": "https://seeclickfix.com/issues/22437659",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.48685121536256,
-          39.414280766392814
-        ]
-      },
-      "properties": {
-        "external_id": "22437644",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Large tree hanging over this road seeming about to fall onto the road. Has been leaning further with each of the recent storms. Possibly needs to be taken down.",
-        "address": "5200-5334 Goldmine Rd Braddock Heights, MD, 21703, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-06T13:31:32.000Z",
-        "url": "https://seeclickfix.com/issues/22437644",
         "source": "seeclickfix"
       }
     }
