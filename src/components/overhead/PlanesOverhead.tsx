@@ -8,13 +8,13 @@ import { Plane } from "lucide-react";
 /**
  * PlanesOverhead — live "what's flying over Frederick." Polls the cached
  * /api/aircraft proxy (free airplanes.live ADS-B) and shows every transmitting
- * aircraft within ~60 nm on a real Mapbox map (OverheadMap): each plane plotted
+ * aircraft within ~60 nm on a real map (OverheadMap): each plane plotted
  * at its true position, rotated to its heading, colored by altitude band, tap
  * for a popup with its route + altitude + speed. The nearest few also list as
  * "specimen cards" below. Honest about ADS-B's blind spots; never invents a track.
  */
 
-// Code-split the Mapbox map (mapbox-gl is ~200 KB) so the page shell paints first.
+// Code-split the map (maplibre-gl is ~200 KB) so the page shell paints first.
 const OverheadMap = dynamic(() => import("./OverheadMap"), {
   ssr: false,
   loading: () => (

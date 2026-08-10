@@ -249,6 +249,21 @@ export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
   [-77.09, 39.78],
 ];
 
+/**
+ * The same leash in the flat [W, S, E, N] form MapLibre's `maxBounds` takes.
+ *
+ * mapbox-gl accepts the nested corner-pair form above; maplibre-gl's typings
+ * accept a LngLatBounds or a flat four-number tuple, and the nested array is
+ * a type error rather than a silent no-op. Derived from the one source above
+ * so the two forms cannot drift — never hand-copy these numbers.
+ */
+export const FREDERICK_MAX_BOUNDS_FLAT: [number, number, number, number] = [
+  FREDERICK_MAX_BOUNDS[0][0],
+  FREDERICK_MAX_BOUNDS[0][1],
+  FREDERICK_MAX_BOUNDS[1][0],
+  FREDERICK_MAX_BOUNDS[1][1],
+];
+
 /** Tight county extent used as a camera FIT target. This is deliberately
  * separate from validation bounds and from the looser browse-map pan leash. */
 export const FREDERICK_COUNTY_BOUNDS: [[number, number], [number, number]] = [

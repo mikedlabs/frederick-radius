@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Map, { Marker, type MapRef } from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 import {
   CAM_EASE,
   FREDERICK,
-  FREDERICK_MAX_BOUNDS,
+  FREDERICK_MAX_BOUNDS_FLAT,
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
-  STYLE_URL,
   isInFrederickCounty,
 } from "@/components/map/constants";
 import {
@@ -111,6 +110,7 @@ async function downscale(file: File, maxDim = 1280, quality = 0.8): Promise<stri
 
 export default function CollectClient() {
   const mapRef = useRef<MapRef | null>(null);
+  const mapStyle = useFrederickFlavorStyle();
   const [mode, setMode] = useState<Mode>("aim");
   const [kind, setKind] = useState<string>("trash");
   const [note, setNote] = useState("");
@@ -708,15 +708,14 @@ export default function CollectClient() {
       <div className="absolute inset-0">
         <Map
           ref={mapRef}
-          mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={{ longitude: FREDERICK[0], latitude: FREDERICK[1], zoom: 15 }}
-          mapStyle={STYLE_URL}
+          mapStyle={mapStyle}
           style={{ width: "100%", height: "100%" }}
-          attributionControl={true}
+          attributionControl={{ compact: true }}
           dragRotate={false}
           pitchWithRotate={false}
           touchPitch={false}
-          maxBounds={FREDERICK_MAX_BOUNDS}
+          maxBounds={FREDERICK_MAX_BOUNDS_FLAT}
           minZoom={FREDERICK_MIN_ZOOM}
           maxZoom={FREDERICK_MAX_ZOOM}
           onDragStart={() => {
