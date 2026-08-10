@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Map, { Source, Layer, AttributionControl } from "react-map-gl/mapbox";
-import type { RasterLayerSpecification } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import Map, { Source, Layer, AttributionControl } from "react-map-gl/maplibre";
+import type { RasterLayerSpecification } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 import ExitChip from "@/components/from-above/ExitChip";
 
 /**
@@ -12,7 +12,7 @@ import ExitChip from "@/components/from-above/ExitChip";
  *
  * When written public-display permission is recorded, Frederick Radius can
  * mount the City's cached orthoimagery ArcGIS MapServers (Aerial_1958 …
- * Aerial_2025) as Mapbox
+ * Aerial_2025) as a
  * raster source via the ArcGIS `export` endpoint with the `{bbox-epsg-3857}`
  * token (ArcGIS reprojects to Web Mercator on the fly), then crossfade
  * between years with `raster-opacity`. Pan/zoom anywhere in the city and
@@ -72,9 +72,10 @@ export default function AerialTimeMachine() {
   // layers then never load). Detect that and show an honest banner
   // instead of a silently blank map; the scrubber hides when it's useless.
   const [orthoFailed, setOrthoFailed] = useState(false);
+  const mapStyle = useFrederickFlavorStyle();
 
   // Proactive reachability probe: the City's `export` endpoint hangs when
-  // it's down, and Mapbox's tile-abort errors don't carry a matchable
+  // it's down, and the renderer's tile-abort errors don't carry a matchable
   // source, so we ping one tile with a short timeout. If it can't be
   // reached, flip to the honest fallback. (no-cors: we only need to know
   // the request completes, not read its body.)
@@ -93,15 +94,12 @@ export default function AerialTimeMachine() {
   return (
     <div className="relative h-[calc(100dvh-var(--app-bottomnav-reserve)-env(safe-area-inset-bottom,0px))] w-full overflow-hidden">
       <Map
-        mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={initialView}
-        mapStyle="mapbox://styles/mapbox/light-v11"
+        mapStyle={mapStyle}
         style={{ position: "absolute", inset: 0 }}
-        maxBounds={[
-          [-77.55, 39.34],
-          [-77.27, 39.50],
-        ]}
-        // Mapbox credits collapse to the compact ⓘ badge; the City imagery
+        // Flat [W, S, E, N]: maplibre-gl's maxBounds form.
+        maxBounds={[-77.55, 39.34, -77.27, 39.50]}
+        // Basemap credits collapse to the compact ⓘ badge; the City imagery
         // credit remains in the scrubber below for the raster overlay.
         attributionControl={false}
         onError={(e) => {
@@ -113,7 +111,7 @@ export default function AerialTimeMachine() {
         <AttributionControl compact position="bottom-right" />
         {/* Every year is mounted; only the active layer is opaque, so
             scrubbing crossfades with the raster-fade-duration. The newest
-            year is mounted FIRST so Mapbox stacks it at the BOTTOM as a
+            year is mounted FIRST so the renderer stacks it at the BOTTOM as a
             never-blank base; the active historical year mounts after it and
             therefore paints ON TOP. (Mounting base last — the obvious array
             order — put it on top at opacity 1 and hid every scrubbed year, so
