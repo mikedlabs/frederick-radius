@@ -150,8 +150,8 @@ test.describe("mobile discovery shell", () => {
       const intersects = (b: DOMRect) =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
       return [
-        document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo"),
-        document.querySelector<HTMLElement>(".mapboxgl-ctrl-attrib"),
+        document.querySelector<HTMLElement>(".maplibregl-ctrl-logo"),
+        document.querySelector<HTMLElement>(".maplibregl-ctrl-attrib"),
       ]
         .filter((element): element is HTMLElement => Boolean(element?.offsetParent))
         .some((element) => intersects(element.getBoundingClientRect()));
@@ -179,7 +179,7 @@ test.describe("mobile discovery shell", () => {
 
     await contentsButton.click();
     await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
-    await page.locator(".mapboxgl-canvas").click({ position: { x: 12, y: 100 } });
+    await page.locator(".maplibregl-canvas").click({ position: { x: 12, y: 100 } });
     await expect(page.getByRole("region", { name: "Choose what to see" })).toBeHidden();
 
     await contentsButton.click();
@@ -237,8 +237,8 @@ test.describe("mobile discovery shell", () => {
     const geometry = await page.evaluate(() => {
       const host = document.querySelector<HTMLElement>(".dock-host");
       const rail = document.querySelector<HTMLElement>("[data-map-context-rail]");
-      const logo = document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo");
-      const attribution = document.querySelector<HTMLElement>(".mapboxgl-ctrl-attrib");
+      const logo = document.querySelector<HTMLElement>(".maplibregl-ctrl-logo");
+      const attribution = document.querySelector<HTMLElement>(".maplibregl-ctrl-attrib");
       if (!host || !rail || !logo || !attribution) return null;
       const hostBox = host.getBoundingClientRect();
       const railBox = rail.getBoundingClientRect();
@@ -269,21 +269,21 @@ test.describe("mobile discovery shell", () => {
     expect(geometry?.overlapsAttribution).toBe(false);
     expect(geometry?.documentOverflow ?? 999).toBeLessThanOrEqual(1);
 
-    await page.locator(".mapboxgl-ctrl-attrib-button").click();
-    await expect(page.locator(".mapboxgl-ctrl-attrib")).toHaveClass(
-      /mapboxgl-compact-show/,
+    await page.locator(".maplibregl-ctrl-attrib-button").click();
+    await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveClass(
+      /maplibregl-compact-show/,
     );
     const expandedCredits = await page.evaluate(() => {
       const host = document.querySelector<HTMLElement>(".dock-host");
-      const logo = document.querySelector<HTMLElement>(".mapboxgl-ctrl-logo");
+      const logo = document.querySelector<HTMLElement>(".maplibregl-ctrl-logo");
       const attribution = document.querySelector<HTMLElement>(
-        ".mapboxgl-ctrl-attrib",
+        ".maplibregl-ctrl-attrib",
       );
       const attributionCopy = attribution?.querySelector<HTMLElement>(
-        ".mapboxgl-ctrl-attrib-inner",
+        ".maplibregl-ctrl-attrib-inner",
       );
       const attributionButton = attribution?.querySelector<HTMLElement>(
-        ".mapboxgl-ctrl-attrib-button",
+        ".maplibregl-ctrl-attrib-button",
       );
       if (
         !host ||

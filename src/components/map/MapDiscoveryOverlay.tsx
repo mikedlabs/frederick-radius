@@ -1,6 +1,7 @@
 "use client";
 
-import { Layer, Source } from "react-map-gl/mapbox";
+import { Layer, Source } from "react-map-gl/maplibre";
+import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 import { BRAND } from "@/lib/brand";
 import type { MapDiscovery } from "./mapDiscoveries";
 
@@ -82,6 +83,7 @@ export default function MapDiscoveryOverlay({ discovery }: { discovery: MapDisco
           minzoom={11}
           layout={{
             "text-field": ["get", "label"],
+            "text-font": MAP_LABEL_FONT_MEDIUM,
             "text-size": ["interpolate", ["linear"], ["zoom"], 11, 10, 15, 12],
             "text-anchor": "top",
             "text-offset": [0, 1.15],

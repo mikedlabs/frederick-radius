@@ -1,12 +1,13 @@
 import { track } from "@/lib/track";
 
 /**
- * Map load instrumentation. The map's felt slowness (runtime recolor + a 1.8 MB
- * client dataset) was diagnosed but never MEASURED — so before committing to the
- * big owner refactors (a baked Studio style, a viewport/bbox pins API), we ship
- * marks that prove the cost on real hardware/prod. Pairs with the "fr-palette"
- * measure inside applyFrederickPalette (the recolor cost). Guarded for SSR/edge
- * where `performance` may be absent; fires the analytics event exactly once.
+ * Map load instrumentation. The map's felt slowness was diagnosed but never
+ * MEASURED, so these marks prove the cost on real hardware and prod rather
+ * than in argument. One of the two costs they were built to watch is gone —
+ * the runtime palette walk died with the move to a self-hosted style that
+ * ships already branded — which leaves the 1.8 MB client dataset, and the
+ * marks are how the next cut of that gets judged. Guarded for SSR/edge where
+ * `performance` may be absent; fires the analytics event exactly once.
  */
 let idleMarked = false;
 

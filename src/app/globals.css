@@ -999,14 +999,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
      bottom ctrl corners to the TOP of the canvas instead: the wordmark +
      attribution become visible, and the zoom/geolocate cluster becomes
      usable again. Top corners verified free (in-flow header sits above
-     the canvas, not over it). !important + the .mapboxgl-map ancestor
+     the canvas, not over it). !important + the .maplibregl-map ancestor
      because mapbox-gl.css ships in the lazy map chunk and lands after
      globals.css in the cascade. ≥lg keeps the conventional corners. */
-  .mapboxgl-map .mapboxgl-ctrl-bottom-left {
+  .maplibregl-map .maplibregl-ctrl-bottom-left {
     bottom: auto !important;
     top: 10px !important;
   }
-  .mapboxgl-map .mapboxgl-ctrl-bottom-right {
+  .maplibregl-map .maplibregl-ctrl-bottom-right {
     bottom: auto !important;
     top: 10px !important;
   }
@@ -1015,12 +1015,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
      Its lower sheet covers both conventional bottom corners, while the reach
      readout and camera rail occupy the first upper shelf. Give Mapbox's legal
      marks their own visible shelves below those controls. */
-  .radius-map-canvas .mapboxgl-ctrl-bottom-left {
+  .radius-map-canvas .maplibregl-ctrl-bottom-left {
     top: 82px !important;
     bottom: auto !important;
     left: 8px !important;
   }
-  .radius-map-canvas .mapboxgl-ctrl-bottom-right {
+  .radius-map-canvas .maplibregl-ctrl-bottom-right {
     top: 162px !important;
     right: 8px !important;
     bottom: auto !important;
@@ -1595,7 +1595,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * the place sheet opens behind a marker tap).
  * Applies to AppMap (/map) and RadiusMap fallback paths.
  * ───────────────────────────────────────────────────── */
-.mapboxgl-popup-close-button {
+.maplibregl-popup-close-button {
   width: 44px !important;
   height: 44px !important;
   font-size: 24px !important;
@@ -1611,30 +1611,30 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   font-weight: 500;
 }
-.mapboxgl-popup-close-button:hover,
-.mapboxgl-popup-close-button:focus-visible {
+.maplibregl-popup-close-button:hover,
+.maplibregl-popup-close-button:focus-visible {
   background: color-mix(in srgb, var(--app-ink) 14%, var(--app-bg-elevated)) !important;
   color: var(--app-ink) !important;
 }
 /* Popup content needs more right padding so the bigger close
  * button doesn't overlap the headline. */
-.mapboxgl-popup-content {
+.maplibregl-popup-content {
   padding: 14px 56px 14px 14px !important;
 }
 
 /* Mapbox's DOM furniture ships with a Helvetica stack and 29px controls.
  * Keep it in the field-guide system and make every native map action meet
  * the same touch-target contract as the rest of the app. */
-.mapboxgl-map,
-.mapboxgl-ctrl,
-.mapboxgl-popup {
+.maplibregl-map,
+.maplibregl-ctrl,
+.maplibregl-popup {
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif !important;
 }
-.mapboxgl-map .mapboxgl-ctrl-group button {
+.maplibregl-map .maplibregl-ctrl-group button {
   width: 44px !important;
   height: 44px !important;
 }
-.mapboxgl-map .mapboxgl-ctrl-attrib-button {
+.maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;
   min-height: 44px !important;
 }
@@ -1644,10 +1644,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * leaving the dot (which would flicker the popup). No close button, so
  * it does not need the wide right padding the tap popup reserves. */
 .radius-hover-popup,
-.radius-hover-popup .mapboxgl-popup-tip {
+.radius-hover-popup .maplibregl-popup-tip {
   pointer-events: none;
 }
-.radius-hover-popup .mapboxgl-popup-content {
+.radius-hover-popup .maplibregl-popup-content {
   padding: 6px 10px !important;
   box-shadow: var(--app-shadow-2);
 }
@@ -3027,8 +3027,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* Desktop keeps Mapbox's conventional lower corners. On phones the Radius
    command bar owns the lower edge, so legal attribution moves to the quiet
    upper corners instead of colliding with Locate or the selected-result card. */
-.dock-host .mapboxgl-ctrl-bottom-right,
-.dock-host .mapboxgl-ctrl-bottom-left {
+.dock-host .maplibregl-ctrl-bottom-right,
+.dock-host .maplibregl-ctrl-bottom-left {
   top: auto !important;
   bottom: 14px !important;
 }
@@ -3037,8 +3037,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    its height. Keep camera controls at the canvas edge on mobile too; adding a
    second nav clearance pushed them into the middle of short phones. */
 @media (max-width: 1023.98px) {
-  .dock-host .mapboxgl-ctrl-bottom-right,
-  .dock-host .mapboxgl-ctrl-bottom-left {
+  .dock-host .maplibregl-ctrl-bottom-right,
+  .dock-host .maplibregl-ctrl-bottom-left {
     top: max(10px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
@@ -3081,8 +3081,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     bottom: auto;
     margin-top: 0;
   }
-  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
+  .dock-host:has(.dock[data-search-keyboard="true"]) .maplibregl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-keyboard="true"]) .maplibregl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
   }
 }
@@ -4411,8 +4411,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     width: 24px;
     height: 24px;
   }
-  .dock-host .mapboxgl-ctrl-bottom-right,
-  .dock-host .mapboxgl-ctrl-bottom-left {
+  .dock-host .maplibregl-ctrl-bottom-right,
+  .dock-host .maplibregl-ctrl-bottom-left {
     top: max(6px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
@@ -5792,8 +5792,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     pointer-events: none;
     transform: translateY(-8px);
   }
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left,
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
+  .dock-host[data-map-peek="open"] .maplibregl-ctrl-bottom-left,
+  .dock-host[data-map-peek="open"] .maplibregl-ctrl-bottom-right {
     top: 10px !important;
     bottom: auto !important;
   }
@@ -5801,13 +5801,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* Canonical compact placement. Earlier legacy stacking rules mention the
      old top-dock layout; keep every Mapbox legal control in one unobstructed
      upper shelf now that search and map results own the lower edge. */
-  .dock-host .mapboxgl-ctrl-bottom-left,
-  .dock-host .mapboxgl-ctrl-bottom-right {
+  .dock-host .maplibregl-ctrl-bottom-left,
+  .dock-host .maplibregl-ctrl-bottom-right {
     top: max(10px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
-  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
-  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
+  .dock-host:has(.dock[data-search-keyboard="true"]) .maplibregl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-keyboard="true"]) .maplibregl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
   }
 }
@@ -7832,20 +7832,20 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 
   /* The legal marks remain untouched at their native dimensions. Only their
      position is owned here, in one unobstructed shelf above Radius controls. */
-  .dock-host .mapboxgl-ctrl-bottom-left,
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left {
+  .dock-host .maplibregl-ctrl-bottom-left,
+  .dock-host[data-map-peek="open"] .maplibregl-ctrl-bottom-left {
     top: max(8px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
   /* Keep Mapbox's legal controls on separate rows. The compact attribution
      button can share the logo's visual shelf, but its expanded panel spans
      nearly the full phone width and would paint over the wordmark. */
-  .dock-host .mapboxgl-ctrl-bottom-right,
-  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
+  .dock-host .maplibregl-ctrl-bottom-right,
+  .dock-host[data-map-peek="open"] .maplibregl-ctrl-bottom-right {
     top: calc(env(safe-area-inset-top, 0px) + 36px) !important;
     bottom: auto !important;
   }
-  .dock-host .mapboxgl-ctrl-attrib-button {
+  .dock-host .maplibregl-ctrl-attrib-button {
     background-color: color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent);
     background-position: center !important;
     background-repeat: no-repeat !important;
@@ -7858,7 +7858,7 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
      intentionally provides a 44px touch target, so reserve that larger hit
      area when the legal copy opens instead of letting the final link sit
      underneath the button. */
-  .dock-host .mapboxgl-ctrl-attrib.mapboxgl-compact-show {
+  .dock-host .maplibregl-ctrl-attrib.maplibregl-compact-show {
     width: calc(100% - 20px);
     max-width: none !important;
     min-height: 44px;
@@ -7866,8 +7866,8 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     padding: 6px 52px 6px 8px !important;
   }
   .dock-host
-    .mapboxgl-ctrl-attrib.mapboxgl-compact-show
-    .mapboxgl-ctrl-attrib-inner {
+    .maplibregl-ctrl-attrib.maplibregl-compact-show
+    .maplibregl-ctrl-attrib-inner {
     line-height: 16px;
     white-space: normal;
   }

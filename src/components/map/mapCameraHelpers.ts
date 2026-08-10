@@ -3,7 +3,7 @@
 // Extracted from AppMap.tsx (#77); behavior is byte-identical to the inline
 // originals.
 
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { LngLat } from "@/lib/geo";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { nearbyReachBounds } from "./mapNearbyScope";
@@ -40,9 +40,9 @@ export function isCountyOverview(map: CameraSnapshot): boolean {
   );
 }
 
-// Does this browser have a usable WebGL context? Mapbox GL needs one; without
-// it the canvas stays blank. mapbox-gl v3 dropped the old `supported()` helper,
-// so probe directly. Conservative: any throw or missing context → treat as no
+// Does this browser have a usable WebGL context? The GL renderer needs one;
+// without it the canvas stays blank, and neither mapbox-gl v3 nor maplibre-gl
+// ships the old `supported()` helper, so probe directly. Conservative: any throw or missing context → treat as no
 // WebGL and fall back to the list view. SSR returns true so we never flash the
 // fallback during hydration — the real check runs in a mount effect.
 export function hasWebGL(): boolean {
@@ -94,7 +94,7 @@ export function countyFitPadding(measureDock = true): { top: number; right: numb
     return { top: 96, right: 32, bottom: 64, left: 32 };
   }
   const mapRect = measureDock
-    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect()
+    ? document.querySelector<HTMLElement>(".maplibregl-map")?.getBoundingClientRect()
     : undefined;
   const dock = measureDock
     ? document.querySelector<HTMLElement>("[data-map-dock]")

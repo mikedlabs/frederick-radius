@@ -1,4 +1,4 @@
-import type { Marker as MapboxMarker } from "mapbox-gl";
+import type { Marker as MapboxMarker } from "maplibre-gl";
 
 /**
  * Mapbox gives every DOM-marker wrapper `role="img"` and a generic

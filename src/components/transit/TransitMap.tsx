@@ -8,12 +8,11 @@ import Map, {
   Popup,
   type MapMouseEvent,
   type MapRef,
-} from "react-map-gl/mapbox";
+} from "react-map-gl/maplibre";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { ACCENTS } from "@/data/categories";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
-import { STYLE_URL } from "@/components/map/constants";
-import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
+import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 import LiveBuses from "@/components/map/LiveBuses";
 import LiveMarcTrains from "@/components/map/LiveMarcTrains";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
@@ -34,7 +33,7 @@ import { MARC_STATIONS } from "@/data/marc-stations";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
-import "mapbox-gl/dist/mapbox-gl.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
@@ -110,9 +109,9 @@ function frameVehicleAndStop(
  * The transit SERVICE AREA — the bounding box of every route polyline (the real
  * extent where buses actually run), padded slightly. Used to leash the live-bus
  * map so it can't be panned off into empty county where nothing moves. Shape
- * points are [lat, lng]; mapbox bounds are [[west,south],[east,north]].
+ * points are [lat, lng]; MapLibre maxBounds are flat [west, south, east, north].
  */
-const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
+const SERVICE_BOUNDS: [number, number, number, number] = (() => {
   let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
   for (const routeLines of Object.values(SHAPE_LINES_BY_ROUTE)) {
     for (const points of routeLines) {
@@ -127,10 +126,10 @@ const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
     }
   }
   // Sensible fallback (downtown Frederick) if shapes are somehow empty.
-  if (!Number.isFinite(minLng)) return [[-77.50, 39.34], [-77.32, 39.50]];
+  if (!Number.isFinite(minLng)) return [-77.50, 39.34, -77.32, 39.50];
   const padLng = (maxLng - minLng) * 0.06 || 0.02;
   const padLat = (maxLat - minLat) * 0.06 || 0.02;
-  return [[minLng - padLng, minLat - padLat], [maxLng + padLng, maxLat + padLat]];
+  return [minLng - padLng, minLat - padLat, maxLng + padLng, maxLat + padLat];
 })();
 
 /**
@@ -145,9 +144,9 @@ const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
  *   - 3px line with 70% opacity. Heavy enough to read on the warm
  *     base tiles, light enough that the underlying streets show
  *     through so the user can orient.
- *   - `applyFrederickPalette` is the same recolor hook every other
- *     map in the app runs through, so the base tiles feel
- *     identical across /map, /radius, /m/[slug], and now /transit.
+ *   - The base is the same self-hosted Frederick Radius flavor every
+ *     other map in the app draws, so the ground feels identical
+ *     across /map, /radius, /m/[slug], and /transit.
  *   - Interactive: drag, pinch, and double-tap zoom on. Cooperative
  *     gestures off because route inspection is the whole point
  *     and a pinch-to-zoom hint would compete with the route lines.
@@ -207,6 +206,7 @@ export default function TransitMap({
   showTrains?: boolean;
 }) {
   const mapRef = useRef<MapRef>(null);
+  const mapStyle = useFrederickFlavorStyle();
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
     const cy = center?.[1] ?? (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2;
@@ -397,8 +397,7 @@ export default function TransitMap({
       >
       <Map
         ref={mapRef}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        mapStyle={STYLE_URL}
+        mapStyle={mapStyle}
         initialViewState={initial}
         style={{ width: "100%", height: "100%" }}
         // Drag + pinch on; cooperative gestures off so a single-finger
@@ -414,7 +413,6 @@ export default function TransitMap({
         onMouseLeave={interactiveStops ? () => setCursor("") : undefined}
         onClick={interactiveStops ? onMapClick : undefined}
         onLoad={(e) => {
-          applyFrederickPalette(e.target);
           // With an explicit center (e.g. /pulse → downtown Frederick) we open
           // THERE — the maxBounds leash still keeps the camera over the service
           // area, the user can zoom out for outlying buses. Without a center,
@@ -629,6 +627,7 @@ export default function TransitMap({
             type="symbol"
             layout={{
               "text-field": ["concat", ["get", "name"], " MARC"],
+              "text-font": MAP_LABEL_FONT_MEDIUM,
               "text-size": 11,
               "text-offset": [0, 1.1],
               "text-anchor": "top",

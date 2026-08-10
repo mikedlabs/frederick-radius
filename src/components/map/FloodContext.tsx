@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { ExternalLink, Info, Waves, X } from "lucide-react";
-import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
+import { Layer, Popup, Source, useMap } from "react-map-gl/maplibre";
+import type { MapLayerMouseEvent } from "maplibre-gl";
 import type { FloodContextFC } from "./types";
 
 const SOURCE_ID = "radius-county-flood-context";
@@ -41,7 +42,7 @@ export default function FloodContext({
     const instance = map?.getMap();
     if (!instance || !show || data.features.length === 0) return;
     const layerIds = [FILL_ID, POINT_ID];
-    const onClick = (event: mapboxgl.MapLayerMouseEvent) => {
+    const onClick = (event: MapLayerMouseEvent) => {
       const feature = event.features?.[0];
       if (!feature) return;
       const properties = (feature.properties ?? {}) as Record<string, unknown>;

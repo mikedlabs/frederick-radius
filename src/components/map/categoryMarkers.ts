@@ -9,7 +9,7 @@
  * Served via the `styleimagemissing` event so it survives style reloads
  * and mount ordering. Drawn at 2x for retina crispness.
  */
-import type { ExpressionSpecification, Map as GLMap } from "mapbox-gl";
+import type { ExpressionSpecification, Map as GLMap } from "maplibre-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
 

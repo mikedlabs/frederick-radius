@@ -37,6 +37,24 @@ export function ensureMapLibreWorker(
 }
 
 /**
+ * The only font stacks the app may name in a symbol layer.
+ *
+ * Glyphs are vendored per stack per unicode range (scripts/fetch-basemap.mjs),
+ * so a `text-font` naming anything else 404s at
+ * /basemap/fonts/<stack>/<range>.pbf. MapLibre does not fail loudly on that:
+ * it logs a warning and falls back to rendering each codepoint with the
+ * browser's local font, which produces labels that are subtly wrong in
+ * weight, spacing, and vertical rhythm rather than labels that are missing.
+ * The layers carried Mapbox's "DIN Pro Medium" and the implicit
+ * "Open Sans Regular" default across the swap and did exactly that.
+ *
+ * A layer with NO text-font also lands here, since the spec's default is
+ * Open Sans. Every symbol layer must set one of these two explicitly.
+ */
+export const MAP_LABEL_FONT_MEDIUM = ["Noto Sans Medium"];
+export const MAP_LABEL_FONT_REGULAR = ["Noto Sans Regular"];
+
+/**
  * Layers the PRODUCT surfaces drop.
  *
  * Every Frederick Radius map draws its own pins — places, events, buses,

@@ -25,8 +25,13 @@ import {
  * 3. Both are global registrations, so doing them per-map instance is
  *    wasteful and, for addProtocol, order-dependent.
  *
- * Callers must be client-only (`ssr: false` or an effect); the style needs
- * a real origin to address the archive.
+ * The hook itself is safe to render on the server: it skips the global
+ * registrations there and builds the style against an empty origin, which
+ * yields root-relative asset URLs nothing ever fetches, because no map
+ * exists server-side. That matters because not every surface mounts behind
+ * `ssr: false` — /map?mode=radius renders AppMap on the server first, and
+ * reading `window.location` during render turned that into a "window is not
+ * defined" bailout to client rendering.
  */
 let installed = false;
 
@@ -48,8 +53,8 @@ export function installFrederickMapLibreGlobals(origin: string): void {
 
 export function useFrederickFlavorStyle({ pois = false }: { pois?: boolean } = {}) {
   return useMemo(() => {
-    const origin = window.location.origin;
-    installFrederickMapLibreGlobals(origin);
+    const origin = typeof window === "undefined" ? "" : window.location.origin;
+    if (origin) installFrederickMapLibreGlobals(origin);
     return buildFrederickFlavorStyle(origin, { pois });
   }, [pois]);
 }

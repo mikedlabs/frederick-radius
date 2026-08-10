@@ -342,7 +342,7 @@ export default function MapPage() {
           mode gate so they're in the STATIC shell for both modes. */}
       <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
-      {/* Warm the mapbox-gl chunk from the static shell, in parallel with
+      {/* Warm the maplibre-gl chunk from the static shell, in parallel with
           hydration — both modes render a Mapbox canvas. */}
       <MapWarmup />
       {/* useSearchParams (the mode gate + the browse view state) client-
