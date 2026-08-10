@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, X } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
@@ -54,8 +54,44 @@ import {
   primaryLeadPrecedesInterestRail,
 } from "@/components/event/eventsExplorerLayout";
 import { compareForLead } from "@/lib/events/lead-rank";
+import {
+  compareEventsForDecision,
+  eventsWithDecisionDistance,
+} from "@/lib/events/decision-rank";
+import {
+  GEOLOCATION_CHANGE_EVENT,
+  readCachedPosition,
+  useGeolocation,
+} from "@/hooks/useGeolocation";
+import type { LngLat } from "@/lib/geo";
 
 export type TimeKey = "all" | "today" | "weekend" | "week";
+
+/** A device-relative ranking must see the complete event population before it
+ * can honestly say "near you." Town and category filters already trigger the
+ * continuation through `anyFilter`; near-me has no town slug, so it needs an
+ * explicit contract of its own. */
+export function eventScopeNeedsCompleteData(scope: Scope | null): boolean {
+  return scope === "nearme";
+}
+
+export function nearbyEventsWhereLabel({
+  hasOrigin,
+  dataComplete,
+  loading,
+  failed,
+}: {
+  hasOrigin: boolean;
+  dataComplete: boolean;
+  loading: boolean;
+  failed: boolean;
+}): string {
+  if (!hasOrigin) return "Near me needs location";
+  if (dataComplete) return "Ranked near you";
+  if (failed) return "Nearby ranking unavailable";
+  if (loading) return "Ranking nearby events…";
+  return "Nearby results are partial";
+}
 
 // The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
 // lib/events/intents.ts (civic included — it's tucked in the rail, not
@@ -382,6 +418,18 @@ export default function EventsExplorer({
   // human time window, while Soonest remains one tap away for strict agenda
   // order. A→Z and Venue switch to a flat directory view.
   const [sort, setSort] = useState<EventSortKey>("recommended");
+  const geolocation = useGeolocation();
+  const [deviceOrigin, setDeviceOrigin] = useState<LngLat | null>(null);
+
+  // Events participates in the same consented location cache as Today, Ask,
+  // Search, and Map. A same-tab location change needs an explicit event; the
+  // browser storage event does not fire in the tab that made the change.
+  useEffect(() => {
+    const refresh = () => setDeviceOrigin(readCachedPosition());
+    refresh();
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+    return () => window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+  }, []);
 
   const applyBrowserState = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
@@ -520,11 +568,21 @@ export default function EventsExplorer({
 
   const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
   const now = +new Date(nowISO);
-  const anyFilter =
+  const nearMeActive = eventScopeNeedsCompleteData(activeScope);
+  const contentFilterActive =
     cat !== null || intent !== null || sub !== null || town !== null ||
     time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
     tod !== null || kidsOnly || lgbtqOnly || communicationAccessOnly ||
     recurringOnly || day !== null;
+  const anyActiveControl = contentFilterActive || nearMeActive;
+
+  const decisionEventPool = useMemo(
+    () =>
+      nearMeActive && deviceOrigin
+        ? eventsWithDecisionDistance(eventPool, deviceOrigin)
+        : eventPool,
+    [deviceOrigin, eventPool, nearMeActive],
+  );
 
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
   // exact cat). The intent rail's badges count against THIS set, so a
@@ -532,7 +590,7 @@ export default function EventsExplorer({
   // free filters," not a static all-time tally.
   const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return eventPool.filter((e) => {
+    return decisionEventPool.filter((e) => {
       // FINISHED events never render, on ANY path. The horizon grouping
       // already dropped them, but the flat paths — the week ribbon's ?d= day
       // view, search results, the A-Z/venue sorts — filtered by start-day
@@ -573,13 +631,13 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [eventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Rail badges — per-intent counts over the base set (post time/town/free,
   // pre intent/sub) so picking an intent doesn't zero out the other badges.
   const intentCounts = useMemo(
-    () => !dataComplete && !anyFilter ? summary.intentCounts : countByIntent(baseFiltered),
-    [anyFilter, baseFiltered, dataComplete, summary.intentCounts],
+    () => !dataComplete && !contentFilterActive ? summary.intentCounts : countByIntent(baseFiltered),
+    [baseFiltered, contentFilterActive, dataComplete, summary.intentCounts],
   );
   // Exact-category deep links predate the intent rail. Reflect that narrower
   // selection in the rail, then clear it when the user chooses a different
@@ -601,7 +659,11 @@ export default function EventsExplorer({
 
   const filtered = useMemo(() => {
     const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
-      if (sort === "recommended") return compareForLead(a, b, featured);
+      if (sort === "recommended") {
+        return nearMeActive && deviceOrigin
+          ? compareEventsForDecision(a, b, featured)
+          : compareForLead(a, b, featured);
+      }
       if (sort === "az")
         return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
       if (sort === "venue") {
@@ -621,7 +683,7 @@ export default function EventsExplorer({
         return true;
       })
       .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured]);
+  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured, nearMeActive, deviceOrigin]);
 
   // A healthy server snapshot knows the complete unfiltered totals even
   // though the first React payload contains only a bounded preview. Once a
@@ -633,7 +695,7 @@ export default function EventsExplorer({
     loadedCount: filtered.length,
     summaryCount: summary.totalCount,
     dataComplete,
-    anyFilter,
+    anyFilter: contentFilterActive,
     sourceDegraded: currentSourceHealth.degraded,
   });
   const filteredTownCount = useMemo(
@@ -682,7 +744,7 @@ export default function EventsExplorer({
         events: filtered,
         view,
         sort,
-        anyFilter,
+        anyFilter: contentFilterActive,
         bounds: {
           now,
           next24: +new Date(next24ISO),
@@ -692,7 +754,7 @@ export default function EventsExplorer({
         },
       }),
     [
-      anyFilter,
+      contentFilterActive,
       filtered,
       live,
       next24ISO,
@@ -794,10 +856,10 @@ export default function EventsExplorer({
   // once. Fetch is deduplicated by requestRef.
   useEffect(() => {
     if (!urlReady || dataComplete) return;
-    if (anyFilter || view !== "list" || sort !== "recommended" || openGroups.size > 0) {
+    if (anyActiveControl || view !== "list" || sort !== "recommended" || openGroups.size > 0) {
       queueMicrotask(() => void ensureAllEvents());
     }
-  }, [anyFilter, dataComplete, ensureAllEvents, openGroups, sort, urlReady, view]);
+  }, [anyActiveControl, dataComplete, ensureAllEvents, openGroups, sort, urlReady, view]);
 
   const clear = () => {
     setCat(null);
@@ -873,6 +935,16 @@ export default function EventsExplorer({
         countComplete={mastheadCount.complete}
         categories={availableCategories}
         towns={availableTowns}
+        whereLabel={
+          nearMeActive
+            ? nearbyEventsWhereLabel({
+                hasOrigin: Boolean(deviceOrigin),
+                dataComplete,
+                loading: loadingAll,
+                failed: Boolean(loadError),
+              })
+            : null
+        }
         intent={intent}
         setIntent={setIntent}
         sub={sub}
@@ -901,13 +973,68 @@ export default function EventsExplorer({
         setCommunicationAccessOnly={setCommunicationAccessOnly}
         recurringOnly={recurringOnly}
         setRecurringOnly={setRecurringOnly}
-        anyFilter={anyFilter}
+        anyFilter={anyActiveControl}
         clear={clear}
         view={view}
         setView={setView}
         sort={sort}
         setSort={setSort}
       />
+
+      {nearMeActive && !deviceOrigin ? (
+        <section
+          role="status"
+          aria-label="Location needed for nearby events"
+          className="flex min-w-0 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
+        >
+          <LocateFixed
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+            style={{ color: "var(--app-brand-press)" }}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              {geolocation.state.status === "denied"
+                ? "Location is blocked for this site."
+                : geolocation.state.status === "unavailable"
+                  ? "This device cannot share a location."
+                  : geolocation.state.status === "error"
+                    ? "Radius could not read your location."
+                    : "Use your location to rank nearby events."}
+            </span>
+            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {geolocation.state.status === "denied"
+                ? "Allow location in your browser, or choose a town under Where."
+                : geolocation.state.status === "unavailable"
+                  ? "Choose a town under Where to narrow the countywide board."
+                  : geolocation.state.status === "error"
+                    ? "Try again, or choose a town under Where."
+                    : "Until then, the board stays countywide and does not claim a distance."}
+            </span>
+          </span>
+          {geolocation.state.status !== "denied" &&
+          geolocation.state.status !== "unavailable" ? (
+            <button
+              type="button"
+              onClick={() => geolocation.request()}
+              disabled={geolocation.state.status === "loading"}
+              className="tap-44-y inline-flex min-h-11 shrink-0 items-center px-1 text-[11px] font-semibold disabled:opacity-55"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              {geolocation.state.status === "loading"
+                ? "Locating…"
+                : geolocation.state.status === "error"
+                  ? "Try again"
+                  : "Use location"}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
 
       {showPrimaryLeadBeforeRail && primaryLead && (
         <div data-events-primary-lead="before-interest">
@@ -1174,10 +1301,15 @@ export default function EventsExplorer({
               summaryCount: summary.horizonCounts[g.key],
               loadedCount: g.events.length,
               dataComplete,
-              anyFilter,
+              anyFilter: contentFilterActive,
               hasLead: Boolean(lead),
               peek: PEEK,
             });
+            // When the sole event in the first horizon has already moved
+            // above the interest rail, do not leave an empty "Today 1"
+            // heading directly above the next horizon. That visual orphan
+            // made Wednesday's first card look mislabeled as today.
+            if (leadMovedBeforeRail && totalRest === 0) return null;
             const preview = rest.slice(0, PEEK);
             const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
@@ -1269,7 +1401,7 @@ export default function EventsExplorer({
           {utilityFiltered.length > 0 && (
             <CollapsibleSection
               title="Civic & meetings"
-              count={!dataComplete && !anyFilter ? summary.utilityCount : utilityFiltered.length}
+              count={!dataComplete && !contentFilterActive ? summary.utilityCount : utilityFiltered.length}
               storageKey="fr.events.civic"
               defaultOpen={false}
               className="[&>button]:min-h-11"

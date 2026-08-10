@@ -15,6 +15,8 @@ describe("BrowsePlacesDisclosure", () => {
     );
 
     expect(html).toContain('data-surface-row="browse"');
+    expect(html).toContain("disabled");
+    expect(html).toContain('aria-busy="true"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('id="browse-places-panel"');
     expect(html).toContain("Category choices");

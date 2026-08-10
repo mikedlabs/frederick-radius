@@ -274,12 +274,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               <li><Link href={`/m/${place.municipality}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{town.name}</Link></li>
             </>
           )}
-          {cat && (
-            <>
-              <li aria-hidden>·</li>
-              <li><Link href={`/category/${place.category}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{cat.name}</Link></li>
-            </>
-          )}
+          {/* Category already appears in the hero pill, the identity line,
+              and the footer's explicit "More …" link. Repeating it here made
+              the first phone screen say the same noun three times before the
+              place name; this crumb now stays a simple place → town path. */}
         </ol>
       </nav>
 

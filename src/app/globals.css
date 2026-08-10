@@ -7887,3 +7887,15 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     bottom: 116px;
   }
 }
+/* A Google photo proxy failure is a 1px transparent signal, not photography.
+   Collapse the candidate hero to the same honest identity band used when no
+   photo exists; the client media component also removes its attribution. */
+[data-place-hero]:has([data-place-photo-failed]) {
+  height: 148px !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+}
+
+[data-place-hero][data-place-hero-size="card"]:has([data-place-photo-failed]) {
+  height: 96px !important;
+}

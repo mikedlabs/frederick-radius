@@ -82,6 +82,8 @@ export type EventsBoardDockProps = {
   categories: { slug: string; name: string }[];
   /** Towns currently available in the Where filter. */
   towns: { slug: string; name: string }[];
+  /** A non-town shared scope such as a consented device location. */
+  whereLabel?: string | null;
 
   // ── Filter state (owned by EventsExplorer; the dock is presentational) ──
   intent: IntentId | null;
@@ -222,6 +224,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     countComplete,
     categories,
     towns,
+    whereLabel = null,
     intent,
     setIntent,
     sub,
@@ -378,11 +381,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const townName = town
     ? MUNICIPALITY_BY_SLUG[town]?.name ?? towns.find((t) => t.slug === town)?.name ?? town
     : null;
-  const whereText = townName ?? "Whole county";
+  const whereText = whereLabel ?? townName ?? "Whole county";
 
   const line = countLine({
     events: filteredCount,
-    townName,
+    townName: whereLabel ?? townName,
     townCount: resultTownCount,
     complete: countComplete,
   });
@@ -395,7 +398,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     goods.length > 0,
   );
   const whenActive = Boolean(day || tod || lens !== "all");
-  const whereActive = Boolean(town);
+  const whereActive = Boolean(town || whereLabel);
   const activeFilterGroups = [whatActive, whenActive, whereActive].filter(Boolean).length;
   const filterSummary =
     [

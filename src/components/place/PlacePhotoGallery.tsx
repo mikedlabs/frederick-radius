@@ -9,6 +9,10 @@ import {
   googlePhotoAttributionForUrl,
 } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import {
+  isPlacePhotoFailureSignal,
+  placePhotoFailureSignalSrc,
+} from "@/components/place/PlaceHeroMedia";
 
 /**
  * PlacePhotoGallery — the full place page's "Photos" rail, made tappable.
@@ -30,34 +34,53 @@ export default function PlacePhotoGallery({
   attributions?: GooglePhotoAttribution[];
   placeGoogleMapsUri?: string;
 }) {
-  const [at, setAt] = useState<number | null>(null);
-  if (!photos || photos.length < 2) return null;
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
+  const availablePhotos = photos.filter((url) => !failedUrls.has(url));
+  const selectedIndex = selectedPhotoIndex(availablePhotos, selectedUrl);
+  if (!photos || availablePhotos.length < 2) return null;
+
+  const markFailed = (url: string) => {
+    setFailedUrls((current) => {
+      if (current.has(url)) return current;
+      const next = new Set(current);
+      next.add(url);
+      return next;
+    });
+  };
 
   return (
     <section className="space-y-2">
       <h2 className="eyebrow">Photos</h2>
       <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
-        {photos.slice(1, 8).map((url, i) => {
+        {availablePhotos.slice(1, 8).map((url, i) => {
           const attribution = googlePhotoAttributionForUrl(url, attributions);
+          const photoSrc = placePhotoFailureSignalSrc(url);
           return (
             <div key={url} className="w-40 shrink-0 space-y-1">
               <button
                 type="button"
-                onClick={() => setAt(i + 1)}
+                onClick={() => setSelectedUrl(url)}
                 aria-label={`View ${name} photo ${i + 2}`}
                 className="relative h-28 w-40 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <Image
-                  src={url}
+                  src={photoSrc}
                   alt=""
                   fill
-                  unoptimized={url.startsWith("/api/place-photo")}
+                  unoptimized={photoSrc.startsWith("/api/place-photo")}
                   loading="lazy"
                   sizes="160px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
+                  onLoad={(event) => {
+                    if (isPlacePhotoFailureSignal(event.currentTarget)) {
+                      markFailed(url);
+                    }
+                  }}
+                  onError={() => markFailed(url)}
                 />
               </button>
               <span className="block truncate px-0.5" style={{ color: "var(--app-ink-3)" }}>
@@ -72,18 +95,31 @@ export default function PlacePhotoGallery({
           );
         })}
       </div>
-      {at !== null && (
+      {selectedIndex !== null && (
         <PhotoLightbox
-          photos={photos}
-          attributions={photos.map((url) => ({
+          key={`${selectedUrl}:${selectedIndex}`}
+          photos={availablePhotos}
+          attributions={availablePhotos.map((url) => ({
             attribution: googlePhotoAttributionForUrl(url, attributions),
             placeGoogleMapsUri,
           }))}
-          startIndex={at}
+          startIndex={selectedIndex}
           alt={name}
-          onClose={() => setAt(null)}
+          onClose={() => setSelectedUrl(null)}
         />
       )}
     </section>
   );
+}
+
+/** Keep lightbox selection attached to an image identity, not a moving array
+ * position. If another thumbnail fails while the lightbox is open, the
+ * selected image either moves safely with the filtered list or closes. */
+export function selectedPhotoIndex(
+  photos: readonly string[],
+  selectedUrl: string | null,
+): number | null {
+  if (!selectedUrl) return null;
+  const index = photos.indexOf(selectedUrl);
+  return index >= 0 ? index : null;
 }

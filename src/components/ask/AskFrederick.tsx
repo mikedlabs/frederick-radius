@@ -443,10 +443,10 @@ function AskSourceCard({
         background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
       }}
     >
-      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
+      <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
         <div
           data-ask-source-media
-          className="relative m-3 mr-0 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
+          className="relative m-3 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
         >
           {displayPhoto && source.photo_url ? (
             <>
@@ -2138,15 +2138,6 @@ export default function AskFrederick({
                     ? "Radius could not copy the question link."
                     : ""}
             </p>
-            {workspace && submittedQuery ? (
-              <p
-                className="mb-3 line-clamp-2 text-[11px] leading-relaxed"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Answering: {submittedQuery}
-              </p>
-            ) : null}
-
             {responseSections.map((section) => {
               if (section === "summary") {
                 return responsePresentation.summary ? (
