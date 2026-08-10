@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import * as maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
-import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "@/lib/map/frederickFlavorStyle";
+import { buildFrederickFlavorStyle } from "@/lib/map/frederickFlavorStyle";
+import { installFrederickMapLibreGlobals } from "@/components/map/useFrederickFlavorStyle";
 
 /**
  * Side-by-side judge's bench for the branded basemap spike (task #36).
@@ -30,9 +30,7 @@ export default function BasemapCompare() {
   useEffect(() => {
     if (!mapboxRef.current || !maplibreRef.current) return;
 
-    ensureMapLibreWorker(maplibregl, window.location.origin);
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
+    installFrederickMapLibreGlobals(window.location.origin);
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
     let a: mapboxgl.Map | null = null;
@@ -47,7 +45,8 @@ export default function BasemapCompare() {
       });
       b = new maplibregl.Map({
         container: maplibreRef.current,
-        style: buildFrederickFlavorStyle(window.location.origin),
+        // POIs on: the other pane is stock Mapbox light, which draws them.
+        style: buildFrederickFlavorStyle(window.location.origin, { pois: true }),
         center: CENTER,
         zoom: ZOOM,
       });
@@ -91,7 +90,6 @@ export default function BasemapCompare() {
     return () => {
       a?.remove();
       b?.remove();
-      maplibregl.removeProtocol("pmtiles");
     };
   }, []);
 

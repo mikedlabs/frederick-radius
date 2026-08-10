@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "@/lib/map/frederickFlavorStyle";
+import { buildFrederickFlavorStyle } from "@/lib/map/frederickFlavorStyle";
+import { installFrederickMapLibreGlobals } from "@/components/map/useFrederickFlavorStyle";
 
 /**
  * Full-viewport preview of the Frederick Radius flavor (task #36).
@@ -22,9 +22,7 @@ export default function FullFlavorPreview() {
 
   useEffect(() => {
     if (!ref.current) return;
-    ensureMapLibreWorker(maplibregl, window.location.origin);
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
+    installFrederickMapLibreGlobals(window.location.origin);
     let map: maplibregl.Map | null = null;
     try {
       map = new maplibregl.Map({
@@ -45,7 +43,6 @@ export default function FullFlavorPreview() {
     }
     return () => {
       map?.remove();
-      maplibregl.removeProtocol("pmtiles");
     };
   }, []);
 

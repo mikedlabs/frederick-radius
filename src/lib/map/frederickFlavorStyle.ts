@@ -36,9 +36,33 @@ export function ensureMapLibreWorker(
   maplibregl.setWorkerUrl(`${origin}/basemap/maplibre-gl-worker.mjs`);
 }
 
+/**
+ * Layers the PRODUCT surfaces drop.
+ *
+ * Every Frederick Radius map draws its own pins — places, events, buses,
+ * trains — and those are the points of interest. A basemap POI dot for the
+ * same restaurant sits underneath the app's pin and reads as a second,
+ * unexplained marker; house numbers do nothing but add noise at the zooms
+ * where pins cluster. The Mapbox palette pass suppressed exactly these
+ * (`poi`, `transit`, `airport`, address labels) and kept place names and
+ * road wayfinding, so the MapLibre flavor keeps the same contract.
+ *
+ * The judging bench opts back IN (`{ pois: true }`): it compares this flavor
+ * against stock Mapbox light, and stripping one pane's labels would make
+ * that comparison a lie.
+ */
+const PRODUCT_SUPPRESSED_LAYERS = new Set(["pois", "address_label"]);
+
 export function buildFrederickFlavorStyle(
   origin: string,
+  { pois = false }: { pois?: boolean } = {},
 ): maplibregl.StyleSpecification {
+  // Cast bridges the duplicated @maplibre/maplibre-gl-style-spec package
+  // (one copy under maplibre-gl, one under @protomaps/basemaps) —
+  // identical spec, nominally distinct types.
+  const flavorLayers = layers("protomaps", FREDERICK_FLAVOR, {
+    lang: "en",
+  }) as unknown as maplibregl.LayerSpecification[];
   return {
     version: 8,
     glyphs: `${origin}/basemap/fonts/{fontstack}/{range}.pbf`,
@@ -51,11 +75,8 @@ export function buildFrederickFlavorStyle(
           '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
       },
     },
-    // Cast bridges the duplicated @maplibre/maplibre-gl-style-spec package
-    // (one copy under maplibre-gl, one under @protomaps/basemaps) —
-    // identical spec, nominally distinct types.
-    layers: layers("protomaps", FREDERICK_FLAVOR, {
-      lang: "en",
-    }) as unknown as maplibregl.LayerSpecification[],
+    layers: pois
+      ? flavorLayers
+      : flavorLayers.filter((layer) => !PRODUCT_SUPPRESSED_LAYERS.has(layer.id)),
   };
 }
