@@ -6,6 +6,29 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.5388,
+          39.480408
+        ]
+      },
+      "properties": {
+        "external_id": "9900cdc91cb00679006ad32ec4235c0a",
+        "incident_type": "special",
+        "description": "I-70 WEST AT HARMONY RD (MM 44.0)",
+        "county": "Frederick",
+        "road": "I-70",
+        "direction": "West",
+        "location": "I-70 WEST AT HARMONY RD (MM 44.0)",
+        "severity": "low",
+        "started_at": "2026-08-10T11:06:49.000Z",
+        "expected_end": null,
+        "source": "mdot_chart"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.35535,
           39.324097
         ]

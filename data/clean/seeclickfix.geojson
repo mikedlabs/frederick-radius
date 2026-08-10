@@ -6,6 +6,50 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.55406049431957,
+          39.358801494692315
+        ]
+      },
+      "properties": {
+        "external_id": "22465126",
+        "summary": "Roadway Tree Maintenance",
+        "description": "When leaving our Copperfield subdivision and trying to see oncoming traffic on MD 180, there is a tree with limbs (located at 3246 Jefferson Pike) blocking the view when looking to the right as leavin",
+        "address": "Copperfield Dr Jefferson, Maryland, 21755",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-10T10:02:44.000Z",
+        "url": "https://seeclickfix.com/issues/22465126",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.507288845958,
+          39.475594339648
+        ]
+      },
+      "properties": {
+        "external_id": "22464618",
+        "summary": "Roadway Mowing Request",
+        "description": "Coming up hill between 8924-8931 Hawbottom Road, left hand side of roadway needs trimming/weeds cut. In fact entire road way needs side of road mowed , from US Route 40 to the end of county maintenanc",
+        "address": "8924 Hawbottom Rd Middletown, MD, 21769, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-10T03:44:10.000Z",
+        "url": "https://seeclickfix.com/issues/22464618",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.4079,
           39.4189
         ]
@@ -15,8 +59,8 @@
         "summary": "Sewer Issue",
         "description": "utility cover covered in concrete",
         "address": "100-198 E 4th St Frederick, Maryland, 21701",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
+        "status": "closed",
+        "status_raw": "Closed",
         "category": "Sewer Issue",
         "reported_at": "2026-08-08T21:33:00.000Z",
         "url": "https://seeclickfix.com/issues/22458466",
@@ -394,50 +438,6 @@
         "category": "Roadway Sign Maintenance",
         "reported_at": "2026-08-06T15:28:37.000Z",
         "url": "https://seeclickfix.com/issues/22439305",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.19841219354348,
-          39.56761452604696
-        ]
-      },
-      "properties": {
-        "external_id": "22438263",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Stop sign at Rabbit Run Terr near Hauck Rd has been damaged. It's still standing but is bent.",
-        "address": "13401 Rabbit Run Ter Union Bridge, Maryland, 21791",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-06T14:20:03.000Z",
-        "url": "https://seeclickfix.com/issues/22438263",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.27802577301767,
-          39.44793199182847
-        ]
-      },
-      "properties": {
-        "external_id": "22438054",
-        "summary": "Roadway Tree Maintenance",
-        "description": "On Chestnut Grove Rd near Route 26. Issue is on the left side of Chestnut Grove Rd as you're traveling towards Frederick city. Bushes and branches near this farm are sticking out so far and is scratch",
-        "address": "Chestnut Grove Rd Frederick, Maryland, 21701",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-06T14:06:53.000Z",
-        "url": "https://seeclickfix.com/issues/22438054",
         "source": "seeclickfix"
       }
     }

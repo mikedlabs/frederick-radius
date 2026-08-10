@@ -1,8 +1,116 @@
 {
   "issues": [
     {
-      "id": 22458466,
+      "id": 22465126,
       "status": "Acknowledged",
+      "summary": "Roadway Tree Maintenance",
+      "description": "When leaving our Copperfield subdivision and trying to see oncoming traffic on MD 180, there is a tree with limbs (located at 3246 Jefferson Pike) blocking the view when looking to the right as leaving our neighborhood.  I've emailed about this before and received a phone call from someone from the county stating that it was a state highway issue.  I contacted the state and was told that the tree wasn't planted in the state right of way, so it wasn't their issue. \n  \nUltimately, the limbs from this tree are BLOCKING the view from a county road (Copperfield Drive) and the limbs need to be trimmed back.  \nI've witnessed more than one occasion this summer with cars attempting to pull onto MD180 from Copperfield Drive and pulling out in front of traffic because they cannot see oncoming traffic from the right due to this issue.  We have 125 homes in this subdivision with many homeowners questioning what can be done about this danger.  \n  \nCan the county please trim the tree branches so that we can safely see oncoming traffic when exiting our neighborhood? \n  \nThank you for your attention to this matter. ",
+      "rating": 2,
+      "lat": 39.358801494692315,
+      "lng": -77.55406049431957,
+      "address": "Copperfield Dr Jefferson, Maryland, 21755",
+      "created_at": "2026-08-10T06:02:44-04:00",
+      "acknowledged_at": "2026-08-10T06:02:48-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-10T06:02:48-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22465126",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.55406049431957,
+          39.358801494692315
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22465126",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40763,
+        "title": "Roadway Tree Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40763",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.358801494692315&lng=-77.55406049431957&request_types=40763&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22465126/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22465126/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 2002133,
+        "name": "Frederick County, MD Neighbor",
+        "role": "Guest",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/2002133",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": null,
+        "image_square_100x100": null,
+        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
+      }
+    },
+    {
+      "id": 22464618,
+      "status": "Acknowledged",
+      "summary": "Roadway Mowing Request",
+      "description": "Coming up hill between 8924-8931 Hawbottom Road, left hand side of roadway needs trimming/weeds cut. In fact entire road way needs side of road mowed , from US Route 40 to the end of county maintenance ",
+      "rating": 2,
+      "lat": 39.475594339648,
+      "lng": -77.507288845958,
+      "address": "8924 Hawbottom Rd Middletown, MD, 21769, USA",
+      "created_at": "2026-08-09T23:44:10-04:00",
+      "acknowledged_at": "2026-08-09T23:44:24-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-09T23:44:24-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22464618",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.507288845958,
+          39.475594339648
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22464618",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40761,
+        "title": "Roadway Mowing Request",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40761",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.475594339648&lng=-77.507288845958&request_types=40761&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22464618/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22464618/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0NTM1MTAsInB1ciI6ImJsb2JfaWQifX0=--d0494824eb674173d829cd3e5fd018ebfb8f1099/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/2946463c-7b80-434c-9999-0bfc7cf52059_2026-08-09T23-34-37-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0NTM1MTAsInB1ciI6ImJsb2JfaWQifX0=--d0494824eb674173d829cd3e5fd018ebfb8f1099/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/2946463c-7b80-434c-9999-0bfc7cf52059_2026-08-09T23-34-37-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM0NTM1MTAsInB1ciI6ImJsb2JfaWQifX0=--d0494824eb674173d829cd3e5fd018ebfb8f1099/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/2946463c-7b80-434c-9999-0bfc7cf52059_2026-08-09T23-34-37-04-00.jpg"
+      }
+    },
+    {
+      "id": 22458466,
+      "status": "Closed",
       "summary": "Sewer Issue",
       "description": "utility cover covered in concrete ",
       "rating": 2,
@@ -11,9 +119,9 @@
       "address": "100-198 E 4th St Frederick, Maryland, 21701",
       "created_at": "2026-08-08T17:33:00-04:00",
       "acknowledged_at": "2026-08-08T17:33:10-04:00",
-      "closed_at": null,
+      "closed_at": "2026-08-10T06:50:17-04:00",
       "reopened_at": null,
-      "updated_at": "2026-08-08T17:33:10-04:00",
+      "updated_at": "2026-08-10T06:50:17-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22458466",
       "point": {
         "type": "Point",
@@ -34,7 +142,9 @@
       },
       "comment_url": "https://seeclickfix.com/api/v2/issues/22458466/comments",
       "flag_url": "https://seeclickfix.com/api/v2/issues/22458466/flag",
-      "transitions": {},
+      "transitions": {
+        "open_url": "https://seeclickfix.com/api/v2/issues/22458466/open"
+      },
       "reporter": {
         "id": 0,
         "name": "An anonymous SeeClickFix user",
@@ -825,7 +935,7 @@
       "acknowledged_at": "2026-08-06T12:17:19-04:00",
       "closed_at": null,
       "reopened_at": null,
-      "updated_at": "2026-08-06T12:17:20-04:00",
+      "updated_at": "2026-08-09T09:10:16-04:00",
       "url": "https://seeclickfix.com/api/v2/issues/22440062",
       "point": {
         "type": "Point",
@@ -975,119 +1085,11 @@
         "image_square_100x100": null,
         "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
       }
-    },
-    {
-      "id": 22438263,
-      "status": "Acknowledged",
-      "summary": "Roadway Sign Maintenance",
-      "description": "Stop sign at Rabbit Run Terr near Hauck Rd has been damaged. It's still standing but is bent.",
-      "rating": 2,
-      "lat": 39.56761452604696,
-      "lng": -77.19841219354348,
-      "address": "13401 Rabbit Run Ter Union Bridge, Maryland, 21791",
-      "created_at": "2026-08-06T10:20:03-04:00",
-      "acknowledged_at": "2026-08-06T10:20:07-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-06T10:20:07-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22438263",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.19841219354348,
-          39.56761452604696
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22438263",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40771,
-        "title": "Roadway Sign Maintenance",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40771",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.56761452604696&lng=-77.19841219354348&request_types=40771&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22438263/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22438263/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 2002133,
-        "name": "Frederick County, MD Neighbor",
-        "role": "Guest",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2002133",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
-    },
-    {
-      "id": 22438054,
-      "status": "Acknowledged",
-      "summary": "Roadway Tree Maintenance",
-      "description": "On Chestnut Grove Rd near Route 26. Issue is on the left side of Chestnut Grove Rd as you're traveling towards Frederick city. Bushes and branches near this farm are sticking out so far and is scratching vehicles as they travel this road. Limbs need to be trimmed to allow full access to road.",
-      "rating": 2,
-      "lat": 39.44793199182847,
-      "lng": -77.27802577301767,
-      "address": "Chestnut Grove Rd Frederick, Maryland, 21701",
-      "created_at": "2026-08-06T10:06:53-04:00",
-      "acknowledged_at": "2026-08-06T10:06:58-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-06T13:40:41-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22438054",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.27802577301767,
-          39.44793199182847
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22438054",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40763,
-        "title": "Roadway Tree Maintenance",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40763",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.44793199182847&lng=-77.27802577301767&request_types=40763&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22438054/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22438054/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 2002133,
-        "name": "Frederick County, MD Neighbor",
-        "role": "Guest",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2002133",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
     }
   ],
   "metadata": {
     "pagination": {
-      "entries": 465,
+      "entries": 467,
       "page": 1,
       "per_page": 20,
       "pages": 24,
