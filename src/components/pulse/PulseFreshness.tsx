@@ -3,13 +3,92 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const AUTO_REFRESH_MS = 2 * 60_000;
+export const PULSE_AUTO_REFRESH_MS = 2 * 60_000;
+const FUTURE_CLOCK_TOLERANCE_MS = 5 * 60_000;
+
+export function pulseSnapshotNeedsRefresh(
+  renderedAt: number,
+  now: number = Date.now(),
+): boolean {
+  if (!Number.isFinite(renderedAt) || !Number.isFinite(now)) return true;
+  const age = now - renderedAt;
+  return age < -FUTURE_CLOCK_TOLERANCE_MS || age >= PULSE_AUTO_REFRESH_MS;
+}
+
+export function formatPulseSnapshotTime(renderedAt: number): string {
+  const date = new Date(renderedAt);
+  if (!Number.isFinite(date.getTime())) return "time unavailable";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+/** A quiet claim expires with the page snapshot. Warning, partial-data, and
+ * active-alert labels remain intact because they are already conservative. */
+export function pulseStatusForSnapshot(
+  status: string,
+  canClaimCurrent: boolean,
+  renderedAt: number,
+  now: number = Date.now(),
+): string {
+  return canClaimCurrent && pulseSnapshotNeedsRefresh(renderedAt, now)
+    ? "Updating"
+    : status;
+}
+
+export function PulseStatusLabel({
+  renderedAt,
+  status,
+  canClaimCurrent,
+  color,
+}: {
+  renderedAt: number;
+  status: string;
+  canClaimCurrent: boolean;
+  color: string;
+}) {
+  // Derive the first value during the server render too. A cached stale page
+  // must not ship "All quiet" to reader mode and then correct itself only
+  // after hydration. The warning suppression covers the narrow case where
+  // the two-minute boundary passes between server render and hydration.
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
+  }, [renderedAt]);
+
+  const label = pulseStatusForSnapshot(
+    status,
+    canClaimCurrent,
+    renderedAt,
+    now,
+  );
+  const updating = label !== status;
+
+  return (
+    <span
+      suppressHydrationWarning
+      aria-live="polite"
+      className="mt-0.5 block text-[12px] font-semibold"
+      style={{ color: updating ? "var(--app-warning)" : color }}
+    >
+      {label}
+    </span>
+  );
+}
 
 /**
  * PulseFreshness — a live "checked Ns ago" counter measured from when the
  * server assembled the page. Individual feeds can be older and show their own
- * timestamps inside the board. It renders NOTHING on the server / first paint (so there's no
- * hydration mismatch), then fills in and counts up.
+ * timestamps inside the board. Before hydration it renders the server's
+ * absolute Eastern timestamp, so reader mode and no-JavaScript visitors still
+ * get a useful freshness marker. The relative counter takes over after mount.
  *
  * This is the small, honest signal the dashboard was missing: visible proof
  * the page is a live read, not a static snapshot. The number climbs until the
@@ -22,7 +101,10 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   const router = useRouter();
 
   useEffect(() => {
-    const tick = () => setSec(Math.max(0, Math.round((Date.now() - renderedAt) / 1000)));
+    const tick = () => {
+      const age = Date.now() - renderedAt;
+      setSec(Number.isFinite(age) ? Math.max(0, Math.round(age / 1000)) : null);
+    };
     tick();
     // A half-minute cadence keeps the counter honest without the nervous
     // second-by-second flicker in the masthead (owner report, 2026-07-18).
@@ -33,10 +115,10 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   useEffect(() => {
     const refreshIfVisible = () => {
       if (document.visibilityState !== "visible") return;
-      if (Date.now() - renderedAt < AUTO_REFRESH_MS) return;
+      if (!pulseSnapshotNeedsRefresh(renderedAt)) return;
       router.refresh();
     };
-    const id = window.setInterval(refreshIfVisible, AUTO_REFRESH_MS);
+    const id = window.setInterval(refreshIfVisible, PULSE_AUTO_REFRESH_MS);
     document.addEventListener("visibilitychange", refreshIfVisible);
     // A cached page can already be older than the refresh window when it
     // mounts. Check once immediately instead of waiting another two minutes.
@@ -48,7 +130,21 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
     };
   }, [renderedAt, router]);
 
-  if (sec === null) return null;
+  if (sec === null) {
+    const renderedDate = new Date(renderedAt);
+    return (
+      <time
+        dateTime={
+          Number.isFinite(renderedDate.getTime())
+            ? renderedDate.toISOString()
+            : undefined
+        }
+        className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums"
+      >
+        As of {formatPulseSnapshotTime(renderedAt)}
+      </time>
+    );
+  }
 
   const label =
     sec < 60
@@ -56,13 +152,14 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
       : sec < 3600
         ? `${Math.floor(sec / 60)}m ago`
         : `${Math.floor(sec / 3600)}h ago`;
+  const needsRefresh = sec * 1000 >= PULSE_AUTO_REFRESH_MS;
 
   // Inherit the surrounding ink: this renders inside the DARK hero eyebrow,
   // where the old hardcoded --app-ink-3 (a light-ground gray) made the one
   // line proving the page is live nearly invisible.
   return (
     <span className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums">
-      Checked {label}
+      {needsRefresh ? `Last checked ${label}` : `Checked ${label}`}
     </span>
   );
 }

@@ -7,24 +7,24 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-08-03 — 1573 places._
+_Generated 2026-08-10 — 1569 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 855 | 682 (80%) | 422 (49%) | 711 (83%) | 713 (83%) | 50 | 298 |
-| Thurmont | 110 | 75 (68%) | 40 (36%) | 100 (91%) | 99 (90%) | 3 | 30 |
-| Brunswick | 97 | 65 (67%) | 32 (33%) | 85 (88%) | 78 (80%) | 2 | 24 |
-| Walkersville | 86 | 66 (77%) | 43 (50%) | 81 (94%) | 78 (91%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 26 (31%) | 72 (85%) | 74 (87%) | 4 | 27 |
-| New Market | 75 | 51 (68%) | 36 (48%) | 62 (83%) | 59 (79%) | 4 | 13 |
-| Mount Airy | 63 | 48 (76%) | 34 (54%) | 58 (92%) | 58 (92%) | 5 | 27 |
-| Emmitsburg | 58 | 40 (69%) | 28 (48%) | 53 (91%) | 52 (90%) | 2 | 18 |
-| Myersville | 46 | 33 (72%) | 14 (30%) | 40 (87%) | 40 (87%) | 2 | 9 |
-| Woodsboro | 37 | 21 (57%) | 15 (41%) | 31 (84%) | 27 (73%) | 1 | 10 |
-| Burkittsville | 30 | 15 (50%) | 9 (30%) | 28 (93%) | 30 (100%) | 2 | 8 |
-| Urbana | 29 | 20 (69%) | 14 (48%) | 23 (79%) | 25 (86%) | 2 | 9 |
+| Frederick | 852 | 678 (80%) | 630 (74%) | 709 (83%) | 709 (83%) | 50 | 295 |
+| Thurmont | 110 | 75 (68%) | 66 (60%) | 100 (91%) | 99 (90%) | 3 | 30 |
+| Brunswick | 97 | 65 (67%) | 57 (59%) | 85 (88%) | 78 (80%) | 2 | 24 |
+| Walkersville | 86 | 66 (77%) | 64 (74%) | 81 (94%) | 78 (91%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 50 (59%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| New Market | 75 | 51 (68%) | 47 (63%) | 62 (83%) | 59 (79%) | 4 | 13 |
+| Mount Airy | 63 | 48 (76%) | 45 (71%) | 58 (92%) | 58 (92%) | 5 | 27 |
+| Emmitsburg | 58 | 40 (69%) | 38 (66%) | 53 (91%) | 52 (90%) | 2 | 18 |
+| Myersville | 46 | 33 (72%) | 31 (67%) | 40 (87%) | 40 (87%) | 2 | 9 |
+| Woodsboro | 36 | 20 (56%) | 19 (53%) | 30 (83%) | 26 (72%) | 1 | 10 |
+| Burkittsville | 30 | 15 (50%) | 14 (47%) | 28 (93%) | 30 (100%) | 2 | 8 |
+| Urbana | 29 | 20 (69%) | 22 (76%) | 23 (79%) | 25 (86%) | 2 | 9 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1573** | 1168 (74%) | 713 (45%) | 1345 (86%) | 1334 (85%) | **79** | **503** |
+| **Total** | **1569** | 1163 (74%) | 1083 (69%) | 1342 (86%) | 1329 (85%) | **79** | **500** |
 
 ## Coverage by category
 
@@ -34,47 +34,47 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Shopping | 192 | 111 (57.8%) | 162 (84.4%) | 0 (0%) | 183 (95.3%) |
-| Churches & worship | 161 | 49 (30.4%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
-| Services | 52 | 24 (46.2%) | 38 (73.1%) | 0 (0%) | 50 (96.2%) |
-| Yoga & fitness | 41 | 16 (39%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
-| Salon & barber | 28 | 14 (50%) | 23 (82.1%) | 0 (0%) | 27 (96.4%) |
-| Massage | 18 | 9 (50%) | 15 (83.3%) | 0 (0%) | 18 (100%) |
-| Antiques | 15 | 7 (46.7%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
-| Playgrounds | 13 | 4 (30.8%) | 8 (61.5%) | 0 (0%) | 6 (46.2%) |
-| Spas | 12 | 6 (50%) | 11 (91.7%) | 0 (0%) | 11 (91.7%) |
+| Shopping | 191 | 159 (83.2%) | 161 (84.3%) | 0 (0%) | 180 (94.2%) |
+| Churches & worship | 161 | 81 (50.3%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
+| Services | 52 | 38 (73.1%) | 38 (73.1%) | 0 (0%) | 48 (92.3%) |
+| Yoga & fitness | 41 | 27 (65.9%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
+| Salon & barber | 27 | 22 (81.5%) | 22 (81.5%) | 0 (0%) | 26 (96.3%) |
+| Massage | 18 | 17 (94.4%) | 15 (83.3%) | 0 (0%) | 18 (100%) |
+| Antiques | 15 | 13 (86.7%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
+| Playgrounds | 13 | 4 (30.8%) | 8 (61.5%) | 0 (0%) | 5 (38.5%) |
+| Spas | 12 | 9 (75%) | 11 (91.7%) | 0 (0%) | 11 (91.7%) |
 | Parking | 10 | 0 (0%) | 7 (70%) | 2 (20%) | 10 (100%) |
-| Distilleries | 8 | 3 (37.5%) | 7 (87.5%) | 0 (0%) | 8 (100%) |
-| Government | 7 | 5 (71.4%) | 5 (71.4%) | 0 (0%) | 7 (100%) |
+| Distilleries | 8 | 5 (62.5%) | 7 (87.5%) | 0 (0%) | 8 (100%) |
+| Government | 7 | 6 (85.7%) | 5 (71.4%) | 0 (0%) | 7 (100%) |
 | Public safety | 5 | 0 (0%) | 4 (80%) | 0 (0%) | 5 (100%) |
-| Pharmacies | 3 | 2 (66.7%) | 3 (100%) | 0 (0%) | 3 (100%) |
+| Pharmacies | 3 | 3 (100%) | 3 (100%) | 0 (0%) | 3 (100%) |
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Wellness | 134 | 79 (59%) | 108 (80.6%) | 3 (2.2%) | 132 (98.5%) |
-| Civic & public | 75 | 23 (30.7%) | 62 (82.7%) | 2 (2.7%) | 69 (92%) |
-| Galleries | 27 | 6 (22.2%) | 23 (85.2%) | 1 (3.7%) | 27 (100%) |
-| Live music | 23 | 2 (8.7%) | 20 (87%) | 1 (4.3%) | 22 (95.7%) |
-| Farms & pick-your-own | 22 | 5 (22.7%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
+| Wellness | 133 | 105 (78.9%) | 107 (80.5%) | 3 (2.3%) | 131 (98.5%) |
+| Civic & public | 75 | 39 (52%) | 62 (82.7%) | 2 (2.7%) | 66 (88%) |
+| Galleries | 27 | 14 (51.9%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
+| Live music | 23 | 6 (26.1%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
+| Farms & pick-your-own | 22 | 9 (40.9%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Lodging | 34 | 2 (5.9%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
-| Libraries | 14 | 5 (35.7%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
-| Bakeries | 37 | 17 (45.9%) | 34 (91.9%) | 3 (8.1%) | 34 (91.9%) |
-| Bars | 24 | 13 (54.2%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
-| Book stores | 12 | 5 (41.7%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
-| Theaters | 12 | 3 (25%) | 11 (91.7%) | 1 (8.3%) | 10 (83.3%) |
-| Golf | 7 | 2 (28.6%) | 3 (42.9%) | 6 (85.7%) | 1 (14.3%) |
-| Ice cream & treats | 28 | 23 (82.1%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
-| Trails | 22 | 3 (13.6%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
-| Parks | 138 | 43 (31.2%) | 120 (87%) | 16 (11.6%) | 100 (72.5%) |
-| Coffee | 41 | 20 (48.8%) | 36 (87.8%) | 5 (12.2%) | 35 (85.4%) |
-| Family | 39 | 22 (56.4%) | 32 (82.1%) | 6 (15.4%) | 39 (100%) |
-| Pizza | 18 | 8 (44.4%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
-| Restaurants | 175 | 110 (62.9%) | 160 (91.4%) | 34 (19.4%) | 168 (96%) |
+| Libraries | 14 | 11 (78.6%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
+| Bakeries | 36 | 29 (80.6%) | 33 (91.7%) | 3 (8.3%) | 33 (91.7%) |
+| Bars | 24 | 22 (91.7%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
+| Book stores | 12 | 10 (83.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
+| Theaters | 12 | 9 (75%) | 11 (91.7%) | 1 (8.3%) | 10 (83.3%) |
+| Golf | 7 | 3 (42.9%) | 3 (42.9%) | 6 (85.7%) | 1 (14.3%) |
+| Ice cream & treats | 28 | 26 (92.9%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
+| Parks | 137 | 70 (51.1%) | 119 (86.9%) | 16 (11.7%) | 99 (72.3%) |
+| Coffee | 41 | 31 (75.6%) | 36 (87.8%) | 5 (12.2%) | 35 (85.4%) |
+| Trails | 22 | 4 (18.2%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
+| Family | 39 | 31 (79.5%) | 32 (82.1%) | 6 (15.4%) | 39 (100%) |
+| Pizza | 18 | 17 (94.4%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
+| Restaurants | 175 | 163 (93.1%) | 160 (91.4%) | 34 (19.4%) | 168 (96%) |
 | Museums | 18 | 8 (44.4%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
-| Markets | 57 | 31 (54.4%) | 54 (94.7%) | 20 (35.1%) | 56 (98.2%) |
-| Breweries | 16 | 10 (62.5%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
+| Markets | 58 | 54 (93.1%) | 54 (93.1%) | 20 (34.5%) | 57 (98.3%) |
+| Breweries | 16 | 13 (81.3%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
 | Tours & rides | 2 | 1 (50%) | 1 (50%) | 2 (100%) | 2 (100%) |
-| Auto care | 16 | 12 (75%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
-| Wineries | 14 | 10 (71.4%) | 14 (100%) | 11 (78.6%) | 14 (100%) |
+| Auto care | 16 | 9 (56.3%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
+| Wineries | 14 | 13 (92.9%) | 14 (100%) | 11 (78.6%) | 14 (100%) |
 
 ## Hours refresh artifact
 
@@ -84,30 +84,30 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1487 |
-| Snapshot rows | 1082 |
-| Rows matched to the public set | 1060 |
-| Rows carrying a schedule | 831 |
-| Rows refreshed within policy, including status-only results | 965 (64.9%) |
-| Rows fresh within policy | 756 (50.8%) |
-| 6-day cycle state | stalled |
-| Cycle buckets meeting the minimum write ratio | 3 / 6 |
-| Stale rows | 75 |
+| Public Google-backed places expected in the 6-day cycle | 1483 |
+| Snapshot rows | 1522 |
+| Rows matched to the public set | 1482 |
+| Rows carrying a schedule | 1158 |
+| Rows refreshed within policy, including status-only results | 1482 (99.9%) |
+| Rows fresh within policy | 1158 (78.1%) |
+| 6-day cycle state | healthy |
+| Cycle buckets meeting the minimum write ratio | 6 / 6 |
+| Stale rows | 0 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 22 |
+| Unmatched rows | 40 |
 
-Oldest refresh: 2026-07-27T12:49:47.617Z. Newest refresh: 2026-08-01T08:00:33.740Z.
+Oldest refresh: 2026-08-05T08:01:39.259Z. Newest refresh: 2026-08-10T08:00:25.290Z.
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
 | 0 | 273 | 273 | 221 | yes |
 | 1 | 208 | 208 | 168 | yes |
 | 2 | 274 | 273 | 204 | yes |
-| 3 | 261 | 83 | 68 | no |
-| 4 | 244 | 67 | 46 | no |
-| 5 | 227 | 61 | 49 | no |
+| 3 | 259 | 259 | 210 | yes |
+| 4 | 243 | 243 | 183 | yes |
+| 5 | 226 | 226 | 172 | yes |
 
-**Stalled:** missing cycle days none; underfilled cycle days 3, 4, 5. Check the Vercel writer before the next pull.
+Every cycle bucket meets the writer's minimum persistence ratio.
 
 Live recovery path:
 

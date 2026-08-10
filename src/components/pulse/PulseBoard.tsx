@@ -32,7 +32,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import PulseFreshness from "@/components/pulse/PulseFreshness";
+import PulseFreshness, {
+  PulseStatusLabel,
+} from "@/components/pulse/PulseFreshness";
 import { track } from "@/lib/track";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -1129,9 +1131,12 @@ export default function PulseBoard({
                 >
                   Frederick Pulse
                 </span>
-                <span className="mt-0.5 block text-[12px] font-semibold" style={{ color: heroColor }}>
-                  {statusWord}
-                </span>
+                <PulseStatusLabel
+                  renderedAt={hero.renderedAt}
+                  status={statusWord}
+                  canClaimCurrent={hero.allClear && !degraded}
+                  color={heroColor}
+                />
               </span>
             </div>
             <PulseFreshness renderedAt={hero.renderedAt} />

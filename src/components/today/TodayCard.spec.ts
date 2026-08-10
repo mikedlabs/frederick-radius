@@ -3,11 +3,18 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   compactWeatherRead,
+  sentenceCaseForecast,
   TODAY_SAFETY_GLANCE_DEADLINE_MS,
   WeatherUnavailable,
 } from "./TodayCard";
 
 describe("TodayCard fallback", () => {
+  it("presents the NWS short forecast as natural sentence case", () => {
+    expect(sentenceCaseForecast("Chance Showers And Thunderstorms")).toBe(
+      "Chance showers and thunderstorms",
+    );
+  });
+
   it("gives a cold safety read time to resolve without stalling the page", () => {
     expect(TODAY_SAFETY_GLANCE_DEADLINE_MS).toBeGreaterThanOrEqual(2_000);
     expect(TODAY_SAFETY_GLANCE_DEADLINE_MS).toBeLessThanOrEqual(3_000);

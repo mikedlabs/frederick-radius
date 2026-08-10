@@ -42,6 +42,7 @@ import {
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
+import { anchorEventToReviewedVenue } from "@/lib/events/venue-resolver";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { meterUsage } from "@/lib/usage-meter";
 
@@ -241,12 +242,16 @@ function addressCandidate(e: EventWithMeta): string | null {
  * never per user request.
  */
 export async function upgradeEventGeoms(events: EventWithMeta[]): Promise<EventWithMeta[]> {
-  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return events;
+  // Resolve known places before spending money on address geocoding. The
+  // resolver is deliberately exact/reviewed-only and also stamps the canonical
+  // venue slug, so every surface sees one venue identity and one coordinate.
+  const anchored = events.map((event) => anchorEventToReviewedVenue(event));
+  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return anchored;
 
   // Collect unique geocode candidates (insertion order = event order).
   const wanted = new Map<string, { address: string; town?: string }>();
   const keyByIndex = new Map<number, string>();
-  events.forEach((e, i) => {
+  anchored.forEach((e, i) => {
     const address = addressCandidate(e);
     if (!address) return;
     const town = e.municipality_name || undefined;
@@ -255,7 +260,7 @@ export async function upgradeEventGeoms(events: EventWithMeta[]): Promise<EventW
     keyByIndex.set(i, key);
     if (!wanted.has(key)) wanted.set(key, { address, town });
   });
-  if (wanted.size === 0) return events;
+  if (wanted.size === 0) return anchored;
 
   const unique = [...wanted.entries()];
   const budgeted = unique.slice(0, MAX_GEOCODES_PER_PASS);
@@ -276,9 +281,9 @@ export async function upgradeEventGeoms(events: EventWithMeta[]): Promise<EventW
       if (coord) resolved.set(key, coord);
     }),
   );
-  if (resolved.size === 0) return events;
+  if (resolved.size === 0) return anchored;
 
-  return events.map((e, i) => {
+  return anchored.map((e, i) => {
     const key = keyByIndex.get(i);
     const coord = key ? resolved.get(key) : undefined;
     if (!coord) return e;

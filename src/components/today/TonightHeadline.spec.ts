@@ -40,9 +40,11 @@ describe("TonightHeadline", () => {
       }),
     );
 
-    // municipality "frederick" carries the downtown label everywhere on
-    // Today; the headline must not undo the shared eventTown mapping.
-    expect(html).toContain("Downtown Frederick");
+    // A City-of-Frederick municipality value does not prove an event is
+    // downtown. The headline must use the same honest eventTown label as the
+    // program rows instead of adding a neighborhood claim.
+    expect(html).toContain("Sky Stage · Frederick");
+    expect(html).not.toContain("Downtown Frederick");
   });
 
   it("keeps a long title readable and untruncated on narrow screens", () => {

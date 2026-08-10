@@ -5,7 +5,10 @@ import {
   looksLikeStreetAddress,
   normalizeAddressKey,
   parseGeocodeResponse,
+  upgradeEventGeoms,
 } from "@/lib/integrations/mapboxGeocode";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import type { EventWithMeta } from "@/lib/loaders/events";
 
 function v6Response(
   lng: number,
@@ -90,6 +93,28 @@ describe("normalizeAddressKey", () => {
     const b = normalizeAddressKey("123  MAIN ST Frederick MD 21701");
     expect(a).toBe(b);
     expect(a).toBe("123 main st frederick md 21701");
+  });
+});
+
+describe("upgradeEventGeoms reviewed venue anchor", () => {
+  it("anchors an exact venue identity before any paid geocode", async () => {
+    const venue = clientPlaceBySlug("weinberg-center-for-the-arts-frederick");
+    expect(venue).toBeTruthy();
+    const input = {
+      slug: "test-show",
+      title: "Test show",
+      venue_name: "Weinberg Center for the Arts",
+      address: "",
+      geom: { lng: -77.41, lat: 39.41 },
+      geo_confidence: "area",
+      attendance_mode: "physical",
+    } as EventWithMeta;
+
+    const [out] = await upgradeEventGeoms([input]);
+    expect(out.venue_place_slug).toBe(venue?.slug);
+    expect(out.geom).toEqual(venue?.geom);
+    expect(out.placement).toBe("venue");
+    expect(out.geo_confidence).toBe("venue_match");
   });
 });
 

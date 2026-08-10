@@ -2751,8 +2751,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-face { position: relative; z-index: 1; padding: 15px 17px 16px; }
 .sw-card.is-open .sw-face { min-height: 104px; }
 .sw-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.sw-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sw-brand {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  color: inherit; text-decoration: none; border-radius: 8px;
+}
+.sw-brand:focus-visible, .sw-disclosure:focus-visible {
+  outline: 2px solid var(--app-ink-inverse); outline-offset: 3px;
+}
 .sw-brand svg { flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.sw-card-summary { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.sw-disclosure {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  margin: -9px -9px -9px 0; border: 0; border-radius: 50%;
+  background: rgba(255,255,255,.1); color: inherit; cursor: pointer;
+}
+.sw-disclosure svg { transition: transform .2s ease; }
+.sw-disclosure[aria-expanded="true"] svg { transform: rotate(180deg); }
 .sw-name {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-size: 18px;
@@ -2894,6 +2908,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .sw-card.is-open::before { animation: none; }
   .sw-card.is-open .sw-facebody, .sw-card.is-open .sw-stub { animation: none; }
   .sw-dot { animation: none; }
+  .sw-disclosure svg { transition: none; }
 }
 
 /* ============================================================================
@@ -2909,7 +2924,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sv-stand {
   margin-top: 5px; font-family: var(--font-mono, monospace); font-size: 10.5px;
-  letter-spacing: .09em; text-transform: uppercase; color: var(--app-ink-3);
+  max-width: 30rem; letter-spacing: .09em; line-height: 1.45;
+  text-transform: uppercase; color: var(--app-ink-3);
 }
 .sv-stand em { font-style: normal; color: var(--app-ink-2); }
 .sv-gear {

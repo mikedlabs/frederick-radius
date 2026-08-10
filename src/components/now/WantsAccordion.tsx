@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarCheck,
@@ -53,8 +53,31 @@ import { WANTS, type WantSub } from "@/data/wants";
 import { GLYPHS } from "@/components/glyphs";
 import { prefetchWant } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
+import {
+  getScope,
+  subscribeScopeChange,
+  type Scope,
+} from "@/lib/scope";
 import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
 import WantAnswerPanel from "./WantAnswerPanel";
+import {
+  resolveWantBrowseScope,
+  withWantBrowseScope,
+} from "./wantBrowseScope";
+
+const DEFAULT_WANT_BROWSE_SCOPE: Scope = "nearme";
+
+function wantBrowseScopeSnapshot(): Scope {
+  return resolveWantBrowseScope(getScope());
+}
+
+function wantBrowseScopeServerSnapshot(): Scope {
+  return DEFAULT_WANT_BROWSE_SCOPE;
+}
+
+function subscribeWantBrowseScope(listener: () => void): () => void {
+  return subscribeScopeChange(() => listener());
+}
 
 /**
  * A /nearby?c= craving OR a /category/<slug> chip answers INLINE (the
@@ -144,6 +167,11 @@ export default function WantsAccordion({
 }) {
   const router = useRouter();
   const [openKey, setOpenKey] = useState<string>(defaultOpen);
+  const browseScope = useSyncExternalStore(
+    subscribeWantBrowseScope,
+    wantBrowseScopeSnapshot,
+    wantBrowseScopeServerSnapshot,
+  );
   // The inline answer: which /nearby-style want is expanded below the chips.
   // Label rides along so the panel header paints before the fetch lands.
   const [answer, setAnswer] = useState<{ c: string; facet: string | null; label: string } | null>(
@@ -169,10 +197,11 @@ export default function WantsAccordion({
       setOpenKey(savedWant);
     }
   }, [savedWant]);
-  // Keep the native/new-tab URL unpinned. /nearby resolves the canonical
-  // scope cookie first and the home preference second, so normal clicks and
-  // modified/no-JS clicks cannot answer from different towns.
-  const hrefFor = (href: string): string => href;
+  // Inline /nearby answers resolve their own canonical context. Map shortcuts
+  // need the same deliberate town/county handoff in their URL so a static
+  // `in=nearme` default cannot replace the area shown in the nav.
+  const hrefFor = (href: string): string =>
+    withWantBrowseScope(href, browseScope);
 
   const openCat = WANTS.find((c) => c.key === openKey) ?? WANTS[0];
   const accent = openCat.color;

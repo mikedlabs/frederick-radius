@@ -44,6 +44,7 @@ type WantRow = {
   detail: string | null;
   tip: string | null;
   deal: string | null;
+  why?: string[];
   action?: {
     label: string;
     href: string;
@@ -127,6 +128,16 @@ function matchScopePhrase(label: string): string {
   return `for ${label}`;
 }
 
+/** The hours line already states availability. Use the next differentiating
+ * reason in the visible hero so explainability does not become repetition. */
+function visibleHeroReason(row: WantRow): string | null {
+  return (
+    row.why?.find(
+      (reason) => !/^Its current hours show it open now\.$/.test(reason),
+    ) ?? null
+  );
+}
+
 export default function WantAnswerPanel({
   cKey,
   facet,
@@ -148,6 +159,7 @@ export default function WantAnswerPanel({
   const { openSheet } = usePlaceSheet();
   const router = useRouter();
   const likelyAnswer = answer?.hero?.confidence === "likely";
+  const heroReason = answer?.hero ? visibleHeroReason(answer.hero) : null;
   const modeLabel =
     cKey === "movies"
       ? "showtimes"
@@ -343,6 +355,14 @@ export default function WantAnswerPanel({
                     <span style={{ color: "var(--app-ink-3)" }}> · {answer.hero.distance}</span>
                   ) : null}
                 </span>
+                {heroReason && (
+                  <span
+                    className="mt-1 block truncate text-[11.5px] leading-snug"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {heroReason}
+                  </span>
+                )}
                 {answer.hero.tip && (
                   <span className="mt-1.5 flex gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                     <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />

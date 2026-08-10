@@ -140,6 +140,7 @@ export default function MapList({
   events,
   userLoc,
   sortOrigin,
+  failureMode = false,
   onPick,
   onPickEvent,
 }: {
@@ -149,17 +150,23 @@ export default function MapList({
   /** Ranking origin when a precise user fix is unavailable. The map center
    *  keeps the list synchronized with the area the reader just panned to. */
   sortOrigin?: LngLat | null;
+  /** The WebGL recovery surface is intentionally short and varied. It must
+   * not turn a graphics failure into a 200-row directory. */
+  failureMode?: boolean;
   onPick: (place: MapPinPlace) => void;
   onPickEvent: (event: EventPin) => void;
 }) {
   const effectiveOrigin = userLoc ?? sortOrigin ?? null;
   const rows = useMemo(
-    () => rankMapListPlaces(places, effectiveOrigin),
-    [places, effectiveOrigin],
+    () =>
+      failureMode
+        ? rankMapFallbackPlaces(places, effectiveOrigin)
+        : rankMapListPlaces(places, effectiveOrigin),
+    [places, effectiveOrigin, failureMode],
   );
   const eventRows = useMemo(
-    () => rankMapListEvents(events, effectiveOrigin),
-    [events, effectiveOrigin],
+    () => rankMapListEvents(events, effectiveOrigin, failureMode ? 6 : 40),
+    [events, effectiveOrigin, failureMode],
   );
   const empty = rows.length === 0 && eventRows.length === 0;
 
@@ -177,7 +184,11 @@ export default function MapList({
           {" "}in this view
         </span>
         <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-          {userLoc ? "Nearest to you" : "Nearest map center"}
+          {userLoc
+            ? "Nearest to you"
+            : failureMode
+              ? "Strongest matches"
+              : "Nearest map center"}
         </span>
       </div>
       {empty ? (
@@ -331,6 +342,37 @@ export function rankMapListPlaces(
         (b.feature_score ?? 0) - (a.feature_score ?? 0),
     )
     .slice(0, limit);
+}
+
+/**
+ * A bounded, varied recovery list for browsers that cannot render Mapbox.
+ * Start from the normal honest ranking, then prevent one broad category from
+ * consuming the whole first screen. A second pass fills any remaining slots,
+ * so thin result sets are never hidden just to satisfy diversity.
+ */
+export function rankMapFallbackPlaces(
+  places: MapPinPlace[],
+  origin: LngLat | null,
+  limit = 12,
+): MapPinPlace[] {
+  const ranked = rankMapListPlaces(places, origin, places.length);
+  const selected: MapPinPlace[] = [];
+  const selectedSlugs = new Set<string>();
+  const categoryCounts = new Map<string, number>();
+
+  for (const place of ranked) {
+    if ((categoryCounts.get(place.category) ?? 0) >= 2) continue;
+    selected.push(place);
+    selectedSlugs.add(place.slug);
+    categoryCounts.set(place.category, (categoryCounts.get(place.category) ?? 0) + 1);
+    if (selected.length >= limit) return selected;
+  }
+  for (const place of ranked) {
+    if (selectedSlugs.has(place.slug)) continue;
+    selected.push(place);
+    if (selected.length >= limit) break;
+  }
+  return selected;
 }
 
 /** Events in the visible map area lead by start time. Distance only breaks a
