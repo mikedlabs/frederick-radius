@@ -8,7 +8,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
-import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "./flavorStyle";
+import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "@/lib/map/frederickFlavorStyle";
 
 /**
  * Side-by-side judge's bench for the branded basemap spike (task #36).

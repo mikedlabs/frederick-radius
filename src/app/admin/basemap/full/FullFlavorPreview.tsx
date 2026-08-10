@@ -5,7 +5,7 @@ import Link from "next/link";
 import * as maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "../flavorStyle";
+import { buildFrederickFlavorStyle, ensureMapLibreWorker } from "@/lib/map/frederickFlavorStyle";
 
 /**
  * Full-viewport preview of the Frederick Radius flavor (task #36).

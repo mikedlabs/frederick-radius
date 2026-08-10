@@ -41,8 +41,8 @@ export function buildFrederickFlavorStyle(
 ): maplibregl.StyleSpecification {
   return {
     version: 8,
-    glyphs: `${origin}/admin/basemap/assets/fonts/{fontstack}/{range}.pbf`,
-    sprite: `${origin}/admin/basemap/assets/sprites/v4/light`,
+    glyphs: `${origin}/basemap/fonts/{fontstack}/{range}.pbf`,
+    sprite: `${origin}/basemap/sprites/v4/light`,
     sources: {
       protomaps: {
         type: "vector",

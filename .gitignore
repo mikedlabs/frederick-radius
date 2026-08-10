@@ -122,3 +122,7 @@ scripts/reports/
 # scripts/fetch-basemap.mjs (pinned Protomaps build + bbox). Tracking it
 # would rewrite the whole blob on every refresh; the repo-size gate says no.
 public/basemap/frederick-county.pmtiles
+# Basemap style assets: sprites + glyph ranges, fetched at build time beside
+# the county extract by scripts/fetch-basemap.mjs. Never tracked.
+public/basemap/fonts/
+public/basemap/sprites/
