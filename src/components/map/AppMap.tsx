@@ -442,11 +442,13 @@ export default function AppMap({
   const routeSearchParams = useSearchParams();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
   const [resultScope, setResultScope] = useState<Scope>(() =>
-    parseScope(routeScopeParam) ?? "county",
+    parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
   );
   useEffect(() => {
-    setResultScope(parseScope(routeScopeParam) ?? "county");
-  }, [routeScopeParam]);
+    setResultScope(
+      parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
+    );
+  }, [isBrowseMap, routeScopeParam]);
   useEffect(
     () =>
       subscribeScopeChange((nextScope) =>
@@ -520,7 +522,7 @@ export default function AppMap({
   const [autoFitNearbyScope] = useState(
     () =>
       isBrowseMap &&
-      parseScope(routeScopeParam) === "nearme" &&
+      (parseScope(routeScopeParam) ?? getScope()) === "nearme" &&
       recenterToKnownLocation,
   );
   // A pooled Mapbox instance can emit the camera it retained from an older

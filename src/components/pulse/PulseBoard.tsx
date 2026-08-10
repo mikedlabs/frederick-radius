@@ -626,11 +626,13 @@ function PulseSmartBlock({
   onOpen,
   index,
   bankKey,
+  wideMobile = false,
 }: {
   tile: PulseTile;
   onOpen: () => void;
   index: number;
   bankKey: string;
+  wideMobile?: boolean;
 }) {
   const state = pulseTileState(tile);
   const unavailable = state === "Feed unavailable";
@@ -646,7 +648,7 @@ function PulseSmartBlock({
   return (
     <li
       data-pulse-bank-item={bankKey}
-      className={`min-w-0${tile.kind === "feature" ? " col-span-2 sm:col-span-1" : ""}`}
+      className={`min-w-0${tile.kind === "feature" || wideMobile ? " col-span-2 sm:col-span-1" : ""}`}
     >
       <button
         type="button"
@@ -845,10 +847,43 @@ export function nameListSentence(names: readonly string[]): string {
 export function secondarySignalsHeadline(
   partialCount: number,
   unavailableCount: number,
+  notConnectedCount = 0,
 ): string {
-  if (unavailableCount > 0) return "Some checks are unavailable";
-  if (partialCount > 0) return "Some checks are incomplete";
-  return "Nothing reported";
+  if (unavailableCount > 0) return "Some source checks are unavailable";
+  if (partialCount > 0) return "Some source checks are incomplete";
+  if (notConnectedCount > 0) return "Some sources are not connected";
+  return "Other source checks";
+}
+
+/** Keep the collapsed source strip honest and brief. Naming every quiet feed
+ * beside an active alert made unrelated source states read like a rebuttal of
+ * the alert above. The individual names remain available after expansion. */
+export function secondarySignalsSummary(
+  totalCount: number,
+  partialCount: number,
+  unavailableCount: number,
+  notConnectedCount = 0,
+): string {
+  const incompleteCount = partialCount + unavailableCount;
+  const details: string[] = [];
+  if (incompleteCount > 0) {
+    const connectedCount = Math.max(0, totalCount - notConnectedCount);
+    details.push(
+      `${incompleteCount} of ${connectedCount} ${notConnectedCount > 0 ? "connected " : ""}${connectedCount === 1 ? "check did" : "checks did"} not return complete data.`,
+    );
+  }
+  if (notConnectedCount > 0)
+    details.push(`${notConnectedCount} ${notConnectedCount === 1 ? "source is" : "sources are"} not connected.`);
+  if (details.length > 0) return `${details.join(" ")} Open for source details.`;
+  return `${totalCount} ${totalCount === 1 ? "supporting check has" : "supporting checks have"} no additional active report.`;
+}
+
+/** A single compact measurement should not leave an accidental blank seat on
+ * a two-column phone grid. Wider viewports return to their natural columns. */
+export function pulseWideReadingKeys(tiles: readonly PulseTile[]): Set<string> {
+  const compactTiles = tiles.filter((tile) => tile.kind !== "feature");
+  if (compactTiles.length % 2 === 0) return new Set();
+  return new Set([compactTiles[compactTiles.length - 1].key]);
 }
 
 function SecondarySignals({
@@ -862,29 +897,13 @@ function SecondarySignals({
   const partial = updates.filter(
     (tile) => pulseTileState(tile) === "Partial data",
   );
-  const unavailable = updates.filter((tile) => {
-    const state = pulseTileState(tile);
-    return state === "Feed unavailable" || state === "Not connected";
-  });
-  const degraded = [...partial, ...unavailable];
-  const quiet = updates.filter((tile) => !degraded.includes(tile));
-
-  // Names, not a count. "12 sources are quiet" made a reader open the strip
-  // just to learn whether the thing they cared about was in it; naming the
-  // sources answers that from the closed state. The set is short by
-  // construction now that the ambient readings live on the open board.
-  const quietSentence =
-    quiet.length > 0
-      ? `${nameListSentence(quiet.map((tile) => tile.label))} ${quiet.length === 1 ? "is" : "are"} quiet.`
-      : null;
-  const partialSentence =
-    partial.length > 0
-      ? `${nameListSentence(partial.map((tile) => tile.label))} returned partial data.`
-      : null;
-  const unavailableSentence =
-    unavailable.length > 0
-      ? `${nameListSentence(unavailable.map((tile) => tile.label))} could not be checked right now.`
-      : null;
+  const unavailable = updates.filter(
+    (tile) => pulseTileState(tile) === "Feed unavailable",
+  );
+  const notConnected = updates.filter(
+    (tile) => pulseTileState(tile) === "Not connected",
+  );
+  const degraded = [...partial, ...unavailable, ...notConnected];
 
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
@@ -913,12 +932,19 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {secondarySignalsHeadline(partial.length, unavailable.length)}
+              {secondarySignalsHeadline(
+                partial.length,
+                unavailable.length,
+                notConnected.length,
+              )}
             </span>
             <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {[quietSentence, partialSentence, unavailableSentence]
-                .filter(Boolean)
-                .join(" ")}
+              {secondarySignalsSummary(
+                updates.length,
+                partial.length,
+                unavailable.length,
+                notConnected.length,
+              )}
             </span>
           </span>
           <ChevronDown
@@ -1061,6 +1087,7 @@ export default function PulseBoard({
     leadKey: hero.leadKey,
     summarizedKeys,
   });
+  const wideReadingKeys = pulseWideReadingKeys(displayGroups.readings);
   const attention = displayGroups.attention;
   const quietSignals = displayGroups.quiet;
   const attentionCount = attention.length + attentionChips.length + (showAlertData ? 1 : 0);
@@ -1211,6 +1238,7 @@ export default function PulseBoard({
                   tile={tile}
                   bankKey="readings"
                   index={index}
+                  wideMobile={wideReadingKeys.has(tile.key)}
                   onOpen={() => openTile(tile.key)}
                 />
               ))}

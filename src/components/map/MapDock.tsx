@@ -18,7 +18,15 @@ import { formatDistance, type LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
-import { parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import {
+  getScope,
+  parseScope,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
 import { track } from "@/lib/track";
 import { consumeFindRequest } from "@/lib/findBridge";
 import {
@@ -360,7 +368,7 @@ export default function MapDock(props: MapDockProps) {
   );
   const router = useRouter();
   const sp = useSearchParams();
-  const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? "county";
+  const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
 
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);

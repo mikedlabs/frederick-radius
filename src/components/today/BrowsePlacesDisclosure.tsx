@@ -58,6 +58,9 @@ export default function BrowsePlacesDisclosure({
       <button
         type="button"
         onClick={toggle}
+        disabled={!mounted}
+        aria-busy={!mounted || undefined}
+        data-ready={mounted || undefined}
         aria-expanded={mounted ? open : false}
         aria-controls={panelId}
         className={`tap-pop flex min-h-[52px] w-full items-center gap-3 px-2 py-2 text-left transition hover:bg-[var(--app-bg-elevated)] ${

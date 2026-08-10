@@ -1,12 +1,10 @@
-import Image from "next/image";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { currentSkyPalette } from "@/components/today/SkyHero";
 import { nextSunHint } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import PlaceHeroMedia from "@/components/place/PlaceHeroMedia";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 type Props = {
@@ -88,6 +86,8 @@ export default function PlaceHero({
 
   return (
     <div
+      data-place-hero
+      data-place-hero-size={size}
       // The detail-page hero is clamped to ~half the viewport height so a
       // 16/10 ratio at full width can't swallow a short LANDSCAPE-phone
       // screen — at 844×390 the un-capped hero rendered 455px tall (taller
@@ -118,74 +118,13 @@ export default function PlaceHero({
         }}
       />
 
-      {/* The hero uses Next Image for stable geometry, loading priority, and
-       *  placeholders. Google photos deliberately bypass Vercel's optimizer:
-       *  the same-origin /api/place-photo proxy strips the API key and owns
-       *  the provider-compliant no-store response.
-       *  Only rendered when we actually HAVE a real photo — otherwise the
-       *  designed plate below carries the hero. */}
-      {src && (
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          unoptimized={src.startsWith("/api/place-photo")}
-          priority={priority}
-          fetchPriority={priority ? "high" : "auto"}
-          sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className={`absolute inset-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
-        />
-      )}
-
-      {usesGooglePhoto && (
-        <div
-          className="absolute bottom-2 right-2 z-10 max-w-[80%] rounded bg-black/70 px-2 py-1 text-right text-white shadow-sm backdrop-blur-sm"
-          aria-label="Google photo attribution"
-        >
-          <GooglePhotoAttributionLine
-            attribution={photoAttribution}
-            placeGoogleMapsUri={googleMapsUri}
-            compact={size === "card"}
-            touchTarget
-          />
-        </div>
-      )}
-
-      {/* The Living Frame wash — a soft time-of-day tint (soft-light, low alpha
-          so the photo dominates) + a warm corner glow at golden hour. Sits
-          above the photo, below the bottom-darken + pill. Decorative only. */}
-      {sky && (
-        <>
-          <div
-            aria-hidden
-            style={{
-              position: "absolute", inset: 0, mixBlendMode: "soft-light",
-              background: `linear-gradient(165deg, color-mix(in srgb, ${sky.top} 24%, transparent) 0%, transparent 46%, color-mix(in srgb, ${sky.bottom} 32%, transparent) 100%)`,
-            }}
-          />
-          {golden && (
-            <div
-              aria-hidden
-              style={{
-                position: "absolute", inset: 0,
-                background: "radial-gradient(120% 80% at 85% 8%, color-mix(in srgb, var(--app-brand) 16%, transparent) 0%, transparent 60%)",
-              }}
-            />
-          )}
-        </>
-      )}
-
       {/* Designed field-guide plate — the deliberate hero for a place with
           no real photograph (the common case). A single category emblem
           centered over the contour gradient: a specimen mark, not an empty
           box. The place name is NOT repeated here — the <h1> sits directly
           below the hero and carries it, so a name on the plate too would be
           a duplicate title (the same reason the photo hero has no overlay). */}
-      {!src && (
-        <div className="fg-plate absolute inset-0 grid place-items-center">
+      <div className="fg-plate absolute inset-0 z-0 grid place-items-center">
           {/* The engraved category glyph, pressed into a tactile seal — the
               field-guide specimen mark, drawn in the category's ink (woodcut
               vector via CategoryIcon, never an emoji). The .fg-plate corner
@@ -210,23 +149,28 @@ export default function PlaceHero({
               strokeWidth={1.25}
             />
           </span>
-        </div>
-      )}
+      </div>
 
-      {/* Soft gradient darkening at bottom for text legibility — only over
-          a real photo (the plate manages its own contrast). */}
-      {src && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",
-          }}
+      {src ? (
+        <PlaceHeroMedia
+          key={src}
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          size={size}
+          priority={priority}
+          usesGooglePhoto={usesGooglePhoto}
+          photoAttribution={photoAttribution}
+          googleMapsUri={googleMapsUri}
+          skyTop={sky?.top}
+          skyBottom={sky?.bottom}
+          golden={golden}
         />
-      )}
+      ) : null}
 
       {/* Category pill — engraved glyph + label (woodcut vector, no emoji) */}
-      <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
+      <div className="absolute left-3 top-3 z-[4] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
            style={{ color }}>
         <CategoryIcon slug={category} className="h-3.5 w-3.5" strokeWidth={1.75} /> {cat?.name ?? category}
       </div>
