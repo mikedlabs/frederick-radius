@@ -7,7 +7,8 @@
  *
  * The deck: every card tucks to a 62px lip showing the serif name and ONE
  * mono fact chosen by value (walletFacts.lipFact). Tapping a lip raises the
- * card (accordion, one at a time); tapping the raised card opens its page.
+ * card (accordion, one at a time); the place name and the explicit action
+ * open its page.
  * A raised card keeps its brand-hued face (name, tier, the owner's field
  * note, a gold deal tag) and tears out a cream SPECIMEN-LABEL STUB below —
  * perforation and all — where the dense mono ledger (rating, price, today's
@@ -24,9 +25,9 @@
  * On-now running line above the deck can raise a card; uncontrolled use
  * keeps the old internal accordion.
  */
-import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -106,15 +107,14 @@ function Card({
   index,
   open,
   savedAt,
-  onOpen,
+  onToggle,
 }: {
   place: PlaceCardData;
   index: number;
   open: boolean;
   savedAt?: string;
-  onOpen: () => void;
+  onToggle: () => void;
 }) {
-  const router = useRouter();
   const cat = CATEGORY_BY_SLUG[place.category];
   // Un-save, from the card itself. This deck is where a person curates their
   // collection, and until now removing a card meant leaving for the place
@@ -145,36 +145,15 @@ function Card({
   const dash = "Not available";
 
   function toggle() {
-    if (open) {
-      // Wallet behavior: a tap on the RAISED card opens it (like tapping a
-      // pass). The visible "Open page" action stays as the discoverable route.
-      haptic("light");
-      track("saved_wallet_open_page", { category: place.category });
-      router.push(`/places/${place.slug}`);
-      return;
-    }
-    onOpen();
+    onToggle();
     haptic("light");
-    track("saved_wallet_raise", { category: place.category });
+    track(open ? "saved_wallet_collapse" : "saved_wallet_raise", {
+      category: place.category,
+    });
   }
-  function onKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggle();
-    }
-  }
-  // Links and real buttons inside the stub handle themselves; without this
-  // a Directions tap would ALSO fire the card's open-page toggle.
-  const stop = (e: MouseEvent) => e.stopPropagation();
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-expanded={open}
-      aria-label={`${place.name}${open ? ", raised. Tap again to open its page" : ", tap to raise"}`}
-      onClick={toggle}
-      onKeyDown={onKey}
       className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
       style={
         {
@@ -209,7 +188,13 @@ function Card({
             mono lip fact while tucked; the category TIER wordmark on raise
             (the ledger below takes over the facts). */}
         <div className="sw-top">
-          <span className="sw-brand">
+          <Link
+            href={`/places/${place.slug}`}
+            className="sw-brand"
+            onClick={() =>
+              track("saved_wallet_open_page", { category: place.category })
+            }
+          >
             <PlaceMedallion
               place={place}
               size={32}
@@ -217,14 +202,26 @@ function Card({
               surface="inverse"
             />
             <span className="sw-name">{place.name}</span>
+          </Link>
+          <span className="sw-card-summary">
+            {fact && (
+              <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
+                {fact.live && <b className="sw-dot" aria-hidden />}
+                {fact.text}
+              </span>
+            )}
+            <span className="sw-tier">{kind.toUpperCase()}</span>
+            <button
+              type="button"
+              className="sw-disclosure tap-44"
+              aria-expanded={open}
+              aria-controls={`sw-stub-${place.slug}`}
+              aria-label={`${open ? "Hide" : "Show"} details for ${place.name}`}
+              onClick={toggle}
+            >
+              <ChevronDown aria-hidden className="h-4 w-4" strokeWidth={2.2} />
+            </button>
           </span>
-          {fact && (
-            <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
-              {fact.live && <b className="sw-dot" aria-hidden />}
-              {fact.text}
-            </span>
-          )}
-          <span className="sw-tier">{kind.toUpperCase()}</span>
         </div>
 
         {/* Raised-only face content: the verified field note + deal tag —
@@ -244,7 +241,7 @@ function Card({
 
       {/* THE STUB — cream specimen label, perforated off the card foot.
           The dense mono ledger prints in ink on paper, where it's legible. */}
-      <div className="sw-stub">
+      <div className="sw-stub" id={`sw-stub-${place.slug}`}>
         <div className="sw-stub-grid">
           <dl className="sw-ledger">
             <div className="sw-cell">
@@ -302,7 +299,7 @@ function Card({
           </dl>
         </div>
         <div className="sw-actions">
-          <Link href={`/places/${place.slug}`} onClick={stop} tabIndex={open ? 0 : -1} className="sw-act-primary">
+          <Link href={`/places/${place.slug}`} className="sw-act-primary">
             Open page
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />
@@ -312,20 +309,16 @@ function Card({
             href={googleMapsDirections(place.geom.lat, place.geom.lng)}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={stop}
-            tabIndex={open ? 0 : -1}
             className="sw-act-quiet"
           >
             Directions
           </a>
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={() => {
               haptic("light");
               void toggleFollow();
             }}
-            tabIndex={open ? 0 : -1}
             className="sw-act-quiet"
             style={{ marginLeft: "auto" }}
             aria-label={`Remove ${place.name} from saved`}
@@ -350,7 +343,7 @@ export default function SavedWallet({
   /** Controlled raise (SavedList's On-now line raises cards). When omitted,
    *  the wallet keeps its own internal accordion state. */
   openSlug?: string | null;
-  onOpenSlug?: (slug: string) => void;
+  onOpenSlug?: (slug: string | null) => void;
 }) {
   // One card raised at a time (accordion), like Wallet. Keyed by slug so a
   // re-sort of `places` keeps the SAME card raised rather than whichever now
@@ -387,9 +380,10 @@ export default function SavedWallet({
               index={i}
               open={open}
               savedAt={savedAt?.[p.slug]}
-              onOpen={() => {
-                onOpenSlug?.(p.slug);
-                if (!controlled) setInternalSlug(p.slug);
+              onToggle={() => {
+                const next = open ? null : p.slug;
+                onOpenSlug?.(next);
+                if (!controlled) setInternalSlug(next);
               }}
             />
           </div>

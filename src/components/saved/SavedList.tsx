@@ -161,7 +161,7 @@ function Masthead({ stand }: { stand: ReactNode }) {
         <h1 id="saved-page-heading" tabIndex={-1}>
           Saved
         </h1>
-        <p className="sv-stand truncate">{stand}</p>
+        <p className="sv-stand">{stand}</p>
       </div>
       <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
         <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />

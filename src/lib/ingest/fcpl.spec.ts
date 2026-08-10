@@ -3,7 +3,9 @@ import {
   localToUtcIso,
   fcplMunicipality,
   fcplCategory,
+  fcplBranchLocation,
   fcplFieldString,
+  fcplLocation,
   fcplMapOne,
   fcplMapFeed,
 } from "./fcpl";
@@ -47,6 +49,91 @@ describe("fcplMunicipality — branch to town slug", () => {
   it("falls back to the county seat for system-wide / unknown", () => {
     expect(fcplMunicipality("Around the Community")).toBe("frederick");
     expect(fcplMunicipality("C. Burr Artz Public Library / Brunswick Branch Library / Thurmont Regional Library")).toBe("frederick");
+  });
+  it("maps explicit offsite city labels into the app town system", () => {
+    expect(fcplMunicipality("Walkersville, MD")).toBe("walkersville");
+    expect(fcplMunicipality("Natelli YMCA, Ijamsville, MD")).toBe("urbana");
+    expect(fcplMunicipality("Point of Rocks, MD")).toBe("brunswick");
+  });
+});
+
+describe("fcplLocation — reviewed branches and honest offsite precedence", () => {
+  it.each([
+    ["C. Burr Artz Public Library", "frederick", "110 E Patrick St, Frederick, MD 21701"],
+    ["Brunswick Branch Library", "brunswick", "915 N Maple Ave, Brunswick, MD 21716"],
+    ["Thurmont Regional Library", "thurmont", "76 E Moser Rd, Thurmont, MD 21788"],
+    ["Urbana Regional Library", "urbana", "9020 Amelung St, Frederick, MD 21704"],
+    ["Myersville Community Library", "myersville", "8 Harp Pl, Myersville, MD 21773"],
+    ["Emmitsburg Branch Library", "emmitsburg", "300 S Seton Ave, Emmitsburg, MD 21727"],
+    ["Walkersville Branch Library", "walkersville", "2 S Glade Rd, Walkersville, MD 21793"],
+    ["Middletown Branch Library", "middletown", "31 E Green St, Middletown, MD 21769"],
+    [
+      "Edward F. Fry Memorial Library at Point of Rocks",
+      "brunswick",
+      "1635 Ballenger Creek Pike, Point of Rocks, MD 21777",
+    ],
+  ])("maps %s to its reviewed address", (name, municipality, address) => {
+    expect(fcplBranchLocation(name)).toMatchObject({
+      name,
+      municipality,
+      address,
+    });
+    expect(fcplLocation({ branch: name, room: "Community Room" })).toEqual({
+      rawLocation: `${name}, Community Room - ${address}`,
+      municipality,
+    });
+  });
+
+  it("prefers a meaningful publisher offsite address over the branch", () => {
+    expect(
+      fcplLocation({
+        branch: { "87": "Around the Community" },
+        offsite_address:
+          "Walkersville Community Park\n22 Kenneth Drive\nWalkersville, MD 21793\nUnited States",
+      }),
+    ).toEqual({
+      rawLocation:
+        "Walkersville Community Park - 22 Kenneth Drive, Walkersville, MD 21793",
+      municipality: "walkersville",
+    });
+  });
+
+  it("decodes publisher text without changing its source provenance", () => {
+    expect(
+      fcplLocation({
+        branch: "Around the Community",
+        offsite_address:
+          "Sophie and Madigan&#039;s Playground\n632 Contender Way\nFrederick, MD 21703\nUnited States",
+      }),
+    ).toEqual({
+      rawLocation:
+        "Sophie and Madigan's Playground - 632 Contender Way, Frederick, MD 21703",
+      municipality: "frederick",
+    });
+  });
+
+  it("does not pin an offsite event to its branch when the address is only United States", () => {
+    expect(
+      fcplLocation({
+        branch: "C. Burr Artz Public Library",
+        room: "Carroll Creek Linear Park Amphitheater",
+        offsite_address: "United States",
+        offsite_address_raw: [null, "US"],
+      }),
+    ).toEqual({
+      rawLocation: "Carroll Creek Linear Park Amphitheater",
+      municipality: "frederick",
+    });
+  });
+
+  it("does not assign one branch address to a system-wide closure", () => {
+    const branches =
+      "C. Burr Artz Public Library / Brunswick Branch Library / Thurmont Regional Library";
+    expect(fcplBranchLocation(branches)).toBeNull();
+    expect(fcplLocation({ branch: branches })).toEqual({
+      rawLocation: branches,
+      municipality: "frederick",
+    });
   });
 });
 
@@ -96,8 +183,32 @@ describe("fcplMapOne — raw record to a ParsedEvent", () => {
     expect(m!.event.sourceUrl).toBe(base.url);
     expect(m!.event.heroImage).toBe(base.image);
     expect(m!.event.heroImageAlt).toBe(base.imagealt);
-    expect(m!.event.rawLocation).toBe("Brunswick Branch Library, Story Room");
+    expect(m!.event.rawLocation).toBe(
+      "Brunswick Branch Library, Story Room - 915 N Maple Ave, Brunswick, MD 21716",
+    );
     expect(m!.event.allDay).toBe(false);
+  });
+
+  it("keeps the official event URL and publisher image when location normalization changes", () => {
+    const m = fcplMapOne(
+      {
+        ...base,
+        branch: "Around the Community",
+        room: undefined,
+        offsite_address:
+          "Frederick City Market\n622 N Market St\nFrederick, MD 21701\nUnited States",
+      },
+      NOW,
+    );
+
+    expect(m?.event).toMatchObject({
+      sourceUrl: base.url,
+      heroImage: base.image,
+      heroImageAlt: base.imagealt,
+      rawLocation:
+        "Frederick City Market - 622 N Market St, Frederick, MD 21701",
+    });
+    expect(m?.municipality).toBe("frederick");
   });
 
   it("drops a non-public event", () => {

@@ -104,12 +104,20 @@ export function compactWeatherRead({
           ? "The weather-alert feed is unavailable."
           : "The air-quality reading is unavailable.";
     return {
-      headline: condition.trim(),
+      headline: sentenceCaseForecast(condition),
       safetyNote,
     };
   }
 
   return { headline: verdict, safetyNote: null };
+}
+
+/** NWS short forecasts arrive in headline case. In a sentence-scale weather
+ * read that makes ordinary conditions look like a generated title, so present
+ * the provider text as natural sentence case without changing its meaning. */
+export function sentenceCaseForecast(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "";
 }
 
 export default async function TodayCard() {

@@ -57,6 +57,19 @@ describe("SavedList empty state", () => {
     expect(source).toContain("Open for live status.");
   });
 
+  it("keeps wallet navigation and disclosure as separate native controls", () => {
+    for (const file of ["SavedWallet.tsx", "SavedEventWallet.tsx"]) {
+      const source = readFileSync(`src/components/saved/${file}`, "utf8");
+
+      expect(source).not.toContain('role="button"');
+      expect(source).toContain("aria-expanded={open}");
+      expect(source).toContain("aria-controls=");
+      expect(source).toContain("className=\"sw-brand\"");
+      expect(source).toContain("<Link");
+      expect(source).toContain("onToggle");
+    }
+  });
+
   it("does not render an empty account before saved state has hydrated", () => {
     const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
 

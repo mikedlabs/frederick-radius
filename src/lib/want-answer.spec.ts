@@ -7,6 +7,7 @@ import {
   resolveWantAvailability,
   usefulDealHook,
   usefulFallbackSignature,
+  wantDecisionReasons,
   type WantCandidate,
 } from "./want-answer";
 
@@ -170,6 +171,34 @@ describe("buildWantAnswer context", () => {
       fallbackReason: null,
     });
     expect(answer?.browseHref).toContain("town=thurmont");
+    expect(answer?.decision).toMatchObject({
+      status: "ready",
+      scope: {
+        label: "Thurmont",
+        source: "town",
+        originTrust: "chosen",
+      },
+      totalCandidates: answer?.total,
+    });
+    expect(answer?.decision?.lead?.id).toBe(answer?.hero?.slug);
+  });
+
+  it("uses the same evidence-aware reason contract that the client receives", () => {
+    const candidate = cand({
+      slug: "nearby-local",
+      name: "Nearby Local",
+      distance_m: 120,
+      feature_score: 7,
+      local_favorite: true,
+      google_rating: 4.7,
+      google_rating_count: 180,
+      intent_fit_tier: 3,
+    });
+    const reasons = wantDecisionReasons(candidate, true, true);
+
+    expect(reasons.length).toBeGreaterThan(0);
+    expect(reasons.every((reason) => /[.!?]$/.test(reason.label))).toBe(true);
+    expect(reasons.some((reason) => reason.evidenceIds.length > 0)).toBe(true);
   });
 
   it("can rank a timeless decision by local fit instead of current open state", () => {
@@ -422,7 +451,7 @@ describe("buildWantAnswer context", () => {
     expect(answer?.rankingMode).toBe("best-fit");
     expect(answer?.mayAssertNoneOpen).toBe(false);
     expect(answer?.hero?.confidence).toBeUndefined();
-    expect(answer?.hero?.fact).toBe("Hours not posted");
+    expect(answer?.hero?.fact).toBe("Hours not confirmed");
     expect(answer?.also.every((row) => row.confidence == null)).toBe(true);
   });
 

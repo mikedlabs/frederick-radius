@@ -13,8 +13,9 @@
  * when isEventLiveNow says the show is on this minute.
  *
  * The deck: every card tucks to a 62px lip (serif title + ONE mono fact by
- * value — "On now" beats the compact when). Tapping a lip raises the card
- * (accordion, one at a time); tapping the raised card opens /events/[slug].
+ * value — "On now" beats the compact when). A dedicated disclosure control
+ * raises the card (accordion, one at a time); the event title and explicit
+ * action open /events/[slug].
  * The raised card tears out the same cream SPECIMEN-LABEL STUB places use,
  * where the mono ledger prints the full when, venue, town, kind, admission,
  * and saved date, plus the actions (Open event · Directions · Tickets).
@@ -23,9 +24,9 @@
  * the shared event helpers (eventLipFact / eventWhenParts / eventPriceLabel,
  * built on eventDateBlock + isEventLiveNow) so no claim outruns the data.
  */
-import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -80,16 +81,15 @@ function Card({
   open,
   savedAt,
   now,
-  onOpen,
+  onToggle,
 }: {
   event: Event;
   index: number;
   open: boolean;
   savedAt?: string;
   now: Date;
-  onOpen: () => void;
+  onToggle: () => void;
 }) {
-  const router = useRouter();
   const cat = CATEGORY_BY_SLUG[event.category];
   // Category-first hue: the jewel ground for the category, then the category
   // ink, then a default arts purple (events skew arts). Never raw vermilion.
@@ -124,36 +124,15 @@ function Card({
   const dash = "Not available";
 
   function toggle() {
-    if (open) {
-      // Wallet behavior: a tap on the RAISED card opens it (like a pass).
-      // The visible "Open event" action stays the discoverable route.
-      haptic("light");
-      track("saved_event_wallet_open", { category: event.category });
-      router.push(`/events/${event.slug}`);
-      return;
-    }
-    onOpen();
+    onToggle();
     haptic("light");
-    track("saved_event_wallet_raise", { category: event.category });
+    track(open ? "saved_event_wallet_collapse" : "saved_event_wallet_raise", {
+      category: event.category,
+    });
   }
-  function onKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggle();
-    }
-  }
-  // Links inside the stub handle themselves; without this a Tickets tap
-  // would ALSO fire the card's open toggle.
-  const stop = (e: MouseEvent) => e.stopPropagation();
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-expanded={open}
-      aria-label={`${event.title}${open ? ", raised. Tap again to open its page" : ", tap to raise"}`}
-      onClick={toggle}
-      onKeyDown={onKey}
       className={`sw-card${open ? " is-open" : ""}${fact.live ? " sw-live-card" : ""}`}
       style={
         {
@@ -176,32 +155,50 @@ function Card({
         {/* Lockup — category glyph "logo" + serif title left. Right slot: the
             ONE mono lip fact while tucked; the category TIER wordmark on raise. */}
         <div className="sw-top">
-          <span className="sw-brand">
+          <Link
+            href={`/events/${event.slug}`}
+            className="sw-brand"
+            onClick={() =>
+              track("saved_event_wallet_open", { category: event.category })
+            }
+          >
             <CategoryIcon slug={event.category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
             <span className={`sw-name${statusText ? " is-struck" : ""}`}>
               {event.title}
             </span>
+          </Link>
+          <span className="sw-card-summary">
+            {statusText ? (
+              // Replaces the lip fact rather than joining it. A cancelled show
+              // has no useful "when" left, and the struck title beside this
+              // carries the same meaning for anyone who reads shape before text.
+              <span className="sw-lipfact is-status" style={{ background: statusFill }}>
+                {statusText}
+              </span>
+            ) : (
+              <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
+                {fact.live && <b className="sw-dot" aria-hidden />}
+                {fact.text}
+              </span>
+            )}
+            <span className="sw-tier">{kind.toUpperCase()}</span>
+            <button
+              type="button"
+              className="sw-disclosure tap-44"
+              aria-expanded={open}
+              aria-controls={`swe-stub-${event.slug}`}
+              aria-label={`${open ? "Hide" : "Show"} details for ${event.title}`}
+              onClick={toggle}
+            >
+              <ChevronDown aria-hidden className="h-4 w-4" strokeWidth={2.2} />
+            </button>
           </span>
-          {statusText ? (
-            // Replaces the lip fact rather than joining it. A cancelled show
-            // has no useful "when" left, and the struck title beside this
-            // carries the same meaning for anyone who reads shape before text.
-            <span className="sw-lipfact is-status" style={{ background: statusFill }}>
-              {statusText}
-            </span>
-          ) : (
-            <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
-              {fact.live && <b className="sw-dot" aria-hidden />}
-              {fact.text}
-            </span>
-          )}
-          <span className="sw-tier">{kind.toUpperCase()}</span>
         </div>
       </div>
 
       {/* THE STUB — the same cream specimen label the place cards tear out,
           with the event's mono ledger printed in ink on paper. */}
-      <div className="sw-stub">
+      <div className="sw-stub" id={`swe-stub-${event.slug}`}>
         <div className="sw-stub-grid">
           <dl className="sw-ledger">
             <div className="sw-cell sw-cell-wide">
@@ -240,7 +237,7 @@ function Card({
           </dl>
         </div>
         <div className="sw-actions">
-          <Link href={`/events/${event.slug}`} onClick={stop} tabIndex={open ? 0 : -1} className="sw-act-primary">
+          <Link href={`/events/${event.slug}`} className="sw-act-primary">
             Open event
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />
@@ -251,8 +248,6 @@ function Card({
               href={googleMapsDirections(event.geom.lat, event.geom.lng)}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={stop}
-              tabIndex={open ? 0 : -1}
               className="sw-act-quiet"
             >
               Directions
@@ -263,8 +258,6 @@ function Card({
               href={event.ticket_url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={stop}
-              tabIndex={open ? 0 : -1}
               className="sw-act-quiet"
             >
               Tickets
@@ -272,12 +265,10 @@ function Card({
           )}
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={() => {
               haptic("light");
               toggleSave();
             }}
-            tabIndex={open ? 0 : -1}
             className="sw-act-quiet"
             style={{ marginLeft: "auto" }}
             aria-label={`Remove ${event.title} from saved`}
@@ -331,7 +322,7 @@ export default function SavedEventWallet({
               open={open}
               savedAt={savedAt?.[e.slug]}
               now={now}
-              onOpen={() => setOpenSlug(e.slug)}
+              onToggle={() => setOpenSlug(open ? null : e.slug)}
             />
           </div>
         );

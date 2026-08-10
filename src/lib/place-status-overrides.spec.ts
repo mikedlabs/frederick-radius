@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/data/places";
+import { getOpenStatus } from "@/lib/hours";
 import { isOperational, publicPlaceBySlug } from "@/lib/loaders/places";
 import {
   activeManualPlaceStatusOverride,
@@ -43,18 +44,30 @@ describe("manual place status overrides", () => {
   it("keeps first-party operational corrections explicit and time-bounded", () => {
     const corrections = [
       {
+        slug: "concettas-main-street-bistro-mount-airy",
+        source: "https://concettasmainstreet.com/",
+        activeAt: "2026-08-10T12:00:00Z",
+        expiredAt: "2026-08-25T12:00:00Z",
+      },
+      {
         slug: "green-health-docs",
         source:
           "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
+        activeAt: "2026-08-01T12:00:00Z",
+        expiredAt: "2026-08-16T12:00:00Z",
       },
       {
         slug: "quince-orchard-psychotherapy",
         source: "https://orchardmentalhealth.com/contact/",
+        activeAt: "2026-08-01T12:00:00Z",
+        expiredAt: "2026-08-16T12:00:00Z",
       },
       {
         slug: "saxbys-at-mount-st-marys-university-emmitsburg",
         source:
           "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
+        activeAt: "2026-08-01T12:00:00Z",
+        expiredAt: "2026-08-16T12:00:00Z",
       },
     ];
 
@@ -66,17 +79,35 @@ describe("manual place status overrides", () => {
       expect(
         activeManualPlaceStatusOverride(
           expected.slug,
-          new Date("2026-08-01T12:00:00Z"),
+          new Date(expected.activeAt),
         )?.status,
       ).toBe("operational");
       expect(
         activeManualPlaceStatusOverride(
           expected.slug,
-          new Date("2026-08-16T12:00:00Z"),
+          new Date(expected.expiredAt),
         ),
       ).toBeUndefined();
       expect(publicPlaceBySlug(expected.slug)).toBeDefined();
     }
+  });
+
+  it("keeps Concetta public without publishing unconfirmed hours", () => {
+    const place = publicPlaceBySlug(
+      "concettas-main-street-bistro-mount-airy",
+    );
+
+    expect(place).toBeDefined();
+    expect(place?.is_operational).toBe("operational");
+    expect(place?.hours).toBeUndefined();
+    expect(place?.hours_verified).toBe(false);
+    expect(
+      getOpenStatus(
+        place?.hours,
+        { verified: place?.hours_verified },
+        new Date("2026-08-10T16:00:00Z"),
+      ).state,
+    ).toBe("unknown");
   });
 
   it("keeps reviewed permanent closures suppressed with source evidence", () => {

@@ -3140,7 +3140,8 @@ export default function AppMap({
               places={inViewPlaces}
               events={visibleEvents}
               userLoc={userLoc}
-              sortOrigin={viewCenter ?? searchFallbackOriginRef.current}
+              sortOrigin={userLoc}
+              failureMode
               onPick={openPlaceSheet}
               onPickEvent={(event) => router.push(`/events/${event.slug}`)}
             />
@@ -3172,7 +3173,7 @@ export default function AppMap({
         )}
         {/* Cream fade under the top chrome so pills and rails always sit on
             quiet ground instead of raw basemap. Paint only. */}
-        {dock && <div className="map-top-scrim" aria-hidden />}
+        {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
             than pretending the lens is a layer that was already switched on. */}
@@ -3312,6 +3313,7 @@ export default function AppMap({
           places, check today and tonight, see conditions, or add Frederick details.
         </p>
 
+        {!mapError && (
         <Map
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
@@ -5216,6 +5218,7 @@ export default function AppMap({
             <GeolocateControl position="bottom-right" trackUserLocation />
           )}
         </Map>
+        )}
 
         <p
           key={resultAreaAnnouncement.nonce}

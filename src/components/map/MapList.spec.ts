@@ -1,7 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import MapList, { rankMapListEvents, rankMapListPlaces } from "./MapList";
+import MapList, {
+  rankMapFallbackPlaces,
+  rankMapListEvents,
+  rankMapListPlaces,
+} from "./MapList";
 import { createMapListPhotoLoader } from "./map-list-photo-loader";
 import type { EventPin, MapPinPlace } from "./types";
 
@@ -50,6 +54,27 @@ describe("rankMapListPlaces", () => {
     );
 
     expect(rows.map((row) => row.slug)).toEqual(["near", "middle"]);
+  });
+});
+
+describe("rankMapFallbackPlaces", () => {
+  it("bounds the recovery surface and prevents one category from taking over", () => {
+    const restaurants = Array.from({ length: 14 }, (_, index) => ({
+      ...place(`restaurant-${index}`, -77.4 - index * 0.001),
+      category: "restaurant",
+    }));
+    const other = [
+      { ...place("park", -77.5), category: "park" },
+      { ...place("coffee", -77.51), category: "coffee" },
+      { ...place("museum", -77.52), category: "museum" },
+      { ...place("gallery", -77.53), category: "gallery" },
+      { ...place("library", -77.54), category: "library" },
+    ];
+    const rows = rankMapFallbackPlaces([...restaurants, ...other], null, 6);
+
+    expect(rows).toHaveLength(6);
+    expect(rows.filter((row) => row.category === "restaurant")).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.category)).size).toBeGreaterThan(1);
   });
 });
 

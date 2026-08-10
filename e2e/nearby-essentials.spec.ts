@@ -101,6 +101,45 @@ test("Today playgrounds opens the complete layer around the current location", a
   expect(new URL(page.url()).searchParams.get("in")).toBe("nearme");
 });
 
+test("Today playgrounds preserves a deliberately selected town", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("fr:scope:v1", "town:brunswick");
+    // A cached downtown fix must not displace the town the visitor chose.
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({
+        lng: -77.4105,
+        lat: 39.4143,
+        accuracy: 15,
+        municipality_slug: "frederick",
+        label: "Downtown Frederick",
+        timestamp: Date.now(),
+      }),
+    );
+  });
+
+  await page.goto("/today", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Browse by category" }).click();
+  await page.getByRole("button", { name: "Get outside" }).click();
+
+  const playgrounds = page.getByRole("link", { name: "Playgrounds" });
+  await expect(playgrounds).toHaveAttribute(
+    "href",
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=brunswick",
+  );
+  await playgrounds.click();
+
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/map" &&
+      url.searchParams.get("amenity") === "play" &&
+      url.searchParams.get("in") === "brunswick",
+    { timeout: 15_000 },
+  );
+});
+
 test("a direct Near me link fits an already-granted location without a cached fix", async ({
   page,
 }) => {

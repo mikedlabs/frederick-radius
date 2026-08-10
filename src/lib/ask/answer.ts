@@ -1978,7 +1978,7 @@ async function wantContextBlock(
   }
 
   const line = (r: WantRow) =>
-    `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
+    `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.why?.length ? `; WHY IT RANKED: ${r.why.slice(0, 2).join(" ")}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
   const open = [wa.hero, ...wa.also]
     .filter((r): r is WantRow => r != null)
     .slice(0, 5);

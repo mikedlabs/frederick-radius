@@ -44,7 +44,7 @@ describe("buildDaypartRows", () => {
     // component's fallback unreachable.
     for (const hour of [8, 12, 17, 21]) {
       const rows = buildDaypartRows(
-        new Date(`2026-08-02T${String(hour).padStart(2, "0")}:00:00.000Z`),
+        new Date(`2026-08-10T${String(hour).padStart(2, "0")}:00:00.000Z`),
       );
       const picks = rows.flatMap((row) => row.picks);
       expect(picks.length).toBeGreaterThan(0);
@@ -62,7 +62,7 @@ describe("buildDaypartRows", () => {
     const confirmed = [8, 12, 17, 21]
       .flatMap((hour) =>
         buildDaypartRows(
-          new Date(`2026-08-02T${String(hour).padStart(2, "0")}:00:00.000Z`),
+          new Date(`2026-08-10T${String(hour).padStart(2, "0")}:00:00.000Z`),
         ),
       )
       .flatMap((row) => row.picks)
@@ -74,7 +74,7 @@ describe("buildDaypartRows", () => {
   });
 
   it("starts the morning coffee shelf with coffee destinations, not boba", () => {
-    const rows = buildDaypartRows(new Date("2026-08-07T12:00:00.000Z"));
+    const rows = buildDaypartRows(new Date("2026-08-10T12:00:00.000Z"));
     const coffee = rows.find((row) => row.category === "coffee");
 
     expect(coffee?.picks.length).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ describe("buildDaypartRows", () => {
   it("does not spend a short coffee shelf on duplicate chain locations", () => {
     for (const hour of [8, 12, 17, 21]) {
       const rows = buildDaypartRows(
-        new Date(`2026-08-08T${String(hour).padStart(2, "0")}:00:00.000Z`),
+        new Date(`2026-08-10T${String(hour).padStart(2, "0")}:00:00.000Z`),
       );
       const coffee = rows.find((row) => row.category === "coffee");
       const chainKeys = (coffee?.picks ?? [])
@@ -100,7 +100,7 @@ describe("buildDaypartRows", () => {
   });
 
   it("keeps lodging records out of the breakfast bakery shelf", () => {
-    const rows = buildDaypartRows(new Date("2026-08-07T12:00:00.000Z"));
+    const rows = buildDaypartRows(new Date("2026-08-10T12:00:00.000Z"));
     const bakery = rows.find((row) => row.category === "bakery");
 
     expect(bakery?.picks.length).toBeGreaterThan(0);

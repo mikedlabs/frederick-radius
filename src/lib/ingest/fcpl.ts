@@ -35,6 +35,7 @@ export type FcplRaw = {
   branch?: unknown;
   room?: unknown;
   offsite_address?: unknown;
+  offsite_address_raw?: unknown;
   program_type?: unknown;
   age_group?: unknown;
   description?: unknown;
@@ -43,20 +44,191 @@ export type FcplRaw = {
   imagealt?: unknown;
 };
 
-/** Branch display name (substring) -> the municipality slug it sits in. The
- *  multi-branch / "Around the Community" / Bookmobile rows are system-wide and
- *  fall through to the county seat. */
-const BRANCH_MUNICIPALITY: Array<[RegExp, string]> = [
-  [/c\.?\s*burr\s*artz/i, "frederick"],
-  [/brunswick/i, "brunswick"],
-  [/thurmont/i, "thurmont"],
-  [/urbana/i, "urbana"],
-  [/myersville/i, "myersville"],
-  [/emmitsburg/i, "emmitsburg"],
-  [/walkersville/i, "walkersville"],
-  [/middletown/i, "middletown"],
-  [/point\s*of\s*rocks|edward\s*f\.?\s*fry/i, "brunswick"], // Point of Rocks sits by Brunswick
+export type FcplBranchLocation = {
+  name: string;
+  municipality: string;
+  address: string;
+  match: RegExp;
+};
+
+/**
+ * Reviewed FCPL branch locations.
+ *
+ * The calendar feed names the branch and room but does not publish the branch
+ * street address on ordinary in-library programs. Supplying these reviewed
+ * addresses at the mapper boundary lets the existing geocode pipeline resolve
+ * a real destination instead of falling back to a town centroid. A source row
+ * that declares itself offsite never uses this registry.
+ */
+export const FCPL_BRANCH_LOCATIONS: readonly FcplBranchLocation[] = [
+  {
+    name: "C. Burr Artz Public Library",
+    municipality: "frederick",
+    address: "110 E Patrick St, Frederick, MD 21701",
+    match: /^c\.?\s*burr\s*artz\s+public\s+library$/i,
+  },
+  {
+    name: "Brunswick Branch Library",
+    municipality: "brunswick",
+    address: "915 N Maple Ave, Brunswick, MD 21716",
+    match: /^brunswick\s+branch\s+library$/i,
+  },
+  {
+    name: "Thurmont Regional Library",
+    municipality: "thurmont",
+    address: "76 E Moser Rd, Thurmont, MD 21788",
+    match: /^thurmont\s+regional\s+library$/i,
+  },
+  {
+    name: "Urbana Regional Library",
+    municipality: "urbana",
+    address: "9020 Amelung St, Frederick, MD 21704",
+    match: /^urbana\s+regional\s+library$/i,
+  },
+  {
+    name: "Myersville Community Library",
+    municipality: "myersville",
+    address: "8 Harp Pl, Myersville, MD 21773",
+    match: /^myersville\s+community\s+library$/i,
+  },
+  {
+    name: "Emmitsburg Branch Library",
+    municipality: "emmitsburg",
+    address: "300 S Seton Ave, Emmitsburg, MD 21727",
+    match: /^emmitsburg\s+branch\s+library$/i,
+  },
+  {
+    name: "Walkersville Branch Library",
+    municipality: "walkersville",
+    address: "2 S Glade Rd, Walkersville, MD 21793",
+    match: /^walkersville\s+branch\s+library$/i,
+  },
+  {
+    name: "Middletown Branch Library",
+    municipality: "middletown",
+    address: "31 E Green St, Middletown, MD 21769",
+    match: /^middletown\s+branch\s+library$/i,
+  },
+  {
+    name: "Edward F. Fry Memorial Library at Point of Rocks",
+    municipality: "brunswick",
+    address: "1635 Ballenger Creek Pike, Point of Rocks, MD 21777",
+    match: /^edward\s+f\.?\s*fry\s+memorial\s+library\s+at\s+point\s+of\s+rocks$/i,
+  },
 ];
+
+const LOCATION_MUNICIPALITY: Array<[RegExp, string]> = [
+  [/\bbrunswick\b/i, "brunswick"],
+  [/\bthurmont\b/i, "thurmont"],
+  [/\burbana\b|\bijamsville\b/i, "urbana"],
+  [/\bmyersville\b/i, "myersville"],
+  [/\bemmitsburg\b/i, "emmitsburg"],
+  [/\bwalkersville\b/i, "walkersville"],
+  [/\bmiddletown\b/i, "middletown"],
+  [/\bmount\s+airy\b|\bmt\.?\s+airy\b/i, "mount-airy"],
+  [/\bwoodsboro\b/i, "woodsboro"],
+  [/\bpoint\s+of\s+rocks\b/i, "brunswick"],
+  [/\bfrederick\b/i, "frederick"],
+];
+
+const OFFSITE_STREET_LINE = /^\d{1,6}[a-z]?\s+\S+/i;
+const WEAK_OFFSITE_VALUE = /^(?:united\s+states|us|usa)$/i;
+
+export function fcplBranchLocation(
+  branchLabel: string,
+): FcplBranchLocation | null {
+  return FCPL_BRANCH_LOCATIONS.find((branch) =>
+    branch.match.test(branchLabel.trim()),
+  ) ?? null;
+}
+
+function decodeFcplText(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, code: string) =>
+      String.fromCodePoint(Number(code)),
+    );
+}
+
+type FcplResolvedLocation = {
+  rawLocation?: string;
+  municipality: string;
+};
+
+/**
+ * Turn the feed's branch/room/offsite fields into the existing
+ * `venue - street address` ingest contract.
+ *
+ * Offsite wins only when it contains a Maryland street address. A weak value
+ * such as "United States" is still an offsite signal, so it deliberately
+ * blocks the branch-address fallback rather than placing the event at the
+ * library. The row remains usable but area-level until the publisher supplies
+ * a real destination.
+ */
+export function fcplLocation(raw: Pick<
+  FcplRaw,
+  "branch" | "room" | "offsite_address" | "offsite_address_raw"
+>): FcplResolvedLocation {
+  const branchLabel = fcplFieldString(raw.branch);
+  const room = fcplFieldString(raw.room);
+  const offsiteText = decodeFcplText(fcplFieldString(raw.offsite_address));
+  const hasOffsiteSignal = Boolean(
+    offsiteText.trim() || fcplFieldString(raw.offsite_address_raw).trim(),
+  );
+
+  if (hasOffsiteSignal) {
+    const lines = offsiteText
+      .split(/\r?\n/)
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter((line) => line && !WEAK_OFFSITE_VALUE.test(line));
+    const streetIndex = lines.findIndex((line) =>
+      OFFSITE_STREET_LINE.test(line),
+    );
+    const hasMarylandAddress = lines.some((line) => /\bMD\b/i.test(line));
+
+    if (streetIndex >= 0 && hasMarylandAddress) {
+      const venue = lines.slice(0, streetIndex).join(" / ") || room || branchLabel;
+      const address = lines.slice(streetIndex).join(", ");
+      // The address is the location authority. The venue can contain a
+      // different town or county name (for example, a Frederick County program
+      // hosted in Walkersville), which must not override the published city.
+      const municipality = fcplMunicipality(address);
+      return {
+        rawLocation: [venue, address].filter(Boolean).join(" - ") || undefined,
+        municipality,
+      };
+    }
+
+    // The source says this is offsite but gives no trustworthy address. Do not
+    // silently pin it to the branch. Preserve the most specific published
+    // label available and let downstream confidence remain area-level.
+    return {
+      rawLocation: room || lines[0] || branchLabel || undefined,
+      municipality: fcplMunicipality(
+        [room, lines.join(" "), branchLabel].filter(Boolean).join(" "),
+      ),
+    };
+  }
+
+  const branch = fcplBranchLocation(branchLabel);
+  if (branch) {
+    const venue = [branch.name, room].filter(Boolean).join(", ");
+    return {
+      rawLocation: `${venue} - ${branch.address}`,
+      municipality: branch.municipality,
+    };
+  }
+
+  const fallbackLabel = [branchLabel, room].filter(Boolean).join(", ");
+  return {
+    rawLocation: fallbackLabel || undefined,
+    municipality: fcplMunicipality(branchLabel),
+  };
+}
 
 /** A feed value can be a plain string or a `{ "87": "Around the Community" }`
  *  object; normalize either to a readable, "/"-joined string. */
@@ -70,9 +242,13 @@ export function fcplFieldString(v: unknown): string {
 /** Map a branch label to its municipality slug. Unknown / multi-branch -> the
  *  county seat (frederick), the honest county-wide fallback. */
 export function fcplMunicipality(branchLabel: string): string {
-  const matches = BRANCH_MUNICIPALITY.filter(([re]) => re.test(branchLabel)).map(([, m]) => m);
+  const matches = new Set(
+    LOCATION_MUNICIPALITY.filter(([re]) => re.test(branchLabel)).map(
+      ([, municipality]) => municipality,
+    ),
+  );
   // Exactly one branch matched -> that town; zero or many (system-wide) -> seat.
-  return matches.length === 1 ? matches[0] : "frederick";
+  return matches.size === 1 ? [...matches][0] : "frederick";
 }
 
 /** Infer an honest category from the program type + audience. Library programs
@@ -161,9 +337,8 @@ export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
   const endsAtUtc = localToUtcIso(raw.end_date, tzid) ?? undefined;
   const allDay = /\b00:00:00$/.test(asText(raw.start_date));
 
-  const branchLabel = fcplFieldString(raw.branch) || fcplFieldString(raw.offsite_address) || "Frederick County Public Libraries";
-  const room = fcplFieldString(raw.room);
-  const municipality = fcplMunicipality(branchLabel);
+  const location = fcplLocation(raw);
+  const municipality = location.municipality;
   const category = fcplCategory(fcplFieldString(raw.program_type), fcplFieldString(raw.age_group));
 
   // Use changed timestamp as the change-detection key (DTSTAMP analogue);
@@ -178,7 +353,7 @@ export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
     sourceUrl: asText(raw.url).trim() || undefined,
     heroImage,
     heroImageAlt: heroImage ? fcplEventImageAlt(raw.imagealt) : undefined,
-    rawLocation: [branchLabel, room].filter(Boolean).join(", ") || undefined,
+    rawLocation: location.rawLocation,
     startsAtUtc,
     endsAtUtc,
     tzid,

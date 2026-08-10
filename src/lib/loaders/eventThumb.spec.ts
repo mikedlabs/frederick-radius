@@ -75,7 +75,24 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
     expect(out.hero_image).toBe(fairgrounds.google_photo_url);
   });
 
-  it("accepts a UNIQUE exact name match past 800m (centroid-geocode events) but caps at 10km", () => {
+  it("keeps fuzzy containment photo-only even on a precise event", () => {
+    const skyStage = clientPlaces().find(
+      (p) => p.slug === "frederick-arts-council-sky-stage",
+    );
+    if (!skyStage?.google_photo_url) return;
+    const input = ev({
+      venue_name: "Sky Stage",
+      geom: skyStage.geom,
+      geo_confidence: "exact_address",
+    });
+    const [out] = withVenueThumbs([input]);
+    expect(out.hero_image).toBe(skyStage.google_photo_url);
+    expect(out.venue_place_slug).toBeUndefined();
+    expect(out.geom).toEqual(input.geom);
+    expect(out.geo_confidence).toBe("exact_address");
+  });
+
+  it("trusts a unique exact identity even when the incoming geom is only an area centroid", () => {
     // Find a place whose normalized name is unique county-wide and has a photo.
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
     const counts = new Map<string, number>();
@@ -86,16 +103,18 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
     // The matching contract is exercised whenever the release dataset has a
     // compliant photo; an attribution-safe empty set is also valid.
     if (!unique) return;
-    // ~2km offset: outside the strict 800m gate, inside the 10km unique cap.
+    // ~2km offset: an area centroid is not evidence against the exact identity.
     const near = { lng: unique.geom.lng + 0.02, lat: unique.geom.lat };
     const [borrowed] = withVenueThumbs([
       ev({ venue_name: unique.name, geom: near, geo_confidence: "area" }),
     ]);
     expect(borrowed.hero_image).toBe(unique.google_photo_url);
-    // ~40km offset: past the cap — an out-of-county namesake must not match.
-    const far = { lng: unique.geom.lng + 0.45, lat: unique.geom.lat };
+
+    // A precise conflicting coordinate IS evidence of an offsite occurrence;
+    // the shared resolver must not borrow the organizing venue's image.
+    const far = { lng: unique.geom.lng + 0.15, lat: unique.geom.lat };
     const [notBorrowed] = withVenueThumbs([
-      ev({ venue_name: unique.name, geom: far, geo_confidence: "area" }),
+      ev({ venue_name: unique.name, geom: far, geo_confidence: "exact_address" }),
     ]);
     expect(notBorrowed.hero_image).toBeUndefined();
   });

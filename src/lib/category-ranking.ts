@@ -15,6 +15,7 @@
  */
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow, type OpenStatus } from "@/lib/hours";
+import { evaluateDecision, type DecisionReason } from "@/lib/decision/core";
 
 /** Brand chains we soft-demote in Best matches so local shops lead (kept,
  *  never hidden). */
@@ -165,6 +166,76 @@ export type CategoryRankContext = {
   category?: string | null;
 };
 
+function categoryDecisionFactors(
+  p: PlaceCardData,
+  ctx: CategoryRankContext,
+) {
+  const rating = ratingSignal(p.google_rating, p.google_rating_count);
+  const curation = clamp01(
+    (p.feature_score ?? 0) / 10 + (p.local_favorite ? 0.15 : 0),
+  );
+  const proximity = proximitySignal(p.distance_m);
+  const open = openSignal(p.open_status);
+  const sameTown = ctx.town && p.municipality === ctx.town ? 1 : 0;
+  const trust = p.is_verified || p.hours_verified ? 1 : 0;
+  return [
+    {
+      id: "reviews",
+      label: "It has strong review evidence.",
+      points: 0.24 * rating,
+      visible: (p.google_rating_count ?? 0) >= 30,
+      evidenceIds: (p.google_rating_count ?? 0) >= 30 ? ["google-places"] : [],
+    },
+    {
+      id: "curation",
+      label: "Radius has stronger local evidence for this place.",
+      points: 0.22 * curation,
+      visible: false,
+    },
+    {
+      id: "proximity",
+      label: "It is close to your location.",
+      points: 0.22 * proximity,
+      visible: p.distance_m !== undefined,
+      evidenceIds: p.distance_m !== undefined ? ["decision-origin"] : [],
+    },
+    {
+      id: "availability",
+      label: "Its current hours show it open now.",
+      points: 0.12 * open,
+      visible: isOpenNow(p.open_status),
+      evidenceIds: isOpenNow(p.open_status) ? ["verified-hours"] : [],
+    },
+    {
+      id: "town",
+      label: "It is in the area you chose.",
+      points: 0.08 * sameTown,
+      visible: Boolean(sameTown),
+      evidenceIds: sameTown ? ["chosen-town"] : [],
+    },
+    {
+      id: "trust",
+      label: "Its listing has verified details.",
+      points: 0.04 * trust,
+      visible: Boolean(trust),
+      evidenceIds: trust ? ["place-record"] : [],
+    },
+    {
+      id: "chain-nudge",
+      label: "A local option receives the tie-breaker.",
+      points: isChainName(p.name) ? -0.1 : 0,
+      visible: false,
+    },
+    {
+      id: "category-fit",
+      label: "It directly matches this category.",
+      points:
+        ctx.category === "coffee" && isLooseCategory(p.name) ? -0.06 : 0,
+      visible: false,
+    },
+  ];
+}
+
 /**
  * The balanced, context-aware category score. Quality (rating + curation)
  * and context (proximity + same-town) are weighted together, with soft
@@ -176,24 +247,14 @@ export type CategoryRankContext = {
  * Thurmont / Middletown / Walkersville lead with their own towns.
  */
 export function categoryScore(p: PlaceCardData, ctx: CategoryRankContext = {}): number {
-  const rating = ratingSignal(p.google_rating, p.google_rating_count);
-  const curation = clamp01((p.feature_score ?? 0) / 10 + (p.local_favorite ? 0.15 : 0));
-  const proximity = proximitySignal(p.distance_m);
-  const open = openSignal(p.open_status);
-  const sameTown = ctx.town && p.municipality === ctx.town ? 1 : 0;
-  const trust = p.is_verified || p.hours_verified ? 1 : 0;
+  return evaluateDecision(p, categoryDecisionFactors(p, ctx)).score;
+}
 
-  let s =
-    0.24 * rating +
-    0.22 * curation +
-    0.22 * proximity +
-    0.12 * open +
-    0.08 * sameTown +
-    0.04 * trust;
-
-  if (isChainName(p.name)) s -= 0.1;
-  if (ctx.category === "coffee" && isLooseCategory(p.name)) s -= 0.06;
-  return s;
+export function categoryDecisionReasons(
+  p: PlaceCardData,
+  ctx: CategoryRankContext = {},
+): DecisionReason[] {
+  return evaluateDecision(p, categoryDecisionFactors(p, ctx)).reasons;
 }
 
 /** Top-N by the balanced score (Best matches). */
