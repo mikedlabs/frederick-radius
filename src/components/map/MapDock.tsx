@@ -250,6 +250,13 @@ export type MapDockProps = {
 
   /** A selected result, unsettled viewport, or cold map owns the upper HUD. */
   suppressContextRail?: boolean;
+
+  /** Layers the smart default switched on by itself (map program phase 1).
+   *  They look like refinements to the counter below but nobody chose them,
+   *  so they must not be treated as evidence that the visitor has started
+   *  filtering. Goes to zero once the suggestion is dismissed, because from
+   *  then on any layer still lit is one the visitor decided to keep. */
+  smartSeededLayerCount?: number;
 };
 
 /** A dock chip: color-dotted pill with an optional mono count. ≥44px
@@ -870,6 +877,16 @@ export default function MapDock(props: MapDockProps) {
     visibleLayerCount;
   const activeOptionCount =
     refinementCount + (props.selectedDiscoveryId ? 1 : 0);
+  // What the VISITOR has chosen, which is what decides whether the map is
+  // still at rest. Subtracting the smart seeds matters because the two
+  // features otherwise cancel: the smart default lights a layer on exactly
+  // the clean arrival the resting state line is written for (parking on a
+  // Friday evening, radar during an alert), so the line only ever appeared
+  // on a quiet afternoon when the map had nothing to say.
+  const chosenOptionCount = Math.max(
+    0,
+    activeOptionCount - (props.smartSeededLayerCount ?? 0),
+  );
 
   const stateLineSummary = [
     stateClock,
@@ -1162,7 +1179,7 @@ export default function MapDock(props: MapDockProps) {
 
   return (
     <>
-      {activeOptionCount > 0 &&
+      {chosenOptionCount > 0 &&
         pane === null &&
         !searchPanelOpen &&
         !searchKeyboardOpen &&
@@ -1205,7 +1222,7 @@ export default function MapDock(props: MapDockProps) {
       {/* At rest — no filters, no pane — the rail states the county's now
           instead of disappearing (dial program: state, not chrome). One
           tap opens the When pane, where the counts came from. */}
-      {activeOptionCount === 0 &&
+      {chosenOptionCount === 0 &&
         pane === null &&
         !searchPanelOpen &&
         !searchKeyboardOpen &&

@@ -5341,6 +5341,9 @@ export default function AppMap({
             }}
             onPaneOpenChange={handleDockPaneOpenChange}
             suppressContextRail={selectionOpen || showResultsHere || !mapLoaded}
+            smartSeededLayerCount={
+              smartNoteDismissed ? 0 : smartLayerSeeds.size
+            }
           />
           </div>
         )}
