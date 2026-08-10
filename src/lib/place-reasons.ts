@@ -18,7 +18,7 @@ import { isHiddenGem } from "@/data/hidden-gems";
  *      answers "does this fit what I'm doing?" Capped to one so it never
  *      crowds out the decision signals.
  *   4. Top rated / local favorite — answers "is it good?"
- *   5. Recently verified — answers "is the data current?"
+ *   5. Recently checked hours — answers "is the open status current?"
  */
 export type PlaceReason =
   | "verified_open"
@@ -32,7 +32,7 @@ export type PlaceReason =
   | "near_landmark"
   | "top_rated"
   | "local_favorite"
-  | "recently_verified";
+  | "hours_checked";
 
 export type PlaceReasonChip = { kind: PlaceReason; label: string; tone: ReasonTone };
 
@@ -150,13 +150,13 @@ export function placeReasons(
     out.push({ kind: "top_rated", label: "Top rated", tone: "rated" });
   }
 
-  // 4. Freshness — only worth surfacing if it's recent. A stale
-  // "verified March" chip would lower trust, not raise it.
-  if (p.last_verified_at) {
+  // 5. Hours freshness. A generic row timestamp must never imply that the
+  // hours were checked, so only the dedicated hours timestamp earns a chip.
+  if (p.hours_verified && p.hours_updated_at) {
     const daysOld =
-      (now.getTime() - Date.parse(p.last_verified_at)) / (24 * 3600_000);
+      (now.getTime() - Date.parse(p.hours_updated_at)) / (24 * 3600_000);
     if (daysOld <= FRESH_WITHIN_DAYS) {
-      out.push({ kind: "recently_verified", label: "Confirmed", tone: "verified" });
+      out.push({ kind: "hours_checked", label: "Hours checked", tone: "verified" });
     }
   }
 

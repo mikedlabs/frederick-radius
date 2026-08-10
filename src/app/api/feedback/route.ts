@@ -2,6 +2,7 @@
  * /api/feedback — visitor feedback intake.
  *
  *   POST { message, email?, pathname?, version? }
+ *   POST { source: "ask-correction", reason, resultRef?, pathname? }
  *
  * Writes to the existing `submissions` table with kind="feedback" (the same
  * intake queue place/event/claim submissions use), so /admin already has a
@@ -69,7 +70,10 @@ export async function POST(req: NextRequest) {
         try {
           const where = parsed.value.pathname ? ` · ${parsed.value.pathname}` : "";
           await fanoutToTopic(OWNER_ALERTS_TOPIC, `feedback:${id}`, {
-            title: "Site feedback",
+            title:
+              parsed.value.source === "ask-correction"
+                ? "Ask correction"
+                : "Site feedback",
             body: parsed.value.message.slice(0, 140) + where,
             url: "/admin/beta",
           });

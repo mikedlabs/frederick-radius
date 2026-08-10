@@ -30,6 +30,7 @@ import {
   AskComposerMark,
   AskComposerSubmit,
 } from "@/components/ask/AskComposer";
+import AskCorrectionControl from "@/components/ask/AskCorrectionControl";
 import Sheet from "@/components/ui/Sheet";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
@@ -360,6 +361,21 @@ export function sourceSaveTarget(source: Pick<AskSource, "href">): {
     type: match[1] === "places" ? "place" : "event",
     id: match[2],
   };
+}
+
+/**
+ * Attach a correction to the ranked entity when Ask names one, without
+ * sending the visitor's question or the generated answer to feedback storage.
+ */
+export function askCorrectionResultRef(
+  sources: Array<Pick<AskSource, "href" | "isPrimaryRankedResult">>,
+): string | null {
+  const source =
+    sources.find((candidate) => candidate.isPrimaryRankedResult) ?? sources[0];
+  if (!source) return null;
+  const target = sourceSaveTarget(source);
+  if (!target) return null;
+  return `/${target.type === "place" ? "places" : "events"}/${target.id}`;
 }
 
 export function askResultHeading(
@@ -1766,6 +1782,9 @@ export default function AskFrederick({
     ? askResponseSectionOrder(responsePresentation)
     : [];
   const leadSource = res?.sources[0] ?? null;
+  const correctionResultRef = res
+    ? askCorrectionResultRef(res.sources)
+    : null;
   const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
   const supportingSources = res?.sources.slice(1) ?? [];
   const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
@@ -2452,6 +2471,13 @@ export default function AskFrederick({
 
               return null;
             })}
+
+            {!requestFailure && res.status !== "empty" && res.answer?.trim() ? (
+              <AskCorrectionControl
+                key={`ask-correction-${requestIdRef.current}`}
+                resultRef={correctionResultRef}
+              />
+            ) : null}
           </section>
 
           <div className="mt-3 flex justify-end">

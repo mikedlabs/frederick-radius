@@ -90,6 +90,7 @@ import { type SelectedStop } from "@/components/transit/StopArrivalsPopup";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
+import { collapseInitialMapAttribution } from "./mapAttribution";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -3395,6 +3396,10 @@ export default function AppMap({
           onLoad={(e) => {
             edgeToolsLastWakeRef.current = Number.NEGATIVE_INFINITY;
             wakeMapEdgeTools();
+            // MapLibre's compact control begins expanded and normally waits
+            // for a drag to minimize. Start with the small accessible info
+            // button so legal copy never covers the mobile map HUD.
+            collapseInitialMapAttribution(e.target.getContainer());
             // `reuseMaps` can retain the camera from a prior visit even when
             // this route has an explicit return/share camera. Restore it
             // before any settled move is allowed to rewrite `?c=`.
@@ -3585,8 +3590,8 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
-          {/* Required Mapbox/OSM credits, collapsed to the compact ⓘ badge
-              (permitted by Mapbox ToS) so the text never sits on the map. */}
+          {/* Required map-data credits stay available behind a compact,
+              accessible info button instead of sitting across the map. */}
           <AttributionControl compact position="bottom-right" />
           {spotSelection && (
             <Marker

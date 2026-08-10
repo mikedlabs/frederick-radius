@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ASK_CLIENT_DEADLINE_MS,
+  askCorrectionResultRef,
   askEvidenceLabels,
   askFailureForAbortReason,
   askQuestionPath,
@@ -161,6 +162,25 @@ describe("Ask Radius nearby context", () => {
       id: "alive-at-five",
     });
     expect(sourceSaveTarget({ href: "https://example.com/source" })).toBeNull();
+  });
+
+  it("keeps Ask corrections tied to a canonical local result", () => {
+    expect(
+      askCorrectionResultRef([
+        { href: "/places/first-source" },
+        {
+          href: "/events/alive-at-five?from=ask#details",
+          isPrimaryRankedResult: true,
+        },
+      ]),
+    ).toBe("/events/alive-at-five");
+    expect(
+      askCorrectionResultRef([{ href: "/places/cafe-nola?from=ask" }]),
+    ).toBe("/places/cafe-nola");
+    expect(
+      askCorrectionResultRef([{ href: "https://example.com/source" }]),
+    ).toBeNull();
+    expect(askCorrectionResultRef([])).toBeNull();
   });
 
   it("does not describe an upstream failure as an empty search", () => {

@@ -118,6 +118,62 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByRole("heading", { name: "Sources behind this answer" })).toHaveCount(0);
   });
 
+  test("flags a bad answer without sending the question or answer text", async ({
+    page,
+  }) => {
+    const privateQuestion = "What is worth doing tonight?";
+    const privateAnswer = "Alive at Five is the strongest current match.";
+    let feedbackBody: Record<string, unknown> | null = null;
+
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer: privateAnswer,
+          sources: [
+            {
+              slug: "alive-at-five",
+              name: "Alive at Five",
+              category: "event",
+              href: "/events/alive-at-five?from=ask",
+              reason: "It starts soon.",
+              city: "Frederick",
+              isPrimaryRankedResult: true,
+            },
+          ],
+        }),
+      ),
+    );
+    await page.route("**/api/feedback", async (route) => {
+      feedbackBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      });
+    });
+
+    await page.goto("/ask");
+    await submit(page, privateQuestion);
+    await page.getByRole("button", { name: "Not right" }).click();
+    await expect(page.getByText("What was off?", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Too far away" }).click();
+
+    await expect(
+      page.getByText("Thanks. We will use that to improve Radius."),
+    ).toBeVisible();
+    await expect.poll(() => feedbackBody?.reason).toBe("too_far");
+    expect(feedbackBody).toEqual({
+      source: "ask-correction",
+      reason: "too_far",
+      resultRef: "/events/alive-at-five",
+      pathname: "/ask",
+    });
+    const serialized = JSON.stringify(feedbackBody);
+    expect(serialized).not.toContain(privateQuestion);
+    expect(serialized).not.toContain(privateAnswer);
+  });
+
   test("keeps a source photo square on a 390px result card", async ({ page }) => {
     await page.route("**/api/ask", (route) =>
       fulfill(

@@ -441,7 +441,14 @@ function PlaceSheetContent({
               </>
             )}
             <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-            <FreshnessChip iso={place.last_verified_at} />
+            <FreshnessChip
+              iso={
+                place.hours_verified && place.hours_updated_at
+                  ? place.hours_updated_at
+                  : place.last_verified_at
+              }
+              subject={place.hours_verified && place.hours_updated_at ? "Hours" : "Listing"}
+            />
           </div>
 
         {/* The moat, surfaced where the tap lands: this place's VERIFIED Field

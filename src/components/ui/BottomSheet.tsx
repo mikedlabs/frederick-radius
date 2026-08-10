@@ -57,6 +57,8 @@ type Props = {
    * removed as soon as the real chunk arrives and cannot receive focus later.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Optional height override for compact task surfaces. */
+  maxHeight?: string;
   children: (dismiss: () => void) => ReactNode;
 };
 
@@ -122,6 +124,7 @@ export default function BottomSheet({
   ariaLabel,
   historyLayerId,
   returnFocusRef,
+  maxHeight = "85dvh",
   children,
 }: Props) {
   const pathname = usePathname();
@@ -335,8 +338,8 @@ export default function BottomSheet({
             dragConstraints={{ top: 0, bottom: 600 }}
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
-            style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
+            style={{ y, maxHeight }}
+            className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
           >
             <SheetDragContext.Provider
               value={(event) => dragControls.start(event)}

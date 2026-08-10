@@ -745,8 +745,18 @@ export default function MapDock(props: MapDockProps) {
       // A general event window and the narrower live-music lens are mutually
       // exclusive. Never leave a hidden `t` value waiting to reappear later.
       q.delete("music");
-      if (browse.timeModeExplicit && browse.timeMode === k) q.delete("t");
-      else q.set("t", k);
+      // If a malformed/shared URL carried both filters, the music lens forced
+      // the computed mode to Tonight even though `t` held another value. A
+      // tap on Tonight is then a real switch, not a request to clear both.
+      if (
+        !browse.musicTonight &&
+        browse.timeModeExplicit &&
+        browse.timeMode === k
+      ) {
+        q.delete("t");
+      } else {
+        q.set("t", k);
+      }
     });
   };
 
