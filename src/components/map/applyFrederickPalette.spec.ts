@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 
@@ -67,5 +68,44 @@ describe("applyFrederickPalette", () => {
     dispose();
     map._fire("style.load");
     expect(applyCount).toBe(0);
+  });
+});
+
+// ── The map's ground must BE the app's paper ────────────────────────────
+// Source-text contract, not a render test: Mapbox paint props cannot read
+// CSS variables, so these hexes are copied by hand and drift silently. They
+// had: the ground sat at #F2EFE8 under an app paper of #F4EEE2, a cooler
+// cream that never quite matched the chrome on top of it. Nothing failed,
+// it just looked slightly not-ours forever.
+describe("palette parity with the shipped brand tokens", () => {
+  const paletteSource = readFileSync(
+    new URL("./applyFrederickPalette.ts", import.meta.url),
+    "utf8",
+  );
+  const globals = readFileSync(
+    new URL("../../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  const constant = (name: string) =>
+    paletteSource
+      .match(new RegExp(`^const ${name} = "(#[0-9A-Fa-f]{6})"`, "m"))?.[1]
+      ?.toUpperCase() ?? null;
+
+  const token = (name: string) =>
+    globals
+      .match(new RegExp(`--${name}:\\s*(#[0-9A-Fa-f]{6})`))?.[1]
+      ?.toUpperCase() ?? null;
+
+  it.each([
+    ["PAPER", "app-paper"],
+    ["PAPER_2", "app-paper-2"],
+    ["HALO", "app-paper"],
+    ["LABEL", "app-ink"],
+    ["LABEL_2", "app-ink-2"],
+  ])("%s equals var(--%s)", (constantName, tokenName) => {
+    const value = constant(constantName);
+    expect(value, `${constantName} not found in the palette source`).toBeTruthy();
+    expect(value).toBe(token(tokenName));
   });
 });

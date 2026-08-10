@@ -20,24 +20,35 @@ import type { Map as GLMap } from "mapbox-gl";
 // Aligned to the SHIPPED brand tokens (src/app/globals.css) so the map's
 // ground reads as the same paper as the rest of the app, not a lighter
 // off-match. Literal hexes because Mapbox paint props don't resolve CSS vars.
-const PAPER = "#F2EFE8";
-const PAPER_2 = "#E6E1D6";
-const WATER = "#86AFC4";
-const WATER_LINE = "#3D6F8D";
-const PARK = "#B9CDAE";
-const FARM = "#DED7B9";
-const BUILDING = "#DDD5C7";
-const BUILDING_LINE = "#C9BFAE";
-const BARE = "#E7DFD1";
-const ROAD_MINOR = "#CFC7B9";
-const ROAD_MAJOR = "#BEB3A1";
-const ROAD_HWY = "#9D8D73";
-const ROAD_CASE = "#AFA28D";
-const ROAD_HWY_CASE = "#796B57";
-const BOUNDARY = "#9E886A";
-const LABEL = "#201C17";
-const LABEL_2 = "#555850";
-const HALO = "#F2EFE8";
+// These are the app's own tokens, copied exactly rather than approximated.
+// The ground used to be #F2EFE8 against an app paper of #F4EEE2: a cooler,
+// greyer cream that never quite matched the chrome sitting on top of it.
+const PAPER = "#F4EEE2"; // --app-paper / --app-bg (Cream)
+const PAPER_2 = "#EAE1D1"; // --app-paper-2
+// Creek, lightened onto paper rather than a stock Mapbox blue.
+const WATER = "#7FA6BA";
+const WATER_LINE = "#396F8A";
+// Catoctin Forest carried down to a fill weight. The old #B9CDAE was a
+// generic yellow-sage with no relationship to the brand's green.
+const PARK = "#C6D2C0";
+const FARM = "#E2DAC0";
+const BUILDING = "#E4DBCB";
+const BUILDING_LINE = "#D3C9B7";
+const BARE = "#EBE3D4";
+// The road ladder is deliberately quiet. It covers more of the screen than
+// anything else, and the brand guide asks the basemap to sit UNDER the
+// app's pins and live layers rather than compete with them. Lightened about
+// one step each; the casing keeps enough edge that roads still read as
+// printed ribbons instead of dissolving into the paper.
+const ROAD_MINOR = "#E0D6C4";
+const ROAD_MAJOR = "#D2C7B2";
+const ROAD_HWY = "#B5A68C";
+const ROAD_CASE = "#C4B8A2";
+const ROAD_HWY_CASE = "#8C7D66";
+const BOUNDARY = "#A89272";
+const LABEL = "#221C15"; // --app-ink
+const LABEL_2 = "#5A5348"; // --app-ink-2
+const HALO = "#F4EEE2";
 
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));

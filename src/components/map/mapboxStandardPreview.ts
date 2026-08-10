@@ -95,7 +95,7 @@ export const FREDERICK_STANDARD_CONFIG = Object.freeze({
   show3dLandmarks: true,
   show3dTrees: false,
   show3dFacades: false,
-  colorLand: "#F2EFE8",
+  colorLand: "#F4EEE2",
   colorWater: "#86AFC4",
   colorGreenspace: "#B9CDAE",
   colorBuildings: "#DDD5C7",
