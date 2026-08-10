@@ -29,16 +29,18 @@ const contentSecurityPolicy = [
   [
     "connect-src 'self'",
     ...(!isProduction ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
-    "https://api.mapbox.com",
-    "https://events.mapbox.com",
-    "https://*.tiles.mapbox.com",
+    // No mapbox.com entries: the basemap is served from this origin, and
+    // the remaining Mapbox REST calls (isochrone, matrix, geocode, search
+    // box, static images) are made server-side by our own API routes, which
+    // no browser CSP governs.
+    //
     // RainViewer weather radar (the map's Radar layer): the frame index
-    // lives on api., the tiles on tilecache. — and Mapbox GL fetches
+    // lives on api., the tiles on tilecache. — and the GL renderer fetches
     // raster tiles via XHR, so they need connect-src, not img-src.
     "https://api.rainviewer.com",
     "https://tilecache.rainviewer.com",
     // NOAA nowCOAST serves the current county-bounded lightning-density
-    // image that Mapbox GL loads as an image source.
+    // image that the GL renderer loads as an image source.
     "https://nowcoast.noaa.gov",
     "https://*.supabase.co",
     "wss://*.supabase.co",
@@ -165,8 +167,10 @@ const nextConfig: NextConfig = {
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      // Mapbox Static Images API — the event page's venue mini-map. Publishable
-      // pk token in the URL by design (same token the GL map ships).
+      // Mapbox Static Images API. The mini-maps now go through
+      // /api/static-map (the optimizer sends no Referer, and the token is
+      // URL-restricted), so this is a safety net for any direct next/image
+      // use rather than the live path.
       { protocol: "https", hostname: "api.mapbox.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
       // Ticketmaster + SeatGeek promo/artist imagery — the ticketed

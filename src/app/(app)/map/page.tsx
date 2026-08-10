@@ -335,15 +335,11 @@ export default function MapPage() {
           full-screen map layout while exposing one stable page heading in
           both the server response and the hydrated document. */}
       <h1 className="sr-only">Frederick County map</h1>
-      {/* Mapbox preconnects live HERE, not in the root layout: the map is
-          the only surface that talks to these origins, and eager global
-          preconnects competed with the LCP asset on every other route
-          (speed audit). React hoists these into <head>. Hoisted above the
-          mode gate so they're in the STATIC shell for both modes. */}
-      <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
-      <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
+      {/* The map used to preconnect to api. and events.mapbox.com here.
+          Both are gone: tiles, glyphs, sprites and the style are all served
+          from this origin now, so there is no third party left to warm. */}
       {/* Warm the maplibre-gl chunk from the static shell, in parallel with
-          hydration — both modes render a Mapbox canvas. */}
+          hydration — both modes render a GL canvas. */}
       <MapWarmup />
       {/* useSearchParams (the mode gate + the browse view state) client-
           renders up to this boundary in a static route, so the prebuilt
