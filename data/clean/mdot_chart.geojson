@@ -6,20 +6,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.5388,
-          39.480408
+          -77.559326,
+          39.50969
         ]
       },
       "properties": {
-        "external_id": "9900cdc91cb00679006ad32ec4235c0a",
+        "external_id": "c5012bb35e51067a006ad32ec4235c0a",
         "incident_type": "special",
-        "description": "I-70 WEST AT HARMONY RD (MM 44.0)",
+        "description": "MD 17 (WOLFSVILLE RD) @ US 40 (BALTO NATIONAL PIKE) [Traffic Control Signal]",
         "county": "Frederick",
-        "road": "I-70",
-        "direction": "West",
-        "location": "I-70 WEST AT HARMONY RD (MM 44.0)",
+        "road": "MD 17",
+        "direction": "North",
+        "location": "MD 17 (WOLFSVILLE RD) @ US 40 (BALTO NATIONAL PIKE) [Traffic Control Signal]",
         "severity": "low",
-        "started_at": "2026-08-10T11:06:49.000Z",
+        "started_at": "2026-08-10T22:33:23.000Z",
         "expected_end": null,
         "source": "mdot_chart"
       }
@@ -43,6 +43,29 @@
         "location": "MD 80 (FINGERBOARD RD (WB/L)) @ RAMP 2 FR MD 80 WB TO IS 270 NB [Traffic Control Signal]",
         "severity": "low",
         "started_at": "2026-08-01T19:34:16.000Z",
+        "expected_end": null,
+        "source": "mdot_chart"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.37788,
+          39.40245
+        ]
+      },
+      "properties": {
+        "external_id": "3a020b7d4b2f067a006ad32ec4235c0a",
+        "incident_type": "special",
+        "description": "MD 144 EAST/WEST AT QUINN ORCHARD RD",
+        "county": "Frederick",
+        "road": "MD 144",
+        "direction": "East/West",
+        "location": "MD 144 EAST/WEST AT QUINN ORCHARD RD",
+        "severity": "low",
+        "started_at": "2026-08-10T20:07:25.000Z",
         "expected_end": null,
         "source": "mdot_chart"
       }
