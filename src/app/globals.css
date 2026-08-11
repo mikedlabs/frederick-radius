@@ -3455,7 +3455,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   left: 50%;
   z-index: var(--z-map-control);
   width: max-content;
-  max-width: min(316px, calc(100% - 68px));
+  max-width: min(370px, calc(100% - 24px));
   min-height: 52px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
@@ -3536,13 +3536,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-context-rail-summary {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--app-ink-2);
   font-size: 12.5px;
   font-weight: 700;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  white-space: normal;
 }
 .map-context-rail-clear {
   display: grid;

@@ -149,13 +149,13 @@ export function smartMapDefault(
     };
   }
 
-  // 5. Weekday commute windows, only when the roads are actually worse:
-  //    a quiet commute gets a quiet map.
+  // 5. Weekday commute windows, only when several monitored corridors agree.
+  // A single changed reading is too weak to take over a countywide arrival.
   const commute = !weekend && ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18));
-  if (commute && signals.roadsTrendingLongerCount > 0) {
+  if (commute && signals.roadsTrendingLongerCount >= 2) {
     return {
       layers: ["roads-now"],
-      reason: "A drive time is running longer than its last reading, so road conditions lead the map.",
+      reason: `Drive times are running longer on ${signals.roadsTrendingLongerCount} monitored corridors, so current road conditions are on.`,
     };
   }
 

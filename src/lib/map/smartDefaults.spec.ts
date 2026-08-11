@@ -89,15 +89,22 @@ describe("smartMapDefault", () => {
     });
   });
 
-  it("shows roads at commute time only when a corridor is actually worse", () => {
+  it("shows roads at commute time only when multiple corridor readings agree", () => {
     expect(
       smartMapDefault({ hour: 8, weekday: 2 }, quiet),
     ).toBeNull();
+    expect(
+      smartMapDefault(
+        { hour: 8, weekday: 2 },
+        { ...quiet, roadsTrendingLongerCount: 1 },
+      ),
+    ).toBeNull();
     const out = smartMapDefault(
       { hour: 8, weekday: 2 },
-      { ...quiet, roadsTrendingLongerCount: 1 },
+      { ...quiet, roadsTrendingLongerCount: 2 },
     );
     expect(out?.layers).toEqual(["roads-now"]);
+    expect(out?.reason).toContain("2 monitored corridors");
   });
 
   it("gives a quiet Tuesday afternoon the clean county", () => {

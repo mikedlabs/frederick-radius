@@ -70,6 +70,26 @@ describe("TodaysDealsStack footer denominator", () => {
     expect(html).toContain("See the full week of specials");
     expect(html).not.toContain("See all 2");
   });
+
+  it("keeps the Today briefing to two specials while preserving the full count", () => {
+    const html = renderToStaticMarkup(
+      createElement(TodaysDealsStack, {
+        deals: [
+          timedDeal("first", "5–9 PM"),
+          timedDeal("second", "5–9 PM"),
+          timedDeal("third", "5–9 PM"),
+        ],
+        weekday: "Tuesday",
+        now: tue6pm,
+        embedded: true,
+      }),
+    );
+
+    expect(html).toContain("/places/first");
+    expect(html).toContain("/places/second");
+    expect(html).not.toContain("/places/third");
+    expect(html).toContain("See all 3 specials still on today");
+  });
 });
 
 describe("TodaysDealsStack business media", () => {

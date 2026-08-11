@@ -3278,7 +3278,7 @@ export default function AppMap({
           </div>
         )}
         {/* Directions chip — distance + drive estimate + native handoff */}
-        {routeInfo && (
+        {routeInfo && !dock && (
           <div
             className="map-route-chip-wrap absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3"
             data-map-top-surface="route"

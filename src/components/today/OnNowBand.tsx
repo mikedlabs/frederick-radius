@@ -17,17 +17,12 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { clusterOrder, daypart } from "@/lib/daypart";
 import { todayDealAvailability } from "@/lib/today/dealAvailability";
 import { isEventToday } from "@/lib/eventWhenLabel";
-import {
-  itemizedTodayUtilitySummary,
-  marketTimingAt,
-  todayUtilityBandLabel,
-} from "@/lib/today/on-now";
+import { marketTimingAt, todayUtilityBandLabel } from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
-const present = (value: string | null): value is string => Boolean(value);
 
 /** Count verified happy hours that are live now or still ahead today. */
 function happyHourAvailability(now: Date): { currentCount: number; laterCount: number } {
@@ -134,32 +129,10 @@ export default async function OnNowBand({
   if (ordered.length === 0) return null;
   const [lead, ...additional] = ordered;
 
-  const currentSummary = [
-    happy.currentCount > 0 ? `${happy.currentCount} happy hour${happy.currentCount === 1 ? "" : "s"}` : null,
-    dealCurrentCount > 0 ? `${dealCurrentCount} special${dealCurrentCount === 1 ? "" : "s"}` : null,
-    marketCurrentCount > 0 ? `${marketCurrentCount} market${marketCurrentCount === 1 ? "" : "s"}` : null,
-  ].filter(present);
-  const laterSummary = [
-    happy.laterCount > 0 ? `${happy.laterCount} happy hour${happy.laterCount === 1 ? "" : "s"} later` : null,
-    dealLaterCount > 0 ? `${dealLaterCount} special${dealLaterCount === 1 ? "" : "s"} later` : null,
-    marketLaterCount > 0 ? `${marketLaterCount} market${marketLaterCount === 1 ? "" : "s"} later` : null,
-    parking ? "Parking plan for tonight" : null,
-  ].filter(present);
-  const todaySummary = [
-    dealTodayCount > 0 ? `${dealTodayCount} special${dealTodayCount === 1 ? "" : "s"} today` : null,
-    marketTodayCount > 0 ? `${marketTodayCount} market${marketTodayCount === 1 ? "" : "s"} today` : null,
-  ].filter(present);
-  const summary = itemizedTodayUtilitySummary({
-    current: currentSummary,
-    later: laterSummary,
-    today: todaySummary,
-  });
-
   return (
     <section className="mt-5" aria-label={label}>
       <TodaySectionHeading
         title={label}
-        meta={summary || undefined}
         live={currentCount > 0}
       />
       <div className="space-y-4">

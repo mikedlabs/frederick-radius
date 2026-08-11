@@ -1,4 +1,4 @@
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { MUNICIPALITIES } from "@/data/municipalities";
 
 /**
@@ -104,4 +104,20 @@ export function eventHasPreciseLocation(
     return true;
   }
   return isGeoPrecise(e) || !isAreaCentroid(e.geom);
+}
+
+/** Strict display gate for a walk time or other exact-location claim. Unlike
+ * the legacy-compatible helper above, this requires the loader's explicit
+ * confidence stamp and a coordinate inside Frederick County. */
+export function eventHasPreciseDisplayLocation(
+  event: {
+    geom?: LngLat | null;
+    geo_confidence?: GeoConfidence;
+  },
+): event is { geom: LngLat; geo_confidence: "venue_match" | "exact_address" } {
+  return (
+    isValidCoord(event.geom) &&
+    (event.geo_confidence === "venue_match" ||
+      event.geo_confidence === "exact_address")
+  );
 }

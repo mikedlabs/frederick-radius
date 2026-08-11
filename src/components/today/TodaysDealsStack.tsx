@@ -9,6 +9,7 @@ import { todayDealAvailability } from "@/lib/today/dealAvailability";
  * stay visible without expanding anything; the whole row opens the place.
  */
 const MAX_ROWS = 3;
+const EMBEDDED_MAX_ROWS = 2;
 
 const STATUS_COLOR = {
   now: "var(--app-positive)",
@@ -41,7 +42,7 @@ export default function TodaysDealsStack({
     .filter(({ availability }) => availability.state !== "earlier");
   const shown = actionable
     .sort((a, b) => a.availability.rank - b.availability.rank || a.index - b.index)
-    .slice(0, MAX_ROWS);
+    .slice(0, embedded ? EMBEDDED_MAX_ROWS : MAX_ROWS);
   if (shown.length === 0) return null;
 
   return (

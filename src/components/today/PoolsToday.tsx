@@ -26,6 +26,10 @@ export default async function PoolsToday({ now }: { now: Date }) {
   const hold = await loadOutdoorSafetyHold(undefined, { now });
   if (hold) return null;
 
+  // Today is for usable choices. Seasonal hours remain on the pool page, but
+  // a closed-pools row adds no immediate decision value here.
+  if (!anyOpen) return null;
+
   // Open pools first, then the rest — the answer ("what can I swim at now")
   // leads.
   const openPools = pools.filter((pool) => pool.openNow);
@@ -34,7 +38,6 @@ export default async function PoolsToday({ now }: { now: Date }) {
     <section className="mt-6 space-y-2.5" aria-label="Pools">
       <SectionHeading size="sm" title="Pools" accent="var(--app-cool)" />
 
-      {anyOpen ? (
       <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
         {openPools.map((p) => {
           const place = clientPlaceBySlug(p.slug);
@@ -70,22 +73,9 @@ export default async function PoolsToday({ now }: { now: Date }) {
           );
         })}
       </ul>
-      ) : (
-        <Link
-          href="/nearby?c=pools"
-          className="tap-44 flex items-center justify-between border-y py-2.5 text-[13px] font-semibold"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          Closed right now · see seasonal hours
-          <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </Link>
-      )}
-
-      {anyOpen ? (
-        <Link href="/nearby?c=pools" className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-          All pools <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </Link>
-      ) : null}
+      <Link href="/nearby?c=pools" className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+        All pools <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+      </Link>
     </section>
   );
 }

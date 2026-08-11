@@ -26,6 +26,7 @@ type WantRow = {
   where: string | null;
   distance: string | null;
   fact: string;
+  decisionReasons?: DaypartPick["decisionReasons"];
   confidence?: "confirmed" | "likely";
 };
 
@@ -147,6 +148,7 @@ export function liveShelfFromWantAnswer(
       where: candidate.where,
       distance: candidate.distance,
       fact: candidate.fact,
+      decisionReasons: candidate.decisionReasons,
       confidence: candidate.confidence as "confirmed" | "likely",
     }));
 
@@ -207,6 +209,18 @@ export function daypartPickScopeLabel(
     return town ? `${town} picks` : "Town picks";
   }
   return "Countywide picks";
+}
+
+/** The lead card already prints hours and distance. Use the first remaining
+ * evidence-backed reason to explain why it outranked the alternatives without
+ * repeating those visible facts or exposing an internal score. */
+export function daypartLeadReason(
+  picks: readonly DaypartPick[],
+): string | null {
+  const reasons = picks[0]?.decisionReasons ?? [];
+  return reasons.find(
+    (reason) => reason.id !== "availability" && reason.id !== "proximity",
+  )?.label ?? null;
 }
 
 /** Ask the photo proxy for its 1x1 failure signal. This particular shelf can
@@ -278,10 +292,12 @@ function DaypartPickCard({
   place,
   category,
   eager = false,
+  lead = false,
 }: {
   place: DaypartPick;
   category: string;
   eager?: boolean;
+  lead?: boolean;
 }) {
   const signaledPhoto = place.photo ? daypartPhotoSrc(place.photo) : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -300,7 +316,10 @@ function DaypartPickCard({
       <Link
         href={`/places/${place.slug}`}
         prefetch={false}
-        className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
+        data-today-place-lead={lead ? "true" : undefined}
+        className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
+          lead ? "w-[14.5rem]" : "w-[10.75rem]"
+        }`}
         style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
         <Image
@@ -364,7 +383,10 @@ function DaypartPickCard({
     <Link
       href={`/places/${place.slug}`}
       prefetch={false}
-      className="group flex min-h-[76px] w-[11.25rem] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985]"
+      data-today-place-lead={lead ? "true" : undefined}
+      className={`group flex h-full min-h-[76px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
+        lead ? "w-[14.5rem]" : "w-[10.75rem]"
+      }`}
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-edge), var(--app-hi)",
@@ -557,6 +579,7 @@ export default function DaypartNeeds({
   const likely = active.picks.length > 0 &&
     active.picks.every((place) => place.confidence === "likely");
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
+  const leadReason = daypartLeadReason(active.picks);
 
   return (
     <section
@@ -641,15 +664,13 @@ export default function DaypartNeeds({
         aria-labelledby={rows.length > 1 ? `daypart-tab-${active.category}` : undefined}
         className={rows.length > 1 ? "mt-2" : "mt-1"}
       >
-        <div className="px-0.5">
+        {awaitingLive || likely ? <div className="px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {awaitingLive
               ? "Checking nearby"
-              : likely
-                ? `${pickScopeLabel} · Posted hours; check before going`
-                : pickScopeLabel}
+              : `${pickScopeLabel} · Posted hours; check before going`}
           </p>
-        </div>
+        </div> : null}
 
         {awaitingLive ? (
           <div
@@ -660,7 +681,7 @@ export default function DaypartNeeds({
             {[0, 1, 2].map((slot) => (
               <Skeleton.Block
                 key={slot}
-                width="11.25rem"
+                width={slot === 0 ? "14.5rem" : "10.75rem"}
                 height="7.35rem"
                 round="var(--app-radius-md)"
                 className="shrink-0"
@@ -668,17 +689,35 @@ export default function DaypartNeeds({
             ))}
           </div>
         ) : active.picks.length > 0 ? (
-          <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
-            {active.picks.map((place, index) => (
-              <li key={place.slug} className="shrink-0">
-                <DaypartPickCard
-                  place={place}
-                  category={active.category}
-                  eager={index === 0}
-                />
-              </li>
-            ))}
-          </ul>
+          <div>
+            <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
+              {active.picks.map((place, index) => (
+                <li key={place.slug} className="shrink-0">
+                  <DaypartPickCard
+                    place={place}
+                    category={active.category}
+                    eager={index === 0}
+                    lead={index === 0}
+                  />
+                </li>
+              ))}
+            </ul>
+            {leadReason ? (
+              <p
+                data-today-decision-reason="true"
+                className="mt-2 flex items-baseline gap-2 px-0.5 text-[11.5px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <span
+                  className="shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]"
+                  style={{ color: "var(--app-brand-press)" }}
+                >
+                  Why it leads
+                </span>
+                <span>{leadReason}</span>
+              </p>
+            ) : null}
+          </div>
         ) : (
           <div
             role="status"

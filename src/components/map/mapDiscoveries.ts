@@ -1,5 +1,6 @@
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { isOpenNow } from "@/lib/hours";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { CemeteryPin, EventPin, MapPinPlace, TransitStopPin } from "./types";
@@ -258,7 +259,8 @@ function transitStopLabel(name: string): string {
     .replace(/\s+/g, " ")
     .trim();
   if (!cleaned) return "Nearby transit stop";
-  return /^\d+\s/.test(cleaned) ? `Transit stop at ${cleaned}` : cleaned;
+  if (/\b(?:transit|stop|station)\b/i.test(cleaned)) return cleaned;
+  return `Transit stop at ${cleaned}`;
 }
 
 function shortTitle(value: string, max = 42): string {
@@ -287,6 +289,17 @@ function hasUsefulCemeteryName(name: string): boolean {
   return !new Set(["colored", "colored a m e", "methodist", "unknown", "unnamed", "cemetery"]).has(normalized);
 }
 
+function isCurrentVerifiedEvent(event: EventPin, nowMs: number): boolean {
+  const verificationExpiresMs = Date.parse(
+    event.verification_expires_at ?? "",
+  );
+  return (
+    event.source_verified === true &&
+    Number.isFinite(verificationExpiresMs) &&
+    verificationExpiresMs > nowMs
+  );
+}
+
 function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
   const out: Candidate[] = [];
   const nowMs = input.now.getTime();
@@ -294,6 +307,13 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
   for (const event of input.events) {
     const startsMs = Date.parse(event.starts_at);
     if (!Number.isFinite(startsMs) || startsMs < nowMs - 60 * 60_000) continue;
+    // A Highlights card is an editorial recommendation, not merely a pin.
+    // Event pins may remain visible with their own source state, but Radius
+    // must not build a food, parking, or transit plan around a listing whose
+    // publisher check is missing or has expired.
+    if (
+      !isCurrentVerifiedEvent(event, nowMs)
+    ) continue;
     const venueName = event.venue_name.trim();
     // A time plus coordinates is not enough for a useful event plan. If the
     // source cannot name the venue, the card cannot explain where the joined
@@ -307,7 +327,9 @@ function eventCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
       ? input.places.find((place) => place.slug === event.venue_place_slug) ?? null
       : null;
     const nearbyPlace = nearest(anchor, input.places, 900, (place) =>
-      place.slug !== host?.slug && FOOD_AND_DRINK.has(place.category),
+      place.slug !== host?.slug &&
+        FOOD_AND_DRINK.has(place.category) &&
+        isOpenNow(place.open_status),
       (place) => place.geom,
     );
     const garage = nearest(
@@ -431,13 +453,28 @@ function fieldReadyCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
 
 function beerCandidates(input: BuildMapDiscoveriesInput): Candidate[] {
   const out: Candidate[] = [];
-  const breweries = input.places.filter((place) => place.category === "brewery");
+  const nowMs = input.now.getTime();
+  const breweries = input.places.filter(
+    (place) => place.category === "brewery" && isOpenNow(place.open_status),
+  );
   for (const brewery of breweries) {
     const food = nearest(brewery.geom, input.places, 850, (place) =>
-      place.slug !== brewery.slug && ["restaurant", "pizza", "food-truck", "bakery"].includes(place.category),
+      place.slug !== brewery.slug &&
+        ["restaurant", "pizza", "food-truck", "bakery"].includes(place.category) &&
+        isOpenNow(place.open_status),
       (place) => place.geom,
     );
-    const event = nearest(brewery.geom, input.events, 650);
+    const event = nearest(
+      brewery.geom,
+      input.events,
+      650,
+      (candidate) => {
+        const startsMs = Date.parse(candidate.starts_at);
+        return Number.isFinite(startsMs) &&
+          startsMs >= nowMs - 60 * 60_000 &&
+          isCurrentVerifiedEvent(candidate, nowMs);
+      },
+    );
     const transit = nearest(brewery.geom, input.transitStops, 650);
     if (!food || (!event && !transit)) continue;
 

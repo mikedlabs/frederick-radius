@@ -5,6 +5,7 @@ import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
   daypartEmptyCopy,
+  daypartLeadReason,
   daypartPhotoSrc,
   daypartPickScopeLabel,
   initialDaypartCategory,
@@ -54,7 +55,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Bakeries");
     expect(html).toContain("First Cup");
     expect(html).toContain("Across Frederick County");
-    expect(html).toContain("Countywide picks");
+    expect(html).not.toContain("Countywide picks");
     expect(html).toContain("Urbana");
     expect(html).not.toContain("Nearby picks");
     expect(html).not.toContain("Right now, around here");
@@ -283,6 +284,56 @@ describe("DaypartNeeds", () => {
     expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 
+  it("preserves the shared decision reasons and chooses one that adds information", () => {
+    const shelf = liveShelfFromWantAnswer(
+      {
+        hero: {
+          slug: "local-cup",
+          name: "Local Cup",
+          photo: null,
+          where: "Frederick",
+          distance: "4 min walk",
+          fact: "Open until 4pm",
+          confidence: "confirmed",
+          decisionReasons: [
+            { id: "availability", label: "Its current hours show it open now.", evidenceIds: ["verified-hours"] },
+            { id: "proximity", label: "It is close to your location.", evidenceIds: ["decision-origin"] },
+            { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
+          ],
+        },
+        also: [],
+        browseHref: "/category/coffee",
+        contextLabel: "Near you",
+        contextSource: "device",
+        mayAssertNoneOpen: false,
+      },
+      {
+        category: "coffee",
+        label: "Coffee",
+        href: "/category/coffee",
+        picks: [],
+      },
+      "nearme",
+    );
+
+    expect(daypartLeadReason(shelf.picks)).toBe(
+      "Radius has this marked as a local favorite.",
+    );
+  });
+
+  it("does not repeat hours or distance as a second explanation line", () => {
+    expect(daypartLeadReason([{
+      slug: "nearby-only",
+      name: "Nearby Only",
+      rating: null,
+      confidence: "confirmed",
+      decisionReasons: [
+        { id: "availability", label: "Its current hours show it open now.", evidenceIds: [] },
+        { id: "proximity", label: "It is close to your location.", evidenceIds: [] },
+      ],
+    }])).toBeNull();
+  });
+
   it("never turns an unknown-hours best-fit row into an open-now card", () => {
     const shelf = liveShelfFromWantAnswer(
       {
@@ -388,6 +439,8 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).not.toContain("<img");
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
     expect(withoutPhoto).toContain("min-h-[76px]");
+    expect(withoutPhoto).toContain('data-today-place-lead="true"');
+    expect(withoutPhoto).toContain("w-[14.5rem]");
     expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
   });
 
