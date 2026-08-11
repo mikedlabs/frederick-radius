@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { eventHasPreciseLocation } from "./geo-confidence";
+import {
+  eventHasPreciseDisplayLocation,
+  eventHasPreciseLocation,
+} from "./geo-confidence";
 
 describe("eventHasPreciseLocation", () => {
   it("rejects the county fallback coordinate", () => {
@@ -47,5 +50,22 @@ describe("eventHasPreciseLocation", () => {
         geom: { lng: -77.397003, lat: 39.446694 },
       }),
     ).toBe(true);
+  });
+});
+
+describe("eventHasPreciseDisplayLocation", () => {
+  it("requires both an explicit precision stamp and an in-county coordinate", () => {
+    expect(eventHasPreciseDisplayLocation({
+      geom: { lng: -77.397003, lat: 39.446694 },
+      geo_confidence: "venue_match",
+    })).toBe(true);
+    expect(eventHasPreciseDisplayLocation({
+      geom: { lng: -77.397003, lat: 39.446694 },
+      geo_confidence: "area",
+    })).toBe(false);
+    expect(eventHasPreciseDisplayLocation({
+      geom: { lng: -76.6, lat: 39.4 },
+      geo_confidence: "exact_address",
+    })).toBe(false);
   });
 });

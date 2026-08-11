@@ -539,10 +539,10 @@ test.describe("map search selection", () => {
 
   test("groups live road context behind one honest control", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Choose what to see" }).click();
+    await page.getByRole("button", { name: "Browse map contents" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: "Check travel and live conditions" })
+      .getByRole("button", { name: /Travel & conditions/ })
       .click();
 
     const roads = page
@@ -556,33 +556,24 @@ test.describe("map search selection", () => {
     await expect(
       reopenedLayers.getByRole("button", { name: "Roads now" }),
     ).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      reopenedLayers.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
-    ).toBeVisible();
-    await expect(
-      reopenedLayers.getByText(
-        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
-      ),
-    ).toBeVisible();
+    await reopenedLayers.getByText("Sources and limits").click();
+    await expect(reopenedLayers.getByText(/Maryland CHART, WZDx, and county-published reports/)).toBeVisible();
+    await expect(reopenedLayers.getByText(/does not show live congestion speeds/)).toBeVisible();
     await expect(reopenedLayers.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
   });
 
   test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
     await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: /Choose what to see/ }).click();
+    await page.getByRole("button", { name: "Browse map contents" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: "Check travel and live conditions" })
+      .getByRole("button", { name: /Travel & conditions/ })
       .click();
 
     const layers = page.getByRole("region", { name: "Travel & conditions" });
     const roads = layers.getByRole("button", { name: "Roads now" });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
-    await expect(
-      page.getByText(
-        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
-      ),
-    ).toBeVisible();
+    await expect(layers.getByText(/Official road reports are on/)).toBeVisible();
 
     await roads.click();
 
@@ -591,13 +582,8 @@ test.describe("map search selection", () => {
     await expect(
       reopenedLayers.getByRole("button", { name: "Roads now" }),
     ).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      reopenedLayers.getByText(/Mapbox congestion with amber Maryland WZDx work zones/),
-    ).toBeVisible();
-    await expect(
-      reopenedLayers.getByText(
-        /Maryland CHART incidents, WZDx work zones, and county-published issues/,
-      ),
-    ).toBeVisible();
+    await reopenedLayers.getByText("Sources and limits").click();
+    await expect(reopenedLayers.getByText(/Maryland CHART, WZDx, and county-published reports/)).toBeVisible();
+    await expect(reopenedLayers.getByText(/does not show live congestion speeds/)).toBeVisible();
   });
 });

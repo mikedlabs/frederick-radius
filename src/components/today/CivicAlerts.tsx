@@ -305,16 +305,16 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
         className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
         style={{ background: s.bg, color: s.fg }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
           <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">{top.title}</p>
+          <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug tracking-tight">{top.title}</p>
           <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
             {top.source}
           </span>
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[11px] opacity-90">
+        <div className="mt-1 flex items-start gap-2 text-[11px] leading-snug opacity-90">
           {TailIcon && <TailIcon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />}
-          <span className="min-w-0 flex-1 truncate">{top.tail}</span>
+          <span className="min-w-0 flex-1">{top.tail}</span>
           {top.scope && (
             <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-tight backdrop-blur">
               {top.scope}
@@ -333,15 +333,15 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
             color: "var(--app-on-brand)",
           }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <CalendarX className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">{n.headline}</p>
+            <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug tracking-tight">{n.headline}</p>
             <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
               {n.status === "cancelled" ? "Cancelled" : n.status === "postponed" ? "Postponed" : "Update"}
             </span>
           </div>
           {n.note && (
-            <p className="mt-1 truncate text-[11px] opacity-90">{n.note}</p>
+            <p className="mt-1 text-[11px] leading-snug opacity-90">{n.note}</p>
           )}
         </a>
       ))}

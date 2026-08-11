@@ -205,8 +205,8 @@ export type MapDockProps = {
   showRadar: boolean;
   setShowRadar: SetState<boolean>;
   radarHealth: LiveLayerHealth;
-  /** One task-level roads mode: Mapbox congestion plus Radius's official
-   *  reports and public incident context. `roadsNowActive` keeps an existing
+  /** One task-level roads mode: official roadwork and County context plus
+   *  Radius's privacy-filtered public incident view. `roadsNowActive` keeps an existing
    *  individual/deep-linked layer visible in the summary, while
    *  `roadsNowFullyOn` prevents the master control from erasing a mixed state
    *  on its first tap. */
@@ -831,7 +831,7 @@ export default function MapDock(props: MapDockProps) {
   const communityReportsOn = props.amenityGroups.has("community");
   const publicAmenityCount = [...props.amenityGroups].filter((key) => key !== "community").length;
 
-  // Layer drapes, in a stable order (drapes first, then Yours lenses) so
+  // Layer drapes, in a stable order (drapes first, then personal lenses) so
   // the Layers readout's lead word doesn't jump as toggles flip.
   const layerBits: string[] = [];
   if (publicAmenityCount > 0) layerBits.push("Amenities");
@@ -886,7 +886,8 @@ export default function MapDock(props: MapDockProps) {
     activeWhereSel.kind === "county" ? "County"
     : activeWhereSel.kind === "nearme" ? "Near me"
     : activeWhereSel.name;
-  // Layers = the drapes + the Yours lenses, tallied for the spoken summary.
+  // Layers = the drapes + the personal and fieldwork lenses, tallied for the
+  // spoken summary.
   const layers = layersCaption([...layerBits, ...lensLabels]);
 
   const dirty = dockDirty({
@@ -942,7 +943,7 @@ export default function MapDock(props: MapDockProps) {
         ? "Open status unavailable"
         : "No recently confirmed open hours",
     browse.musicTonightCount > 0
-      ? `${browse.musicTonightCount.toLocaleString("en-US")} mapped ${
+      ? `${browse.musicTonightCount.toLocaleString("en-US")} ${
           browse.musicTonightCount === 1 ? "show" : "shows"
         } tonight`
       : null,
@@ -2255,7 +2256,7 @@ export default function MapDock(props: MapDockProps) {
               </div>
             )}
 
-            {/* ── LAYERS — the map drapes + Yours lenses + the Key, folded in
+            {/* ── LAYERS — the map drapes + personal lenses + the Key, folded in
                 from the old bottom-left tray. ── */}
             {pane === "layers" && (
               <div>
@@ -2270,7 +2271,7 @@ export default function MapDock(props: MapDockProps) {
                       color="var(--app-cool)"
                       onClick={() => props.setShowParking((v) => !v)}
                       count={props.parkingCount}
-                      title="Downtown city parking garages, tinted by live availability"
+                      title="Downtown city parking garages, with availability when the city feed provides it"
                     >
                       Parking
                     </Chip>
@@ -2315,7 +2316,7 @@ export default function MapDock(props: MapDockProps) {
                     color="var(--app-brand)"
                     onClick={() => props.setShowRoadsNow(!props.roadsNowFullyOn)}
                     title={
-                      "Current road flow from Mapbox with Maryland CHART reports and privacy-filtered public incidents. Medical and personal calls are never shown"
+                      "Current Maryland roadwork and public incident reports, with clearly labeled County flood and snow-route context. Live traffic speeds are not shown"
                     }
                   >
                     Roads now
@@ -2383,54 +2384,36 @@ export default function MapDock(props: MapDockProps) {
                           : "No current reports."}
                       </p>
                     )}
-                    {/* ONE Roads-now paragraph. The master chip flips traffic,
-                        civic, and scanner together, and this list used to
-                        answer with five stacked bold-lead paragraphs (and,
-                        via the aria-live wrapper, read all five aloud at
-                        once). Every honesty branch survives — the flow
-                        legend, the official-source line, the scanner health
-                        states, the privacy sentence, and the not-current
-                        disclaimers — as sentences of one paragraph. */}
+                    {/* Keep the live road answer scannable. Source detail and
+                        important limits stay one disclosure away instead of
+                        becoming a wall of text over the map. */}
                     {props.roadsNowActive && (
-                      <p className="dock-layer-status">
-                        <strong>Roads now</strong> ·{" "}
-                        {props.showTraffic &&
-                          "Orange and red lines show heavier flow, dashed red marks provider-listed closures, and amber marks Maryland WZDx work zones. "}
-                        {props.showCivic && props.civicAvailable &&
-                          "Official reports come from Maryland CHART, WZDx, and county-published issues. "}
-                        {props.showIncidents && (
-                          <>
-                            {props.incidentHealth.status === "unavailable"
-                              ? "The latest Frederick Scanner request failed. Retrying automatically."
+                      <div className="dock-layer-status">
+                        <p>
+                          <strong>Roads now</strong> · {props.showIncidents
+                            ? props.incidentHealth.status === "unavailable"
+                              ? "Current public incident reports are temporarily unavailable."
                               : props.incidentHealth.status === "stale"
-                              ? `Showing ${props.incidentHealth.count} scanner incident${props.incidentHealth.count === 1 ? "" : "s"} from the last good update${incidentUpdate ? ` at ${incidentUpdate}` : ""}. The feed is retrying.`
-                              : props.incidentHealth.status === "disabled"
-                                ? "Loading the latest public incidents…"
-                              : props.incidentHealth.status === "empty"
-                              ? (props.incidentHealth.notShownCount ?? 0) > 0
-                                ? `${props.incidentHealth.notShownCount} public report${props.incidentHealth.notShownCount === 1 ? " is" : "s are"} on the latest scanner board. This road view shows only reports with a safe block-level map location and likely travel impact.`
-                                : "No current public incidents in the latest FrederickScanner response."
-                              : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`}{" "}
-                            Medical and personal calls stay hidden.
-                          </>
-                        )}
-                        {props.showTraffic && (props.floodContextCount > 0 || props.snowRouteCount > 0) && (
-                          <>
-                            {" "}Background reference only:{" "}
-                            {[
-                              props.floodContextCount > 0
-                                ? `${props.floodContextCount} mapped high-water risk areas and past-rescue locations`
-                                : null,
-                              props.snowRouteCount > 0
-                                ? `${props.snowRouteCount} county route-operation report${props.snowRouteCount === 1 ? "" : "s"}`
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" and ")}
-                            . These are context, not current flooding, closures, or plow locations.
-                          </>
-                        )}
-                      </p>
+                                ? `Using the last good incident update${incidentUpdate ? ` from ${incidentUpdate}` : ""}.`
+                                : props.incidentHealth.status === "disabled"
+                                  ? "Checking current public incidents."
+                                  : props.incidentHealth.status === "empty"
+                                    ? "No safely mapped travel incidents are current."
+                                    : `${props.incidentHealth.count} current travel incident${props.incidentHealth.count === 1 ? "" : "s"} mapped.`
+                            : props.showTraffic
+                              ? "Maryland road work and official travel context are on."
+                              : "Official road reports are on."}
+                        </p>
+                        <details className="mt-1.5 text-[11px] leading-relaxed">
+                          <summary className="tap-44-y cursor-pointer font-semibold">Sources and limits</summary>
+                          <p className="pb-1">
+                            Maryland CHART, WZDx, and county-published reports provide road work and official travel context. Radius does not show live congestion speeds. Frederick Scanner contributes only public reports with a safe block-level location and likely travel impact. Medical and personal calls stay hidden.
+                            {props.showTraffic && (props.floodContextCount > 0 || props.snowRouteCount > 0)
+                              ? " High-water locations and snow routes are background context, not claims of current flooding, closures, or plow locations."
+                              : ""}
+                          </p>
+                        </details>
+                      </div>
                     )}
                     {props.showRotorcraft && (
                       <p className="dock-layer-status">
@@ -2527,33 +2510,37 @@ export default function MapDock(props: MapDockProps) {
                   />
                 )}
 
-                {(props.savedCount > 0 || props.fieldNotesCount > 0) && (
+                {props.savedCount > 0 && (
                   <>
-                    <Sect>Yours</Sect>
+                    <Sect>Saved</Sect>
                     <div className="dock-chips">
-                      {props.savedCount > 0 && (
-                        <Chip
-                          on={props.showSavedOnly}
-                          color="var(--app-brand)"
-                          onClick={() => props.setShowSavedOnly((v) => !v)}
-                          count={props.savedCount}
-                          title="Show only the places you saved"
-                        >
-                          Saved
-                        </Chip>
-                      )}
-                      {props.fieldNotesCount > 0 && (
-                        <Chip
-                          on={props.fieldNotesOnly}
-                          color="var(--app-brand)"
-                          onClick={() => props.setFieldNotesOnly((v) => !v)}
-                          count={props.fieldNotesCount}
-                          title="Only places with verified Field Notes: happy hour, a deal, parking, or an insider tip"
-                        >
-                          <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                          Field notes
-                        </Chip>
-                      )}
+                      <Chip
+                        on={props.showSavedOnly}
+                        color="var(--app-brand)"
+                        onClick={() => props.setShowSavedOnly((v) => !v)}
+                        count={props.savedCount}
+                        title="Show only the places you saved"
+                      >
+                        Saved places
+                      </Chip>
+                    </div>
+                  </>
+                )}
+
+                {props.fieldNotesCount > 0 && (
+                  <>
+                    <Sect>Radius fieldwork</Sect>
+                    <div className="dock-chips">
+                      <Chip
+                        on={props.fieldNotesOnly}
+                        color="var(--app-brand)"
+                        onClick={() => props.setFieldNotesOnly((v) => !v)}
+                        count={props.fieldNotesCount}
+                        title="Show places with checked Field Notes about deals, parking, and useful local details"
+                      >
+                        <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                        Checked field notes
+                      </Chip>
                     </div>
                   </>
                 )}

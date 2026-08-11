@@ -10,6 +10,7 @@ import {
   coffeeIntentTier,
   isChainName,
 } from "@/lib/category-ranking";
+import type { DecisionReason } from "@/lib/decision/core";
 
 /**
  * Server loader for /today's "Right now, around here" section: the daypart's
@@ -31,6 +32,8 @@ export type DaypartPick = {
   distance?: string | null;
   /** Live hours line such as "Open until 9pm". */
   fact?: string | null;
+  /** The same evidence-backed explanation used by Ask and Nearby. */
+  decisionReasons?: DecisionReason[];
   /** Whether the hours signal is live-confirmed or a conservative posted-hours fallback. */
   confidence: "confirmed" | "likely";
 };

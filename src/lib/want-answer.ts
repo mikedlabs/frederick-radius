@@ -539,7 +539,7 @@ function wantDecisionFactors(
     },
     {
       id: "local-favorite",
-      label: "It is a Radius local favorite.",
+      label: "Radius has this marked as a local favorite.",
       points: candidate.local_favorite ? 1.5 : 0,
       reasonPriority: 70,
       visible: Boolean(candidate.local_favorite),

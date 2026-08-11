@@ -26,9 +26,14 @@ function place(over: Partial<MapPinPlace> & Pick<MapPinPlace, "slug" | "name" | 
 }
 
 function input(over: Partial<BuildMapDiscoveriesInput> = {}): BuildMapDiscoveriesInput {
+  const events = (over.events ?? []).map((event) => ({
+    ...event,
+    source_verified: event.source_verified ?? true,
+    verification_expires_at:
+      event.verification_expires_at ?? "2026-07-23T16:00:00.000Z",
+  }));
   return {
     places: [],
-    events: [],
     amenities: [],
     parking: [],
     transitStops: [],
@@ -37,6 +42,7 @@ function input(over: Partial<BuildMapDiscoveriesInput> = {}): BuildMapDiscoverie
     origin,
     now: new Date("2026-07-22T16:00:00.000Z"),
     ...over,
+    events,
   };
 }
 
@@ -56,6 +62,7 @@ describe("buildMapDiscoveries", () => {
       name: "The Ordinary Hen",
       category: "restaurant",
       geom: { lng: -77.4104, lat: 39.4140 },
+      open_status: { state: "open", closesAt: "23:00", closingSoon: false },
     });
     const garage: ParkingPin = {
       slug: "carroll-creek",
@@ -247,6 +254,73 @@ describe("buildMapDiscoveries", () => {
 
     expect(finding.summary).toContain("Transit stop at 141 Thomas Johnson Drive");
     expect(finding.summary).not.toContain("SRI");
+  });
+
+  it("identifies a named intersection as a transit stop", () => {
+    const event: EventPin = {
+      slug: "east-street-event",
+      title: "East Street gathering",
+      starts_at: "2026-07-22T21:45:00.000Z",
+      venue_name: "East Street",
+      lng: origin.lng,
+      lat: origin.lat,
+      category: "community",
+    };
+    const finding = buildMapDiscoveries(input({
+      events: [event],
+      transitStops: [{ id: "east-9th", name: "East Street at 9th Street", lng: -77.4102, lat: 39.4141 }],
+    }))[0];
+
+    expect(finding.summary).toContain("Transit stop at East Street at 9th Street");
+  });
+
+  it("does not build a recommendation around an unverified event pin", () => {
+    const event: EventPin = {
+      slug: "unverified-event",
+      title: "Unverified event",
+      starts_at: "2026-07-22T21:45:00.000Z",
+      venue_name: "Test venue",
+      lng: origin.lng,
+      lat: origin.lat,
+      category: "music",
+      source_verified: false,
+      verification_expires_at: "2026-07-23T16:00:00.000Z",
+    };
+    const restaurant = place({
+      slug: "nearby-dinner",
+      name: "Nearby Dinner",
+      category: "restaurant",
+      geom: { lng: -77.4103, lat: 39.4142 },
+    });
+
+    expect(buildMapDiscoveries(input({
+      events: [event],
+      places: [restaurant],
+    }))).toEqual([]);
+  });
+
+  it("does not send someone to a place confirmed closed right now", () => {
+    const event: EventPin = {
+      slug: "dinner-event",
+      title: "Dinner event",
+      starts_at: "2026-07-22T21:45:00.000Z",
+      venue_name: "Test venue",
+      lng: origin.lng,
+      lat: origin.lat,
+      category: "music",
+    };
+    const restaurant = place({
+      slug: "closed-dinner",
+      name: "Closed Dinner",
+      category: "restaurant",
+      geom: { lng: -77.4103, lat: 39.4142 },
+      open_status: { state: "closed" },
+    });
+
+    expect(buildMapDiscoveries(input({
+      events: [event],
+      places: [restaurant],
+    }))).toEqual([]);
   });
 
   it("uses nearest mapped wording for incomplete public-amenity coverage", () => {

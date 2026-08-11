@@ -14,6 +14,8 @@ import EventVisualCredit from "@/components/event/EventVisualCredit";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { eventTown } from "@/lib/events/eventTown";
+import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
+import EventWalkTime from "@/components/today/EventWalkTime";
 
 /**
  * TonightHeadline — the ONE headline of /today, rendered only when the day
@@ -136,6 +138,9 @@ export default function TonightHeadline({
               {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
               {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
             </p>
+            {eventHasPreciseDisplayLocation(event) ? (
+              <EventWalkTime dest={event.geom} />
+            ) : null}
             {/* Source-aware venue visuals are labeled as the place they depict,
                 so a Carroll Creek photograph never pretends to document this
                 specific event. */}

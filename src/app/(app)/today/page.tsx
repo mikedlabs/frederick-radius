@@ -35,7 +35,6 @@ import { eventDateBlock } from "@/lib/loaders/events";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
-import { isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
@@ -62,6 +61,8 @@ import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming"
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import { shouldRenderTodayEventSection } from "@/lib/today-events";
 import { eventTown } from "@/lib/events/eventTown";
+import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
+import { eventDecisionVerification } from "@/lib/events/decision-verification";
 
 /**
  * Now — the daily briefing.
@@ -190,15 +191,15 @@ export default async function HomePage() {
   // them out of the first decision slot so it remains one honest answer.
   const availableToday = (
     <>
-      <div className="today-sports-stack">
-        <h2 className="today-sports-stack__heading">Local sports</h2>
-        <KeysScore />
-        <LocalSportsScoreboard />
-      </div>
       <div id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
+      </div>
+      <div className="today-sports-stack">
+        <h2 className="today-sports-stack__heading">Local sports</h2>
+        <KeysScore />
+        <LocalSportsScoreboard />
       </div>
     </>
   );
@@ -494,6 +495,12 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
     nextStop = schedule
       ? nextPublishedFoodTruckStop(schedule.stops, now)
       : null;
+    if (
+      nextStop &&
+      easternDayKey(new Date(nextStop.startsAt)) !== easternDayKey(now)
+    ) {
+      nextStop = null;
+    }
   } catch {
     // The immediate roster door remains useful if the stored snapshot is unavailable.
   }
@@ -502,17 +509,6 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
       nextFoodTruckStop={nextStop}
       asOf={now.toISOString()}
     />
-  );
-}
-
-/** A walk time is only honest for a venue we KNOW the position of — the loader
- *  stamps "venue_match" / "exact_address" on those (and lists "area"/"unknown"
- *  ones without a distance). Gate the tile's walk figure on that + a valid
- *  in-county coordinate, so we never measure a stroll to a guessed point. */
-function hasPreciseGeo(e: { geo_confidence?: string; geom?: { lng: number; lat: number } | null }): boolean {
-  return (
-    (e.geo_confidence === "venue_match" || e.geo_confidence === "exact_address") &&
-    isValidCoord(e.geom ?? null)
   );
 }
 
@@ -545,9 +541,21 @@ function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"]
   // civic business in the quiet program rows, ordered by start time, so the
   // hierarchy never flattens.
   const todaysEvents = ahead
-    .filter((e) => !isUtilityEvent(e) && !isRoutineProgram(e))
+    .filter(
+      (e) =>
+        !isUtilityEvent(e) &&
+        !isRoutineProgram(e) &&
+        eventDecisionVerification(e, now).sourceVerified,
+    )
     .sort(compareForLead);
-  const alsoToday = ahead.filter((e) => isUtilityEvent(e) || isRoutineProgram(e));
+  const strongEventKeys = new Set(
+    todaysEvents.map((event) => `${event.slug}|${event.starts_at}`),
+  );
+  // A public but not freshly source-verified draw can stay in the compact
+  // chronological program. It cannot receive Today's editorial headline.
+  const alsoToday = ahead.filter(
+    (event) => !strongEventKeys.has(`${event.slug}|${event.starts_at}`),
+  );
   const earlierToday = ended.filter((e) => !isUtilityEvent(e));
   // The selected lead renders exactly once (as the page headliner). Duplicate
   // feed occurrences are removed from the compact program below instead of
@@ -623,7 +631,7 @@ function ProgramRow({
             )}
             {/* Real walk minutes from the user's cached fix (LocationPrime
                 consent), precisely-located venues only; self-hides. */}
-            {hasPreciseGeo(e) && <EventWalkTime dest={e.geom} />}
+            {eventHasPreciseDisplayLocation(e) && <EventWalkTime dest={e.geom} />}
           </div>
         )}
         {!quiet && (
@@ -706,7 +714,27 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     programCount: program.length,
     earlierCount: remainingEarlierToday.length,
   })) {
-    return null;
+    return (
+      <section className="mt-5" aria-label="Events today">
+        <Link
+          href="/events"
+          className="tap-44 flex items-center justify-between gap-3 border-y py-2.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <span className="min-w-0">
+            <strong className="block text-[14px] leading-snug" style={{ color: "var(--app-ink)" }}>
+              Events today
+            </strong>
+            <span className="block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Some event sources are still updating.
+            </span>
+          </span>
+          <span className="shrink-0 text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            Open board <ChevronRight className="ml-0.5 inline h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </span>
+        </Link>
+      </section>
+    );
   }
 
   return (

@@ -60,6 +60,18 @@ describe("Today decision hierarchy", () => {
     expect(events).toContain("featureIsPromoted && feature ?");
     expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
     expect(events).toContain("Countywide");
+    expect(events).toContain("Some event sources are still updating.");
+  });
+
+  it("puts current utilities before the broader sports board", () => {
+    const availableStart = todayPage.indexOf("const availableToday =");
+    const availableEnd = todayPage.indexOf("const whatsOn =", availableStart);
+    const available = todayPage.slice(availableStart, availableEnd);
+
+    expect(available.indexOf("<OnNowBand")).toBeGreaterThan(-1);
+    expect(available.indexOf("<KeysScore")).toBeGreaterThan(
+      available.indexOf("<OnNowBand"),
+    );
   });
 
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {

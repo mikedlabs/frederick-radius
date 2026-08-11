@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ShoppingBasket } from "lucide-react";
 import { marketsOpenToday } from "@/lib/markets-today";
-import { marketTimingAt } from "@/lib/today/on-now";
+import { marketTimingAt, marketWindowMinutes } from "@/lib/today/on-now";
 
 /**
  * "Farmers markets today" — a slim, self-hiding almanac line. Frederick is farm
@@ -14,7 +14,16 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
   const markets = await marketsOpenToday(now);
   const relevant = markets
     .map((market) => ({ market, timing: marketTimingAt(market.hours, now) }))
-    .filter(({ timing }) => timing !== "earlier");
+    .filter(({ timing }) => timing !== "earlier")
+    .sort((a, b) => {
+      const rank = { now: 0, later: 1, today: 2, earlier: 3 } as const;
+      const timingOrder = rank[a.timing] - rank[b.timing];
+      if (timingOrder !== 0) return timingOrder;
+      return (
+        (marketWindowMinutes(a.market.hours)?.start ?? Number.MAX_SAFE_INTEGER) -
+        (marketWindowMinutes(b.market.hours)?.start ?? Number.MAX_SAFE_INTEGER)
+      );
+    });
   if (relevant.length === 0) return null;
 
   const shown = relevant.slice(0, 3);
