@@ -11,12 +11,16 @@ const quiet: SmartMapSignals = {
 };
 
 describe("smartMapDefault", () => {
-  it("puts the radar on during an active weather alert, above everything", () => {
+  it("leads with an active weather alert and keeps radar one tap away", () => {
     const out = smartMapDefault(
       { hour: 19, weekday: 5 },
       { ...quiet, activeWeatherAlert: true, musicTonightCount: 8 },
     );
-    expect(out?.layers).toEqual(["radar"]);
+    expect(out?.layers).toEqual([]);
+    expect(out?.action).toEqual({
+      layer: "radar",
+      label: "See radar",
+    });
   });
 
   it("leads Friday evening with tonight's music and the parking answer", () => {
@@ -91,7 +95,8 @@ describe("smart default wiring contracts (map program phase 1)", () => {
     expect(appMap).toContain('seeds.add("incidents");');
     // Lens suggestions surface through a shareable action supplied by the
     // selector, never through a fake layer key.
-    expect(appMap).toContain("smartDefault.action.href");
+    expect(appMap).toContain('"href" in smartDefault.action');
+    expect(appMap).toContain("setShowRadar(true)");
     expect(appMap).not.toContain('seeds.add("music-tonight")');
     expect(appMap).not.toContain('seeds.add("markets")');
     expect(appMap).toContain("!selectionOpen");

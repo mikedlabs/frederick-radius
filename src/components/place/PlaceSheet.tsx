@@ -669,7 +669,6 @@ function PlaceSheetContent({
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
           <Link
             href={fullPageHref}
-            onClick={() => { haptic("light"); onClose(); }}
             className="inline-flex items-center gap-1 font-medium"
             style={{ color: "var(--app-brand-press)" }}
           >

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bus, ChevronDown, Search, X } from "lucide-react";
 import { requestTransitRouteFocus } from "@/lib/transit-focus";
+import { useMounted } from "@/hooks/useSaved";
 
 /**
  * TransitRouteFinder — the "All routes" list with a search box.
@@ -23,6 +24,7 @@ export type RouteRow = {
 };
 
 export default function TransitRouteFinder({ routes }: { routes: readonly RouteRow[] }) {
+  const interactionReady = useMounted();
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const q = query.trim().toLowerCase();
@@ -39,6 +41,8 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
   return (
     <details
       suppressHydrationWarning
+      aria-busy={!interactionReady}
+      data-transit-route-interaction-ready={interactionReady ? "true" : "false"}
       className="group overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
     >
@@ -65,6 +69,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
         <input
           type="search"
           inputMode="search"
+          disabled={!interactionReady}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search routes by number or where they go"
@@ -89,12 +94,26 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
             <li key={r.name}>
               <button
                 type="button"
+                disabled={!interactionReady}
                 data-transit-route-id={r.id}
-                onClick={() => {
+                onClick={(event) => {
                   requestTransitRouteFocus(r.id);
-                  document.getElementById("live-network-heading")?.scrollIntoView({
-                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-                    block: "start",
+                  // The route picker has done its job. Collapse it before
+                  // framing the live map so its result list cannot remain as a
+                  // tall slab above the destination or shift the destination
+                  // back out of view as live transit data settles.
+                  const finder = event.currentTarget.closest("details");
+                  if (finder) finder.open = false;
+                  const liveNetwork = document
+                    .getElementById("live-network-heading")
+                    ?.closest("section");
+                  window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                      liveNetwork?.scrollIntoView({
+                        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                        block: "start",
+                      });
+                    });
                   });
                 }}
                 className="tactile-interactive relative h-full w-full overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left"

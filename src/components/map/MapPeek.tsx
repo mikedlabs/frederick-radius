@@ -23,8 +23,9 @@ import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
 import type { NearbyUtility } from "./mapNearby";
 import {
-  buildMapPeekDecisionCue,
+  buildMapPeekDecisionSurface,
   mapDecisionFreshnessLabel,
+  type MapPeekDecisionCue,
 } from "./mapDecisionScenes";
 import MapResultSurface from "./MapResultSurface";
 
@@ -51,6 +52,35 @@ function statusTone(status: OpenStatus): string {
     default:
       return "var(--app-ink-3)";
   }
+}
+
+function decisionCueLabel(cue: MapPeekDecisionCue): string {
+  if (cue.kind === "event") return "Next here";
+  if (cue.kind === "special") return "Special";
+  if (cue.kind === "utility") return "Closest useful point";
+  return "Getting here";
+}
+
+function DecisionCueSource({ cue }: { cue: MapPeekDecisionCue }) {
+  if (!cue.sourceLabel) return null;
+  const sourceDate = mapDecisionFreshnessLabel(cue.observedAt);
+  return (
+    <p>
+      <strong>Source</strong>{" "}
+      {cue.sourceUrl ? (
+        <a
+          href={cue.sourceUrl}
+          className="underline underline-offset-2"
+          {...(cue.sourceUrl.startsWith("http")
+            ? { target: "_blank", rel: "noreferrer" }
+            : {})}
+        >
+          {cue.sourceLabel}
+        </a>
+      ) : cue.sourceLabel}
+      {sourceDate ? ` · checked ${sourceDate}` : ""}
+    </p>
+  );
 }
 
 /**
@@ -106,29 +136,16 @@ export default function MapPeek({
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
   const nameId = useId();
   const descriptionId = useId();
-  const aroundCount =
-    (place.deal_hook ? 1 : 0) +
-    (hostedEvent ? 1 : 0) +
-    (nearestGarage ? 1 : 0) +
-    nearbyUtilities.length;
-  const decisionCue = buildMapPeekDecisionCue({
+  const decisionSurface = buildMapPeekDecisionSurface({
     place,
     hostedEvent,
     nearestGarage,
     nearbyUtilities,
     now: decisionClock,
   });
-  const decisionSourceDate = mapDecisionFreshnessLabel(decisionCue?.observedAt);
-  const decisionCueLabel = decisionCue?.kind === "event"
-    ? "Next here"
-    : decisionCue?.kind === "special"
-      ? "Special"
-      : decisionCue?.kind === "utility"
-        ? "Closest useful point"
-        : "Getting here";
-  const remainingUtilities = decisionCue?.kind === "utility"
-    ? nearbyUtilities.slice(1)
-    : nearbyUtilities;
+  const decisionCue = decisionSurface?.lead ?? null;
+  const decisionAlternatives = decisionSurface?.alternatives ?? [];
+  const aroundCount = decisionCue ? 1 + decisionAlternatives.length : 0;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -253,7 +270,7 @@ export default function MapPeek({
 
       {aroundCount > 0 && (
         <details className="map-peek-around">
-          <summary>
+          <summary data-map-decision-lead={decisionCue?.candidateId}>
             {decisionCue?.headline ?? "Around here"}
             <span>{aroundCount}</span>
             <ChevronDown className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -261,52 +278,28 @@ export default function MapPeek({
           <div className="map-peek-around-body">
             {decisionCue && (
               <p data-map-decision-cue={decisionCue.kind}>
-                <strong>{decisionCueLabel}</strong> {decisionCue.detail}
+                <strong>{decisionCueLabel(decisionCue)}</strong> {decisionCue.detail}
               </p>
             )}
-            {decisionCue?.sourceLabel && (
-              <p>
-                <strong>Source</strong>{" "}
-                {decisionCue.sourceUrl ? (
-                  <a
-                    href={decisionCue.sourceUrl}
-                    className="underline underline-offset-2"
-                    {...(decisionCue.sourceUrl.startsWith("http")
-                      ? { target: "_blank", rel: "noreferrer" }
-                      : {})}
+            {decisionCue && <DecisionCueSource cue={decisionCue} />}
+            {decisionAlternatives.length > 0 && (
+              <div
+                data-map-decision-alternatives
+                className="grid gap-2 pt-1"
+                style={{ borderTop: "1px solid var(--app-border)" }}
+              >
+                {decisionAlternatives.map((alternative) => (
+                  <div
+                    key={alternative.candidateId}
+                    data-map-decision-alternative={alternative.candidateId}
                   >
-                    {decisionCue.sourceLabel}
-                  </a>
-                ) : decisionCue.sourceLabel}
-                {decisionSourceDate ? ` · checked ${decisionSourceDate}` : ""}
-              </p>
-            )}
-            {place.deal_hook && decisionCue?.kind !== "special" && <p><strong>Special</strong> {place.deal_hook}</p>}
-            {hostedEvent && decisionCue?.kind !== "event" && (
-              <p>
-                <strong>Next event</strong>{" "}
-                {hostedEvent.title} ·{" "}
-                {new Intl.DateTimeFormat("en-US", {
-                  timeZone: "America/New_York",
-                  weekday: "short",
-                  hour: "numeric",
-                  minute: "2-digit",
-                }).format(new Date(hostedEvent.starts_at))}
-              </p>
-            )}
-            {nearestGarage && decisionCue?.kind !== "parking" && (
-              <p>
-                <strong>Parking</strong> {nearestGarage.name} · {formatDistance(nearestGarage.distM)}
-                {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
-              </p>
-            )}
-            {remainingUtilities.length > 0 && (
-              <p>
-                <strong>Nearby</strong>{" "}
-                {remainingUtilities
-                  .map((item) => `${item.label} ${formatDistance(item.distM)}`)
-                  .join(" · ")}
-              </p>
+                    <p>
+                      <strong>{decisionCueLabel(alternative)}</strong> {alternative.detail}
+                    </p>
+                    <DecisionCueSource cue={alternative} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </details>

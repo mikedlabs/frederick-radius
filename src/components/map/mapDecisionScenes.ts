@@ -668,28 +668,52 @@ export type MapPeekDecisionCue = {
   observedAt?: string;
 };
 
+export type MapPeekDecisionInput = {
+  place: Pick<MapPinPlace, "slug" | "deal_hook">;
+  hostedEvent?: EventPin | null;
+  nearestGarage?: { name: string; distM: number } | null;
+  nearbyUtilities?: NearbyUtility[];
+  now: string;
+};
+
+export type MapPeekDecisionItem = MapPeekDecisionCue & {
+  candidateId: string;
+};
+
+export type MapPeekDecisionSurface = {
+  lead: MapPeekDecisionItem;
+  alternatives: MapPeekDecisionItem[];
+  coverage: "confirmed" | "partial";
+  expiresAt: string | null;
+};
+
 function short(value: string, max = 30): string {
   const text = clean(value, max);
   return text;
+}
+
+/** A price or percentage alone is not enough context for a recommendation. */
+function decisionUsefulSpecial(value: string | null | undefined): string | null {
+  const detail = clean(value, 120);
+  if (!detail) return null;
+  const usefulWords = detail
+    .match(/[a-z]{3,}/gi)
+    ?.map((word) => word.toLowerCase())
+    .filter((word) => !["and", "for", "off", "the"].includes(word));
+  return usefulWords && usefulWords.length > 0 ? detail : null;
 }
 
 /**
  * Compact adapter for the already-selected place. It does not invent a best
  * place; it ranks only the supporting facts attached to the tapped place.
  */
-export function buildMapPeekDecisionCue({
+export function buildMapPeekDecisionSurface({
   place,
   hostedEvent,
   nearestGarage,
   nearbyUtilities,
   now,
-}: {
-  place: Pick<MapPinPlace, "slug" | "deal_hook">;
-  hostedEvent?: EventPin | null;
-  nearestGarage?: { name: string; distM: number } | null;
-  nearbyUtilities?: NearbyUtility[];
-  now: string;
-}): MapPeekDecisionCue | null {
+}: MapPeekDecisionInput): MapPeekDecisionSurface | null {
   const nowMs = Date.parse(now);
   const eventStart = time(hostedEvent?.starts_at);
   if (!Number.isFinite(nowMs)) return null;
@@ -738,7 +762,8 @@ export function buildMapPeekDecisionCue({
     });
   }
 
-  if (place.deal_hook) {
+  const specialDetail = decisionUsefulSpecial(place.deal_hook);
+  if (specialDetail) {
     const id = `peek:special:${place.slug}`;
     const evidenceId = `peek-evidence:special:${place.slug}`;
     candidates.push({
@@ -759,7 +784,7 @@ export function buildMapPeekDecisionCue({
       }],
       reasons: [{
         id: `special:${place.slug}`,
-        label: clean(place.deal_hook, 120),
+        label: specialDetail,
         weight: 90,
         evidenceIds: [evidenceId],
         overlay: "places",
@@ -768,7 +793,7 @@ export function buildMapPeekDecisionCue({
     cues.set(id, {
       kind: "special",
       headline: "Special at this stop",
-      detail: clean(place.deal_hook, 120),
+      detail: specialDetail,
       href: `/places/${place.slug}`,
       sourceLabel: "Frederick Radius place guide",
       sourceUrl: `/places/${place.slug}`,
@@ -847,9 +872,29 @@ export function buildMapPeekDecisionCue({
     now,
     intent: "explore",
     candidates,
-    alternativeLimit: 3,
+    alternativeLimit: 2,
   });
-  return scene.status === "ready" ? cues.get(scene.lead.id) ?? null : null;
+  if (scene.status !== "ready") return null;
+
+  const leadCue = cues.get(scene.lead.id);
+  if (!leadCue) return null;
+
+  const alternatives = scene.alternatives.flatMap((candidate) => {
+    const cue = cues.get(candidate.id);
+    return cue ? [{ ...cue, candidateId: candidate.id }] : [];
+  });
+
+  return {
+    lead: { ...leadCue, candidateId: scene.lead.id },
+    alternatives,
+    coverage: scene.coverage,
+    expiresAt: scene.expiresAt,
+  };
+}
+
+/** Backward-compatible lead-only adapter for compact callers and tests. */
+export function buildMapPeekDecisionCue(input: MapPeekDecisionInput): MapPeekDecisionCue | null {
+  return buildMapPeekDecisionSurface(input)?.lead ?? null;
 }
 
 /** A freshness cue for compact UI. No timestamp means no freshness claim. */

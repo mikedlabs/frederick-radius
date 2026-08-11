@@ -23,7 +23,7 @@ import {
   type PanInfo,
 } from "framer-motion";
 import { X } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
@@ -128,7 +128,6 @@ export default function BottomSheet({
   children,
 }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const dragControls = useDragControls();
@@ -269,13 +268,15 @@ export default function BottomSheet({
     const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (href === here) return;
 
-    // Own same-origin sheet navigation so the temporary history entry is gone
-    // before Next creates the destination entry. Sheet links only add a
-    // haptic/close handler, which this shared path supplies directly.
+    // Replace the temporary overlay entry with the destination. The map mirrors
+    // its camera into the address bar, so a client transition can otherwise be
+    // overwritten in the same frame and make a valid tap appear to do nothing.
+    // The shared history helper uses one atomic navigation and leaves one clean
+    // Back step to the exact page beneath the sheet.
     event.preventDefault();
     event.stopPropagation();
     haptic("light");
-    historyLayer.leave(() => router.push(href));
+    historyLayer.leaveTo(href);
   };
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {

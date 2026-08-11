@@ -1517,7 +1517,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* Applied as a class (not an inline style) so prefers-reduced-motion can
  * silence the ring — an inline `animation` can't be overridden by a media
  * query. The dot itself stays; only the pulse halo stops. */
-.fr-ev-pulse { animation: fr-ev-pulse 2.6s ease-out infinite; }
+.fr-ev-pulse { animation: fr-ev-pulse 2.6s ease-out 2; }
 .fr-event-marker {
   position: relative;
   width: 44px;
@@ -1637,6 +1637,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;
   min-height: 44px !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 22px 22px !important;
 }
 
 /* Radius-map hover preview — a quiet mini-label that follows the dot
@@ -3049,6 +3052,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   bottom: 14px !important;
 }
 
+/* The first usable frame arrives as one calm reveal. MapLoadingScene already
+   preserves geometry; fading only the WebGL canvas avoids a flash of half-
+   labeled tiles without delaying controls or accessibility. */
+.dock-host .maplibregl-canvas {
+  opacity: 0.01;
+  transition: opacity 260ms var(--app-ease-out);
+}
+.dock-host[data-map-loaded="true"] .maplibregl-canvas {
+  opacity: 1;
+}
+
 /* The browse canvas already subtracts the BottomNav reserve and safe area from
    its height. Keep camera controls at the canvas edge on mobile too; adding a
    second nav clearance pushed them into the middle of short phones. */
@@ -3316,11 +3330,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   align-items: stretch;
   border-radius: var(--app-radius-md);
   border: 1px solid var(--app-border);
-  background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, white 30%, transparent),
+      transparent 55%
+    ),
+    color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--app-shadow-2);
   transition: box-shadow 0.25s;
+  animation: map-dock-arrive 260ms var(--app-ease-out) both;
+}
+@keyframes map-dock-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .dock.dock-open .dock-head {
   box-shadow: var(--app-shadow-3);
@@ -3424,16 +3455,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   left: 50%;
   z-index: var(--z-map-control);
   width: max-content;
-  max-width: min(280px, calc(100% - 20px));
-  min-height: 44px;
+  max-width: min(316px, calc(100% - 68px));
+  min-height: 52px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 89%, transparent);
-  box-shadow: 0 7px 22px rgba(35, 29, 22, 0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, white 42%, transparent),
+      transparent 52%
+    ),
+    color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+    0 8px 24px rgba(35, 29, 22, 0.13);
   backdrop-filter: blur(16px) saturate(1.08);
   -webkit-backdrop-filter: blur(16px) saturate(1.08);
   transform: translateX(-50%);
@@ -3441,14 +3480,55 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-context-rail-open {
   min-width: 0;
-  min-height: 44px;
-  display: flex;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 14px;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px 4px 12px;
+  padding: 5px 9px 5px 8px;
   color: var(--app-ink-2);
   text-align: left;
   transition: background 140ms ease;
+}
+.map-context-rail-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--app-brand) 10%, transparent);
+  color: var(--app-brand-press);
+}
+.map-context-rail[data-map-state-line] .map-context-rail-icon {
+  background: color-mix(in srgb, var(--app-cool) 12%, transparent);
+  color: var(--app-cool);
+}
+.map-context-rail-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.map-context-rail-kicker {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.map-context-rail-arrow {
+  color: var(--app-ink-3);
+  transition: transform 160ms var(--app-ease-out), color 160ms var(--app-ease-out);
+}
+.map-context-rail-open:hover .map-context-rail-arrow,
+.map-context-rail-open:focus-visible .map-context-rail-arrow {
+  color: var(--app-brand-press);
+  transform: translateX(2px);
 }
 .map-context-rail-open:hover,
 .map-context-rail-open:focus-visible {
@@ -3458,7 +3538,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   min-width: 0;
   overflow: hidden;
   color: var(--app-ink-2);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -3467,7 +3547,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-context-rail-clear {
   display: grid;
   width: 44px;
-  height: 44px;
+  height: 52px;
   place-items: center;
   border-left: 1px solid color-mix(in srgb, var(--app-border) 68%, transparent);
   color: var(--app-ink-3);
@@ -3477,6 +3557,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-context-rail-clear:focus-visible {
   background: color-mix(in srgb, var(--app-brand) 6%, transparent);
   color: var(--app-ink);
+}
+
+/* One guidance surface owns the same top slot as the context rail. It is a
+   short decision note, not a second floating card competing with the map. */
+.map-smart-note {
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  z-index: var(--z-map-control);
+  width: min(480px, calc(100% - 24px));
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 14px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, white 40%, transparent), transparent 54%),
+    color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+    0 8px 24px rgba(35, 29, 22, 0.13);
+  color: var(--app-ink-2);
+  backdrop-filter: blur(16px) saturate(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  animation: map-context-rail-in 180ms var(--app-ease-out) both;
+}
+.map-smart-note > [role="status"] {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.25;
+}
+.map-smart-note > a {
+  flex: 0 0 auto;
 }
 @keyframes map-context-rail-in {
   from {
@@ -3499,8 +3616,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-context-rail {
+  .dock-host .maplibregl-canvas,
+  .dock-head,
+  .map-context-rail,
+  .map-smart-note,
+  .map-context-rail-arrow {
     animation: none;
+    transition: none;
+  }
+  .dock-host .maplibregl-canvas {
+    opacity: 1;
   }
 }
 
@@ -4246,6 +4371,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
+.dock-essentials[data-quick] .dock-essential-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .dock-essential-choice {
   position: relative;
   min-width: 0;
@@ -4296,6 +4424,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9px;
   line-height: 1;
+}
+.dock-essentials-more {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--app-bg-sunken) 74%, transparent);
+  color: var(--app-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dock-essentials-more:hover,
+.dock-essentials-more:focus-visible {
+  border-color: color-mix(in srgb, var(--app-brand) 34%, var(--app-border));
+  color: var(--app-brand-press);
 }
 @media (max-width: 350px) {
   .dock-essential-grid {
@@ -4560,7 +4708,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--app-shadow-2), var(--app-hi);
   color: var(--app-ink-2);
-  opacity: 0.42;
+  opacity: 0.68;
   transition:
     opacity 220ms ease,
     transform 90ms ease,
@@ -4654,6 +4802,42 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   from { opacity: 0.7; transform: scale(0.84); }
   to { opacity: 0; transform: scale(1.18); }
 }
+
+/* The device fix doubles as the fastest route to in-the-moment public
+   essentials. The painted blue dot stays visually exact; this transparent
+   DOM control supplies a generous touch target and a visible keyboard ring. */
+.map-location-essentials-trigger {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+.map-location-essentials-trigger::after {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  content: "";
+  transition:
+    border-color 160ms var(--app-ease-out),
+    background 160ms var(--app-ease-out),
+    transform 160ms var(--app-ease-out);
+}
+.map-location-essentials-trigger:hover::after,
+.map-location-essentials-trigger:focus-visible::after {
+  border-color: color-mix(in srgb, var(--app-cool) 54%, transparent);
+  background: color-mix(in srgb, var(--app-cool) 10%, transparent);
+  transform: scale(1.08);
+}
+.map-location-essentials-trigger:focus-visible {
+  outline: 2px solid var(--app-cool);
+  outline-offset: 2px;
+}
 .dock-host[data-dock-pane="open"] .map-edge-tools,
 .dock-host[data-map-peek="open"] .map-edge-tools {
   opacity: 0;
@@ -4723,6 +4907,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .map-edge-tool[data-attention="true"]::after {
     animation: none;
     opacity: 0.45;
+  }
+  .map-location-essentials-trigger::after {
+    transition: none;
   }
 }
 
@@ -7858,14 +8045,11 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
      nearly the full phone width and would paint over the wordmark. */
   .dock-host .maplibregl-ctrl-bottom-right,
   .dock-host[data-map-peek="open"] .maplibregl-ctrl-bottom-right {
-    top: calc(env(safe-area-inset-top, 0px) + 36px) !important;
+    top: max(8px, env(safe-area-inset-top, 0px)) !important;
     bottom: auto !important;
   }
   .dock-host .maplibregl-ctrl-attrib-button {
     background-color: color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent);
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    background-size: 22px 22px !important;
     border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
     border-radius: 11px;
     box-shadow: 0 5px 16px rgba(35, 29, 22, 0.1);

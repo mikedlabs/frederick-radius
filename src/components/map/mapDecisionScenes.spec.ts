@@ -3,6 +3,7 @@ import {
   availabilityFromOpenStatus,
   buildMapDecisionScene,
   buildMapPeekDecisionCue,
+  buildMapPeekDecisionSurface,
   geometryIntersectsRouteCorridor,
   mapDecisionEvidenceState,
   mapHoursEvidence,
@@ -312,6 +313,47 @@ describe("route corridor consequences", () => {
 });
 
 describe("selected-place decision cue", () => {
+  it("keeps one lead and exposes no more than two ranked alternatives", () => {
+    const surface = buildMapPeekDecisionSurface({
+      place: { slug: "creek", deal_hook: "Half-price fries" },
+      hostedEvent: {
+        slug: "alive-at-five",
+        title: "Alive @ Five",
+        starts_at: "2026-08-03T21:00:00.000Z",
+        venue_name: "Carroll Creek Amphitheater",
+        lng: ORIGIN.lng,
+        lat: ORIGIN.lat,
+        category: "music",
+      },
+      nearestGarage: { name: "Carroll Creek Garage", distM: 180 },
+      nearbyUtilities: [{ label: "Restroom", distM: 90 }],
+      now: NOW,
+    });
+
+    expect(surface).toMatchObject({
+      lead: {
+        candidateId: "peek:event:alive-at-five",
+        kind: "event",
+        detail: "Alive @ Five is listed here at 5:00 PM.",
+      },
+      alternatives: [
+        {
+          candidateId: "peek:special:creek",
+          kind: "special",
+          sourceLabel: "Frederick Radius place guide",
+        },
+        {
+          candidateId: "peek:utility:restroom",
+          kind: "utility",
+          detail: "The nearest mapped restroom is 295 ft away.",
+        },
+      ],
+      coverage: "partial",
+      expiresAt: "2026-08-03T21:00:00.000Z",
+    });
+    expect(surface?.alternatives).toHaveLength(2);
+  });
+
   it("puts a time-sensitive hosted event ahead of static nearby facts", () => {
     const cue = buildMapPeekDecisionCue({
       place: { slug: "creek", deal_hook: "Half-price fries" },
@@ -348,5 +390,54 @@ describe("selected-place decision cue", () => {
       detail: expect.stringContaining("nearest mapped water"),
     });
     expect(cue?.detail).not.toContain("only");
+  });
+
+  it("does not surface an event whose listed start has passed", () => {
+    const surface = buildMapPeekDecisionSurface({
+      place: { slug: "creek", deal_hook: "Half-price fries" },
+      hostedEvent: {
+        slug: "finished-set",
+        title: "Finished set",
+        starts_at: "2026-08-03T15:30:00.000Z",
+        venue_name: "Carroll Creek Amphitheater",
+        lng: ORIGIN.lng,
+        lat: ORIGIN.lat,
+        category: "music",
+      },
+      nearestGarage: { name: "Carroll Creek Garage", distM: 180 },
+      now: NOW,
+    });
+
+    expect(surface?.lead).toMatchObject({
+      candidateId: "peek:special:creek",
+      kind: "special",
+    });
+    expect(surface?.alternatives).toEqual([
+      expect.objectContaining({
+        candidateId: "peek:parking:carroll creek garage",
+        kind: "parking",
+        detail: expect.stringContaining("is mapped"),
+        sourceLabel: "City of Frederick parking map",
+      }),
+    ]);
+    expect(surface?.alternatives.some((item) => item.kind === "event")).toBe(false);
+  });
+
+  it("omits a special when the stored hook is only a contextless price", () => {
+    const surface = buildMapPeekDecisionSurface({
+      place: { slug: "brewers-alley", deal_hook: "$2.75" },
+      nearestGarage: { name: "Church Street Garage", distM: 72 },
+      nearbyUtilities: [{ label: "Transit stop", distM: 98 }],
+      now: NOW,
+    });
+
+    expect(surface?.lead.kind).toBe("utility");
+    expect(surface?.alternatives).toEqual([
+      expect.objectContaining({ kind: "parking" }),
+    ]);
+    expect([
+      surface?.lead,
+      ...(surface?.alternatives ?? []),
+    ].some((item) => item?.kind === "special")).toBe(false);
   });
 });

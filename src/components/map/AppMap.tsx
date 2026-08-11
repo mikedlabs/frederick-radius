@@ -1922,7 +1922,7 @@ export default function AppMap({
 
     if (layer === "curated-icons" || layer === "curated-active-icons" || layer === "curated-hit") {
       const props = feature.properties as Record<string, string>;
-      const place = places.find((p) => p.slug === props.slug);
+      const place = placesBySlug.get(props.slug);
       setSelectedSlug(props.slug);
       haptic("light");
       // Google-Maps-style: tap a pin → full card slides up from the bottom
@@ -2035,7 +2035,7 @@ export default function AppMap({
         sub: family ? `Mostly ${family.toLocaleLowerCase()}` : undefined,
       };
     } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-active-icons" || f.layer.id === "curated-hit") {
-      const p = places.find((x) => x.slug === props.slug);
+      const p = placesBySlug.get(String(props.slug));
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
     } else {
       const name = String(props.name ?? "").trim();
@@ -2999,6 +2999,35 @@ export default function AppMap({
     });
   };
 
+  const smartDefaultVisible = Boolean(
+    dock &&
+      mapLoaded &&
+      smartDefault &&
+      !smartNoteDismissed &&
+      !hasExplicitLayerView &&
+      !selectionOpen &&
+      !dockPaneOpen &&
+      !showResultsHere &&
+      !q.trim(),
+  );
+  const mapInterfaceState = !dock
+    ? undefined
+    : mapError
+      ? "error"
+      : routeInfo
+        ? "route"
+        : selectionOpen
+          ? "selection"
+          : q.trim()
+            ? "search"
+            : dockPaneOpen
+              ? "browse"
+              : showResultsHere
+                ? "reframe"
+                : smartDefaultVisible
+                  ? "guidance"
+                  : "rest";
+
   return (
     <div
       className={
@@ -3015,6 +3044,7 @@ export default function AppMap({
       }
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
+      data-map-interface={mapInterfaceState}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
@@ -3166,28 +3196,38 @@ export default function AppMap({
         {/* The smart default explains itself in one sentence (map program
             phase 1). A suggestion may include a shareable one-tap lens rather
             than pretending the lens is a layer that was already switched on. */}
-        {dock &&
-          smartDefault &&
-          !smartNoteDismissed &&
-          !hasExplicitLayerView &&
-          !selectionOpen &&
-          !dockPaneOpen &&
-          !q.trim() && (
+        {smartDefaultVisible && smartDefault && (
           <div
-            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur-md"
-            style={{ color: "var(--app-ink-2)" }}
+            className="map-smart-note"
+            data-map-top-surface="guidance"
           >
             <span role="status" className="min-w-0 flex-1 text-pretty leading-snug">
               {smartDefault.reason}
             </span>
             {smartDefault.action && (
-              <Link
-                href={smartDefault.action.href}
-                className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
-                style={{ color: "var(--app-cool)" }}
-              >
-                {smartDefault.action.label}
-              </Link>
+              "href" in smartDefault.action ? (
+                <Link
+                  href={smartDefault.action.href}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool)" }}
+                >
+                  {smartDefault.action.label}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool)" }}
+                  onClick={() => {
+                    haptic("light");
+                    setShowRadar(true);
+                    setSmartNoteDismissed(true);
+                    track("map_smart_default_action", { action: "radar" });
+                  }}
+                >
+                  {smartDefault.action.label}
+                </button>
+              )
             )}
             <button
               type="button"
@@ -3330,6 +3370,7 @@ export default function AppMap({
           mapStyle={mapStyle}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
+          maplibreLogo={false}
           // ── Mobile-smoothness flags ──
           // This is a flat 2D county map: rotation and pitch only ever
           // happen by accident on a two-finger pan, leaving the user
@@ -4244,6 +4285,37 @@ export default function AppMap({
             )}
             {curatedClusters && (
               <Layer
+                id="curated-cluster-contour"
+                type="circle"
+                filter={["has", "point_count"]}
+                paint={{
+                  "circle-color": "rgba(0,0,0,0)",
+                  "circle-radius": compactSubjectMap
+                    ? [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 15, 12, 21],
+                        11.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 15, 12, 21],
+                        12, ["interpolate", ["linear"], ["get", "point_count"], 2, 11.6, 12, 16],
+                      ]
+                    : [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 12, 25, 18, 100, 23],
+                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 12, 25, 18, 100, 23],
+                        15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7.8, 4, 9.1, 25, 13.2, 100, 16.6],
+                      ],
+                  "circle-stroke-color": compactSubjectMap
+                    ? BRAND.colors.functionalAmber
+                    : CURATED_CLUSTER_COLOR,
+                  "circle-stroke-width": 1.1,
+                  "circle-stroke-opacity":
+                    amenityLayerActive && dock ? 0.04 : 0.34,
+                  "circle-radius-transition": { duration: mapPaintDuration },
+                  "circle-stroke-opacity-transition": { duration: mapPaintDuration },
+                }}
+              />
+            )}
+            {curatedClusters && (
+              <Layer
                 id="curated-clusters"
                 type="circle"
                 filter={["has", "point_count"]}
@@ -4710,6 +4782,26 @@ export default function AppMap({
               }}
             />
           </Source>
+          {dock && userLoc && (
+            <Marker
+              longitude={userLoc.lng}
+              latitude={userLoc.lat}
+              anchor="center"
+              ref={exposeMarkerChild}
+            >
+              <button
+                type="button"
+                className="map-location-essentials-trigger"
+                aria-label="Open nearby essentials from my location"
+                title="Nearby essentials"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  haptic("light");
+                  window.dispatchEvent(new Event("fr:open-map-essentials"));
+                }}
+              />
+            </Marker>
+          )}
           {userLoc && locationFixTimestamp && (
             <Marker
               key={`location-lock:${locationFixTimestamp}`}
@@ -5333,7 +5425,12 @@ export default function AppMap({
               if (discovery) showDiscovery(discovery);
             }}
             onPaneOpenChange={handleDockPaneOpenChange}
-            suppressContextRail={selectionOpen || showResultsHere || !mapLoaded}
+            suppressContextRail={
+              selectionOpen ||
+              showResultsHere ||
+              smartDefaultVisible ||
+              !mapLoaded
+            }
             smartSeededLayerCount={
               smartNoteDismissed ? 0 : smartLayerSeeds.size
             }

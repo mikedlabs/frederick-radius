@@ -36,10 +36,15 @@ export type SmartMapDefault = {
   /** One plain sentence the map may show, with a dismiss. */
   reason: string;
   /** A shareable map view when the suggestion is a lens, not a layer. */
-  action?: {
-    href: string;
-    label: string;
-  };
+  action?:
+    | {
+        href: string;
+        label: string;
+      }
+    | {
+        layer: "radar";
+        label: string;
+      };
 } | null;
 
 /** Eastern wall-clock pieces the selector keys on. */
@@ -79,12 +84,17 @@ export function smartMapDefault(
   const { hour, weekday } = moment;
   const weekend = weekday === 0 || weekday === 6;
 
-  // 1. Weather leads everything: an active warning with the radar layer
-  //    on is the one state where the map's job changes entirely.
+  // 1. Weather leads everything. Keep the map legible, name the alert, and
+  //    make radar one deliberate tap away instead of covering the county
+  //    before the person has asked to inspect precipitation.
   if (signals.activeWeatherAlert) {
     return {
-      layers: ["radar"],
-      reason: "A weather alert is active, so the radar is on.",
+      layers: [],
+      reason: "A weather alert is active.",
+      action: {
+        layer: "radar",
+        label: "See radar",
+      },
     };
   }
 

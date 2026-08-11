@@ -29,6 +29,19 @@ describe("map interaction state contracts", () => {
     expect(source).not.toContain('useIsSaved("place"');
   });
 
+  it("keeps selected-place alternatives inside the existing Around here disclosure", () => {
+    const source = readFileSync("src/components/map/MapPeek.tsx", "utf8");
+    const disclosureStart = source.indexOf('<details className="map-peek-around">');
+    const alternatives = source.indexOf("data-map-decision-alternatives");
+    const disclosureEnd = source.indexOf("</details>", disclosureStart);
+
+    expect(source).toContain("buildMapPeekDecisionSurface");
+    expect(source).toContain("data-map-decision-lead");
+    expect(disclosureStart).toBeGreaterThan(-1);
+    expect(alternatives).toBeGreaterThan(disclosureStart);
+    expect(alternatives).toBeLessThan(disclosureEnd);
+  });
+
   it("clears a cached map search when the route no longer has q", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
 
