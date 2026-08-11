@@ -13,12 +13,28 @@ export const FEEDBACK_MAX_MESSAGE = 4000;
 export const FEEDBACK_MAX_PATHNAME = 512;
 export const FEEDBACK_MAX_VERSION = 80;
 
+/**
+ * Small, fixed correction vocabulary for Ask Radius. These values are safe to
+ * aggregate because they describe the product miss, not the visitor's query.
+ * The raw question and answer are deliberately never accepted by this path.
+ */
+export const ASK_CORRECTION_REASONS = {
+  too_far: "Too far away",
+  wrong_kind: "Wrong kind",
+  hours_wrong: "Hours are wrong",
+  closed: "Closed",
+  unhelpful: "Not useful",
+} as const;
+
+export type AskCorrectionReason = keyof typeof ASK_CORRECTION_REASONS;
+export type FeedbackSource = "feedback-widget" | "ask-correction";
+
 // Deliberately simple: catches typos ("a@b", no TLD) without rejecting valid
 // unusual addresses. Mirrors /api/beta/email. Email is optional; we only run
 // this when the tester actually typed one.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export type ParsedFeedback = {
+type ParsedFeedbackBase = {
   message: string;
   /** null when the tester left the reply field blank. */
   email: string | null;
@@ -28,9 +44,55 @@ export type ParsedFeedback = {
   version: string | null;
 };
 
+export type ParsedFeedback = ParsedFeedbackBase &
+  (
+    | {
+        source: "feedback-widget";
+        reason: null;
+        resultRef: null;
+      }
+    | {
+        source: "ask-correction";
+        reason: AskCorrectionReason;
+        /** Canonical local place/event route, never a query or answer. */
+        resultRef: string | null;
+      }
+  );
+
 export type ParseResult =
   | { ok: true; value: ParsedFeedback }
   | { ok: false; error: string };
+
+function askCorrectionReason(value: unknown): AskCorrectionReason | null {
+  return typeof value === "string" &&
+    Object.hasOwn(ASK_CORRECTION_REASONS, value)
+    ? (value as AskCorrectionReason)
+    : null;
+}
+
+/**
+ * Keep correction references useful to the operator without accepting an
+ * arbitrary URL or user-entered text. Query strings and fragments are dropped
+ * because the canonical entity path is all the data-quality queue needs.
+ */
+function askCorrectionResultRef(value: unknown): string | null | undefined {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const match = value
+    .trim()
+    .match(/^\/(?:places|events)\/[a-z0-9][a-z0-9-]{0,127}(?=[?#]|$)/i);
+  return match?.[0] ?? undefined;
+}
+
+function askCorrectionMessage(
+  reason: AskCorrectionReason,
+  resultRef: string | null,
+): string {
+  const label = ASK_CORRECTION_REASONS[reason];
+  return resultRef
+    ? `Ask answer marked: ${label}. Result: ${resultRef}.`
+    : `Ask answer marked: ${label}.`;
+}
 
 /**
  * Validate + normalize a feedback POST body. Pure: shared by the route and the
@@ -42,9 +104,28 @@ export function parseFeedback(raw: unknown): ParseResult {
   if (typeof raw !== "object" || raw === null) return { ok: false, error: "invalid-body" };
   const r = raw as Record<string, unknown>;
 
-  const message = typeof r.message === "string" ? r.message.trim() : "";
-  if (!message) return { ok: false, error: "empty" };
-  if (message.length > FEEDBACK_MAX_MESSAGE) return { ok: false, error: "too-long" };
+  const source: FeedbackSource =
+    r.source === "ask-correction" ? "ask-correction" : "feedback-widget";
+  let correction: {
+    reason: AskCorrectionReason;
+    resultRef: string | null;
+  } | null = null;
+  let message: string;
+
+  if (source === "ask-correction") {
+    const reason = askCorrectionReason(r.reason);
+    if (!reason) return { ok: false, error: "bad-reason" };
+    const parsedResultRef = askCorrectionResultRef(r.resultRef);
+    if (parsedResultRef === undefined) {
+      return { ok: false, error: "bad-result-ref" };
+    }
+    correction = { reason, resultRef: parsedResultRef };
+    message = askCorrectionMessage(reason, parsedResultRef);
+  } else {
+    message = typeof r.message === "string" ? r.message.trim() : "";
+    if (!message) return { ok: false, error: "empty" };
+    if (message.length > FEEDBACK_MAX_MESSAGE) return { ok: false, error: "too-long" };
+  }
 
   const rawEmail =
     typeof r.email === "string" ? r.email.trim().toLowerCase().slice(0, 254) : "";
@@ -63,7 +144,31 @@ export function parseFeedback(raw: unknown): ParseResult {
       ? r.version.trim().slice(0, FEEDBACK_MAX_VERSION)
       : null;
 
-  return { ok: true, value: { message, email, pathname, version } };
+  return correction
+    ? {
+        ok: true,
+        value: {
+          message,
+          email,
+          pathname,
+          version,
+          source: "ask-correction",
+          reason: correction.reason,
+          resultRef: correction.resultRef,
+        },
+      }
+    : {
+        ok: true,
+        value: {
+          message,
+          email,
+          pathname,
+          version,
+          source: "feedback-widget",
+          reason: null,
+          resultRef: null,
+        },
+      };
 }
 
 /** The exact object handed to `db.insert(submissions)`. Kept as a typed shape
@@ -76,7 +181,9 @@ export type FeedbackRow = {
     version: string | null;
     /** Server-stamped deploy SHA (VERCEL_GIT_COMMIT_SHA), the reliable one. */
     commit: string | null;
-    source: "feedback-widget";
+    source: FeedbackSource;
+    reason?: AskCorrectionReason;
+    result_ref?: string | null;
   };
   submitter_email: string | null;
 };
@@ -94,7 +201,10 @@ export function buildFeedbackRow(value: ParsedFeedback, commit: string | null): 
       pathname: value.pathname,
       version: value.version,
       commit: commit && commit.trim() ? commit.trim().slice(0, 64) : null,
-      source: "feedback-widget",
+      source: value.source,
+      ...(value.source === "ask-correction"
+        ? { reason: value.reason, result_ref: value.resultRef }
+        : {}),
     },
     submitter_email: value.email,
   };

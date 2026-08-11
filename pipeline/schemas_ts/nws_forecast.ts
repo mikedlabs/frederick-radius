@@ -10,6 +10,8 @@ export const schema = z
     properties: z
       .object({
         updated: z.string().optional(),
+        generatedAt: z.string().optional(),
+        updateTime: z.string().optional(),
         periods: z
           .object({
             number: z.number().optional(),

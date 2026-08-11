@@ -18,7 +18,15 @@ import { formatDistance, type LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
-import { parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import {
+  getScope,
+  parseScope,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
 import { track } from "@/lib/track";
 import { consumeFindRequest } from "@/lib/findBridge";
 import {
@@ -250,6 +258,13 @@ export type MapDockProps = {
 
   /** A selected result, unsettled viewport, or cold map owns the upper HUD. */
   suppressContextRail?: boolean;
+
+  /** Layers the smart default switched on by itself (map program phase 1).
+   *  They look like refinements to the counter below but nobody chose them,
+   *  so they must not be treated as evidence that the visitor has started
+   *  filtering. Goes to zero once the suggestion is dismissed, because from
+   *  then on any layer still lit is one the visitor decided to keep. */
+  smartSeededLayerCount?: number;
 };
 
 /** A dock chip: color-dotted pill with an optional mono count. ≥44px
@@ -353,10 +368,11 @@ export default function MapDock(props: MapDockProps) {
   );
   const router = useRouter();
   const sp = useSearchParams();
-  const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? "county";
+  const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
 
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
+  const [essentialsQuick, setEssentialsQuick] = useState(false);
   // County-local clock for the at-rest state line. Client-only (set in an
   // effect) so server HTML never carries a mismatched timestamp; until it
   // resolves, the resting rail simply does not render.
@@ -550,11 +566,12 @@ export default function MapDock(props: MapDockProps) {
     const restoreTarget = restoreRef.current;
     setPane(null);
     setPlaceReveal(null);
+    setEssentialsQuick(false);
     closeSearchPanel();
     // The trigger stays inert until React commits the closed state. Restore
     // focus on the following frame so browsers do not discard the focus call.
     window.requestAnimationFrame(() => restoreTarget?.focus?.());
-  }, [closeSearchPanel, setPane, setPlaceReveal]);
+  }, [closeSearchPanel, setEssentialsQuick, setPane, setPlaceReveal]);
 
   useEffect(() => {
     if (pane === null) return;
@@ -598,6 +615,33 @@ export default function MapDock(props: MapDockProps) {
       window.removeEventListener("hashchange", focusMapSearchHash);
     };
   }, []);
+
+  // The location dot is more useful as an immediate need control than as a
+  // passive marker. AppMap dispatches this event from the dot's 44px target;
+  // the same Nearby essentials pane then owns the choices, counts, and focus
+  // behavior instead of introducing another map menu.
+  useEffect(() => {
+    const openEssentialsFromLocation = () => {
+      const active = document.activeElement;
+      restoreRef.current = active instanceof HTMLElement
+        ? active
+        : optionsButtonRef.current;
+      closeSearchPanel();
+      setPlaceReveal(null);
+      setEssentialsQuick(true);
+      setPane("amenities");
+      track("map_dock", { pane: "amenities", pick: "location-dot" });
+    };
+    window.addEventListener(
+      "fr:open-map-essentials",
+      openEssentialsFromLocation,
+    );
+    return () =>
+      window.removeEventListener(
+        "fr:open-map-essentials",
+        openEssentialsFromLocation,
+      );
+  }, [closeSearchPanel]);
 
   // URL state written by the map is more current than this component's last
   // render. Mutate the live address bar so a time/category tap cannot drop a
@@ -730,8 +774,18 @@ export default function MapDock(props: MapDockProps) {
       // A general event window and the narrower live-music lens are mutually
       // exclusive. Never leave a hidden `t` value waiting to reappear later.
       q.delete("music");
-      if (browse.timeModeExplicit && browse.timeMode === k) q.delete("t");
-      else q.set("t", k);
+      // If a malformed/shared URL carried both filters, the music lens forced
+      // the computed mode to Tonight even though `t` held another value. A
+      // tap on Tonight is then a real switch, not a request to clear both.
+      if (
+        !browse.musicTonight &&
+        browse.timeModeExplicit &&
+        browse.timeMode === k
+      ) {
+        q.delete("t");
+      } else {
+        q.set("t", k);
+      }
     });
   };
 
@@ -870,16 +924,32 @@ export default function MapDock(props: MapDockProps) {
     visibleLayerCount;
   const activeOptionCount =
     refinementCount + (props.selectedDiscoveryId ? 1 : 0);
+  // What the VISITOR has chosen, which is what decides whether the map is
+  // still at rest. Subtracting the smart seeds matters because the two
+  // features otherwise cancel: the smart default lights a layer on exactly
+  // the clean arrival the resting state line is written for (parking on a
+  // Friday evening, radar during an alert), so the line only ever appeared
+  // on a quiet afternoon when the map had nothing to say.
+  const chosenOptionCount = Math.max(
+    0,
+    activeOptionCount - (props.smartSeededLayerCount ?? 0),
+  );
 
-  const stateLineSummary = [
-    stateClock,
-    `${browse.openNowCount.toLocaleString("en-US")} open now`,
+  const stateDataSummary = [
+    browse.openNowCount > 0
+      ? `${browse.openNowCount.toLocaleString("en-US")} confirmed open`
+      : props.openNowAvailable === false
+        ? "Open status unavailable"
+        : "No recently confirmed open hours",
     browse.musicTonightCount > 0
-      ? `${browse.musicTonightCount.toLocaleString("en-US")} ${
+      ? `${browse.musicTonightCount.toLocaleString("en-US")} mapped ${
           browse.musicTonightCount === 1 ? "show" : "shows"
         } tonight`
       : null,
   ]
+    .filter(Boolean)
+    .join(" · ");
+  const stateLineSummary = [stateClock, stateDataSummary]
     .filter(Boolean)
     .join(" · ");
 
@@ -1000,6 +1070,11 @@ export default function MapDock(props: MapDockProps) {
   const radarUpdate = formatLayerUpdate(props.radarHealth.timestamp);
   const incidentUpdate = formatLayerUpdate(props.incidentHealth.timestamp);
   const cameraUpdate = formatLayerUpdate(props.cameraHealth.timestamp);
+  const activeContextKicker = props.showRadar
+    ? radarClock
+      ? `Radar · updated ${radarClock}`
+      : "Radar · loading"
+    : "Showing";
 
   const paneTitle =
     pane === "contents" ? "Choose what to see"
@@ -1162,7 +1237,7 @@ export default function MapDock(props: MapDockProps) {
 
   return (
     <>
-      {activeOptionCount > 0 &&
+      {chosenOptionCount > 0 &&
         pane === null &&
         !searchPanelOpen &&
         !searchKeyboardOpen &&
@@ -1188,8 +1263,14 @@ export default function MapDock(props: MapDockProps) {
               onClick={() => togglePane("contents")}
               aria-label={`Change map view: ${contentsSummary}`}
             >
-              <Layers3 className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span className="map-context-rail-summary">{contentsSummary}</span>
+              <span className="map-context-rail-icon" aria-hidden>
+                <Layers3 className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </span>
+              <span className="map-context-rail-copy">
+                <span className="map-context-rail-kicker">{activeContextKicker}</span>
+                <span className="map-context-rail-summary">{contentsSummary}</span>
+              </span>
+              <ChevronRight className="map-context-rail-arrow h-3.5 w-3.5" strokeWidth={2.3} aria-hidden />
             </button>
             <button
               type="button"
@@ -1205,7 +1286,7 @@ export default function MapDock(props: MapDockProps) {
       {/* At rest — no filters, no pane — the rail states the county's now
           instead of disappearing (dial program: state, not chrome). One
           tap opens the When pane, where the counts came from. */}
-      {activeOptionCount === 0 &&
+      {chosenOptionCount === 0 &&
         pane === null &&
         !searchPanelOpen &&
         !searchKeyboardOpen &&
@@ -1225,8 +1306,14 @@ export default function MapDock(props: MapDockProps) {
               onClick={() => togglePane("when")}
               aria-label={`Change map view: ${stateLineSummary}`}
             >
-              <Clock3 className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span className="map-context-rail-summary">{stateLineSummary}</span>
+              <span className="map-context-rail-icon" aria-hidden>
+                <Clock3 className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </span>
+              <span className="map-context-rail-copy">
+                <span className="map-context-rail-kicker">{stateClock}</span>
+                <span className="map-context-rail-summary">{stateDataSummary}</span>
+              </span>
+              <ChevronRight className="map-context-rail-arrow h-3.5 w-3.5" strokeWidth={2.3} aria-hidden />
             </button>
           </div>
         )}
@@ -1591,6 +1678,7 @@ export default function MapDock(props: MapDockProps) {
             ref={optionsButtonRef}
             type="button"
             className="dock-contents tap-44"
+            data-map-browse-trigger
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
@@ -1634,6 +1722,7 @@ export default function MapDock(props: MapDockProps) {
                   className="dock-back"
                   onClick={() => {
                     setPlaceReveal(null);
+                    setEssentialsQuick(false);
                     setPane("contents");
                   }}
                 >
@@ -1793,7 +1882,10 @@ export default function MapDock(props: MapDockProps) {
             )}
 
             {pane === "amenities" && (
-              <div className="dock-essentials">
+              <div
+                className="dock-essentials"
+                data-quick={essentialsQuick || undefined}
+              >
                 <button
                   type="button"
                   className="dock-essential-origin"
@@ -1821,9 +1913,14 @@ export default function MapDock(props: MapDockProps) {
                 <div
                   className="dock-essential-grid"
                   role="group"
-                  aria-label="Choose one nearby essential"
+                  aria-label="Choose an essential to find the nearest mapped location"
                 >
-                  {publicAmenityGroups.map((group) => {
+                  {(essentialsQuick
+                    ? publicAmenityGroups.filter((group) =>
+                        ["restroom", "water", "trash", "dog"].includes(group.key),
+                      )
+                    : publicAmenityGroups
+                  ).map((group) => {
                     const Icon = ESSENTIAL_ICONS[group.key] ?? MapPin;
                     const on = props.amenityGroups.has(group.key);
                     return (
@@ -1839,13 +1936,25 @@ export default function MapDock(props: MapDockProps) {
                           <Icon className="h-[18px] w-[18px]" strokeWidth={2.05} />
                         </span>
                         <span>{group.label}</span>
-                        <small>
-                          {(props.amenityGroupCounts[group.key] ?? 0).toLocaleString("en-US")}
-                        </small>
+                        {!essentialsQuick && (
+                          <small>
+                            {(props.amenityGroupCounts[group.key] ?? 0).toLocaleString("en-US")} mapped
+                          </small>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+                {essentialsQuick && publicAmenityGroups.length > 4 && (
+                  <button
+                    type="button"
+                    className="dock-essentials-more tap-44"
+                    onClick={() => setEssentialsQuick(false)}
+                  >
+                    <span>More essentials</span>
+                    <ChevronDown className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
+                )}
               </div>
             )}
 
@@ -1879,7 +1988,10 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-reveal"
-                    onClick={() => setPane("amenities")}
+                    onClick={() => {
+                      setEssentialsQuick(false);
+                      setPane("amenities");
+                    }}
                   >
                     <span className="dock-content-icon" aria-hidden>
                       <Toilet className="h-[18px] w-[18px]" strokeWidth={2.1} />
@@ -2256,7 +2368,7 @@ export default function MapDock(props: MapDockProps) {
                         <strong>Radar</strong> · {props.radarHealth.status === "unavailable"
                           ? "RainViewer did not return the latest radar image. Radius will try again automatically."
                           : props.radarHealth.status === "stale"
-                          ? `Showing the last good frames${radarUpdate ? ` from ${radarUpdate}` : ""} while RainViewer retries.`
+                          ? `Showing the last good frames${radarUpdate ? ` from ${radarUpdate}` : ""}. The source is older than Radius's 30-minute freshness window; Radius will check again automatically.`
                           : props.radarHealth.status === "empty"
                           ? "No frames are available from RainViewer."
                           : radarClock

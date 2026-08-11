@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     "Frederick Radius keeps your saved places, events, and routes together.",
 };
 
-export const MY_RADIUS_FOLLOW_READ_DEADLINE_MS = 2_000;
+const MY_RADIUS_FOLLOW_READ_DEADLINE_MS = 2_000;
 
 /**
  * /my-radius — the user's personal corner of the field guide.

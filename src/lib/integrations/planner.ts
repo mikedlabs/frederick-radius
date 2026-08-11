@@ -44,6 +44,9 @@ export type PlanInputs = {
   max_distance_m?: number;
   local_only?: boolean;
   budget?: "free" | "value";
+  /** Exclude only a recorded wheelchair barrier. Unknown access remains
+   * eligible and is qualified by the Ask presentation layer. */
+  require_wheelchair_access?: boolean;
   /** Favor stops with verified parking guidance and keep the outing compact. */
   parking_priority?: boolean;
   /** Optional cap for people who want fewer transitions or less walking. */
@@ -307,6 +310,10 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
         if (p.google_rating != null && p.google_rating < DATE_MIN_GOOGLE_RATING) return false;
       }
       if (input.local_only && isChainName(p.name)) return false;
+      if (
+        input.require_wheelchair_access &&
+        p.accessibility?.wheelchair === false
+      ) return false;
       if (input.budget === "free" && !(p.tags ?? []).includes("free")) return false;
       if (input.budget === "value" && p.price_band != null && p.price_band > 2) return false;
       return true;

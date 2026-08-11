@@ -4,6 +4,7 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 
 type ClientPlaceData = PlaceCardData & {
   /** Build-time policy stamped by build-client-places. This avoids reading a
@@ -36,9 +37,16 @@ export function withoutUnpublishableGooglePhoto(
     : { ...place, google_photo_url: undefined };
 }
 
-const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[]).map(
-  withoutUnpublishableGooglePhoto,
-);
+const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[])
+  .map(withoutUnpublishableGooglePhoto)
+  // Keep checked-in or long-lived generated catalogs behind the same trust
+  // boundary as the canonical server loader. The build also cleans this field,
+  // but runtime enforcement prevents an older artifact from leaking a
+  // directory link before it is regenerated.
+  .map((place) => ({
+    ...place,
+    website: publishablePlaceWebsite(place.website, place.name),
+  }));
 
 /** Hide places Google or our manual curation has marked closed. The
  *  server's `isOperational` filter is the source of truth, but client

@@ -22,10 +22,20 @@ import {
   tasteSummary,
   type AskTasteSignals,
 } from "@/lib/ask/taste";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import {
+  askFitAccessNote,
+  askFitSummary,
+  qualifyAskAnswerForAccess,
+  rerankWithAskFit,
+  type AskFitContext,
+} from "@/lib/ask/fit";
+import {
+  assembleUnifiedEvents,
+  type EventSourceHealth,
+} from "@/lib/loaders/unifiedEvents";
+import type { EventWithMeta } from "@/lib/loaders/events";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import type { Event } from "@/data/events";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
 import { isChainName } from "@/lib/category-ranking";
@@ -94,7 +104,196 @@ function categoryName(slug: string): string {
   return CATEGORY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ");
 }
 
-function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
+const HOUR_MS = 60 * 60 * 1_000;
+const DAY_MS = 24 * HOUR_MS;
+const ASK_EVENT_NEAR_TERM_MS = 48 * HOUR_MS;
+const ASK_EVENT_NEAR_TERM_FRESHNESS_MS = DAY_MS;
+const ASK_EVENT_FUTURE_FRESHNESS_MS = 7 * DAY_MS;
+const ASK_EVENT_CLOCK_SKEW_MS = 5 * 60 * 1_000;
+
+const TRUSTED_EVENT_PROVENANCE = new Set(["curated", "partner", "verified"]);
+const DIRECT_EVENT_ADAPTER_SOURCES = new Set([
+  "ticketmaster",
+  "bandsintown",
+  "seatgeek",
+  "eventbrite",
+  "visit-frederick",
+  "frederick-keys",
+]);
+const EVENT_SOURCE_HEALTH_ALIASES: Record<string, readonly string[]> = {
+  dfp: ["downtownfrederickpartnership"],
+  celebrate: ["celebratefrederick"],
+  county: ["frederickcountygovernment"],
+  hood: ["hoodcollege"],
+  "city-frederick": ["cityoffrederick"],
+  fair: ["thegreatfrederickfair", "greatfrederickfair"],
+  "mount-airy": ["townofmountairy"],
+  thurmont: ["townofthurmont"],
+  parks: ["frederickcountyparksrecreation"],
+  "heritage-frederick": ["heritagefrederick"],
+  monocacy: ["monocacybrewing"],
+  fcpl: ["frederickcountypubliclibraries"],
+  fcvfra: ["frederickcountyvolunteerfirerescueassoc"],
+  msd: ["marylandschoolforthedeaf"],
+  mdcc: ["marylanddeafcommunitycenter"],
+  "mount-st-marys": ["mountstmarysuniversity"],
+  isf: ["islamicsocietyoffrederick"],
+  elc: ["evangelicallutheranchurch"],
+  "civil-war-med": ["nationalmuseumofcivilwarmed"],
+  "maryland-ensemble": ["marylandensembletheatre"],
+  catoctin: ["catoctinlandtrust"],
+  fcc: ["frederickcommunitycollege"],
+  weinberg: ["weinbergcenter", "weinbergcenterforthearts"],
+  delaplaine: ["delaplaineartscenter"],
+  ticketmaster: ["ticketmastermusic", "ticketmastersports"],
+  bandsintown: ["bandsintown"],
+  seatgeek: ["seatgeek"],
+  eventbrite: ["eventbrite"],
+  "visit-frederick": ["visitfrederick"],
+  "frederick-keys": ["frederickkeys"],
+};
+
+export type AskEventTrustReason =
+  | "current-source"
+  | "source-unavailable"
+  | "stale-verification"
+  | "missing-verification"
+  | "unreviewed-source";
+
+export type AskEventTrust = {
+  confidence: "high" | "medium";
+  eligibleAsLead: boolean;
+  reason: AskEventTrustReason;
+};
+
+type AskEventTrustInput = Pick<
+  EventWithMeta,
+  | "source"
+  | "source_url"
+  | "confidence"
+  | "last_verified_at"
+  | "starts_at"
+>;
+
+type AskEventSearchSnapshot = {
+  publicEvents: EventWithMeta[];
+  sourceHealth: EventSourceHealth;
+};
+
+function normalizeHealthName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Match the unified calendar's human-readable failure labels back to the
+ * source enum carried by an event. A partial snapshot may still contain a
+ * stale-good row from a failed source; that row remains browseable, but it
+ * cannot silently claim current-source confidence in Ask.
+ */
+export function askEventSourceUnavailable(
+  source: string,
+  sourceHealth: Pick<EventSourceHealth, "degraded" | "unavailable">,
+): boolean {
+  if (!sourceHealth.degraded || sourceHealth.unavailable.length === 0) {
+    return false;
+  }
+
+  const sourceName = normalizeHealthName(source);
+  const aliases = EVENT_SOURCE_HEALTH_ALIASES[source] ?? [];
+
+  return sourceHealth.unavailable.some((rawLabel) => {
+    const label = normalizeHealthName(rawLabel);
+    if (label === sourceName || aliases.some((alias) => label === alias)) {
+      return true;
+    }
+    if (label === "venuecalendars") return source === "venue-extract";
+    if (label === "ingestedcalendars") {
+      return source === "fcpl" || source === "fcvfra";
+    }
+    if (label === "municipalcalendars") {
+      return (
+        source !== "manual" &&
+        source !== "seed" &&
+        source !== "venue-extract" &&
+        !DIRECT_EVENT_ADAPTER_SOURCES.has(source)
+      );
+    }
+    return false;
+  });
+}
+
+/**
+ * Ask's event confidence is a decision-time claim, not a synonym for "the row
+ * exists." Near-term events need a source check from the last day; farther
+ * events may use a check from the last week. Curated rows can carry first-party
+ * evidence without a public URL, while publisher/API rows need their source
+ * record to support a high-confidence recommendation.
+ */
+export function askEventTrust(
+  event: AskEventTrustInput,
+  sourceHealth: Pick<EventSourceHealth, "degraded" | "unavailable">,
+  now: Date = new Date(),
+): AskEventTrust {
+  const trustedProvenance = TRUSTED_EVENT_PROVENANCE.has(event.confidence);
+  const hasSourceRecord =
+    event.confidence === "curated" || Boolean(event.source_url?.trim());
+  if (!trustedProvenance || !hasSourceRecord) {
+    return {
+      confidence: "medium",
+      eligibleAsLead: false,
+      reason: "unreviewed-source",
+    };
+  }
+
+  if (askEventSourceUnavailable(event.source, sourceHealth)) {
+    return {
+      confidence: "medium",
+      eligibleAsLead: false,
+      reason: "source-unavailable",
+    };
+  }
+
+  const verifiedAt = event.last_verified_at
+    ? Date.parse(event.last_verified_at)
+    : Number.NaN;
+  if (!Number.isFinite(verifiedAt)) {
+    return {
+      confidence: "medium",
+      eligibleAsLead: false,
+      reason: "missing-verification",
+    };
+  }
+
+  const nowMs = now.getTime();
+  const startsAt = Date.parse(event.starts_at);
+  const nearTerm =
+    !Number.isFinite(startsAt) || startsAt - nowMs <= ASK_EVENT_NEAR_TERM_MS;
+  const maxAge = nearTerm
+    ? ASK_EVENT_NEAR_TERM_FRESHNESS_MS
+    : ASK_EVENT_FUTURE_FRESHNESS_MS;
+  const age = nowMs - verifiedAt;
+  if (age < -ASK_EVENT_CLOCK_SKEW_MS || age > maxAge) {
+    return {
+      confidence: "medium",
+      eligibleAsLead: false,
+      reason: "stale-verification",
+    };
+  }
+
+  return {
+    confidence: "high",
+    eligibleAsLead: true,
+    reason: "current-source",
+  };
+}
+
+function placeSource(
+  place: PlaceCardData,
+  showDistance: boolean,
+  fit: AskFitContext,
+): AskSource {
+  const accessNote = askFitAccessNote(place, fit);
+  const detail = safeAskDescription(place.name, place.short_blurb, place.description);
   return {
     slug: place.slug,
     name: place.name,
@@ -103,7 +302,7 @@ function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
     href: `/places/${place.slug}`,
     eyebrow: categoryName(place.category),
     reason: place.field_note_tip || place.known_for?.[0] || "Matched the request in Radius",
-    detail: safeAskDescription(place.name, place.short_blurb, place.description),
+    detail: [accessNote, detail].filter(Boolean).join(" · ") || undefined,
     distance: showDistance && place.distance_m != null ? formatDistance(place.distance_m) : undefined,
     status: formatHoursLine(place.open_status),
     phone: place.phone || undefined,
@@ -115,7 +314,7 @@ function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
   };
 }
 
-function eventSource(event: Event): AskSource {
+function eventSource(event: EventWithMeta, trust: AskEventTrust): AskSource {
   const date = new Date(event.starts_at);
   const when = date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
   const time = date.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
@@ -129,7 +328,13 @@ function eventSource(event: Event): AskSource {
     reason: communicationAccessLabels(event)[0]
       ?? (event.venue_name ? `At ${event.venue_name}` : "Current Radius calendar match"),
     detail: safeAskDescription(event.title, event.description)?.slice(0, 160),
-    confidence: "high",
+    status:
+      trust.reason === "source-unavailable"
+        ? "Source refresh is incomplete"
+        : trust.confidence === "medium"
+          ? "Confirm details before going"
+          : undefined,
+    confidence: trust.confidence,
     photo_url: event.hero_image,
   };
 }
@@ -180,6 +385,7 @@ function mergePlaceHits(
 
 const outputSchema = z.object({
   answer: z.string().min(1).max(650),
+  leadSlug: z.string().min(1).max(160).nullable(),
   placeSlugs: z.array(z.string()).max(12).default([]),
   eventSlugs: z.array(z.string()).max(12).default([]),
   followUps: z.array(z.object({
@@ -189,6 +395,51 @@ const outputSchema = z.object({
   confidence: z.enum(["high", "medium"]),
 });
 
+export type AskAgentLeadEvidence = {
+  slug: string;
+  name: string;
+  kind: "place" | "event";
+  eligibleAsLead: boolean;
+};
+
+/** Validate the model's declared first recommendation against the tool
+ * evidence. A missing or contradictory declaration fails closed so the
+ * caller can use its deterministic fallback instead. */
+export function validAskAgentLead({
+  leadSlug,
+  answer,
+  selectedPlaceSlugs,
+  selectedEventSlugs,
+  evidence,
+}: {
+  leadSlug: string | null;
+  answer: string;
+  selectedPlaceSlugs: readonly string[];
+  selectedEventSlugs: readonly string[];
+  evidence: readonly AskAgentLeadEvidence[];
+}): boolean {
+  const citedEvidence = evidence.filter((candidate) =>
+    sourceIsCited({ name: candidate.name }, answer),
+  );
+  if (leadSlug === null) {
+    return (
+      selectedPlaceSlugs.length === 0 &&
+      selectedEventSlugs.length === 0 &&
+      citedEvidence.length === 0
+    );
+  }
+  const leadMatches = evidence.filter((candidate) => candidate.slug === leadSlug);
+  if (leadMatches.length !== 1) return false;
+  const lead = leadMatches[0];
+  const selectedInMatchingList = lead.kind === "place"
+    ? selectedPlaceSlugs.includes(leadSlug)
+    : selectedEventSlugs.includes(leadSlug);
+  if (!selectedInMatchingList || !sourceIsCited({ name: lead.name }, answer)) {
+    return false;
+  }
+  return lead.kind !== "event" || lead.eligibleAsLead;
+}
+
 const INSTRUCTIONS = `You are the decision engine inside Frederick Radius, a current local information service for Frederick County, Maryland.
 
 Use tools before answering. Use the fewest tools that fully answer the request, normally 1 to 3. Build a plan for multi-stop requests. Check weather or parking only when it changes the decision.
@@ -197,10 +448,14 @@ Truth rules:
 - Use only facts returned by tools in this run.
 - Never invent a business, event, hour, price, address, accessibility feature, parking count, or local fact.
 - Return only exact placeSlugs and eventSlugs that a tool returned.
+- Set leadSlug to the exact slug of the first place or event you recommend in the answer. Use null only when the answer recommends no place or event, and include the same slug in placeSlugs or eventSlugs.
 - Source cards are citations. Return a slug only for a place or event you explicitly name in the answer.
 - If you tell the user to call or confirm by phone, include the phone number returned by the tool. Never invent one.
 - Do not claim that a place is quiet, lively, intimate, or suitable for conversation unless a tool returned explicit evidence for that trait. If the user asks and the evidence is absent, say that the noise level is unverified.
 - Unknown hours are unknown. Do not turn them into an open claim.
+- Event search returns calendarCoverage plus per-event confidence and eligibleAsLead. Never lead with an event whose eligibleAsLead is false. It may be included only as a clearly qualified option that needs confirmation.
+- When calendarCoverage is partial, do not claim that the returned list is complete or that nothing else is happening.
+- Explicit fit defaults are constraints. If wheelchair access is selected, never recommend a place whose wheelchair value is false. A place whose wheelchair value is null may remain only when the answer says that its wheelchair access is not confirmed. Apply the same honesty rule to unknown communication access.
 - If the data is thin, say that plainly.
 
 Writing rules:
@@ -216,10 +471,14 @@ export async function runRadiusAgent(
   query: string,
   context: QualifiedSearchContext,
   tasteSignals: AskTasteSignals,
+  fit: AskFitContext = {},
 ): Promise<RadiusAgentAnswer | null> {
   if (!radiusAgentConfigured()) return null;
   const placeEvidence = new Map<string, PlaceCardData>();
-  const eventEvidence = new Map<string, Event>();
+  const eventEvidence = new Map<
+    string,
+    { event: EventWithMeta; trust: AskEventTrust }
+  >();
   const toolsUsed = new Set<string>();
   const taste = buildTasteProfile(tasteSignals);
   const now = new Date();
@@ -242,7 +501,7 @@ export async function runRadiusAgent(
           (hit) => hit.type === "place" && Boolean(hit.place.email),
         );
       }
-      hits = rerankWithTaste(hits, taste).slice(0, limit);
+      hits = rerankWithAskFit(rerankWithTaste(hits, taste), fit).slice(0, limit);
       return hits.flatMap((hit) => {
         if (hit.type !== "place") return [];
         placeEvidence.set(hit.place.slug, hit.place);
@@ -260,6 +519,10 @@ export async function runRadiusAgent(
           fieldNote: hit.place.field_note_tip ?? null,
           blurb: safeAskDescription(hit.place.name, hit.place.short_blurb, hit.place.description) ?? null,
           dietaryEvidence: placeDietaryEvidence(hit.place, parseAskIntent(toolQuery, now).dietary),
+          accessibility: {
+            wheelchair: hit.place.accessibility?.wheelchair ?? null,
+            communicationAccess: Boolean(hit.place.accessibility?.communication),
+          },
         }];
       });
     },
@@ -270,14 +533,22 @@ export async function runRadiusAgent(
     inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(12).default(6) }),
     execute: async ({ query: toolQuery, limit }) => {
       toolsUsed.add("events");
-      const pool = await Promise.race([
-        assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => [] as Event[]),
-        new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 1_500)),
+      const failedSnapshot = (source: string): AskEventSearchSnapshot => ({
+        publicEvents: [],
+        sourceHealth: { degraded: true, unavailable: [source] },
+      });
+      const snapshot = await Promise.race<AskEventSearchSnapshot>([
+        assembleUnifiedEvents(now)
+          .then(({ publicEvents, sourceHealth }) => ({ publicEvents, sourceHealth }))
+          .catch(() => failedSnapshot("Radius calendar refresh")),
+        new Promise<AskEventSearchSnapshot>((resolve) =>
+          setTimeout(() => resolve(failedSnapshot("Radius calendar refresh")), 1_500),
+        ),
       ]);
       const eventIntent = parseAskIntent(toolQuery, now);
       const asksCommunicationAccess =
         /\b(?:deaf(?:blind)?|hard[-\s]of[-\s]hearing|ASL|American Sign Language|sign language|captioned|captions?|CART|assistive[-\s]listening|interpreter)\b/i.test(toolQuery);
-      const scopedPool = scopeAskEvents(pool, context.municipality)
+      const scopedPool = scopeAskEvents(snapshot.publicEvents, context.municipality)
         .filter((event) =>
           eventFitsAskIntent(event, eventIntent, now, toolQuery) &&
           (!asksCommunicationAccess ||
@@ -286,19 +557,31 @@ export async function runRadiusAgent(
       const hits = qualifiedSearch(toolQuery, 20, scopedPool, context).hits
         .filter((hit): hit is Extract<SearchHit, { type: "event" }> => hit.type === "event")
         .slice(0, limit);
-      return hits.map((hit) => {
-        eventEvidence.set(hit.event.slug, hit.event);
-        return {
-          slug: hit.event.slug,
-          title: hit.event.title,
-          startsAt: hit.event.starts_at,
-          venue: hit.event.venue_name,
-          town: hit.event.municipality,
-          free: hit.event.is_free,
-          description: hit.event.description?.slice(0, 180) || null,
-          communicationAccess: communicationAccessLabels(hit.event),
-        };
+      const bySlug = new Map(scopedPool.map((event) => [event.slug, event]));
+      const events = hits.flatMap((hit) => {
+        const event = bySlug.get(hit.event.slug);
+        if (!event) return [];
+        const trust = askEventTrust(event, snapshot.sourceHealth, now);
+        eventEvidence.set(event.slug, { event, trust });
+        return [{
+          slug: event.slug,
+          title: event.title,
+          startsAt: event.starts_at,
+          venue: event.venue_name,
+          town: event.municipality,
+          free: event.is_free,
+          description: event.description?.slice(0, 180) || null,
+          communicationAccess: communicationAccessLabels(event),
+          confidence: trust.confidence,
+          eligibleAsLead: trust.eligibleAsLead,
+          trustReason: trust.reason,
+        }];
       });
+      return {
+        calendarCoverage: snapshot.sourceHealth.degraded ? "partial" : "complete",
+        unavailableSources: snapshot.sourceHealth.unavailable.slice(0, 8),
+        events,
+      };
     },
   });
 
@@ -374,7 +657,7 @@ export async function runRadiusAgent(
     execute: async ({ request, anchorSlug }) => {
       toolsUsed.add("plan");
       const intent = parseAskIntent(/^plan\b/i.test(request) ? request : `Plan ${request}`);
-      plan = buildAskPlanPreview(intent, context, request, anchorSlug);
+      plan = buildAskPlanPreview(intent, context, request, anchorSlug, fit);
       if (!plan) return { available: false, stops: [] };
       for (const stop of plan.stops) {
         if (!stop.href.startsWith("/places/")) continue;
@@ -409,7 +692,7 @@ export async function runRadiusAgent(
 
   try {
     const { output } = await agent.generate({
-      prompt: `User request: ${query}\nCurrent Frederick date and time: ${clockLine(now)} Eastern\nLocation context: ${context.contextLabel || "Frederick County; exact location unavailable"}\nExplicit taste signals: ${tasteSummary(taste) || "none"}\nResponse count: ${optionCountInstruction(query)}`,
+      prompt: `User request: ${query}\nCurrent Frederick date and time: ${clockLine(now)} Eastern\nLocation context: ${context.contextLabel || "Frederick County; exact location unavailable"}\nExplicit taste signals: ${tasteSummary(taste) || "none"}\nExplicit fit defaults: ${askFitSummary(fit) || "none"}\nResponse count: ${optionCountInstruction(query)}`,
       timeout: { totalMs: AGENT_TOTAL_TIMEOUT_MS, stepMs: AGENT_STEP_TIMEOUT_MS },
     });
     if (!output) return null;
@@ -420,17 +703,42 @@ export async function runRadiusAgent(
         ? 100
         : 80;
     const answer = concisePlainTextAnswer(output.answer, maxWords);
+    const leadEvidence: AskAgentLeadEvidence[] = [
+      ...Array.from(placeEvidence.values(), (place) => ({
+        slug: place.slug,
+        name: place.name,
+        kind: "place" as const,
+        eligibleAsLead: true,
+      })),
+      ...Array.from(eventEvidence.values(), ({ event, trust }) => ({
+        slug: event.slug,
+        name: event.title,
+        kind: "event" as const,
+        eligibleAsLead: trust.eligibleAsLead,
+      })),
+    ];
+    if (!validAskAgentLead({
+      leadSlug: output.leadSlug,
+      answer,
+      selectedPlaceSlugs: output.placeSlugs,
+      selectedEventSlugs: output.eventSlugs,
+      evidence: leadEvidence,
+    })) {
+      return null;
+    }
     const sources: AskSource[] = [];
     const showDistance = Boolean(context.origin && context.canShowDistance !== false);
     for (const slug of output.placeSlugs) {
       const place = placeEvidence.get(slug);
       if (place && !sources.some((source) => source.slug === slug)) {
-        sources.push(placeSource(place, showDistance));
+        sources.push(placeSource(place, showDistance, fit));
       }
     }
     for (const slug of output.eventSlugs) {
-      const event = eventEvidence.get(slug);
-      if (event && !sources.some((source) => source.slug === slug)) sources.push(eventSource(event));
+      const evidence = eventEvidence.get(slug);
+      if (evidence && !sources.some((source) => source.slug === slug)) {
+        sources.push(eventSource(evidence.event, evidence.trust));
+      }
     }
     // Citation recovery: the model sometimes narrates a pick without
     // echoing its slug into the structured output, and the answer then
@@ -442,23 +750,36 @@ export async function runRadiusAgent(
     // still stays off the tray.
     for (const [slug, place] of placeEvidence) {
       if (!sources.some((source) => source.slug === slug) && sourceIsCited({ name: place.name }, answer)) {
-        sources.push(placeSource(place, showDistance));
+        sources.push(placeSource(place, showDistance, fit));
       }
     }
-    for (const [slug, event] of eventEvidence) {
-      if (!sources.some((source) => source.slug === slug) && sourceIsCited({ name: event.title }, answer)) {
-        sources.push(eventSource(event));
+    for (const [slug, evidence] of eventEvidence) {
+      if (!sources.some((source) => source.slug === slug) && sourceIsCited({ name: evidence.event.title }, answer)) {
+        sources.push(eventSource(evidence.event, evidence.trust));
       }
     }
+    const citedSources = filterCitedSources(sources, answer).slice(0, 12);
+    const citesMediumConfidenceEvent = citedSources.some(
+      (source) => eventEvidence.get(source.slug)?.trust.confidence === "medium",
+    );
+    const citedPlaces = citedSources.flatMap((source) => {
+      const place = placeEvidence.get(source.slug);
+      return place ? [place] : [];
+    });
     return {
-      answer,
-      sources: filterCitedSources(sources, answer).slice(0, 12),
+      answer: qualifyAskAnswerForAccess(answer, citedPlaces, fit),
+      sources: citedSources,
       actions: output.followUps.map((item) => ({ label: item.label, kind: "refine", query: item.query })),
       plan,
       tools: [...toolsUsed],
       retrieval: usedHybrid ? "hybrid" : "keyword",
-      confidence: output.confidence,
-      personalized: tasteSummary(taste) ?? undefined,
+      confidence:
+        output.confidence === "high" && !citesMediumConfidenceEvent
+          ? "high"
+          : "medium",
+      personalized: [tasteSummary(taste), askFitSummary(fit) ? `Fit to ${askFitSummary(fit)}` : null]
+        .filter((label): label is string => Boolean(label))
+        .join(" · ") || undefined,
     };
   } catch {
     return null;

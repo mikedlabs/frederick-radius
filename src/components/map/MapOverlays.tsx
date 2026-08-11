@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
+import { Source, Layer, Popup, useMap } from "react-map-gl/maplibre";
+import type { MapLayerMouseEvent } from "maplibre-gl";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { BRAND } from "@/lib/brand";
 import { directionsHref } from "@/lib/map/directionsHref";
@@ -135,7 +136,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
     // "what park is this?" just like its marker does).
     const layerIds = active.flatMap((k) => [`ov-${k}-pt`, `ov-${k}-fill`]);
 
-    const onClick = (e: mapboxgl.MapLayerMouseEvent) => {
+    const onClick = (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
       if (!f) return;
       const layerId = f.layer?.id;

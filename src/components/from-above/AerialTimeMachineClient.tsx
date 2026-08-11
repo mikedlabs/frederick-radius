@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 
 /**
- * Client-only mount for the aerial map — Mapbox touches `window`, so it
+ * Client-only mount for the aerial map — the GL renderer touches `window`, so it
  * must not SSR (same pattern as AppMapClient).
  */
 const AerialTimeMachine = dynamic(() => import("./AerialTimeMachine"), {

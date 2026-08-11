@@ -16,7 +16,6 @@ function place(
     open_status: { state: "unknown" },
     is_verified: true,
     field_notes: false,
-    deal_hook: undefined,
     source: "manual",
     municipality: "frederick",
     short_blurb: "",
@@ -130,5 +129,28 @@ describe("immediateMapPlaceResults", () => {
     expect(reconcileMapSearchResults(immediate, server, "gravel")[0]?.id).toBe(
       "category:outdoors",
     );
+  });
+
+  it("keeps the live browser distance when the server returns the same place", () => {
+    const immediate = immediateMapPlaceResults(
+      places,
+      "gravel",
+      { lat: 39.415, lng: -77.41 },
+    );
+    const local = immediate.find(
+      (result) => result.id === "place:gravel-and-grind-frederick",
+    );
+    const server = [{
+      type: "place" as const,
+      id: "place:gravel-and-grind-frederick",
+      title: "Gravel & Grind",
+      subtitle: "Coffee",
+      href: "/places/gravel-and-grind-frederick",
+      distance_m: 174,
+    }];
+
+    const [merged] = reconcileMapSearchResults(immediate, server, "gravel");
+    expect(merged?.distance_m).toBe(local?.distance_m);
+    expect(merged?.distance_m).not.toBe(174);
   });
 });

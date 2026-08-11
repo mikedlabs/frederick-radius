@@ -18,15 +18,13 @@ import Map, {
   Layer,
   type MapRef,
   type MapMouseEvent,
-} from "react-map-gl/mapbox";
+} from "react-map-gl/maplibre";
 // (GeolocateControl stays imported for DOCK-LESS embeds only — on /map
 // browse the dock's Where pane is locate's one home.)
-import type {
-  GeoJSONSource,
-  StyleSpecification,
-} from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import type { GeoJSONSource } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { useFrederickFlavorStyle } from "./useFrederickFlavorStyle";
+import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
@@ -69,13 +67,11 @@ import { sizedImage } from "@/lib/format/img";
 import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
-import { applyFrederickPalette, installRelief } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
-// Baked style JSON — the palette pre-applied at build time. Only used when
-// MAP_BAKED_STYLE is on; the import is a small (~36KB) static JSON so it's
-// cheap to include even when the flag is off (tree-shakers keep it out of the
-// runtime path since mapStyle only references it behind the flag).
-import BAKED_STYLE from "./frederick-style.json";
+import {
+  MAP_LABEL_FONT_MEDIUM,
+  MAP_LABEL_FONT_REGULAR,
+} from "@/lib/map/frederickFlavorStyle";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs } from "./mapLayerPrefs";
 import {
@@ -94,6 +90,7 @@ import { type SelectedStop } from "@/components/transit/StopArrivalsPopup";
 import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
+import { collapseInitialMapAttribution } from "./mapAttribution";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -189,7 +186,7 @@ import {
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
-import { placesWithinReach } from "./mapNearbyScope";
+import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -199,9 +196,8 @@ import {
   FREDERICK_MAX_BOUNDS,
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
-  MAP_BAKED_STYLE,
   RADIUS_M,
-  STYLE_URL,
+  toFlatBounds,
   isAmenity,
   smoothFocus,
 } from "./constants";
@@ -216,7 +212,6 @@ import LiveRotorcraft, {
   type RotorcraftLayerStatus,
 } from "./LiveRotorcraft";
 import TrafficCameras from "./TrafficCameras";
-import MapboxTraffic from "./MapboxTraffic";
 import RoadWorkZones from "./RoadWorkZones";
 import FloodContext from "./FloodContext";
 import SnowRoutes from "./SnowRoutes";
@@ -245,11 +240,6 @@ import {
 } from "@/lib/live-layer-health";
 import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
-import {
-  applyMapboxStandardPreviewConfig,
-  isMapboxStandardPreviewEnabled,
-  mapStyleWithStandardPreview,
-} from "./mapboxStandardPreview";
 import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
@@ -408,10 +398,7 @@ type Props = {
    *  seed the toggle bank as the WEAKEST voice (deep link > stored choice >
    *  smart seed); view keys (music-tonight) surface as the reason line's
    *  one-tap action instead of auto-flipping a shareable lens. */
-  smartDefault?: {
-    layers: ReadonlyArray<string>;
-    reason: string;
-  } | null;
+  smartDefault?: SmartMapDefault;
 };
 
 export default function AppMap({
@@ -454,14 +441,15 @@ export default function AppMap({
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
   const routeSearchParams = useSearchParams();
-  const routeSearch = routeSearchParams.toString();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
   const [resultScope, setResultScope] = useState<Scope>(() =>
-    parseScope(routeScopeParam) ?? "county",
+    parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
   );
   useEffect(() => {
-    setResultScope(parseScope(routeScopeParam) ?? "county");
-  }, [routeScopeParam]);
+    setResultScope(
+      parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
+    );
+  }, [isBrowseMap, routeScopeParam]);
   useEffect(
     () =>
       subscribeScopeChange((nextScope) =>
@@ -469,7 +457,7 @@ export default function AppMap({
       ),
     [],
   );
-  const standardPreview = isMapboxStandardPreviewEnabled(routeSearch);
+  const mapStyle = useFrederickFlavorStyle();
   const attachMapRef = useCallback((instance: MapRef | null) => {
     mapRef.current = instance;
     if (instance) installCategoryMarkers(instance.getMap());
@@ -529,6 +517,15 @@ export default function AppMap({
     if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
     return { longitude: lng, latitude: lat, zoom: z };
   }, [routeCameraParam]);
+  // Latch the entry contract before camera state starts writing `?c=`. Near me
+  // always needs this device's location, even when a shared or back-stack URL
+  // also carries someone else's last camera.
+  const [autoFitNearbyScope] = useState(
+    () =>
+      isBrowseMap &&
+      (parseScope(routeScopeParam) ?? getScope()) === "nearme" &&
+      recenterToKnownLocation,
+  );
   // A pooled Mapbox instance can emit the camera it retained from an older
   // route before the requested `?c=` camera is restored. Do not let that
   // transient move overwrite the address bar and turn the wrong frame into
@@ -627,19 +624,22 @@ export default function AppMap({
 
     const withDist = (x: PlaceCardData): PlaceCardData =>
       userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
+    const travelOrigin = userLoc && locationFixTimestamp
+      ? { ...userLoc, timestamp: locationFixTimestamp }
+      : null;
     const cached = hydratedRef.current.get(pin.slug);
     if (cached) {
-      openSheet(withDist(cached));
+      openSheet(withDist(cached), { travelOrigin });
       return;
     }
-    openSheet(withDist(pin as PlaceCardData));
+    openSheet(withDist(pin as PlaceCardData), { travelOrigin });
     fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(pin.slug)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { places?: PlaceCardData[] } | null) => {
         const full = d?.places?.[0];
         if (full && full.slug === pin.slug) {
           hydratedRef.current.set(pin.slug, full);
-          openSheet(withDist(full));
+          openSheet(withDist(full), { travelOrigin });
         }
       })
       .catch(() => {
@@ -933,17 +933,25 @@ export default function AppMap({
   // visible bounds matter: a pan can clip the county without changing zoom.
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
+  const nearbyRouteCameraAppliedRef = useRef(false);
   const { userLoc, userAccuracyM, locationFixTimestamp, locating, goNearMe } =
     useMapLocation({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
+      autoFitNearbyScope,
       setGeoMsg,
       markCameraIntent: () => {
         cameraIntentRef.current = true;
       },
       fitNearbyCamera: (loc) => {
         const map = mapRef.current?.getMap();
-        if (map) fitNearbyRadius(map, loc);
+        if (map) {
+          fitNearbyRadius(map, loc);
+          // A camera command issued before Mapbox finishes loading can be
+          // superseded by its initial view. The post-load effect below retries
+          // unless the loaded map accepted this move.
+          if (mapLoaded) nearbyRouteCameraAppliedRef.current = true;
+        }
       },
       fitNearbyWithIntent: (loc) => {
         const map = mapRef.current?.getMap();
@@ -966,11 +974,25 @@ export default function AppMap({
         cameraControlGestureRef.current = false;
       },
     });
+  useEffect(() => {
+    if (
+      !autoFitNearbyScope ||
+      !mapLoaded ||
+      !userLoc ||
+      nearbyRouteCameraAppliedRef.current
+    ) {
+      return;
+    }
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    nearbyRouteCameraAppliedRef.current = true;
+    cameraIntentRef.current = true;
+    fitNearbyRadius(map, userLoc);
+  }, [autoFitNearbyScope, mapLoaded, userLoc]);
   // The smart default's layer keys, expanded once to the toggle bank's
   // vocabulary with stable identity ("roads-now" is the composite alias, the
-  // same expansion the `roads` deep link uses). View keys (music-tonight)
-  // are deliberately NOT here — a lens must reproduce from its URL, so the
-  // reason line offers it as a one-tap action instead.
+  // same expansion the `roads` deep link uses). Lenses are deliberately not
+  // represented as layers; the reason line offers a shareable action instead.
   const [smartNoteDismissed, setSmartNoteDismissed] = useState(false);
   const [smartLayerSeeds] = useState<
     ReadonlySet<"radar" | "parking" | "civic" | "traffic" | "incidents">
@@ -1282,13 +1304,14 @@ export default function AppMap({
       window.removeEventListener("fr:focus-map-search", clearForSearch);
   }, [clearMapSelection, isBrowseMap]);
 
-  // 3D relief while browsing the drone archive. The aerial layer is the
-  // one mode where the county's terrain IS the content, so toggling it
-  // on drapes the map over the DEM the hillshade already loads (fr-dem,
-  // no extra tile pyramid) and eases to a gentle pitch; toggling off
-  // flattens back to the field-guide plan view. Reduced motion snaps
-  // instead of easing. Fail-soft: if the style hasn't installed fr-dem
-  // yet (or WebGL is struggling), the map just stays flat.
+  // Pitch while browsing the drone archive. This used to drape the map
+  // over Mapbox's terrain DEM so the Catoctin and South Mountain ridges
+  // physically rose; that DEM is proprietary and the self-hosted basemap
+  // has no license to serve it, so for now the aerial mode only tilts the
+  // plan view. `map.getSource("fr-dem")` is retained as the condition: it
+  // is false today, and becomes true again the moment a county hillshade
+  // built from USGS 3DEP lands in /public/basemap, with no code change
+  // here. Reduced motion snaps instead of easing.
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -1902,7 +1925,7 @@ export default function AppMap({
 
     if (layer === "curated-icons" || layer === "curated-active-icons" || layer === "curated-hit") {
       const props = feature.properties as Record<string, string>;
-      const place = places.find((p) => p.slug === props.slug);
+      const place = placesBySlug.get(props.slug);
       setSelectedSlug(props.slug);
       haptic("light");
       // Google-Maps-style: tap a pin → full card slides up from the bottom
@@ -2015,7 +2038,7 @@ export default function AppMap({
         sub: family ? `Mostly ${family.toLocaleLowerCase()}` : undefined,
       };
     } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-active-icons" || f.layer.id === "curated-hit") {
-      const p = places.find((x) => x.slug === props.slug);
+      const p = placesBySlug.get(String(props.slug));
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
     } else {
       const name = String(props.name ?? "").trim();
@@ -2979,6 +3002,35 @@ export default function AppMap({
     });
   };
 
+  const smartDefaultVisible = Boolean(
+    dock &&
+      mapLoaded &&
+      smartDefault &&
+      !smartNoteDismissed &&
+      !hasExplicitLayerView &&
+      !selectionOpen &&
+      !dockPaneOpen &&
+      !showResultsHere &&
+      !q.trim(),
+  );
+  const mapInterfaceState = !dock
+    ? undefined
+    : mapError
+      ? "error"
+      : routeInfo
+        ? "route"
+        : selectionOpen
+          ? "selection"
+          : q.trim()
+            ? "search"
+            : dockPaneOpen
+              ? "browse"
+              : showResultsHere
+                ? "reframe"
+                : smartDefaultVisible
+                  ? "guidance"
+                  : "rest";
+
   return (
     <div
       className={
@@ -2995,22 +3047,23 @@ export default function AppMap({
       }
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
+      data-map-interface={mapInterfaceState}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
         wakeMapEdgeTools();
         const target = event.target as Element;
-        if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
+        if (target.closest(".maplibregl-canvas-container, .maplibregl-ctrl")) {
           cameraIntentRef.current = true;
         }
         if (
           target.closest(
-            ".mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out, .mapboxgl-ctrl-compass",
+            ".maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out, .maplibregl-ctrl-compass",
           )
         ) {
           cameraControlGestureRef.current = true;
         }
-        if (dockPaneOpen && target.closest(".mapboxgl-canvas-container")) {
+        if (dockPaneOpen && target.closest(".maplibregl-canvas-container")) {
           window.dispatchEvent(new Event("fr:map-gesture"));
         }
       }}
@@ -3020,7 +3073,7 @@ export default function AppMap({
         wakeMapEdgeTools();
         const target = event.target as Element;
         if (
-          target.closest(".mapboxgl-canvas") &&
+          target.closest(".maplibregl-canvas") &&
           ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "+", "=", "-"].includes(
             event.key,
           )
@@ -3109,7 +3162,8 @@ export default function AppMap({
               places={inViewPlaces}
               events={visibleEvents}
               userLoc={userLoc}
-              sortOrigin={viewCenter ?? searchFallbackOriginRef.current}
+              sortOrigin={userLoc}
+              failureMode
               onPick={openPlaceSheet}
               onPickEvent={(event) => router.push(`/events/${event.slug}`)}
             />
@@ -3141,25 +3195,42 @@ export default function AppMap({
         )}
         {/* Cream fade under the top chrome so pills and rails always sit on
             quiet ground instead of raw basemap. Paint only. */}
-        {dock && <div className="map-top-scrim" aria-hidden />}
+        {dock && !mapError && <div className="map-top-scrim" aria-hidden />}
         {/* The smart default explains itself in one sentence (map program
-            phase 1). Typography only, one dismiss, and when the suggestion
-            is tonight's music it offers the lens as a one-tap deep link
-            instead of silently flipping shareable state. */}
-        {dock && smartDefault && !smartNoteDismissed && !hasExplicitLayerView && (
+            phase 1). A suggestion may include a shareable one-tap lens rather
+            than pretending the lens is a layer that was already switched on. */}
+        {smartDefaultVisible && smartDefault && (
           <div
-            className="absolute left-1/2 top-[120px] z-[var(--z-map-control)] flex max-w-[min(92vw,480px)] -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] py-1 pl-3 pr-1 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur-md"
-            style={{ color: "var(--app-ink-2)" }}
+            className="map-smart-note"
+            data-map-top-surface="guidance"
           >
-            <span role="status">{smartDefault.reason}</span>
-            {smartDefault.layers.includes("music-tonight") && (
-              <Link
-                href="/map?music=tonight"
-                className="tap-44-y shrink-0 rounded-full px-2 py-1 font-semibold"
-                style={{ color: "var(--app-cool)" }}
-              >
-                See tonight&apos;s shows
-              </Link>
+            <span role="status" className="min-w-0 flex-1 text-pretty leading-snug">
+              {smartDefault.reason}
+            </span>
+            {smartDefault.action && (
+              "href" in smartDefault.action ? (
+                <Link
+                  href={smartDefault.action.href}
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool)" }}
+                >
+                  {smartDefault.action.label}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="tap-44-y shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-semibold"
+                  style={{ color: "var(--app-cool)" }}
+                  onClick={() => {
+                    haptic("light");
+                    setShowRadar(true);
+                    setSmartNoteDismissed(true);
+                    track("map_smart_default_action", { action: "radar" });
+                  }}
+                >
+                  {smartDefault.action.label}
+                </button>
+              )
             )}
             <button
               type="button"
@@ -3274,17 +3345,19 @@ export default function AppMap({
           places, check today and tonight, see conditions, or add Frederick details.
         </p>
 
+        {!mapError && (
         <Map
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
           aria-describedby="frederick-map-help"
-          mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
             urlCamera ?? (locationSeed.camera
               ? {
-                  longitude: locationSeed.camera.lng,
-                  latitude: locationSeed.camera.lat,
-                  zoom: initialZoom,
+                  bounds: nearbyReachBounds(locationSeed.camera, RADIUS_M),
+                  fitBoundsOptions: {
+                    padding: initialCountyPadding,
+                    maxZoom: 14.5,
+                  },
                 }
               : initialBounds
               ? {
@@ -3297,14 +3370,10 @@ export default function AppMap({
                   zoom: initialZoom,
                 })
           }
-          mapStyle={mapStyleWithStandardPreview(
-            MAP_BAKED_STYLE
-              ? (BAKED_STYLE as unknown as StyleSpecification)
-              : STYLE_URL,
-            routeSearch,
-          )}
+          mapStyle={mapStyle}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
+          maplibreLogo={false}
           // ── Mobile-smoothness flags ──
           // This is a flat 2D county map: rotation and pitch only ever
           // happen by accident on a two-finger pan, leaving the user
@@ -3319,22 +3388,15 @@ export default function AppMap({
           // A 235px-high landscape phone needs a wider camera footprint than
           // any useful local pan leash permits. The fit bounds + 6.8 floor keep
           // the county visible there; portrait/desktop retain the browse leash.
-          maxBounds={shortLandscapeViewport ? undefined : cameraMaxBounds}
+          maxBounds={shortLandscapeViewport ? undefined : toFlatBounds(cameraMaxBounds)}
           minZoom={cameraMinZoom}
           maxZoom={FREDERICK_MAX_ZOOM}
           // Don't tear down + re-create the GL context when the map
           // unmounts (mode toggle, route change) — reusing it makes the
-          // map snap back instantly instead of cold-booting Mapbox.
+          // map snap back instantly instead of cold-booting the renderer.
           reuseMaps
           // Snappier label transitions on pan/zoom (default is 300ms).
           fadeDuration={120}
-          // The terrain/fog combo we previously had assumed Standard's
-          // built-in mapbox-dem source. On dark-v11 that source isn't
-          // included, so terrain silently no-ops; applyFrederickPalette
-          // installs its OWN raster-dem source (fr-dem) and a hillshade
-          // LAYER that paints relief over the Catoctin + South Mountain
-          // ridges. The result reads as terrain-aware without the cost
-          // of a 3D mesh, and keeps wayfinding crisp at every zoom.
           interactiveLayerIds={[
             "clusters",
             ...(curatedClusters ? ["curated-clusters"] : []),
@@ -3378,6 +3440,10 @@ export default function AppMap({
           onLoad={(e) => {
             edgeToolsLastWakeRef.current = Number.NEGATIVE_INFINITY;
             wakeMapEdgeTools();
+            // MapLibre's compact control begins expanded and normally waits
+            // for a drag to minimize. Start with the small accessible info
+            // button so legal copy never covers the mobile map HUD.
+            collapseInitialMapAttribution(e.target.getContainer());
             // `reuseMaps` can retain the camera from a prior visit even when
             // this route has an explicit return/share camera. Restore it
             // before any settled move is allowed to rewrite `?c=`.
@@ -3399,27 +3465,6 @@ export default function AppMap({
               }
             }
             installCategoryMarkers(e.target);
-            // Brand repaint. The palette rewrites stock light-v11 into the
-            // Frederick Radius design — paper-cream land, civic-blue water,
-            // suppressed POI clutter (our own pins are the points of
-            // interest), warm hillshade across the Catoctin + South Mountain
-            // ridges. This is the difference between "Mapbox light style" and
-            // "Frederick Radius map."
-            //
-            // Two paths: the baked style (flag on) already carries the palette
-            // as static JSON, so we skip the ~50-layer runtime walk and only
-            // install the two things the JSON can't hold — the hillshade relief
-            // (a live raster-dem source) and the county spotlight. Flag off
-            // keeps the proven runtime recolor.
-            if (standardPreview) {
-              applyMapboxStandardPreviewConfig(e.target, {
-                search: routeSearch,
-              });
-            } else if (MAP_BAKED_STYLE) {
-              installRelief(e.target);
-            } else {
-              applyFrederickPalette(e.target);
-            }
             // Frame browse mode in the county too, the same veil + drawn
             // border the radius map already wears, so the two modes feel
             // like one place and not two different maps.
@@ -3589,8 +3634,8 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
-          {/* Required Mapbox/OSM credits, collapsed to the compact ⓘ badge
-              (permitted by Mapbox ToS) so the text never sits on the map. */}
+          {/* Required map-data credits stay available behind a compact,
+              accessible info button instead of sitting across the map. */}
           <AttributionControl compact position="bottom-right" />
           {spotSelection && (
             <Marker
@@ -3608,10 +3653,6 @@ export default function AppMap({
               />
             </Marker>
           )}
-          {/* (Removed an orphaned mapbox-dem raster-dem Source: there is no
-              `terrain` prop on <Map> — see the note above — and
-              applyFrederickPalette installs its own `fr-dem` source + hillshade,
-              so this was a duplicate terrain-DEM tile pyramid with no consumer.) */}
           {/* Municipality labels use semantic zoom on the full county map:
               larger communities orient the broad view, mid-sized towns join
               next, and the smallest labels wait until town zoom. Compact and
@@ -3634,6 +3675,7 @@ export default function AppMap({
                       ["get", "name"],
                     ]
                   : ["get", "name"],
+                "text-font": MAP_LABEL_FONT_MEDIUM,
                 "text-size": ["interpolate", ["linear"], ["zoom"], 7.25, 9.5, 10, 11, 13, 12],
                 "text-letter-spacing": 0.08,
                 "text-transform": "uppercase",
@@ -3663,11 +3705,6 @@ export default function AppMap({
           {showRadar ? (
             <LightningDensity show beforeId="muni-label" />
           ) : null}
-
-          {/* Current congestion is context, not the closure authority. It
-              sits below the incident/camera pins; the dock keeps Maryland
-              CHART and Radius's public incident feed visibly distinct. */}
-          <MapboxTraffic show={showTraffic} />
 
           {/* Static high-water areas and warning infrastructure are context,
               never a live flood claim. They share the Roads view and sit
@@ -3783,6 +3820,7 @@ export default function AppMap({
               minzoom={15}
               layout={{
                 "text-field": ["get", "name"],
+                "text-font": MAP_LABEL_FONT_REGULAR,
                 "text-size": 10,
                 "text-offset": [0, 1.1],
                 "text-anchor": "top",
@@ -3837,6 +3875,7 @@ export default function AppMap({
               minzoom={10}
               layout={{
                 "text-field": ["concat", "MARC · ", ["get", "name"]],
+                "text-font": MAP_LABEL_FONT_MEDIUM,
                 "text-size": 11,
                 "text-offset": [0, 1.2],
                 "text-anchor": "top",
@@ -4053,7 +4092,7 @@ export default function AppMap({
                   "interpolate", ["linear"], ["get", "point_count"],
                   4, 9, 50, 11, 200, 12,
                 ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+                "text-font": MAP_LABEL_FONT_MEDIUM,
                 "text-allow-overlap": true,
                 "text-ignore-placement": true,
               }}
@@ -4138,7 +4177,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "point_count_abbreviated"],
                 "text-size": 10,
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+                "text-font": MAP_LABEL_FONT_MEDIUM,
                 "text-allow-overlap": true,
                 "text-ignore-placement": true,
               }}
@@ -4187,7 +4226,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 16.5, 9, 18, 12],
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-font": MAP_LABEL_FONT_REGULAR,
                 "text-anchor": "top",
                 "text-offset": [0, 1.05],
                 "text-optional": true,
@@ -4244,6 +4283,37 @@ export default function AppMap({
                   "circle-blur": 0.55,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-opacity-transition": { duration: mapPaintDuration },
+                }}
+              />
+            )}
+            {curatedClusters && (
+              <Layer
+                id="curated-cluster-contour"
+                type="circle"
+                filter={["has", "point_count"]}
+                paint={{
+                  "circle-color": "rgba(0,0,0,0)",
+                  "circle-radius": compactSubjectMap
+                    ? [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 15, 12, 21],
+                        11.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 15, 12, 21],
+                        12, ["interpolate", ["linear"], ["get", "point_count"], 2, 11.6, 12, 16],
+                      ]
+                    : [
+                        "interpolate", ["linear"], ["zoom"],
+                        7, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 12, 25, 18, 100, 23],
+                        14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 12, 25, 18, 100, 23],
+                        15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7.8, 4, 9.1, 25, 13.2, 100, 16.6],
+                      ],
+                  "circle-stroke-color": compactSubjectMap
+                    ? BRAND.colors.functionalAmber
+                    : CURATED_CLUSTER_COLOR,
+                  "circle-stroke-width": 1.1,
+                  "circle-stroke-opacity":
+                    amenityLayerActive && dock ? 0.04 : 0.34,
+                  "circle-radius-transition": { duration: mapPaintDuration },
+                  "circle-stroke-opacity-transition": { duration: mapPaintDuration },
                 }}
               />
             )}
@@ -4321,10 +4391,7 @@ export default function AppMap({
                         8.5,
                       ],
                   "text-line-height": compactSubjectMap ? 1.2 : 0.92,
-                  "text-font": [
-                    "DIN Pro Medium",
-                    "Arial Unicode MS Regular",
-                  ],
+                  "text-font": MAP_LABEL_FONT_MEDIUM,
                   "text-allow-overlap": true,
                   "text-ignore-placement": true,
                 }}
@@ -4575,7 +4642,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9.5, 16, 12],
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-font": MAP_LABEL_FONT_REGULAR,
                 "text-anchor": "top",
                 "text-offset": [0, 1.15],
                 "text-optional": true,
@@ -4718,6 +4785,26 @@ export default function AppMap({
               }}
             />
           </Source>
+          {dock && userLoc && (
+            <Marker
+              longitude={userLoc.lng}
+              latitude={userLoc.lat}
+              anchor="center"
+              ref={exposeMarkerChild}
+            >
+              <button
+                type="button"
+                className="map-location-essentials-trigger"
+                aria-label="Open nearby essentials from my location"
+                title="Nearby essentials"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  haptic("light");
+                  window.dispatchEvent(new Event("fr:open-map-essentials"));
+                }}
+              />
+            </Marker>
+          )}
           {userLoc && locationFixTimestamp && (
             <Marker
               key={`location-lock:${locationFixTimestamp}`}
@@ -5176,6 +5263,7 @@ export default function AppMap({
             <GeolocateControl position="bottom-right" trackUserLocation />
           )}
         </Map>
+        )}
 
         <p
           key={resultAreaAnnouncement.nonce}
@@ -5340,7 +5428,15 @@ export default function AppMap({
               if (discovery) showDiscovery(discovery);
             }}
             onPaneOpenChange={handleDockPaneOpenChange}
-            suppressContextRail={selectionOpen || showResultsHere || !mapLoaded}
+            suppressContextRail={
+              selectionOpen ||
+              showResultsHere ||
+              smartDefaultVisible ||
+              !mapLoaded
+            }
+            smartSeededLayerCount={
+              smartNoteDismissed ? 0 : smartLayerSeeds.size
+            }
           />
           </div>
         )}

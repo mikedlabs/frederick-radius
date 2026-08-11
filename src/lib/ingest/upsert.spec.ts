@@ -13,6 +13,12 @@ type State = {
     sourceUrl?: string | null;
     heroImage?: string | null;
     heroImageAlt?: string | null;
+    venueName?: string | null;
+    address?: string | null;
+    municipality?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    geocodedAt?: string | null;
   };
 };
 
@@ -55,6 +61,16 @@ function transactionalSql({
                   target.normalized?.heroImage ?? null,
                 normalized_hero_image_alt:
                   target.normalized?.heroImageAlt ?? null,
+                normalized_venue_name:
+                  target.normalized?.venueName ?? null,
+                normalized_address:
+                  target.normalized?.address ?? null,
+                normalized_municipality:
+                  target.normalized
+                    ? "municipality" in target.normalized
+                      ? target.normalized.municipality ?? null
+                      : "frederick"
+                    : null,
               },
             ]
           : [],
@@ -91,7 +107,14 @@ function transactionalSql({
       const heroImage = (parameters[5] as string | null) ?? null;
       const healHeroImageAlt = parameters[6] === true;
       const heroImageAlt = (parameters[7] as string | null) ?? null;
+      const healVenueName = parameters[8] === true;
+      const venueName = (parameters[9] as string | null) ?? null;
+      const healMunicipality = parameters[10] === true;
+      const municipality = (parameters[11] as string | null) ?? null;
+      const healAddress = parameters[12] === true;
+      const address = (parameters[16] as string | null) ?? null;
       target.normalized = {
+        ...target.normalized,
         sourceUrl: healSourceUrl
           ? sourceUrl
           : target.normalized.sourceUrl,
@@ -104,6 +127,16 @@ function transactionalSql({
         heroImageAlt: healHeroImageAlt
           ? heroImageAlt
           : target.normalized.heroImageAlt,
+        venueName: healVenueName
+          ? venueName
+          : target.normalized.venueName,
+        municipality: healMunicipality
+          ? municipality
+          : target.normalized.municipality,
+        address: healAddress ? address : target.normalized.address,
+        lat: healAddress ? null : target.normalized.lat,
+        lng: healAddress ? null : target.normalized.lng,
+        geocodedAt: healAddress ? null : target.normalized.geocodedAt,
       };
       return Promise.resolve([{ id: "normalized-event-1" }]);
     }
@@ -118,11 +151,18 @@ function transactionalSql({
       const category = (parameters[1] as string | null) ?? null;
       const heroImage = (parameters[2] as string | null) ?? null;
       const heroImageAlt = (parameters[3] as string | null) ?? null;
+      const venueName = (parameters[4] as string | null) ?? null;
+      const municipality = (parameters[5] as string | null) ?? null;
+      const address = (parameters[9] as string | null) ?? null;
+      const addressChanged = (target.normalized.address ?? null) !== address;
       const changed =
         (categoryCoverageComplete &&
           target.normalized.category !== category) ||
         (target.normalized.heroImage ?? null) !== heroImage ||
-        (target.normalized.heroImageAlt ?? null) !== heroImageAlt;
+        (target.normalized.heroImageAlt ?? null) !== heroImageAlt ||
+        (target.normalized.venueName ?? null) !== venueName ||
+        (target.normalized.municipality ?? null) !== municipality ||
+        addressChanged;
       if (!changed) return Promise.resolve([]);
       target.normalized = {
         ...target.normalized,
@@ -131,6 +171,12 @@ function transactionalSql({
           : target.normalized.category,
         heroImage,
         heroImageAlt,
+        venueName,
+        municipality,
+        address,
+        lat: addressChanged ? null : target.normalized.lat,
+        lng: addressChanged ? null : target.normalized.lng,
+        geocodedAt: addressChanged ? null : target.normalized.geocodedAt,
       };
       return Promise.resolve([{ id: "normalized-event-1" }]);
     }
@@ -154,6 +200,9 @@ function transactionalSql({
             : incomingCategory,
         heroImage: incomingHeroImage,
         heroImageAlt: incomingHeroImageAlt,
+        venueName: (parameters[10] as string | null) ?? null,
+        address: (parameters[11] as string | null) ?? null,
+        municipality: (parameters[12] as string | null) ?? null,
       };
       return Promise.resolve([]);
     }
@@ -452,6 +501,101 @@ describe("upsertEvent transaction and reconciliation", () => {
       heroImage,
       heroImageAlt: "Paint and brushes on a table",
     });
+    expect(stats).toMatchObject({
+      rawUnchanged: 1,
+      normUpserted: 1,
+    });
+  });
+
+  it("heals a corrected venue address without requiring a DTSTAMP change", async () => {
+    const sourceUrl =
+      "https://frederick.librarycalendar.com/event/toddler-storytime-206823";
+    const db = transactionalSql({
+      initial: {
+        raw: {
+          id: "raw-event-1",
+          dtstamp: "2026-07-02T12:00:00.000Z",
+          sourceUrl,
+        },
+        normalized: {
+          category: "family",
+          sourceUrl,
+          venueName: "Brunswick Branch Library, Story Room",
+          address: null,
+          lat: 39.3134,
+          lng: -77.628,
+          geocodedAt: "2026-07-02T12:00:00.000Z",
+        },
+      },
+    });
+    const stats = emptyStats();
+
+    await upsertEvent(
+      db.sql,
+      {
+        sourceDomain: "frederick.librarycalendar.com",
+        municipality: "brunswick",
+        category: "family",
+      },
+      event({
+        sourceUrl,
+        rawLocation:
+          "Brunswick Branch Library, Story Room - 915 N Maple Ave, Brunswick, MD 21716",
+      }),
+      stats,
+    );
+
+    expect(db.begin).not.toHaveBeenCalled();
+    expect(db.state().normalized).toMatchObject({
+      venueName: "Brunswick Branch Library, Story Room",
+      address: "915 N Maple Ave, Brunswick, MD 21716",
+      lat: null,
+      lng: null,
+      geocodedAt: null,
+      municipality: "brunswick",
+    });
+    expect(stats).toMatchObject({
+      rawUnchanged: 1,
+      normUpserted: 1,
+    });
+  });
+
+  it("heals a corrected municipality without requiring a DTSTAMP change", async () => {
+    const sourceUrl =
+      "https://frederick.librarycalendar.com/event/offsite-storytime";
+    const location =
+      "Walkersville Town Hall - 21 W Frederick St, Walkersville, MD 21793";
+    const db = transactionalSql({
+      initial: {
+        raw: {
+          id: "raw-event-1",
+          dtstamp: "2026-07-02T12:00:00.000Z",
+          sourceUrl,
+        },
+        normalized: {
+          category: "family",
+          sourceUrl,
+          venueName: "Walkersville Town Hall",
+          address: "21 W Frederick St, Walkersville, MD 21793",
+          municipality: "frederick",
+        },
+      },
+    });
+    const stats = emptyStats();
+
+    await upsertEvent(
+      db.sql,
+      {
+        sourceDomain: "frederick.librarycalendar.com",
+        municipality: "walkersville",
+        category: "family",
+      },
+      event({ sourceUrl, rawLocation: location }),
+      stats,
+    );
+
+    expect(db.begin).not.toHaveBeenCalled();
+    expect(db.state().normalized?.municipality).toBe("walkersville");
     expect(stats).toMatchObject({
       rawUnchanged: 1,
       normUpserted: 1,

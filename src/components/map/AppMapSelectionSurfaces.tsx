@@ -12,7 +12,7 @@
  */
 
 import Link from "next/link";
-import { Popup } from "react-map-gl/mapbox";
+import { Popup } from "react-map-gl/maplibre";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { ComponentProps } from "react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -207,6 +207,7 @@ export default function AppMapSelectionSurfaces({
           map (2026-07-17 map audit #2). */}
       {peekPlace && !parkingPeek && !foodTruckPeek && (
         <MapPeek
+          key={peekPlace.slug}
           place={peekPlace}
           hostedEvent={
             events

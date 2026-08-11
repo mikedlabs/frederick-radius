@@ -5,15 +5,14 @@ import { track } from "@/lib/track";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Map, { type MapRef } from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import Map, { type MapRef } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 import {
   FREDERICK,
-  FREDERICK_MAX_BOUNDS,
+  FREDERICK_MAX_BOUNDS_FLAT,
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
-  STYLE_URL,
   isInFrederickCounty,
 } from "@/components/map/constants";
 import { REPORT_CATEGORIES, REPORT_CATEGORY_BY_KEY } from "@/lib/reports/categories";
@@ -85,6 +84,7 @@ export default function ReportClient({
 } = {}) {
   const router = useRouter();
   const mapRef = useRef<MapRef | null>(null);
+  const mapStyle = useFrederickFlavorStyle();
   const [category, setCategory] = useState<string>("hazard");
   const [subtype, setSubtype] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -217,15 +217,14 @@ export default function ReportClient({
       <div className="absolute inset-0">
         <Map
           ref={mapRef}
-          mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={initialCamera ?? { longitude: FREDERICK[0], latitude: FREDERICK[1], zoom: 15 }}
-          mapStyle={STYLE_URL}
+          mapStyle={mapStyle}
           style={{ width: "100%", height: "100%" }}
-          attributionControl
+          attributionControl={{ compact: true }}
           dragRotate={false}
           pitchWithRotate={false}
           touchPitch={false}
-          maxBounds={FREDERICK_MAX_BOUNDS}
+          maxBounds={FREDERICK_MAX_BOUNDS_FLAT}
           minZoom={FREDERICK_MIN_ZOOM}
           maxZoom={FREDERICK_MAX_ZOOM}
           reuseMaps

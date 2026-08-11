@@ -199,8 +199,6 @@ export default function RootLayout({
             /api/place-photo (same-origin) for nearly every render; and
             Supabase only ever sees authenticated traffic. dns-prefetch
             keeps the cheap DNS head start without holding sockets open. */}
-        <link rel="dns-prefetch" href="https://api.mapbox.com" />
-        <link rel="dns-prefetch" href="https://events.mapbox.com" />
         <link rel="dns-prefetch" href="https://places.googleapis.com" />
         <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
         {process.env.NEXT_PUBLIC_SUPABASE_URL && (

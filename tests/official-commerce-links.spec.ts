@@ -291,6 +291,44 @@ describe("official-site commerce-link extraction", () => {
         "https://www.opentable.com/my/reservations",
       ),
     ).toEqual([]);
+
+    for (const url of [
+      "https://www.opentable.com/my/reservations",
+      "https://www.opentable.com/account/reservations",
+      "https://www.opentable.com/login",
+    ]) {
+      expect(
+        isSafeOfficialCommerceDestination(
+          "https://example.com/restaurant",
+          url,
+          "reservation",
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("rejects provider directories and searches after a stale action redirects", () => {
+    for (const url of [
+      "https://www.opentable.com/restaurants",
+      "https://www.opentable.com/s?covers=2",
+      "https://www.opentable.com/",
+    ]) {
+      expect(
+        isSafeOfficialCommerceDestination(
+          "https://example.com/restaurant",
+          url,
+          "reservation",
+        ),
+      ).toBe(false);
+    }
+
+    expect(
+      isSafeOfficialCommerceDestination(
+        "https://example.com/restaurant",
+        "https://www.opentable.com/r/example-frederick",
+        "reservation",
+      ),
+    ).toBe(true);
   });
 
   it("rejects unrelated directories even when their anchor text says menu", () => {
@@ -333,5 +371,76 @@ describe("official-site commerce-link extraction", () => {
         "order",
       ),
     ).toBe(false);
+  });
+
+  it("keeps entity-specific actions across every supported provider family", () => {
+    const valid = [
+      "https://www.opentable.com/r/example-frederick",
+      "https://resy.com/cities/frederick-md/venues/example",
+      "https://www.exploretock.com/linganorewines/",
+      "https://www.sevenrooms.com/reservations/example",
+      "https://www.tableagent.com/frederick/restaurant/example/",
+      "https://order.toasttab.com/online/example",
+      "https://tables.toasttab.com/restaurants/9f6dcf12-c5b2-4286-929e-09ab23b2b52e/findTime",
+      "https://direct.chownow.com/order/14117/locations/42591",
+      "https://madronesamericanabar.olo.com/menu/madrones-american-grill",
+      "https://www.clover.com/online-ordering/the-station-frederick-2",
+      "https://www.doordash.com/store/example-frederick-123/456/",
+      "https://www.ubereats.com/store/example-frederick/456",
+      "https://www.grubhub.com/restaurant/example-frederick/456",
+      "https://squareup.com/gift/DT02J6DM6A9FN/order",
+      "https://dublinroasterscoffee.square.site/s/order",
+      "https://order.online/business/roggenart-793975",
+      "https://order.spoton.com/so-example-frederick/12345",
+      "https://example.menufy.com/",
+      "https://www.sliceapp.com/restaurants/md/frederick/example/menu",
+      "https://www.ezcater.com/catering/pvt/example-frederick",
+    ];
+
+    for (const destination of valid) {
+      expect(
+        isSafeOfficialCommerceDestination(
+          "https://example.com/restaurant",
+          destination,
+          "order",
+        ),
+        destination,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects generic roots for every supported provider family", () => {
+    const generic = [
+      "https://www.opentable.com/",
+      "https://resy.com/",
+      "https://www.exploretock.com/",
+      "https://www.sevenrooms.com/",
+      "https://www.tableagent.com/",
+      "https://www.toasttab.com/",
+      "https://www.chownow.com/",
+      "https://www.olo.com/",
+      "https://www.clover.com/",
+      "https://www.doordash.com/",
+      "https://www.ubereats.com/",
+      "https://www.grubhub.com/",
+      "https://squareup.com/",
+      "https://www.square.site/",
+      "https://order.online/",
+      "https://www.spoton.com/",
+      "https://www.menufy.com/",
+      "https://www.sliceapp.com/",
+      "https://www.ezcater.com/",
+    ];
+
+    for (const destination of generic) {
+      expect(
+        isSafeOfficialCommerceDestination(
+          "https://example.com/restaurant",
+          destination,
+          "order",
+        ),
+        destination,
+      ).toBe(false);
+    }
   });
 });

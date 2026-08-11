@@ -66,6 +66,52 @@ test("Events interest choices replace legacy exact-category filters", async ({ p
   );
 });
 
+test("Events loads the complete board before claiming a Near me ranking", async ({
+  page,
+}) => {
+  let continuationRequests = 0;
+  let releaseContinuation: () => void = () => undefined;
+  const continuationGate = new Promise<void>((resolve) => {
+    releaseContinuation = resolve;
+  });
+  await page.route("**/api/events/browse", async (route) => {
+    continuationRequests += 1;
+    await continuationGate;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      json: {
+        events: [],
+        liveSlugs: [],
+        generatedAt: new Date().toISOString(),
+        sourceHealth: { degraded: false, unavailable: [] },
+      },
+    });
+  });
+  await page.addInitScript(() => {
+    window.localStorage.setItem("fr:scope:v1", "nearme");
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({
+        lng: -77.4105,
+        lat: 39.4143,
+        accuracy: 15,
+        municipality_slug: "frederick",
+        label: "Downtown Frederick",
+        timestamp: Date.now(),
+      }),
+    );
+  });
+
+  await page.goto("/events?in=nearme", { waitUntil: "domcontentloaded" });
+
+  await expect.poll(() => continuationRequests).toBe(1);
+  await expect(page.getByText("Ranking nearby events…", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ranked near you", { exact: true })).toBeHidden();
+  releaseContinuation();
+  await expect(page.getByText("Ranked near you", { exact: true })).toBeVisible();
+});
+
 test("Events calendar overflow link navigates instead of opening a detail sheet", async ({ page }) => {
   // The public feed naturally moves above and below the 40-row inline cap.
   // Supply a deterministic long tail so this test exercises the navigation

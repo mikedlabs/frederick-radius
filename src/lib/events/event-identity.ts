@@ -25,6 +25,10 @@ type ArchiveRow = {
   last_seen_at: string | Date;
 };
 
+type ArchiveBatchRow = ArchiveRow & {
+  requested_slug: string;
+};
+
 type IdentityRow = {
   id: string;
   canonical_slug: string;
@@ -57,6 +61,7 @@ type CancellablePromiseLike<T> = PromiseLike<T> & {
 const EVENT_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const EVENT_IDENTITY_READ_TIMEOUT_MS = 450;
 export const EVENT_IDENTITY_WRITE_TIMEOUT_MS = 650;
+export const EVENT_IDENTITY_BATCH_LIMIT = 100;
 
 export class EventIdentityStoreUnavailableError extends Error {
   constructor() {
@@ -209,6 +214,93 @@ export async function archivedEventBySlug(
         ? row.last_seen_at.toISOString()
         : String(row.last_seen_at),
   };
+}
+
+export type ArchivedEventBatchMatch = ArchivedEventIdentity & {
+  requestedSlug: string;
+};
+
+export type ArchivedEventBatchResolution = {
+  matches: ArchivedEventBatchMatch[];
+  /** Rows found in storage whose snapshot or canonical route was invalid. */
+  unresolvedSlugs: string[];
+};
+
+/**
+ * Resolve a bounded saved-event slug set in one database operation.
+ *
+ * The single-slug archive reader remains the right shape for one event detail
+ * route. Saved can carry up to 100 slugs, so calling it in a loop would turn one
+ * anonymous request into 100 pooled Postgres operations. This reader preserves
+ * the requested alias beside the canonical route while using one indexed
+ * `ANY(text[])` query under one shared deadline.
+ */
+export async function archivedEventsBySlugs(
+  slugs: readonly string[],
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<ArchivedEventBatchResolution> {
+  const requested = [...new Set(slugs)]
+    .filter(
+      (slug) =>
+        slug.length <= 200 &&
+        EVENT_SLUG.test(slug) &&
+        slug !== "constructor" &&
+        slug !== "prototype",
+    )
+    .slice(0, EVENT_IDENTITY_BATCH_LIMIT);
+  if (requested.length === 0) {
+    return { matches: [], unresolvedSlugs: [] };
+  }
+
+  const sql = getSql();
+  if (!sql) throw new EventIdentityStoreUnavailableError();
+
+  const pending = sql<ArchiveBatchRow[]>`
+    select
+      alias.slug as requested_slug,
+      canonical.id,
+      canonical.canonical_slug,
+      coalesce(tombstone.last_snapshot, canonical.snapshot) as snapshot,
+      (tombstone.canonical_event_id is not null) as tombstoned,
+      canonical.last_seen_at
+    from public.event_slug_aliases as alias
+    join public.event_canonical_records as canonical
+      on canonical.id = alias.canonical_event_id
+    left join public.event_tombstones as tombstone
+      on tombstone.canonical_event_id = canonical.id
+    where alias.slug = any(${requested}::text[])
+  `;
+  const rows = await beforeDeadline(
+    pending,
+    options.timeoutMs ?? EVENT_IDENTITY_READ_TIMEOUT_MS,
+    options.signal,
+    true,
+  );
+
+  const wanted = new Set(requested);
+  const matches: ArchivedEventBatchMatch[] = [];
+  const unresolved = new Set<string>();
+  for (const row of rows ?? []) {
+    if (!wanted.has(row.requested_slug)) continue;
+    const event = archivedEventFromSnapshot(row.snapshot, row.canonical_slug);
+    if (!event) {
+      unresolved.add(row.requested_slug);
+      continue;
+    }
+    matches.push({
+      id: row.id,
+      requestedSlug: row.requested_slug,
+      canonicalSlug: row.canonical_slug,
+      event,
+      tombstoned: row.tombstoned,
+      lastSeenAt:
+        row.last_seen_at instanceof Date
+          ? row.last_seen_at.toISOString()
+          : String(row.last_seen_at),
+    });
+  }
+
+  return { matches, unresolvedSlugs: [...unresolved] };
 }
 
 /**

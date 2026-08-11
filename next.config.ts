@@ -29,23 +29,19 @@ const contentSecurityPolicy = [
   [
     "connect-src 'self'",
     ...(!isProduction ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
-    "https://api.mapbox.com",
-    "https://events.mapbox.com",
-    "https://*.tiles.mapbox.com",
+    // No mapbox.com entries: the basemap is served from this origin, and
+    // the remaining Mapbox REST calls (isochrone, matrix, geocode, search
+    // box, static images) are made server-side by our own API routes, which
+    // no browser CSP governs.
+    //
     // RainViewer weather radar (the map's Radar layer): the frame index
-    // lives on api., the tiles on tilecache. — and Mapbox GL fetches
+    // lives on api., the tiles on tilecache. — and the GL renderer fetches
     // raster tiles via XHR, so they need connect-src, not img-src.
     "https://api.rainviewer.com",
     "https://tilecache.rainviewer.com",
     // NOAA nowCOAST serves the current county-bounded lightning-density
-    // image that Mapbox GL loads as an image source.
+    // image that the GL renderer loads as an image source.
     "https://nowcoast.noaa.gov",
-    // The admin-only branded-basemap spike (/admin/basemap): hosted glyphs
-    // and sprites for MapLibre. Tile bytes now relay same-origin through
-    // /admin/basemap/tiles (the demo bucket is CORS-locked to Protomaps'
-    // own domains). Remove alongside the spike, or fold into self-hosted
-    // assets when the county extract ships.
-    "https://protomaps.github.io",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://plausible.io",
@@ -171,8 +167,10 @@ const nextConfig: NextConfig = {
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      // Mapbox Static Images API — the event page's venue mini-map. Publishable
-      // pk token in the URL by design (same token the GL map ships).
+      // Mapbox Static Images API. The mini-maps now go through
+      // /api/static-map (the optimizer sends no Referer, and the token is
+      // URL-restricted), so this is a safety net for any direct next/image
+      // use rather than the live path.
       { protocol: "https", hostname: "api.mapbox.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
       // Ticketmaster + SeatGeek promo/artist imagery — the ticketed
@@ -360,6 +358,8 @@ const nextConfig: NextConfig = {
       // "Tools" is a natural typed/shared alias for the intent-led Compass
       // workspace. Keep old links useful instead of dropping people at a 404.
       { source: "/tools", destination: "/compass", permanent: true },
+      { source: "/more", destination: "/compass", permanent: true },
+      { source: "/all-tools", destination: "/compass", permanent: true },
       // Submit/business hub paths 404'd (only the leaf routes existed),
       // which reads as broken to community submitters + business owners
       // (external audit ship-blocker #2). Point the bare paths at the

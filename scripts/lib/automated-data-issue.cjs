@@ -13,6 +13,18 @@ const FAMILIES = {
     activeTitle: "Stale data sources · active",
     labels: ["data-pipeline", "automated", "stale-source"],
   },
+  // The apex is serving a commit that is not main, or is failing its health
+  // checks. This family exists because a red canary run is invisible: on
+  // 2026-08-05 a /trust build error froze production, the scheduled canary
+  // correctly went red every four hours for two days, ten merges reported
+  // success, and nobody was told. A workflow failure is a log; an issue is a
+  // message.
+  deploy: {
+    marker: "<!-- automated-data-issue:deploy -->",
+    legacyTitlePattern: /^Production deploy drift \d{4}-\d{2}-\d{2}$/,
+    activeTitle: "Production is not serving main · active",
+    labels: ["data-pipeline", "automated", "production"],
+  },
 };
 
 function familyConfig(family) {

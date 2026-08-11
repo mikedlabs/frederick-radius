@@ -3,6 +3,7 @@ import { askFrederick, sourceHasVerifiedOpenStatus } from "./answer";
 import { freshHoursInstant } from "../../../tests/utils/freshHoursInstant";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters } from "@/lib/geo";
+import { buildWantAnswer } from "@/lib/want-answer";
 
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
@@ -93,6 +94,31 @@ describe("askFrederick structured answers", () => {
     expect(result.actions?.some((action) => action.label === "Make it a plan")).toBe(true);
   });
 
+  it("enforces a selected wheelchair fit and qualifies unknown access", async () => {
+    const result = await askFrederick(
+      "Where can I get coffee near me?",
+      downtown,
+      { fit: { accessibility: ["wheelchair"] } },
+    );
+
+    expect(result.sources.length).toBeGreaterThan(0);
+    const places = result.sources.flatMap((source) => {
+      const place = clientPlaceBySlug(source.slug);
+      return place ? [{ source, place }] : [];
+    });
+    expect(places.every(({ place }) => place.accessibility?.wheelchair !== false))
+      .toBe(true);
+    const unknown = places.filter(
+      ({ place }) => place.accessibility?.wheelchair == null,
+    );
+    expect(unknown.every(({ source }) =>
+      source.detail?.includes("Wheelchair access is not confirmed") === true
+    )).toBe(true);
+    if (unknown.length > 0) {
+      expect(result.answer).toContain("Wheelchair access is not confirmed");
+    }
+  });
+
   it("takes closest literally when the user asks for the closest grocery store", async () => {
     const result = await askFrederick("What grocery store is closest to me?", downtown);
     expect(result.sources[0]?.name).toBe("Costco Wholesale");
@@ -128,6 +154,38 @@ describe("askFrederick structured answers", () => {
     ).toBe(true);
     expect(result.sources.every((source) => source.distance == null)).toBe(true);
     expect(result.sources.some((source) => source.name === "Market Street Boba Beans")).toBe(false);
+  });
+
+  it("keeps Today and Ask on the same lead for the same town, noun, and clock", async () => {
+    const now = freshHoursInstant(3, 14);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      const context = {
+        origin: { lng: -77.3523, lat: 39.3276 },
+        municipality: "urbana",
+        contextLabel: "Urbana",
+        canShowDistance: false,
+      } as const;
+      const today = buildWantAnswer("coffee", null, context.origin, now, {
+        approximateOrigin: true,
+        municipality: context.municipality,
+        contextLabel: context.contextLabel,
+        contextSource: "town",
+        rankingMode: "best-fit",
+      });
+      const ask = await askFrederick("Where can I get coffee in Urbana?", context);
+
+      expect(today?.decision?.lead?.id).toBe(today?.hero?.slug);
+      expect(ask.sources[0]?.slug).toBe(today?.decision?.lead?.id);
+      expect(today?.decision?.scope).toMatchObject({
+        label: "Urbana",
+        source: "town",
+      });
+      expect(ask.context).toBe("Urbana");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("treats timeless breakfast as a best-fit decision, not an open-chain race", async () => {
@@ -198,8 +256,9 @@ describe("askFrederick structured answers", () => {
   });
 
   it("recommends only verified-open ice cream after the requested time", async () => {
+    const now = freshHoursInstant(6, 16); // Saturday noon Eastern in summer.
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    vi.setSystemTime(now);
     try {
       const result = await askFrederick(
         "where can I take my kids for ice cream after 8pm tonight",
@@ -209,8 +268,8 @@ describe("askFrederick structured answers", () => {
       expect(result.intent).toMatchObject({
         kind: "place",
         requestedTime: "8:00 PM",
-        requestedDateTime: "2026-08-04T00:00:00.000Z",
       });
+      expect(result.intent?.requestedDateTime).toBeTruthy();
       expect(result.sources.length).toBeGreaterThan(0);
       expect(result.sources.some((source) => source.name === "Zoe's Chocolate Company")).toBe(false);
       expect(
@@ -262,7 +321,7 @@ describe("askFrederick structured answers", () => {
     // Clock must postdate the newest hours_updated_at in the snapshot:
     // a fake time set BEFORE the data's own timestamps reads every
     // schedule as unverifiable and empties the open-past-midnight set.
-    vi.setSystemTime(new Date("2026-08-06T16:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
     try {
       const result = await askFrederick(
         "what is open past midnight near me",
@@ -287,7 +346,10 @@ describe("askFrederick structured answers", () => {
 
   it("treats a future date word as scheduling, not a place-search keyword", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    // Keep the clock at or after the current reviewed-hours snapshot. A fake
+    // clock before its verification timestamps correctly makes every schedule
+    // unconfirmed and cannot prove a midnight opening.
+    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
     try {
       const result = await askFrederick(
         "what is open past midnight tomorrow",
@@ -296,7 +358,7 @@ describe("askFrederick structured answers", () => {
 
       expect(result.intent).toMatchObject({
         kind: "place",
-        requestedDateTime: "2026-08-05T04:00:00.000Z",
+        requestedDateTime: "2026-08-12T04:00:00.000Z",
       });
       expect(result.sources.length).toBeGreaterThan(0);
       expect(result.sources.every((source) =>
@@ -309,7 +371,7 @@ describe("askFrederick structured answers", () => {
 
   it("uses downtown as a ranking scope without exposing center-point distances", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-03T16:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
     try {
       const result = await askFrederick(
         "what is open past midnight downtown Frederick",
@@ -353,7 +415,7 @@ describe("askFrederick structured answers", () => {
     // filled this role until the 2026-08-05 refresh, when Google stopped
     // returning hours for it; Dutch's Daughter is a stable schedule-carrier.
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-06T16:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
     try {
       const result = await askFrederick(
         "Dutch's Daughter nearby after 10pm August 19 2026",

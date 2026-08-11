@@ -78,6 +78,166 @@ test("Today playgrounds opens the complete layer around the current location", a
   await playgrounds.click();
 
   await expect(page).toHaveURL(
-    /\/map\?intent=outside&sub=playgrounds&amenity=play&in=nearme$/,
+    (url) =>
+      url.pathname === "/map" &&
+      url.searchParams.get("intent") === "outside" &&
+      url.searchParams.get("sub") === "playgrounds" &&
+      url.searchParams.get("amenity") === "play" &&
+      url.searchParams.get("in") === "nearme",
+    { timeout: 15_000 },
   );
+
+  await expect(page.locator(".dock-host")).toHaveAttribute(
+    "data-map-loaded",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Show the whole county" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: "Recenter on my location" }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("in")).toBe("nearme");
+});
+
+test("Today playgrounds preserves a deliberately selected town", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("fr:scope:v1", "town:brunswick");
+    // A cached downtown fix must not displace the town the visitor chose.
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({
+        lng: -77.4105,
+        lat: 39.4143,
+        accuracy: 15,
+        municipality_slug: "frederick",
+        label: "Downtown Frederick",
+        timestamp: Date.now(),
+      }),
+    );
+  });
+
+  await page.goto("/today", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Browse by category" }).click();
+  await page.getByRole("button", { name: "Get outside" }).click();
+
+  const playgrounds = page.getByRole("link", { name: "Playgrounds" });
+  await expect(playgrounds).toHaveAttribute(
+    "href",
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=brunswick",
+  );
+  await playgrounds.click();
+
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/map" &&
+      url.searchParams.get("amenity") === "play" &&
+      url.searchParams.get("in") === "brunswick",
+    { timeout: 15_000 },
+  );
+});
+
+test("a direct Near me link fits an already-granted location without a cached fix", async ({
+  page,
+}) => {
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect(page.locator(".dock-host")).toHaveAttribute(
+    "data-map-loaded",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Show the whole county" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: "Recenter on my location" }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("in")).toBe("nearme");
+});
+
+test("a plain map keeps the Near me decision made in Ask", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("fr:scope:v1", "nearme");
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({
+        lng: -77.4105,
+        lat: 39.4143,
+        accuracy: 15,
+        municipality_slug: "frederick",
+        label: "Downtown Frederick",
+        timestamp: Date.now(),
+      }),
+    );
+  });
+
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".dock-host")).toHaveAttribute(
+    "data-map-loaded",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect(
+    page.getByRole("button", { name: "Show the whole county" }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: "Recenter on my location" }),
+  ).toBeVisible();
+  await expect
+    .poll(() => {
+      const camera = new URL(page.url()).searchParams.get("c");
+      return Number(camera?.split(",")[2] ?? 0);
+    })
+    .toBeGreaterThanOrEqual(12);
+});
+
+test("a direct Near me link falls back honestly when location is unavailable", async ({
+  page,
+}) => {
+  await page.context().clearPermissions();
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("in"), {
+      timeout: 15_000,
+    })
+    .toBeNull();
+  await expect(
+    page.getByText(
+      "Location is not available yet. Showing the whole county. Use the location button to turn on Near me.",
+      { exact: true },
+    ).first(),
+  ).toBeVisible();
+});
+
+test("a shared Near me camera cannot survive without this device's location", async ({
+  page,
+}) => {
+  await page.context().clearPermissions();
+  await page.goto(
+    "/map?intent=outside&sub=playgrounds&amenity=play&in=nearme&c=-77.4105,39.4143,15",
+    { waitUntil: "domcontentloaded" },
+  );
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("in"), {
+      timeout: 15_000,
+    })
+    .toBeNull();
+  await expect(
+    page.getByText(
+      "Location is not available yet. Showing the whole county. Use the location button to turn on Near me.",
+      { exact: true },
+    ).first(),
+  ).toBeVisible();
 });

@@ -16,26 +16,25 @@
  * It is deliberately NOT resolveEventPageBySlug called in a loop. That
  * resolver races four sources under a four-second deadline because a deep
  * link must never false-404 — the right contract for one URL and the wrong
- * one for twenty. Here a single unified assembly answers the whole batch, and
+ * one for twenty. Here one public-board assembly answers the whole batch, and
  * only the leftovers (a past event the live board no longer carries) pay for
- * a durable-archive read, under one shared budget with bounded concurrency.
+ * one durable-archive batch read under one shared deadline.
  */
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { archivedEventBySlugForRender } from "@/lib/events/event-archive-lookup";
-
-/** The saved-event deck is a personal collection, not a catalog dump. */
-export const MAX_EVENTS_BY_SLUG = 100;
-
-/**
- * Every generated and legacy event alias is a lowercase URL slug. The length
- * ceiling (200) lives in the pattern so a hostile value is rejected before it
- * reaches the unified snapshot or the durable archive. `constructor` and
- * `prototype` are excluded by name because they read as present on a normal
- * object and would send a non-event through the decorator as if it were real.
- */
-const EVENT_SLUG = /^[a-z0-9][a-z0-9-]{0,199}$/;
+import {
+  archivedEventsBySlugs,
+  type ArchivedEventBatchResolution,
+} from "@/lib/events/event-identity";
+import { isPublicEvent } from "@/lib/events/classify";
+import { isUpcomingEvent } from "@/lib/events/visible";
+import { MAX_EVENTS_BY_SLUG } from "@/lib/events/eventSlugBatch";
+export {
+  MAX_EVENTS_BY_SLUG,
+  normalizeRequestedEventSlugList,
+  normalizeRequestedEventSlugs,
+} from "@/lib/events/eventSlugBatch";
 
 /**
  * Total budget for the archive tail of one batch. A reader with a long
@@ -45,105 +44,103 @@ const EVENT_SLUG = /^[a-z0-9][a-z0-9-]{0,199}$/;
  */
 export const EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS = 3_000;
 
-/** Per-slug ceiling inside the shared budget, so one cold read cannot eat it. */
-export const EVENTS_BY_SLUG_ARCHIVE_SLICE_MS = 1_500;
-
-/** Concurrent archive reads. Enough to drain a normal tail in one wave
- *  without opening a connection per saved event. */
-const ARCHIVE_CONCURRENCY = 6;
-
 export type EventsBySlugsSources = {
   /** In-memory curated rows. Free, so it runs first and for every slug. */
   seed: (slug: string) => EventWithMeta | null;
-  /** One assembly for the whole batch — the same set the board publishes. */
-  unified: (now: Date) => Promise<readonly EventWithMeta[]>;
-  /** Durable archive, for a saved event the live board has moved past. */
+  /** One assembly for the whole batch — only rows public discovery publishes. */
+  publicEvents: (
+    now: Date,
+  ) => Promise<
+    | readonly EventWithMeta[]
+    | { events: readonly EventWithMeta[]; degraded: boolean }
+  >;
+  /** One durable archive read for every saved event the live board moved past. */
   archive: (
-    slug: string,
+    slugs: readonly string[],
     timeoutMs: number,
-  ) => Promise<{ event: EventWithMeta } | null>;
-  now: () => number;
+  ) => Promise<ArchivedEventBatchResolution>;
 };
 
 const DEFAULT_SOURCES: EventsBySlugsSources = {
   seed: (slug) => getEventBySlug(slug),
-  // The full unified set, not publicEvents. Public/civic laning decides what
-  // discovery may PROMOTE; it has no business deciding whether a reader gets
-  // back a row they deliberately saved. The slug set is the authorization.
-  unified: async (now) => (await assembleUnifiedEvents(now)).unified,
-  archive: (slug, timeoutMs) =>
-    archivedEventBySlugForRender(slug, { timeoutMs }),
-  now: () => Date.now(),
+  // A supplied slug is not authorization. This anonymous route may hydrate
+  // only the same rows that public discovery is allowed to publish.
+  publicEvents: async (now) => {
+    const assembled = await assembleUnifiedEvents(now);
+    return {
+      events: assembled.publicEvents,
+      degraded: assembled.sourceHealth.degraded,
+    };
+  },
+  archive: (slugs, timeoutMs) =>
+    archivedEventsBySlugs(slugs, { timeoutMs }),
 };
 
 /**
- * Parse, bound, and deduplicate a `?slugs=` value. Malformed entries are
- * dropped here rather than at the source boundary so a single bad character
- * in localStorage cannot cost the batch a database round trip.
+ * Reapply the public/actionable contract at this anonymous read boundary.
+ * That keeps a seed or archive regression from disclosing a private/civic row
+ * to anyone who guesses its slug. Ended, cancelled, postponed, and dead-end
+ * online events are no longer actionable and therefore do not hydrate.
  */
-export function normalizeRequestedEventSlugs(raw: string): string[] {
-  const slugs: string[] = [];
-  const seen = new Set<string>();
-  for (const part of raw.split(",")) {
-    const slug = part.trim();
-    if (
-      !slug ||
-      slug === "constructor" ||
-      slug === "prototype" ||
-      !EVENT_SLUG.test(slug) ||
-      seen.has(slug)
-    ) {
-      continue;
-    }
-    seen.add(slug);
-    slugs.push(slug);
-    if (slugs.length >= MAX_EVENTS_BY_SLUG) break;
-  }
-  return slugs;
+function canHydratePublicEvent(event: EventWithMeta, now: Date): boolean {
+  return isPublicEvent(event) && isUpcomingEvent(event, now);
 }
 
-/** Run `work` over `items` at most `limit` at a time, in place. */
-async function drain<T>(
-  items: readonly T[],
-  limit: number,
-  work: (item: T) => Promise<void>,
-): Promise<void> {
-  let cursor = 0;
-  const runners = Array.from(
-    { length: Math.min(limit, items.length) },
-    async () => {
-      while (cursor < items.length) {
-        const item = items[cursor++];
-        await work(item);
-      }
-    },
-  );
-  await Promise.all(runners);
-}
+export type EventsBySlugsResolution = {
+  /** Renderable rows in the reader's requested order. */
+  events: EventWithMeta[];
+  /** Requested alias to canonical route for each renderable row. */
+  resolvedSlugs: Array<{ requestedSlug: string; canonicalSlug: string }>;
+  /** Slugs no source could answer because at least one required read degraded. */
+  unresolvedSlugs: string[];
+  /** Slugs a healthy public read and archive cannot publicly render. */
+  missingSlugs: string[];
+  /** True when any source needed for this batch returned partial data or failed. */
+  degraded: boolean;
+};
 
 /**
- * Resolve saved event slugs to renderable rows, in the order requested.
+ * Resolve saved event slugs and retain the trust state of every miss.
  *
- * Every failure mode collapses to "this slug is absent". A degraded provider,
- * an unreachable archive, and a genuinely deleted event are indistinguishable
- * to the caller ON PURPOSE: Saved renders what it can and says nothing it
- * cannot support, and the next request retries the rest. That is the opposite
- * of the deep-link contract, where an ambiguous miss must never become a 404.
+ * A saved slug is only `missing` when both the public source set was healthy
+ * and the durable archive completed normally. A partial feed, archive error,
+ * or exhausted batch budget produces `unresolved` instead. That distinction is
+ * important on Saved: a provider outage must never look like Radius discarded
+ * something the reader deliberately kept.
  */
-export async function resolveEventsBySlugs(
+export async function resolveEventsBySlugsWithStatus(
   slugs: readonly string[],
   now: Date = new Date(),
   sources: EventsBySlugsSources = DEFAULT_SOURCES,
-): Promise<EventWithMeta[]> {
+): Promise<EventsBySlugsResolution> {
   const requested = slugs.slice(0, MAX_EVENTS_BY_SLUG);
-  if (requested.length === 0) return [];
+  if (requested.length === 0) {
+    return {
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    };
+  }
 
   const resolved = new Map<string, EventWithMeta>();
+  const canonicalByRequested = new Map<string, string>();
+  let publicDegraded = false;
+  let archiveDegraded = false;
+  const archiveKnownAbsent = new Set<string>();
+  const nonPublic = new Set<string>();
+  const archiveUnresolved = new Set<string>();
 
   for (const slug of requested) {
     try {
       const seed = sources.seed(slug);
-      if (seed) resolved.set(slug, seed);
+      if (seed && canHydratePublicEvent(seed, now)) {
+        resolved.set(slug, seed);
+        canonicalByRequested.set(slug, seed.slug);
+      } else if (seed) {
+        nonPublic.add(slug);
+      }
     } catch {
       // A curated row that cannot decorate is a data bug, not a reason to
       // drop the other saves in this batch.
@@ -153,38 +150,116 @@ export async function resolveEventsBySlugs(
   const missingAfterSeed = requested.filter((slug) => !resolved.has(slug));
   if (missingAfterSeed.length > 0) {
     try {
-      const unified = await sources.unified(now);
+      const snapshot = await sources.publicEvents(now);
+      const status = Array.isArray(snapshot)
+        ? { events: snapshot as readonly EventWithMeta[], degraded: false }
+        : (snapshot as {
+            events: readonly EventWithMeta[];
+            degraded: boolean;
+          });
+      const publicEvents = status.events;
+      publicDegraded = status.degraded;
       const wanted = new Set(missingAfterSeed);
-      for (const event of unified) {
-        if (wanted.has(event.slug)) resolved.set(event.slug, event);
+      for (const event of publicEvents) {
+        if (!wanted.has(event.slug)) continue;
+        if (canHydratePublicEvent(event, now)) {
+          resolved.set(event.slug, event);
+          canonicalByRequested.set(event.slug, event.slug);
+        } else {
+          nonPublic.add(event.slug);
+        }
       }
     } catch {
-      // A degraded snapshot still leaves the archive pass below, and any slug
-      // neither source answers simply does not render this time.
+      // The archive may still resolve a durable row, but an archive miss cannot
+      // prove absence while the public source set is unavailable.
+      publicDegraded = true;
     }
   }
 
   const missingAfterUnified = requested.filter((slug) => !resolved.has(slug));
   if (missingAfterUnified.length > 0) {
-    const deadline = sources.now() + EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS;
-    await drain(missingAfterUnified, ARCHIVE_CONCURRENCY, async (slug) => {
-      const remaining = deadline - sources.now();
-      if (remaining <= 0) return;
-      try {
-        const hit = await sources.archive(
-          slug,
-          Math.min(remaining, EVENTS_BY_SLUG_ARCHIVE_SLICE_MS),
-        );
-        if (hit) resolved.set(slug, hit.event);
-      } catch {
-        // Archive unavailable for this slug. Absent, not fatal.
+    try {
+      const archived = await sources.archive(
+        missingAfterUnified,
+        EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS,
+      );
+      const wanted = new Set(missingAfterUnified);
+      for (const hit of archived.matches) {
+        if (!wanted.has(hit.requestedSlug)) continue;
+        if (hit.tombstoned || !canHydratePublicEvent(hit.event, now)) {
+          // We know this row is not public/actionable. Record only its absence;
+          // never return title, location, or any other archived details.
+          nonPublic.add(hit.requestedSlug);
+          continue;
+        }
+        resolved.set(hit.requestedSlug, hit.event);
+        canonicalByRequested.set(hit.requestedSlug, hit.canonicalSlug);
       }
-    });
+      for (const slug of archived.unresolvedSlugs) {
+        if (wanted.has(slug) && !resolved.has(slug)) {
+          archiveUnresolved.add(slug);
+        }
+      }
+      archiveDegraded = archiveUnresolved.size > 0;
+      for (const slug of missingAfterUnified) {
+        if (
+          !resolved.has(slug) &&
+          !nonPublic.has(slug) &&
+          !archiveUnresolved.has(slug)
+        ) {
+          archiveKnownAbsent.add(slug);
+        }
+      }
+    } catch {
+      // One failed batch leaves every unmatched save unresolved. It never
+      // retries per slug, so a provider outage cannot amplify database work.
+      archiveDegraded = true;
+      for (const slug of missingAfterUnified) archiveUnresolved.add(slug);
+    }
   }
 
   // Requested order, so the client's own saved_at sort stays authoritative
   // and a hydration reshuffle can never move a card under the reader's thumb.
-  return requested
+  const events = requested
     .map((slug) => resolved.get(slug))
     .filter((event): event is EventWithMeta => Boolean(event));
+  const resolvedSlugs = requested.flatMap((requestedSlug) => {
+    const event = resolved.get(requestedSlug);
+    if (!event) return [];
+    return [{
+      requestedSlug,
+      canonicalSlug: canonicalByRequested.get(requestedSlug) ?? event.slug,
+    }];
+  });
+  const stillMissing = requested.filter((slug) => !resolved.has(slug));
+  const missingSlugs = stillMissing.filter(
+    (slug) =>
+      nonPublic.has(slug) ||
+      (!publicDegraded &&
+        archiveKnownAbsent.has(slug) &&
+        !archiveUnresolved.has(slug)),
+  );
+  const knownMissing = new Set(missingSlugs);
+  const unresolvedSlugs = stillMissing.filter((slug) => !knownMissing.has(slug));
+
+  return {
+    events,
+    resolvedSlugs,
+    unresolvedSlugs,
+    missingSlugs,
+    degraded: publicDegraded || archiveDegraded || unresolvedSlugs.length > 0,
+  };
+}
+
+/**
+ * Compatibility reader for callers that only need renderable rows. New Saved
+ * hydration uses `resolveEventsBySlugsWithStatus` so it can keep ambiguous
+ * misses distinct from confirmed absence.
+ */
+export async function resolveEventsBySlugs(
+  slugs: readonly string[],
+  now: Date = new Date(),
+  sources: EventsBySlugsSources = DEFAULT_SOURCES,
+): Promise<EventWithMeta[]> {
+  return (await resolveEventsBySlugsWithStatus(slugs, now, sources)).events;
 }

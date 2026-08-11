@@ -73,7 +73,11 @@ import {
   GET,
   maxDuration,
 } from "./route";
-import { MAP_FEED_DEADLINE_MS } from "./config";
+import {
+  MAP_DATABASE_FEED_DEADLINE_MS,
+  MAP_DATABASE_STATEMENT_TIMEOUT_MS,
+  MAP_NETWORK_FEED_DEADLINE_MS,
+} from "./config";
 
 const request = () =>
   new Request("https://frederickradius.app/api/cron/warm-map");
@@ -113,6 +117,10 @@ describe("GET /api/cron/warm-map", () => {
     expect(maxDuration).toBe(45);
     expect(response.status).toBe(200);
     expect(mocks.fixit).toHaveBeenCalledWith(30);
+    expect(mocks.reports).toHaveBeenCalledWith(
+      expect.any(Date),
+      MAP_DATABASE_STATEMENT_TIMEOUT_MS,
+    );
     expect(body).toMatchObject({
       ok: true,
       mapFeeds: {
@@ -164,11 +172,13 @@ describe("GET /api/cron/warm-map", () => {
     );
 
     const responsePromise = GET(request());
-    await vi.advanceTimersByTimeAsync(MAP_FEED_DEADLINE_MS);
+    await vi.advanceTimersByTimeAsync(MAP_DATABASE_FEED_DEADLINE_MS);
     const response = await responsePromise;
     const body = await response.json();
 
-    expect(MAP_FEED_DEADLINE_MS).toBeLessThan(
+    expect(
+      MAP_NETWORK_FEED_DEADLINE_MS + MAP_DATABASE_FEED_DEADLINE_MS,
+    ).toBeLessThan(
       maxDuration * 1_000 - 10_000,
     );
     expect(response.status).toBe(200);
@@ -176,5 +186,28 @@ describe("GET /api/cron/warm-map", () => {
       ok: false,
       mapFeeds: { reports: false },
     });
+  });
+
+  it("does not start database-backed work alongside a slow network fanout", async () => {
+    let resolveChart: ((value: unknown[]) => void) | undefined;
+    mocks.chart.mockImplementation(
+      () =>
+        new Promise<unknown[]>((resolve) => {
+          resolveChart = resolve;
+        }),
+    );
+
+    const responsePromise = GET(request());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.chart).toHaveBeenCalledOnce();
+    expect(mocks.reports).not.toHaveBeenCalled();
+
+    resolveChart?.([]);
+    const response = await responsePromise;
+
+    expect(response.status).toBe(200);
+    expect(mocks.reports).toHaveBeenCalledOnce();
   });
 });

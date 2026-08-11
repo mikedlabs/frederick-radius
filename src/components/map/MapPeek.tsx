@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Bookmark,
@@ -16,15 +17,18 @@ import { directionsHref } from "@/lib/map/directionsHref";
 import { formatHoursLine, type OpenStatus } from "@/lib/hours";
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
-import { track } from "@/lib/track";
+import { logActivity, track } from "@/lib/track";
 import PlacePhoto from "@/components/place/PlacePhoto";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
 import type { NearbyUtility } from "./mapNearby";
 import {
-  buildMapPeekDecisionCue,
+  buildMapPeekDecisionSurface,
+  mapPeekDecisionTelemetry,
   mapDecisionFreshnessLabel,
+  type MapPeekDecisionCue,
+  type MapPeekDecisionItem,
 } from "./mapDecisionScenes";
 import MapResultSurface from "./MapResultSurface";
 
@@ -51,6 +55,62 @@ function statusTone(status: OpenStatus): string {
     default:
       return "var(--app-ink-3)";
   }
+}
+
+function decisionCueLabel(cue: MapPeekDecisionCue): string {
+  if (cue.kind === "event") {
+    return cue.eventState === "happening-now" ? "Happening now" : "Next here";
+  }
+  if (cue.kind === "utility") return "Closest useful point";
+  return "Getting here";
+}
+
+function DecisionCueSource({ cue }: { cue: MapPeekDecisionCue }) {
+  if (!cue.sourceLabel) return null;
+  const sourceDate = mapDecisionFreshnessLabel(cue.observedAt);
+  return (
+    <p>
+      <strong>Source</strong>{" "}
+      {cue.sourceUrl ? (
+        <a
+          href={cue.sourceUrl}
+          className="inline-flex min-h-11 items-center align-middle underline underline-offset-2"
+          {...(cue.sourceUrl.startsWith("http")
+            ? { target: "_blank", rel: "noreferrer" }
+            : {})}
+        >
+          {cue.sourceLabel}
+        </a>
+      ) : cue.sourceLabel}
+      {sourceDate ? ` · checked ${sourceDate}` : ""}
+    </p>
+  );
+}
+
+function DecisionCueAction({
+  cue,
+  outcome,
+}: {
+  cue: MapPeekDecisionItem;
+  outcome: "action" | "fallback";
+}) {
+  if (!cue.href) return null;
+  const label = cue.kind === "event" ? "View event" : "View details";
+  return (
+    <Link
+      href={cue.href}
+      className="ml-1 inline-flex min-h-11 items-center gap-0.5 align-middle font-semibold underline underline-offset-2"
+      onClick={() => {
+        logActivity(
+          outcome === "action" ? "map_decision_action" : "map_decision_fallback",
+          mapPeekDecisionTelemetry(cue),
+        );
+      }}
+    >
+      {label}
+      <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+    </Link>
+  );
 }
 
 /**
@@ -86,6 +146,7 @@ export default function MapPeek({
   const [details, setDetails] = useState<MapCardDetails | null>(null);
   const [detailsResolvedSlug, setDetailsResolvedSlug] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
+  const exposedDecisionRef = useRef<string | null>(null);
   // A fixed card clock keeps ranking deterministic for the life of this peek
   // and avoids changing event copy between unrelated photo/details updates.
   const [decisionClock] = useState(() => new Date().toISOString());
@@ -106,29 +167,36 @@ export default function MapPeek({
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
   const nameId = useId();
   const descriptionId = useId();
-  const aroundCount =
-    (place.deal_hook ? 1 : 0) +
-    (hostedEvent ? 1 : 0) +
-    (nearestGarage ? 1 : 0) +
-    nearbyUtilities.length;
-  const decisionCue = buildMapPeekDecisionCue({
+  const decisionSurface = buildMapPeekDecisionSurface({
     place,
     hostedEvent,
     nearestGarage,
     nearbyUtilities,
     now: decisionClock,
   });
-  const decisionSourceDate = mapDecisionFreshnessLabel(decisionCue?.observedAt);
-  const decisionCueLabel = decisionCue?.kind === "event"
-    ? "Next here"
-    : decisionCue?.kind === "special"
-      ? "Special"
-      : decisionCue?.kind === "utility"
-        ? "Closest useful point"
-        : "Getting here";
-  const remainingUtilities = decisionCue?.kind === "utility"
-    ? nearbyUtilities.slice(1)
-    : nearbyUtilities;
+  const decisionCue = decisionSurface?.lead ?? null;
+  const decisionAlternatives = decisionSurface?.alternatives ?? [];
+  const decisionCandidateId = decisionCue?.candidateId ?? null;
+  const decisionKind = decisionCue?.kind ?? null;
+  const decisionReasonIds = decisionCue?.reasonIds.join(",") ?? "";
+  const aroundCount = decisionCue ? 1 + decisionAlternatives.length : 0;
+
+  useEffect(() => {
+    if (!decisionCandidateId || !decisionKind) return;
+    const exposureKey = `${place.slug}:${decisionCandidateId}:${decisionReasonIds}`;
+    if (exposedDecisionRef.current === exposureKey) return;
+    exposedDecisionRef.current = exposureKey;
+    logActivity("map_decision_exposure", {
+      candidate_id: decisionCandidateId,
+      candidate_kind: decisionKind,
+      reason_ids: decisionReasonIds,
+    });
+  }, [
+    decisionCandidateId,
+    decisionKind,
+    decisionReasonIds,
+    place.slug,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -253,7 +321,7 @@ export default function MapPeek({
 
       {aroundCount > 0 && (
         <details className="map-peek-around">
-          <summary>
+          <summary data-map-decision-lead={decisionCue?.candidateId}>
             {decisionCue?.headline ?? "Around here"}
             <span>{aroundCount}</span>
             <ChevronDown className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -261,52 +329,30 @@ export default function MapPeek({
           <div className="map-peek-around-body">
             {decisionCue && (
               <p data-map-decision-cue={decisionCue.kind}>
-                <strong>{decisionCueLabel}</strong> {decisionCue.detail}
+                <strong>{decisionCueLabel(decisionCue)}</strong> {decisionCue.detail}
+                <DecisionCueAction cue={decisionCue} outcome="action" />
               </p>
             )}
-            {decisionCue?.sourceLabel && (
-              <p>
-                <strong>Source</strong>{" "}
-                {decisionCue.sourceUrl ? (
-                  <a
-                    href={decisionCue.sourceUrl}
-                    className="underline underline-offset-2"
-                    {...(decisionCue.sourceUrl.startsWith("http")
-                      ? { target: "_blank", rel: "noreferrer" }
-                      : {})}
+            {decisionCue && <DecisionCueSource cue={decisionCue} />}
+            {decisionAlternatives.length > 0 && (
+              <div
+                data-map-decision-alternatives
+                className="grid gap-2 pt-1"
+                style={{ borderTop: "1px solid var(--app-border)" }}
+              >
+                {decisionAlternatives.map((alternative) => (
+                  <div
+                    key={alternative.candidateId}
+                    data-map-decision-alternative={alternative.candidateId}
                   >
-                    {decisionCue.sourceLabel}
-                  </a>
-                ) : decisionCue.sourceLabel}
-                {decisionSourceDate ? ` · checked ${decisionSourceDate}` : ""}
-              </p>
-            )}
-            {place.deal_hook && decisionCue?.kind !== "special" && <p><strong>Special</strong> {place.deal_hook}</p>}
-            {hostedEvent && decisionCue?.kind !== "event" && (
-              <p>
-                <strong>Next event</strong>{" "}
-                {hostedEvent.title} ·{" "}
-                {new Intl.DateTimeFormat("en-US", {
-                  timeZone: "America/New_York",
-                  weekday: "short",
-                  hour: "numeric",
-                  minute: "2-digit",
-                }).format(new Date(hostedEvent.starts_at))}
-              </p>
-            )}
-            {nearestGarage && decisionCue?.kind !== "parking" && (
-              <p>
-                <strong>Parking</strong> {nearestGarage.name} · {formatDistance(nearestGarage.distM)}
-                {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
-              </p>
-            )}
-            {remainingUtilities.length > 0 && (
-              <p>
-                <strong>Nearby</strong>{" "}
-                {remainingUtilities
-                  .map((item) => `${item.label} ${formatDistance(item.distM)}`)
-                  .join(" · ")}
-              </p>
+                    <p>
+                      <strong>{decisionCueLabel(alternative)}</strong> {alternative.detail}
+                      <DecisionCueAction cue={alternative} outcome="fallback" />
+                    </p>
+                    <DecisionCueSource cue={alternative} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </details>

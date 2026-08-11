@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
-import { Layer, Marker, Popup, Source } from "react-map-gl/mapbox";
+import { Layer, Marker, Popup, Source } from "react-map-gl/maplibre";
 import { Cross, Helicopter } from "lucide-react";
 import {
   FMH_HELIPORT,

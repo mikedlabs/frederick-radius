@@ -30,6 +30,9 @@ type ExistingEventRow = {
   normalized_source_url: string | null;
   normalized_hero_image: string | null;
   normalized_hero_image_alt: string | null;
+  normalized_venue_name: string | null;
+  normalized_address: string | null;
+  normalized_municipality: string | null;
 };
 
 /**
@@ -55,6 +58,12 @@ export async function upsertEvent(
 ): Promise<void> {
   const categoryCoverageComplete = opts.categoryCoverageComplete !== false;
   const incomingStamp = new Date(e.dtstamp).getTime();
+  // Compute the normalized location before the unchanged-row fast path. Feed
+  // mapper corrections (notably FCPL's reviewed branch/offsite addresses) can
+  // improve a location without the publisher advancing DTSTAMP.
+  const loc = parseLocation(e.rawLocation);
+  const normalizedVenueName = loc.venueName ?? null;
+  const normalizedAddress = loc.address ?? null;
 
   // Daily runs are overwhelmingly unchanged. Keep that hot path to one read
   // instead of paying BEGIN/COMMIT for thousands of no-op rows. Any raw
@@ -66,7 +75,10 @@ export async function upsertEvent(
            ingested_events.id as normalized_id, ingested_events.category,
            ingested_events.source_url as normalized_source_url,
            ingested_events.hero_image as normalized_hero_image,
-           ingested_events.hero_image_alt as normalized_hero_image_alt
+           ingested_events.hero_image_alt as normalized_hero_image_alt,
+           ingested_events.venue_name as normalized_venue_name,
+           ingested_events.address as normalized_address,
+           ingested_events.municipality as normalized_municipality
     from raw_events
     left join ingested_events
       on ingested_events.source_domain = raw_events.source_domain
@@ -86,9 +98,14 @@ export async function upsertEvent(
     const mediaUnchanged =
       initialRow.normalized_hero_image === (e.heroImage ?? null) &&
       initialRow.normalized_hero_image_alt === (e.heroImageAlt ?? null);
+    const locationUnchanged =
+      initialRow.normalized_venue_name === normalizedVenueName &&
+      initialRow.normalized_address === normalizedAddress &&
+      initialRow.normalized_municipality === opts.municipality;
     if (
       sourceUrlUnchanged &&
       mediaUnchanged &&
+      locationUnchanged &&
       (!categoryCoverageComplete || initialRow.category === opts.category)
     ) {
       stats.rawUnchanged += 1;
@@ -103,6 +120,21 @@ export async function upsertEvent(
             end,
             hero_image = ${e.heroImage ?? null},
             hero_image_alt = ${e.heroImageAlt ?? null},
+            venue_name = ${normalizedVenueName},
+            municipality = ${opts.municipality},
+            lat = case
+                    when address is distinct from ${normalizedAddress} then null
+                    else lat
+                  end,
+            lng = case
+                    when address is distinct from ${normalizedAddress} then null
+                    else lng
+                  end,
+            geocoded_at = case
+                           when address is distinct from ${normalizedAddress} then null
+                           else geocoded_at
+                         end,
+            address = ${normalizedAddress},
             updated_at = now()
         where source_domain = ${opts.sourceDomain}
           and source_uid = ${e.uid}
@@ -110,6 +142,9 @@ export async function upsertEvent(
             (${categoryCoverageComplete} and category is distinct from ${opts.category})
             or hero_image is distinct from ${e.heroImage ?? null}
             or hero_image_alt is distinct from ${e.heroImageAlt ?? null}
+            or venue_name is distinct from ${normalizedVenueName}
+            or address is distinct from ${normalizedAddress}
+            or municipality is distinct from ${opts.municipality}
           )
         returning id
       `;
@@ -134,7 +169,10 @@ export async function upsertEvent(
              ingested_events.id as normalized_id, ingested_events.category,
              ingested_events.source_url as normalized_source_url,
              ingested_events.hero_image as normalized_hero_image,
-             ingested_events.hero_image_alt as normalized_hero_image_alt
+             ingested_events.hero_image_alt as normalized_hero_image_alt,
+             ingested_events.venue_name as normalized_venue_name,
+             ingested_events.address as normalized_address,
+             ingested_events.municipality as normalized_municipality
       from raw_events
       left join ingested_events
         on ingested_events.source_domain = raw_events.source_domain
@@ -169,7 +207,10 @@ export async function upsertEvent(
                  ingested_events.id as normalized_id, ingested_events.category,
                  ingested_events.source_url as normalized_source_url,
                  ingested_events.hero_image as normalized_hero_image,
-                 ingested_events.hero_image_alt as normalized_hero_image_alt
+                 ingested_events.hero_image_alt as normalized_hero_image_alt,
+                 ingested_events.venue_name as normalized_venue_name,
+                 ingested_events.address as normalized_address,
+                 ingested_events.municipality as normalized_municipality
           from raw_events
           left join ingested_events
             on ingested_events.source_domain = raw_events.source_domain
@@ -233,11 +274,20 @@ export async function upsertEvent(
           existing[0]?.normalized_hero_image !== (e.heroImage ?? null);
         const healHeroImageAlt =
           existing[0]?.normalized_hero_image_alt !== (e.heroImageAlt ?? null);
+        const healVenueName =
+          existing[0]?.normalized_venue_name !== normalizedVenueName;
+        const healMunicipality =
+          existing[0]?.normalized_municipality !== opts.municipality;
+        const healAddress =
+          existing[0]?.normalized_address !== normalizedAddress;
         if (
           healSourceUrl ||
           healCategory ||
           healHeroImage ||
-          healHeroImageAlt
+          healHeroImageAlt ||
+          healVenueName ||
+          healMunicipality ||
+          healAddress
         ) {
           // Category membership can change because a previously missing feed
           // recovered. Source URLs can also improve after a parser correction
@@ -260,6 +310,24 @@ export async function upsertEvent(
                   when ${healHeroImageAlt} then ${e.heroImageAlt ?? null}
                   else hero_image_alt
                 end,
+                venue_name = case
+                  when ${healVenueName} then ${normalizedVenueName}
+                  else venue_name
+                end,
+                municipality = case
+                  when ${healMunicipality} then ${opts.municipality}
+                  else municipality
+                end,
+                lat = case when ${healAddress} then null else lat end,
+                lng = case when ${healAddress} then null else lng end,
+                geocoded_at = case
+                  when ${healAddress} then null
+                  else geocoded_at
+                end,
+                address = case
+                  when ${healAddress} then ${normalizedAddress}
+                  else address
+                end,
                 updated_at = now()
             where source_domain = ${opts.sourceDomain}
               and source_uid = ${e.uid}
@@ -270,7 +338,6 @@ export async function upsertEvent(
     }
 
     if (writeFullNormalizedRow) {
-      const loc = parseLocation(e.rawLocation);
       if (e.rawLocation && loc.unparseable) {
         await tx`
           insert into unparseable_locations (source_domain, source_uid, raw_location)

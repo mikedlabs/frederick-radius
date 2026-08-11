@@ -75,6 +75,7 @@ test("expanded map search carries the exact map state through a place detail", a
 });
 
 test("a map place sheet carries its live camera, layers, and query to the full page", async ({ page }) => {
+  test.setTimeout(60_000);
   const missingCategoryImages: string[] = [];
   page.on("console", (message) => {
     const text = message.text();
@@ -121,6 +122,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   );
 
   await fullPage.click();
+  await expect(page).toHaveURL(/\/places\/gravel-and-grind-frederick\?/);
   // The app layout persists across this client navigation. Its route-scoped
   // sheet must be gone before the destination page becomes interactive.
   await expect(
@@ -142,7 +144,10 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   const closeReturnedPlace = page.getByRole("button", {
     name: "Close Gravel & Grind",
   });
-  await expect(closeReturnedPlace).toBeVisible();
+  // A document-level return is deliberate here: it prevents the old map's
+  // camera writer from racing the exact return URL. Allow a cold local map
+  // enough time to rebuild its WebGL surface before judging the handoff.
+  await expect(closeReturnedPlace).toBeVisible({ timeout: 20_000 });
   await closeReturnedPlace.click();
   await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
     "Gravel and Grind",

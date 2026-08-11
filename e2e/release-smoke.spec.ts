@@ -49,7 +49,10 @@ const VIEWPORTS = [
 function installRuntimeGuards(
   page: Page,
   appOrigin: string,
-  options: { allowOptimizedImageNavigationAbort?: boolean } = {},
+  options: {
+    allowBasemapNavigationAbort?: boolean;
+    allowOptimizedImageNavigationAbort?: boolean;
+  } = {},
 ) {
   const issues: string[] = [];
 
@@ -99,11 +102,19 @@ function installRuntimeGuards(
       options.allowOptimizedImageNavigationAbort === true &&
       url.pathname === "/_next/image" &&
       /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    // PMTiles uses bounded range requests. Leaving and then restoring the map
+    // can cancel ranges that the previous renderer no longer needs. A missing
+    // or broken basemap still fails the map render checks and response guard.
+    const basemapNavigationAbort =
+      options.allowBasemapNavigationAbort === true &&
+      url.pathname === "/basemap/frederick-county.pmtiles" &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
     if (
       url.origin === appOrigin &&
       !canceledRscPrefetch &&
       !documentedNavigationAbort &&
-      !optimizedImageNavigationAbort
+      !optimizedImageNavigationAbort &&
+      !basemapNavigationAbort
     ) {
       issues.push(`${failure} ${url.pathname}`);
     }
@@ -264,9 +275,11 @@ test.describe("Today hydration clock boundary", () => {
     expect(response?.status()).toBe(200);
     await expect(page.locator("main h1")).toHaveCount(1);
     await expect(page.locator('[aria-label="Today in Frederick"]')).toBeVisible();
-    await expect(
-      page.locator('[data-collapsible-interaction-ready="true"]'),
-    ).toBeAttached();
+    const readyCollapsibles = page.locator(
+      '[data-collapsible-interaction-ready="true"]',
+    );
+    await expect(readyCollapsibles.first()).toBeAttached();
+    expect(await readyCollapsibles.count()).toBeGreaterThan(0);
 
     expect(issues, "Today browser runtime failures across clock drift").toEqual([]);
   });
@@ -280,6 +293,7 @@ test("map search keeps its exact state through place details and Back", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
   const issues = installRuntimeGuards(page, appOrigin, {
+    allowBasemapNavigationAbort: true,
     allowOptimizedImageNavigationAbort: true,
   });
 

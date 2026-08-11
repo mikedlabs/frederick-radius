@@ -23,7 +23,7 @@ import {
   type PanInfo,
 } from "framer-motion";
 import { X } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
@@ -57,6 +57,8 @@ type Props = {
    * removed as soon as the real chunk arrives and cannot receive focus later.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Optional height override for compact task surfaces. */
+  maxHeight?: string;
   children: (dismiss: () => void) => ReactNode;
 };
 
@@ -122,10 +124,10 @@ export default function BottomSheet({
   ariaLabel,
   historyLayerId,
   returnFocusRef,
+  maxHeight = "85dvh",
   children,
 }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const dragControls = useDragControls();
@@ -266,13 +268,15 @@ export default function BottomSheet({
     const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (href === here) return;
 
-    // Own same-origin sheet navigation so the temporary history entry is gone
-    // before Next creates the destination entry. Sheet links only add a
-    // haptic/close handler, which this shared path supplies directly.
+    // Replace the temporary overlay entry with the destination. The map mirrors
+    // its camera into the address bar, so a client transition can otherwise be
+    // overwritten in the same frame and make a valid tap appear to do nothing.
+    // The shared history helper uses one atomic navigation and leaves one clean
+    // Back step to the exact page beneath the sheet.
     event.preventDefault();
     event.stopPropagation();
     haptic("light");
-    historyLayer.leave(() => router.push(href));
+    historyLayer.leaveTo(href);
   };
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -335,8 +339,8 @@ export default function BottomSheet({
             dragConstraints={{ top: 0, bottom: 600 }}
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
-            style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
+            style={{ y, maxHeight }}
+            className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
           >
             <SheetDragContext.Provider
               value={(event) => dragControls.start(event)}

@@ -3,6 +3,8 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import {
   eventsForDefaultList,
   eventsMastheadCountState,
+  eventScopeNeedsCompleteData,
+  nearbyEventsWhereLabel,
   eventMatchesTimeWindow,
   eventGroupRenderState,
   initialBrowseIsComplete,
@@ -43,6 +45,33 @@ function event(
 }
 
 describe("EventsExplorer deferred browse reconciliation", () => {
+  it("loads the complete event population before claiming a near-me ranking", () => {
+    expect(eventScopeNeedsCompleteData("nearme")).toBe(true);
+    expect(eventScopeNeedsCompleteData("county")).toBe(false);
+    expect(eventScopeNeedsCompleteData("town:frederick")).toBe(false);
+  });
+
+  it("does not claim a complete nearby ranking while the continuation is pending or failed", () => {
+    expect(nearbyEventsWhereLabel({
+      hasOrigin: true,
+      dataComplete: false,
+      loading: true,
+      failed: false,
+    })).toBe("Ranking nearby events…");
+    expect(nearbyEventsWhereLabel({
+      hasOrigin: true,
+      dataComplete: false,
+      loading: false,
+      failed: true,
+    })).toBe("Nearby ranking unavailable");
+    expect(nearbyEventsWhereLabel({
+      hasOrigin: true,
+      dataComplete: true,
+      loading: false,
+      failed: false,
+    })).toBe("Ranked near you");
+  });
+
   it("never treats a same-size degraded server snapshot as complete", () => {
     expect(initialBrowseIsComplete(27, 27, { degraded: true })).toBe(false);
     expect(initialBrowseIsComplete(27, 27, { degraded: false })).toBe(true);

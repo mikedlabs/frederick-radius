@@ -88,6 +88,55 @@ describe("PostGIS place mirror", () => {
     expect(stateIndex).toBeGreaterThan(retireIndex);
   });
 
+  it("cancels an in-flight batch and never retires or stamps partial work", async () => {
+    const controller = new AbortController();
+    let rejectBatch: ((error: Error) => void) | undefined;
+    const cancel = vi.fn(() => {
+      rejectBatch?.(new Error("query cancelled"));
+    });
+    const hungBatch = Object.assign(
+      new Promise<never>((_resolve, reject) => {
+        rejectBatch = reject;
+      }),
+      { cancel },
+    );
+    const transactionQueries: string[] = [];
+    const tx = vi.fn((strings: TemplateStringsArray) => {
+      const text = queryText(strings);
+      transactionQueries.push(text);
+      if (text.includes("jsonb_to_recordset")) return hungBatch;
+      return Promise.resolve([]);
+    });
+    const root = Object.assign(vi.fn(), {
+      begin: vi.fn(
+        async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    });
+    mocks.getSql.mockReturnValue(root);
+
+    const sync = syncSpatialPlaceMirror({ signal: controller.signal });
+    await vi.waitFor(() => {
+      expect(
+        transactionQueries.some((query) =>
+          query.includes("jsonb_to_recordset"),
+        ),
+      ).toBe(true);
+    });
+    controller.abort();
+
+    await expect(sync).rejects.toThrow();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(
+      transactionQueries.some((query) => query.includes("update public.places")),
+    ).toBe(false);
+    expect(
+      transactionQueries.some((query) =>
+        query.includes("insert into public.place_spatial_sync_state"),
+      ),
+    ).toBe(false);
+  });
+
   it("reports a missing migration without exposing a database error", async () => {
     const root = vi.fn().mockRejectedValue(
       new Error("postgres://secret@example.test"),

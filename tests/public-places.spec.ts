@@ -10,6 +10,7 @@ import {
 import { PLACES } from "@/data/places";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { MANUAL_PLACE_STATUS_OVERRIDES } from "@/lib/place-status-overrides";
+import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 
 /**
@@ -64,6 +65,20 @@ describe("publicPlaces (canonical public set)", () => {
 
   it("radiusPlaces() is an exact back-compat alias of publicPlaces()", () => {
     expect(slugsOf(radiusPlaces())).toEqual(slugsOf(publicPlaces()));
+  });
+
+  it("never presents a directory or marketplace as a place website", () => {
+    for (const place of publicPlaces()) {
+      if (place.website) {
+        expect(
+          publishablePlaceWebsite(place.website, place.name),
+        ).toBe(place.website);
+      }
+    }
+    expect(publicPlaceBySlug("starbucks-844")?.website).toBeUndefined();
+    expect(publicPlaceBySlug("visit-frederick")?.website).toBe(
+      "https://www.visitfrederick.org/",
+    );
   });
 });
 

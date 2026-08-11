@@ -55,8 +55,11 @@ jobs:
         run: npm run validate:transit-data
       - name: Unit tests
         run: npm run test:all
-      - name: Production recovery selection tests
-        run: node --test scripts/lib/production-rollback.test.mjs
+      - name: Production helper tests
+        run: >-
+          node --test
+          scripts/lib/production-rollback.test.mjs
+          scripts/lib/basemap-platform.test.mjs
       - name: Build
         run: npm run build
         env:

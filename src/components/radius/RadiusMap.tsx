@@ -7,16 +7,16 @@ import { Crosshair, Map as MapIcon, ArrowUpRight, X, Layers as LayersIcon } from
 import MapOverlays from "@/components/map/MapOverlays";
 import LiveBuses from "@/components/map/LiveBuses";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
-import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
+import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 import { installCountySpotlight } from "@/components/map/countySpotlight";
 import { BRAND } from "@/lib/brand";
-import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
+import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/maplibre";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
-import "mapbox-gl/dist/mapbox-gl.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 /**
  * RadiusMap — the big interactive county canvas for /radius.
@@ -33,17 +33,15 @@ import "mapbox-gl/dist/mapbox-gl.css";
  *    the canvas + overlays.
  */
 
-const Map = dynamic(() => import("react-map-gl/mapbox").then((m) => m.default), {
+const Map = dynamic(() => import("react-map-gl/maplibre").then((m) => m.default), {
   ssr: false,
   loading: () => null,
 });
-const Source = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Source), { ssr: false });
-const Layer = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Layer), { ssr: false });
-const AttributionControl = dynamic(() => import("react-map-gl/mapbox").then((m) => m.AttributionControl), { ssr: false });
-const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Popup), { ssr: false });
-
-const STYLE_URL = "mapbox://styles/mapbox/light-v11";
+const Source = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Source), { ssr: false });
+const Layer = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Layer), { ssr: false });
+const AttributionControl = dynamic(() => import("react-map-gl/maplibre").then((m) => m.AttributionControl), { ssr: false });
+const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Marker), { ssr: false });
+const Popup = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Popup), { ssr: false });
 
 // Frederick County bbox in the [W, S, E, N] form Mapbox wants for
 // fitBounds. Source: src/lib/integrations/overpass.ts (kept in sync).
@@ -177,6 +175,7 @@ export default function RadiusMap({
 }) {
   const accentHex = MODE_HEX[mode] ?? ACCENTS.slate;
   const mapRef = useRef<MapRef | null>(null);
+  const mapStyle = useFrederickFlavorStyle();
   const [categoryMarkersReady, setCategoryMarkersReady] = useState(false);
   // Map layers in the DEFAULT (Nearby) map — the GIS overlays were only
   // reachable in Whole-county mode before, so the field-guide layers
@@ -479,10 +478,11 @@ export default function RadiusMap({
     }
   };
 
-  // Branded fallback for no-token AND runtime WebGL/tile failure. Audit:
-  // "Map did not load. Nearby places still work." + a retry, instead of
-  // a blank box. The reach controls + within-reach list below keep working.
-  if (!MAPBOX_TOKEN || mapFailed) {
+  // Branded fallback for runtime WebGL/tile failure. Audit: "Map did not
+  // load. Nearby places still work." + a retry, instead of a blank box. The
+  // reach controls + within-reach list below keep working. (There is no
+  // longer a no-token case: the basemap is served from this origin.)
+  if (mapFailed) {
     return (
       <div
         className="relative grid place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] px-6 text-center"
@@ -521,8 +521,7 @@ export default function RadiusMap({
         ref={(r) => {
           mapRef.current = r as unknown as MapRef | null;
         }}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        mapStyle={STYLE_URL}
+        mapStyle={mapStyle}
         // Catch fatal init failure (WebGL off, blocked context) → branded
         // fallback instead of a blank box. Transient tile errors are
         // ignored so they don't nuke a working map.
@@ -568,33 +567,19 @@ export default function RadiusMap({
         onLoad={(e) => {
           installCategoryMarkers(e.target);
           // Install the generated sprite images before mounting the symbol
-          // layer. Depending on styleimagemissing alone makes Mapbox log one
-          // warning per category during the first render even though the
+          // layer. Depending on styleimagemissing alone makes the renderer log
+          // one warning per category during the first render even though the
           // handler repairs the image a moment later.
           setCategoryMarkersReady(true);
-          // Repaint stock light-v11 into the Frederick brand: paper-cream
-          // land, Carroll Creek slate water, sage parks, warm-ink labels,
-          // Catoctin/South Mountain hillshade — and POI clutter hidden so
-          // OUR pins are the only points of interest ("nothing else
-          // there"). The browse map already does this; the default radius
-          // view now matches, so the premium look is consistent.
-          applyFrederickPalette(e.target);
           // Lock the plate into Frederick County: veil everything beyond
           // the line in warm paper + trace the border, so the map reads
           // as a field-guide page of ONE place, not a window onto an
           // endless world. Eases back as you zoom into a neighborhood.
           installCountySpotlight(e.target);
-          // 3D relief — "Frederick IS its terrain." applyFrederickPalette
-          // already loads the fr-dem elevation source; draping the map
-          // over it (with the gentle default pitch below) makes the
-          // Catoctin & South Mountain ridges physically rise. Low
-          // exaggeration so the reach circle stays legibly round and the
-          // map stays a usable wayfinding tool, not a flight sim.
-          try {
-            e.target.setTerrain({ source: "fr-dem", exaggeration: 1.15 });
-          } catch {
-            /* DEM unavailable on this token — stays flat, no harm */
-          }
+          // 3D relief is off for now. It rode Mapbox's proprietary terrain
+          // DEM, which the self-hosted basemap has no license to serve; a
+          // county hillshade built from USGS 3DEP belongs in the same
+          // /public/basemap extract as the tiles, and that is follow-up work.
         }}
         // The invisible hit-pad is listed FIRST so a fingertip near a tiny
         // icon still resolves to the place (Fitts-friendly tap target).
@@ -682,7 +667,7 @@ export default function RadiusMap({
             layout={{
               "text-field": ["get", "name"],
               "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 17, 13],
-              "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+              "text-font": MAP_LABEL_FONT_MEDIUM,
               "text-anchor": "top",
               "text-offset": [0, 1.0],
               "text-optional": true,

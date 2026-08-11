@@ -28,6 +28,7 @@ import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
 import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
+import type { LngLat } from "@/lib/geo";
 import { nearestAerial, currentSeason } from "@/lib/aerial";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 import {
@@ -51,6 +52,7 @@ import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAcces
  */
 type Props = {
   place: PlaceCardData | null;
+  travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
@@ -59,6 +61,7 @@ type Props = {
 
 export default function PlaceSheet({
   place,
+  travelOrigin,
   mapReturnTo,
   onClose,
   returnFocusRef,
@@ -76,6 +79,7 @@ export default function PlaceSheet({
         <PlaceSheetContent
           key={place.slug}
           place={place}
+          travelOrigin={travelOrigin}
           mapReturnTo={mapReturnTo}
           onClose={dismiss}
         />
@@ -86,10 +90,12 @@ export default function PlaceSheet({
 
 function PlaceSheetContent({
   place,
+  travelOrigin,
   mapReturnTo,
   onClose,
 }: {
   place: PlaceCardData;
+  travelOrigin?: LngLat | null;
   mapReturnTo?: string | null;
   onClose: () => void;
 }) {
@@ -110,20 +116,64 @@ function PlaceSheetContent({
     return withMapReturnTo(`/places/${place.slug}`, liveMapReturnTo);
   });
 
-  // Real walk/drive time from downtown via Routes API (on-demand, cached server-side)
-  const [travel, setTravel] = useState<{ walkMin?: number; driveMin?: number } | null>(null);
+  // Real walk/drive time from a fresh, consented device location. Without an
+  // origin, silence is more useful than a plausible-looking downtown proxy.
+  const travelOriginKey = travelOrigin
+    ? `${travelOrigin.lat.toFixed(5)},${travelOrigin.lng.toFixed(5)}`
+    : null;
+  const [travelResult, setTravelResult] = useState<{
+    originKey: string;
+    walkMin?: number;
+    driveMin?: number;
+  } | null>(null);
+  const travel = travelResult?.originKey === travelOriginKey
+    ? travelResult
+    : null;
+  const [travelStatus, setTravelStatus] = useState<
+    "idle" | "loading" | "unavailable"
+  >("idle");
   const [lightboxAt, setLightboxAt] = useState<number | null>(null);
   const [venueEvents, setVenueEvents] = useState<
     { slug: string; title: string; weekday: string; day: string; month: string; time: string }[]
   >([]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/travel-time?lat=${place.geom.lat}&lng=${place.geom.lng}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d && (d.walkMin != null || d.driveMin != null)) setTravel(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [place.geom.lat, place.geom.lng]);
+  const requestTravelTime = async () => {
+    if (!travelOrigin || !travelOriginKey || travelStatus === "loading") return;
+    setTravelStatus("loading");
+    const controller = new AbortController();
+    const timeout = globalThis.setTimeout(() => controller.abort(), 7_500);
+    try {
+      // Roughly 100 m precision is sufficient for a walking estimate and
+      // avoids sending an unnecessarily exact device fix to the route provider.
+      const response = await fetch("/api/travel-time", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat: Number(place.geom.lat.toFixed(5)),
+          lng: Number(place.geom.lng.toFixed(5)),
+          fromLat: Number(travelOrigin.lat.toFixed(3)),
+          fromLng: Number(travelOrigin.lng.toFixed(3)),
+        }),
+        signal: controller.signal,
+      });
+      const data = response.ok
+        ? await response.json() as { walkMin?: number; driveMin?: number }
+        : null;
+      if (data && (data.walkMin != null || data.driveMin != null)) {
+        setTravelResult({
+          originKey: travelOriginKey,
+          walkMin: data.walkMin,
+          driveMin: data.driveMin,
+        });
+        setTravelStatus("idle");
+      } else {
+        setTravelStatus("unavailable");
+      }
+    } catch {
+      setTravelStatus("unavailable");
+    } finally {
+      globalThis.clearTimeout(timeout);
+    }
+  };
 
   // On-demand Google enrichment for the long-tail (DFP) places that have no
   // build-time enrichment. Curated places already carry google_photo_url.
@@ -441,7 +491,14 @@ function PlaceSheetContent({
               </>
             )}
             <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-            <FreshnessChip iso={place.last_verified_at} />
+            <FreshnessChip
+              iso={
+                place.hours_verified && place.hours_updated_at
+                  ? place.hours_updated_at
+                  : place.last_verified_at
+              }
+              subject={place.hours_verified && place.hours_updated_at ? "Hours" : "Listing"}
+            />
           </div>
 
         {/* The moat, surfaced where the tap lands: this place's VERIFIED Field
@@ -460,20 +517,17 @@ function PlaceSheetContent({
             the feature activates (COF_PARCELS + City approval) it belongs in a
             dedicated Land-records section on /places/[slug], not this overlay. */}
 
-        {/* Real travel time from downtown (Routes API) */}
+        {/* Real travel time from the user's consented location (Routes API) */}
         {travel && (travel.walkMin != null || travel.driveMin != null) && (
           <div
             className="mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-xs font-medium"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
             {travel.walkMin === 0 ? (
-              /* The place sits AT the downtown anchor — walk rounds to 0, so
-                 "0 min walk · 3 min drive from downtown" reads as nonsense
-                 (and a drive time from the place TO itself is pointless). State
-                 where it is instead. */
+              /* A sub-minute walk should not turn into "0 min." */
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-                In downtown Frederick
+                You are here
               </span>
             ) : (
               <>
@@ -493,10 +547,30 @@ function PlaceSheetContent({
                     <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
                   </span>
                 )}
-                <span style={{ color: "var(--app-ink-3)" }}>from downtown</span>
+                <span style={{ color: "var(--app-ink-3)" }}>from you</span>
               </>
             )}
           </div>
+        )}
+        {travelOrigin && !travel && (
+          <button
+            type="button"
+            onClick={() => void requestTravelTime()}
+            disabled={travelStatus === "loading"}
+            className="tap-44 mt-3 inline-flex items-center gap-2 rounded-full border px-3 text-xs font-semibold disabled:opacity-60"
+            style={{
+              borderColor: "var(--app-border)",
+              color: "var(--app-ink-2)",
+              background: "var(--app-bg-elevated)",
+            }}
+          >
+            <Footprints className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            {travelStatus === "loading"
+              ? "Checking travel time…"
+              : travelStatus === "unavailable"
+                ? "Try travel time again"
+                : "Check walk and drive time"}
+          </button>
         )}
 
         {/* Blurb — gated by the copy-quality detector so scraped junk
@@ -662,7 +736,6 @@ function PlaceSheetContent({
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
           <Link
             href={fullPageHref}
-            onClick={() => { haptic("light"); onClose(); }}
             className="inline-flex items-center gap-1 font-medium"
             style={{ color: "var(--app-brand-press)" }}
           >

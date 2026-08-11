@@ -2,16 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import Map, { Marker, Popup, NavigationControl, AttributionControl } from "react-map-gl/mapbox";
-import type { Map as GLMap } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import Map, { Marker, Popup, NavigationControl, AttributionControl } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
-
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
-const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 
 export type EventPin = {
   slug: string;
@@ -61,6 +57,10 @@ export default function EventsMapInner({
   const view = useMemo(() => viewFor(events), [events]);
   const [selected, setSelected] = useState<string | null>(null);
   const active = events.find((e) => e.slug === selected) ?? null;
+  // The self-hosted county basemap, in the app's own paper palette. This
+  // surface used to wear Mapbox dark-v11 — a stock style that made the
+  // events map the one product surface with a different identity.
+  const mapStyle = useFrederickFlavorStyle();
 
   return (
     <div
@@ -68,14 +68,12 @@ export default function EventsMapInner({
       style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
-        mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={view}
-        mapStyle={STYLE_URL}
+        mapStyle={mapStyle}
         style={{ width: "100%", height: "100%" }}
         attributionControl={false}
         dragRotate={false}
         touchPitch={false}
-        onLoad={(e) => applyFrederickPalette(e.target as unknown as GLMap)}
         onClick={() => setSelected(null)}
       >
         <AttributionControl compact position="bottom-right" />

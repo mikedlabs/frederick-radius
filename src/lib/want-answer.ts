@@ -24,6 +24,17 @@ import {
 } from "@/lib/category-ranking";
 import { isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
+import {
+  compareDecisionEvaluations,
+  decisionOriginTrust,
+  evaluateDecision,
+  resolveDecisionAvailabilityPolicy,
+  type DecisionAvailabilityMode,
+  type DecisionAvailabilityState,
+  type DecisionFactor,
+  type DecisionReason,
+  type DecisionSet,
+} from "@/lib/decision/core";
 
 /**
  * The want answer — "I want coffee" resolved to places, ranked for RIGHT
@@ -66,6 +77,11 @@ export type WantRow = {
   tip: string | null;
   /** A standing deal hook ("Happy hour", "$1 oysters"), when present. */
   deal: string | null;
+  /** Short, complete-sentence explanations from the same factors that ranked
+   * this row. Clients may show one or two; Ask receives the same evidence. */
+  why?: string[];
+  /** Structured copy of the reasons for other Radius decision surfaces. */
+  decisionReasons?: DecisionReason[];
   /** An official provider action for intents that are decided somewhere other
    *  than the venue's front door, such as choosing a movie and showtime. */
   action?: {
@@ -114,9 +130,62 @@ export type WantAnswer = {
   contextLabel: string;
   contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
   fallbackReason: "outside-county" | "location-unavailable" | null;
+  /** Canonical decision output used by Today and Ask during the gradual
+   * cross-surface migration. Compatibility fields above remain for clients. */
+  decision?: DecisionSet<WantRow>;
 };
 
-export type WantAvailability = "required" | "bonus" | "not-applicable";
+export type WantAvailability = DecisionAvailabilityMode;
+
+function wantRowAvailability(
+  row: WantRow,
+  mode: WantAvailability,
+): DecisionAvailabilityState {
+  if (mode === "not-applicable") return "not-applicable";
+  if (row.confidence === "confirmed") return "confirmed-open";
+  if (/^(?:Closed|Opens )/i.test(row.fact)) return "confirmed-closed";
+  return "unknown";
+}
+
+function withWantDecision(
+  answer: Omit<WantAnswer, "decision">,
+  availability: WantAvailability,
+): WantAnswer {
+  const item = (row: WantRow) => ({
+    id: row.slug,
+    title: row.name,
+    value: row,
+    availability: wantRowAvailability(row, availability),
+    reasons:
+      row.decisionReasons ??
+      (row.why ?? []).map((label, index) => ({
+        id: `reason-${index + 1}`,
+        label,
+        evidenceIds: [],
+      })),
+  });
+  const lead = answer.hero ? item(answer.hero) : null;
+  return {
+    ...answer,
+    decision: {
+      status: lead ? "ready" : "insufficient",
+      lead,
+      alternatives: answer.also.map(item),
+      scope: {
+        label: answer.contextLabel,
+        source: answer.contextSource,
+        originTrust: decisionOriginTrust(answer.contextSource),
+      },
+      claimState: lead
+        ? answer.hero?.confidence === "confirmed"
+          ? "confirmed"
+          : "partial"
+        : "insufficient",
+      mayAssertNoneAvailable: answer.mayAssertNoneOpen,
+      totalCandidates: answer.total,
+    },
+  };
+}
 
 /** The slice of a decorated place the partition logic reads — kept minimal
  *  and exported so the ranking rules are unit-testable with plain objects.
@@ -156,6 +225,7 @@ export type WantRefinable = {
   geom: { lng: number; lat: number };
   short_blurb?: string;
   primary_type?: string;
+  accessibility?: PlaceCardData["accessibility"];
 };
 
 const WALK_METERS_PER_MIN = 75; // ~2.8 mph, the app's walking assumption
@@ -240,6 +310,7 @@ function toRow(
   c: WantCandidate,
   laneLater: boolean,
   confidence?: WantRow["confidence"],
+  reasons: readonly DecisionReason[] = [],
 ): WantRow {
   const line = formatHoursLine(c.open_status);
   return {
@@ -259,6 +330,8 @@ function toRow(
     detail: signatureOf(c),
     tip: c.field_note_tip?.trim() || null,
     deal: usefulDealHook(c.deal_hook),
+    why: reasons.map((reason) => reason.label),
+    decisionReasons: [...reasons],
     confidence,
   };
 }
@@ -318,8 +391,16 @@ const MOVIE_SHOWTIMES: Record<string, string> = {
 /** Movie theaters are useful based on what is playing, not whether their
  *  lobby has a conventional storefront-hours record. Keep the choice native,
  *  then hand the volatile film/time inventory to each cinema's official site. */
-function toMovieRow(candidate: WantCandidate): WantRow {
-  const row = toRow(candidate, false);
+function toMovieRow(
+  candidate: WantCandidate,
+  preciseOrigin = false,
+): WantRow {
+  const row = toRow(
+    candidate,
+    false,
+    undefined,
+    wantDecisionReasons(candidate, preciseOrigin),
+  );
   const href = MOVIE_SHOWTIMES[candidate.slug];
   return {
     ...row,
@@ -433,32 +514,123 @@ export function approxHeroIndex(open: WantCandidate[]): number {
   return best;
 }
 
-function bestFitScore(candidate: WantCandidate, preciseOrigin: boolean): number {
+function wantDecisionFactors(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+): DecisionFactor[] {
   const proximity = preciseOrigin && candidate.distance_m != null
     ? 10 / (1 + candidate.distance_m / 600)
     : 0;
-  return (
-    candidate.feature_score +
-    (candidate.intent_fit_tier ?? 0) * 10 +
-    (candidate.local_favorite ? 1.5 : 0) +
-    (candidate.hidden_gem ? 0.5 : 0) +
-    ratingSignal(candidate.google_rating, candidate.google_rating_count) * 0.75 -
-    (isChainName(candidate.name) ? 0.75 : 0) +
-    proximity
+  return [
+    {
+      id: "editorial-fit",
+      label: "Radius has stronger local evidence for this place.",
+      points: candidate.feature_score,
+      visible: false,
+    },
+    {
+      id: "intent-fit",
+      label: "Coffee is one of its main reasons to visit.",
+      points: (candidate.intent_fit_tier ?? 0) * 10,
+      reasonPriority: 80,
+      visible: (candidate.intent_fit_tier ?? 0) >= 2,
+      evidenceIds: ["radius-taxonomy"],
+    },
+    {
+      id: "local-favorite",
+      label: "It is a Radius local favorite.",
+      points: candidate.local_favorite ? 1.5 : 0,
+      reasonPriority: 70,
+      visible: Boolean(candidate.local_favorite),
+      evidenceIds: candidate.local_favorite ? ["radius-curation"] : [],
+    },
+    {
+      id: "hidden-gem",
+      label: "It is a less obvious local option.",
+      points: candidate.hidden_gem ? 0.5 : 0,
+      reasonPriority: 40,
+      visible: Boolean(candidate.hidden_gem),
+      evidenceIds: candidate.hidden_gem ? ["radius-curation"] : [],
+    },
+    {
+      id: "review-evidence",
+      label: "It has substantial Google review history.",
+      points:
+        ratingSignal(candidate.google_rating, candidate.google_rating_count) *
+        0.75,
+      visible: (candidate.google_rating_count ?? 0) >= 30,
+      reasonPriority: 60,
+      evidenceIds:
+        (candidate.google_rating_count ?? 0) >= 30 ? ["google-places"] : [],
+    },
+    {
+      id: "chain-nudge",
+      label: "A local option receives the tie-breaker.",
+      points: isChainName(candidate.name) ? -0.75 : 0,
+      visible: false,
+    },
+    {
+      id: "proximity",
+      label: "It is close to your location.",
+      points: proximity,
+      reasonPriority: 90,
+      visible: proximity > 0,
+      evidenceIds: proximity > 0 ? ["decision-origin"] : [],
+    },
+    {
+      id: "availability",
+      label: "Its current hours show it open now.",
+      points:
+        includeAvailability && isOpenNow(candidate.open_status) ? 0.75 : 0,
+      visible: includeAvailability && isOpenNow(candidate.open_status),
+      reasonPriority: 100,
+      evidenceIds:
+        includeAvailability && isOpenNow(candidate.open_status)
+          ? ["verified-hours"]
+          : [],
+    },
+  ];
+}
+
+function evaluateWantCandidate(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+) {
+  return evaluateDecision(
+    candidate,
+    wantDecisionFactors(candidate, preciseOrigin, includeAvailability),
   );
+}
+
+export function wantDecisionReasons(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+): DecisionReason[] {
+  return evaluateWantCandidate(
+    candidate,
+    preciseOrigin,
+    includeAvailability,
+  ).reasons;
 }
 
 /** Rank a timeless Ask decision by editorial fit. Current hours remain on the
  * row, but they do not let an open chain beat the better local answer merely
  * because the question was asked after breakfast service ended. */
 export function rankBestFit(candidates: WantCandidate[], preciseOrigin = false): WantCandidate[] {
-  return [...candidates].sort((a, b) => {
-    const scoreDelta = bestFitScore(b, preciseOrigin) - bestFitScore(a, preciseOrigin);
-    if (scoreDelta !== 0) return scoreDelta;
-    const distanceDelta = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
-    if (distanceDelta !== 0) return distanceDelta;
-    return a.name.localeCompare(b.name);
-  });
+  return candidates
+    .map((candidate) => evaluateWantCandidate(candidate, preciseOrigin))
+    .sort((a, b) =>
+      compareDecisionEvaluations(a, b, (left, right) => {
+        const distanceDelta =
+          (left.distance_m ?? Infinity) - (right.distance_m ?? Infinity);
+        if (distanceDelta !== 0) return distanceDelta;
+        return left.name.localeCompare(right.name);
+      }),
+    )
+    .map((evaluation) => evaluation.candidate);
 }
 
 function hasUnknownAvailability(candidate: WantCandidate): boolean {
@@ -473,22 +645,20 @@ function rankFlexibleBestFit(
   availability: WantAvailability,
   preciseOrigin: boolean,
 ): WantCandidate[] {
-  return [...candidates].sort((a, b) => {
-    const availabilityBonus = (candidate: WantCandidate) =>
-      availability !== "not-applicable" && isOpenNow(candidate.open_status)
-        ? 0.75
-        : 0;
-    const scoreDelta =
-      bestFitScore(b, preciseOrigin) +
-      availabilityBonus(b) -
-      bestFitScore(a, preciseOrigin) -
-      availabilityBonus(a);
-    if (scoreDelta !== 0) return scoreDelta;
-    const distanceDelta =
-      (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
-    if (distanceDelta !== 0) return distanceDelta;
-    return a.name.localeCompare(b.name);
-  });
+  const includeAvailability = availability !== "not-applicable";
+  return candidates
+    .map((candidate) =>
+      evaluateWantCandidate(candidate, preciseOrigin, includeAvailability),
+    )
+    .sort((a, b) =>
+      compareDecisionEvaluations(a, b, (left, right) => {
+        const distanceDelta =
+          (left.distance_m ?? Infinity) - (right.distance_m ?? Infinity);
+        if (distanceDelta !== 0) return distanceDelta;
+        return left.name.localeCompare(right.name);
+      }),
+    )
+    .map((evaluation) => evaluation.candidate);
 }
 
 export type WantAvailabilityResolution = ReturnType<typeof partitionWant> & {
@@ -519,8 +689,14 @@ export function resolveWantAvailability(
   const coverageSupportsOpenOnly = mayAssertNoneOpen(
     candidates.map((candidate) => candidate.open_status),
   );
-  const hardAvailability =
-    availability === "required" && coverageSupportsOpenOnly;
+  const policy = resolveDecisionAvailabilityPolicy({
+    requested: availability,
+    hasSufficientCoverage: coverageSupportsOpenOnly,
+    // An explicit right-now want still leads with the places Radius can prove
+    // open, while keeping unknown-hours matches visible when coverage is thin.
+    thinCoverageBehavior: "lead",
+  });
+  const { hardAvailability } = policy;
 
   if (hardAvailability) {
     return {
@@ -528,7 +704,7 @@ export function resolveWantAvailability(
       current: partitioned.open,
       hardAvailability: true,
       rankingMode: "open-now",
-      mayAssertNoneOpen: true,
+      mayAssertNoneOpen: policy.mayAssertNoneOpen,
     };
   }
 
@@ -616,6 +792,7 @@ export function buildWantAnswer(
           geom: p.geom,
           short_blurb: p.short_blurb,
           primary_type: (p as { primary_type?: string }).primary_type,
+          accessibility: p.accessibility,
         }),
     )
     .map((p) => {
@@ -632,16 +809,24 @@ export function buildWantAnswer(
             : undefined,
         hours: mayAssertHours ? p.hours : undefined,
         hours_verified: mayAssertHours,
-        open_status: getOpenStatus(
-          mayAssertHours ? p.hours : undefined,
-          { verified: mayAssertHours },
-          now,
-        ),
+        // Keep "schedule exists but is stale" distinct from "Radius has no
+        // schedule." Both states stay out of open/closed claims, but the
+        // former can honestly say "Hours not confirmed" instead of implying
+        // that no hours were ever posted.
+        open_status: mayAssertHours
+          ? getOpenStatus(p.hours, { verified: true }, now)
+          : p.hours
+            ? { state: "unverified" as const }
+            : { state: "unknown" as const },
         distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
       };
     });
 
   const preciseOrigin = Boolean(origin && !opts?.approximateOrigin);
+  const reasonsFor = (
+    candidate: WantCandidate,
+    includeAvailability = false,
+  ) => wantDecisionReasons(candidate, preciseOrigin, includeAvailability);
   const availability = resolveWantAvailability(
     candidates,
     want.availability,
@@ -665,12 +850,14 @@ export function buildWantAnswer(
       candidates,
       preciseOrigin,
     );
-    return {
+    return withWantDecision({
       key: cKey,
       label: want.label,
       rankingMode: "best-fit",
-      hero: ranked[0] ? toMovieRow(ranked[0]) : null,
-      also: ranked.slice(1, ALSO_MAX + 1).map(toMovieRow),
+      hero: ranked[0] ? toMovieRow(ranked[0], preciseOrigin) : null,
+      also: ranked
+        .slice(1, ALSO_MAX + 1)
+        .map((candidate) => toMovieRow(candidate, preciseOrigin)),
       later: [],
       laterMore: 0,
       notable: [],
@@ -680,7 +867,7 @@ export function buildWantAnswer(
       contextLabel: opts?.contextLabel ?? "Whole county",
       contextSource: opts?.contextSource ?? "county",
       fallbackReason: opts?.fallbackReason ?? null,
-    };
+    }, "not-applicable");
   }
 
   if (rankingMode === "best-fit") {
@@ -697,20 +884,35 @@ export function buildWantAnswer(
         candidate,
         false,
         isOpenNow(candidate.open_status) ? "confirmed" : undefined,
+        reasonsFor(candidate, requestedRankingMode !== "best-fit"),
       );
     const breweryCurrent =
       cKey !== "breweries"
         ? undefined
         : open.length > 0
-          ? open.map((candidate) => toRow(candidate, false, "confirmed"))
+          ? open.map((candidate) =>
+              toRow(
+                candidate,
+                false,
+                "confirmed",
+                reasonsFor(candidate, true),
+              ),
+            )
           : other
               .filter(
                 (candidate) =>
                   mayUseLikelyOpenFallback(candidate.open_status) &&
                   isLikelyOpenNow(candidate.slug, now),
               )
-              .map((candidate) => toRow(candidate, false, "likely"));
-    return {
+              .map((candidate) =>
+                toRow(
+                  candidate,
+                  false,
+                  "likely",
+                  reasonsFor(candidate),
+                ),
+              );
+    return withWantDecision({
       key: cKey,
       label: want.label,
       rankingMode,
@@ -746,7 +948,7 @@ export function buildWantAnswer(
       contextLabel: opts?.contextLabel ?? "Whole county",
       contextSource: opts?.contextSource ?? "county",
       fallbackReason: opts?.fallbackReason ?? null,
-    };
+    }, want.availability);
   }
 
   // When nothing is open now AND nothing opens later today, but the category
@@ -766,26 +968,47 @@ export function buildWantAnswer(
     open.length > 0 ? "confirmed" : "likely";
 
   const notable = current.length === 0 && later.length === 0
-    ? other.slice(0, NOTABLE_MAX).map((c) => toRow(c, false))
+    ? other
+        .slice(0, NOTABLE_MAX)
+        .map((candidate) =>
+          toRow(candidate, false, undefined, reasonsFor(candidate)),
+        )
     : [];
 
   const heroIdx = opts?.approximateOrigin ? approxHeroIndex(current) : 0;
   const alsoPool = current.filter((_, i) => i !== heroIdx);
 
-  return {
+  return withWantDecision({
     key: cKey,
     label: want.label,
     rankingMode,
     hero: current[heroIdx]
-      ? toRow(current[heroIdx], false, currentConfidence)
+      ? toRow(
+          current[heroIdx],
+          false,
+          currentConfidence,
+          reasonsFor(current[heroIdx], currentConfidence === "confirmed"),
+        )
       : null,
     also: alsoPool
       .slice(0, ALSO_MAX)
-      .map((candidate) => toRow(candidate, false, currentConfidence)),
+      .map((candidate) =>
+        toRow(
+          candidate,
+          false,
+          currentConfidence,
+          reasonsFor(candidate, currentConfidence === "confirmed"),
+        ),
+      ),
     open:
       cKey === "breweries"
         ? current.map((candidate) =>
-            toRow(candidate, false, currentConfidence),
+            toRow(
+              candidate,
+              false,
+              currentConfidence,
+              reasonsFor(candidate, currentConfidence === "confirmed"),
+            ),
           )
         : undefined,
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
@@ -797,5 +1020,5 @@ export function buildWantAnswer(
     contextLabel: opts?.contextLabel ?? "Whole county",
     contextSource: opts?.contextSource ?? "county",
     fallbackReason: opts?.fallbackReason ?? null,
-  };
+  }, want.availability);
 }

@@ -8,7 +8,12 @@ vi.mock("@/lib/spatial/place-mirror", () => ({
   syncSpatialPlaceMirror: mocks.syncSpatialPlaceMirror,
 }));
 
-import { GET } from "./route";
+import { GET, maxDuration } from "./route";
+import {
+  SPATIAL_CANCEL_GRACE_MS,
+  SPATIAL_STATEMENT_TIMEOUT_MS,
+  SPATIAL_SYNC_BUDGET_MS,
+} from "./config";
 
 function request(secret = "test-cron-secret") {
   return new Request(
@@ -35,6 +40,7 @@ describe("GET /api/cron/spatial-places", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     delete process.env.CRON_SECRET;
     delete process.env.RADIUS_POSTGIS_SYNC;
   });
@@ -65,7 +71,10 @@ describe("GET /api/cron/spatial-places", () => {
       retired: 2,
       place_count: 1610,
     });
-    expect(mocks.syncSpatialPlaceMirror).toHaveBeenCalledOnce();
+    expect(mocks.syncSpatialPlaceMirror).toHaveBeenCalledWith({
+      signal: expect.any(AbortSignal),
+      statementTimeoutMs: SPATIAL_STATEMENT_TIMEOUT_MS,
+    });
   });
 
   it("keeps database details out of a failed cron response", async () => {
@@ -86,5 +95,30 @@ describe("GET /api/cron/spatial-places", () => {
 
     expect(response.status).toBe(401);
     expect(mocks.syncSpatialPlaceMirror).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe failure before the platform limit when sync ignores cancellation", async () => {
+    vi.useFakeTimers();
+    let receivedSignal: AbortSignal | undefined;
+    mocks.syncSpatialPlaceMirror.mockImplementation(
+      (options?: { signal?: AbortSignal }) => {
+        receivedSignal = options?.signal;
+        return new Promise(() => undefined);
+      },
+    );
+
+    const responsePromise = GET(request());
+    await vi.advanceTimersByTimeAsync(
+      SPATIAL_SYNC_BUDGET_MS + SPATIAL_CANCEL_GRACE_MS,
+    );
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(receivedSignal?.aborted).toBe(true);
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ enabled: true, healthy: false });
+    expect(SPATIAL_SYNC_BUDGET_MS + SPATIAL_CANCEL_GRACE_MS).toBeLessThan(
+      maxDuration * 1_000 - 20_000,
+    );
   });
 });

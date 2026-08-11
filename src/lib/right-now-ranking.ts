@@ -2,6 +2,13 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { DecisionOriginSource } from "@/lib/scope";
 import { ratingSignal } from "@/lib/category-ranking";
 import { placeQuality } from "@/lib/quality/placeQuality";
+import {
+  evaluateDecision,
+  mayRankByDecisionOrigin,
+  resolveDecisionAvailabilityPolicy,
+  type DecisionAvailabilityMode,
+  type DecisionReason,
+} from "@/lib/decision/core";
 
 export type RightNowCandidate = {
   p: PlaceCardData;
@@ -21,16 +28,65 @@ export type RightNowSort = "smart" | "nearest" | "rated";
  * `not-applicable` does not reward open status (parks and similar
  * destinations), though a confirmed closure remains actionable.
  */
-export type RightNowAvailabilityMode =
-  | "required"
-  | "bonus"
-  | "not-applicable";
+export type RightNowAvailabilityMode = DecisionAvailabilityMode;
 
 export type SmartNearbyContext = {
   hasOrigin: boolean;
   savedSlugs?: ReadonlySet<string>;
   visitedSlugs?: ReadonlySet<string>;
 };
+
+function smartNearbyFactors(
+  candidate: RightNowCandidate,
+  context: SmartNearbyContext,
+) {
+  const { p, dist } = candidate;
+  const trust =
+    (p.open_confidence === "verified" ? 0.55 : 0) +
+    (p.is_verified || p.hours_verified ? 0.45 : 0);
+  const localKnowledge =
+    (p.field_notes ? 0.6 : 0) +
+    ((p.known_for?.length ?? 0) > 0 || Boolean(p.short_blurb) ? 0.4 : 0);
+  const saved = context.savedSlugs?.has(p.slug) ? 1 : 0;
+  const visited = context.visitedSlugs?.has(p.slug) ? 1 : 0;
+  const personal = saved * 0.08 - (visited && !saved ? 0.04 : 0);
+  return [
+    {
+      id: "quality",
+      label: "It has stronger listing evidence.",
+      points: rightNowQualityScore(p) * 0.4,
+      visible: false,
+    },
+    {
+      id: "proximity",
+      label: "It is close to your location.",
+      points: proximityScore(dist, context.hasOrigin) * 0.3,
+      visible: context.hasOrigin,
+      evidenceIds: context.hasOrigin ? ["decision-origin"] : [],
+    },
+    {
+      id: "trust",
+      label: "Its listing has current verified details.",
+      points: trust * 0.16,
+      visible: trust > 0,
+      evidenceIds: trust > 0 ? ["place-record"] : [],
+    },
+    {
+      id: "local-knowledge",
+      label: "Radius has useful local detail about this place.",
+      points: localKnowledge * 0.14,
+      visible: localKnowledge > 0,
+      evidenceIds: localKnowledge > 0 ? ["radius-field-guide"] : [],
+    },
+    {
+      id: "personal",
+      label: "You saved this place.",
+      points: personal,
+      visible: saved > 0,
+      evidenceIds: saved > 0 ? ["saved-place"] : [],
+    },
+  ];
+}
 
 /**
  * A required-hours intent may only use the hard open-first tier when Radius
@@ -41,14 +97,20 @@ export function resolveRightNowAvailabilityMode(
   requested: RightNowAvailabilityMode,
   hasSufficientHoursCoverage: boolean,
 ): RightNowAvailabilityMode {
-  if (requested === "required" && !hasSufficientHoursCoverage) return "bonus";
-  return requested;
+  const policy = resolveDecisionAvailabilityPolicy({
+    requested,
+    hasSufficientCoverage: hasSufficientHoursCoverage,
+    thinCoverageBehavior: "nudge",
+  });
+  return policy.ordering === "open-nudge" && requested === "required"
+    ? "bonus"
+    : requested;
 }
 
 /** Device, chosen-town, and saved-home origins reflect user intent. A coarse
  * IP centroid is only regional context and must not drive nearest-first. */
 export function canUseOriginForRanking(source: DecisionOriginSource): boolean {
-  return source === "device" || source === "town" || source === "home";
+  return mayRankByDecisionOrigin(source);
 }
 
 /** A client-safe, evidence-backed fallback for when no origin is available. */
@@ -79,24 +141,18 @@ export function smartNearbyScore(
   candidate: RightNowCandidate,
   context: SmartNearbyContext,
 ): number {
-  const { p, dist } = candidate;
-  const trust =
-    (p.open_confidence === "verified" ? 0.55 : 0) +
-    (p.is_verified || p.hours_verified ? 0.45 : 0);
-  const localKnowledge =
-    (p.field_notes ? 0.6 : 0) +
-    ((p.known_for?.length ?? 0) > 0 || Boolean(p.short_blurb) ? 0.4 : 0);
-  const saved = context.savedSlugs?.has(p.slug) ? 1 : 0;
-  const visited = context.visitedSlugs?.has(p.slug) ? 1 : 0;
-  const personal = saved * 0.08 - (visited && !saved ? 0.04 : 0);
+  return evaluateDecision(candidate, smartNearbyFactors(candidate, context)).score;
+}
 
-  return (
-    rightNowQualityScore(p) * 0.4 +
-    proximityScore(dist, context.hasOrigin) * 0.3 +
-    trust * 0.16 +
-    localKnowledge * 0.14 +
-    personal
-  );
+/** The same factors used for Smart Nearby, without exposing their weights. */
+export function rightNowDecisionReasons(
+  candidate: RightNowCandidate,
+  context: SmartNearbyContext,
+): DecisionReason[] {
+  return evaluateDecision(
+    candidate,
+    smartNearbyFactors(candidate, context),
+  ).reasons;
 }
 
 export function compareRightNowCandidates(

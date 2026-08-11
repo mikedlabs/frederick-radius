@@ -174,6 +174,32 @@ function isCommerceProviderHost(host: string): boolean {
   );
 }
 
+const PROVIDER_ACCOUNT_PATH_SEGMENTS = new Set([
+  "account",
+  "accounts",
+  "admin",
+  "dashboard",
+  "login",
+  "manage",
+  "management",
+  "my",
+  "profile",
+]);
+
+/** Provider account and management pages describe the signed-in user, not a
+ * business. They can carry action-looking words such as "Reservations," so
+ * reject them by URL structure before anchor text is considered. */
+function isProviderAccountOrManagementUrl(url: URL): boolean {
+  if (!isCommerceProviderHost(normalizedHost(url.hostname))) return false;
+  const firstSegment = url.pathname
+    .split("/")
+    .map((segment) => segment.trim().toLowerCase())
+    .find(Boolean);
+  return Boolean(
+    firstSegment && PROVIDER_ACCOUNT_PATH_SEGMENTS.has(firstSegment),
+  );
+}
+
 /**
  * A provider may be the stored evidence page for a previously vetted action,
  * but only when the URL identifies one business. Generic provider home,
@@ -187,13 +213,18 @@ function commerceProviderEntityKey(rawUrl: string): string | null {
     return null;
   }
   const host = normalizedHost(url.hostname);
-  if (!isCommerceProviderHost(host) || isProviderSearch(url)) return null;
+  if (
+    !isCommerceProviderHost(host) ||
+    isProviderSearch(url) ||
+    isProviderAccountOrManagementUrl(url)
+  ) {
+    return null;
+  }
 
   const segments = url.pathname
     .split("/")
     .map((segment) => segment.trim().toLowerCase())
     .filter(Boolean);
-  if (segments.length === 0) return null;
 
   if (hostMatches(host, "opentable.com")) {
     const restaurantIndex = segments.indexOf("r");
@@ -211,7 +242,41 @@ function commerceProviderEntityKey(rawUrl: string): string | null {
     return slug ? `resy:${slug}` : null;
   }
 
+  if (hostMatches(host, "exploretock.com")) {
+    const slug = segments[0];
+    return slug && !["about", "blog", "city", "search", "team"].includes(slug)
+      ? `tock:${slug}`
+      : null;
+  }
+
+  if (hostMatches(host, "sevenrooms.com")) {
+    const venueIndex = segments.findIndex((segment) =>
+      ["reservations", "venues"].includes(segment),
+    );
+    const slug = venueIndex >= 0 ? segments[venueIndex + 1] : null;
+    const queryVenue = url.searchParams.get("venue") ?? url.searchParams.get("venues");
+    return slug
+      ? `sevenrooms:${slug}`
+      : queryVenue?.trim()
+        ? `sevenrooms:${queryVenue.trim().toLowerCase()}`
+        : null;
+  }
+
+  if (hostMatches(host, "tableagent.com")) {
+    const entityIndex = segments.findIndex((segment) =>
+      ["restaurant", "restaurants", "venue", "venues"].includes(segment),
+    );
+    const slug = entityIndex >= 0 ? segments[entityIndex + 1] : null;
+    return slug ? `tableagent:${slug}` : null;
+  }
+
   if (hostMatches(host, "toasttab.com")) {
+    if (host.startsWith("tables.")) {
+      const restaurantIndex = segments.indexOf("restaurants");
+      const restaurantId =
+        restaurantIndex >= 0 ? segments[restaurantIndex + 1] : null;
+      return restaurantId ? `toast-tables:${restaurantId}` : null;
+    }
     const structuralPrefix = ["online", "order", "catering"];
     let slug: string | undefined;
     if (segments[0] === "local" && segments[1] === "order") {
@@ -232,6 +297,32 @@ function commerceProviderEntityKey(rawUrl: string): string | null {
     return slug ? `toast:${slug}` : null;
   }
 
+  if (hostMatches(host, "chownow.com")) {
+    const orderIndex = segments.indexOf("order");
+    const merchantId = orderIndex >= 0 ? segments[orderIndex + 1] : null;
+    const locationIndex = segments.indexOf("locations");
+    const locationId = locationIndex >= 0 ? segments[locationIndex + 1] : null;
+    return merchantId
+      ? `chownow:${merchantId}${locationId ? `:${locationId}` : ""}`
+      : null;
+  }
+
+  if (hostMatches(host, "olo.com")) {
+    const tenant = host.endsWith(".olo.com")
+      ? host.slice(0, -".olo.com".length).split(".").pop()
+      : null;
+    if (!tenant || ["app", "order", "www"].includes(tenant)) return null;
+    const menuIndex = segments.indexOf("menu");
+    const store = menuIndex >= 0 ? segments[menuIndex + 1] : null;
+    return store ? `olo:${tenant}:${store}` : null;
+  }
+
+  if (hostMatches(host, "clover.com")) {
+    const orderingIndex = segments.indexOf("online-ordering");
+    const slug = orderingIndex >= 0 ? segments[orderingIndex + 1] : null;
+    return slug ? `clover:${slug}` : null;
+  }
+
   if (hostMatches(host, "doordash.com")) {
     const storeIndex = segments.indexOf("store");
     const id = storeIndex >= 0 ? segments[storeIndex + 2] : null;
@@ -248,6 +339,72 @@ function commerceProviderEntityKey(rawUrl: string): string | null {
     const restaurantIndex = segments.indexOf("restaurant");
     const id = restaurantIndex >= 0 ? segments[restaurantIndex + 2] : null;
     return id ? `grubhub:${id}` : null;
+  }
+
+  if (hostMatches(host, "squareup.com")) {
+    const entityIndex = segments.findIndex((segment) =>
+      ["gift", "store"].includes(segment),
+    );
+    const id = entityIndex >= 0 ? segments[entityIndex + 1] : null;
+    return id ? `square:${segments[entityIndex]}:${id}` : null;
+  }
+
+  if (hostMatches(host, "square.site")) {
+    const tenant = host.endsWith(".square.site")
+      ? host.slice(0, -".square.site".length).split(".").pop()
+      : null;
+    return tenant && !["app", "www"].includes(tenant)
+      ? `square-site:${tenant}`
+      : null;
+  }
+
+  if (hostMatches(host, "order.online")) {
+    const businessIndex = segments.indexOf("business");
+    const slug = businessIndex >= 0 ? segments[businessIndex + 1] : null;
+    return slug ? `order-online:${slug}` : null;
+  }
+
+  if (hostMatches(host, "spoton.com")) {
+    const tenant = host.endsWith(".spoton.com")
+      ? host.slice(0, -".spoton.com".length).split(".").pop()
+      : null;
+    const slug = segments[0];
+    if (tenant && !["app", "order", "www"].includes(tenant)) {
+      return `spoton:${tenant}`;
+    }
+    return tenant === "order" && slug?.startsWith("so-")
+      ? `spoton:${slug}`
+      : null;
+  }
+
+  if (hostMatches(host, "menufy.com")) {
+    const tenant = host.endsWith(".menufy.com")
+      ? host.slice(0, -".menufy.com".length).split(".").pop()
+      : null;
+    return tenant && !["app", "www"].includes(tenant)
+      ? `menufy:${tenant}`
+      : null;
+  }
+
+  if (hostMatches(host, "sliceapp.com")) {
+    const menuIndex = segments.lastIndexOf("menu");
+    const restaurantIndex = segments.indexOf("restaurants");
+    const slug =
+      menuIndex > 0
+        ? segments[menuIndex - 1]
+        : restaurantIndex >= 0
+          ? segments[restaurantIndex + 1]
+          : null;
+    return slug ? `slice:${slug}` : null;
+  }
+
+  if (hostMatches(host, "ezcater.com")) {
+    const cateringIndex = segments.indexOf("catering");
+    const slug =
+      cateringIndex >= 0 && segments.length >= cateringIndex + 3
+        ? segments[segments.length - 1]
+        : null;
+    return slug ? `ezcater:${slug}` : null;
   }
 
   return null;
@@ -330,8 +487,13 @@ export function isSafeOfficialCommerceDestination(
   ) {
     return false;
   }
+  if (isCommerceProviderHost(destinationHost)) {
+    // Redirect validation is stricter than a host allowlist. A provider-wide
+    // directory or search result is not a business action, even when a stale
+    // restaurant URL redirected there successfully.
+    return commerceProviderEntityKey(destination.toString()) !== null;
+  }
   if (isSameSiteFamily(sourceHost, destinationHost)) return true;
-  if (isCommerceProviderHost(destinationHost)) return true;
 
   const path = destination.pathname.toLowerCase();
   return (

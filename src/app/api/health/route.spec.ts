@@ -42,6 +42,27 @@ describe("GET /api/health", () => {
         },
         lastPublishedAt: "2026-07-28T15:55:00.000Z",
       },
+      readiness: {
+        status: "ready",
+        migrations: {
+          status: "ready",
+          hours: "ready",
+          search: "ready",
+          eventArchive: "ready",
+          sourceHealth: "ready",
+        },
+        heartbeats: {
+          status: "current",
+          feeds: "current",
+          eventArchive: "current",
+        },
+        surfaces: {
+          today: { status: "ready", reasons: [] },
+          ask: { status: "ready", reasons: [] },
+          map: { status: "ready", reasons: [] },
+          events: { status: "ready", reasons: [] },
+        },
+      },
     });
 
     const response = await GET();
@@ -55,6 +76,56 @@ describe("GET /api/health", () => {
       service: "frederick-radius",
       status: "operational",
       database: { status: "reachable" },
+      readiness: { status: "ready" },
+    });
+  });
+
+  it("keeps liveness at HTTP 200 when release readiness is on hold", async () => {
+    mocks.getCachedPublicHealthSnapshot.mockResolvedValue({
+      service: "frederick-radius",
+      status: "degraded",
+      generatedAt: "2026-08-10T16:00:00.000Z",
+      deployment: { environment: "production", revision: "abcdef012345" },
+      database: { status: "reachable", latencyMs: 18 },
+      data: {
+        status: "degraded",
+        tracked: 10,
+        current: 9,
+        stale: 1,
+        attention: 0,
+        unknown: 0,
+        diagnostics: null,
+        lastPublishedAt: "2026-08-10T15:55:00.000Z",
+      },
+      readiness: {
+        status: "hold",
+        migrations: {
+          status: "ready",
+          hours: "ready",
+          search: "ready",
+          eventArchive: "ready",
+          sourceHealth: "ready",
+        },
+        heartbeats: {
+          status: "degraded",
+          feeds: "failed",
+          eventArchive: "current",
+        },
+        surfaces: {
+          today: { status: "hold", reasons: ["feed_heartbeat_failed"] },
+          ask: { status: "partial", reasons: ["feed_heartbeat_failed"] },
+          map: { status: "partial", reasons: ["feed_heartbeat_failed"] },
+          events: { status: "hold", reasons: ["feed_heartbeat_failed"] },
+        },
+      },
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      status: "degraded",
+      readiness: { status: "hold" },
     });
   });
 });

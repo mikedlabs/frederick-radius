@@ -18,9 +18,9 @@
  *   - fr-county-line : the border itself, a warm field-guide hairline.
  *
  * All writes are guarded and idempotent; the style reloads on nav, so we
- * reapply on style.load just like applyFrederickPalette.
+ * reapply on style.load.
  */
-import type { Map as GLMap } from "mapbox-gl";
+import type { Map as GLMap } from "maplibre-gl";
 import COUNTY from "@/data/county-boundary.json";
 import { BRAND } from "@/lib/brand";
 

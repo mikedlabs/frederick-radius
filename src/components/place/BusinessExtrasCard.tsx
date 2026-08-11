@@ -102,19 +102,20 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
 
 function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex gap-2.5">
-      <span className="mt-0.5 shrink-0">{icon}</span>
-      <div className="min-w-0">
-        <dt
-          className="text-[11px] font-semibold uppercase tracking-[0.08em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {label}
-        </dt>
-        <dd className="text-[13px] leading-snug" style={{ color: "var(--app-ink)" }}>
-          {value}
-        </dd>
-      </div>
+    <div className="min-w-0">
+      <dt
+        className="flex items-start gap-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        <span className="mt-0.5 shrink-0">{icon}</span>
+        <span>{label}</span>
+      </dt>
+      <dd
+        className="ml-6 text-[13px] leading-snug"
+        style={{ color: "var(--app-ink)" }}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

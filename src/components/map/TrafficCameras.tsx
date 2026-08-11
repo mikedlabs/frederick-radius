@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Marker, Popup } from "react-map-gl/mapbox";
+import { Marker, Popup } from "react-map-gl/maplibre";
 import { Video, ExternalLink } from "lucide-react";
 import type { TrafficCamera } from "@/lib/integrations/chartCameras";
 import {

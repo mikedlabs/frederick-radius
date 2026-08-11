@@ -56,7 +56,6 @@ import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
 import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
-import PageChapter from "@/components/ui/PageChapter";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
@@ -360,13 +359,12 @@ export default async function HomePage() {
           phone. */}
       {whatsOn}
 
-      {/* Scheduled utilities stay useful without pretending to be live. */}
-      <PageChapter
-        label="Available today"
-        tone="civic"
-        variant="plain"
-        className="mt-5"
-      >
+      {/* Scheduled utilities keep their own precise headings. The former
+          "Available today" chapter register sat directly above OnNowBand's
+          "For today" heading, making one section look like two competing
+          sections on a phone. Group the utilities without another visible
+          label; each child already says exactly what it contains. */}
+      <div role="group" aria-label="Useful today" className="mt-5">
         {availableToday}
 
         {/* Tonight's light is a scheduled fact like the rest of this chapter.
@@ -383,7 +381,7 @@ export default async function HomePage() {
         <Suspense fallback={null}>
           <TomorrowPreview now={now} eventsPromise={eventsPromise} />
         </Suspense>
-      </PageChapter>
+      </div>
 
       {/* Secondary doors share one deliberate reveal. The old lower page also
           repeated generated collections, a rotating place list, and a taste

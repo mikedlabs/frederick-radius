@@ -28,4 +28,17 @@ describe("map-card place payload", () => {
       body.place?.google_photo_attribution?.google_maps_uri,
     ).toMatch(/^https:\/\/www\.google\.com\/maps\//);
   });
+
+  it("returns the known Cafe Nola photo used by the selected map card", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/places/map-card/cafe-nola"),
+      { params: Promise.resolve({ slug: "cafe-nola" }) },
+    );
+    const body = (await response.json()) as {
+      place?: { google_photo_url?: string };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.place?.google_photo_url).toMatch(/^\/api\/place-photo\?/);
+  });
 });

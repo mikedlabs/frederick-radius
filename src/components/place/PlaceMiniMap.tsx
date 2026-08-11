@@ -3,7 +3,7 @@ import Link from "next/link";
 /**
  * PlaceMiniMap — the Location-section locator on a place page.
  *
- * Was a full mapbox-gl instance (a ~200KB deferred chunk, a WebGL
+ * Was a full GL map instance (a ~200KB deferred chunk, a WebGL
  * context, and a billed map LOAD per scroll-into-view, styled dark-v11
  * against the paper app). Now one static locator <img> — zero GL cost,
  * CDN-cached, on-brand light style, category-colored pin — that taps

@@ -4,6 +4,7 @@ import {
   eventDetailPathsFromHtml,
   mapWithConcurrency,
 } from "./lib/prod-audit-events.mjs";
+import { publicReadinessGate } from "./lib/prod-audit-readiness.mjs";
 
 /**
  * Production acceptance canary — tests the apex URL after promotion.
@@ -29,9 +30,14 @@ const BASE = new URL(
 const EXPECTED_SHA = process.env.EXPECTED_SHA?.trim().toLowerCase() || null;
 const REQUIRE_EXPECTED_SHA = process.env.REQUIRE_EXPECTED_SHA === "1";
 const REQUEST_TIMEOUT_MS = Number(process.env.CANARY_TIMEOUT_MS) || 20_000;
+const CORE_TTFB_BUDGET_MS = Number(process.env.CORE_TTFB_BUDGET_MS) || 5_000;
+const ASK_TTFB_BUDGET_MS = Number(process.env.ASK_TTFB_BUDGET_MS) || 3_500;
 const USER_AGENT = "frederick-radius-production-canary/2";
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const CORE_ROUTES = ["/today", "/events", "/map"];
+// Ask is a primary product surface, not an optional utility. A release where
+// its workspace shell errors or redirects has failed even if the brochure-like
+// pages still answer.
+const CORE_ROUTES = ["/today", "/events", "/map", "/ask"];
 const STABLE_PLACE_PATH = "/places/brewers-alley-frederick";
 const EVENT_LINK_CONCURRENCY = 4;
 
@@ -67,6 +73,7 @@ async function request(path, { follow = true, accept = "*/*" } = {}) {
   let url = new URL(path, BASE);
 
   for (let index = 0; index < 6; index += 1) {
+    const requestStartedAt = Date.now();
     const response = await fetch(url, {
       redirect: "manual",
       cache: "no-store",
@@ -77,8 +84,9 @@ async function request(path, { follow = true, accept = "*/*" } = {}) {
         "User-Agent": USER_AGENT,
       },
     });
+    const ttfbMs = Date.now() - requestStartedAt;
     const location = response.headers.get("location");
-    hops.push({ status: response.status, url: url.href, location });
+    hops.push({ status: response.status, url: url.href, location, ttfbMs });
 
     if (!follow || !REDIRECT_STATUSES.has(response.status) || !location) {
       return {
@@ -149,6 +157,13 @@ function healthyHtml(path, result) {
     `${path} redirected off the apex to ${result.externalRedirect}`,
   );
   assertNoBetaRedirect(path, result);
+  const finalHop = result.hops.at(-1);
+  const budget = path === "/ask" ? ASK_TTFB_BUDGET_MS : CORE_TTFB_BUDGET_MS;
+  check(
+    Boolean(finalHop) && finalHop.ttfbMs <= budget,
+    `${path} begins responding in ${finalHop?.ttfbMs ?? "?"} ms`,
+    `${path} exceeded its ${budget} ms response budget (${finalHop?.ttfbMs ?? "unknown"} ms)`,
+  );
 }
 
 function manifestHref(html) {
@@ -201,6 +216,45 @@ async function run() {
     } catch (error) {
       bad(`${path} fetch failed: ${error.message}`);
     }
+  }
+
+  // `/api/health` is a liveness endpoint and deliberately stays HTTP 200 when
+  // optional data sources degrade. Promotion safety therefore lives in its
+  // JSON contract: every critical schema group and worker heartbeat must be
+  // observed as current, and no primary decision surface may be on hold.
+  try {
+    const health = await request("/api/health", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/health", health);
+    check(
+      health.status === 200,
+      "/api/health preserves its liveness contract",
+      `/api/health returned ${health.status}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(health.body);
+    } catch {
+      bad("/api/health did not return valid JSON");
+    }
+    if (payload) {
+      const gate = publicReadinessGate(payload);
+      if (gate.passes) {
+        ok("critical surface, migration, and heartbeat readiness is current");
+      } else {
+        for (const failure of gate.failures) {
+          bad(`/api/health readiness: ${failure}`);
+        }
+      }
+      if (gate.partialSurfaces.length > 0) {
+        note(
+          `honest fallback remains active on: ${gate.partialSurfaces.join(", ")}`,
+        );
+      }
+    }
+  } catch (error) {
+    bad(`/api/health readiness check failed: ${error.message}`);
   }
 
   // Installed-app contract: discover the linked manifest, verify its launch

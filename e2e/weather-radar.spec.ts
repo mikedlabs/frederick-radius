@@ -29,10 +29,10 @@ test.describe("weather radar", () => {
 
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    await page.getByRole("button", { name: "Choose what to see" }).click();
+    await page.getByRole("button", { name: "Browse map contents" }).click();
     const options = page.getByRole("region", { name: "Choose what to see" });
     await options
-      .getByRole("button", { name: "Check travel and live conditions" })
+      .getByRole("button", { name: "Travel & conditions" })
       .click();
 
     const layers = page.getByRole("region", { name: "Travel & conditions" });

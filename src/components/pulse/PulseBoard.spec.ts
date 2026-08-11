@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   AlertDataPanel,
   nameListSentence,
+  pulseAttentionChips,
   pulseClearedKeys,
   pulseDisplayGroups,
+  pulseWideReadingKeys,
+  secondarySignalsHeadline,
+  secondarySignalsSummary,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -32,6 +36,22 @@ function tile(
 }
 
 describe("Pulse status language", () => {
+  it("keeps calm readings out of Needs attention", () => {
+    const calmAir = { tone: "cool", label: "Air good", key: "air" } as const;
+    expect(
+      pulseAttentionChips([calmAir], {
+        allClear: true,
+        showAlertData: false,
+      }),
+    ).toEqual([]);
+    expect(
+      pulseAttentionChips([calmAir], {
+        allClear: false,
+        showAlertData: false,
+      }),
+    ).toEqual([calmAir]);
+  });
+
   it("keeps missing data visually distinct from an active alert", () => {
     expect(pulseStatusWord({
       allClear: false,
@@ -256,5 +276,34 @@ describe("Pulse quiet-strip naming", () => {
       "Power out, 311 reports, and Schools",
     );
     expect(nameListSentence([])).toBe("");
+  });
+
+  it("never describes unavailable checks as all clear", () => {
+    expect(secondarySignalsHeadline(0, 0)).toBe("Other source checks");
+    expect(secondarySignalsHeadline(2, 0)).toBe("Some source checks are incomplete");
+    expect(secondarySignalsHeadline(0, 1)).toBe("Some source checks are unavailable");
+    expect(secondarySignalsHeadline(4, 2)).toBe("Some source checks are unavailable");
+    expect(secondarySignalsHeadline(0, 0, 1)).toBe("Some sources are not connected");
+  });
+
+  it("summarizes degraded checks without contradicting the active alert above", () => {
+    expect(secondarySignalsSummary(12, 1, 3)).toBe(
+      "4 of 12 checks did not return complete data. Open for source details.",
+    );
+    expect(secondarySignalsSummary(1, 0, 0)).toBe(
+      "1 supporting check has no additional active report.",
+    );
+    expect(secondarySignalsSummary(12, 1, 0, 2)).toBe(
+      "1 of 10 connected checks did not return complete data. 2 sources are not connected. Open for source details.",
+    );
+  });
+
+  it("fills the last mobile grid seat without changing wider layouts", () => {
+    const weather = { ...tile("weather"), kind: "feature" as const };
+    const river = { ...tile("river"), kind: "gauge" as const };
+    const air = { ...tile("air"), kind: "gauge" as const };
+
+    expect([...pulseWideReadingKeys([weather, river])]).toEqual(["river"]);
+    expect([...pulseWideReadingKeys([weather, river, air])]).toEqual([]);
   });
 });

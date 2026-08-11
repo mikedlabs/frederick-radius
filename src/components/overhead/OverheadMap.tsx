@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Map, { Marker, Popup, AttributionControl } from "react-map-gl/mapbox";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
-import { STYLE_URL } from "@/components/map/constants";
-import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import Map, { Marker, Popup, AttributionControl } from "react-map-gl/maplibre";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
-import "mapbox-gl/dist/mapbox-gl.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 /**
  * OverheadMap — the "where are the planes" answer on a real map. Every
  * transmitting aircraft is plotted at its true position on the same
- * Frederick-palette Mapbox base the rest of the app uses, each a plane glyph
+ * self-hosted county basemap the rest of the app uses, each a plane glyph
  * rotated to its heading and colored by altitude band. Tap one for a popup with
  * its callsign, route (from → to), altitude, and speed.
  *
@@ -56,6 +54,7 @@ export default function OverheadMap({
   height?: number;
 }) {
   const [hover, setHover] = useState<string | null>(null);
+  const mapStyle = useFrederickFlavorStyle();
   const sel = planes.find((p) => p.hex === selected) ?? null;
   const open = sel ?? planes.find((p) => p.hex === hover) ?? null;
 
@@ -65,14 +64,12 @@ export default function OverheadMap({
       style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
-        mapboxAccessToken={MAPBOX_TOKEN}
-        mapStyle={STYLE_URL}
+        mapStyle={mapStyle}
         initialViewState={{ longitude: FREDERICK_CENTER.lng, latitude: FREDERICK_CENTER.lat, zoom: 7.7 }}
         style={{ width: "100%", height: "100%" }}
         interactive
         cooperativeGestures={false}
         attributionControl={false}
-        onLoad={(e) => applyFrederickPalette(e.target)}
         onClick={() => onSelect(null)}
       >
         <AttributionControl compact position="bottom-right" />
@@ -163,7 +160,7 @@ export default function OverheadMap({
           </Popup>
         )}
       </Map>
-      {/* No on-map badge: it collides with the Mapbox attribution logo, and the
+      {/* No on-map badge: it collides with the basemap attribution, and the
           legend row beneath the map already carries "N in range · live". */}
     </div>
   );

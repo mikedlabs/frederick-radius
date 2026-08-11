@@ -1,4 +1,11 @@
 {
+  "concettas-main-street-bistro-mount-airy": {
+    "status": "operational",
+    "effective_at": "2026-08-10",
+    "review_after": "2026-08-24",
+    "source": "https://concettasmainstreet.com/",
+    "note": "The official Concetta's Main Street Bistro website presents the Mount Airy restaurant as active and offers current menu and ordering links. This corrects a conflicting provider closure signal without publishing provider hours until they are verified again."
+  },
   "green-health-docs": {
     "status": "operational",
     "effective_at": "2026-07-31",

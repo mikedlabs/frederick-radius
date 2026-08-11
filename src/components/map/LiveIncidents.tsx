@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
-import { Marker, Popup } from "react-map-gl/mapbox";
+import { Marker, Popup } from "react-map-gl/maplibre";
 import { AlertTriangle } from "lucide-react";
 import type {
   LiveIncidentSignal,

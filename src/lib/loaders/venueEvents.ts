@@ -2,7 +2,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import { audienceFromText } from "@/lib/events/audienceSignals";
 import RAW from "@/data/venue-events.json" with { type: "json" };
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { resolveReviewedEventVenue } from "@/lib/events/venue-resolver";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -67,8 +67,6 @@ export function upcomingVenueEvents(now: Date = new Date()): VenueEvent[] {
   }).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
 
-const normLoose = (s: string): string => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-
 /**
  * Resolve a scraped venue to its place record. The ingest slug is often a
  * SHORTENED form ("weinberg-center") of the full place slug
@@ -77,34 +75,16 @@ const normLoose = (s: string): string => (s || "").toLowerCase().replace(/[^a-z0
  * "…Frederick"). The old exact-slug-only lookup missed those, so the
  * event lost both its venue's coordinates AND its borrowable photo — the
  * cause of venue events rendering as photoless cards on a US county app.
- * Try, in trust order: exact slug → a full slug that starts with the
- * ingest slug → an exact or prefix normalized-name match. Photo-bearing
- * candidates win ties so the card gets a real thumbnail when one exists.
+ * The shared resolver accepts only an exact canonical slug, reviewed alias,
+ * or unique exact normalized name. Prefix matching used to be convenient but
+ * was not strong enough to move a map pin; fuzzy matching now remains confined
+ * to the precision-gated thumbnail path.
  */
-function resolveVenuePlace(slug: string, name: string): ReturnType<typeof clientPlaceBySlug> {
-  const exact = clientPlaceBySlug(slug);
-  if (exact) return exact;
-  const all = clientPlaces();
-  type VenueCandidate = { slug: string; google_photo_url?: string };
-  const withPhotoFirst = (a: VenueCandidate, b: VenueCandidate) =>
-    Number(Boolean(b.google_photo_url)) - Number(Boolean(a.google_photo_url)) ||
-    a.slug.length - b.slug.length;
-  const pref = slug.endsWith("-") ? slug : `${slug}-`;
-  const byPrefix = all
-    .filter((p) => p.slug === slug || p.slug.startsWith(pref))
-    .sort(withPhotoFirst)[0];
-  if (byPrefix) return byPrefix;
-  const nk = normLoose(name);
-  if (nk.length >= 5) {
-    const byName = all
-      .filter((p) => {
-        const k = normLoose(p.name);
-        return k === nk || k.startsWith(nk);
-      })
-      .sort(withPhotoFirst)[0];
-    if (byName) return byName;
-  }
-  return undefined;
+function resolveVenuePlace(slug: string, name: string) {
+  return resolveReviewedEventVenue({
+    venue_place_slug: slug,
+    venue_name: name,
+  })?.place;
 }
 
 /**

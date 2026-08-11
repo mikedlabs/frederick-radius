@@ -11,7 +11,10 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import {
+  EVENT_IDENTITY_BATCH_LIMIT,
+  EventIdentityStoreUnavailableError,
   archivedEventFromSnapshot,
+  archivedEventsBySlugs,
   persistEventIdentity,
   upcomingArchivedEventRoutes,
 } from "./event-identity";
@@ -102,6 +105,70 @@ describe("event identity archive", () => {
     expect(sql).toContain("FROM PUBLIC, anon, authenticated, service_role");
     expect(sql).toContain("TO anon, authenticated, service_role");
     expect(sql).not.toContain("RETURNS TABLE (\n  id uuid");
+  });
+
+  it("resolves canonical and historical slugs in one bounded archive query", async () => {
+    const current = snapshot();
+    const sql = vi.fn(() =>
+      Promise.resolve([
+        {
+          requested_slug: "old-event-title-2026-07-30",
+          id: "11111111-1111-4111-8111-111111111111",
+          canonical_slug: current.slug,
+          snapshot: { ...current, slug: "old-event-title-2026-07-30" },
+          tombstoned: false,
+          last_seen_at: "2026-08-03T12:00:00.000Z",
+        },
+      ]),
+    );
+    mocks.getSql.mockReturnValue(sql);
+
+    const result = await archivedEventsBySlugs([
+      "old-event-title-2026-07-30",
+      "missing-event-2026-07-30",
+    ]);
+
+    expect(sql).toHaveBeenCalledTimes(1);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]).toMatchObject({
+      requestedSlug: "old-event-title-2026-07-30",
+      canonicalSlug: current.slug,
+      event: { slug: current.slug },
+    });
+    expect(result.unresolvedSlugs).toEqual([]);
+    expect(sql.mock.calls[0]).toContainEqual([
+      "old-event-title-2026-07-30",
+      "missing-event-2026-07-30",
+    ]);
+  });
+
+  it("caps archive batch input before the single database operation", async () => {
+    const boundValues: unknown[] = [];
+    const sql = vi.fn(
+      (_strings: TemplateStringsArray, ...values: unknown[]) => {
+        boundValues.push(...values);
+        return Promise.resolve([]);
+      },
+    );
+    mocks.getSql.mockReturnValue(sql);
+    const requested = Array.from(
+      { length: EVENT_IDENTITY_BATCH_LIMIT + 25 },
+      (_, index) => `event-${index}`,
+    );
+
+    await archivedEventsBySlugs(requested);
+
+    expect(sql).toHaveBeenCalledTimes(1);
+    const boundSlugs = boundValues[0] as string[];
+    expect(boundSlugs).toHaveLength(EVENT_IDENTITY_BATCH_LIMIT);
+  });
+
+  it("reports an unavailable archive instead of treating every slug as missing", async () => {
+    mocks.getSql.mockReturnValue(null);
+
+    await expect(
+      archivedEventsBySlugs(["saved-event-2026-07-30"]),
+    ).rejects.toBeInstanceOf(EventIdentityStoreUnavailableError);
   });
 
   it("returns only valid canonical routes for the bounded sitemap read", async () => {

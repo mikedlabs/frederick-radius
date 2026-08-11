@@ -8,8 +8,8 @@ export async function GET() {
   // This is a liveness response with component status in its JSON body. It
   // deliberately remains HTTP 200 when a component is degraded so an uptime
   // probe can distinguish "the app answered" from "the database/feed layer
-  // needs attention." Monitors must parse `status`, `database.status`, and
-  // `data.status`; HTTP status alone is not a readiness signal.
+  // needs attention." Monitors must parse `readiness.surfaces`, migrations,
+  // and heartbeats; HTTP status alone is not a release-readiness signal.
   return NextResponse.json(await getCachedPublicHealthSnapshot(), {
     status: 200,
     headers: {

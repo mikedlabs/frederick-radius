@@ -11,12 +11,54 @@ const quiet: SmartMapSignals = {
 };
 
 describe("smartMapDefault", () => {
-  it("puts the radar on during an active weather alert, above everything", () => {
+  it("leads with an active weather alert and keeps radar one tap away", () => {
     const out = smartMapDefault(
       { hour: 19, weekday: 5 },
       { ...quiet, activeWeatherAlert: true, musicTonightCount: 8 },
     );
-    expect(out?.layers).toEqual(["radar"]);
+    expect(out?.layers).toEqual([]);
+    expect(out?.action).toEqual({
+      layer: "radar",
+      label: "See radar",
+    });
+  });
+
+  it("lets the shared air-quality hold outrank an otherwise useful market", () => {
+    const out = smartMapDefault(
+      { hour: 9, weekday: 6 },
+      {
+        ...quiet,
+        marketsOpenTodayCount: 2,
+        outdoorSafetyHold: {
+          kind: "air-quality",
+          reason: "AirNow reports AQI 164, Unhealthy, for Frederick.",
+        },
+      },
+    );
+
+    expect(out?.reason).toBe(
+      "AirNow reports AQI 164, Unhealthy, for Frederick.",
+    );
+    expect(out?.action).toEqual({
+      href: "/pulse",
+      label: "See conditions",
+    });
+  });
+
+  it("uses radar as the immediate action for a severe weather hold", () => {
+    const out = smartMapDefault(
+      { hour: 18, weekday: 5 },
+      {
+        ...quiet,
+        musicTonightCount: 6,
+        outdoorSafetyHold: {
+          kind: "weather",
+          reason: "Severe Thunderstorm Warning is active for Frederick County.",
+        },
+      },
+    );
+
+    expect(out?.action).toEqual({ layer: "radar", label: "See radar" });
   });
 
   it("leads Friday evening with tonight's music and the parking answer", () => {
@@ -24,7 +66,11 @@ describe("smartMapDefault", () => {
       { hour: 18, weekday: 5 },
       { ...quiet, musicTonightCount: 6, parkingCount: 5 },
     );
-    expect(out?.layers).toEqual(["music-tonight", "parking"]);
+    expect(out?.layers).toEqual(["parking"]);
+    expect(out?.action).toEqual({
+      href: "/map?music=tonight",
+      label: "See tonight's shows",
+    });
   });
 
   it("never suggests music on a night with no shows", () => {
@@ -36,7 +82,11 @@ describe("smartMapDefault", () => {
       { hour: 9, weekday: 6 },
       { ...quiet, marketsOpenTodayCount: 2 },
     );
-    expect(out?.layers).toEqual(["markets"]);
+    expect(out?.layers).toEqual([]);
+    expect(out?.action).toEqual({
+      href: "/map?intent=shop&sub=markets",
+      label: "Show markets",
+    });
   });
 
   it("shows roads at commute time only when a corridor is actually worse", () => {
@@ -81,10 +131,14 @@ describe("smart default wiring contracts (map program phase 1)", () => {
     expect(appMap).toContain('seeds.add("civic");');
     expect(appMap).toContain('seeds.add("traffic");');
     expect(appMap).toContain('seeds.add("incidents");');
-    // music-tonight surfaces as the reason line's one-tap deep link, so the
-    // lens always reproduces from its URL.
-    expect(appMap).toContain('href="/map?music=tonight"');
+    // Lens suggestions surface through a shareable action supplied by the
+    // selector, never through a fake layer key.
+    expect(appMap).toContain('"href" in smartDefault.action');
+    expect(appMap).toContain("setShowRadar(true)");
     expect(appMap).not.toContain('seeds.add("music-tonight")');
+    expect(appMap).not.toContain('seeds.add("markets")');
+    expect(appMap).toContain("!selectionOpen");
+    expect(appMap).toContain("!q.trim()");
   });
 
   it("keeps the suggestion from fossilizing into a stored preference", () => {

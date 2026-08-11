@@ -6,6 +6,20 @@ import {
   type PublicHealthSnapshot,
   summarizePublicSourceHealth,
 } from "./public-health";
+import type { OperationalReadinessEvidence } from "@/lib/quality/surface-readiness";
+
+const operationalReady: OperationalReadinessEvidence = {
+  migrations: {
+    hours: "ready",
+    search: "ready",
+    eventArchive: "ready",
+    sourceHealth: "ready",
+  },
+  heartbeats: {
+    feeds: "current",
+    eventArchive: "current",
+  },
+};
 
 function source(
   id: string,
@@ -83,6 +97,17 @@ function snapshot(generatedAt: string): PublicHealthSnapshot {
       },
       lastPublishedAt: generatedAt,
     },
+    readiness: {
+      status: "ready",
+      migrations: { status: "ready", ...operationalReady.migrations },
+      heartbeats: { status: "current", ...operationalReady.heartbeats },
+      surfaces: {
+        today: { status: "ready", reasons: [] },
+        ask: { status: "ready", reasons: [] },
+        map: { status: "ready", reasons: [] },
+        events: { status: "ready", reasons: [] },
+      },
+    },
   };
 }
 
@@ -155,6 +180,7 @@ describe("public health summary", () => {
       loadSourceLedger: async () => [
         source("current", "healthy", "2026-07-28T15:00:00.000Z"),
       ],
+      loadOperationalReadiness: async () => operationalReady,
     });
 
     expect(result).toMatchObject({
@@ -171,6 +197,11 @@ describe("public health summary", () => {
         tracked: 1,
         current: 1,
       },
+      readiness: {
+        status: "ready",
+        migrations: { status: "ready" },
+        heartbeats: { status: "current" },
+      },
     });
     expect(result.database.latencyMs).toEqual(expect.any(Number));
   });
@@ -182,6 +213,7 @@ describe("public health summary", () => {
         source("current", "healthy", "2026-07-28T15:00:00.000Z"),
         source("late", "stale", "2026-07-27T12:00:00.000Z"),
       ],
+      loadOperationalReadiness: async () => operationalReady,
     });
 
     expect(result).toMatchObject({
@@ -192,6 +224,15 @@ describe("public health summary", () => {
         tracked: 2,
         current: 1,
         stale: 1,
+      },
+      readiness: {
+        status: "partial",
+        surfaces: {
+          today: { status: "partial" },
+          ask: { status: "partial" },
+          map: { status: "partial" },
+          events: { status: "partial" },
+        },
       },
     });
   });
@@ -208,6 +249,7 @@ describe("public health summary", () => {
       loadSourceLedger: async () => {
         throw new Error(secret);
       },
+      loadOperationalReadiness: async () => operationalReady,
     });
 
     expect(result).toMatchObject({
@@ -235,6 +277,7 @@ describe("public health summary", () => {
         throw new Error(secret);
       },
       loadSourceLedger: async () => [],
+      loadOperationalReadiness: async () => operationalReady,
     });
     expect(databaseFailure.database.status).toBe("unavailable");
     expect(JSON.stringify(databaseFailure)).not.toContain(secret);
@@ -244,6 +287,7 @@ describe("public health summary", () => {
       loadSourceLedger: async () => {
         throw new Error(secret);
       },
+      loadOperationalReadiness: async () => operationalReady,
     });
     expect(sourceFailure.data.status).toBe("unavailable");
     expect(JSON.stringify(sourceFailure)).not.toContain(secret);
@@ -257,6 +301,38 @@ describe("public health summary", () => {
       level: "warn",
       event: "public_health_dependency_failure",
       dependency: "source-ledger",
+      outcome: "rejected",
+    }));
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    warn.mockRestore();
+  });
+
+  it("fails operational evidence closed without changing the liveness contract", async () => {
+    const secret = "postgres://private-operational-check";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const result = await getPublicHealthSnapshot({
+      probeDatabase: async () => undefined,
+      loadSourceLedger: async () => [
+        source("current", "healthy", "2026-07-28T15:00:00.000Z"),
+      ],
+      loadOperationalReadiness: async () => {
+        throw new Error(secret);
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: "degraded",
+      readiness: {
+        status: "partial",
+        migrations: { status: "unknown" },
+        heartbeats: { status: "unknown" },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain(secret);
+    expect(warn).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "public_health_dependency_failure",
+      dependency: "operational-readiness",
       outcome: "rejected",
     }));
     expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);

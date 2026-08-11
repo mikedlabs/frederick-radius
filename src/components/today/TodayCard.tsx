@@ -8,11 +8,13 @@ import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integr
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
 
 /** The hero is a glance, not a live-feed loading screen. Cached safety data is
- * normally immediate; a cold or degraded provider gets a short budget and an
- * explicit unavailable note while the dedicated alert surfaces keep loading. */
-export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 500;
+ * normally immediate. A cold provider gets enough time to produce a trustworthy
+ * first read inside the page's streaming boundary; a degraded provider still
+ * collapses to an explicit unavailable note. */
+export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 2_500;
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -34,13 +36,6 @@ export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 500;
  * IS the hero rather than a card stacked on top of one. Server
  * component; the NWS fetch is shared/cached with the rest of the page.
  */
-
-function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise.catch(() => fallback),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
-}
 
 // The weather read beside the greeting comes from lib/weather-verdict —
 // the SAME engine NowIntel uses — so the hero and the "right now" line
@@ -109,12 +104,20 @@ export function compactWeatherRead({
           ? "The weather-alert feed is unavailable."
           : "The air-quality reading is unavailable.";
     return {
-      headline: condition.trim(),
+      headline: sentenceCaseForecast(condition),
       safetyNote,
     };
   }
 
   return { headline: verdict, safetyNote: null };
+}
+
+/** NWS short forecasts arrive in headline case. In a sentence-scale weather
+ * read that makes ordinary conditions look like a generated title, so present
+ * the provider text as natural sentence case without changing its meaning. */
+export function sentenceCaseForecast(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "";
 }
 
 export default async function TodayCard() {
@@ -125,17 +128,17 @@ export default async function TodayCard() {
   // provider never holds the whole hero hostage. A failed alert feed is carried
   // forward explicitly; the verdict then falls back to neutral copy.
   const [forecast, alertResult, airObservations] = await Promise.all([
-    within(
+    withDeadlineFallback(
       getNwsForecast(FREDERICK_CENTER),
       TODAY_SAFETY_GLANCE_DEADLINE_MS,
       null,
     ),
-    within<NwsAlertsResult>(
+    withDeadlineFallback<NwsAlertsResult>(
       getNwsAlertsResult(),
       TODAY_SAFETY_GLANCE_DEADLINE_MS,
       { alerts: [], available: false },
     ),
-    within(
+    withDeadlineFallback(
       getAirQuality(FREDERICK_CENTER, {
         deadlineMs: TODAY_SAFETY_GLANCE_DEADLINE_MS,
       }),

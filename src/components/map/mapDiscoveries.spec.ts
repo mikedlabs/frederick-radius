@@ -17,7 +17,6 @@ function place(over: Partial<MapPinPlace> & Pick<MapPinPlace, "slug" | "name" | 
     open_status: { state: "unknown" },
     is_verified: true,
     field_notes: false,
-    deal_hook: undefined,
     source: "manual",
     municipality: "frederick",
     short_blurb: "",

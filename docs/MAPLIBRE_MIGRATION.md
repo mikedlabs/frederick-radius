@@ -1,80 +1,102 @@
-# MapLibre migration plan (task #36 → the swap)
+# MapLibre migration (task #36 → the swap) — DONE 2026-08-10
 
-Decision context: the owner directed the map program toward MapLibre +
-self-hosted county PMTiles (2026-08-06). The bench (`/admin/basemap`) and
-full-screen preview (`/admin/basemap/full`) already run the target
-architecture end to end: county extract fetched at build time
-(`scripts/fetch-basemap.mjs`), flavor style (`flavorStyle.ts` +
-`frederickBasemapFlavor.ts`), vendored worker
-(`ensureMapLibreWorker()` — Turbopack does not rewrite MapLibre v6's
-`new Worker(new URL(...))`; see `flavorStyle.ts` for the war story).
+The owner directed the map program toward MapLibre + self-hosted county
+PMTiles on 2026-08-06. Every GL surface in the app now renders that way.
+This file is kept as the record of what moved, what was lost, and the
+traps that cost real time, because the same traps apply to any future
+basemap work.
 
-Audited 2026-08-06. Ten GL surfaces exist; nine render Mapbox, one
-(`full/FullFlavorPreview.tsx`) is already pure MapLibre.
+## What ships now
 
-## What the swap is NOT
+The county extract is fetched at build time (`scripts/fetch-basemap.mjs`)
+into `public/basemap/`: the PMTiles archive, the Protomaps sprite set,
+three Noto glyph stacks over four Latin ranges, and a vendored MapLibre
+worker. `src/lib/map/frederickFlavorStyle.ts` builds the style from
+`frederickBasemapFlavor.ts`; `src/components/map/useFrederickFlavorStyle.ts`
+is the one hook every surface calls.
 
-Swapping the renderer removes tile/style billing and the Mapbox token
-from map *rendering*. It does NOT touch six server-side Mapbox REST APIs
-in real use — Isochrone (`api/isochrone`), Directions walking
-(`api/walk-time`), Directions-Matrix (`api/travel-matrix`,
-`mapboxMatrix.ts`), Geocoding v6 (`mapboxGeocode.ts`, flag-gated),
-Search Box (`api/map/search-fallback`), Static Images
-(`api/static-map` → place/event minimaps). Those stay on Mapbox until
-each gets its own replacement decision (Valhalla/ORS for isochrone +
-directions needs an owner-provisioned key; Static Images could become
-self-rendered MapLibre snapshots later). Mapbox ToS wants Mapbox-API
-results shown on Mapbox maps, so the isochrone/directions replacements
-should land in the SAME release as the /radius and walk-route surfaces
-they draw on.
+Surfaces, in the order they moved: EventsMapInner, OverheadMap,
+CollectClient, ReportClient, AerialTimeMachine, then AppMap + RadiusMap +
+TransitMap together. The last three had to move in one commit — they share
+fifteen children (MapOverlays, LiveBuses, LiveMarcTrains, FloodContext,
+SnowRoutes, RoadWorkZones, the incident and camera pins) and react-map-gl
+gives its `/mapbox` and `/maplibre` entries separate React contexts, so a
+`Source` from one entry inside a `Map` from the other never finds its
+context. Mixed operation is fine *across* surfaces, impossible *within* a
+shared component tree.
 
-## Order of work
+## What was given up
 
-1. **Foundation PR** — shared `frederickFlavorStyle` promoted out of
-   /admin into `src/lib/map/`; sprites + glyphs vendored into
-   `public/basemap/` (fetch-basemap.mjs grows an assets step) so the
-   admin relay and the `protomaps.github.io` CSP entry can die.
-2. **Leaf surfaces first**, one PR each, to shake out the pattern where
-   blast radius is small: TransitMap (also feeds /pulse), EventsMapInner
-   (dark style → flavor dusk variant), OverheadMap, AerialTimeMachine,
-   ReportClient, CollectClient. Each is: import swap to
-   `react-map-gl/maplibre`, css swap, `ensureMapLibreWorker()`, style →
-   flavor, type imports `mapbox-gl` → `maplibre-gl`, drop
-   `mapboxAccessToken`.
-3. **RadiusMap** — carries `setTerrain` (option-shape differs in
-   MapLibre) and draws isochrones; pair with the isochrone provider
-   swap.
-4. **AppMap last**, after the #77 split finishes. Its Mapbox couplings:
-   `frederick-style.json` + `applyFrederickPalette.ts` are keyed to
-   Streets-v8 layer names and must be REPLACED by the flavor (they are
-   the old way of achieving the same brand goal); `mapboxStandardPreview
-   .ts` (setConfigProperty) gets deleted, not ported; the
-   `mapbox://mapbox.mapbox-terrain-dem-v1` hillshade needs a raster-dem
-   alternative (Terrarium tiles on AWS, or drop hillshade initially);
-   `mapbox://mapbox.mapbox-traffic-v1` (MapboxTraffic layer) has no free
-   equivalent — accept the feature drop; MDOT incident/camera layers
-   already cover the need.
-5. **Cleanup PR** — CSP entries (`api.mapbox.com`, `events.mapbox.com`,
-   `*.tiles.mapbox.com` from `next.config.ts` once no renderer needs
-   them; keep whichever REST APIs remain), preconnect hints in
-   `layout.tsx` + `map/page.tsx`, `.mapboxgl-*` selectors in e2e specs
-   (`discovery-shell`, `map-result-area`, `map-search-selection`) →
-   `.maplibregl-*`, and the Mapbox-logo assertions (MapLibre has no
-   logo control; attribution text remains mandatory for OSM/Protomaps).
+- **Live traffic flow.** `mapbox-traffic-v1` has no free equivalent and
+  MapLibre may not legally serve it. The "Roads now" control and every
+  other layer under it — CHART incidents, cameras, road work, snow routes,
+  flood context — are unchanged. Lost: 8-minute-old road-speed coloring.
+- **Hillshade.** `mapbox-terrain-dem-v1` went with it, so the county
+  renders flat and the aerial mode tilts rather than rising. The gate in
+  AppMap is still `map.getSource("fr-dem")`, which is false today and true
+  again the moment a county hillshade built from USGS 3DEP lands in
+  `public/basemap` — no call-site change needed. That is the intended
+  follow-up.
 
-## Gotchas already paid for
+## What the swap did NOT touch
 
-- Worker vendoring (`ensureMapLibreWorker`) — mandatory on every
-  surface; a missed call renders ground color and nothing else, with no
-  error surfaced.
-- Byte-serving: any server in front of the pmtiles file must answer
-  Range requests without re-encoding (fetch() decompression made a relay
-  forward stale content-lengths once; static serving on Vercel is
-  correct).
-- react-map-gl v8 ships both entry points, so mixed operation during
-  the leaf-first rollout is supported — no big-bang required.
+Six server-side Mapbox REST APIs remain in real use: Isochrone
+(`api/isochrone`), Directions walking (`api/walk-time`),
+Directions-Matrix (`api/travel-matrix`, `mapboxMatrix.ts`), Geocoding v6
+(`mapboxGeocode.ts`, flag-gated), Search Box
+(`api/map/search-fallback`), and Static Images (`api/static-map` → place
+and venue mini-maps). All are server-to-server, which is why the browser
+CSP now names no mapbox.com host at all.
 
-## Rollback
+Mapbox ToS wants Mapbox-API results shown on Mapbox maps. The isochrone
+and directions results are now drawn on a MapLibre map, so replacing
+those two providers (Valhalla or ORS, needs an owner-provisioned key) is
+the next contractual item, not an optimization.
 
-Each surface PR reverts independently. Until step 5 removes CSP/tokens,
-a revert restores Mapbox rendering with zero config work.
+## Traps, all paid for
+
+- **The worker.** Turbopack does not rewrite MapLibre v6's
+  `new Worker(new URL(...))`, so the worker is constructed with an empty
+  URL and dies. Tile fetching lives in the worker: the map paints its
+  background colour and stops, with no error event. Hence the vendored
+  worker and `ensureMapLibreWorker()`. Re-copy both files from
+  `node_modules/maplibre-gl/dist` on every maplibre-gl upgrade.
+- **Glyph directory names.** Write the DECODED stack name to disk. A
+  static server decodes `Noto%20Sans%20Regular` before matching, so
+  writing the encoded form produces a directory that 404s on every glyph.
+- **Font stacks.** MapLibre answers a missing glyph range with a console
+  warning and renders the codepoint with a local browser font, so a wrong
+  or absent `text-font` yields labels that are subtly wrong rather than
+  missing. Every symbol layer must name a vendored stack explicitly;
+  silence inherits the spec default of Open Sans, which we do not serve.
+  `src/lib/map/mapLabelFonts.spec.ts` enforces both halves.
+- **CSS class names.** MapLibre emits `.maplibregl-*` only. Fifty-nine
+  `.mapboxgl-*` selectors — attribution positioning, popup chrome, and
+  the outside-tap handlers deciding whether a tap hit the canvas — became
+  silently dead.
+- **`window` during render.** The flavor hook read `window.location.origin`
+  in a `useMemo`, which is fine behind `ssr: false` and fatal on
+  `/map?mode=radius`, where AppMap renders on the server first.
+- **Protocol lifetime.** `addProtocol("pmtiles", …)` is process-global.
+  Pairing it with `removeProtocol` on unmount is correct in isolation and
+  wrong in an SPA: leaving one map tears the handler out from under every
+  other surface. Register once, never unregister.
+- **API shape differences** that are type errors, not silent breakage:
+  `attributionControl` takes an options object, and `maxBounds` takes a
+  flat `[W, S, E, N]` tuple (`toFlatBounds()` in `map/constants.ts`).
+- **Byte-serving.** Any server in front of the pmtiles file must answer
+  Range requests without re-encoding. Static serving on Vercel is correct;
+  a fetch()-based relay forwarded stale content-lengths once.
+
+## Retired along the way
+
+`applyFrederickPalette.ts` (the runtime layer-walk), `frederick-style.json`
+and `scripts/build-map-style.mjs` (the baked palette), `mapboxStandardPreview.ts`,
+`MapboxTraffic.tsx` + `mapboxTrafficStyle.ts`, the `/admin/basemap` judging
+bench, `docs/mapbox-field-guide-style.md`, and the `mapbox-gl` dependency.
+
+## Known red, not caused by this work
+
+Nine map e2e specs fail on this branch; eleven fail on `origin/main`. The
+common cause is a dock affordance the specs still expect by its old name
+(`Choose what to see` as a button). Fixing that suite is its own concern.

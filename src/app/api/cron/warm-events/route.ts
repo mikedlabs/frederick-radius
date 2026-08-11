@@ -41,14 +41,16 @@ import {
 } from "@/lib/integrations/ical-live";
 import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
 import { withDeadlineOutcome } from "@/lib/promise-deadline";
-import { EVENT_WARM_BUDGET_MS } from "./config";
+import {
+  EVENT_ALERT_BUDGET_MS,
+  EVENT_WARM_BUDGET_MS,
+} from "./config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // The cron is the patient path: it can wait out the slow feeds (each
 // capped at the 8s per-feed timeout) so users never have to.
 export const maxDuration = 90;
-const ALERT_DEADLINE_MS = 8_000;
 
 function errMsg(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
@@ -178,11 +180,11 @@ export async function GET(request: Request) {
     ),
   };
 
-  const body = {
+  const body = () => ({
     ok: failures.length === 0,
     duration_ms: Date.now() - t0,
     warmed,
-  };
+  });
 
   if (failures.length > 0) {
     Sentry.captureMessage(
@@ -194,10 +196,10 @@ export async function GET(request: Request) {
     // latency cost to the user. sendWarmFailureAlert always resolves.
     await withDeadlineOutcome(
       sendWarmFailureAlert(failures),
-      ALERT_DEADLINE_MS,
+      EVENT_ALERT_BUDGET_MS,
     );
-    return NextResponse.json(body, { status: 500 });
+    return NextResponse.json(body(), { status: 500 });
   }
 
-  return NextResponse.json(body);
+  return NextResponse.json(body());
 }

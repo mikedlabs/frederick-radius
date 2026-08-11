@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
@@ -80,8 +82,28 @@ async function fixedReportCount(): Promise<number | null> {
   }
 }
 
-export default async function TrustPage() {
+/** The one live-data line on an otherwise static page, streamed rather than
+ *  prerendered. connection() opts this subtree out of static generation, so
+ *  the database is never on the deploy path at all — the timeout above is
+ *  now the second line of defence rather than the only one. The page shell
+ *  still renders instantly from the build. */
+async function FixedReportLine() {
+  await connection();
   const fixedReports = await fixedReportCount();
+  if (fixedReports === null) return null;
+  return (
+    <p
+      className="mt-2 text-[14px] leading-relaxed"
+      style={{ color: "var(--app-ink-2)" }}
+    >
+      So far, reader reports have led to{" "}
+      {fixedReports.toLocaleString("en-US")} fixed{" "}
+      {fixedReports === 1 ? "listing" : "listings"}.
+    </p>
+  );
+}
+
+export default async function TrustPage() {
   const placeCount = new Intl.NumberFormat("en-US").format(CLIENT_PLACES.length);
   // The same measurements the internal coverage board runs — shown here so
   // this page proves its claims instead of asserting them. Aggregate only.
@@ -371,16 +393,9 @@ export default async function TrustPage() {
           place&apos;s ordering and menu links. We review correction messages
           and update records by hand.
         </p>
-        {fixedReports !== null && (
-          <p
-            className="mt-2 text-[14px] leading-relaxed"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            So far, reader reports have led to{" "}
-            {fixedReports.toLocaleString("en-US")} fixed{" "}
-            {fixedReports === 1 ? "listing" : "listings"}.
-          </p>
-        )}
+        <Suspense fallback={null}>
+          <FixedReportLine />
+        </Suspense>
       </section>
 
       {/* What it cost to build — the no-ads, no-investors civic read. */}

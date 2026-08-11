@@ -30,12 +30,14 @@ import {
   AskComposerMark,
   AskComposerSubmit,
 } from "@/components/ask/AskComposer";
+import AskCorrectionControl from "@/components/ask/AskCorrectionControl";
 import Sheet from "@/components/ui/Sheet";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import { answerCanLocalize } from "@/lib/ask/localize";
-import { useSavedList } from "@/hooks/useSaved";
+import { useFollowedSlugs } from "@/hooks/useFollows";
 import { contextualizeAskQuery } from "@/lib/ask/followup";
+import { readAskFitContext } from "@/lib/ask/fit";
 import type {
   AskAction,
   AskPlanPreview,
@@ -362,6 +364,21 @@ export function sourceSaveTarget(source: Pick<AskSource, "href">): {
   };
 }
 
+/**
+ * Attach a correction to the ranked entity when Ask names one, without
+ * sending the visitor's question or the generated answer to feedback storage.
+ */
+export function askCorrectionResultRef(
+  sources: Array<Pick<AskSource, "href" | "isPrimaryRankedResult">>,
+): string | null {
+  const source =
+    sources.find((candidate) => candidate.isPrimaryRankedResult) ?? sources[0];
+  if (!source) return null;
+  const target = sourceSaveTarget(source);
+  if (!target) return null;
+  return `/${target.type === "place" ? "places" : "events"}/${target.id}`;
+}
+
 export function askResultHeading(
   result: Pick<AskResult, "intent" | "status">,
   failure: AskRequestFailure | null,
@@ -443,10 +460,10 @@ function AskSourceCard({
         background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
       }}
     >
-      <div className="grid grid-cols-[80px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
+      <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
         <div
           data-ask-source-media
-          className="relative m-3 mr-0 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
+          className="relative m-3 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
         >
           {displayPhoto && source.photo_url ? (
             <>
@@ -1174,7 +1191,9 @@ export default function AskFrederick({
   const askRef = useRef<(query: string, options?: AskOptions) => Promise<void>>(
     async () => {},
   );
-  const saved = useSavedList();
+  // One place preference everywhere: signed-in accounts use their synced
+  // follows; signed-out visitors transparently retain the device-local saves.
+  const { slugs: followedPlaceSlugs } = useFollowedSlugs();
   const geolocation = useGeolocation();
   const workspace = mode === "workspace";
   const hasDevicePosition =
@@ -1440,15 +1459,13 @@ export default function AskFrederick({
     setShareStatus("idle");
     abortRef.current?.abort();
     const requestId = ++requestIdRef.current;
-    const savedPlaceSlugs = saved
-      .filter((item) => item.type === "place")
-      .map((item) => item.id)
-      .slice(0, 30);
+    const savedPlaceSlugs = Array.from(followedPlaceSlugs).slice(0, 30);
     const interests = getInterests().slice(0, 12);
+    const fit = readAskFitContext();
     const tasteKey = `${savedPlaceSlugs.slice().sort().join(",")}|${interests
       .slice()
       .sort()
-      .join(",")}`;
+      .join(",")}|${JSON.stringify(fit)}`;
     const cacheScope = askContextKey(resolvedScope, fallbackHomeScope);
     const cacheKey = `${effectiveQuery.toLowerCase()}|${cacheScope}|${
       position ? `${position.lat.toFixed(3)},${position.lng.toFixed(3)}` : "no-fix"
@@ -1489,9 +1506,12 @@ export default function AskFrederick({
         body: JSON.stringify({
           query: effectiveQuery,
           scope: resolvedScope ?? undefined,
-          lat: position ? Number(position.lat.toFixed(4)) : undefined,
-          lng: position ? Number(position.lng.toFixed(4)) : undefined,
+          // Block-level precision is enough to rank local results and keeps
+          // the browser request aligned with Radius's privacy disclosure.
+          lat: position ? Number(position.lat.toFixed(3)) : undefined,
+          lng: position ? Number(position.lng.toFixed(3)) : undefined,
           taste: { savedPlaceSlugs, interests },
+          fit,
         }),
         signal: controller.signal,
       });
@@ -1766,6 +1786,9 @@ export default function AskFrederick({
     ? askResponseSectionOrder(responsePresentation)
     : [];
   const leadSource = res?.sources[0] ?? null;
+  const correctionResultRef = res
+    ? askCorrectionResultRef(res.sources)
+    : null;
   const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
   const supportingSources = res?.sources.slice(1) ?? [];
   const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
@@ -2138,15 +2161,6 @@ export default function AskFrederick({
                     ? "Radius could not copy the question link."
                     : ""}
             </p>
-            {workspace && submittedQuery ? (
-              <p
-                className="mb-3 line-clamp-2 text-[11px] leading-relaxed"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Answering: {submittedQuery}
-              </p>
-            ) : null}
-
             {responseSections.map((section) => {
               if (section === "summary") {
                 return responsePresentation.summary ? (
@@ -2461,6 +2475,13 @@ export default function AskFrederick({
 
               return null;
             })}
+
+            {!requestFailure && res.status !== "empty" && res.answer?.trim() ? (
+              <AskCorrectionControl
+                key={`ask-correction-${requestIdRef.current}`}
+                resultRef={correctionResultRef}
+              />
+            ) : null}
           </section>
 
           <div className="mt-3 flex justify-end">

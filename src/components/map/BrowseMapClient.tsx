@@ -34,7 +34,13 @@ import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
-import { parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import {
+  getScope,
+  parseScope,
+  scopeCentroid,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
@@ -171,6 +177,10 @@ export default function BrowseMapClient({
   /** Server-computed live signals for the smart cold-open default (map
    *  program phase 1). Null keeps the map's old quiet cold open. */
   smartSignals?: {
+    outdoorSafetyHold?: {
+      kind: "weather" | "air-quality";
+      reason: string;
+    } | null;
     activeWeatherAlert: boolean;
     marketsOpenTodayCount: number;
     roadsTrendingLongerCount: number;
@@ -216,11 +226,13 @@ export default function BrowseMapClient({
     };
   }, []);
 
-  // A clean map entry is always the whole county. A shared link can still ask
-  // for a town or Near me with `?in=`, but a scope saved on another page must
-  // not silently turn the county map into a downtown/town close-up.
+  // A URL-carried scope wins. Otherwise honor the browsing lens the person
+  // already chose in Ask, Today, Events, or the location chip. The earlier
+  // county-only reset made a successful Near me answer open a county camera,
+  // so the label, ranking, counts, and map frame contradicted one another.
+  // A first visit still opens on the whole county because getScope() is null.
   const explicitScope = parseScope(sp.get(SCOPE_PARAM));
-  const [scope] = useState<Scope>(() => explicitScope ?? "county");
+  const [scope] = useState<Scope>(() => explicitScope ?? getScope() ?? "county");
   // A town scope resolves to a fixed centroid; nearme/county don't.
   const scopeCenter = scopeCentroid(scope);
 

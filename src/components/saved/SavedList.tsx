@@ -19,6 +19,8 @@ import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
 // namespaced so they can never appear in it. Reading that map here meant
 // every event saved from a real feed silently vanished from this page.
 import type { EventWithMeta } from "@/lib/loaders/events";
+import type { EventsBySlugsResolution } from "@/lib/loaders/eventsBySlugs";
+import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
 import SavedWallet from "@/components/saved/SavedWallet";
@@ -95,6 +97,140 @@ function planTokenFromSaved(slugs: string[]): string {
  *  surface renders them rather than re-deriving anything. */
 type DecoratedEvent = EventWithMeta;
 
+/** Hydrate a bounded saved-event batch without putting personal state in a
+ * query string or risking browser/proxy URL limits. Exported for the focused
+ * client contract test. */
+export async function fetchSavedEventsHydration(
+  slugs: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<EventsBySlugsResolution> {
+  const requested = normalizeRequestedEventSlugList(slugs);
+  const response = await fetch("/api/events/by-slugs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slugs: requested }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = (await response.json()) as {
+    events?: unknown;
+    resolvedSlugs?: unknown;
+    unresolvedSlugs?: unknown;
+    missingSlugs?: unknown;
+    degraded?: unknown;
+  };
+  if (!Array.isArray(data.events)) throw new Error("Invalid events response");
+  const events = data.events as EventWithMeta[];
+  const resolved = new Set(events.map((event) => event.slug));
+  // During an atomic deployment these fields arrive together. The fallback is
+  // intentionally conservative for an older cached API response: an omitted
+  // row remains unresolved rather than being misreported as deleted.
+  const unresolvedSlugs = Array.isArray(data.unresolvedSlugs)
+    ? normalizeRequestedEventSlugList(data.unresolvedSlugs)
+    : requested.filter((slug) => !resolved.has(slug));
+  const missingSlugs = Array.isArray(data.missingSlugs)
+    ? normalizeRequestedEventSlugList(data.missingSlugs)
+    : [];
+  const resolvedSlugs = Array.isArray(data.resolvedSlugs)
+    ? data.resolvedSlugs.flatMap((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return [];
+        }
+        const row = value as Record<string, unknown>;
+        const requestedSlug = normalizeRequestedEventSlugList([
+          row.requestedSlug,
+        ])[0];
+        const canonicalSlug = normalizeRequestedEventSlugList([
+          row.canonicalSlug,
+        ])[0];
+        return requestedSlug && canonicalSlug
+          ? [{ requestedSlug, canonicalSlug }]
+          : [];
+      })
+    : events.map((event) => ({
+        requestedSlug: event.slug,
+        canonicalSlug: event.slug,
+      }));
+  return {
+    events,
+    resolvedSlugs,
+    unresolvedSlugs,
+    missingSlugs,
+    degraded:
+      typeof data.degraded === "boolean"
+        ? data.degraded
+        : unresolvedSlugs.length > 0,
+  };
+}
+
+/** Existing row-only contract retained for tests and any small callers. */
+export async function fetchSavedEventsBySlugs(
+  slugs: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<EventWithMeta[]> {
+  return (await fetchSavedEventsHydration(slugs, signal)).events;
+}
+
+/**
+ * Reconcile one saved-event refresh without turning uncertainty into loss.
+ * Confirmed missing slugs are removed so a previously hydrated card cannot
+ * stay stale forever. Unresolved slugs are deliberately untouched, preserving
+ * the last known card while a provider or archive is temporarily unavailable.
+ */
+export function mergeSavedEventHydration(
+  previous: ReadonlyMap<string, EventWithMeta>,
+  result: EventsBySlugsResolution,
+): Map<string, EventWithMeta> {
+  const next = new Map(previous);
+  const resolved = new Set(result.events.map((event) => event.slug));
+  for (const slug of result.missingSlugs) {
+    // A malformed response must not let a status field override an event row
+    // delivered in the same payload. The row is the stronger evidence.
+    if (!resolved.has(slug)) next.delete(slug);
+  }
+  for (const event of result.events) next.set(event.slug, event);
+  const eventsByCanonical = new Map(
+    result.events.map((event) => [event.slug, event]),
+  );
+  for (const binding of result.resolvedSlugs) {
+    const event = eventsByCanonical.get(binding.canonicalSlug);
+    if (event) next.set(binding.requestedSlug, event);
+  }
+  return next;
+}
+
+export function SavedEventRefreshNotice({
+  unresolvedCount,
+  missingCount,
+}: {
+  unresolvedCount: number;
+  missingCount: number;
+}) {
+  if (unresolvedCount === 0 && missingCount === 0) return null;
+  return (
+    <div
+      role="status"
+      className="space-y-1 rounded-[var(--app-radius-sm)] border px-3 py-2 text-[12.5px] leading-relaxed"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-sunken)",
+        color: "var(--app-ink-2)",
+      }}
+    >
+      {unresolvedCount > 0 && (
+        <p>
+          We could not refresh {unresolvedCount} saved event{unresolvedCount === 1 ? "" : "s"} right now. {unresolvedCount === 1 ? "It is" : "They are"} still saved.
+        </p>
+      )}
+      {missingCount > 0 && (
+        <p>
+          {missingCount} saved event{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Compact event date/time parts for the sv-evrow calendar plate,
  *  rendered in Frederick's timezone regardless of the device. */
 function evParts(iso: string): { day: string; mon: string; time: string } | null {
@@ -140,7 +276,7 @@ function Masthead({ stand }: { stand: ReactNode }) {
         <h1 id="saved-page-heading" tabIndex={-1}>
           Saved
         </h1>
-        <p className="sv-stand truncate">{stand}</p>
+        <p className="sv-stand">{stand}</p>
       </div>
       <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
         <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
@@ -291,12 +427,13 @@ export default function SavedList({
   // ── Saved events, hydrated the same way. Events are device-local by
   // contract, so the local refs ARE the truth about which slugs to ask for;
   // the server owns what each slug resolves to.
-  const { eventSlugsToFetch, eventSlugsKey } = useMemo(() => {
-    const eventSlugsToFetch = Array.from(
-      new Set(items.filter((i) => i.type === "event").map((i) => i.id)),
-    );
-    return { eventSlugsToFetch, eventSlugsKey: eventSlugsToFetch.join(",") };
-  }, [items]);
+  const eventSlugsToFetch = useMemo(
+    () =>
+      normalizeRequestedEventSlugList(
+        items.filter((i) => i.type === "event").map((i) => i.id),
+      ),
+    [items],
+  );
 
   const [eventsBySlug, setEventsBySlug] = useState<Map<string, EventWithMeta>>(
     () => new Map(),
@@ -306,6 +443,8 @@ export default function SavedList({
   // looking at: the newly requested slug lands when it resolves, and every
   // card already hydrated keeps rendering in the meantime.
   const [eventsResolved, setEventsResolved] = useState(false);
+  const [unresolvedEventSlugs, setUnresolvedEventSlugs] = useState<string[]>([]);
+  const [missingEventSlugs, setMissingEventSlugs] = useState<string[]>([]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -315,26 +454,27 @@ export default function SavedList({
       return;
     }
     const ctrl = new AbortController();
-    fetch(`/api/events/by-slugs?slugs=${encodeURIComponent(eventSlugsKey)}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { events: EventWithMeta[] }) => {
-        setEventsBySlug((previous) => {
-          const next = new Map(previous);
-          for (const event of data.events) next.set(event.slug, event);
-          return next;
-        });
+    fetchSavedEventsHydration(eventSlugsToFetch, ctrl.signal)
+      .then((result) => {
+        setEventsBySlug((previous) =>
+          mergeSavedEventHydration(previous, result),
+        );
+        setUnresolvedEventSlugs(result.unresolvedSlugs);
+        setMissingEventSlugs(result.missingSlugs);
         setEventsResolved(true);
       })
       .catch((err) => {
         // AbortError = navigated/unmounted; ignore. Any other failure keeps
         // whatever already hydrated and releases the section, so a degraded
         // events API costs the reader a card, never the whole page.
-        if (err && err.name !== "AbortError") setEventsResolved(true);
+        if (err && err.name !== "AbortError") {
+          setUnresolvedEventSlugs(eventSlugsToFetch);
+          setMissingEventSlugs([]);
+          setEventsResolved(true);
+        }
       });
     return () => ctrl.abort();
-  }, [mounted, eventSlugsKey, eventSlugsToFetch.length]);
+  }, [mounted, eventSlugsToFetch]);
 
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
@@ -937,14 +1077,19 @@ export default function SavedList({
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               There are no upcoming events. Your saved events have all passed.
             </p>
-          ) : (
-            // Every saved slug came back unresolved. Say so rather than
-            // rendering an empty section: the reader saved these, and a blank
-            // space would read as though the app had lost them.
+          ) : unresolvedEventSlugs.length === 0 && missingEventSlugs.length === 0 ? (
+            // Defensive fallback for an invalid/legacy empty response. Normal
+            // misses now carry unresolved or missing status below.
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               We could not load your saved events right now. Reload the page to
               try again.
             </p>
+          ) : null}
+          {!eventsPending && (
+            <SavedEventRefreshNotice
+              unresolvedCount={unresolvedEventSlugs.length}
+              missingCount={missingEventSlugs.length}
+            />
           )}
           {pastEvents.length > 0 && (
             <div className="space-y-2">

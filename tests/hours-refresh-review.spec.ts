@@ -288,7 +288,7 @@ describe("hours refresh review manifest", () => {
     expect(analysis.review_required).toBe(false);
     expect(analysis.unreviewedNewlyClosed).toEqual([]);
     expect(renderHoursRefreshReview(analysis)).toContain(
-      "[Recorded](https://example.com/official-location)",
+      "[Operational correction](https://example.com/official-location)",
     );
   });
 
@@ -326,7 +326,7 @@ describe("hours refresh review manifest", () => {
     const report = renderHoursRefreshReview(analysis);
     expect(report).toContain("1 unreviewed public listing removal(s)");
     expect(report).toContain(
-      "[Recorded](https://example.com/official-location)",
+      "[Operational correction](https://example.com/official-location)",
     );
   });
 

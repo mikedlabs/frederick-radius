@@ -4,6 +4,7 @@ import type { AskPlanPreview } from "@/lib/ask/contracts";
 import type { QualifiedSearchContext } from "@/lib/search";
 import { buildPlan, type PlanInputs } from "@/lib/integrations/planner";
 import { easternWallToUtcISO } from "@/lib/tz";
+import { askFitAccessNote, type AskFitContext } from "@/lib/ask/fit";
 
 function categoryName(slug: string): string {
   return CATEGORY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ");
@@ -131,13 +132,28 @@ function querySeed(query: string): number {
   return Math.abs(hash >>> 0) || 1;
 }
 
+/** Walking tolerance describes walking legs. It must never become a countywide
+ * destination radius for a person who plans to drive. */
+export function askPlanMaxDistance(
+  travelMode: "walk" | "drive" | null,
+  fit: AskFitContext,
+): number | undefined {
+  const effectiveTravelMode = travelMode ?? fit.travelMode ?? null;
+  if (effectiveTravelMode !== "walk") return undefined;
+  return fit.walkingTolerance === "short" ? 1_200 : 2_400;
+}
+
 export function buildAskPlanPreview(
   intent: AskIntent,
   context: QualifiedSearchContext,
   query: string,
   anchorSlug?: string,
+  fit: AskFitContext = {},
 ): AskPlanPreview | null {
-  const reducedMobility = /\b(?:less walking|minimal walking|can(?:not|'t) walk|limited mobility|mobility issues?|wheelchair|walker|easy parking|close parking)\b/i.test(query);
+  const reducedMobility =
+    /\b(?:less walking|minimal walking|can(?:not|'t) walk|limited mobility|mobility issues?|wheelchair|walker|easy parking|close parking)\b/i.test(query) ||
+    fit.walkingTolerance === "short" ||
+    Boolean(fit.accessibility?.includes("wheelchair"));
   const requiresVerifiedHours = Boolean(
     intent.requestedDate ||
       intent.requestedDateTime ||
@@ -145,15 +161,17 @@ export function buildAskPlanPreview(
       /\b(?:right now|open now|today|tonight|tomorrow|this (?:morning|afternoon|evening)|late[- ]?night)\b/i.test(query),
   );
   const input: PlanInputs = {
-    audience: intent.audience,
+    audience: fit.family && intent.audience === "solo" ? "family" : intent.audience,
     vibe: intent.vibe,
     duration_hours: intent.durationHours,
     start_at: planStart(intent, query),
     start_near: context.origin ?? undefined,
     municipality: context.municipality ?? undefined,
-    max_distance_m: intent.travelMode === "walk" ? 2_400 : undefined,
+    max_distance_m: askPlanMaxDistance(intent.travelMode, fit),
     local_only: intent.localOnly || undefined,
-    budget: intent.budget ?? undefined,
+    budget: intent.budget ?? fit.budget ?? undefined,
+    require_wheelchair_access:
+      fit.accessibility?.includes("wheelchair") || undefined,
     parking_priority: reducedMobility || undefined,
     max_stops: reducedMobility ? 2 : undefined,
     seed: intent.surpriseMe ? querySeed(query) : undefined,
@@ -204,7 +222,10 @@ export function buildAskPlanPreview(
       photo_url: stop.photo_url,
       why: stop.why,
       status: stop.open === "open" ? "Open" : stop.open === "closed" ? "Check hours" : "Hours unconfirmed",
-      tip: stop.tip,
+      tip: [
+        stop.place ? askFitAccessNote(stop.place, fit) : null,
+        stop.tip,
+      ].filter((item): item is string => Boolean(item)).join(" · ") || undefined,
     })),
   };
 }

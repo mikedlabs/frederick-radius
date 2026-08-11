@@ -18,6 +18,11 @@
  */
 
 export type SmartMapSignals = {
+  /** Shared NWS/AirNow safety hold used by Today and Ask. */
+  outdoorSafetyHold?: {
+    kind: "weather" | "air-quality";
+    reason: string;
+  } | null;
   /** An active, non-routine NWS warning/advisory for the county. */
   activeWeatherAlert: boolean;
   /** Count of live-music shows still ahead tonight. */
@@ -31,12 +36,20 @@ export type SmartMapSignals = {
 };
 
 export type SmartMapDefault = {
-  /** Layer keys in the dock's own vocabulary. */
-  layers: ReadonlyArray<
-    "radar" | "music-tonight" | "parking" | "markets" | "roads-now"
-  >;
+  /** Layer keys that AppMap can actually switch on. */
+  layers: ReadonlyArray<"radar" | "parking" | "roads-now">;
   /** One plain sentence the map may show, with a dismiss. */
   reason: string;
+  /** A shareable map view when the suggestion is a lens, not a layer. */
+  action?:
+    | {
+        href: string;
+        label: string;
+      }
+    | {
+        layer: "radar";
+        label: string;
+      };
 } | null;
 
 /** Eastern wall-clock pieces the selector keys on. */
@@ -76,35 +89,67 @@ export function smartMapDefault(
   const { hour, weekday } = moment;
   const weekend = weekday === 0 || weekday === 6;
 
-  // 1. Weather leads everything: an active warning with the radar layer
-  //    on is the one state where the map's job changes entirely.
-  if (signals.activeWeatherAlert) {
+  // 1. A shared outdoor safety hold leads everything. This includes unhealthy
+  //    measured air even when no NWS alert product has arrived yet.
+  if (signals.outdoorSafetyHold) {
     return {
-      layers: ["radar"],
-      reason: "A weather alert is active, so the radar is on.",
+      layers: [],
+      reason: signals.outdoorSafetyHold.reason,
+      action: signals.outdoorSafetyHold.kind === "weather"
+        ? {
+            layer: "radar",
+            label: "See radar",
+          }
+        : {
+            href: "/pulse",
+            label: "See conditions",
+          },
     };
   }
 
-  // 2. Friday and Saturday evening: the going-out window. Music venues
+  // 2. Other significant weather alerts lead the ordinary discovery defaults.
+  //    Keep the map legible, name the alert, and
+  //    make radar one deliberate tap away instead of covering the county
+  //    before the person has asked to inspect precipitation.
+  if (signals.activeWeatherAlert) {
+    return {
+      layers: [],
+      reason: "A weather alert is active.",
+      action: {
+        layer: "radar",
+        label: "See radar",
+      },
+    };
+  }
+
+  // 3. Friday and Saturday evening: the going-out window. Music venues
   //    and the parking answer belong together.
   if ((weekday === 5 || weekday === 6) && hour >= 16 && hour <= 23) {
     if (signals.musicTonightCount > 0) {
       return {
-        layers: signals.parkingCount > 0 ? ["music-tonight", "parking"] : ["music-tonight"],
-        reason: "Live music is on tonight, so tonight's shows lead the map.",
+        layers: signals.parkingCount > 0 ? ["parking"] : [],
+        reason: "Live music is on tonight.",
+        action: {
+          href: "/map?music=tonight",
+          label: "See tonight's shows",
+        },
       };
     }
   }
 
-  // 3. Weekend morning: markets and the outdoors window.
+  // 4. Weekend morning: markets and the outdoors window.
   if (weekend && hour >= 7 && hour <= 12 && signals.marketsOpenTodayCount > 0) {
     return {
-      layers: ["markets"],
-      reason: "A farmers market is open today, so markets lead the map.",
+      layers: [],
+      reason: "A farmers market is open today.",
+      action: {
+        href: "/map?intent=shop&sub=markets",
+        label: "Show markets",
+      },
     };
   }
 
-  // 4. Weekday commute windows, only when the roads are actually worse:
+  // 5. Weekday commute windows, only when the roads are actually worse:
   //    a quiet commute gets a quiet map.
   const commute = !weekend && ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18));
   if (commute && signals.roadsTrendingLongerCount > 0) {

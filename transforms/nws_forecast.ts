@@ -30,7 +30,14 @@ export function transform(raw: NwsForecastRaw): TransformResult {
     format: "json",
     data: {
       source: "nws_forecast",
-      as_of: isoDate(raw.properties.updated) ?? null,
+      // Current NWS forecast payloads publish updateTime/generatedAt rather
+      // than the older updated field. Prefer the forecast's update time; the
+      // generation time is a truthful final fallback, never the fetch clock.
+      as_of:
+        isoDate(raw.properties.updated) ??
+        isoDate(raw.properties.updateTime) ??
+        isoDate(raw.properties.generatedAt) ??
+        null,
       location: "Frederick, MD",
       periods,
     },

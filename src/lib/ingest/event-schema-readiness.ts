@@ -13,7 +13,7 @@ export type EventSchemaReadiness =
       missing: string[];
     };
 
-type SchemaRequirement = {
+export type SchemaRequirement = {
   table: string;
   column: string;
 };
@@ -64,7 +64,7 @@ const CIVIC_INGEST_REQUIREMENTS: readonly SchemaRequirement[] = [
   { table: "unparseable_locations", column: "seen_at" },
 ] as const;
 
-const EVENT_ARCHIVE_REQUIREMENTS: readonly SchemaRequirement[] = [
+export const EVENT_ARCHIVE_REQUIREMENTS: readonly SchemaRequirement[] = [
   { table: "ingest_runs", column: "id" },
   { table: "event_canonical_records", column: "id" },
   { table: "event_canonical_records", column: "canonical_slug" },

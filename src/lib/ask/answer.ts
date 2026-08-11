@@ -17,6 +17,16 @@ import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import { runRadiusAgent, shouldUseRadiusAgent } from "@/lib/ask/intelligence";
 import { filterCitedSources } from "@/lib/ask/citations";
 import { buildTasteProfile, normalizeTasteSignals, rerankWithTaste, tasteSummary, type AskTasteSignals } from "@/lib/ask/taste";
+import {
+  askFitAccessNote,
+  askFitForQuery,
+  askFitSummary,
+  normalizeAskFitContext,
+  placeAllowedByAskFit,
+  qualifyAskAnswerForAccess,
+  rerankWithAskFit,
+  type AskFitContext,
+} from "@/lib/ask/fit";
 import type { AskAction, AskResult, AskSource } from "@/lib/ask/contracts";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -128,10 +138,12 @@ function canExposeDistance(context: QualifiedSearchContext): boolean {
 function placeSource(
   p: PlaceCardData,
   reason: string,
+  fit: AskFitContext,
   region: CountyRegion | null = null,
   showDistance = true,
 ): AskSource {
   const evidence = p.field_note_tip || p.known_for?.[0] || safeAskDescription(p.name, p.short_blurb, p.description);
+  const accessNote = askFitAccessNote(p, fit);
   const municipalityName = p.municipality
     ? MUNICIPALITY_BY_SLUG[p.municipality]?.name
     : null;
@@ -146,7 +158,7 @@ function placeSource(
     href: `/places/${p.slug}`,
     eyebrow: region ? `${COUNTY_REGION_LABELS[region]} · ${categoryName(p.category)}` : categoryName(p.category),
     reason,
-    detail: evidence || undefined,
+    detail: [accessNote, evidence].filter(Boolean).join(" · ") || undefined,
     distance: showDistance && p.distance_m != null ? formatDistance(p.distance_m) : undefined,
     status: formatHoursLine(p.open_status),
     phone: p.phone || undefined,
@@ -157,6 +169,14 @@ function placeSource(
     rating: typeof p.google_rating === "number" ? p.google_rating : undefined,
     ratingCount: typeof p.google_rating_count === "number" ? p.google_rating_count : undefined,
   };
+}
+
+function placesForAskSources(sources: readonly AskSource[]): PlaceCardData[] {
+  return sources.flatMap((source) => {
+    if (!source.href.startsWith("/places/")) return [];
+    const place = clientPlaceBySlug(source.href.slice("/places/".length));
+    return place ? [place] : [];
+  });
 }
 
 /** The same freshness gate used by Today before Ask makes a time claim. */
@@ -310,6 +330,7 @@ function answerHappyHourRequest(
   now: Date,
   intent: AskIntent,
   context: QualifiedSearchContext,
+  fit: AskFitContext,
 ): AskResult {
   const { day, minute } = easternDayMinute(now);
   const currentOnly = /\b(?:right now|now|currently|open now)\b/i.test(query);
@@ -321,6 +342,7 @@ function answerHappyHourRequest(
     .flatMap(({ slug, happy_hour: happyHour }) => {
       const place = clientPlaceBySlug(slug);
       if (!place) return [];
+      if (!placeAllowedByAskFit(place, fit)) return [];
       if (
         context.municipality &&
         place.municipality !== context.municipality
@@ -375,6 +397,7 @@ function answerHappyHourRequest(
     const source = placeSource(
       place,
       happyHour.details || happyHour.schedule,
+      fit,
       null,
       canExposeDistance(context),
     );
@@ -426,9 +449,9 @@ function answerHappyHourRequest(
   const leadDeal = lead.happyHour.details
     ? ` ${lead.happyHour.details.replace(/[.!?]+$/, "")}.`
     : "";
-  const answer = currentOnly
+  const answer = qualifyAskAnswerForAccess(currentOnly
     ? `${lead.place.name} is ${nearbyOnly ? "the closest " : ""}confirmed happy hour I found ${scope}, running now${leadEnd}.${leadDeal}${candidates.length > 1 ? ` ${candidates.length - 1} more confirmed option${candidates.length === 2 ? "" : "s"} are below.` : ""}`
-    : `These are checked happy-hour schedules ${scope}. ${lead.place.name} is first${nearbyOnly ? " by distance" : ""}; its posted schedule is ${lead.happyHour.schedule}.`;
+    : `These are checked happy-hour schedules ${scope}. ${lead.place.name} is first${nearbyOnly ? " by distance" : ""}; its posted schedule is ${lead.happyHour.schedule}.`, shown.map(({ place }) => place), fit);
 
   return {
     status: "matches",
@@ -642,6 +665,7 @@ function answerStrictUtilityPlaceRequest(
   intent: AskIntent,
   context: QualifiedSearchContext,
   query: string,
+  fit: AskFitContext,
 ): AskResult {
   const asksOpenNow =
     intent.timeNeed === "now" ||
@@ -649,6 +673,7 @@ function answerStrictUtilityPlaceRequest(
   const showDistance = canExposeDistance(context);
   const ranked = clientPlaces()
     .filter((place) => hasStrictUtilityEvidence(place, request.kind))
+    .filter((place) => placeAllowedByAskFit(place, fit))
     .filter(
       (place) =>
         !context.municipality ||
@@ -679,6 +704,7 @@ function answerStrictUtilityPlaceRequest(
       index === 0 && context.origin
         ? `Nearest cataloged ${request.singular}`
         : `Cataloged as a ${request.singular}`,
+      fit,
       null,
       showDistance,
     ),
@@ -703,6 +729,11 @@ function answerStrictUtilityPlaceRequest(
     answer = `Radius does not have ${article} ${request.singular} record with enough category evidence to answer this safely. I will not substitute a nearby ${request.kind === "atm" ? "bank" : "business"} or an unrelated place.`;
   }
 
+  answer = qualifyAskAnswerForAccess(
+    answer,
+    matches.slice(0, 4).map(({ place }) => place),
+    fit,
+  );
   const mapHref = `/map?q=${encodeURIComponent(request.mapQuery)}`;
   return {
     status: sources.length > 0 ? "matches" : "empty",
@@ -1045,7 +1076,12 @@ function brunchDayMatches(spot: BrunchSpot, query: string): boolean {
   return true;
 }
 
-function answerBrunchRequest(query: string, intent: AskIntent, context: QualifiedSearchContext): AskResult {
+function answerBrunchRequest(
+  query: string,
+  intent: AskIntent,
+  context: QualifiedSearchContext,
+  fit: AskFitContext,
+): AskResult {
   const showDistance = canExposeDistance(context);
   const candidates = brunchSpots()
     .filter((spot) => brunchDayMatches(spot, query))
@@ -1056,6 +1092,7 @@ function answerBrunchRequest(query: string, intent: AskIntent, context: Qualifie
         : null;
       return { spot, place, distance };
     })
+    .filter(({ place }) => !place || placeAllowedByAskFit(place, fit))
     .filter(({ place }) => !context.municipality || place?.municipality === context.municipality)
     .sort((a, b) => {
       if (a.distance != null && b.distance != null) return a.distance - b.distance;
@@ -1064,29 +1101,47 @@ function answerBrunchRequest(query: string, intent: AskIntent, context: Qualifie
       return a.spot.name.localeCompare(b.spot.name);
     });
 
-  const sources = candidates.slice(0, 4).map(({ spot, place, distance }): AskSource => ({
-    slug: place?.slug ?? `brunch-${spot.slug ?? spot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-    name: spot.name,
-    category: "restaurant",
-    city: spot.town,
-    href: place ? `/places/${place.slug}` : spot.sourceUrl,
-    eyebrow: "Verified brunch schedule",
-    reason: spot.note ?? `${spot.days}, ${spot.hours}`,
-    detail: `Schedule confirmed from the venue's own site. ${spot.days} · ${spot.hours}`,
-    distance: showDistance && distance != null ? formatDistance(distance) : undefined,
-    status: `${spot.days} · ${spot.hours}`,
-    confidence: spot.confidence,
-    photo_url: place?.google_photo_url || place?.hero_image,
-  }));
+  const shown = candidates.slice(0, 4);
+  const sources = shown.map(({ spot, place, distance }): AskSource => {
+    const accessNote = askFitAccessNote(
+      { accessibility: place?.accessibility },
+      fit,
+    );
+    return {
+      slug: place?.slug ?? `brunch-${spot.slug ?? spot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      name: spot.name,
+      category: "restaurant",
+      city: spot.town,
+      href: place ? `/places/${place.slug}` : spot.sourceUrl,
+      eyebrow: "Verified brunch schedule",
+      reason: spot.note ?? `${spot.days}, ${spot.hours}`,
+      detail: [
+        accessNote,
+        `Schedule confirmed from the venue's own site. ${spot.days} · ${spot.hours}`,
+      ].filter(Boolean).join(" · "),
+      distance: showDistance && distance != null ? formatDistance(distance) : undefined,
+      status: `${spot.days} · ${spot.hours}`,
+      confidence: spot.confidence,
+      photo_url: place?.google_photo_url || place?.hero_image,
+    };
+  });
 
   const dayLabel = /\btoday\b/i.test(query) ? " for today" : /\bweekends?\b/i.test(query) ? " for the weekend" : "";
   return {
     status: sources.length > 0 ? "matches" : "empty",
     configured: hasKey(),
     usedModel: false,
-    answer: sources.length > 0
-      ? `I found ${candidates.length} venue-verified brunch schedule${candidates.length === 1 ? "" : "s"}${dayLabel}${context.origin ? ", with the closest mapped spots first" : ""}. The cards show the published service window; check the venue before making a special trip because holiday schedules can change.`
-      : `I don't have a venue-verified brunch schedule that matches that day yet, so I won't turn a restaurant's general hours into a brunch claim.`,
+    answer: qualifyAskAnswerForAccess(
+      sources.length > 0
+        ? `I found ${candidates.length} venue-verified brunch schedule${candidates.length === 1 ? "" : "s"}${dayLabel}${context.origin ? ", with the closest mapped spots first" : ""}. The cards show the published service window; check the venue before making a special trip because holiday schedules can change.`
+        : `I don't have a venue-verified brunch schedule that matches that day yet, so I won't turn a restaurant's general hours into a brunch claim.`,
+      shown.map(({ spot, place }) => ({
+        slug: place?.slug ?? `brunch-${spot.slug ?? spot.name}`,
+        name: spot.name,
+        accessibility: place?.accessibility,
+      })),
+      fit,
+    ),
     sources,
     context: context.origin ? context.contextLabel ?? "your location" : context.contextLabel ?? "Frederick County",
     intent,
@@ -1620,6 +1675,7 @@ Rules you must follow:
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map. Do not guess.
 - LOCAL NOTE fields are this guide's own verified field research, including parking details and posted specials. Weave the relevant note into your answer because it is the detail a local friend would add.
 - A RANKED PICKS block, when present, is this guide's own ranked answer for that exact craving, strongest first with live open state. Recommend from it, in its order, before anything in the numbered search list.
+- ASK FIT defaults are user-selected constraints. Never recommend a place marked wheelchair access false when wheelchair access is selected. A place marked "Wheelchair access is not confirmed" may remain only when your answer repeats that qualification. Apply the same rule to unconfirmed communication access.
 - DOWNTOWN PARKING and WEATHER blocks, when present, are verified/live data. Answer from them directly.
 - Lead with the strongest answer and explain the specific fact that makes it the best fit. Add another option only when it offers a useful tradeoff; never pad the answer to three picks.
 - When the user explicitly requests a number of options, honor that number when the supplied evidence supports it. A requested count overrides the one-or-two-choice default. If the evidence supports fewer choices, state the shortfall instead of inventing one.
@@ -1857,6 +1913,7 @@ async function wantContextBlock(
   query: string,
   dietary: AskIntent["dietary"] = [],
   availabilityLabel?: string,
+  fit: AskFitContext = {},
 ): Promise<{ block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null> {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
@@ -1877,6 +1934,7 @@ async function wantContextBlock(
     NON_SEATED_MEAL_TYPES.has(p.primary_type ?? "") ||
     /\b(?:takeout|take-away|food truck|popcorn|catering)\b/i.test(p.name);
   const baseRefine = (p: WantRefinable) => {
+    if (!placeAllowedByAskFit(p, fit)) return false;
     if (intent.cuisine && !cuisinesOf(p).includes(intent.cuisine)) return false;
     if (intent.area?.kind === "downtown" && haversineMeters(FREDERICK_CENTER, p.geom) > DOWNTOWN_RADIUS_M) return false;
     if (town && p.municipality !== town.slug) return false;
@@ -1977,8 +2035,11 @@ async function wantContextBlock(
     };
   }
 
-  const line = (r: WantRow) =>
-    `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
+  const line = (r: WantRow) => {
+    const place = clientPlaceBySlug(r.slug);
+    const accessNote = place ? askFitAccessNote(place, fit) : null;
+    return `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.why?.length ? `; WHY IT RANKED: ${r.why.slice(0, 2).join(" ")}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}${accessNote ? `; ACCESS: ${accessNote}` : ""}`;
+  };
   const open = [wa.hero, ...wa.also]
     .filter((r): r is WantRow => r != null)
     .slice(0, 5);
@@ -2024,7 +2085,7 @@ async function wantContextBlock(
 export async function askFrederick(
   query: string,
   context: QualifiedSearchContext = {},
-  options: { taste?: AskTasteSignals | unknown } = {},
+  options: { taste?: AskTasteSignals | unknown; fit?: AskFitContext | unknown } = {},
 ): Promise<AskResult> {
   const now = new Date();
   const q = (query || "").trim();
@@ -2053,6 +2114,7 @@ export async function askFrederick(
         }
       : parsedAvailability;
   const actions = followUps(q, intent, context);
+  const fit = askFitForQuery(normalizeAskFitContext(options.fit), q);
   const emergency = emergencyRequestKind(q);
   if (emergency) return answerEmergencyRequest(emergency, intent, context);
   if (parsedPlaceDateTime?.invalidLocalTime) {
@@ -2086,6 +2148,7 @@ export async function askFrederick(
       intent,
       context,
       q,
+      fit,
     );
   }
   const tasteSignals = normalizeTasteSignals(options.taste);
@@ -2094,10 +2157,10 @@ export async function askFrederick(
     return answerParkingRequest(q, parkingRequest, intent, context);
   }
   if (/\bhappy hours?\b/i.test(q) && intent.kind !== "plan") {
-    return answerHappyHourRequest(q, now, intent, context);
+    return answerHappyHourRequest(q, now, intent, context, fit);
   }
   if (/\bbrunch\b/i.test(q) && intent.kind !== "plan") {
-    return answerBrunchRequest(q, intent, context);
+    return answerBrunchRequest(q, intent, context, fit);
   }
   if (/\bfood trucks?\b/i.test(q) && intent.kind !== "plan") {
     return answerFoodTruckRequest(intent, context);
@@ -2169,7 +2232,7 @@ export async function askFrederick(
   // could undo that time grounding or add avoidable latency.
   const agentAttempted = !amenitySupplement && !appointmentWindow && shouldUseRadiusAgent(q, intent);
   if (agentAttempted) {
-    const intelligent = await runRadiusAgent(q, context, tasteSignals);
+    const intelligent = await runRadiusAgent(q, context, tasteSignals, fit);
     if (intelligent) {
       return {
         status: "answered",
@@ -2241,7 +2304,7 @@ export async function askFrederick(
       : undefined;
     const anchorSlug = anchorHit?.type === "place" ? anchorHit.place.slug : undefined;
     const anchorName = anchorHit?.type === "place" ? anchorHit.place.name : undefined;
-    const plan = buildAskPlanPreview(intent, context, q, anchorSlug);
+    const plan = buildAskPlanPreview(intent, context, q, anchorSlug, fit);
     if (!plan) {
       return {
         status: "empty",
@@ -2267,7 +2330,7 @@ export async function askFrederick(
       // at Y" — instead of describing the planner's process ("I built
       // this...", "Every stop is a real Radius record"), the same
       // pick-first rule the other answer paths follow.
-      answer: (() => {
+      answer: qualifyAskAnswerForAccess((() => {
         const stopLine = plan.stops
           .slice(0, 3)
           .map((stop) => (stop.time ? `${stop.name} at ${stop.time}` : stop.name))
@@ -2284,7 +2347,11 @@ export async function askFrederick(
           ? " Hours are not confirmed for every stop, so check each place before you leave."
           : "";
         return `${dayLead}${anchorLead}${stopLine}${overflow}.${constraint}${hoursNote} Swap any stop that is not your speed.`;
-      })(),
+      })(), plan.stops.flatMap((stop) => {
+        if (!stop.href.startsWith("/places/")) return [];
+        const place = clientPlaceBySlug(stop.href.slice("/places/".length));
+        return place ? [place] : [];
+      }), fit),
       sources: [],
       context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
       intent,
@@ -2401,7 +2468,10 @@ export async function askFrederick(
           },
         )
       : retrieval.hits;
-  const tasteRankedHits = rerankWithTaste(retrievalHits, tasteProfile);
+  const tasteRankedHits = rerankWithAskFit(
+    rerankWithTaste(retrievalHits, tasteProfile),
+    fit,
+  );
   const asksPatio = /\b(?:patio|outdoor seating|terrace)\b/i.test(q);
   const asksWrittenContact =
     /\b(?:(?:cannot|can['’]?t|unable to|don['’]?t want to)\s+call|without calling|written contact|contact by (?:email|text)|email (?:them|the place|the business)|text[-\s]based contact)\b/i.test(q);
@@ -2474,7 +2544,11 @@ export async function askFrederick(
     });
   }
   const hits = diversifyRegionalHits(filteredHits, intent.regions);
-  const personalized = hits.some((hit) => hit.type === "place") ? tasteSummary(tasteProfile) : null;
+  const personalized = hits.some((hit) => hit.type === "place")
+    ? [tasteSummary(tasteProfile), askFitSummary(fit) ? `Fit to ${askFitSummary(fit)}` : null]
+        .filter((label): label is string => Boolean(label))
+        .join(" · ") || null
+    : null;
   const lines: string[] = [];
   const sources: AskSource[] = [];
   if (amenitySupplement) sources.push(...amenitySupplement.sources);
@@ -2577,6 +2651,7 @@ export async function askFrederick(
         q,
         intent.dietary,
         requestedVisitLabel,
+        fit,
       )
     : null;
   const wantBlock = want ? `${want.block}\n` : "";
@@ -2611,6 +2686,7 @@ export async function askFrederick(
       const source = placeSource(
           rankedPlace,
           r.detail || r.fact || `Listed for ${want!.label.toLowerCase()} in Radius`,
+          fit,
           null,
           canExposeDistance(
             placeRankingContext,
@@ -2831,13 +2907,14 @@ export async function askFrederick(
       // research) replaces the generic blurb when we have one — insider
       // detail beats ad copy.
       const note = localNoteFor(p.slug);
+      const accessNote = askFitAccessNote(p, fit);
       lines.push(
-        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.email ? `; Email: ${p.email}` : ""}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}`,
+        `${lines.length + 1}. ${p.name}: ${p.category}${where ? `, ${where}` : ""}${openBit}${p.email ? `; Email: ${p.email}` : ""}${p.phone ? `; Phone: ${p.phone}` : ""}${note || (blurb ? `; ${blurb}` : "")}${accessNote ? `; ACCESS: ${accessNote}` : ""}`,
       );
       if (sources.length < answerSourceLimit) {
         const lead = sources.filter((source) => source.category !== "civic").length === 0;
         const region = regionForMunicipality(p.municipality);
-        const fit = region && intent.regions.includes(region)
+        const sourceReason = region && intent.regions.includes(region)
           ? `${lead ? "Start here" : "Worth the drive"} in ${COUNTY_REGION_LABELS[region]}`
           : h.conceptCoverage && h.conceptCoverage.total > 1 && h.conceptCoverage.matched === h.conceptCoverage.total
             ? "Matches the full request"
@@ -2848,6 +2925,7 @@ export async function askFrederick(
             : "Another catalog result for this request";
         const source = placeSource(
           availabilityConstraint ? { ...p, open_status: status } : p,
+          sourceReason,
           fit,
           region && intent.regions.includes(region) ? region : null,
           canExposeDistance(
@@ -2907,9 +2985,12 @@ export async function askFrederick(
         : "The user asked for nearby results, but no usable location was available. Do not claim that any result is near or nearest."
       : null,
   ].filter(Boolean).join("\n");
+  const fitBlock = askFitSummary(fit)
+    ? `ASK FIT DEFAULTS:\n${askFitSummary(fit)}. Treat recorded access barriers as exclusions and repeat every unconfirmed access qualification.\n\n`
+    : "";
   // The clock line is hour-granular, so it adds the time context needed for
   // "tonight" without turning every minute into a new paid cache entry.
-  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nRESPONSE COUNT:\n${optionCountInstruction(q)}\n\n${constraintLines ? `RETRIEVAL RULES:\n${constraintLines}\n\n` : ""}FREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${parkingBlock}${weatherBlock}${wantBlock}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
+  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nRESPONSE COUNT:\n${optionCountInstruction(q)}\n\n${constraintLines ? `RETRIEVAL RULES:\n${constraintLines}\n\n` : ""}${fitBlock}FREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${parkingBlock}${weatherBlock}${wantBlock}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
 
   // Common jobs should feel like search, not a chatbot. They already have a
   // deterministic answer in the retrieved data, so return immediately and
@@ -3047,7 +3128,11 @@ export async function askFrederick(
         : null,
       amenitySupplement?.answer,
     ].filter(Boolean);
-    const answer = [primaryAnswer, ...supplements].join(" ");
+    const answer = qualifyAskAnswerForAccess(
+      [primaryAnswer, ...supplements].join(" "),
+      placesForAskSources(responseSources),
+      fit,
+    );
     const directActions = intent.kind === "event" && responseSources.length === 0
       ? communicationAccessEventDiscovery
         ? [
@@ -3121,12 +3206,19 @@ export async function askFrederick(
     ...sources,
     ...eventCitationPool.filter((e) => !sources.some((s) => s.slug === e.slug)),
   ];
+  const renderedSources = answer
+    ? filterCitedSources(citationCandidates, renderedAnswer)
+    : sources;
   return {
     status: answer ? "answered" : sources.length > 0 ? "matches" : "empty",
     configured: hasKey(),
     usedModel: Boolean(answer),
-    answer: renderedAnswer,
-    sources: answer ? filterCitedSources(citationCandidates, renderedAnswer) : sources,
+    answer: qualifyAskAnswerForAccess(
+      renderedAnswer,
+      placesForAskSources(renderedSources),
+      fit,
+    ),
+    sources: renderedSources,
     context: retrieval.meta.contextLabel,
     intent,
     actions: responseActions,

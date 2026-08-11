@@ -15,6 +15,8 @@ import { usePathname } from "next/navigation";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import { readCachedGeoPosition } from "@/hooks/useGeolocation";
+import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 
 const PlaceSheet = lazy(() => import("./PlaceSheet"));
@@ -28,15 +30,35 @@ function preloadPlaceSheet() {
 }
 
 type Ctx = {
-  openSheet: (p: PlaceCardData) => void;
+  openSheet: (
+    p: PlaceCardData,
+    options?: { travelOrigin?: (LngLat & { timestamp?: number }) | null },
+  ) => void;
   closeSheet: () => void;
 };
 
 const PlaceSheetContext = createContext<Ctx | null>(null);
+const TRAVEL_ORIGIN_MAX_AGE_MS = 5 * 60_000;
+
+function freshTravelOrigin(
+  value: (LngLat & { timestamp?: number }) | null | undefined,
+): LngLat | null {
+  if (
+    !value ||
+    !Number.isFinite(value.timestamp) ||
+    Date.now() - Number(value.timestamp) < 0 ||
+    Date.now() - Number(value.timestamp) > TRAVEL_ORIGIN_MAX_AGE_MS ||
+    !isInFrederickCountyArea(value.lng, value.lat)
+  ) {
+    return null;
+  }
+  return { lng: value.lng, lat: value.lat };
+}
 
 export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [place, setPlace] = useState<PlaceCardData | null>(null);
+  const [travelOrigin, setTravelOrigin] = useState<LngLat | null>(null);
   const [mapReturnTo, setMapReturnTo] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const historyLayerIdRef = useRef("");
@@ -68,7 +90,10 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const openSheet = useCallback(
-    (p: PlaceCardData) => {
+    (
+      p: PlaceCardData,
+      options?: { travelOrigin?: (LngLat & { timestamp?: number }) | null },
+    ) => {
       const hydrationUpdate = activePlaceSlugRef.current === p.slug;
       if (!hydrationUpdate) {
         openerRef.current =
@@ -91,6 +116,13 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
           ),
         );
         pushRecent(p.slug);
+        const cachedOrigin = options?.travelOrigin ?? readCachedGeoPosition();
+        setTravelOrigin(freshTravelOrigin(cachedOrigin));
+      } else if (options?.travelOrigin) {
+        // A slim map pin is replaced by its full record after the sheet opens.
+        // Preserve the same consented origin, while still allowing a fresher
+        // fix from the map to replace it during that hydration update.
+        setTravelOrigin(freshTravelOrigin(options.travelOrigin));
       }
       activePlaceSlugRef.current = p.slug;
       setPlace(p);
@@ -100,6 +132,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const closeSheet = useCallback(() => {
     activePlaceSlugRef.current = null;
     setPlace(null);
+    setTravelOrigin(null);
     setMapReturnTo(null);
   }, []);
 
@@ -127,6 +160,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         >
           <PlaceSheet
             place={place}
+            travelOrigin={travelOrigin}
             mapReturnTo={mapReturnTo}
             onClose={closeSheet}
             returnFocusRef={openerRef}

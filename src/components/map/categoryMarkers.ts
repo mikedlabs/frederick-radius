@@ -6,10 +6,10 @@
  * it stays sharp at small marker size, where thin line icons would muddy
  * and emoji render inconsistently per device).
  *
- * Served via the `styleimagemissing` event so it survives style reloads
- * and mount ordering. Drawn at 2x for retina crispness.
+ * Served through MapLibre's missing-image resolver so it survives style
+ * reloads and mount ordering. Drawn at 2x for retina crispness.
  */
-import type { ExpressionSpecification, Map as GLMap } from "mapbox-gl";
+import type { ExpressionSpecification, Map as GLMap } from "maplibre-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
 
@@ -586,8 +586,11 @@ function addOne(map: GLMap, id: string): void {
 }
 
 /**
- * Wire up category markers. The styleimagemissing handler is the
- * guarantee; the eager pass just avoids a one-frame flash.
+ * Wire up category markers. MapLibre 6's `styleimagemissing` event fires only
+ * after the current image request has already failed, so adding an image from
+ * that event can still leave a blank first frame and emit a console warning.
+ * The resolver runs before that fallback and guarantees the current request.
+ * The eager pass remains to avoid even that one-frame wait.
  */
 export function installCategoryMarkers(map: GLMap): void {
   if (INSTALLED_MAPS.has(map)) return;
@@ -597,8 +600,8 @@ export function installCategoryMarkers(map: GLMap): void {
     addOne(map, "cat-_default");
     for (const slug of Object.keys(CATEGORY_BY_SLUG)) addOne(map, `cat-${slug}`);
   };
-  map.on("styleimagemissing", (e: { id: string }) => {
-    if (e.id && e.id.startsWith("cat-")) addOne(map, e.id);
+  map.setMissingStyleImageResolver(async (id: string) => {
+    if (id.startsWith("cat-")) addOne(map, id);
   });
   // Mapbox loads its style asynchronously after onLoad, which clears
   // images added before the style settled. Re-add on every style load

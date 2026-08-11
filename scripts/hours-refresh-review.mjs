@@ -128,6 +128,13 @@ function text(value, fallback = "—") {
   return normalized || fallback;
 }
 
+function statusEvidenceLink(evidence) {
+  const label = evidence.status === "operational"
+    ? "Operational correction"
+    : "Recorded";
+  return `[${label}](${evidence.source})`;
+}
+
 function placeLabel(place, slug) {
   return text(place?.name, slug);
 }
@@ -299,7 +306,7 @@ export function renderHoursRefreshReview(analysis) {
       place?.municipality,
       transition?.to ?? "No new provider closure",
       transition?.checked_at,
-      evidence ? `[Recorded](${evidence.source})` : "Review required",
+      evidence ? statusEvidenceLink(evidence) : "Review required",
     ];
   });
   const addedRows = analysis.publicAdditions.map((slug) => {
@@ -327,7 +334,7 @@ export function renderHoursRefreshReview(analysis) {
       entry.to,
       entry.checked_at,
       evidence
-        ? `[Recorded](${evidence.source})`
+        ? statusEvidenceLink(evidence)
         : entry.public_before || entry.public_after
           ? "Review required"
           : "Not public",
