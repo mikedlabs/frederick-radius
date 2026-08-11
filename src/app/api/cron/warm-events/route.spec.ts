@@ -37,7 +37,10 @@ import {
   GET,
   maxDuration,
 } from "./route";
-import { EVENT_WARM_BUDGET_MS } from "./config";
+import {
+  EVENT_ALERT_BUDGET_MS,
+  EVENT_WARM_BUDGET_MS,
+} from "./config";
 
 const request = () =>
   new Request("https://frederickradius.app/api/cron/warm-events");
@@ -125,7 +128,9 @@ describe("GET /api/cron/warm-events", () => {
     const response = await responsePromise;
     const body = await response.json();
 
-    expect(EVENT_WARM_BUDGET_MS).toBeLessThan(maxDuration * 1_000 - 10_000);
+    expect(EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
+      maxDuration * 1_000 - 20_000,
+    );
     expect(response.status).toBe(500);
     expect(body).toMatchObject({
       ok: false,
@@ -143,5 +148,48 @@ describe("GET /api/cron/warm-events", () => {
         error: "event warm phase exceeded its budget",
       },
     ]);
+  });
+
+  it("returns before the function limit when the fetch session itself hangs", async () => {
+    vi.useFakeTimers();
+    mocks.withLiveEventFetchSession.mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    const responsePromise = GET(request());
+    await vi.advanceTimersByTimeAsync(EVENT_WARM_BUDGET_MS);
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.warmed).toMatchObject({
+      unified: {
+        ok: false,
+        error: "event warm phase exceeded its budget",
+      },
+      live90: {
+        ok: false,
+        error: "event warm phase exceeded its budget",
+      },
+    });
+  });
+
+  it("does not let a hung failure alert consume the platform headroom", async () => {
+    vi.useFakeTimers();
+    mocks.getCachedLiveEvents.mockRejectedValue(
+      new Error("upstream calendar failed"),
+    );
+    mocks.sendWarmFailureAlert.mockImplementation(
+      () => new Promise(() => undefined),
+    );
+
+    const responsePromise = GET(request());
+    await vi.advanceTimersByTimeAsync(EVENT_ALERT_BUDGET_MS);
+    const response = await responsePromise;
+
+    expect(response.status).toBe(500);
+    expect(EVENT_WARM_BUDGET_MS + EVENT_ALERT_BUDGET_MS).toBeLessThan(
+      maxDuration * 1_000 - 20_000,
+    );
   });
 });

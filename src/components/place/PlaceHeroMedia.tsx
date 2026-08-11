@@ -76,7 +76,7 @@ export default function PlaceHeroMedia({
         }
         placeholder="blur"
         blurDataURL={PAPER_CREAM_BLUR}
-        className={`absolute inset-0 z-[1] h-full w-full object-cover${
+        className={`absolute inset-0 z-0 h-full w-full object-cover${
           size === "hero" ? " ken-burns" : ""
         }`}
         onLoad={(event) => {
@@ -89,7 +89,7 @@ export default function PlaceHeroMedia({
 
       {usesGooglePhoto && status === "ready" ? (
         <div
-          className="absolute bottom-2 right-2 z-10 max-w-[80%] rounded bg-black/70 px-2 py-1 text-right text-white shadow-sm backdrop-blur-sm"
+          className="absolute bottom-2 right-2 z-20 max-w-[80%] rounded bg-black/70 px-2 py-1 text-right text-white shadow-sm backdrop-blur-sm"
           aria-label="Google photo attribution"
         >
           <GooglePhotoAttributionLine
@@ -105,7 +105,7 @@ export default function PlaceHeroMedia({
         <>
           <div
             aria-hidden
-            className="absolute inset-0 z-[2]"
+            className="absolute inset-0 z-10"
             style={{
               mixBlendMode: "soft-light",
               background: `linear-gradient(165deg, color-mix(in srgb, ${skyTop} 24%, transparent) 0%, transparent 46%, color-mix(in srgb, ${skyBottom} 32%, transparent) 100%)`,
@@ -114,7 +114,7 @@ export default function PlaceHeroMedia({
           {golden ? (
             <div
               aria-hidden
-              className="absolute inset-0 z-[2]"
+              className="absolute inset-0 z-10"
               style={{
                 background:
                   "radial-gradient(120% 80% at 85% 8%, color-mix(in srgb, var(--app-brand) 16%, transparent) 0%, transparent 60%)",
@@ -126,7 +126,7 @@ export default function PlaceHeroMedia({
 
       <div
         aria-hidden
-        className="absolute inset-0 z-[3]"
+        className="absolute inset-0 z-10"
         style={{
           background:
             "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",

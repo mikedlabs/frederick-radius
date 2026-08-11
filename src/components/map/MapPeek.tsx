@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Bookmark,
@@ -16,7 +17,7 @@ import { directionsHref } from "@/lib/map/directionsHref";
 import { formatHoursLine, type OpenStatus } from "@/lib/hours";
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
-import { track } from "@/lib/track";
+import { logActivity, track } from "@/lib/track";
 import PlacePhoto from "@/components/place/PlacePhoto";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
@@ -24,8 +25,10 @@ import type { EventPin, MapPinPlace } from "./types";
 import type { NearbyUtility } from "./mapNearby";
 import {
   buildMapPeekDecisionSurface,
+  mapPeekDecisionTelemetry,
   mapDecisionFreshnessLabel,
   type MapPeekDecisionCue,
+  type MapPeekDecisionItem,
 } from "./mapDecisionScenes";
 import MapResultSurface from "./MapResultSurface";
 
@@ -55,8 +58,9 @@ function statusTone(status: OpenStatus): string {
 }
 
 function decisionCueLabel(cue: MapPeekDecisionCue): string {
-  if (cue.kind === "event") return "Next here";
-  if (cue.kind === "special") return "Special";
+  if (cue.kind === "event") {
+    return cue.eventState === "happening-now" ? "Happening now" : "Next here";
+  }
   if (cue.kind === "utility") return "Closest useful point";
   return "Getting here";
 }
@@ -70,7 +74,7 @@ function DecisionCueSource({ cue }: { cue: MapPeekDecisionCue }) {
       {cue.sourceUrl ? (
         <a
           href={cue.sourceUrl}
-          className="underline underline-offset-2"
+          className="inline-flex min-h-11 items-center align-middle underline underline-offset-2"
           {...(cue.sourceUrl.startsWith("http")
             ? { target: "_blank", rel: "noreferrer" }
             : {})}
@@ -80,6 +84,32 @@ function DecisionCueSource({ cue }: { cue: MapPeekDecisionCue }) {
       ) : cue.sourceLabel}
       {sourceDate ? ` · checked ${sourceDate}` : ""}
     </p>
+  );
+}
+
+function DecisionCueAction({
+  cue,
+  outcome,
+}: {
+  cue: MapPeekDecisionItem;
+  outcome: "action" | "fallback";
+}) {
+  if (!cue.href) return null;
+  const label = cue.kind === "event" ? "View event" : "View details";
+  return (
+    <Link
+      href={cue.href}
+      className="ml-1 inline-flex min-h-11 items-center gap-0.5 align-middle font-semibold underline underline-offset-2"
+      onClick={() => {
+        logActivity(
+          outcome === "action" ? "map_decision_action" : "map_decision_fallback",
+          mapPeekDecisionTelemetry(cue),
+        );
+      }}
+    >
+      {label}
+      <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+    </Link>
   );
 }
 
@@ -116,6 +146,7 @@ export default function MapPeek({
   const [details, setDetails] = useState<MapCardDetails | null>(null);
   const [detailsResolvedSlug, setDetailsResolvedSlug] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
+  const exposedDecisionRef = useRef<string | null>(null);
   // A fixed card clock keeps ranking deterministic for the life of this peek
   // and avoids changing event copy between unrelated photo/details updates.
   const [decisionClock] = useState(() => new Date().toISOString());
@@ -145,7 +176,27 @@ export default function MapPeek({
   });
   const decisionCue = decisionSurface?.lead ?? null;
   const decisionAlternatives = decisionSurface?.alternatives ?? [];
+  const decisionCandidateId = decisionCue?.candidateId ?? null;
+  const decisionKind = decisionCue?.kind ?? null;
+  const decisionReasonIds = decisionCue?.reasonIds.join(",") ?? "";
   const aroundCount = decisionCue ? 1 + decisionAlternatives.length : 0;
+
+  useEffect(() => {
+    if (!decisionCandidateId || !decisionKind) return;
+    const exposureKey = `${place.slug}:${decisionCandidateId}:${decisionReasonIds}`;
+    if (exposedDecisionRef.current === exposureKey) return;
+    exposedDecisionRef.current = exposureKey;
+    logActivity("map_decision_exposure", {
+      candidate_id: decisionCandidateId,
+      candidate_kind: decisionKind,
+      reason_ids: decisionReasonIds,
+    });
+  }, [
+    decisionCandidateId,
+    decisionKind,
+    decisionReasonIds,
+    place.slug,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -279,6 +330,7 @@ export default function MapPeek({
             {decisionCue && (
               <p data-map-decision-cue={decisionCue.kind}>
                 <strong>{decisionCueLabel(decisionCue)}</strong> {decisionCue.detail}
+                <DecisionCueAction cue={decisionCue} outcome="action" />
               </p>
             )}
             {decisionCue && <DecisionCueSource cue={decisionCue} />}
@@ -295,6 +347,7 @@ export default function MapPeek({
                   >
                     <p>
                       <strong>{decisionCueLabel(alternative)}</strong> {alternative.detail}
+                      <DecisionCueAction cue={alternative} outcome="fallback" />
                     </p>
                     <DecisionCueSource cue={alternative} />
                   </div>

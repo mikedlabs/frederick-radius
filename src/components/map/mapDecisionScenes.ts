@@ -659,17 +659,22 @@ export function buildMapDecisionScene(input: MapDecisionSceneInput): MapDecision
 }
 
 export type MapPeekDecisionCue = {
-  kind: "event" | "utility" | "parking" | "special";
+  kind: "event" | "utility" | "parking";
+  eventState?: "happening-now" | "upcoming";
   headline: string;
   detail: string;
   href?: string;
   sourceLabel?: string;
   sourceUrl?: string;
+  sourceConfidence?: ImpactConfidence;
+  sourceVerified?: boolean;
   observedAt?: string;
 };
 
 export type MapPeekDecisionInput = {
-  place: Pick<MapPinPlace, "slug" | "deal_hook">;
+  // Legacy/static deal copy is accepted only so this boundary can prove it is
+  // ignored until schedule, source, and freshness evidence travel with it.
+  place: Pick<MapPinPlace, "slug"> & { deal_hook?: string };
   hostedEvent?: EventPin | null;
   nearestGarage?: { name: string; distM: number } | null;
   nearbyUtilities?: NearbyUtility[];
@@ -678,6 +683,7 @@ export type MapPeekDecisionInput = {
 
 export type MapPeekDecisionItem = MapPeekDecisionCue & {
   candidateId: string;
+  reasonIds: string[];
 };
 
 export type MapPeekDecisionSurface = {
@@ -690,17 +696,6 @@ export type MapPeekDecisionSurface = {
 function short(value: string, max = 30): string {
   const text = clean(value, max);
   return text;
-}
-
-/** A price or percentage alone is not enough context for a recommendation. */
-function decisionUsefulSpecial(value: string | null | undefined): string | null {
-  const detail = clean(value, 120);
-  if (!detail) return null;
-  const usefulWords = detail
-    .match(/[a-z]{3,}/gi)
-    ?.map((word) => word.toLowerCase())
-    .filter((word) => !["and", "for", "off", "the"].includes(word));
-  return usefulWords && usefulWords.length > 0 ? detail : null;
 }
 
 /**
@@ -716,18 +711,60 @@ export function buildMapPeekDecisionSurface({
 }: MapPeekDecisionInput): MapPeekDecisionSurface | null {
   const nowMs = Date.parse(now);
   const eventStart = time(hostedEvent?.starts_at);
+  const eventEnd = time(hostedEvent?.ends_at);
   if (!Number.isFinite(nowMs)) return null;
 
   const candidates: MapDecisionCandidate[] = [];
   const cues = new Map<string, MapPeekDecisionCue>();
-  if (hostedEvent && eventStart !== null && eventStart >= nowMs && eventStart - nowMs <= 24 * 60 * 60_000) {
+  const hostedEventEvidence: MapDecisionEvidence | null = hostedEvent
+    ? {
+        id: `peek-evidence:event:${hostedEvent.slug}`,
+        sourceLabel: hostedEvent.source_label ?? "Event source not recorded",
+        sourceUrl: hostedEvent.source_url,
+        confidence: hostedEvent.source_confidence ?? "unverified",
+        verified: hostedEvent.source_verified === true,
+        basis: "schedule",
+        observedAt: hostedEvent.verified_at,
+        freshUntil: hostedEvent.verification_expires_at,
+      }
+    : null;
+  const hostedEventIsCurrent = Boolean(
+    hostedEventEvidence &&
+      hostedEvent?.source_verified === true &&
+      mapDecisionEvidenceState(hostedEventEvidence, now) === "current",
+  );
+  const hostedEventIsUnderway = Boolean(
+    eventStart !== null &&
+      eventStart <= nowMs &&
+      eventEnd !== null &&
+      nowMs < eventEnd,
+  );
+  const hostedEventIsUpcoming = Boolean(
+    eventStart !== null &&
+      eventStart >= nowMs &&
+      eventStart - nowMs <= 24 * 60 * 60_000,
+  );
+  if (
+    hostedEvent &&
+    hostedEventEvidence &&
+    hostedEventIsCurrent &&
+    eventStart !== null &&
+    (hostedEventIsUnderway || hostedEventIsUpcoming)
+  ) {
     const eventTime = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(eventStart));
+    const eventDetail = hostedEventIsUnderway
+      ? `${hostedEvent.title} is currently listed here.`
+      : `${hostedEvent.title} is listed here at ${eventTime}.`;
     const id = `peek:event:${hostedEvent.slug}`;
-    const evidenceId = `peek-evidence:event:${hostedEvent.slug}`;
+    const evidenceId = hostedEventEvidence.id;
+    const sourceLabel = hostedEventEvidence.sourceLabel;
+    const sourceUrl = hostedEventEvidence.sourceUrl;
+    const sourceConfidence = hostedEventEvidence.confidence;
+    const sourceVerified = hostedEventEvidence.verified;
     candidates.push({
       id,
       kind: "event",
@@ -738,17 +775,10 @@ export function buildMapPeekDecisionSurface({
       availability: { state: "not-applicable" },
       priority: 25,
       overlays: ["events"],
-      evidence: [{
-        id: evidenceId,
-        sourceLabel: "Frederick Radius event feeds",
-        sourceUrl: `/events/${hostedEvent.slug}`,
-        confidence: "unverified",
-        verified: false,
-        basis: "static-record",
-      }],
+      evidence: [hostedEventEvidence],
       reasons: [{
         id: `event-here:${hostedEvent.slug}`,
-        label: `${hostedEvent.title} is listed here at ${eventTime}.`,
+        label: eventDetail,
         weight: 95,
         evidenceIds: [evidenceId],
         overlay: "events",
@@ -756,47 +786,17 @@ export function buildMapPeekDecisionSurface({
     });
     cues.set(id, {
       kind: "event",
-      headline: `${short(hostedEvent.title, 25)} · ${eventTime}`,
-      detail: `${hostedEvent.title} is listed here at ${eventTime}.`,
+      eventState: hostedEventIsUnderway ? "happening-now" : "upcoming",
+      headline: hostedEventIsUnderway
+        ? `${short(hostedEvent.title, 25)} · Happening now`
+        : `${short(hostedEvent.title, 25)} · ${eventTime}`,
+      detail: eventDetail,
       href: `/events/${hostedEvent.slug}`,
-    });
-  }
-
-  const specialDetail = decisionUsefulSpecial(place.deal_hook);
-  if (specialDetail) {
-    const id = `peek:special:${place.slug}`;
-    const evidenceId = `peek-evidence:special:${place.slug}`;
-    candidates.push({
-      id,
-      kind: "place",
-      title: "Special at this stop",
-      href: `/places/${place.slug}`,
-      availability: { state: "not-applicable" },
-      priority: 20,
-      overlays: ["places"],
-      evidence: [{
-        id: evidenceId,
-        sourceLabel: "Frederick Radius place guide",
-        sourceUrl: `/places/${place.slug}`,
-        confidence: "curated",
-        verified: true,
-        basis: "static-record",
-      }],
-      reasons: [{
-        id: `special:${place.slug}`,
-        label: specialDetail,
-        weight: 90,
-        evidenceIds: [evidenceId],
-        overlay: "places",
-      }],
-    });
-    cues.set(id, {
-      kind: "special",
-      headline: "Special at this stop",
-      detail: specialDetail,
-      href: `/places/${place.slug}`,
-      sourceLabel: "Frederick Radius place guide",
-      sourceUrl: `/places/${place.slug}`,
+      sourceLabel,
+      sourceUrl: sourceUrl ?? undefined,
+      sourceConfidence,
+      sourceVerified,
+      observedAt: hostedEvent.verified_at,
     });
   }
 
@@ -881,14 +881,45 @@ export function buildMapPeekDecisionSurface({
 
   const alternatives = scene.alternatives.flatMap((candidate) => {
     const cue = cues.get(candidate.id);
-    return cue ? [{ ...cue, candidateId: candidate.id }] : [];
+    return cue
+      ? [{
+          ...cue,
+          candidateId: candidate.id,
+          reasonIds: candidate.reasons.map((reason) => reason.id),
+        }]
+      : [];
   });
 
   return {
-    lead: { ...leadCue, candidateId: scene.lead.id },
+    lead: {
+      ...leadCue,
+      candidateId: scene.lead.id,
+      reasonIds: scene.lead.reasons.map((reason) => reason.id),
+    },
     alternatives,
     coverage: scene.coverage,
     expiresAt: scene.expiresAt,
+  };
+}
+
+export type MapPeekDecisionTelemetry = {
+  candidate_id: string;
+  candidate_kind: MapPeekDecisionCue["kind"];
+  reason_ids: string;
+};
+
+/**
+ * Privacy-safe outcome dimensions for the first-party member log. The map
+ * records only stable product ids; never camera coordinates, location labels,
+ * source URLs, event titles, or query text.
+ */
+export function mapPeekDecisionTelemetry(
+  item: MapPeekDecisionItem,
+): MapPeekDecisionTelemetry {
+  return {
+    candidate_id: item.candidateId,
+    candidate_kind: item.kind,
+    reason_ids: item.reasonIds.join(","),
   };
 }
 

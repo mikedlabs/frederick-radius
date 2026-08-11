@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EmptyState, fetchSavedEventsBySlugs } from "./SavedList";
+import {
+  EmptyState,
+  SavedEventRefreshNotice,
+  fetchSavedEventsBySlugs,
+  fetchSavedEventsHydration,
+  mergeSavedEventHydration,
+} from "./SavedList";
+import type { EventWithMeta } from "@/lib/loaders/events";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -112,5 +119,128 @@ describe("SavedList empty state", () => {
     expect(init.headers).toEqual({ "Content-Type": "application/json" });
     expect(JSON.parse(String(init.body)).slugs).toHaveLength(100);
     expect(url).not.toContain("?slugs=");
+  });
+
+  it("treats omitted rows from an older API response as unresolved", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ events: [{ slug: "resolved-event" }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    const result = await fetchSavedEventsHydration([
+      "resolved-event",
+      "not-returned",
+    ]);
+
+    expect(result.events.map((event) => event.slug)).toEqual(["resolved-event"]);
+    expect(result.unresolvedSlugs).toEqual(["not-returned"]);
+    expect(result.missingSlugs).toEqual([]);
+    expect(result.degraded).toBe(true);
+  });
+
+  it("preserves the API distinction between unresolved and absent saves", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            events: [],
+            resolvedSlugs: [],
+            unresolvedSlugs: ["feed-timeout"],
+            missingSlugs: ["removed-event"],
+            degraded: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const result = await fetchSavedEventsHydration([
+      "feed-timeout",
+      "removed-event",
+    ]);
+
+    expect(result.unresolvedSlugs).toEqual(["feed-timeout"]);
+    expect(result.missingSlugs).toEqual(["removed-event"]);
+    expect(result.degraded).toBe(true);
+  });
+
+  it("removes a stale card only after a later refresh confirms it is missing", () => {
+    const event = { slug: "removed-event" } as EventWithMeta;
+    const first = mergeSavedEventHydration(new Map(), {
+      events: [event],
+      resolvedSlugs: [
+        { requestedSlug: event.slug, canonicalSlug: event.slug },
+      ],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
+
+    expect(first.get("removed-event")).toBe(event);
+
+    const second = mergeSavedEventHydration(first, {
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: ["removed-event"],
+      degraded: false,
+    });
+
+    expect(second.has("removed-event")).toBe(false);
+  });
+
+  it("preserves a last-known card while its refresh is unresolved", () => {
+    const event = { slug: "feed-timeout" } as EventWithMeta;
+    const previous = new Map([[event.slug, event]]);
+
+    const next = mergeSavedEventHydration(previous, {
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [event.slug],
+      missingSlugs: [],
+      degraded: true,
+    });
+
+    expect(next.get(event.slug)).toBe(event);
+  });
+
+  it("hydrates a historical saved alias with its canonical event card", () => {
+    const canonical = { slug: "current-event-title" } as EventWithMeta;
+
+    const next = mergeSavedEventHydration(new Map(), {
+      events: [canonical],
+      resolvedSlugs: [
+        {
+          requestedSlug: "old-event-title",
+          canonicalSlug: canonical.slug,
+        },
+      ],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
+
+    expect(next.get("old-event-title")).toBe(canonical);
+    expect(next.get("current-event-title")).toBe(canonical);
+  });
+
+  it("tells the reader ambiguous event misses are still saved", () => {
+    const html = renderToStaticMarkup(
+      createElement(SavedEventRefreshNotice, {
+        unresolvedCount: 2,
+        missingCount: 1,
+      }),
+    );
+
+    expect(html).toContain("could not refresh 2 saved events right now");
+    expect(html).toContain("They are still saved");
+    expect(html).toContain("1 saved event is no longer listed");
+    expect(html).toContain("It remains saved on this device");
   });
 });

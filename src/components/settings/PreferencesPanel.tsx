@@ -20,6 +20,7 @@ import {
   Heart,
   Hotel,
   Users,
+  Route,
 } from "lucide-react";
 import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
 import { resetModeState } from "@/hooks/useMode";
@@ -40,6 +41,12 @@ import {
   shouldSignalHomeAreaValue,
   signalReturnBridgeValue,
 } from "@/lib/return-bridge";
+import {
+  askFitSummary,
+  readAskFitContext,
+  writeAskFitContext,
+  type AskFitContext,
+} from "@/lib/ask/fit";
 
 /**
  * PreferencesPanel — the editable settings hub.
@@ -89,6 +96,7 @@ export default function PreferencesPanel() {
   const [interests, setInterestsState] = useState<Set<string>>(new Set());
   const [muniEditing, setMuniEditing] = useState(false);
   const [communityOn, setCommunityOn] = useState(true);
+  const [fit, setFit] = useState<AskFitContext>({});
 
   useEffect(() => {
     // SSR-safe: server renders the initial null/empty, the stored
@@ -98,6 +106,7 @@ export default function PreferencesPanel() {
     setMuni(getHomeMuni());
     setInterestsState(new Set(getInterests()));
     setCommunityOn(getCommunityNotes());
+    setFit(readAskFitContext());
   }, []);
 
   const changeMuni = useCallback((slug: string | null) => {
@@ -132,6 +141,29 @@ export default function PreferencesPanel() {
     });
   }, []);
 
+  const changeFit = useCallback(<K extends keyof AskFitContext>(
+    key: K,
+    value: AskFitContext[K] | undefined,
+  ) => {
+    haptic("light");
+    setFit((previous) => {
+      const next = { ...previous, [key]: value };
+      return writeAskFitContext(next);
+    });
+  }, []);
+
+  const toggleAccess = useCallback((value: "wheelchair" | "communication") => {
+    haptic("light");
+    setFit((previous) => {
+      const access = new Set(previous.accessibility ?? []);
+      if (access.has(value)) access.delete(value);
+      else access.add(value);
+      const next: AskFitContext = { ...previous, accessibility: [...access] };
+      if (access.size === 0) next.accessibility = undefined;
+      return writeAskFitContext(next);
+    });
+  }, []);
+
   const reset = useCallback(() => {
     if (
       typeof window === "undefined" ||
@@ -144,6 +176,8 @@ export default function PreferencesPanel() {
     setHomeMuni(null);
     cancelPendingReturnBridgeValue("home-area");
     setInterests([]);
+    writeAskFitContext({});
+    setFit({});
     resetModeState();
     document.cookie = "fr_onboarded=; path=/; max-age=0; samesite=lax";
     router.replace("/welcome");
@@ -229,6 +263,64 @@ export default function PreferencesPanel() {
         )}
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           Sets where Today and the Map start from.
+        </p>
+      </SectionShell>
+
+      {/* FIT DEFAULTS — kept in Settings instead of adding another filter row
+          to Ask. Every value is an explicit enum; no notes or location data. */}
+      <SectionShell title="What fits" icon="fit">
+        <details className="group">
+          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              {askFitSummary(fit) ?? "No defaults set"}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          </summary>
+          <div className="mt-3 space-y-4">
+            <FitChoices
+              label="Nearby"
+              value={fit.travelMode}
+              choices={[[undefined, "Any distance"], ["walk", "Keep it walkable"]]}
+              onChange={(value) => changeFit("travelMode", value as AskFitContext["travelMode"])}
+            />
+            <FitChoices
+              label="Walking"
+              value={fit.walkingTolerance}
+              choices={[[undefined, "Flexible"], ["short", "Shorter"], ["moderate", "Moderate"]]}
+              onChange={(value) => changeFit("walkingTolerance", value as AskFitContext["walkingTolerance"])}
+            />
+            <FitChoices
+              label="Going with"
+              value={fit.family}
+              choices={[[undefined, "Anyone"], ["young-kids", "Young kids"], ["school-age", "School-age"], ["teens", "Teens"]]}
+              onChange={(value) => changeFit("family", value as AskFitContext["family"])}
+            />
+            <FitChoices
+              label="Budget"
+              value={fit.budget}
+              choices={[[undefined, "Flexible"], ["free", "Free"], ["value", "Good value"]]}
+              onChange={(value) => changeFit("budget", value as AskFitContext["budget"])}
+            />
+            <div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Access</p>
+              <div className="flex flex-wrap gap-2">
+                {([[
+                  "wheelchair",
+                  "Wheelchair access",
+                ], ["communication", "Communication access"]] as const).map(([value, label]) => {
+                  const on = fit.accessibility?.includes(value) ?? false;
+                  return (
+                    <button key={value} type="button" aria-pressed={on} onClick={() => toggleAccess(value)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </details>
+        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Ask uses these as quiet defaults. What you type always wins, and no notes or location history are stored.
         </p>
       </SectionShell>
 
@@ -382,11 +474,11 @@ function SectionShell({
   children,
 }: {
   title: string;
-  icon: "persona" | "muni" | "interests" | "community";
+  icon: "persona" | "muni" | "interests" | "community" | "fit";
   children: React.ReactNode;
 }) {
   const Icon =
-    icon === "persona" ? Compass : icon === "muni" ? MapPin : icon === "community" ? Users : Sparkles;
+    icon === "persona" ? Compass : icon === "muni" ? MapPin : icon === "community" ? Users : icon === "fit" ? Route : Sparkles;
   const tint =
     icon === "persona"
       ? "var(--app-brand)"
@@ -394,6 +486,8 @@ function SectionShell({
         ? "var(--app-cool)"
         : icon === "community"
           ? "var(--app-brand-2)"
+          : icon === "fit"
+            ? "var(--app-cool)"
           : "var(--app-positive)";
   return (
     <section
@@ -414,5 +508,33 @@ function SectionShell({
       </header>
       {children}
     </section>
+  );
+}
+
+function FitChoices({
+  label,
+  value,
+  choices,
+  onChange,
+}: {
+  label: string;
+  value?: string;
+  choices: ReadonlyArray<readonly [string | undefined, string]>;
+  onChange: (value: string | undefined) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {choices.map(([choice, choiceLabel]) => {
+          const on = value === choice;
+          return (
+            <button key={choice ?? "any"} type="button" aria-pressed={on} onClick={() => onChange(choice)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+              {choiceLabel}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

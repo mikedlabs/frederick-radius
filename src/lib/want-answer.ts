@@ -225,6 +225,7 @@ export type WantRefinable = {
   geom: { lng: number; lat: number };
   short_blurb?: string;
   primary_type?: string;
+  accessibility?: PlaceCardData["accessibility"];
 };
 
 const WALK_METERS_PER_MIN = 75; // ~2.8 mph, the app's walking assumption
@@ -791,6 +792,7 @@ export function buildWantAnswer(
           geom: p.geom,
           short_blurb: p.short_blurb,
           primary_type: (p as { primary_type?: string }).primary_type,
+          accessibility: p.accessibility,
         }),
     )
     .map((p) => {

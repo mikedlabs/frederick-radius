@@ -29,6 +29,15 @@ type MirrorStateRow = {
   synced_at: Date | string;
 };
 
+type CancellablePromiseLike<T> = PromiseLike<T> & {
+  cancel?: () => void;
+};
+
+export type SpatialMirrorSyncOptions = {
+  signal?: AbortSignal;
+  statementTimeoutMs?: number;
+};
+
 export type SpatialMirrorAudit = {
   expectedCount: number;
   activeCount: number;
@@ -54,6 +63,65 @@ export type SpatialMirrorSyncResult = {
   audit: SpatialMirrorAudit;
 };
 
+function spatialAbortError(): Error {
+  const error = new Error("The PostGIS place mirror sync was cancelled.");
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw spatialAbortError();
+}
+
+/**
+ * postgres-js exposes cancel() on every pending query. Tie that cancellation
+ * to the route deadline so a timed-out serverless request cannot leave a
+ * database statement running in the background. Late settlements are still
+ * consumed, and the surrounding transaction rolls back before retirement or
+ * the trust checksum can be published.
+ */
+async function awaitCancellable<T>(
+  query: CancellablePromiseLike<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  throwIfAborted(signal);
+  if (!signal) return Promise.resolve(query);
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const cleanUp = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanUp();
+      try {
+        query.cancel?.();
+      } catch {
+        // The deadline still rejects the transaction even if the driver has
+        // already settled and throws while processing a redundant cancel.
+      }
+      reject(spatialAbortError());
+    };
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve(query).then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        cleanUp();
+        resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        cleanUp();
+        reject(error);
+      },
+    );
+    if (signal.aborted) onAbort();
+  });
+}
+
 function normalizedMirrorRows(rows: readonly MirrorRow[]) {
   return rows.map((row) => ({
     slug: row.slug,
@@ -65,12 +133,13 @@ function normalizedMirrorRows(rows: readonly MirrorRow[]) {
 
 async function auditWithSql(
   sql: NonNullable<ReturnType<typeof getSql>>,
+  signal?: AbortSignal,
 ): Promise<SpatialMirrorAudit> {
   const expected = spatialCatalogSnapshot();
   let rows: MirrorRow[];
   let states: MirrorStateRow[];
   try {
-    [rows, states] = await Promise.all([
+    rows = await awaitCancellable(
       sql<MirrorRow[]>`
         select slug, lng, lat, (location is not null) as has_location
         from public.places
@@ -78,14 +147,19 @@ async function auditWithSql(
           and deleted_at is null
         order by slug
       `,
+      signal,
+    );
+    states = await awaitCancellable(
       sql<MirrorStateRow[]>`
         select catalog_hash, place_count, synced_at
         from public.place_spatial_sync_state
         where catalog_key = ${expected.key}
         limit 1
       `,
-    ]);
-  } catch {
+      signal,
+    );
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new Error(
       "The PostGIS place mirror is unavailable. Apply drizzle/0037_places_postgis.sql first.",
     );
@@ -182,10 +256,12 @@ function mirrorPayload(place: SpatialCatalogPlace) {
 async function upsertBatch(
   sql: TransactionSql,
   batch: readonly SpatialCatalogPlace[],
+  signal?: AbortSignal,
 ): Promise<number> {
   const payload = JSON.stringify(batch.map(mirrorPayload));
-  const changed = await sql<{ slug: string }[]>`
-    insert into public.places as target (
+  const changed = await awaitCancellable(
+    sql<{ slug: string }[]>`
+      insert into public.places as target (
       slug,
       name,
       category_slug,
@@ -270,40 +346,60 @@ async function upsertBatch(
       excluded.status,
       excluded.deleted_at
     )
-    returning target.slug
-  `;
+      returning target.slug
+    `,
+    signal,
+  );
   return changed.length;
 }
 
-export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult> {
+export async function syncSpatialPlaceMirror(
+  options: SpatialMirrorSyncOptions = {},
+): Promise<SpatialMirrorSyncResult> {
   const rootSql = getSql();
   if (!rootSql) {
     throw new Error("DATABASE_URL is required to sync the PostGIS place mirror.");
   }
   const catalog = spatialCatalogSnapshot();
+  const { signal } = options;
+  const statementTimeoutMs = Math.max(
+    1,
+    Math.min(Math.floor(options.statementTimeoutMs ?? 20_000), 30_000),
+  );
   let changed = 0;
   let retired = 0;
 
   try {
+    throwIfAborted(signal);
     await rootSql.begin(async (sql) => {
-      await sql`set local lock_timeout = '5s'`;
-      await sql`set local statement_timeout = '90s'`;
-      await sql`select pg_advisory_xact_lock(${SPATIAL_MIRROR_LOCK_ID})`;
+      await awaitCancellable(sql`set local lock_timeout = '5s'`, signal);
+      await awaitCancellable(
+        sql`select set_config('statement_timeout', ${`${statementTimeoutMs}ms`}, true)`,
+        signal,
+      );
+      await awaitCancellable(
+        sql`select pg_advisory_xact_lock(${SPATIAL_MIRROR_LOCK_ID})`,
+        signal,
+      );
 
       for (
         let offset = 0;
         offset < catalog.places.length;
         offset += MIRROR_BATCH_SIZE
       ) {
+        throwIfAborted(signal);
         changed += await upsertBatch(
           sql,
           catalog.places.slice(offset, offset + MIRROR_BATCH_SIZE),
+          signal,
         );
       }
 
+      throwIfAborted(signal);
       const liveSlugs = catalog.places.map((place) => place.slug);
-      const retiredRows = await sql<{ slug: string }[]>`
-        update public.places
+      const retiredRows = await awaitCancellable(
+        sql<{ slug: string }[]>`
+          update public.places
         set
           status = 'inactive',
           deleted_at = coalesce(deleted_at, now()),
@@ -313,12 +409,16 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
             status is distinct from 'inactive'
             or deleted_at is null
           )
-        returning slug
-      `;
+          returning slug
+        `,
+        signal,
+      );
       retired = retiredRows.length;
 
-      await sql`
-        insert into public.place_spatial_sync_state (
+      throwIfAborted(signal);
+      await awaitCancellable(
+        sql`
+          insert into public.place_spatial_sync_state (
           catalog_key,
           catalog_hash,
           place_count,
@@ -333,16 +433,20 @@ export async function syncSpatialPlaceMirror(): Promise<SpatialMirrorSyncResult>
         on conflict (catalog_key) do update set
           catalog_hash = excluded.catalog_hash,
           place_count = excluded.place_count,
-          synced_at = excluded.synced_at
-      `;
+            synced_at = excluded.synced_at
+        `,
+        signal,
+      );
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new Error(
       "The PostGIS place mirror sync failed. Check the protected database logs.",
     );
   }
 
-  const audit = await auditWithSql(rootSql);
+  throwIfAborted(signal);
+  const audit = await auditWithSql(rootSql, signal);
   if (!audit.current) {
     throw new Error(
       "The PostGIS place mirror did not match the deployed catalog after sync " +

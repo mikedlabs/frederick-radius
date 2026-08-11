@@ -1,20 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveEventsBySlugs = vi.fn();
+const resolveEventsBySlugsWithStatus = vi.fn();
+const isRateLimited = vi.fn();
 
 vi.mock("@/lib/loaders/eventsBySlugs", async () => {
   const actual = await vi.importActual<
     typeof import("@/lib/loaders/eventsBySlugs")
   >("@/lib/loaders/eventsBySlugs");
-  return { ...actual, resolveEventsBySlugs };
+  return { ...actual, resolveEventsBySlugsWithStatus };
+});
+
+vi.mock("@/lib/origin-check", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/origin-check")>(
+    "@/lib/origin-check",
+  );
+  return { ...actual, isRateLimited };
 });
 
 const { GET, POST } = await import("./route");
 
-function get(slugs: string): Promise<Response> {
+function get(
+  slugs: string,
+  headers: Record<string, string> = {},
+): Promise<Response> {
   return GET(
     new Request(
       `http://localhost/api/events/by-slugs?slugs=${encodeURIComponent(slugs)}`,
+      { headers },
     ),
   );
 }
@@ -34,14 +46,22 @@ function post(
 
 describe("GET /api/events/by-slugs", () => {
   beforeEach(() => {
-    resolveEventsBySlugs.mockReset();
-    resolveEventsBySlugs.mockResolvedValue([]);
+    isRateLimited.mockReset();
+    isRateLimited.mockResolvedValue(false);
+    resolveEventsBySlugsWithStatus.mockReset();
+    resolveEventsBySlugsWithStatus.mockResolvedValue({
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
   });
 
   it("hands the normalized slug set to the loader", async () => {
     await get(" b-event ,a-event,b-event");
 
-    expect(resolveEventsBySlugs).toHaveBeenCalledWith(["b-event", "a-event"]);
+    expect(resolveEventsBySlugsWithStatus).toHaveBeenCalledWith(["b-event", "a-event"]);
   });
 
   it("answers an empty request without a lookup, and caches that answer long", async () => {
@@ -49,16 +69,28 @@ describe("GET /api/events/by-slugs", () => {
       new Request("http://localhost/api/events/by-slugs"),
     );
 
-    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
-    expect(await response.json()).toEqual({ events: [] });
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
     expect(response.headers.get("Cache-Control")).toContain("s-maxage=3600");
   });
 
   it("rejects unusable slugs before any lookup runs", async () => {
     const response = await get("constructor,prototype,Not A Slug");
 
-    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
-    expect(await response.json()).toEqual({ events: [] });
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
   });
 
   it("keeps a resolved set on a short edge window", async () => {
@@ -70,12 +102,59 @@ describe("GET /api/events/by-slugs", () => {
       "public, s-maxage=60, stale-while-revalidate=300",
     );
   });
+
+  it("blocks a foreign browser read before rate limiting or archive work", async () => {
+    const response = await get("a-event", {
+      Referer: "https://example.net/hotlink",
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(isRateLimited).not.toHaveBeenCalled();
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits an anonymous read before archive work", async () => {
+    isRateLimited.mockResolvedValue(true);
+
+    const response = await get("a-event", {
+      Referer: "http://localhost/saved",
+      "X-Real-IP": "203.0.113.25",
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
+  });
+
+  it("does not put a degraded read into the shared cache", async () => {
+    resolveEventsBySlugsWithStatus.mockResolvedValue({
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: ["a-event"],
+      missingSlugs: [],
+      degraded: true,
+    });
+
+    const response = await get("a-event");
+
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+  });
 });
 
 describe("POST /api/events/by-slugs", () => {
   beforeEach(() => {
-    resolveEventsBySlugs.mockReset();
-    resolveEventsBySlugs.mockResolvedValue([]);
+    isRateLimited.mockReset();
+    isRateLimited.mockResolvedValue(false);
+    resolveEventsBySlugsWithStatus.mockReset();
+    resolveEventsBySlugsWithStatus.mockResolvedValue({
+      events: [],
+      resolvedSlugs: [],
+      unresolvedSlugs: [],
+      missingSlugs: [],
+      degraded: false,
+    });
   });
 
   it("hands a normalized JSON slug list to the same loader", async () => {
@@ -84,7 +163,7 @@ describe("POST /api/events/by-slugs", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(resolveEventsBySlugs).toHaveBeenCalledWith(["b-event", "a-event"]);
+    expect(resolveEventsBySlugsWithStatus).toHaveBeenCalledWith(["b-event", "a-event"]);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
@@ -96,7 +175,28 @@ describe("POST /api/events/by-slugs", () => {
     const response = await post(JSON.stringify({ slugs }));
 
     expect(response.status).toBe(200);
-    expect(resolveEventsBySlugs).toHaveBeenCalledWith(slugs);
+    expect(resolveEventsBySlugsWithStatus).toHaveBeenCalledWith(slugs);
+  });
+
+  it("rejects a foreign POST read before parsing its body", async () => {
+    const response = await post(JSON.stringify({ slugs: ["a-event"] }), {
+      "Content-Type": "application/json",
+      Origin: "https://example.net",
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits POST hydration before parsing or source work", async () => {
+    isRateLimited.mockResolvedValue(true);
+
+    const response = await post(JSON.stringify({ slugs: ["a-event"] }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
   });
 
   it("rejects an oversized body before lookup", async () => {
@@ -107,7 +207,7 @@ describe("POST /api/events/by-slugs", () => {
 
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ error: "body-too-large" });
-    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
   });
 
   it("rejects invalid JSON, body shape, and media type without lookup", async () => {
@@ -116,6 +216,6 @@ describe("POST /api/events/by-slugs", () => {
     expect((await post(JSON.stringify({ slugs: ["a-event"] }), {
       "Content-Type": "text/plain",
     })).status).toBe(415);
-    expect(resolveEventsBySlugs).not.toHaveBeenCalled();
+    expect(resolveEventsBySlugsWithStatus).not.toHaveBeenCalled();
   });
 });

@@ -624,19 +624,22 @@ export default function AppMap({
 
     const withDist = (x: PlaceCardData): PlaceCardData =>
       userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
+    const travelOrigin = userLoc && locationFixTimestamp
+      ? { ...userLoc, timestamp: locationFixTimestamp }
+      : null;
     const cached = hydratedRef.current.get(pin.slug);
     if (cached) {
-      openSheet(withDist(cached));
+      openSheet(withDist(cached), { travelOrigin });
       return;
     }
-    openSheet(withDist(pin as PlaceCardData));
+    openSheet(withDist(pin as PlaceCardData), { travelOrigin });
     fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(pin.slug)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { places?: PlaceCardData[] } | null) => {
         const full = d?.places?.[0];
         if (full && full.slug === pin.slug) {
           hydratedRef.current.set(pin.slug, full);
-          openSheet(withDist(full));
+          openSheet(withDist(full), { travelOrigin });
         }
       })
       .catch(() => {

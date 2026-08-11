@@ -18,6 +18,11 @@
  */
 
 export type SmartMapSignals = {
+  /** Shared NWS/AirNow safety hold used by Today and Ask. */
+  outdoorSafetyHold?: {
+    kind: "weather" | "air-quality";
+    reason: string;
+  } | null;
   /** An active, non-routine NWS warning/advisory for the county. */
   activeWeatherAlert: boolean;
   /** Count of live-music shows still ahead tonight. */
@@ -84,7 +89,26 @@ export function smartMapDefault(
   const { hour, weekday } = moment;
   const weekend = weekday === 0 || weekday === 6;
 
-  // 1. Weather leads everything. Keep the map legible, name the alert, and
+  // 1. A shared outdoor safety hold leads everything. This includes unhealthy
+  //    measured air even when no NWS alert product has arrived yet.
+  if (signals.outdoorSafetyHold) {
+    return {
+      layers: [],
+      reason: signals.outdoorSafetyHold.reason,
+      action: signals.outdoorSafetyHold.kind === "weather"
+        ? {
+            layer: "radar",
+            label: "See radar",
+          }
+        : {
+            href: "/pulse",
+            label: "See conditions",
+          },
+    };
+  }
+
+  // 2. Other significant weather alerts lead the ordinary discovery defaults.
+  //    Keep the map legible, name the alert, and
   //    make radar one deliberate tap away instead of covering the county
   //    before the person has asked to inspect precipitation.
   if (signals.activeWeatherAlert) {
@@ -98,7 +122,7 @@ export function smartMapDefault(
     };
   }
 
-  // 2. Friday and Saturday evening: the going-out window. Music venues
+  // 3. Friday and Saturday evening: the going-out window. Music venues
   //    and the parking answer belong together.
   if ((weekday === 5 || weekday === 6) && hour >= 16 && hour <= 23) {
     if (signals.musicTonightCount > 0) {
@@ -113,7 +137,7 @@ export function smartMapDefault(
     }
   }
 
-  // 3. Weekend morning: markets and the outdoors window.
+  // 4. Weekend morning: markets and the outdoors window.
   if (weekend && hour >= 7 && hour <= 12 && signals.marketsOpenTodayCount > 0) {
     return {
       layers: [],
@@ -125,7 +149,7 @@ export function smartMapDefault(
     };
   }
 
-  // 4. Weekday commute windows, only when the roads are actually worse:
+  // 5. Weekday commute windows, only when the roads are actually worse:
   //    a quiet commute gets a quiet map.
   const commute = !weekend && ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18));
   if (commute && signals.roadsTrendingLongerCount > 0) {

@@ -9,7 +9,10 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { withDeadlineOutcome } from "@/lib/promise-deadline";
+import {
+  withDeadlineOutcome,
+  type DeadlineOutcome,
+} from "@/lib/promise-deadline";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -26,15 +29,19 @@ import { getCommunityReports } from "@/lib/loaders/communityReports";
 import { getPublicCountyParkAssets } from "@/lib/integrations/fcParkAssetsPublic";
 import { getCountyFloodContext } from "@/lib/integrations/fcFloodRisk";
 import { getCountySnowRoutes } from "@/lib/integrations/fcSnowCommand";
-import { MAP_FEED_DEADLINE_MS } from "./config";
+import {
+  MAP_DATABASE_FEED_DEADLINE_MS,
+  MAP_DATABASE_STATEMENT_TIMEOUT_MS,
+  MAP_NETWORK_FEED_DEADLINE_MS,
+} from "./config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 45;
 
-const MAP_FEEDS: ReadonlyArray<
-  readonly [string, () => Promise<unknown>]
-> = [
+type MapFeed = readonly [string, () => Promise<unknown>];
+
+const NETWORK_MAP_FEEDS: ReadonlyArray<MapFeed> = [
   ["chart", () => getChartIncidentsFrederick()],
   ["fixit", () => getFixItIssues(30)],
   ["mapillary", () => fetchMapillaryTrash()],
@@ -48,7 +55,26 @@ const MAP_FEEDS: ReadonlyArray<
   ["park-assets", () => getPublicCountyParkAssets()],
   ["flood-context", () => getCountyFloodContext()],
   ["snow-routes", () => getCountySnowRoutes()],
-  ["reports", () => getCommunityReports()],
+];
+
+// Keep database work out of the optional network fanout. A JavaScript timeout
+// only bounds how long this route waits; it does not cancel a Postgres query.
+// Database-backed feeds therefore run after the fanout, one at a time, with a
+// real server-side statement timeout in addition to the route deadline.
+const DATABASE_MAP_FEEDS: ReadonlyArray<MapFeed> = [
+  [
+    "reports",
+    () =>
+      getCommunityReports(
+        new Date(),
+        MAP_DATABASE_STATEMENT_TIMEOUT_MS,
+      ),
+  ],
+];
+
+const MAP_FEEDS: ReadonlyArray<MapFeed> = [
+  ...NETWORK_MAP_FEEDS,
+  ...DATABASE_MAP_FEEDS,
 ];
 
 function recordCount(value: unknown): number | null {
@@ -76,14 +102,24 @@ export async function GET(request: Request) {
   if (auth) return auth;
 
   const startedAt = Date.now();
-  const results = await Promise.all(
-    MAP_FEEDS.map(([, warm]) =>
+  const networkResults = await Promise.all(
+    NETWORK_MAP_FEEDS.map(([, warm]) =>
       withDeadlineOutcome(
         Promise.resolve().then(warm),
-        MAP_FEED_DEADLINE_MS,
+        MAP_NETWORK_FEED_DEADLINE_MS,
       ),
     ),
   );
+  const databaseResults: DeadlineOutcome<unknown>[] = [];
+  for (const [, warm] of DATABASE_MAP_FEEDS) {
+    databaseResults.push(
+      await withDeadlineOutcome(
+        Promise.resolve().then(warm),
+        MAP_DATABASE_FEED_DEADLINE_MS,
+      ),
+    );
+  }
+  const results = [...networkResults, ...databaseResults];
   const mapFeeds = Object.fromEntries(
     MAP_FEEDS.map(([name], index) => [
       name,

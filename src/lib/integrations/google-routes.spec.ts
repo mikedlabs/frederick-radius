@@ -24,7 +24,11 @@ vi.mock("@/lib/usage-meter", () => ({
   meterUsage: mocks.meterUsage,
 }));
 
-import { computeMatrix, travelTimes } from "./google-routes";
+import {
+  computeMatrix,
+  computePrivateMatrix,
+  travelTimes,
+} from "./google-routes";
 
 const ORIGIN = { lat: 39.4143, lng: -77.4105 };
 const DESTINATION = { lat: 39.416, lng: -77.4071 };
@@ -165,5 +169,22 @@ describe("Google Routes usage metering", () => {
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.meterUsage).toHaveBeenCalledOnce();
     expect(mocks.meterUsage).toHaveBeenCalledWith("google_routes_matrix");
+  });
+
+  it("never persists a user-specific origin in the application route cache", async () => {
+    mocks.fetch.mockResolvedValue(
+      matrixResponse([{
+        destinationIndex: 0,
+        duration: "600s",
+        distanceMeters: 900,
+        condition: "ROUTE_EXISTS",
+      }]),
+    );
+
+    await computePrivateMatrix(ORIGIN, [DESTINATION], "WALK");
+    await computePrivateMatrix(ORIGIN, [DESTINATION], "WALK");
+
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.routeCache.size).toBe(0);
   });
 });

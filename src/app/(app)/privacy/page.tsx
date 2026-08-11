@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           What the app knows and why.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Effective July 21, 2026
+          Effective August 10, 2026
         </p>
       </header>
 
@@ -53,7 +53,8 @@ export default function PrivacyPage() {
               in this browser session for up to 30 minutes and can be used on
               your device to center maps and rank nearby results. Frederick
               Radius does not save a history of those precise fixes in its app
-              database.
+              database. If you explicitly ask for a travel-time estimate, the
+              app handles that one request as described below.
             </li>
           </ul>
           <p>
@@ -141,6 +142,32 @@ export default function PrivacyPage() {
 
         <div className="space-y-2">
           <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Ask Radius and AI-assisted answers
+          </h2>
+          <p>
+            When you submit a question to Ask Radius, our server processes the
+            question and the local context needed to answer it. That context may
+            include your selected town, distances calculated from a location you
+            shared, followed places, interests, and fit settings such as budget,
+            family, walking, or access needs.
+          </p>
+          <p>
+            Some questions are sent through Vercel AI Gateway to an AI model
+            provider, or directly to a configured model provider such as OpenAI
+            or Anthropic. The model receives the question, relevant Frederick
+            records, and the preference labels needed to compose the answer. It
+            does not receive your email address or the precise browser location
+            fix. We do not add Ask text to the first-party activity log described
+            above. To reduce cost and waiting time, Radius may cache a generated
+            answer and its supporting Frederick context for up to 24 hours; that
+            cache is not attached to your account or activity profile. The
+            gateway and model provider may retain request data under their own
+            terms and our account settings.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
             Technical, security, and measurement data
           </h2>
           <p>
@@ -166,6 +193,13 @@ export default function PrivacyPage() {
             to Mapbox. A map provider may additionally process IP address and
             map viewport, tile, or interaction data needed to serve the map.
           </p>
+          <p>
+            When you tap the travel-time control for a place, Frederick Radius
+            sends an origin rounded to roughly 100 meters to Google Routes for
+            that estimate. The origin stays out of the request URL, and Radius
+            does not put that user-specific route result in its persistent app
+            cache.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -176,9 +210,11 @@ export default function PrivacyPage() {
             We use service providers to host the app, store data, authenticate
             users, send email and push notifications, measure aggregate use,
             monitor errors, and provide maps or place information. These
-            providers currently include Vercel, Supabase, Resend, Plausible,
-            Sentry, Mapbox, and Google. They process information under their own
-            terms and our configurations.
+            providers currently include Vercel and Vercel AI Gateway, Supabase,
+            Resend, Plausible, Sentry, Mapbox, Google, OpenAI, and Anthropic.
+            Which model provider receives an Ask request depends on the service
+            configuration at that time. They process information under their
+            own terms and our configurations.
           </p>
           <p>
             Google may process information when Maps or Places content is

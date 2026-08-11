@@ -31,6 +31,7 @@ describe("map interaction state contracts", () => {
 
   it("keeps selected-place alternatives inside the existing Around here disclosure", () => {
     const source = readFileSync("src/components/map/MapPeek.tsx", "utf8");
+    const css = readFileSync("src/app/globals.css", "utf8");
     const disclosureStart = source.indexOf('<details className="map-peek-around">');
     const alternatives = source.indexOf("data-map-decision-alternatives");
     const disclosureEnd = source.indexOf("</details>", disclosureStart);
@@ -40,6 +41,24 @@ describe("map interaction state contracts", () => {
     expect(disclosureStart).toBeGreaterThan(-1);
     expect(alternatives).toBeGreaterThan(disclosureStart);
     expect(alternatives).toBeLessThan(disclosureEnd);
+    expect(source).toContain(
+      'className="ml-1 inline-flex min-h-11 items-center',
+    );
+    expect(source).toContain(
+      'className="inline-flex min-h-11 items-center align-middle underline',
+    );
+    expect(css).toMatch(
+      /\.map-peek-around summary\s*\{[^}]*min-height:\s*44px/,
+    );
+  });
+
+  it("remounts the selected-place peek so its decision clock cannot leak across pins", () => {
+    const source = readFileSync(
+      "src/components/map/AppMapSelectionSurfaces.tsx",
+      "utf8",
+    );
+
+    expect(source).toMatch(/<MapPeek\s+key=\{peekPlace\.slug\}/);
   });
 
   it("clears a cached map search when the route no longer has q", () => {

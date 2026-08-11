@@ -23,6 +23,44 @@ describe("smartMapDefault", () => {
     });
   });
 
+  it("lets the shared air-quality hold outrank an otherwise useful market", () => {
+    const out = smartMapDefault(
+      { hour: 9, weekday: 6 },
+      {
+        ...quiet,
+        marketsOpenTodayCount: 2,
+        outdoorSafetyHold: {
+          kind: "air-quality",
+          reason: "AirNow reports AQI 164, Unhealthy, for Frederick.",
+        },
+      },
+    );
+
+    expect(out?.reason).toBe(
+      "AirNow reports AQI 164, Unhealthy, for Frederick.",
+    );
+    expect(out?.action).toEqual({
+      href: "/pulse",
+      label: "See conditions",
+    });
+  });
+
+  it("uses radar as the immediate action for a severe weather hold", () => {
+    const out = smartMapDefault(
+      { hour: 18, weekday: 5 },
+      {
+        ...quiet,
+        musicTonightCount: 6,
+        outdoorSafetyHold: {
+          kind: "weather",
+          reason: "Severe Thunderstorm Warning is active for Frederick County.",
+        },
+      },
+    );
+
+    expect(out?.action).toEqual({ layer: "radar", label: "See radar" });
+  });
+
   it("leads Friday evening with tonight's music and the parking answer", () => {
     const out = smartMapDefault(
       { hour: 18, weekday: 5 },

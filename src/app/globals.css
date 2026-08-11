@@ -5586,7 +5586,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-bg-sunken);
 }
 .map-peek-around summary {
-  min-height: 34px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 6px;

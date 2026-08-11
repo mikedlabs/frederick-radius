@@ -35,8 +35,9 @@ import Sheet from "@/components/ui/Sheet";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import { answerCanLocalize } from "@/lib/ask/localize";
-import { useSavedList } from "@/hooks/useSaved";
+import { useFollowedSlugs } from "@/hooks/useFollows";
 import { contextualizeAskQuery } from "@/lib/ask/followup";
+import { readAskFitContext } from "@/lib/ask/fit";
 import type {
   AskAction,
   AskPlanPreview,
@@ -1190,7 +1191,9 @@ export default function AskFrederick({
   const askRef = useRef<(query: string, options?: AskOptions) => Promise<void>>(
     async () => {},
   );
-  const saved = useSavedList();
+  // One place preference everywhere: signed-in accounts use their synced
+  // follows; signed-out visitors transparently retain the device-local saves.
+  const { slugs: followedPlaceSlugs } = useFollowedSlugs();
   const geolocation = useGeolocation();
   const workspace = mode === "workspace";
   const hasDevicePosition =
@@ -1456,15 +1459,13 @@ export default function AskFrederick({
     setShareStatus("idle");
     abortRef.current?.abort();
     const requestId = ++requestIdRef.current;
-    const savedPlaceSlugs = saved
-      .filter((item) => item.type === "place")
-      .map((item) => item.id)
-      .slice(0, 30);
+    const savedPlaceSlugs = Array.from(followedPlaceSlugs).slice(0, 30);
     const interests = getInterests().slice(0, 12);
+    const fit = readAskFitContext();
     const tasteKey = `${savedPlaceSlugs.slice().sort().join(",")}|${interests
       .slice()
       .sort()
-      .join(",")}`;
+      .join(",")}|${JSON.stringify(fit)}`;
     const cacheScope = askContextKey(resolvedScope, fallbackHomeScope);
     const cacheKey = `${effectiveQuery.toLowerCase()}|${cacheScope}|${
       position ? `${position.lat.toFixed(3)},${position.lng.toFixed(3)}` : "no-fix"
@@ -1505,9 +1506,12 @@ export default function AskFrederick({
         body: JSON.stringify({
           query: effectiveQuery,
           scope: resolvedScope ?? undefined,
-          lat: position ? Number(position.lat.toFixed(4)) : undefined,
-          lng: position ? Number(position.lng.toFixed(4)) : undefined,
+          // Block-level precision is enough to rank local results and keeps
+          // the browser request aligned with Radius's privacy disclosure.
+          lat: position ? Number(position.lat.toFixed(3)) : undefined,
+          lng: position ? Number(position.lng.toFixed(3)) : undefined,
           taste: { savedPlaceSlugs, interests },
+          fit,
         }),
         signal: controller.signal,
       });

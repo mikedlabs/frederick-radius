@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const body = parsedBody.value && typeof parsedBody.value === "object"
-    ? parsedBody.value as { query?: unknown; scope?: unknown; lat?: unknown; lng?: unknown; taste?: unknown }
+    ? parsedBody.value as { query?: unknown; scope?: unknown; lat?: unknown; lng?: unknown; taste?: unknown; fit?: unknown }
     : {};
   const query = typeof body.query === "string" ? body.query.slice(0, 300) : "";
   if (!query.trim()) {
@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
       contextLabel: context.label,
       canShowDistance: context.canShowDistance,
       fallbackReason: context.fallbackReason,
-    }, { taste: body.taste }),
+    }, { taste: body.taste, fit: body.fit }),
     // Do not let a slow safety provider recreate Ask's old multi-second wait.
     // The upstream fetches are cached, and a cold miss gets a short final
     // safety budget while the grounded answer is built in parallel.

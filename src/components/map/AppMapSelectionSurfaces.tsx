@@ -207,6 +207,7 @@ export default function AppMapSelectionSurfaces({
           map (2026-07-17 map audit #2). */}
       {peekPlace && !parkingPeek && !foodTruckPeek && (
         <MapPeek
+          key={peekPlace.slug}
           place={peekPlace}
           hostedEvent={
             events

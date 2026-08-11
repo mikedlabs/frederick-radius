@@ -40,7 +40,7 @@ import MapWarmup from "@/components/map/MapWarmup";
 import MapLoadingScene from "@/components/map/MapLoadingScene";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { eventPinFromEvent } from "@/lib/map/eventPin";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { todaysDeals } from "@/lib/loaders/todaysDeals";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
@@ -63,6 +63,7 @@ import {
 } from "@/lib/live/currentSituationModel";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import { alertPriority } from "@/lib/alert-priority";
+import { outdoorSafetyHold } from "@/lib/weather-safety";
 import { marketsOpenToday } from "@/lib/markets-today";
 import {
   selectRoadWorkZoneFeatureCollection,
@@ -150,7 +151,6 @@ function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date): MapPinPla
     open_status: d.open_status,
     is_verified: d.is_verified,
     field_notes: d.field_notes,
-    deal_hook: d.deal_hook,
     source: d.source,
     // google_place_id + feature_score deliberately NOT shipped (~107 KB
     // across 1,627 pins). Their only client read is AppMap's DedupeRecord
@@ -729,18 +729,7 @@ async function BrowseMapArea() {
     const eMs = e.ends_at ? Date.parse(e.ends_at) : sMs;
     // Already over (with a small grace for ISR staleness): skip.
     if (Math.max(sMs, eMs) < now.getTime() - 300_000) continue;
-    weekEvents.push({
-      slug: e.slug,
-      title: e.title,
-      starts_at: e.starts_at,
-      ends_at: e.ends_at,
-      venue_name: e.venue_name,
-      venue_place_slug: e.venue_place_slug,
-      lng: e.geom.lng,
-      lat: e.geom.lat,
-      category: e.category,
-      category_color: CATEGORY_BY_SLUG[e.category]?.color,
-    });
+    weekEvents.push(eventPinFromEvent(e, now));
     if (weekEvents.length >= 400) break;
   }
 
@@ -766,6 +755,17 @@ async function BrowseMapArea() {
       updated: occ?.updated ?? null,
     };
   });
+
+  // Reuse the same safety policy as Today and Ask. The snapshot already owns
+  // the bounded NWS + AirNow reads, so this adds no provider request and keeps
+  // one dangerous condition from producing three different product answers.
+  const mapSafetyHold = situationSnapshot
+    ? outdoorSafetyHold(
+        situationSnapshot.sources.weather.data,
+        situationSnapshot.sources.air.data,
+        now,
+      )
+    : null;
 
   // Transit stop dots + MARC stations with next trains (map phase 3).
   // Bus stops come from the committed static TransIT GTFS snapshot. Preserve
@@ -805,9 +805,9 @@ async function BrowseMapArea() {
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
       <BrowseMapClient
         places={allPlaces}
-        // Slugs of places running a verified special today — powers the
-        // When pane's "Deals today" view. A slug list, not deal payloads:
-        // the pins already carry deal_hook for the peek line.
+        // Slugs of places running a verified special today power the When
+        // pane's "Deals today" view without sending unscheduled deal copy to
+        // every map pin.
         dealSlugsToday={[...new Set(todaysDeals(now, 999).map((d) => d.slug))]}
         parking={parking}
         civic={civic}
@@ -833,6 +833,12 @@ async function BrowseMapArea() {
         // default. Each one reads a snapshot this render already fetched;
         // a missing snapshot degrades to a quiet cold open, never an error.
         smartSignals={{
+          outdoorSafetyHold: mapSafetyHold && mapSafetyHold.kind !== "unavailable"
+            ? {
+                kind: mapSafetyHold.kind === "nws" ? "weather" : "air-quality",
+                reason: mapSafetyHold.reason,
+              }
+            : null,
           activeWeatherAlert: (
             situationSnapshot?.sources.weather.data ?? []
           ).some((alert) => alertPriority(alert) <= 2),

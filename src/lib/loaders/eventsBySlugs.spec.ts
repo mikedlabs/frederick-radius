@@ -7,6 +7,7 @@ import {
   normalizeRequestedEventSlugList,
   normalizeRequestedEventSlugs,
   resolveEventsBySlugs,
+  resolveEventsBySlugsWithStatus,
   type EventsBySlugsSources,
 } from "./eventsBySlugs";
 
@@ -44,10 +45,23 @@ function sources(
 ): EventsBySlugsSources {
   return {
     seed: () => null,
-    unified: async () => [],
-    archive: async () => null,
-    now: () => 0,
+    publicEvents: async () => [],
+    archive: async () => ({ matches: [], unresolvedSlugs: [] }),
     ...overrides,
+  };
+}
+
+function archivedMatch(
+  requestedSlug: string,
+  canonicalSlug = requestedSlug,
+) {
+  return {
+    id: `identity-${requestedSlug}`,
+    requestedSlug,
+    canonicalSlug,
+    event: row(canonicalSlug),
+    tombstoned: false,
+    lastSeenAt: "2026-08-04T12:00:00.000Z",
   };
 }
 
@@ -109,21 +123,21 @@ describe("resolveEventsBySlugs", () => {
     const events = await resolveEventsBySlugs(
       [ingested],
       NOW,
-      sources({ unified: async () => [row(ingested)] }),
+      sources({ publicEvents: async () => [row(ingested)] }),
     );
 
     expect(events.map((e) => e.slug)).toEqual([ingested]);
   });
 
-  it("asks the unified snapshot once for the whole batch", async () => {
-    const unified = vi.fn(async () => [row("a-event"), row("b-event")]);
+  it("asks the public snapshot once for the whole batch", async () => {
+    const publicEvents = vi.fn(async () => [row("a-event"), row("b-event")]);
     const events = await resolveEventsBySlugs(
       ["a-event", "b-event", "c-event"],
       NOW,
-      sources({ unified }),
+      sources({ publicEvents }),
     );
 
-    expect(unified).toHaveBeenCalledTimes(1);
+    expect(publicEvents).toHaveBeenCalledTimes(1);
     expect(events.map((e) => e.slug)).toEqual(["a-event", "b-event"]);
   });
 
@@ -133,7 +147,7 @@ describe("resolveEventsBySlugs", () => {
       NOW,
       sources({
         seed: (slug) => (slug === "b-event" ? row(slug) : null),
-        unified: async () => [row("a-event"), row("c-event")],
+        publicEvents: async () => [row("a-event"), row("c-event")],
       }),
     );
 
@@ -145,16 +159,112 @@ describe("resolveEventsBySlugs", () => {
   });
 
   it("only reaches the archive for slugs the snapshot did not answer", async () => {
-    const archive = vi.fn(async (slug: string) => ({ event: row(slug) }));
+    const archive = vi.fn(async (slugs: readonly string[]) => ({
+      matches: slugs.map((slug) => archivedMatch(slug)),
+      unresolvedSlugs: [],
+    }));
     const events = await resolveEventsBySlugs(
       ["live-now", "long-past"],
       NOW,
-      sources({ unified: async () => [row("live-now")], archive }),
+      sources({ publicEvents: async () => [row("live-now")], archive }),
     );
 
     expect(archive).toHaveBeenCalledTimes(1);
-    expect(archive.mock.calls[0][0]).toBe("long-past");
+    expect(archive.mock.calls[0][0]).toEqual(["long-past"]);
     expect(events.map((e) => e.slug)).toEqual(["live-now", "long-past"]);
+  });
+
+  it("preserves an archived alias binding to its canonical event route", async () => {
+    const result = await resolveEventsBySlugsWithStatus(
+      ["old-event-title"],
+      NOW,
+      sources({
+        archive: async () => ({
+          matches: [archivedMatch("old-event-title", "current-event-title")],
+          unresolvedSlugs: [],
+        }),
+      }),
+    );
+
+    expect(result.events.map((event) => event.slug)).toEqual([
+      "current-event-title",
+    ]);
+    expect(result.resolvedSlugs).toEqual([
+      {
+        requestedSlug: "old-event-title",
+        canonicalSlug: "current-event-title",
+      },
+    ]);
+  });
+
+  it("confirms non-public archive rows missing without disclosing their snapshots", async () => {
+    const privateEvent = {
+      ...row("private-event"),
+      title: "Private Corporate Event",
+      address: "Confidential suite, Frederick, MD",
+    };
+    const civicEvent = {
+      ...row("civic-event"),
+      title: "Planning Commission Hearing",
+      category: "civic",
+    };
+    const cancelledEvent = {
+      ...row("cancelled-event"),
+      title: "Cancelled Concert",
+      status: "cancelled" as const,
+    };
+    const endedEvent = {
+      ...row("ended-event"),
+      title: "Already Ended Event",
+      starts_at: "2026-08-03T22:00:00.000Z",
+      ends_at: "2026-08-04T01:00:00.000Z",
+    };
+    const requested = [
+      privateEvent.slug,
+      civicEvent.slug,
+      cancelledEvent.slug,
+      endedEvent.slug,
+      "tombstoned-event",
+    ];
+    const result = await resolveEventsBySlugsWithStatus(
+      requested,
+      NOW,
+      sources({
+        // Even during a genuinely degraded public read, a healthy archive can
+        // prove that these specific records are not publicly renderable.
+        publicEvents: async () => ({ events: [], degraded: true }),
+        archive: async () => ({
+          matches: [
+            { ...archivedMatch(privateEvent.slug), event: privateEvent },
+            { ...archivedMatch(civicEvent.slug), event: civicEvent },
+            { ...archivedMatch(cancelledEvent.slug), event: cancelledEvent },
+            { ...archivedMatch(endedEvent.slug), event: endedEvent },
+            {
+              ...archivedMatch("tombstoned-event"),
+              event: {
+                ...row("tombstoned-event"),
+                title: "Deleted confidential event",
+                address: "Private address",
+              },
+              tombstoned: true,
+            },
+          ],
+          unresolvedSlugs: [],
+        }),
+      }),
+    );
+
+    expect(result.events).toEqual([]);
+    expect(result.resolvedSlugs).toEqual([]);
+    expect(result.missingSlugs).toEqual(requested);
+    expect(result.unresolvedSlugs).toEqual([]);
+    expect(result.degraded).toBe(true);
+    const payload = JSON.stringify(result);
+    expect(payload).not.toContain("Confidential suite");
+    expect(payload).not.toContain("Planning Commission Hearing");
+    expect(payload).not.toContain("Cancelled Concert");
+    expect(payload).not.toContain("Already Ended Event");
+    expect(payload).not.toContain("Deleted confidential event");
   });
 
   it("keeps the resolved rows when a source fails", async () => {
@@ -163,7 +273,7 @@ describe("resolveEventsBySlugs", () => {
       NOW,
       sources({
         seed: (slug) => (slug === "seeded" ? row(slug) : null),
-        unified: async () => {
+        publicEvents: async () => {
           throw new Error("every provider timed out");
         },
         archive: async () => {
@@ -177,37 +287,92 @@ describe("resolveEventsBySlugs", () => {
     expect(events.map((e) => e.slug)).toEqual(["seeded"]);
   });
 
-  it("stops spending archive reads once the batch budget is gone", async () => {
-    let clock = 0;
-    const archive = vi.fn(async (slug: string) => {
-      clock += EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS;
-      return { event: row(slug) };
-    });
-
-    const events = await resolveEventsBySlugs(
-      ["past-1", "past-2", "past-3"],
+  it("keeps partial feed misses unresolved instead of calling them absent", async () => {
+    const result = await resolveEventsBySlugsWithStatus(
+      ["available", "from-degraded-feed"],
       NOW,
-      sources({ archive, now: () => clock }),
+      sources({
+        publicEvents: async () => ({
+          events: [row("available")],
+          degraded: true,
+        }),
+      }),
     );
 
-    // Six workers start together, so the first wave still runs; what the
-    // budget guarantees is that the tail cannot keep opening reads forever.
-    expect(events.length).toBeLessThan(3);
-    expect(archive.mock.calls.length).toBeLessThan(3);
+    expect(result.events.map((event) => event.slug)).toEqual(["available"]);
+    expect(result.unresolvedSlugs).toEqual(["from-degraded-feed"]);
+    expect(result.missingSlugs).toEqual([]);
+    expect(result.degraded).toBe(true);
   });
 
-  it("gives the archive a bounded slice of the shared budget", async () => {
-    const archive = vi.fn<EventsBySlugsSources["archive"]>(async () => null);
-    await resolveEventsBySlugs(["past-1"], NOW, sources({ archive }));
+  it("only calls a slug missing after healthy public and archive reads", async () => {
+    const result = await resolveEventsBySlugsWithStatus(
+      ["deleted-event"],
+      NOW,
+      sources(),
+    );
 
-    const timeoutMs = archive.mock.calls[0][1];
-    expect(timeoutMs).toBeGreaterThan(0);
-    expect(timeoutMs).toBeLessThanOrEqual(EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS);
+    expect(result.events).toEqual([]);
+    expect(result.unresolvedSlugs).toEqual([]);
+    expect(result.missingSlugs).toEqual(["deleted-event"]);
+    expect(result.degraded).toBe(false);
+  });
+
+  it("marks an archive failure unresolved even when the public read succeeds", async () => {
+    const result = await resolveEventsBySlugsWithStatus(
+      ["past-event"],
+      NOW,
+      sources({
+        archive: async () => {
+          throw new Error("archive unavailable");
+        },
+      }),
+    );
+
+    expect(result.unresolvedSlugs).toEqual(["past-event"]);
+    expect(result.missingSlugs).toEqual([]);
+    expect(result.degraded).toBe(true);
+  });
+
+  it("uses one bounded archive operation for the maximum saved batch", async () => {
+    const archive = vi.fn<EventsBySlugsSources["archive"]>(async () => ({
+      matches: [],
+      unresolvedSlugs: [],
+    }));
+    const requested = Array.from(
+      { length: MAX_EVENTS_BY_SLUG },
+      (_, index) => `past-event-${index}`,
+    );
+
+    await resolveEventsBySlugs(requested, NOW, sources({ archive }));
+
+    expect(archive).toHaveBeenCalledTimes(1);
+    expect(archive.mock.calls[0][0]).toEqual(requested);
+    expect(archive.mock.calls[0][1]).toBe(
+      EVENTS_BY_SLUG_ARCHIVE_BUDGET_MS,
+    );
+  });
+
+  it("preserves per-slug unresolved status from one healthy batch response", async () => {
+    const result = await resolveEventsBySlugsWithStatus(
+      ["invalid-snapshot", "known-missing"],
+      NOW,
+      sources({
+        archive: async () => ({
+          matches: [],
+          unresolvedSlugs: ["invalid-snapshot"],
+        }),
+      }),
+    );
+
+    expect(result.unresolvedSlugs).toEqual(["invalid-snapshot"]);
+    expect(result.missingSlugs).toEqual(["known-missing"]);
+    expect(result.degraded).toBe(true);
   });
 
   it("answers an empty request without touching any source", async () => {
-    const unified = vi.fn(async () => []);
-    expect(await resolveEventsBySlugs([], NOW, sources({ unified }))).toEqual([]);
-    expect(unified).not.toHaveBeenCalled();
+    const publicEvents = vi.fn(async () => []);
+    expect(await resolveEventsBySlugs([], NOW, sources({ publicEvents }))).toEqual([]);
+    expect(publicEvents).not.toHaveBeenCalled();
   });
 });

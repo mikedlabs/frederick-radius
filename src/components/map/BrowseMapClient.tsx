@@ -177,6 +177,10 @@ export default function BrowseMapClient({
   /** Server-computed live signals for the smart cold-open default (map
    *  program phase 1). Null keeps the map's old quiet cold open. */
   smartSignals?: {
+    outdoorSafetyHold?: {
+      kind: "weather" | "air-quality";
+      reason: string;
+    } | null;
     activeWeatherAlert: boolean;
     marketsOpenTodayCount: number;
     roadsTrendingLongerCount: number;

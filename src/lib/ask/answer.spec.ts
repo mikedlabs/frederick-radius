@@ -94,6 +94,31 @@ describe("askFrederick structured answers", () => {
     expect(result.actions?.some((action) => action.label === "Make it a plan")).toBe(true);
   });
 
+  it("enforces a selected wheelchair fit and qualifies unknown access", async () => {
+    const result = await askFrederick(
+      "Where can I get coffee near me?",
+      downtown,
+      { fit: { accessibility: ["wheelchair"] } },
+    );
+
+    expect(result.sources.length).toBeGreaterThan(0);
+    const places = result.sources.flatMap((source) => {
+      const place = clientPlaceBySlug(source.slug);
+      return place ? [{ source, place }] : [];
+    });
+    expect(places.every(({ place }) => place.accessibility?.wheelchair !== false))
+      .toBe(true);
+    const unknown = places.filter(
+      ({ place }) => place.accessibility?.wheelchair == null,
+    );
+    expect(unknown.every(({ source }) =>
+      source.detail?.includes("Wheelchair access is not confirmed") === true
+    )).toBe(true);
+    if (unknown.length > 0) {
+      expect(result.answer).toContain("Wheelchair access is not confirmed");
+    }
+  });
+
   it("takes closest literally when the user asks for the closest grocery store", async () => {
     const result = await askFrederick("What grocery store is closest to me?", downtown);
     expect(result.sources[0]?.name).toBe("Costco Wholesale");

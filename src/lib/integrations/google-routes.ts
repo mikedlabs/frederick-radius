@@ -6,13 +6,15 @@
  * (same key — Routes API just needs enabling in the GCP console).
  *
  * Cost: Route Matrix is billed per element (origins × destinations). We
- * keep matrices tiny (1 origin × ≤25 destinations) and cache results.
+ * keep matrices tiny (1 origin × ≤25 destinations). Shared planning calls
+ * are cached; consented device-origin calls deliberately are not.
  */
 
 import { unstable_cache } from "next/cache";
 import { meterUsage } from "@/lib/usage-meter";
 
 const URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix";
+const ROUTES_REQUEST_TIMEOUT_MS = 6_000;
 
 export type TravelMode = "WALK" | "DRIVE" | "BICYCLE" | "TRANSIT";
 
@@ -42,8 +44,9 @@ async function computeMatrixUncached(
   const k = key();
   if (!k) throw new Error("Google Routes is not configured");
 
-  // The meter lives inside the cache-miss function so repeated place-sheet
-  // reads of the same matrix do not increment or reach Google.
+  // Meter at the upstream boundary so every count represents a Google call.
+  // Shared callers reach this boundary only on cache misses; private callers
+  // reach it after an explicit user action and are never persisted.
   meterUsage("google_routes_matrix");
   const res = await fetch(URL, {
     method: "POST",
@@ -64,8 +67,11 @@ async function computeMatrixUncached(
       travelMode: mode,
       ...(mode === "DRIVE" ? { routingPreference: "TRAFFIC_AWARE" } : {}),
     }),
-    // unstable_cache owns the one-hour result; avoid a second cache layer so
-    // the meter and network request always share the same miss boundary.
+    // Travel time is a convenience, never a reason to hold a place sheet or a
+    // serverless function open. Both walk and drive calls fail soft below.
+    signal: AbortSignal.timeout(ROUTES_REQUEST_TIMEOUT_MS),
+    // The caller owns any permitted caching. Device-origin requests pass
+    // through here with no cache layer at all.
     cache: "no-store",
   });
   if (!res.ok) {
@@ -116,6 +122,25 @@ export async function computeMatrix(
   }
 }
 
+/**
+ * User-specific route matrix. Unlike `computeMatrix`, this never enters
+ * Next's persistent data cache: a consented device position is transient
+ * request data, not a reusable application artifact.
+ */
+export async function computePrivateMatrix(
+  origin: LatLng,
+  destinations: LatLng[],
+  mode: TravelMode = "WALK",
+): Promise<TravelLeg[]> {
+  if (!key() || destinations.length === 0) return [];
+  try {
+    return await computeMatrixUncached(origin, destinations.slice(0, 25), mode);
+  } catch (err) {
+    console.error("[routes] private matrix failed:", err);
+    return [];
+  }
+}
+
 /** Walk + drive minutes from origin to a single point. */
 export async function travelTimes(
   origin: LatLng,
@@ -124,6 +149,21 @@ export async function travelTimes(
   const [walk, drive] = await Promise.all([
     computeMatrix(origin, [dest], "WALK"),
     computeMatrix(origin, [dest], "DRIVE"),
+  ]);
+  return {
+    walkMin: walk[0] ? Math.round(walk[0].duration / 60) : undefined,
+    driveMin: drive[0] ? Math.round(drive[0].duration / 60) : undefined,
+  };
+}
+
+/** Walk + drive minutes for a transient, user-specific origin. */
+export async function privateTravelTimes(
+  origin: LatLng,
+  dest: LatLng,
+): Promise<{ walkMin?: number; driveMin?: number }> {
+  const [walk, drive] = await Promise.all([
+    computePrivateMatrix(origin, [dest], "WALK"),
+    computePrivateMatrix(origin, [dest], "DRIVE"),
   ]);
   return {
     walkMin: walk[0] ? Math.round(walk[0].duration / 60) : undefined,

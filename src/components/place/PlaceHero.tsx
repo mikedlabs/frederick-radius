@@ -170,7 +170,7 @@ export default function PlaceHero({
       ) : null}
 
       {/* Category pill — engraved glyph + label (woodcut vector, no emoji) */}
-      <div className="absolute left-3 top-3 z-[4] inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
+      <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
            style={{ color }}>
         <CategoryIcon slug={category} className="h-3.5 w-3.5" strokeWidth={1.75} /> {cat?.name ?? category}
       </div>

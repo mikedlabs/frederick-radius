@@ -10,6 +10,7 @@
 import type { Place } from "@/data/places";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { OsmPlace } from "@/lib/integrations/overpass";
+import type { SourceConfidence } from "@/lib/provenance";
 
 /** Minimal GeoJSON line FeatureCollection (decoupled from the feeds). */
 export type MapLineFC = {
@@ -155,6 +156,14 @@ export type EventPin = {
   lat: number;
   category: string;
   category_color?: string;
+  /** Compact provenance for the selected-place "what is on here" cue.
+   * Omitted on older/embedded pin callers; the map then makes no trust claim. */
+  source_label?: string;
+  source_url?: string;
+  source_confidence?: SourceConfidence;
+  source_verified?: boolean;
+  verified_at?: string;
+  verification_expires_at?: string;
 };
 
 /** Operator-confirmed, self-expiring food-truck location. */
@@ -265,7 +274,6 @@ export type MapPinPlace = Pick<
   | "open_status"
   | "is_verified"
   | "field_notes"
-  | "deal_hook"
   | "source"
   | "municipality"
   // Read by cuisinesOf via the cuisine sub-intent matchers (IntentMatchable).
