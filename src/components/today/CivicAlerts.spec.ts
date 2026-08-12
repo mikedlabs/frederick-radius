@@ -19,12 +19,23 @@ describe("alertCardSummary", () => {
     expect(summary).toMatch(/…$/);
   });
 
-  it("keeps a complete short first sentence", () => {
+  it("preserves short official copy rather than guessing at sentence boundaries", () => {
     expect(
       alertCardSummary(
         "The visitor center is closed today. Trails remain open.",
       ),
-    ).toBe("The visitor center is closed today.");
+    ).toBe("The visitor center is closed today. Trails remain open.");
+  });
+
+  it.each([
+    "The road will be closed from Aug. 8 through Aug. 16, 2026. Detours are posted.",
+    "The closure affects Washington, D.C. and Frederick County through Friday. Roads remain open.",
+    "Frederick County offices at 12 E. Church St. will close at 3 p.m. today. Essential services continue.",
+    "The closure begins at 8:00 a.m. Roads outside the park remain open.",
+    "Call 301-600-0000 ext. 123. Service remains available.",
+    "Stop at the signed gate (near the visitor center.) Follow ranger directions.",
+  ])("does not corrupt punctuation in a short notice: %s", (notice) => {
+    expect(alertCardSummary(notice)).toBe(notice);
   });
 });
 

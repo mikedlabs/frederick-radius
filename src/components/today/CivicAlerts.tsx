@@ -94,33 +94,15 @@ function summarizeArea(raw: string): string {
 
 const ALERT_CARD_SUMMARY_LIMIT = 140;
 
-function isAbbreviationPeriod(value: string, index: number): boolean {
-  const prefix = value.slice(Math.max(0, index - 16), index + 1).toLowerCase();
-  return (
-    /\b[ap]\.$/.test(prefix) ||
-    /\b[ap]\.m\.$/.test(prefix) ||
-    /\b(?:mr|mrs|ms|dr|st|rd|ave|hwy|approx|dept|no)\.$/.test(prefix) ||
-    /\b(?:e\.g|i\.e|u\.s)\.$/.test(prefix)
-  );
-}
-
 /**
- * Keep an official notice compact without mistaking a period inside a common
- * abbreviation for the end of a sentence. If the first real sentence is too
- * long for the card, end at a complete word and make the shortening visible.
+ * Keep an official notice compact without trying to infer sentence grammar.
+ * Public notices contain times, dates, initials, addresses, and abbreviations
+ * that make a regex sentence detector unsafe. Preserve short copy verbatim;
+ * shorten long copy only at a complete word and make that edit visible.
  */
 export function alertCardSummary(body: string): string {
   if (!body) return "";
   const s = body.replace(/\s+/g, " ").trim();
-
-  for (let index = 20; index < Math.min(s.length, ALERT_CARD_SUMMARY_LIMIT); index += 1) {
-    const character = s[index];
-    if (character !== "." && character !== "!" && character !== "?") continue;
-    if (character === "." && isAbbreviationPeriod(s, index)) continue;
-    if (index + 1 < s.length && !/\s/.test(s[index + 1])) continue;
-    return s.slice(0, index + 1).trim();
-  }
-
   if (s.length <= ALERT_CARD_SUMMARY_LIMIT) return s;
 
   const window = s.slice(0, ALERT_CARD_SUMMARY_LIMIT - 1);
