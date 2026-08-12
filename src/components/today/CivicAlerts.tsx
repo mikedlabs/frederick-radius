@@ -26,8 +26,8 @@ export type UnifiedAlert = {
   source: "NWS" | "NPS" | "MDOT" | "CITY" | "HEALTH";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
-  /** Short one-line tail under the title (e.g. "Until 8:00 PM" or
-   *  the first sentence of the description). Never a wall of text. */
+  /** Short tail under the title (e.g. "Until 8:00 PM" or an intentionally
+   *  shortened official excerpt). Never a wall of text. */
   tail: string;
   /** Affected-area summary as a short chip ("Frederick + 23 counties").
    *  Replaces the old raw `areaDesc` semicolon dump. */
