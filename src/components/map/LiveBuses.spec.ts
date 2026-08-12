@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const motionState = vi.hoisted(() => ({ reduced: true }));
 
-vi.mock("react-map-gl/maplibre", () => ({
+vi.mock("react-map-gl/mapbox", () => ({
   Marker: ({
     children,
     longitude,

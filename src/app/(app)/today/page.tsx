@@ -15,7 +15,6 @@ import SkyHero from "@/components/today/SkyHero";
 // (The component itself was deleted in the 2026-08 dead-code sweep;
 // it is in git history if we ever want it back.)
 import CivicAlerts from "@/components/today/CivicAlerts";
-import WeatherNeeds from "@/components/today/WeatherNeeds";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
@@ -207,14 +206,7 @@ export default async function HomePage() {
   // The event program streams inside its own Suspense boundary.
   const whatsOn = (
     <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-      <Suspense
-        fallback={
-          <section className="mt-5 space-y-3" aria-label="Events today" aria-busy="true">
-            <span className="sr-only" role="status">Loading today&rsquo;s events.</span>
-            <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-          </section>
-        }
-      >
+      <Suspense fallback={null}>
         <WhatsOn eventsPromise={eventsPromise} now={now} />
       </Suspense>
     </div>
@@ -245,17 +237,6 @@ export default async function HomePage() {
       <Suspense fallback={null}>
         <div className="[&:not(:empty)]:mb-4">
           <CivicAlerts />
-        </div>
-      </Suspense>
-
-      {/* ── WEATHER NEEDS — the "what to do" layer that appears ONLY during an
-          active weather warning (storm, snow, flood, heat). The banner above is
-          the alarm; this is the calm safety line plus the actions (river levels,
-          live outage/road board, official closings, the numbers). Self-hides
-          when nothing is active, so it costs the ordinary day zero space. */}
-      <Suspense fallback={null}>
-        <div className="[&:not(:empty)]:mb-4">
-          <WeatherNeeds />
         </div>
       </Suspense>
 
@@ -714,27 +695,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     programCount: program.length,
     earlierCount: remainingEarlierToday.length,
   })) {
-    return (
-      <section className="mt-5" aria-label="Events today">
-        <Link
-          href="/events"
-          className="tap-44 flex items-center justify-between gap-3 border-y py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span className="min-w-0">
-            <strong className="block text-[14px] leading-snug" style={{ color: "var(--app-ink)" }}>
-              Events today
-            </strong>
-            <span className="block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Some event sources are still updating.
-            </span>
-          </span>
-          <span className="shrink-0 text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-            Open board <ChevronRight className="ml-0.5 inline h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </span>
-        </Link>
-      </section>
-    );
+    return null;
   }
 
   return (

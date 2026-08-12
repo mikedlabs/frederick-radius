@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
-import { nwsDisplaySeverity, untilLabel } from "./CivicAlerts";
+import {
+  dedupeUnifiedAlerts,
+  nwsDisplaySeverity,
+  untilLabel,
+  type UnifiedAlert,
+} from "./CivicAlerts";
 
 function alert(overrides: Partial<NwsAlert> = {}): NwsAlert {
   return {
@@ -63,5 +68,36 @@ describe("untilLabel", () => {
         new Date("2026-07-29T03:50:00.000Z"),
       ),
     ).toBe("Until 12:30 AM Wed");
+  });
+});
+
+describe("dedupeUnifiedAlerts", () => {
+  const roadAlert = (identity: string): UnifiedAlert => ({
+    identity,
+    source: "MDOT",
+    severity: "warning",
+    title: "US 15 work-zone closure",
+    tail: "All lanes closed",
+    scope: "US 15 · northbound",
+    url: "/pulse?open=traffic",
+    external: false,
+  });
+
+  it("counts one provider event once when a feed repeats it", () => {
+    expect(
+      dedupeUnifiedAlerts([
+        roadAlert("mdot-road:work-zone:123"),
+        roadAlert("mdot-road:work-zone:123"),
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it("does not merge distinct incidents just because they share a road", () => {
+    expect(
+      dedupeUnifiedAlerts([
+        roadAlert("mdot-road:work-zone:123"),
+        roadAlert("mdot-road:work-zone:456"),
+      ]),
+    ).toHaveLength(2);
   });
 });

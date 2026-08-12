@@ -33,6 +33,11 @@ describe("Today decision hierarchy", () => {
     expect(weather).toBeGreaterThan(scope);
   });
 
+  it("does not stack a second weather-safety panel below the active alert", () => {
+    expect(renderedPage).toContain("<CivicAlerts />");
+    expect(renderedPage).not.toContain("<WeatherNeeds");
+  });
+
   it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {
     const decisionStart = todayPage.indexOf("const decisionLead =");
     const decisionEnd = todayPage.indexOf(
@@ -60,7 +65,8 @@ describe("Today decision hierarchy", () => {
     expect(events).toContain("featureIsPromoted && feature ?");
     expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
     expect(events).toContain("Countywide");
-    expect(events).toContain("Some event sources are still updating.");
+    expect(events).toContain("return null;");
+    expect(events).not.toContain("Some event sources are still updating.");
   });
 
   it("puts current utilities before the broader sports board", () => {

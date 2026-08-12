@@ -18,12 +18,12 @@ import Map, {
   Layer,
   type MapRef,
   type MapMouseEvent,
-} from "react-map-gl/maplibre";
+} from "react-map-gl/mapbox";
 // (GeolocateControl stays imported for DOCK-LESS embeds only — on /map
 // browse the dock's Where pane is locate's one home.)
-import type { GeoJSONSource } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { useFrederickFlavorStyle } from "./useFrederickFlavorStyle";
+import type { GeoJSONSource } from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
@@ -69,9 +69,13 @@ import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
 import { installCountySpotlight } from "./countySpotlight";
 import {
-  MAP_LABEL_FONT_MEDIUM,
-  MAP_LABEL_FONT_REGULAR,
-} from "@/lib/map/frederickFlavorStyle";
+  applyMapboxFieldGuideConfig,
+  installMapboxFieldGuideTerrain,
+  MAPBOX_FIELD_GUIDE_CONFIG,
+  MAPBOX_FIELD_GUIDE_STYLE,
+  MAPBOX_LABEL_FONT_MEDIUM,
+  MAPBOX_LABEL_FONT_REGULAR,
+} from "./mapboxFieldGuideStyle";
 import {
   markMapOnLoad,
   markMapIdleOnce,
@@ -164,6 +168,14 @@ const CURATED_CLUSTER_PROPERTIES = curatedClusterProperties();
 const CURATED_CLUSTER_COLOR = curatedClusterColorExpression();
 const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
 
+// Mapbox Standard can keep its imported basemap animating indefinitely, so
+// `idle` is not a dependable readiness boundary. Render-frame probes are a
+// fallback only: keep them sparse, and stop after a bounded number of attempts
+// so a valid camera with no visible Radius marks never runs a spatial query on
+// every basemap frame.
+const MAP_RENDER_READINESS_PROBE_INTERVAL_MS = 250;
+const MAP_RENDER_READINESS_MAX_ATTEMPTS = 12;
+
 // Types, constants, and popup components are kept in focused siblings so this
 // file can own map state, effects, and layout.
 import {
@@ -216,6 +228,8 @@ import { createLiveLayerCloserRegistry, type LiveLayerGate } from "./liveLayerGa
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LightningDensity from "./LightningDensity";
+import MapboxTraffic from "./MapboxTraffic";
+import { isFatalMapboxError } from "./mapboxFailure";
 import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
@@ -632,7 +646,6 @@ export default function AppMap({
       ),
     [],
   );
-  const mapStyle = useFrederickFlavorStyle();
   const attachMapRef = useCallback((instance: MapRef | null) => {
     mapRef.current = instance;
     if (instance) installCategoryMarkers(instance.getMap());
@@ -894,6 +907,19 @@ export default function AppMap({
   // This flag deliberately promises only that the load handler ran. Initial
   // amenity/selection camera work may still follow, so do not call it settled.
   const [mapLoaded, setMapLoaded] = useState(false);
+  const mapLoadedRef = useRef(false);
+  // A DNS stall or intercepted style request can fail without dispatching a
+  // useful GL error. Never leave the branded loading scene covering the app
+  // forever; after a generous cold-load window, reveal the existing readable
+  // fallback and keep every non-map result available.
+  useEffect(() => {
+    if (mapLoaded || mapError) return;
+    const timeout = window.setTimeout(() => {
+      setMapError(true);
+      onVisualReady?.();
+    }, 18_000);
+    return () => window.clearTimeout(timeout);
+  }, [mapError, mapLoaded, onVisualReady]);
   // A browser with no WebGL (locked-down corporate profile, a headless/bot
   // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
   // renders an empty rectangle, which is exactly the "map failed to load" a
@@ -942,9 +968,28 @@ export default function AppMap({
   const [amenityMarksHealth, setAmenityMarksHealth] = useState<
     "off" | "pending" | "ready" | "missing"
   >(() => (amenityGroups.size > 0 ? "pending" : "off"));
+  const mapRenderReadinessProbeRef = useRef({
+    lastAttemptAt: Number.NEGATIVE_INFINITY,
+    places: { attempts: 0, settled: false },
+    amenities: { attempts: 0, settled: false },
+  });
+  const resetMapRenderReadinessProbe = useCallback(
+    (kind?: "places" | "amenities") => {
+      const probe = mapRenderReadinessProbeRef.current;
+      probe.lastAttemptAt = Number.NEGATIVE_INFINITY;
+      if (!kind || kind === "places") {
+        probe.places = { attempts: 0, settled: false };
+      }
+      if (!kind || kind === "amenities") {
+        probe.amenities = { attempts: 0, settled: false };
+      }
+    },
+    [],
+  );
   useEffect(() => {
     setAmenityMarksHealth(amenityGroups.size > 0 ? "pending" : "off");
-  }, [amenityGroups]);
+    resetMapRenderReadinessProbe("amenities");
+  }, [amenityGroups, resetMapRenderReadinessProbe]);
   // The outer-edge tools introduce themselves, then soften when the map is
   // quiet. Any real map/tool interaction wakes them; active layer buttons stay
   // fully visible through CSS even after the inactive chrome fades.
@@ -1530,15 +1575,10 @@ export default function AppMap({
       window.removeEventListener("fr:focus-map-search", clearForSearch);
   }, [clearMapSelection, isBrowseMap]);
 
-  // Pitch while browsing the drone archive. This used to drape the map
-  // over Mapbox's terrain DEM so the Catoctin and South Mountain ridges
-  // physically rose; that DEM is proprietary and the self-hosted basemap
-  // has no license to serve it, so for now the aerial mode only tilts the
-  // plan view. `map.getSource("fr-dem")` is retained as the condition: it
-  // is false today, and becomes true again the moment a county hillshade
-  // built from USGS 3DEP lands in /public/basemap, with no code change
-  // here. Reduced motion snaps instead of easing.
+  // Aerial is the one deliberate 3D scene. The default map remains an
+  // effortless north-up plan, while the archive can rise over real terrain.
   useEffect(() => {
+    if (!mapLoaded) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
     const apply = () => {
@@ -1562,7 +1602,7 @@ export default function AppMap({
       // accumulate on rapid toggling. No-op if it already fired.
       return () => { map.off("idle", apply); };
     }
-  }, [visibleAerial, aerialFade]);
+  }, [visibleAerial, aerialFade, mapLoaded]);
 
   // (Layer-choice persistence and the shareable `show=` URL mirror live in
   // useMapLayerToggles, called above.)
@@ -2189,6 +2229,12 @@ export default function AppMap({
       }),
     [activeSceneId, amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet],
   );
+  useEffect(() => {
+    resetMapRenderReadinessProbe("places");
+  }, [curatedClusters, curatedGeoJson, resetMapRenderReadinessProbe]);
+  useEffect(() => {
+    resetMapRenderReadinessProbe("amenities");
+  }, [amenityGeoJson, resetMapRenderReadinessProbe]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -3661,23 +3707,24 @@ export default function AppMap({
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       data-map-interface={mapInterfaceState}
+      data-map-embedded={!dock ? "true" : undefined}
       data-map-scene={dock && activeSceneId ? activeSceneId : undefined}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
         wakeMapEdgeTools();
         const target = event.target as Element;
-        if (target.closest(".maplibregl-canvas-container, .maplibregl-ctrl")) {
+        if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
           cameraIntentRef.current = true;
         }
         if (
           target.closest(
-            ".maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out, .maplibregl-ctrl-compass",
+            ".mapboxgl-ctrl-zoom-in, .mapboxgl-ctrl-zoom-out, .mapboxgl-ctrl-compass",
           )
         ) {
           cameraControlGestureRef.current = true;
         }
-        if (dockPaneOpen && target.closest(".maplibregl-canvas-container")) {
+        if (dockPaneOpen && target.closest(".mapboxgl-canvas-container")) {
           window.dispatchEvent(new Event("fr:map-gesture"));
         }
       }}
@@ -3687,7 +3734,7 @@ export default function AppMap({
         wakeMapEdgeTools();
         const target = event.target as Element;
         if (
-          target.closest(".maplibregl-canvas") &&
+          target.closest(".mapboxgl-canvas") &&
           ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "+", "=", "-"].includes(
             event.key,
           )
@@ -3964,6 +4011,7 @@ export default function AppMap({
           ref={attachMapRef}
           aria-label="Interactive map of Frederick County"
           aria-describedby="frederick-map-help"
+          mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
             urlCamera ?? (locationSeed.camera
               ? {
@@ -3984,10 +4032,11 @@ export default function AppMap({
                   zoom: initialZoom,
                 })
           }
-          mapStyle={mapStyle}
+          mapStyle={MAPBOX_FIELD_GUIDE_STYLE}
+          config={MAPBOX_FIELD_GUIDE_CONFIG}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
-          maplibreLogo={false}
+          logoPosition="bottom-left"
           // ── Mobile-smoothness flags ──
           // This is a flat 2D county map: rotation and pitch only ever
           // happen by accident on a two-finger pan, leaving the user
@@ -4086,6 +4135,8 @@ export default function AppMap({
               }
             }
             installCategoryMarkers(e.target);
+            applyMapboxFieldGuideConfig(e.target);
+            installMapboxFieldGuideTerrain(e.target);
             // Frame browse mode in the county too, the same veil + drawn
             // border the radius map already wears, so the two modes feel
             // like one place and not two different maps.
@@ -4093,6 +4144,7 @@ export default function AppMap({
             markMapOnLoad();
             commitResultViewport(e.target);
             setMapLoaded(true);
+            mapLoadedRef.current = true;
             // `load` means Mapbox has a renderable style. Waiting for a later
             // network-idle event kept the decorative loading cover over an
             // already usable map, especially on slow live feeds. Two paint
@@ -4210,7 +4262,118 @@ export default function AppMap({
               }
             }
           }}
+          // Mapbox Standard may keep animating imported basemap content and
+          // never become globally idle. Confirm Radius's own visible marks and
+          // an active amenity layer on bounded render-frame probes too. A
+          // successful empty query settles until the camera or source changes;
+          // a transient style/source race gets a small, throttled retry window.
+          onRender={(e) => {
+            if (!dock) return;
+            const readinessProbe = mapRenderReadinessProbeRef.current;
+            const shouldProbePlaces =
+              places.length > 0 &&
+              placeMarksHealth !== "ready" &&
+              !readinessProbe.places.settled;
+            const shouldProbeAmenities =
+              amenityGroups.size > 0 &&
+              amenityMarksHealth !== "ready" &&
+              !readinessProbe.amenities.settled;
+            if (!shouldProbePlaces && !shouldProbeAmenities) {
+              return;
+            }
+            const now = window.performance.now();
+            if (
+              now - readinessProbe.lastAttemptAt <
+              MAP_RENDER_READINESS_PROBE_INTERVAL_MS
+            ) {
+              return;
+            }
+            readinessProbe.lastAttemptAt = now;
+
+            if (shouldProbePlaces) {
+              const placeProbe = readinessProbe.places;
+              placeProbe.attempts += 1;
+              try {
+                const requiredLayers = [
+                  ...(curatedClusters ? ["curated-clusters"] : []),
+                  "curated-dots",
+                  "curated-icons",
+                ];
+                const hasLayers = requiredLayers.every((layer) =>
+                  Boolean(e.target.getLayer(layer)),
+                );
+                const sourceReady =
+                  Boolean(e.target.getSource("curated-places")) &&
+                  e.target.isSourceLoaded("curated-places");
+                if (hasLayers && sourceReady) {
+                  const visibleMarks = e.target.queryRenderedFeatures({
+                    layers: requiredLayers,
+                  }).length;
+                  placeProbe.settled = true;
+                  setPlaceMarksHealth(visibleMarks > 0 ? "ready" : "missing");
+                } else if (
+                  placeProbe.attempts >= MAP_RENDER_READINESS_MAX_ATTEMPTS
+                ) {
+                  placeProbe.settled = true;
+                  setPlaceMarksHealth("missing");
+                }
+              } catch {
+                if (placeProbe.attempts >= MAP_RENDER_READINESS_MAX_ATTEMPTS) {
+                  placeProbe.settled = true;
+                  setPlaceMarksHealth("missing");
+                }
+              }
+            }
+
+            if (shouldProbeAmenities) {
+              const amenityProbe = readinessProbe.amenities;
+              amenityProbe.attempts += 1;
+              try {
+                const requiredLayers = ["amenity-clusters", "amenity-icons"];
+                const hasLayers = requiredLayers.every((layer) =>
+                  Boolean(e.target.getLayer(layer)),
+                );
+                const sourceReady =
+                  Boolean(e.target.getSource("amenities")) &&
+                  e.target.isSourceLoaded("amenities");
+                if (hasLayers && sourceReady) {
+                  const visibleMarks = e.target.queryRenderedFeatures({
+                    layers: requiredLayers,
+                  }).length;
+                  amenityProbe.settled = true;
+                  setAmenityMarksHealth(
+                    visibleMarks > 0 ? "ready" : "missing",
+                  );
+                } else if (
+                  amenityProbe.attempts >= MAP_RENDER_READINESS_MAX_ATTEMPTS
+                ) {
+                  amenityProbe.settled = true;
+                  setAmenityMarksHealth("missing");
+                }
+              } catch {
+                if (
+                  amenityProbe.attempts >= MAP_RENDER_READINESS_MAX_ATTEMPTS
+                ) {
+                  amenityProbe.settled = true;
+                  setAmenityMarksHealth("missing");
+                }
+              }
+            }
+          }}
           onMoveEnd={(e) => {
+            // A previously mark-empty camera is allowed one new bounded probe
+            // at the settled destination. Already-ready health remains a
+            // one-way success and skips the probe in onRender.
+            resetMapRenderReadinessProbe();
+            if (
+              placeMarksHealth !== "ready" ||
+              (amenityGroups.size > 0 && amenityMarksHealth !== "ready")
+            ) {
+              // A reduced-motion jump may not have another animated frame.
+              // Request one ordinary paint so the reset probe can inspect the
+              // settled camera without adding camera motion.
+              e.target.triggerRepaint();
+            }
             markMapIdleOnce();
             // The reset FAB only earns its place once zoom or pan has clipped
             // the county overview (see offOverview).
@@ -4247,7 +4410,7 @@ export default function AppMap({
           }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
-            if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)|\bsprite\b.*(?:failed|404|not found)|(?:failed|404).*\bsprite\b/i.test(msg)) {
+            if (isFatalMapboxError(msg, mapLoadedRef.current)) {
               setMapError(true);
               onVisualReady?.();
             }
@@ -4296,7 +4459,7 @@ export default function AppMap({
                       ["get", "name"],
                     ]
                   : ["get", "name"],
-                "text-font": MAP_LABEL_FONT_MEDIUM,
+                "text-font": MAPBOX_LABEL_FONT_MEDIUM,
                 "text-size": ["interpolate", ["linear"], ["zoom"], 7.25, 9.5, 10, 11, 13, 12],
                 "text-letter-spacing": 0.08,
                 "text-transform": "uppercase",
@@ -4326,6 +4489,10 @@ export default function AppMap({
           {showRadar ? (
             <LightningDensity show beforeId="muni-label" />
           ) : null}
+
+          {/* Eight-minute congestion context returns with the premium map.
+              Official Maryland feeds remain the closure authority. */}
+          <MapboxTraffic show={showTraffic} />
 
           {/* Static high-water areas and warning infrastructure are context,
               never a live flood claim. They share the Roads view and sit
@@ -4452,7 +4619,7 @@ export default function AppMap({
               minzoom={15}
               layout={{
                 "text-field": ["get", "name"],
-                "text-font": MAP_LABEL_FONT_REGULAR,
+                "text-font": MAPBOX_LABEL_FONT_REGULAR,
                 "text-size": 10,
                 "text-offset": [0, 1.1],
                 "text-anchor": "top",
@@ -4507,7 +4674,7 @@ export default function AppMap({
               minzoom={10}
               layout={{
                 "text-field": ["concat", "MARC · ", ["get", "name"]],
-                "text-font": MAP_LABEL_FONT_MEDIUM,
+                "text-font": MAPBOX_LABEL_FONT_MEDIUM,
                 "text-size": 11,
                 "text-offset": [0, 1.2],
                 "text-anchor": "top",
@@ -4737,7 +4904,7 @@ export default function AppMap({
                   "interpolate", ["linear"], ["get", "point_count"],
                   4, 9, 50, 11, 200, 12,
                 ],
-                "text-font": MAP_LABEL_FONT_MEDIUM,
+                "text-font": MAPBOX_LABEL_FONT_MEDIUM,
                 "text-allow-overlap": true,
                 "text-ignore-placement": true,
               }}
@@ -4825,7 +4992,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "point_count_abbreviated"],
                 "text-size": 10,
-                "text-font": MAP_LABEL_FONT_MEDIUM,
+                "text-font": MAPBOX_LABEL_FONT_MEDIUM,
                 "text-allow-overlap": true,
                 "text-ignore-placement": true,
               }}
@@ -4874,7 +5041,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 16.5, 9, 18, 12],
-                "text-font": MAP_LABEL_FONT_REGULAR,
+                "text-font": MAPBOX_LABEL_FONT_REGULAR,
                 "text-anchor": "top",
                 "text-offset": [0, 1.05],
                 "text-optional": true,
@@ -5039,7 +5206,7 @@ export default function AppMap({
                         8.5,
                       ],
                   "text-line-height": compactSubjectMap ? 1.2 : 0.92,
-                  "text-font": MAP_LABEL_FONT_MEDIUM,
+                  "text-font": MAPBOX_LABEL_FONT_MEDIUM,
                   "text-allow-overlap": true,
                   "text-ignore-placement": true,
                 }}
@@ -5290,7 +5457,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9.5, 16, 12],
-                "text-font": MAP_LABEL_FONT_REGULAR,
+                "text-font": MAPBOX_LABEL_FONT_REGULAR,
                 "text-anchor": "top",
                 "text-offset": [0, 1.15],
                 "text-optional": true,

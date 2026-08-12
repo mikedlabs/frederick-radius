@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 
 /**
  * Client-only, code-split mount for TransitMap. TransitMap statically
- * imports maplibre-gl (~200 KB+); importing it directly put that weight in
+ * imports the GL renderer (~200 KB+); importing it directly put that weight in
  * the /transit route bundle. Loading it via next/dynamic with ssr:false
  * splits it into its own chunk (same pattern as AppMapClient), so the page
- * shell paints first and maplibre-gl downloads alongside.
+ * shell paints first and the renderer downloads alongside.
  */
 const TransitMap = dynamic(() => import("./TransitMap"), {
   ssr: false,

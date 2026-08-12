@@ -6,7 +6,7 @@
  * effects beyond `loadCachedOsm` / `saveCachedOsm` which touch
  * sessionStorage on the client only.
  */
-import type { Map as GLMap } from "maplibre-gl";
+import type { Map as GLMap } from "mapbox-gl";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { LngLat } from "@/lib/geo";
@@ -250,14 +250,12 @@ export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 /**
- * Corner-pair bounds → the flat [W, S, E, N] tuple react-map-gl's `maxBounds`
- * prop takes on MapLibre.
+ * Corner-pair bounds → the flat [W, S, E, N] tuple used by several map props.
  *
  * The app's own convention is the nested corner-pair form — it is what the
  * component props, the county fit target, and the landscape leash all speak,
- * and mapbox-gl accepted it directly. maplibre-gl's imperative
- * `setMaxBounds()` still does; only the declarative prop insists on the flat
- * tuple. So convert at that one boundary rather than restating every pair of
+ * and the GL renderers accept it directly or as this flat tuple. Convert at
+ * that one boundary rather than restating every pair of
  * numbers in two shapes, which is how a pan leash and a validation check
  * drift apart.
  */
@@ -306,13 +304,9 @@ export function isInFrederickCounty(lng: number, lat: number): boolean {
   return lng >= w && lng <= e && lat >= s && lat <= n;
 }
 
-// The basemap style is no longer a constant here. Every GL surface builds it
-// with useFrederickFlavorStyle() from the self-hosted county PMTiles extract
-// (src/lib/map/frederickFlavorStyle.ts), so there is no stock Mapbox style to
-// name and no runtime layer-walk to recolor it with. The two experiments that
-// lived here — a Mapbox Studio style and a build-time baked palette JSON —
-// were both ways to make a rented basemap look like Frederick; owning the
-// basemap made both unnecessary.
+// Main immersive surfaces use the Mapbox field-guide style; small locator and
+// event surfaces retain the self-hosted PMTiles flavor. Renderer-specific
+// style configuration therefore lives beside each renderer, not here.
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in

@@ -196,7 +196,7 @@ for (const viewport of VIEWPORTS) {
           ).toBeVisible();
           if (viewport.width >= 640) {
             await expect(
-              header.getByRole("link", { name: "Open Compass" }),
+              header.getByRole("link", { name: "Open Compass tools" }),
             ).toBeVisible();
           } else {
             await expect(

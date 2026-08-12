@@ -91,7 +91,7 @@ export default function BusesReveal() {
         aria-label={open ? "Hide current buses" : "Show current buses"}
         aria-expanded={open}
         aria-controls="pulse-live-buses"
-        className="tactile-interactive flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-4 py-3 text-left transition active:scale-[0.99]"
+        className="tactile-interactive flex min-h-11 w-full items-center justify-between gap-3 rounded-[var(--app-radius-sm)] border px-3 py-2 text-left transition active:scale-[0.99]"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -101,7 +101,7 @@ export default function BusesReveal() {
         <span className="flex min-w-0 items-center gap-2.5">
           <span
             aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
             style={{
               background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
               color: "var(--app-cool)",
@@ -110,10 +110,10 @@ export default function BusesReveal() {
             <Bus className="h-4 w-4" strokeWidth={2.25} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
               {open ? "Buses right now" : "Show current buses"}
             </span>
-            <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
               {open ? "Route progress, map, and next stops" : "See every route and follow buses in real time"}
             </span>
           </span>

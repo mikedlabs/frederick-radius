@@ -8328,3 +8328,182 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 [data-place-hero][data-place-hero-size="card"]:has([data-place-photo-failed]) {
   height: 96px !important;
 }
+
+/* Premium Mapbox surfaces share the same Radius chrome as the self-hosted
+   locator maps. Keep this renderer-specific alias together so the two map
+   engines can coexist without brittle selector-by-selector substitutions. */
+.mapboxgl-map,
+.mapboxgl-ctrl,
+.mapboxgl-popup {
+  font-family: var(--font-sans-base), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.mapboxgl-popup-content {
+  padding: 14px 56px 14px 14px !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius-md) !important;
+  background: var(--app-bg-elevated) !important;
+  box-shadow: var(--app-shadow-2) !important;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: var(--app-bg-elevated) !important;
+}
+
+.mapboxgl-popup-close-button {
+  top: 6px !important;
+  right: 6px !important;
+  display: grid !important;
+  width: 44px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border-radius: 9999px !important;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent) !important;
+  color: var(--app-ink-2) !important;
+  font-size: 24px !important;
+  font-weight: 500;
+  line-height: 1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.mapboxgl-popup-close-button:hover,
+.mapboxgl-popup-close-button:focus-visible {
+  background: color-mix(in srgb, var(--app-ink) 14%, var(--app-bg-elevated)) !important;
+  color: var(--app-ink) !important;
+}
+
+.mapboxgl-ctrl-attrib {
+  margin: 0 0 12px 12px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent) !important;
+  font-size: 10px !important;
+}
+
+.mapboxgl-ctrl-group {
+  overflow: hidden;
+  margin: 0 12px 14px 0 !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: var(--app-radius-md) !important;
+  background: var(--app-bg-elevated) !important;
+  box-shadow: var(--app-shadow-2) !important;
+}
+
+.mapboxgl-map .mapboxgl-ctrl-group button,
+.mapboxgl-map .mapboxgl-ctrl-attrib-button {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+.radius-hover-popup,
+.radius-hover-popup .mapboxgl-popup-tip {
+  pointer-events: none;
+}
+
+.radius-hover-popup .mapboxgl-popup-content {
+  padding: 6px 10px !important;
+}
+
+.dock-host .mapboxgl-ctrl-bottom-right,
+.dock-host .mapboxgl-ctrl-bottom-left {
+  top: auto !important;
+  bottom: 14px !important;
+}
+
+.dock-host .mapboxgl-canvas {
+  opacity: 0.01;
+  transition: opacity 260ms var(--app-ease-out);
+}
+
+.dock-host[data-map-loaded="true"] .mapboxgl-canvas {
+  opacity: 1;
+}
+
+/* Radius owns a persistent bottom sheet, so both required Mapbox marks live
+   on dedicated upper shelves at every width. Legal controls stay above any
+   expanded Radius menu; the compact controls themselves occupy separate
+   horizontal columns. */
+.radius-map-canvas .mapboxgl-ctrl-bottom-left {
+  top: 82px !important;
+  bottom: auto !important;
+  left: 8px !important;
+  z-index: calc(var(--z-map-control) + 1);
+}
+
+.radius-map-canvas .mapboxgl-ctrl-bottom-right {
+  top: 162px !important;
+  right: 8px !important;
+  bottom: auto !important;
+  z-index: calc(var(--z-map-control) + 1);
+}
+
+@media (max-width: 1023.98px) {
+  /* Embedded subject maps can pass beneath the fixed mobile navigation as the
+     page scrolls. Lift Mapbox's required legal controls above that shelf so
+     they remain genuinely visible rather than merely present in the DOM. */
+  [data-map-embedded="true"] .mapboxgl-ctrl-bottom-left,
+  [data-map-embedded="true"] .mapboxgl-ctrl-bottom-right {
+    top: 8px !important;
+    bottom: auto !important;
+  }
+
+  .dock-host .mapboxgl-ctrl-bottom-left,
+  .dock-host .mapboxgl-ctrl-bottom-right,
+  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left,
+  .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
+    top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+  }
+
+  /* Transit owns a compact editorial badge at the upper-left, so its legal
+     controls stay on the opposite edge instead of competing for that shelf. */
+  .transit-map-canvas .mapboxgl-ctrl-bottom-left {
+    top: auto !important;
+    bottom: 8px !important;
+    left: 8px !important;
+  }
+
+  .transit-map-canvas .mapboxgl-ctrl-bottom-right {
+    top: auto !important;
+    right: 8px !important;
+    bottom: 8px !important;
+  }
+
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
+  .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
+  }
+
+  .dock-host .mapboxgl-ctrl-attrib-button {
+    border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
+    border-radius: 11px;
+    background-color: color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent);
+    background-position: 50% 50%;
+    background-repeat: no-repeat;
+    box-shadow: 0 5px 16px rgba(35, 29, 22, 0.1);
+  }
+
+  .dock-host .mapboxgl-ctrl-attrib.mapboxgl-compact-show {
+    box-sizing: border-box !important;
+    width: calc(100% - 20px);
+    max-width: none !important;
+    min-height: 44px;
+    padding: 6px 52px 6px 8px !important;
+  }
+
+  .dock-host
+    .mapboxgl-ctrl-attrib.mapboxgl-compact-show
+    .mapboxgl-ctrl-attrib-inner {
+    line-height: 16px;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-host .mapboxgl-canvas {
+    opacity: 1;
+    transition: none;
+  }
+}

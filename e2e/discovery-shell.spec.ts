@@ -157,8 +157,12 @@ test.describe("mobile discovery shell", () => {
       const intersects = (b: DOMRect) =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
       return [
-        document.querySelector<HTMLElement>(".maplibregl-ctrl-logo"),
-        document.querySelector<HTMLElement>(".maplibregl-ctrl-attrib"),
+        document.querySelector<HTMLElement>(
+          ".mapboxgl-ctrl-logo, .maplibregl-ctrl-logo",
+        ),
+        document.querySelector<HTMLElement>(
+          ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
+        ),
       ]
         .filter((element): element is HTMLElement => Boolean(element?.offsetParent))
         .some((element) => intersects(element.getBoundingClientRect()));
@@ -186,7 +190,9 @@ test.describe("mobile discovery shell", () => {
 
     await contentsButton.click();
     await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
-    await page.locator(".maplibregl-canvas").click({ position: { x: 12, y: 100 } });
+    await page
+      .locator(".mapboxgl-canvas, .maplibregl-canvas")
+      .click({ position: { x: 12, y: 100 } });
     await expect(page.getByRole("region", { name: "Choose what to see" })).toBeHidden();
 
     await contentsButton.click();
@@ -241,14 +247,19 @@ test.describe("mobile discovery shell", () => {
       "true",
       { timeout: 30_000 },
     );
-    await expect(page.locator(".maplibregl-ctrl-attrib")).not.toHaveClass(
-      /maplibregl-compact-show/,
+    const attribution = page.locator(
+      ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
+    );
+    await expect(attribution).not.toHaveClass(
+      /(mapboxgl|maplibregl)-compact-show/,
     );
 
     const geometry = await page.evaluate(() => {
       const host = document.querySelector<HTMLElement>(".dock-host");
       const rail = document.querySelector<HTMLElement>("[data-map-context-rail]");
-      const attribution = document.querySelector<HTMLElement>(".maplibregl-ctrl-attrib");
+      const attribution = document.querySelector<HTMLElement>(
+        ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
+      );
       if (!host || !rail || !attribution) return null;
       const hostBox = host.getBoundingClientRect();
       const railBox = rail.getBoundingClientRect();
@@ -277,20 +288,22 @@ test.describe("mobile discovery shell", () => {
     expect(geometry?.overlapsAttribution).toBe(false);
     expect(geometry?.documentOverflow ?? 999).toBeLessThanOrEqual(1);
 
-    await page.locator(".maplibregl-ctrl-attrib-button").click();
-    await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveClass(
-      /maplibregl-compact-show/,
+    await page.locator(
+      ".mapboxgl-ctrl-attrib-button, .maplibregl-ctrl-attrib-button",
+    ).click();
+    await expect(attribution).toHaveClass(
+      /(mapboxgl|maplibregl)-compact-show/,
     );
     const expandedCredits = await page.evaluate(() => {
       const host = document.querySelector<HTMLElement>(".dock-host");
       const attribution = document.querySelector<HTMLElement>(
-        ".maplibregl-ctrl-attrib",
+        ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
       );
       const attributionCopy = attribution?.querySelector<HTMLElement>(
-        ".maplibregl-ctrl-attrib-inner",
+        ".mapboxgl-ctrl-attrib-inner, .maplibregl-ctrl-attrib-inner",
       );
       const attributionButton = attribution?.querySelector<HTMLElement>(
-        ".maplibregl-ctrl-attrib-button",
+        ".mapboxgl-ctrl-attrib-button, .maplibregl-ctrl-attrib-button",
       );
       if (
         !host ||
@@ -610,10 +623,10 @@ test.describe("mobile discovery shell", () => {
       ),
     ).toBeLessThanOrEqual(1);
 
-    await page.getByRole("button", { name: "Manage" }).click();
-    const dialog = page.getByRole("dialog", { name: "Manage shortcuts" });
+    await page.getByRole("button", { name: "Edit" }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit shortcuts" });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("searchbox")).toHaveCount(0);
+    await expect(dialog.getByRole("searchbox")).toHaveCount(1);
     expect(
       await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
     ).toBeLessThanOrEqual(1);

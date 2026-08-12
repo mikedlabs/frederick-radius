@@ -3,7 +3,10 @@ import test from "node:test";
 
 import {
   basemapFailureMustStopBuild,
+  PROTOMAPS_STABLE_FALLBACK_URL,
+  resolveProtomapsPlanetBuild,
   resolvePmtilesRelease,
+  selectNewestProtomapsBuild,
 } from "./basemap-platform.mjs";
 
 test("selects the published go-pmtiles archive for each supported build host", () => {
@@ -55,4 +58,46 @@ test("CI and Vercel builds fail closed while ordinary local work can degrade", (
   assert.equal(basemapFailureMustStopBuild({ CI: "true" }), true);
   assert.equal(basemapFailureMustStopBuild({ CI: "1" }), true);
   assert.equal(basemapFailureMustStopBuild({ VERCEL: "1" }), true);
+});
+
+test("selects the newest compatible build from the official index", () => {
+  assert.equal(
+    selectNewestProtomapsBuild([
+      { key: "20260812.pmtiles", version: "4.15.2" },
+      { key: "20260814.pmtiles", version: "5.0.0" },
+      { key: "not-a-build.pmtiles", version: "4.15.2" },
+      { key: "20260813.pmtiles", version: "4.15.2" },
+    ]),
+    "https://build.protomaps.com/20260813.pmtiles",
+  );
+  assert.equal(selectNewestProtomapsBuild([]), null);
+});
+
+test("uses an explicit HTTPS build override without reading the live index", async () => {
+  const result = await resolveProtomapsPlanetBuild({
+    env: {
+      PROTOMAPS_PLANET_BUILD_URL:
+        "https://tiles.frederickradius.app/frederick-county.pmtiles",
+    },
+    fetchImpl() {
+      throw new Error("the index should not be read");
+    },
+  });
+
+  assert.deepEqual(result, {
+    source: "environment override",
+    url: "https://tiles.frederickradius.app/frederick-county.pmtiles",
+  });
+});
+
+test("falls back to a retained patch build when the live index is unavailable", async () => {
+  const result = await resolveProtomapsPlanetBuild({
+    env: {},
+    async fetchImpl() {
+      throw new Error("offline");
+    },
+  });
+
+  assert.equal(result.url, PROTOMAPS_STABLE_FALLBACK_URL);
+  assert.match(result.source, /stable fallback/);
 });

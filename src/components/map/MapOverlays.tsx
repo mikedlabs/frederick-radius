@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Source, Layer, Popup, useMap } from "react-map-gl/maplibre";
-import type { ExpressionSpecification, MapLayerMouseEvent } from "maplibre-gl";
+import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
+import type { ExpressionSpecification, MapLayerMouseEvent } from "mapbox-gl";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { BRAND } from "@/lib/brand";
 import { directionsHref } from "@/lib/map/directionsHref";

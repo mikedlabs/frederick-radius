@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import {
   Component,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -16,16 +17,36 @@ import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapLoadingScene from "./MapLoadingScene";
+import MapList from "./MapList";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import type { MapSceneContext } from "./AppMap";
 
 const EMBEDDED_MAP_HEIGHT = "78vh";
+const APP_MAP_CHUNK_TIMEOUT_MS = 15_000;
+
+let appMapChunkReady = false;
+const appMapChunkReadyListeners = new Set<() => void>();
+
+function markAppMapChunkReady() {
+  appMapChunkReady = true;
+  for (const listener of appMapChunkReadyListeners) listener();
+  appMapChunkReadyListeners.clear();
+}
+
+function subscribeToAppMapChunkReady(listener: () => void) {
+  if (appMapChunkReady) {
+    listener();
+    return () => undefined;
+  }
+  appMapChunkReadyListeners.add(listener);
+  return () => appMapChunkReadyListeners.delete(listener);
+}
 
 class MapChunkBoundary extends Component<
   {
     children: ReactNode;
-    height: CSSProperties["height"];
     onFailure: () => void;
+    fallback: ReactNode;
   },
   { failed: boolean }
 > {
@@ -41,38 +62,17 @@ class MapChunkBoundary extends Component<
 
   render() {
     if (!this.state.failed) return this.props.children;
-    return (
-      <div
-        role="alert"
-        className="grid w-full place-items-center px-6 text-center"
-        style={{ height: this.props.height, background: "var(--app-bg-sunken)" }}
-      >
-        <div className="max-w-sm">
-          <p className="font-serif text-lg font-semibold" style={{ color: "var(--app-ink)" }}>
-            The map did not finish loading.
-          </p>
-          <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
-            Your filters are still here. Reload the map to try again.
-          </p>
-          <button
-            type="button"
-            className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
-            style={{
-              borderColor: "var(--app-border-strong)",
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink)",
-            }}
-            onClick={() => window.location.reload()}
-          >
-            Reload map
-          </button>
-        </div>
-      </div>
-    );
+    return this.props.fallback;
   }
 }
 
-const AppMap = dynamic(() => import("./AppMap"), {
+const AppMap = dynamic(
+  () =>
+    import("./AppMap").then((module) => {
+      markAppMapChunkReady();
+      return module;
+    }),
+  {
   ssr: false,
   // The visible Frederick-specific scene is rendered by this light wrapper,
   // outside the deferred Mapbox chunk. This placeholder only reserves the
@@ -84,7 +84,8 @@ const AppMap = dynamic(() => import("./AppMap"), {
       className="relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)]"
     />
   ),
-});
+  },
+);
 
 /**
  * Shared interactive map shell. The full browse map keeps its result area
@@ -117,6 +118,70 @@ import {
 import type { OsmPlace } from "@/lib/integrations/overpass";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
+
+export function MapLoadFailure({
+  height,
+  places,
+  events,
+  trailLineOnly = false,
+}: {
+  height: CSSProperties["height"];
+  places: MapPinPlace[];
+  events: EventPin[];
+  trailLineOnly?: boolean;
+}) {
+  const hasRows = places.length > 0 || events.length > 0;
+  const title = trailLineOnly
+    ? "The interactive trail map did not load."
+    : "The map did not finish loading.";
+  const detail = trailLineOnly
+    ? "The trail guide on this page still works. Reload to try the interactive lines again."
+    : hasRows
+      ? "You can still open the places and events here, or reload the map."
+      : "The rest of this page still works. Reload to try the map again.";
+
+  return (
+    <div
+      className="w-full overflow-y-auto"
+      style={{ height, background: "var(--app-bg-sunken)" }}
+      data-map-chunk-failure
+    >
+      <div
+        role="alert"
+        className="mx-auto max-w-[680px] px-6 py-8 text-center"
+      >
+        <p className="font-serif text-lg font-semibold" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </p>
+        <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
+          {detail}
+        </p>
+        <button
+          type="button"
+          className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
+          style={{
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-bg-elevated)",
+            color: "var(--app-ink)",
+          }}
+          onClick={() => window.location.reload()}
+        >
+          Reload map
+        </button>
+      </div>
+      {hasRows && !trailLineOnly && (
+        <MapList
+          places={places}
+          events={events}
+          userLoc={null}
+          failureMode
+          onPick={(place) => window.location.assign(`/places/${place.slug}`)}
+          onPickEvent={(event) => window.location.assign(`/events/${event.slug}`)}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function AppMapClient({
   places,
@@ -258,12 +323,39 @@ export default function AppMapClient({
   // Mapbox bundle. That makes it part of the initial HTML instead of waiting
   // several seconds for the large GL chunk before showing any map content.
   const [mapVisualReady, setMapVisualReady] = useState(false);
+  const [mapChunkLoaded, setMapChunkLoaded] = useState(appMapChunkReady);
+  const [mapChunkFailed, setMapChunkFailed] = useState(false);
   const hasReportedMapVisualReady = useRef(false);
   const handleMapVisualReady = useCallback(() => {
     if (hasReportedMapVisualReady.current) return;
     hasReportedMapVisualReady.current = true;
     setMapVisualReady(true);
   }, []);
+  const handleMapChunkFailure = useCallback(() => {
+    setMapChunkFailed(true);
+    handleMapVisualReady();
+  }, [handleMapVisualReady]);
+
+  useEffect(() => {
+    if (mapChunkLoaded || mapChunkFailed) return;
+    const unsubscribe = subscribeToAppMapChunkReady(() => {
+      setMapChunkLoaded(true);
+    });
+    const timeout = window.setTimeout(
+      handleMapChunkFailure,
+      APP_MAP_CHUNK_TIMEOUT_MS,
+    );
+    return () => {
+      unsubscribe();
+      window.clearTimeout(timeout);
+    };
+  }, [handleMapChunkFailure, mapChunkFailed, mapChunkLoaded]);
+
+  const trailLineOnlyFailure =
+    trailsLayerDefault &&
+    places.length === 0 &&
+    events.length === 0 &&
+    trailLines.features.length > 0;
 
   // The in-view list panel (the desktop side pane + the mobile slide-up
   // "60 places · N open now · N events nearby" drawer) was removed per the
@@ -274,7 +366,25 @@ export default function AppMapClient({
       <div className="relative h-full w-full">
         <MapLoadingScene height="100%" ready={mapVisualReady} />
         {children}
-        <MapChunkBoundary height="100%" onFailure={handleMapVisualReady}>
+        {mapChunkFailed ? (
+          <MapLoadFailure
+            height="100%"
+            places={places}
+            events={events}
+            trailLineOnly={trailLineOnlyFailure}
+          />
+        ) : (
+        <MapChunkBoundary
+          onFailure={handleMapChunkFailure}
+          fallback={
+            <MapLoadFailure
+              height="100%"
+              places={places}
+              events={events}
+              trailLineOnly={trailLineOnlyFailure}
+            />
+          }
+        >
           <AppMap
             places={places}
             civic={civic}
@@ -313,6 +423,7 @@ export default function AppMapClient({
             sceneContext={sceneContext}
           />
         </MapChunkBoundary>
+        )}
       </div>
     );
   }
@@ -323,9 +434,28 @@ export default function AppMapClient({
         height={EMBEDDED_MAP_HEIGHT}
         ready={mapVisualReady}
       />
-      <MapChunkBoundary height={EMBEDDED_MAP_HEIGHT} onFailure={handleMapVisualReady}>
+      {mapChunkFailed ? (
+        <MapLoadFailure
+          height={EMBEDDED_MAP_HEIGHT}
+          places={places}
+          events={events}
+          trailLineOnly={trailLineOnlyFailure}
+        />
+      ) : (
+      <MapChunkBoundary
+        onFailure={handleMapChunkFailure}
+        fallback={
+          <MapLoadFailure
+            height={EMBEDDED_MAP_HEIGHT}
+            places={places}
+            events={events}
+            trailLineOnly={trailLineOnlyFailure}
+          />
+        }
+      >
         <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} height={EMBEDDED_MAP_HEIGHT} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} onVisualReady={handleMapVisualReady} />
       </MapChunkBoundary>
+      )}
     </div>
   );
 }

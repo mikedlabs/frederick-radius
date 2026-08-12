@@ -3,7 +3,7 @@
 // Extracted from AppMap.tsx (#77); behavior is byte-identical to the inline
 // originals.
 
-import type { Map as MapboxMap } from "maplibre-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import type { LngLat } from "@/lib/geo";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { nearbyReachBounds } from "./mapNearbyScope";
@@ -91,7 +91,9 @@ export function countyFitPadding(measureDock = true): { top: number; right: numb
     return { top: 96, right: 32, bottom: 64, left: 32 };
   }
   const mapRect = measureDock
-    ? document.querySelector<HTMLElement>(".maplibregl-map")?.getBoundingClientRect()
+    ? document
+        .querySelector<HTMLElement>(".mapboxgl-map, .maplibregl-map")
+        ?.getBoundingClientRect()
     : undefined;
   const dock = measureDock
     ? document.querySelector<HTMLElement>("[data-map-dock]")

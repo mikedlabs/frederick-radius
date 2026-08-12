@@ -96,8 +96,12 @@ test.describe("mobile map guidance and legal furniture", () => {
     );
 
     const guidance = page.locator(".map-smart-note");
-    const attribution = page.locator(".maplibregl-ctrl-attrib");
-    const attributionButton = page.locator(".maplibregl-ctrl-attrib-button");
+    const attribution = page.locator(
+      ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
+    );
+    const attributionButton = page.locator(
+      ".mapboxgl-ctrl-attrib-button, .maplibregl-ctrl-attrib-button",
+    );
     await expect(guidance).toBeVisible();
     await expect(guidance).toContainText("A weather alert is active.");
     await expect(attribution).toBeVisible();
@@ -118,7 +122,7 @@ test.describe("mobile map guidance and legal furniture", () => {
     const surfacesOverlap = await page.evaluate(() => {
       const note = document.querySelector<HTMLElement>(".map-smart-note");
       const credit = document.querySelector<HTMLElement>(
-        ".maplibregl-ctrl-attrib",
+        ".mapboxgl-ctrl-attrib, .maplibregl-ctrl-attrib",
       );
       if (!note || !credit) return true;
       const first = note.getBoundingClientRect();

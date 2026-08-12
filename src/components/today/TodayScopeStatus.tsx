@@ -1,16 +1,30 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { getScope, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import {
+  getScope,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+  type Scope,
+} from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /** Plain-language contract for Today's mixed scope. Place decisions honor the
  * shared lens; weather, alerts, and the event program remain countywide. */
-export function todayScopeStatusText(scope: Scope | null): string {
+export function todayScopeStatusText(
+  scope: Scope | null,
+  hasDeviceLocation = true,
+): string {
   const townSlug = scopeTownSlug(scope);
   const town = townSlug ? MUNICIPALITY_BY_SLUG[townSlug] : null;
   if (town) return `${town.name} place picks · Countywide weather and events`;
-  if (scope === "nearme") return "Nearby place picks · Countywide weather and events";
+  if (scope === "nearme") {
+    return hasDeviceLocation
+      ? "Nearby place picks · Countywide weather and events"
+      : "Location needed for nearby picks · Countywide weather and events";
+  }
   return "Countywide briefing";
 }
 
@@ -31,30 +45,66 @@ const subscribe = (onStoreChange: () => void) =>
 export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   const scope = useSyncExternalStore(subscribe, getScope, () => null);
   const townScoped = Boolean(scopeTownSlug(scope));
+  const { state: location, request: requestLocation } = useGeolocation();
+  const requestedHere = useRef(false);
+  const hasDeviceLocation = location.status === "granted";
+  const showLocationAction =
+    !townScoped && (scope !== "nearme" || !hasDeviceLocation);
+
+  useEffect(() => {
+    if (!requestedHere.current || location.status !== "granted") return;
+    requestedHere.current = false;
+    setScope("nearme");
+  }, [location.status]);
+
+  const useMyLocation = () => {
+    if (hasDeviceLocation) {
+      setScope("nearme");
+      return;
+    }
+    requestedHere.current = true;
+    requestLocation();
+  };
 
   return (
-    <p
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      data-testid="today-scope-status"
-      className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[10.5px] leading-snug tracking-[0.02em]"
-      style={{ color: "var(--app-ink-3)" }}
-    >
-      {dateline && (
-        <>
-          <span style={{ color: "var(--app-ink-2)" }}>{dateline}</span>
-          <span aria-hidden>·</span>
-        </>
-      )}
-      <span
-        aria-hidden
-        className="h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{
-          background: townScoped ? "var(--app-brand)" : "var(--app-cool)",
-        }}
-      />
-      {todayScopeStatusText(scope)}
-    </p>
+    <div className="mt-1.5 flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="today-scope-status"
+        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[10.5px] leading-snug tracking-[0.02em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {dateline && (
+          <>
+            <span style={{ color: "var(--app-ink-2)" }}>{dateline}</span>
+            <span aria-hidden>·</span>
+          </>
+        )}
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{
+            background: townScoped ? "var(--app-brand)" : "var(--app-cool)",
+          }}
+        />
+        {todayScopeStatusText(scope, hasDeviceLocation)}
+      </p>
+      {showLocationAction ? (
+        <button
+          type="button"
+          onClick={useMyLocation}
+          disabled={location.status === "loading"}
+          className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
+          style={{
+            color: "var(--app-brand-press)",
+            background: "var(--app-brand-tint-6)",
+          }}
+        >
+          {location.status === "loading" ? "Finding you…" : "Use my location"}
+        </button>
+      ) : null}
+    </div>
   );
 }

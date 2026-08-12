@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Map as MapIcon } from "lucide-react";
 import Map, {
   Source,
   Layer,
@@ -8,11 +9,18 @@ import Map, {
   Popup,
   type MapMouseEvent,
   type MapRef,
-} from "react-map-gl/maplibre";
+} from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { ACCENTS } from "@/data/categories";
-import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
-import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
+import {
+  applyMapboxFieldGuideConfig,
+  installMapboxFieldGuideTerrain,
+  MAPBOX_FIELD_GUIDE_CONFIG,
+  MAPBOX_FIELD_GUIDE_STYLE,
+  MAPBOX_LABEL_FONT_MEDIUM,
+} from "@/components/map/mapboxFieldGuideStyle";
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { hasWebGL } from "@/components/map/mapCameraHelpers";
 import LiveBuses from "@/components/map/LiveBuses";
 import LiveMarcTrains from "@/components/map/LiveMarcTrains";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
@@ -33,7 +41,8 @@ import { MARC_STATIONS } from "@/data/marc-stations";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";
 import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { isFatalMapboxError } from "@/components/map/mapboxFailure";
 
 type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
@@ -69,6 +78,7 @@ const STOPS_JSON: TransitStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
   lat: stop.lat,
 }));
 
+const MAP_LOAD_WATCHDOG_MS = 18_000;
 type ActiveVehicleFocus = TransitVehicleFocusDetail & {
   requestId: number;
 };
@@ -206,7 +216,26 @@ export default function TransitMap({
   showTrains?: boolean;
 }) {
   const mapRef = useRef<MapRef>(null);
-  const mapStyle = useFrederickFlavorStyle();
+  const mapLoadedRef = useRef(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
+  useEffect(() => {
+    if (shapes.features.length === 0) return;
+    const check = window.setTimeout(() => {
+      if (!MAPBOX_TOKEN || !hasWebGL()) setMapFailed(true);
+    }, 0);
+    return () => window.clearTimeout(check);
+  }, [shapes.features.length]);
+  // Style requests can stall without a reliable Mapbox error event. A bounded
+  // wait keeps the route picker and the rest of the transit page usable.
+  useEffect(() => {
+    if (shapes.features.length === 0 || mapLoaded || mapFailed) return;
+    const watchdog = window.setTimeout(
+      () => setMapFailed(true),
+      MAP_LOAD_WATCHDOG_MS,
+    );
+    return () => window.clearTimeout(watchdog);
+  }, [mapFailed, mapLoaded, shapes.features.length]);
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
     const cy = center?.[1] ?? (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2;
@@ -398,12 +427,54 @@ export default function TransitMap({
         </div>
       )}
       <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+        className="transit-map-canvas relative overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", height }}
       >
+      {mapFailed ? (
+        <div
+          role="alert"
+          aria-label="Transit map unavailable"
+          className="grid h-full place-items-center bg-[var(--app-bg-sunken)] px-6 text-center"
+        >
+          <div className="max-w-sm">
+            <MapIcon
+              className="mx-auto h-7 w-7"
+              style={{ color: "var(--app-cool)" }}
+              strokeWidth={1.5}
+              aria-hidden
+            />
+            <p
+              className="mt-2 text-[13px] font-semibold"
+              style={{ color: "var(--app-ink)" }}
+            >
+              The transit map is temporarily unavailable
+            </p>
+            <p
+              className="mt-1 text-[12px] leading-relaxed"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {selMeta ? `${selMeta.short} · ${selMeta.name} remains selected. ` : ""}
+              The route and arrival information on this page is still available.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
+              style={{
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-cool)",
+              }}
+            >
+              Try the map again
+            </button>
+          </div>
+        </div>
+      ) : (
       <Map
         ref={mapRef}
-        mapStyle={mapStyle}
+        mapboxAccessToken={MAPBOX_TOKEN}
+        mapStyle={MAPBOX_FIELD_GUIDE_STYLE}
+        config={MAPBOX_FIELD_GUIDE_CONFIG}
         initialViewState={initial}
         style={{ width: "100%", height: "100%" }}
         // Drag + pinch on; cooperative gestures off so a single-finger
@@ -411,6 +482,7 @@ export default function TransitMap({
         interactive
         cooperativeGestures={false}
         attributionControl={false}
+        logoPosition="bottom-left"
         maxBounds={lockToService ? SERVICE_BOUNDS : undefined}
         minZoom={lockToService ? 10.5 : undefined}
         interactiveLayerIds={interactiveStops ? ["transit-stops-hit"] : undefined}
@@ -418,7 +490,17 @@ export default function TransitMap({
         onMouseEnter={interactiveStops ? () => setCursor("pointer") : undefined}
         onMouseLeave={interactiveStops ? () => setCursor("") : undefined}
         onClick={interactiveStops ? onMapClick : undefined}
+        onError={(e) => {
+          const msg = String(e?.error?.message ?? "").toLowerCase();
+          if (isFatalMapboxError(msg, mapLoadedRef.current)) {
+            setMapFailed(true);
+          }
+        }}
         onLoad={(e) => {
+          mapLoadedRef.current = true;
+          setMapLoaded(true);
+          applyMapboxFieldGuideConfig(e.target);
+          installMapboxFieldGuideTerrain(e.target);
           // With an explicit center (e.g. /pulse → downtown Frederick) we open
           // THERE — the maxBounds leash still keeps the camera over the service
           // area, the user can zoom out for outlying buses. Without a center,
@@ -633,7 +715,7 @@ export default function TransitMap({
             type="symbol"
             layout={{
               "text-field": ["concat", ["get", "name"], " MARC"],
-              "text-font": MAP_LABEL_FONT_MEDIUM,
+              "text-font": MAPBOX_LABEL_FONT_MEDIUM,
               "text-size": 11,
               "text-offset": [0, 1.1],
               "text-anchor": "top",
@@ -675,12 +757,13 @@ export default function TransitMap({
           </Popup>
         )}
       </Map>
+      )}
 
       {/* Editorial badge — top-left. Tells the user what the painted
           lines represent without competing with the Mapbox attribution
           in the bottom corner. Count is route + stop when both are
           present, route-only when stops failed to load. */}
-      {!hideBadge && (
+      {!mapFailed && !hideBadge && (
         <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
           <span
             aria-hidden

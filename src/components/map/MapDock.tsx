@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Clock3, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Toilet, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Toilet, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -422,25 +422,6 @@ export default function MapDock(props: MapDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
   const [essentialsQuick, setEssentialsQuick] = useState(false);
-  // County-local clock for the at-rest state line. Client-only (set in an
-  // effect) so server HTML never carries a mismatched timestamp; until it
-  // resolves, the resting rail simply does not render.
-  const [stateClock, setStateClock] = useState<string | null>(null);
-  useEffect(() => {
-    const format = () =>
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        weekday: "long",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(new Date());
-    const settle = window.setTimeout(() => setStateClock(format()), 0);
-    const tick = window.setInterval(() => setStateClock(format()), 30_000);
-    return () => {
-      window.clearTimeout(settle);
-      window.clearInterval(tick);
-    };
-  }, []);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [searchKeyboardOpen, setSearchKeyboardOpen] = useState(false);
   const [searchSelection, setSearchSelection] = useState({
@@ -1008,24 +989,6 @@ export default function MapDock(props: MapDockProps) {
     activeOptionCount - (props.smartSeededLayerCount ?? 0),
   );
 
-  const stateDataSummary = [
-    browse.openNowCount > 0
-      ? `${browse.openNowCount.toLocaleString("en-US")} confirmed open`
-      : props.openNowAvailable === false
-        ? "Open status unavailable"
-        : "No recently confirmed open hours",
-    browse.musicTonightCount > 0
-      ? `${browse.musicTonightCount.toLocaleString("en-US")} ${
-          browse.musicTonightCount === 1 ? "show" : "shows"
-        } tonight`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const stateLineSummary = [stateClock, stateDataSummary]
-    .filter(Boolean)
-    .join(" · ");
-
   const line = props.locating && nearMeRequested && !props.userLoc
     ? "Finding places near you…"
     : countLine({
@@ -1152,7 +1115,7 @@ export default function MapDock(props: MapDockProps) {
       ? radarClock
         ? `Radar · updated ${radarClock}`
         : "Radar · loading"
-      : "Showing";
+      : "Map view";
 
   const paneTitle =
     pane === "contents" ? "Choose what to see"
@@ -1336,7 +1299,7 @@ export default function MapDock(props: MapDockProps) {
               aria-live="polite"
               aria-atomic="true"
             >
-              {`Map showing ${contentsSummary}`}
+              {`Map view: ${contentsSummary}`}
             </span>
             <button
               type="button"
@@ -1366,40 +1329,6 @@ export default function MapDock(props: MapDockProps) {
               title="Reset map view"
             >
               <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
-        )}
-      {/* At rest — no filters, no pane — the rail states the county's now
-          instead of disappearing (dial program: state, not chrome). One
-          tap opens the When pane, where the counts came from. */}
-      {chosenOptionCount === 0 &&
-        pane === null &&
-        !searchPanelOpen &&
-        !searchKeyboardOpen &&
-        !props.suppressContextRail &&
-        stateClock !== null && (
-          <div
-            className="map-context-rail"
-            role="group"
-            aria-label="County right now"
-            data-map-context-rail
-            data-map-state-line
-            data-map-top-surface="context"
-          >
-            <button
-              type="button"
-              className="map-context-rail-open tap-44"
-              onClick={() => togglePane("when")}
-              aria-label={`Change map view: ${stateLineSummary}`}
-            >
-              <span className="map-context-rail-icon" aria-hidden>
-                <Clock3 className="h-3.5 w-3.5" strokeWidth={2.2} />
-              </span>
-              <span className="map-context-rail-copy">
-                <span className="map-context-rail-kicker">{stateClock}</span>
-                <span className="map-context-rail-summary">{stateDataSummary}</span>
-              </span>
-              <ChevronRight className="map-context-rail-arrow h-3.5 w-3.5" strokeWidth={2.3} aria-hidden />
             </button>
           </div>
         )}

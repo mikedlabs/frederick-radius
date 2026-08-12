@@ -55,6 +55,7 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
     description: "Use maps, parking, transit, and road cameras.",
     toolIds: [
       "county-map",
+      "mobility-map",
       "parking",
       "transit",
       "road-cameras",

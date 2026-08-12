@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { Map as MapIcon } from "lucide-react";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
@@ -8,27 +7,7 @@ import {
   breweryTownCounts,
 } from "@/lib/beer/brewery-map";
 import type { PlaceCardData } from "@/lib/loaders/places";
-
-const AppMapClient = dynamic(() => import("@/components/map/AppMapClient"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="grid h-full min-h-[430px] w-full place-items-center"
-      style={{
-        color: "var(--app-ink-3)",
-        background:
-          "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-amber) 10%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 72%)",
-      }}
-      aria-busy="true"
-      aria-label="Loading the brewery map"
-    >
-      <span className="inline-flex items-center gap-2 text-[12px] font-medium">
-        <MapIcon className="h-4 w-4" aria-hidden />
-        Loading the county brewery map
-      </span>
-    </div>
-  ),
-});
+import AppMapClient from "@/components/map/AppMapClient";
 
 export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
   if (places.length === 0) return null;

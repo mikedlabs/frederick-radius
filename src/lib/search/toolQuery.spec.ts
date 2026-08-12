@@ -43,6 +43,19 @@ describe("toolMatchesQuery", () => {
     ["air quality", "county-pulse"],
     ["road closures", "county-pulse"],
     ["power outage", "county-pulse"],
+    ["anything fun tonight", "events"],
+    ["food truck tonight", "food-trucks"],
+    ["events tomorrow", "events"],
+    ["closest trash can", "trash-cans"],
+    ["I need to pee", "restrooms"],
+    ["wheelchair route", "mobility-map"],
+    ["accessibility", "communication-access"],
+    ["playground for kids", "play-areas"],
+    ["family ideas", "search"],
+    ["rainy day indoors", "search"],
+    ["late night still open", "open-now"],
+    ["road closed", "county-pulse"],
+    ["dog bag", "dog-stations"],
   ])("matches %s to %s", (query, id) => {
     expect(toolMatchesQuery(tool(id), query)).toBe(true);
   });
@@ -81,5 +94,32 @@ describe("toolMatchesQuery", () => {
     const matches = matchingToolIds("river water levels");
     expect(matches).toContain("rivers");
     expect(matches).not.toContain("water");
+  });
+
+  it.each(["I need something", "please show me", "what is there"])(
+    "does not turn filler-only request %s into every tool",
+    (query) => {
+      expect(matchingToolIds(query)).toEqual([]);
+    },
+  );
+
+  it("allows an exact tool phrase made from otherwise conversational words", () => {
+    expect(matchingToolIds("near me")).toEqual(["nearby"]);
+  });
+
+  it.each([
+    ["anything fun tonight", ["events"]],
+    ["food truck tonight", ["food-trucks"]],
+    ["events tomorrow", ["events"]],
+    ["closest trash can", ["trash-cans"]],
+    ["I need to pee", ["restrooms"]],
+    ["playground for kids", ["play-areas"]],
+    ["rainy day indoors", ["search"]],
+    ["late night still open", ["open-now"]],
+    ["road closed", ["county-pulse"]],
+    ["dog bag", ["dog-stations"]],
+    ["charge my phone", ["power-outlets"]],
+  ])("keeps %s on its direct tool instead of a directory pile", (query, ids) => {
+    expect(matchingToolIds(query)).toEqual(ids);
   });
 });

@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Layer, Popup, Source, useMap } from "react-map-gl/maplibre";
-import type { MapLayerMouseEvent } from "maplibre-gl";
+import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
+import type { MapLayerMouseEvent } from "mapbox-gl";
 import { BRAND } from "@/lib/brand";
 import {
   CITY_MOBILITY_MIN_ZOOM,
+  CITY_MOBILITY_EXTENT,
   cityMobilityStatusLabel,
   cityMobilityViewportQuery,
   type CityMobilityBounds,
@@ -59,9 +60,10 @@ function mapBounds(map: {
     getSouth: () => number;
     getEast: () => number;
     getNorth: () => number;
-  };
+  } | null;
 }): CityMobilityBounds {
   const bounds = map.getBounds();
+  if (!bounds) return CITY_MOBILITY_EXTENT;
   return {
     west: bounds.getWest(),
     south: bounds.getSouth(),

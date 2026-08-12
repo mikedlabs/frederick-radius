@@ -46,13 +46,13 @@ describe("TopBar search ownership", () => {
     expect(topBar).toContain("{showMobileSearch && (");
   });
 
-  it("keeps Pulse and Compass as stable named destinations instead of a Tools button", () => {
+  it("keeps Compass branded while clarifying the tool destination on mobile", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
     const pulse = readFileSync("src/components/nav/PulseIndicator.tsx", "utf8");
 
-    expect(topBar).toContain('aria-label="Open Compass"');
+    expect(topBar).toContain('aria-label="Open Compass tools"');
     expect(topBar).toContain(">Compass</span>");
-    expect(topBar).not.toContain(">Tools</span>");
+    expect(topBar).toContain(">Tools</span>");
     expect(topBar).not.toContain('pathname !== "/compass"');
     expect(pulse).toContain("Pulse: checking county status");
     expect(pulse).toMatch(/>\s*Pulse\s*</);

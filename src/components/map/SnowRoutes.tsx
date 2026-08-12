@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { ExternalLink, Info, Snowflake, X } from "lucide-react";
-import { Layer, Popup, Source, useMap } from "react-map-gl/maplibre";
-import type { MapLayerMouseEvent } from "maplibre-gl";
+import { Layer, Popup, Source, useMap } from "react-map-gl/mapbox";
+import type { MapLayerMouseEvent } from "mapbox-gl";
 import type { SnowRouteFC } from "./types";
 
 const SOURCE_ID = "radius-county-snow-routes";

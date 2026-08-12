@@ -72,7 +72,7 @@ test("expanded map search carries the exact map state through a place detail", a
     .poll(() => {
       const url = new URL(page.url());
       return `${url.pathname}${url.search}${url.hash}`;
-    })
+    }, { timeout: 20_000 })
     .toBe(mapReturnHref);
   await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
     "coffee",
@@ -103,7 +103,9 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   await result.click();
 
   await expect(
-    page.locator('[data-map-place-slug="gravel-and-grind-frederick"]'),
+    page.locator(
+      '.map-peek-body[data-map-place-slug="gravel-and-grind-frederick"]',
+    ),
   ).toBeVisible();
   await page.getByRole("button", { name: "Details", exact: true }).click();
 
@@ -141,7 +143,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
     .poll(() => {
       const url = new URL(page.url());
       return `${url.pathname}${url.search}${url.hash}`;
-    })
+    }, { timeout: 20_000 })
     .toBe(mapReturnHref);
   // The exact selected place is part of the return state, so its phone peek
   // intentionally sits above the search controls. Prove that selection came

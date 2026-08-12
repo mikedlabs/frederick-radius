@@ -4,10 +4,11 @@
  * public/basemap/frederick-county.pmtiles is a ~30 MB binary that the
  * repo-size gate rightly refuses to track: every re-extract rewrites the
  * whole file, which is git-history poison. Instead it is produced at
- * build time: download the pinned go-pmtiles release and extract the
- * pinned Protomaps daily build for the county bbox. Both pins make the
- * output reproducible; bump PLANET_BUILD deliberately when the county
- * needs fresher OSM data (roads change slowly; quarterly is plenty).
+ * build time: download the pinned go-pmtiles release and extract the newest
+ * compatible Protomaps build for the county bbox. Ordinary daily archives are
+ * retained for only a week, so the source is resolved from Protomaps' official
+ * build index instead of pinning an expiring date. Set
+ * PROTOMAPS_PLANET_BUILD_URL to use a self-hosted immutable source.
  *
  * Behavior: file already present -> no-op (local dev after first run,
  * and CI caches). Missing and fetchable -> extract (~20 s, ~31 MB
@@ -22,12 +23,12 @@ import { dirname, join } from "node:path";
 
 import {
   basemapFailureMustStopBuild,
+  resolveProtomapsPlanetBuild,
   resolvePmtilesRelease,
 } from "./lib/basemap-platform.mjs";
 
 const OUT = "public/basemap/frederick-county.pmtiles";
 const BBOX = "-77.75,39.15,-77.05,39.75";
-const PLANET_BUILD = "https://build.protomaps.com/20260805.pmtiles";
 const CLI_VERSION = "1.28.0";
 const MIN_CLI_BYTES = 1_000_000;
 const MIN_PLAUSIBLE_BYTES = 10_000_000;
@@ -155,8 +156,13 @@ try {
   mkdirSync("public/basemap", { recursive: true });
   const tmpOut = `${OUT}.tmp`;
   rmSync(tmpOut, { force: true });
-  console.log(`fetch-basemap: extracting county bbox from ${PLANET_BUILD}`);
-  execFileSync(bin, ["extract", PLANET_BUILD, tmpOut, `--bbox=${BBOX}`], { stdio: "inherit" });
+  const planetBuild = await resolveProtomapsPlanetBuild();
+  console.log(
+    `fetch-basemap: extracting county bbox from ${planetBuild.url} (${planetBuild.source})`,
+  );
+  execFileSync(bin, ["extract", planetBuild.url, tmpOut, `--bbox=${BBOX}`], {
+    stdio: "inherit",
+  });
   if (!existsSync(tmpOut) || statSync(tmpOut).size < MIN_PLAUSIBLE_BYTES) {
     throw new Error("extract produced an implausibly small archive");
   }

@@ -284,7 +284,7 @@ describe("DaypartNeeds", () => {
     expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 
-  it("preserves the shared decision reasons and chooses one that adds information", () => {
+  it("explains the lead with current hours and consented-device distance first", () => {
     const shelf = liveShelfFromWantAnswer(
       {
         hero: {
@@ -317,21 +317,35 @@ describe("DaypartNeeds", () => {
     );
 
     expect(daypartLeadReason(shelf.picks)).toBe(
-      "Radius has this marked as a local favorite.",
+      "It is open until 4pm and is a 4-minute walk from you.",
     );
   });
 
-  it("does not repeat hours or distance as a second explanation line", () => {
+  it("uses evidence-backed availability before generic popularity evidence", () => {
     expect(daypartLeadReason([{
       slug: "nearby-only",
       name: "Nearby Only",
       rating: null,
       confidence: "confirmed",
+      fact: "Open now",
       decisionReasons: [
         { id: "availability", label: "Its current hours show it open now.", evidenceIds: [] },
-        { id: "proximity", label: "It is close to your location.", evidenceIds: [] },
+        { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: [] },
       ],
-    }])).toBeNull();
+    }])).toBe("Current hours show it is open now.");
+  });
+
+  it("uses an exact distance before a generic review-history tie-breaker", () => {
+    expect(daypartLeadReason([{
+      slug: "nearby-only",
+      name: "Nearby Only",
+      rating: null,
+      confidence: "confirmed",
+      distance: "0.4 mi",
+      decisionReasons: [
+        { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: [] },
+      ],
+    }])).toBe("It is 0.4 miles from you.");
   });
 
   it("never turns an unknown-hours best-fit row into an open-now card", () => {

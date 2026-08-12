@@ -51,6 +51,20 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain("fitBounds(");
   });
 
+  it("keeps transit controls readable when the basemap cannot load", () => {
+    const source = readFileSync(
+      "src/components/transit/TransitMap.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("MAP_LOAD_WATCHDOG_MS = 18_000");
+    expect(source).toContain("isFatalMapboxError(msg, mapLoadedRef.current)");
+    expect(source).toContain("The transit map is temporarily unavailable");
+    expect(source).toContain("The route and arrival information on this page is still available.");
+    expect(source).toContain("transit-map-canvas");
+    expect(source.indexOf("<select")).toBeLessThan(source.indexOf("{mapFailed ? ("));
+  });
+
   it("makes stops on the main map tappable and opens the shared arrival detail", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
     // The arrivals drawer itself moved to the selection-surfaces child (#77);

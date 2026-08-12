@@ -18,13 +18,28 @@ export function pulseSnapshotNeedsRefresh(
 export function formatPulseSnapshotTime(renderedAt: number): string {
   const date = new Date(renderedAt);
   if (!Number.isFinite(date.getTime())) return "time unavailable";
-  return new Intl.DateTimeFormat("en-US", {
+  // `Intl.DateTimeFormat#format` may join the date and time with either a
+  // comma or the word "at" across Node and browser ICU builds. Assemble the
+  // same Eastern label from parts so hydration never changes the punctuation.
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }).format(date);
+    hour12: true,
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  const month = part("month");
+  const day = part("day");
+  const hour = part("hour");
+  const minute = part("minute");
+  const dayPeriod = part("dayPeriod");
+  if (!month || !day || !hour || !minute || !dayPeriod) {
+    return "time unavailable";
+  }
+  return `${month} ${day}, ${hour}:${minute} ${dayPeriod}`;
 }
 
 /** A quiet claim expires with the page snapshot. Warning, partial-data, and
@@ -84,7 +99,7 @@ export function PulseStatusLabel({
 }
 
 /**
- * PulseFreshness — a live "checked Ns ago" counter measured from when the
+ * PulseFreshness — a live "page refreshed Ns ago" counter measured from when the
  * server assembled the page. Individual feeds can be older and show their own
  * timestamps inside the board. Before hydration it renders the server's
  * absolute Eastern timestamp, so reader mode and no-JavaScript visitors still
@@ -93,7 +108,7 @@ export function PulseStatusLabel({
  * This is the small, honest signal the dashboard was missing: visible proof
  * the page is a live read, not a static snapshot. The number climbs until the
  * page revalidates (ISR, 120s) and re-renders with a fresh timestamp, so the
- * count is the age of this check, not a claim that every provider published
+ * count is the age of this page assembly, not a claim that every provider published
  * new data at that moment.
  */
 export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
@@ -159,7 +174,7 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   // line proving the page is live nearly invisible.
   return (
     <span className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums">
-      {needsRefresh ? `Last checked ${label}` : `Checked ${label}`}
+      {needsRefresh ? `Page last refreshed ${label}` : `Page refreshed ${label}`}
     </span>
   );
 }

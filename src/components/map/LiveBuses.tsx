@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
-import { Marker, Popup, Source, Layer } from "react-map-gl/maplibre";
+import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";

@@ -2,6 +2,21 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("map interaction state contracts", () => {
+  it("keeps embedded Mapbox legal controls above the mobile navigation", () => {
+    const appMap = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(appMap).toContain('data-map-embedded={!dock ? "true" : undefined}');
+    expect(styles).toContain(
+      '[data-map-embedded="true"] .mapboxgl-ctrl-bottom-left',
+    );
+    expect(styles).toContain(
+      '[data-map-embedded="true"] .mapboxgl-ctrl-bottom-right',
+    );
+    expect(styles).toContain("top: 8px !important;");
+    expect(styles).toContain("bottom: auto !important;");
+  });
+
   it("uses the shared geolocation request instead of a private map request", () => {
     // The geolocation cluster moved to useMapLocation (#77); the contract
     // follows it there, and BOTH files stay free of private browser requests.
@@ -118,5 +133,25 @@ describe("map interaction state contracts", () => {
     expect(source).toContain("e.target.touchZoomRotate.disableRotation()");
     expect(source).toContain("clickTolerance={8}");
     expect(source).not.toContain("touchZoomRotate={false}");
+  });
+
+  it("bounds render-frame mark readiness checks when Mapbox Standard never idles", () => {
+    const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const onRenderStart = source.indexOf("onRender={(e) => {");
+    const onRenderEnd = source.indexOf("onMoveEnd={(e) => {", onRenderStart);
+    const onRender = source.slice(onRenderStart, onRenderEnd);
+
+    expect(onRenderStart).toBeGreaterThan(-1);
+    expect(onRenderEnd).toBeGreaterThan(onRenderStart);
+    expect(onRender).toContain("MAP_RENDER_READINESS_PROBE_INTERVAL_MS");
+    expect(onRender).toContain("MAP_RENDER_READINESS_MAX_ATTEMPTS");
+    expect(onRender).toContain('e.target.isSourceLoaded("curated-places")');
+    expect(onRender).toContain('e.target.isSourceLoaded("amenities")');
+    expect(onRender).toContain("placeProbe.settled = true");
+    expect(onRender).toContain("amenityProbe.settled = true");
+    expect(onRender).toContain('setPlaceMarksHealth(visibleMarks > 0 ? "ready" : "missing")');
+    expect(onRender).toContain("setAmenityMarksHealth(");
+    expect(source).toContain("resetMapRenderReadinessProbe();");
+    expect(source).toContain("e.target.triggerRepaint();");
   });
 });

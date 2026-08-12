@@ -55,6 +55,22 @@ describe("Pulse snapshot freshness", () => {
     expect(html).toContain('dateTime="2026-08-01T14:00:00.000Z"');
   });
 
+  it("assembles deterministic punctuation across server and browser ICU", () => {
+    const label = formatPulseSnapshotTime(
+      Date.parse("2026-08-12T12:43:00.000Z"),
+    );
+    expect(label).toBe("Aug 12, 8:43 AM");
+    expect(label).not.toContain(" at ");
+  });
+
+  it("labels assembly time without implying every source was checked then", () => {
+    const html = renderToStaticMarkup(
+      createElement(PulseFreshness, { renderedAt: now }),
+    );
+    expect(html).toContain("As of Aug 1, 10:00 AM");
+    expect(html).not.toContain("Checked");
+  });
+
   it("does not server-render a stale quiet claim", () => {
     const html = renderToStaticMarkup(
       createElement(PulseStatusLabel, {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  civicAlertPriority,
   powerOutageDisplay,
   powerOutageTone,
+  pulseAqiPriority,
   pulseAlertPriority,
   pulseStatusState,
+  selectPulseLeadCandidate,
   shouldAqiLead,
   type PulseAlertSignal,
   type PulseStatusSignals,
@@ -40,6 +43,92 @@ describe("Pulse safety signal priority", () => {
       severity: "Extreme",
     });
     expect(shouldAqiLead(6, tornado)).toBe(false);
+  });
+
+  it("keeps a City emergency and severe rescue ahead of routine live signals", () => {
+    const city = {
+      id: "city",
+      family: "civic" as const,
+      priority: civicAlertPriority("city-emergency"),
+      reason: "official City emergency",
+      observedAt: "2026-08-01T12:00:00.000Z",
+    };
+    const rescue = {
+      id: "rescue",
+      family: "fire-rescue" as const,
+      priority: 2,
+      reason: "severe rescue dispatch",
+      observedAt: "2026-08-01T12:05:00.000Z",
+    };
+    const routine = [
+      {
+        id: "air",
+        family: "air" as const,
+        priority: pulseAqiPriority(3),
+        reason: "AQI unhealthy for sensitive groups",
+      },
+      {
+        id: "power",
+        family: "power" as const,
+        priority: 8,
+        reason: "localized outage",
+      },
+      {
+        id: "road",
+        family: "traffic" as const,
+        priority: 7,
+        reason: "road advisory",
+      },
+    ];
+
+    expect(selectPulseLeadCandidate([...routine, rescue])?.id).toBe("rescue");
+    expect(selectPulseLeadCandidate([...routine, rescue, city])).toMatchObject({
+      id: "city",
+      reason: "official City emergency",
+    });
+  });
+
+  it("lets an explicit extreme-weather override outrank other sources", () => {
+    expect(
+      selectPulseLeadCandidate([
+        {
+          id: "city",
+          family: "civic",
+          priority: civicAlertPriority("city-emergency"),
+          reason: "official City emergency",
+        },
+        {
+          id: "tornado",
+          family: "weather",
+          priority: pulseAlertPriority(alert({
+            event: "Tornado Warning",
+            severity: "Extreme",
+          })),
+          reason: "NWS immediate warning",
+        },
+      ]),
+    ).toMatchObject({ id: "tornado", priority: 0 });
+  });
+
+  it("uses source family and recency only after consequence", () => {
+    expect(
+      selectPulseLeadCandidate([
+        {
+          id: "older-weather",
+          family: "weather",
+          priority: 6,
+          reason: "weather advisory",
+          observedAt: "2026-08-01T11:00:00.000Z",
+        },
+        {
+          id: "newer-road",
+          family: "traffic",
+          priority: 6,
+          reason: "road warning",
+          observedAt: "2026-08-01T12:00:00.000Z",
+        },
+      ])?.id,
+    ).toBe("older-weather");
   });
 
   it("ranks the issued Code Orange level instead of Purple timing text later in the bulletin", () => {

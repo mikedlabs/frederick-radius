@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import Link from "next/link";
 import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
@@ -91,12 +92,6 @@ export type PulseHeroChip = {
   meta?: string;
 };
 
-export type PulseHeroFact = {
-  label: string;
-  value: string;
-  detail?: string;
-};
-
 const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
   danger: "var(--app-danger)",
   warning: "var(--app-warning)",
@@ -120,9 +115,6 @@ export type PulseHero = {
   line: string;
   sub: string;
   renderedAt: number;
-  /** Structured, source-backed facts for the lead situation. Active-alert
-   *  heroes use these instead of leaving the explanation as a wall of type. */
-  facts?: PulseHeroFact[];
   /** The lead situation is fully explained in the hero, so it is not repeated below. */
   leadKey?: string;
   leadMeta?: string;
@@ -160,7 +152,7 @@ export function pulseStatusWord({
   hasLead: boolean;
   tone: PulseHeroChip["tone"];
 }): string {
-  if (degraded) return "Partial data";
+  if (degraded && !hasLead) return "Partial data";
   // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
   // row, and the same word twice in one line read as a stutter. This word's
   // job is the county's state; the freshness stamp owns the checking.
@@ -196,10 +188,16 @@ export type PulseTile = {
    * degraded fallback never claims to be a reading.
    */
   reading?: boolean;
+  /** Important context such as air quality remains visible when unavailable,
+   * with its unavailable state written plainly. */
+  keepVisibleWhenUnavailable?: boolean;
   kind: "feature" | "gauge" | "status";
   peek?: string;
-  gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
+  /** A direct measurement. Do not add a visual fill unless the provider
+   * publishes a meaningful threshold for that exact value. */
+  gauge?: { value: number; unit: string; decimals?: number; comma?: boolean };
   feature?: { temp: number; condition: string; hl?: string };
+  action?: { href: string; label: string };
   body: ReactNode;
 };
 
@@ -294,10 +292,12 @@ export function pulseDisplayGroups(
     const state = pulseTileState(tile);
     if (state === "Attention") attention.push(tile);
     else if (state === "Active") actionable.push(tile);
-    // Only a CURRENT reading earns the open board. A reading-flagged tile in
-    // any degraded state has no number to show, and a live one is already in
-    // the groups above.
-    else if (tile.reading && state === "Current") readings.push(tile);
+    // Current readings earn the open board. A small set of essential readings
+    // can stay there while unavailable, but only with the missing state named.
+    else if (
+      tile.reading &&
+      (state === "Current" || tile.keepVisibleWhenUnavailable)
+    ) readings.push(tile);
     else quiet.push(tile);
   }
 
@@ -441,99 +441,6 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
   );
 }
 
-export function AlertDataPanel({
-  facts,
-  lead,
-  meta,
-  actionLabel,
-  color,
-  onOpen,
-}: {
-  facts: PulseHeroFact[];
-  lead: PulseTile;
-  meta?: string;
-  actionLabel: string;
-  color: string;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      className="overflow-hidden rounded-[var(--app-radius-md)] border"
-      style={{
-        borderColor: `color-mix(in srgb, ${color} 32%, var(--app-border))`,
-        background: "var(--app-bg-elevated-solid)",
-      }}
-    >
-      <div
-        className="flex min-h-11 items-center gap-2.5 border-b px-3"
-        style={{ borderColor: `color-mix(in srgb, ${color} 24%, var(--app-border))` }}
-      >
-        <span
-          aria-hidden
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
-          style={{
-            color,
-            background: `color-mix(in srgb, ${color} 11%, transparent)`,
-          }}
-        >
-          {createElement(iconFor(lead), { className: "h-4 w-4", strokeWidth: 2.2 })}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-          {lead.label}
-        </span>
-        <span className="text-caption max-w-[44%] text-right font-medium" style={{ color: "var(--app-ink-3)" }}>
-          {lead.sourceLabel}
-        </span>
-      </div>
-
-      <dl className="grid grid-cols-2">
-        {facts.slice(0, 4).map((fact, index) => (
-          <div
-            key={`${fact.label}-${index}`}
-            className="min-w-0 border-b px-3 py-2 odd:border-r"
-            style={{ borderColor: `color-mix(in srgb, ${color} 20%, var(--app-border))` }}
-          >
-            <dt className="text-caption font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-              {fact.label}
-            </dt>
-            <dd
-              className={`${index === 0 ? "text-[17px] " : "text-[12px] "}mt-1 break-words font-semibold leading-tight tabular-nums`}
-              style={{ color: index === 0 ? color : "var(--app-ink)" }}
-            >
-              {fact.value}
-            </dd>
-            {fact.detail ? (
-              <dd className="text-caption mt-0.5 break-words" style={{ color: "var(--app-ink-3)" }}>
-                {fact.detail}
-              </dd>
-            ) : null}
-          </div>
-        ))}
-      </dl>
-
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
-        {meta ? (
-          <p className="text-caption flex min-w-0 items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-            <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
-            {meta}
-          </p>
-        ) : <span />}
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[11.5px] font-semibold transition active:opacity-70"
-          style={{
-            color: "var(--app-ink)",
-          }}
-        >
-          {actionLabel}
-          <ArrowRight aria-hidden className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   const [message, setMessage] = useState<string | null>(null);
 
@@ -645,7 +552,6 @@ function PulseSmartBlock({
     ? "Latest reading unavailable"
     : pulseTileReading(tile);
   const gaugeValue = formatGaugeValue(tile);
-  const gaugePct = Math.max(0, Math.min(100, tile.gauge?.pct ?? 0));
 
   return (
     <li
@@ -658,7 +564,7 @@ function PulseSmartBlock({
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
-        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[140px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2"
+        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]"
         style={{
           borderColor: unavailable
             ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
@@ -753,26 +659,14 @@ function PulseSmartBlock({
             </span>
           </span>
         ) : tile.gauge ? (
-          <span className="relative mt-3 flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="relative mt-2.5 flex min-w-0 flex-1 items-end gap-2.5">
             <span
-              aria-hidden
-              className="relative grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full"
-              style={{
-                background: `conic-gradient(${keyColor} ${gaugePct}%, color-mix(in srgb, var(--app-border) 72%, transparent) 0)`,
-              }}
+              className={`shrink-0 font-mono font-semibold leading-none tabular-nums${tile.gauge.comma ? " text-[25px]" : " text-[28px]"}`}
+              style={{ color: keyColor }}
             >
-              <span
-                className="absolute inset-[4px] rounded-full"
-                style={{ background: "var(--app-bg-elevated-solid)" }}
-              />
-              <span
-                className={`relative z-10 font-mono font-semibold leading-none tabular-nums${tile.gauge.comma ? " text-[17px]" : " text-[21px]"}`}
-                style={{ color: "var(--app-ink)" }}
-              >
-                {gaugeValue}
-              </span>
+              {gaugeValue}
             </span>
-            <span className="min-w-0">
+            <span className="min-w-0 pb-0.5">
               <span
                 className="block line-clamp-2 text-[10px] font-medium leading-tight"
                 style={{ color: "var(--app-ink-2)" }}
@@ -807,7 +701,7 @@ function PulseSmartBlock({
         )}
 
         <span
-          className="relative mt-2.5 block w-full min-w-0 border-t pt-2"
+          className="relative mt-2 block w-full min-w-0 border-t pt-1.5"
           style={{ borderColor: "color-mix(in srgb, var(--app-border) 74%, transparent)" }}
         >
           <span className="flex min-w-0 items-center gap-1.5">
@@ -823,7 +717,7 @@ function PulseSmartBlock({
             />
           </span>
           <span
-            className="mt-0.5 block truncate text-[8.5px]"
+            className="mt-0.5 hidden truncate text-[9px] sm:block"
             style={{ color: "var(--app-ink-3)" }}
             title={tile.sourceLabel}
           >
@@ -906,17 +800,26 @@ function SecondarySignals({
     (tile) => pulseTileState(tile) === "Not connected",
   );
   const degraded = [...partial, ...unavailable, ...notConnected];
+  const incompleteCount = partial.length + unavailable.length;
+  const degradedSummary = [
+    incompleteCount > 0
+      ? `${incompleteCount} ${incompleteCount === 1 ? "live check is" : "live checks are"} incomplete`
+      : null,
+    notConnected.length > 0
+      ? `${notConnected.length} ${notConnected.length === 1 ? "source is" : "sources are"} not connected`
+      : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
       <details
-        className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+        className="group overflow-hidden rounded-[var(--app-radius-sm)] border"
         style={{
           borderColor: "var(--app-border)",
           background: "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
         }}
       >
-        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
           {degraded.length > 0 ? (
             <AlertTriangle
               aria-hidden
@@ -940,13 +843,8 @@ function SecondarySignals({
                 notConnected.length,
               )}
             </span>
-            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {secondarySignalsSummary(
-                updates.length,
-                partial.length,
-                unavailable.length,
-                notConnected.length,
-              )}
+            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: degraded.length > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
+              {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check" : "checks"}`}
             </span>
           </span>
           <ChevronDown
@@ -1061,23 +959,9 @@ export default function PulseBoard({
   const degraded = hero.degraded ?? false;
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
   const heroColor = CHIP_TONE[heroTone];
-  const heroFacts = hero.facts?.filter((fact) => fact.value.trim().length > 0).slice(0, 4) ?? [];
-  // Structured metric panels help for weather, air, traffic, and similar
-  // readings. Official-alert and police leads already carry their essential
-  // facts in the alert ledger, so repeating them here creates two competing
-  // explanations for the same situation.
-  const leadUsesMetricPanel = Boolean(
-    lead &&
-    lead.key !== "alerts" &&
-    lead.key !== "police",
-  );
-  const showAlertData =
-    !hero.allClear &&
-    leadUsesMetricPanel &&
-    heroFacts.length > 0;
   const attentionChips = pulseAttentionChips(chips, {
     allClear: hero.allClear,
-    showAlertData,
+    showAlertData: false,
     leadKey: hero.leadKey,
   });
   const summarizedKeys = new Set(
@@ -1092,7 +976,7 @@ export default function PulseBoard({
   const wideReadingKeys = pulseWideReadingKeys(displayGroups.readings);
   const attention = displayGroups.attention;
   const quietSignals = displayGroups.quiet;
-  const attentionCount = attention.length + attentionChips.length + (showAlertData ? 1 : 0);
+  const attentionCount = attention.length + attentionChips.length;
   const hasAttention = attentionCount > 0;
   const statusWord = pulseStatusWord({
     allClear: hero.allClear,
@@ -1145,7 +1029,16 @@ export default function PulseBoard({
             {hero.line}
           </h1>
           <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {!showAlertData && (hero.leadMeta || lead) && (
+          {degraded && lead ? (
+            <p
+              className="mt-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold"
+              style={{ color: "var(--app-warning)" }}
+            >
+              <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
+              Some live checks are unavailable. This alert still comes from a current source.
+            </p>
+          ) : null}
+          {(hero.leadMeta || lead) && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               {hero.leadMeta && (
                 <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-[var(--app-ink-3)]">
@@ -1181,16 +1074,6 @@ export default function PulseBoard({
               note={`${attentionCount} ${attentionCount === 1 ? "update" : "updates"}`}
             />
             <div className="space-y-2.5">
-              {showAlertData && lead && (
-                <AlertDataPanel
-                  facts={heroFacts}
-                  lead={lead}
-                  meta={hero.leadMeta}
-                  actionLabel={hero.actionLabel ?? "See what this means"}
-                  color={heroColor}
-                  onOpen={() => openTile(lead.key)}
-                />
-              )}
               <HeroFacts chips={attentionChips} onOpen={openTile} />
               {attention.length > 0 && (
                 <div
@@ -1306,7 +1189,23 @@ export default function PulseBoard({
         title={current?.label ?? ""}
         subtitle={current ? `Source: ${current.sourceLabel}` : undefined}
       >
-        <div className="space-y-2 px-4 pb-2">{current?.body}</div>
+        <div className="space-y-2 px-4 pb-2">
+          {current?.body}
+          {current?.action ? (
+            <Link
+              href={current.action.href}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+              style={{
+                borderColor: "var(--app-border-strong)",
+                background: "var(--app-bg-elevated-solid)",
+                color: "var(--app-ink)",
+              }}
+            >
+              {current.action.label}
+              <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            </Link>
+          ) : null}
+        </div>
       </BottomDrawer>
     </>
   );

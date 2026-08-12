@@ -1,8 +1,5 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
-  AlertDataPanel,
   nameListSentence,
   pulseAttentionChips,
   pulseClearedKeys,
@@ -73,6 +70,13 @@ describe("Pulse status language", () => {
       hasLead: true,
       tone: "danger",
     })).toBe("Urgent");
+
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: true,
+      hasLead: true,
+      tone: "danger",
+    })).toBe("Urgent");
   });
 
   it("never lets a contradictory all-clear flag hide partial data", () => {
@@ -132,36 +136,6 @@ describe("Pulse status language", () => {
     ).toEqual(["traffic"]);
   });
 
-  it("keeps every alert fact caption at the 11px mobile floor", () => {
-    const lead: PulseTile = {
-      key: "air",
-      label: "Air quality",
-      iconName: "CloudAlert",
-      sourceLabel: "AirNow",
-      countLabel: "AQI 151",
-      accent: "var(--app-warning)",
-      active: true,
-      attention: true,
-      kind: "status",
-      body: null,
-    };
-    const html = renderToStaticMarkup(
-      createElement(AlertDataPanel, {
-        facts: [
-          { label: "Current AQI", value: "151", detail: "Frederick" },
-          { label: "Observed", value: "12:05 PM" },
-        ],
-        lead,
-        meta: "Observed 5 minutes ago",
-        actionLabel: "See the air-quality reading",
-        color: "var(--app-warning)",
-        onOpen: () => undefined,
-      }),
-    );
-
-    expect(html).toContain("text-caption");
-    expect(html).not.toMatch(/text-\[(?:8\.5|9\.5|10)px\]/);
-  });
 });
 
 describe("Pulse smart blocks", () => {
@@ -263,6 +237,20 @@ describe("Pulse smart blocks", () => {
     expect(groups.readings).toEqual([]);
     expect(groups.quiet.map((entry) => entry.key)).toEqual(["air"]);
     expect(groups.actionable.map((entry) => entry.key)).toEqual(["traffic"]);
+  });
+
+  it("keeps essential missing readings visible with an unavailable state", () => {
+    const air: PulseTile = {
+      ...tile("air"),
+      reading: true,
+      degraded: true,
+      keepVisibleWhenUnavailable: true,
+    };
+
+    const groups = pulseDisplayGroups([air]);
+
+    expect(groups.readings).toEqual([air]);
+    expect(pulseTileState(groups.readings[0])).toBe("Feed unavailable");
   });
 });
 

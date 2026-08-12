@@ -19,6 +19,7 @@ const QUERY_FILLER = new Set([
   "any",
   "are",
   "around",
+  "anything",
   "could",
   "do",
   "find",
@@ -57,6 +58,7 @@ const QUERY_FILLER = new Set([
 // map, so synonyms meet on neutral terms without inflating every tool's
 // keyword list.
 const TOKEN_ALIASES: Readonly<Record<string, string>> = {
+  accessible: "accessibility",
   bathroom: "restroom",
   bathrooms: "restroom",
   buses: "transit",
@@ -64,8 +66,10 @@ const TOKEN_ALIASES: Readonly<Record<string, string>> = {
   cans: "can",
   charger: "charge",
   chargers: "charge",
+  closed: "closure",
   garbage: "trash",
   loo: "restroom",
+  indoors: "indoor",
   outlets: "outlet",
   plugs: "plug",
   restrooms: "restroom",
@@ -73,6 +77,7 @@ const TOKEN_ALIASES: Readonly<Record<string, string>> = {
   socket: "outlet",
   sockets: "outlet",
   toilets: "toilet",
+  wheeling: "wheelchair",
   washroom: "restroom",
   washrooms: "restroom",
 };
@@ -139,9 +144,82 @@ const QUERY_INTENTS: readonly QueryIntent[] = [
         "restaurant", "shop", "store",
       ]);
       const dateNight = terms.has("date") && terms.has("night");
-      const familyIdea = hasAny(terms, ["family", "kid", "kids"]) && hasAny(terms, ["friendly", "idea", "outing"]);
+      const familyIdea = hasAny(terms, ["family", "kid", "kids"])
+        && !hasAny(terms, ["playground", "playgrounds"]);
+      const indoorIdea = hasAny(terms, ["indoor", "rain", "raining", "rainy"]);
       const market = terms.has("market") && hasAny(terms, ["farmer", "farmers"]);
-      return placeOrMeal || dateNight || familyIdea || market ? 90 : 0;
+      return placeOrMeal || dateNight || familyIdea || indoorIdea || market ? 90 : 0;
+    },
+  },
+  {
+    id: "events",
+    score: (terms) => {
+      const direct = hasAny(terms, ["event", "events"]);
+      const funSoon = terms.has("fun") && hasAny(terms, ["today", "tonight", "tomorrow"]);
+      const openEndedTonight = terms.has("tonight") && hasAny(terms, ["do", "something", "what"]);
+      return direct || funSoon || openEndedTonight ? 100 : 0;
+    },
+  },
+  {
+    id: "food-trucks",
+    score: (terms) => {
+      const truck = hasAny(terms, ["truck", "trucks"]);
+      return truck && terms.has("food") ? 110 : 0;
+    },
+  },
+  {
+    id: "open-now",
+    score: (terms) => {
+      const availability = hasAny(terms, ["late", "open"]);
+      const time = hasAny(terms, ["night", "now", "still", "tonight"]);
+      return availability && time ? 100 : 0;
+    },
+  },
+  {
+    id: "restrooms",
+    score: (terms) => hasAny(terms, ["bathroom", "pee", "restroom", "toilet"])
+      ? 110
+      : 0,
+  },
+  {
+    id: "trash-cans",
+    score: (terms) => {
+      const trash = hasAny(terms, ["garbage", "rubbish", "trash"]);
+      return trash && hasAny(terms, ["can", "bin", "dumpster", "garbage", "trash"])
+        ? 110
+        : 0;
+    },
+  },
+  {
+    id: "dog-stations",
+    score: (terms) => {
+      const dog = hasAny(terms, ["dog", "poop", "pet"]);
+      const waste = hasAny(terms, ["bag", "bags", "poop", "station", "waste"]);
+      return dog && waste ? 110 : 0;
+    },
+  },
+  {
+    id: "play-areas",
+    score: (terms) => hasAny(terms, ["playground", "playgrounds"])
+      || (terms.has("play") && hasAny(terms, ["area", "areas", "outside"]))
+      ? 100
+      : 0,
+  },
+  {
+    id: "mobility-map",
+    score: (terms) => {
+      const direct = hasAny(terms, ["mobility", "wheelchair"]);
+      const stepFree = terms.has("step") && terms.has("free");
+      const accessiblePath = terms.has("accessibility") && hasAny(terms, ["map", "path", "route", "sidewalk"]);
+      return direct || stepFree || accessiblePath ? 110 : 0;
+    },
+  },
+  {
+    id: "communication-access",
+    score: (terms) => {
+      const communication = hasAny(terms, ["asl", "caption", "captions", "deaf", "interpreter", "relay"]);
+      const generalAccess = terms.has("accessibility") && !hasAny(terms, ["map", "path", "route", "sidewalk"]);
+      return communication || generalAccess ? 100 : 0;
     },
   },
   {
@@ -263,8 +341,19 @@ export function toolMatchesQuery(
   item: ToolQueryDocument,
   query: string,
 ): boolean {
+  const literalQuery = tokens(query, false).join(" ");
+  const literalLabels = [item.label, ...(item.keywords ?? [])]
+    .map((value) => tokens(value, false).join(" "));
   const queryTerms = toolQueryTerms(query);
-  if (queryTerms.length === 0) return true;
+  if (queryTerms.length === 0) {
+    if (query.trim().length === 0) return true;
+    return literalLabels.includes(literalQuery);
+  }
+
+  // A visible tool must always remain findable by its own exact label or one
+  // of its audited registry phrases. Intent routing only resolves broader
+  // resident language; it must not hide "Event calendar" behind Events.
+  if (literalLabels.includes(literalQuery)) return true;
 
   const intentTargets = queryIntentTargets(query);
   if (intentTargets.size > 0 && item.id) {

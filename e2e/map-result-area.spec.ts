@@ -11,7 +11,9 @@ test.describe("deliberate map result areas", () => {
       waitUntil: "domcontentloaded",
     });
 
-    const canvas = page.locator("canvas.maplibregl-canvas");
+    const canvas = page.locator(
+      "canvas.mapboxgl-canvas, canvas.maplibregl-canvas",
+    );
     await expect(canvas).toBeVisible({ timeout: 20_000 });
     await expect(page.locator(".dock-host")).toHaveAttribute(
       "data-map-loaded",
@@ -67,7 +69,9 @@ test.describe("deliberate map result areas", () => {
       waitUntil: "domcontentloaded",
     });
 
-    const canvas = page.locator("canvas.maplibregl-canvas");
+    const canvas = page.locator(
+      "canvas.mapboxgl-canvas, canvas.maplibregl-canvas",
+    );
     await expect(canvas).toBeVisible({ timeout: 20_000 });
     await expect(page.locator(".dock-host")).toHaveAttribute(
       "data-map-loaded",
