@@ -85,6 +85,17 @@ describe("map interaction state contracts", () => {
     expect(source).not.toContain("if (!routeQuery) return;");
   });
 
+  it("keeps map search visibly pending while a retry begins", () => {
+    const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
+    const dockSource = readFileSync("src/components/map/MapDock.tsx", "utf8");
+
+    expect(mapSource).toContain('setSearchUnavailableQuery("");');
+    expect(mapSource).toContain('setSearchSettledQuery("");');
+    expect(dockSource).toContain(
+      "onPointerDown={(event) => event.preventDefault()}",
+    );
+  });
+
   it("uses category artwork instead of unattributed remote event photos on pins", () => {
     const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
     const pageSource = readFileSync("src/app/(app)/map/page.tsx", "utf8");

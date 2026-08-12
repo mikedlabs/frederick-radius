@@ -6187,7 +6187,14 @@ export default function AppMap({
               searchSettledQuery !== q.trim()
             }
             searchUnavailable={searchUnavailableQuery === q.trim()}
-            retrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
+            retrySearch={() => {
+              // Clear the completed-failure markers in the same interaction
+              // that starts the retry. This gives immediate, truthful pending
+              // feedback even before the debounced request begins.
+              setSearchUnavailableQuery("");
+              setSearchSettledQuery("");
+              setSearchAttempt((attempt) => attempt + 1);
+            }}
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
             searchDistanceOriginLabel={userLoc ? "from you" : "from map center"}

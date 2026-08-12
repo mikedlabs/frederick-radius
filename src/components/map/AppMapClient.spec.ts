@@ -40,6 +40,9 @@ describe("MapLoadFailure", () => {
 
     expect(clientSource).toContain("APP_MAP_CHUNK_TIMEOUT_MS = 15_000");
     expect(clientSource).toContain("markAppMapChunkReady();");
+    expect(clientSource).toContain("function loadAppMapModule()");
+    expect(clientSource).toContain("export function warmAppMapChunk()");
+    expect(clientSource).toContain("() => loadAppMapModule()");
     expect(clientSource).toContain("subscribeToAppMapChunkReady");
     expect(clientSource).toContain("window.setTimeout(");
     expect(clientSource).toContain("handleMapChunkFailure");

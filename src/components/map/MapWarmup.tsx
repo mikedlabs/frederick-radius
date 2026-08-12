@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { warmAppMapChunk } from "./AppMapClient";
 import { warmMapPlaces } from "./mapPlacesClient";
 
 /**
@@ -15,7 +16,7 @@ import { warmMapPlaces } from "./mapPlacesClient";
  */
 export default function MapWarmup() {
   useEffect(() => {
-    void import("./AppMap");
+    warmAppMapChunk();
     warmMapPlaces();
   }, []);
   return null;

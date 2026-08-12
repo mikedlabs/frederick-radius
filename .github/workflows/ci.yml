@@ -104,6 +104,10 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Build the production app
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Exercise combined dependency failures and app upgrades
@@ -116,6 +120,7 @@ jobs:
           --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
       - name: Keep chaos failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

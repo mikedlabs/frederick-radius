@@ -25,6 +25,7 @@ const EMBEDDED_MAP_HEIGHT = "78vh";
 const APP_MAP_CHUNK_TIMEOUT_MS = 15_000;
 
 let appMapChunkReady = false;
+let appMapModulePromise: Promise<typeof import("./AppMap")> | null = null;
 const appMapChunkReadyListeners = new Set<() => void>();
 
 function markAppMapChunkReady() {
@@ -40,6 +41,34 @@ function subscribeToAppMapChunkReady(listener: () => void) {
   }
   appMapChunkReadyListeners.add(listener);
   return () => appMapChunkReadyListeners.delete(listener);
+}
+
+function loadAppMapModule() {
+  if (!appMapModulePromise) {
+    appMapModulePromise = import("./AppMap")
+      .then((module) => {
+        markAppMapChunkReady();
+        return module;
+      })
+      .catch((error) => {
+        // A later reload or remount must be able to retry a failed chunk.
+        appMapModulePromise = null;
+        throw error;
+      });
+  }
+  return appMapModulePromise;
+}
+
+/**
+ * Start the interactive map download from the static page shell. The dynamic
+ * renderer below reuses this exact promise, so map code and the committed
+ * place snapshot arrive in parallel instead of starting one after the other.
+ */
+export function warmAppMapChunk() {
+  void loadAppMapModule().catch(() => {
+    // AppMapClient owns the visible timeout and readable recovery surface.
+    // Warmup is speculative, so it must not create an unhandled rejection.
+  });
 }
 
 class MapChunkBoundary extends Component<
@@ -67,11 +96,7 @@ class MapChunkBoundary extends Component<
 }
 
 const AppMap = dynamic(
-  () =>
-    import("./AppMap").then((module) => {
-      markAppMapChunkReady();
-      return module;
-    }),
+  () => loadAppMapModule(),
   {
   ssr: false,
   // The visible Frederick-specific scene is rendered by this light wrapper,

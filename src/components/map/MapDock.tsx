@@ -1600,7 +1600,11 @@ export default function MapDock(props: MapDockProps) {
                   </p>
                 </div>
                 <div className="dock-search-empty-actions">
-                  <button type="button" onClick={props.retrySearch}>
+                  <button
+                    type="button"
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={props.retrySearch}
+                  >
                     Try again
                   </button>
                   <button
