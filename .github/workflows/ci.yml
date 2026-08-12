@@ -96,7 +96,11 @@ jobs:
     # while the four primary decision surfaces remain useful and honest.
     name: Required browser chaos
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # A cold 2,740-page production build takes about 24 minutes on GitHub's
+    # shared runner before Chromium and the actual chaos cases begin. Keep a
+    # bounded ceiling, but leave enough time to exercise the thing this job is
+    # required to prove instead of cancelling it immediately after the build.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
