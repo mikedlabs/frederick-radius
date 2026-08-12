@@ -10,7 +10,14 @@
 // consumer of these values, which destructures them back into the same
 // local names.
 
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { shouldInitializeReferenceLayer } from "@/lib/map/subject-map";
 import { writeMapLayerPrefs, type MapLayerPrefs } from "./mapLayerPrefs";
 
@@ -46,6 +53,11 @@ export function useMapLayerToggles({
   // greet every future visit regardless of moment.
   const smartSeeded = smart.size > 0;
   const userTouchedRef = useRef(false);
+  // A Radius scene is a temporary task setup, not a new device preference.
+  // Hold its exact target until the layer effect observes it, then skip that
+  // one persistence write. If applying the scene changed nothing, a later
+  // manual toggle will differ from this target and persist normally.
+  const transientPlanRef = useRef<MapLayerPrefs | null>(null);
   const touch = <T,>(setter: Dispatch<SetStateAction<T>>) =>
     (value: SetStateAction<T>) => {
       userTouchedRef.current = true;
@@ -158,17 +170,12 @@ export function useMapLayerToggles({
       ),
   );
 
-  // Remember the user's explicit layer choices (per device) so a customized map
-  // survives reload. Transient focus filters (saved-only / field-notes-only)
-  // are intentionally excluded — see mapLayerPrefs. A shared `show=` view is
-  // authoritative for this visit but must not overwrite the recipient's own
-  // saved map setup.
+  // Radius scenes borrow the layer switches, but they must never become the
+  // person's remembered setup. Keep the exact pre-scene state so leaving a
+  // scene (including by manually refining one layer) restores that base first.
+  const currentPlanRef = useRef<MapLayerPrefs>({});
   useEffect(() => {
-    if (hasExplicitLayerView) return;
-    // With smart seeds active, only a real interaction may persist: the
-    // suggestion itself must never become a stored preference.
-    if (smartSeeded && !userTouchedRef.current) return;
-    writeMapLayerPrefs({
+    currentPlanRef.current = {
       civic: showCivic,
       transit: showTransit,
       trails: showTrails,
@@ -180,7 +187,124 @@ export function useMapLayerToggles({
       incidents: showIncidents,
       aviation: showRotorcraft,
       cameras: showCameras,
-    });
+    };
+  }, [
+    showAerial,
+    showCameras,
+    showCemeteries,
+    showCivic,
+    showIncidents,
+    showParking,
+    showRadar,
+    showRotorcraft,
+    showTraffic,
+    showTrails,
+    showTransit,
+  ]);
+  const sceneBaseRef = useRef<MapLayerPrefs | null>(null);
+  const openedWithSceneRef = useRef(
+    isBrowseMap &&
+      typeof window !== "undefined" &&
+      Boolean(new URLSearchParams(window.location.search).get("scene")) &&
+      new URLSearchParams(window.location.search).get("scene") !==
+        "within-15-minutes",
+  );
+  const rememberedPlanRef = useRef<MapLayerPrefs>({
+    civic: layerPrefs.civic ?? smart.has("civic"),
+    transit: layerPrefs.transit ?? transitDefaultOn,
+    trails: layerPrefs.trails ?? trailsLayerDefault,
+    aerial: layerPrefs.aerial ?? false,
+    cemeteries: layerPrefs.cemeteries ?? false,
+    parking: layerPrefs.parking ?? smart.has("parking"),
+    radar: layerPrefs.radar ?? smart.has("radar"),
+    traffic: layerPrefs.traffic ?? smart.has("traffic"),
+    incidents: layerPrefs.incidents ?? smart.has("incidents"),
+    aviation: layerPrefs.aviation ?? false,
+    cameras: layerPrefs.cameras ?? false,
+  });
+  const setLayerPlan = useCallback((target: MapLayerPrefs) => {
+    setShowCivic(Boolean(target.civic));
+    setShowTransit(Boolean(target.transit));
+    setShowTrails(Boolean(target.trails));
+    setShowAerial(Boolean(target.aerial));
+    setShowCemeteries(Boolean(target.cemeteries));
+    setShowParking(Boolean(target.parking));
+    setShowRadar(Boolean(target.radar));
+    setShowTraffic(Boolean(target.traffic));
+    setShowIncidents(Boolean(target.incidents));
+    setShowRotorcraft(Boolean(target.aviation));
+    setShowCameras(Boolean(target.cameras));
+  }, []);
+
+  const applyReferenceLayerPlan = useCallback((layers: ReadonlySet<string>) => {
+    const target: MapLayerPrefs = {
+      civic: layers.has("civic"),
+      transit: layers.has("transit"),
+      trails: layers.has("trails"),
+      aerial: layers.has("aerial"),
+      cemeteries: layers.has("cemeteries"),
+      parking: layers.has("parking"),
+      radar: layers.has("radar"),
+      traffic: layers.has("traffic"),
+      incidents: layers.has("incidents"),
+      aviation: layers.has("air"),
+      cameras: layers.has("cameras"),
+    };
+    if (!sceneBaseRef.current) {
+      sceneBaseRef.current = openedWithSceneRef.current
+        ? rememberedPlanRef.current
+        : currentPlanRef.current;
+      openedWithSceneRef.current = false;
+    }
+    transientPlanRef.current = target;
+    setLayerPlan(target);
+  }, [setLayerPlan]);
+
+  const restoreReferenceLayerPlan = useCallback(() => {
+    const target = sceneBaseRef.current;
+    if (!target) return;
+    sceneBaseRef.current = null;
+    // Suppress the restoration write. The original preferences are already
+    // stored; a manual toggle queued after this restoration will write only
+    // that deliberate refinement on top of the original base.
+    transientPlanRef.current = target;
+    setLayerPlan(target);
+  }, [setLayerPlan]);
+
+  // Remember the user's explicit layer choices (per device) so a customized map
+  // survives reload. Transient focus filters (saved-only / field-notes-only)
+  // are intentionally excluded — see mapLayerPrefs. A shared `show=` view is
+  // authoritative for this visit but must not overwrite the recipient's own
+  // saved map setup.
+  useEffect(() => {
+    if (hasExplicitLayerView) return;
+    const current: MapLayerPrefs = {
+      civic: showCivic,
+      transit: showTransit,
+      trails: showTrails,
+      aerial: showAerial,
+      cemeteries: showCemeteries,
+      parking: showParking,
+      radar: showRadar,
+      traffic: showTraffic,
+      incidents: showIncidents,
+      aviation: showRotorcraft,
+      cameras: showCameras,
+    };
+    const transient = transientPlanRef.current;
+    if (transient) {
+      transientPlanRef.current = null;
+      const samePlan = Object.keys(current).every(
+        (key) =>
+          current[key as keyof MapLayerPrefs] ===
+          transient[key as keyof MapLayerPrefs],
+      );
+      if (samePlan) return;
+    }
+    // With smart seeds active, only a real interaction may persist: the
+    // suggestion itself must never become a stored preference.
+    if (smartSeeded && !userTouchedRef.current) return;
+    writeMapLayerPrefs(current);
   }, [hasExplicitLayerView, smartSeeded, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
 
   // Every deliberate reference layer is first-class share/deep-link state.
@@ -246,5 +370,7 @@ export function useMapLayerToggles({
     showIncidents, setShowIncidents: touch(setShowIncidents),
     showRotorcraft, setShowRotorcraft: touch(setShowRotorcraft),
     showCameras, setShowCameras: touch(setShowCameras),
+    applyReferenceLayerPlan,
+    restoreReferenceLayerPlan,
   };
 }

@@ -17,6 +17,7 @@ import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapLoadingScene from "./MapLoadingScene";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
+import type { MapSceneContext } from "./AppMap";
 
 const EMBEDDED_MAP_HEIGHT = "78vh";
 
@@ -138,6 +139,7 @@ export default function AppMapClient({
   snowRoutes = EMPTY_SNOW_ROUTE_FC,
   fullBleed = false,
   smartDefault = null,
+  sceneContext,
   recenterToKnownLocation = false,
   pinpointDefault = false,
   initialCenter,
@@ -206,6 +208,7 @@ export default function AppMapClient({
   /** Map program phase 1: the moment-aware cold-open default, passed
    *  through to AppMap on the full-bleed browse map only. */
   smartDefault?: SmartMapDefault;
+  sceneContext?: MapSceneContext;
   /** Center the camera (and measure list distances) from the user's
    *  last-known location when we already have a cached fix — so the
    *  list reads closest-first "from where you're standing." Never
@@ -307,6 +310,7 @@ export default function AppMapClient({
             showSearchControls={showSearchControls}
             onVisualReady={handleMapVisualReady}
             smartDefault={smartDefault}
+            sceneContext={sceneContext}
           />
         </MapChunkBoundary>
       </div>

@@ -42,16 +42,19 @@ describe("isEventToday", () => {
 
 // ── isEventLiveNow — the shared "Live now" gate (beta-reviewer catch:
 // noon events with end-of-day end stamps read "Live now" at 11 PM) ──
-import { isEventLiveNow, MAX_LIVE_SESSION_MS } from "@/lib/eventWhenLabel";
+import {
+  isEventLiveNow,
+  MAX_LIVE_SESSION_MS,
+  startedEventTimingDisclosure,
+} from "@/lib/eventWhenLabel";
 
 describe("isEventLiveNow", () => {
   const at = (iso: string) => new Date(iso);
 
-  it("caps a stated end-of-day end: noon event is NOT live at 11 PM", () => {
+  it("treats an end-of-day sentinel as unknown, never as proof of live status", () => {
     const e = { starts_at: "2026-07-08T12:00:00-04:00", ends_at: "2026-07-08T23:59:00-04:00" };
     expect(isEventLiveNow(e, at("2026-07-08T23:00:00-04:00"))).toBe(false);
-    // …but it IS live mid-afternoon, inside the cap.
-    expect(isEventLiveNow(e, at("2026-07-08T15:00:00-04:00"))).toBe(true);
+    expect(isEventLiveNow(e, at("2026-07-08T15:00:00-04:00"))).toBe(false);
   });
 
   it("trusts a sane stated end as-is", () => {
@@ -60,9 +63,9 @@ describe("isEventLiveNow", () => {
     expect(isEventLiveNow(e, at("2026-07-08T22:01:00-04:00"))).toBe(false);
   });
 
-  it("grants the assumed runtime when the end is missing", () => {
+  it("never claims an event is live when its end time is missing", () => {
     const e = { starts_at: "2026-07-08T19:00:00-04:00" };
-    expect(isEventLiveNow(e, at("2026-07-08T20:00:00-04:00"))).toBe(true);
+    expect(isEventLiveNow(e, at("2026-07-08T20:00:00-04:00"))).toBe(false);
     expect(isEventLiveNow(e, at("2026-07-08T21:01:00-04:00"))).toBe(false);
   });
 
@@ -85,5 +88,37 @@ describe("isEventLiveNow", () => {
 
   it("cap constant stays a real single-session bound", () => {
     expect(MAX_LIVE_SESSION_MS).toBe(8 * 3_600_000);
+  });
+});
+
+describe("startedEventTimingDisclosure", () => {
+  const atTime = (iso: string) => new Date(iso);
+
+  it("states the known start and unknown end after the event begins", () => {
+    expect(
+      startedEventTimingDisclosure(
+        {
+          starts_at: "2026-07-30T09:15:00-04:00",
+          ends_at: "2026-07-30T23:59:00-04:00",
+        },
+        atTime("2026-07-30T11:31:00-04:00"),
+      ),
+    ).toBe("Started at 9:15 AM · end time unavailable");
+  });
+
+  it("stays quiet before the start and for events with a real end", () => {
+    const unknownEnd = { starts_at: "2026-07-30T19:00:00-04:00" };
+    expect(
+      startedEventTimingDisclosure(
+        unknownEnd,
+        atTime("2026-07-30T18:59:00-04:00"),
+      ),
+    ).toBeNull();
+    expect(
+      startedEventTimingDisclosure(
+        { ...unknownEnd, ends_at: "2026-07-30T21:00:00-04:00" },
+        atTime("2026-07-30T20:00:00-04:00"),
+      ),
+    ).toBeNull();
   });
 });

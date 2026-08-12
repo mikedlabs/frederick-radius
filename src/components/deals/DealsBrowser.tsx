@@ -20,7 +20,7 @@ import {
   dealHoursForDay,
   dealOfferForDay,
   type DealRow,
-} from "@/lib/loaders/todaysDeals";
+} from "@/lib/deals/dealRow";
 
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -272,12 +272,16 @@ function DealCard({
   today,
   now,
   featured = false,
+  eagerImage = false,
 }: {
   group: DealVenueGroup;
   day: DealDaySelection;
   today: number;
   now: Date;
   featured?: boolean;
+  /** The first visible result can become the page LCP even when no deal is
+   * featured. Load that one eagerly; every later photo remains lazy. */
+  eagerImage?: boolean;
 }) {
   const venue = group.venue;
   const color = townAccent(venue.town || "Frederick County");
@@ -336,8 +340,8 @@ function DealCard({
                 ? "(min-width: 1024px) 400px, (min-width: 640px) 40vw, 100vw"
                 : "(min-width: 1024px) 440px, (min-width: 640px) 50vw, 100vw"
             }
-            loading={featured ? "eager" : "lazy"}
-            fetchPriority={featured ? "high" : "auto"}
+            loading={featured || eagerImage ? "eager" : "lazy"}
+            fetchPriority={featured || eagerImage ? "high" : "auto"}
             unoptimized={photo.startsWith("/api/place-photo")}
             className="object-cover transition-transform duration-500 hover:scale-[1.025] motion-reduce:transition-none"
           />
@@ -896,7 +900,7 @@ export default function DealsBrowser({
           </div>
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
-            {groups.map((group) => (
+            {groups.map((group, index) => (
               <li
                 key={group.venue.slug}
                 className={group.venue.slug === featuredSlug ? "md:col-span-2" : undefined}
@@ -908,6 +912,7 @@ export default function DealsBrowser({
                   today={currentToday}
                   now={clock}
                   featured={group.venue.slug === featuredSlug}
+                  eagerImage={index === 0}
                 />
               </li>
             ))}

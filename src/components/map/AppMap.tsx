@@ -72,7 +72,11 @@ import {
   MAP_LABEL_FONT_MEDIUM,
   MAP_LABEL_FONT_REGULAR,
 } from "@/lib/map/frederickFlavorStyle";
-import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
+import {
+  markMapOnLoad,
+  markMapIdleOnce,
+  startMapPerfSession,
+} from "./mapPerf";
 import { readMapLayerPrefs } from "./mapLayerPrefs";
 import {
   nearestMapUtilityPoint,
@@ -201,8 +205,13 @@ import {
   isAmenity,
   smoothFocus,
 } from "./constants";
-import MapOverlays from "./MapOverlays";
-import LiveBuses from "./LiveBuses";
+import MapOverlays, {
+  overlayCollectionBounds,
+  type OverlayBounds,
+  type OverlayLoadState,
+} from "./MapOverlays";
+import CityMobilityOverlay from "./CityMobilityOverlay";
+import LiveBuses, { type LiveBusLayerSnapshot } from "./LiveBuses";
 import { createLiveLayerCloserRegistry, type LiveLayerGate } from "./liveLayerGate";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
@@ -211,8 +220,13 @@ import LiveIncidents from "./LiveIncidents";
 import LiveRotorcraft, {
   type RotorcraftLayerStatus,
 } from "./LiveRotorcraft";
-import TrafficCameras from "./TrafficCameras";
+import TrafficCameras, {
+  type TrafficCameraBounds,
+} from "./TrafficCameras";
 import RoadWorkZones from "./RoadWorkZones";
+import OfficialRoadClosures, {
+  type OfficialRoadClosureBounds,
+} from "./OfficialRoadClosures";
 import FloodContext from "./FloodContext";
 import SnowRoutes from "./SnowRoutes";
 import {
@@ -239,6 +253,15 @@ import {
   type LiveLayerHealth,
 } from "@/lib/live-layer-health";
 import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
+import {
+  RADIUS_SCENE_IDS,
+  parseRadiusSceneId,
+  resolveRadiusScene,
+  type RadiusSceneFeedSignal,
+  type RadiusSceneId,
+  type RadiusSceneSignals,
+  type ResolvedRadiusScene,
+} from "./radiusScenes";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
@@ -286,6 +309,146 @@ type MapSelectionRequest =
   | { kind: "food-truck"; value: FoodTruckMapPin }
   | { kind: "discovery"; value: MapDiscovery }
   | { kind: "spot"; value: MapSpotSelection };
+
+export type MapSceneContext = {
+  outdoorSafetyHold?: {
+    kind: "weather" | "air-quality";
+    reason: string;
+  } | null;
+  conditions: "current" | "stale" | "unavailable";
+};
+
+function sceneSignalFromLayer(
+  health: LiveLayerHealth,
+): RadiusSceneFeedSignal {
+  const status =
+    health.status === "ready"
+      ? "current"
+      : health.status === "empty"
+        ? "empty"
+        : health.status === "stale"
+          ? "stale"
+          : "unavailable";
+  return { status, count: health.count };
+}
+
+function mergeSceneFeedSignals(
+  ...signals: RadiusSceneFeedSignal[]
+): RadiusSceneFeedSignal {
+  const current = signals.filter((signal) => signal.status === "current");
+  if (current.length > 0) {
+    return {
+      status: "current",
+      count: current.reduce((total, signal) => total + signal.count, 0),
+    };
+  }
+  if (signals.some((signal) => signal.status === "empty")) {
+    return { status: "empty", count: 0 };
+  }
+  const stale = signals.filter((signal) => signal.status === "stale");
+  if (stale.length > 0) {
+    return {
+      status: "stale",
+      count: stale.reduce((total, signal) => total + signal.count, 0),
+    };
+  }
+  if (signals.some((signal) => signal.status === "loading")) {
+    return { status: "loading", count: 0 };
+  }
+  if (signals.some((signal) => signal.status === "unloaded")) {
+    return { status: "unloaded", count: 0 };
+  }
+  return { status: "unavailable", count: 0 };
+}
+
+function sceneSignalFromBuses(
+  snapshot: LiveBusLayerSnapshot | null,
+): RadiusSceneFeedSignal {
+  if (!snapshot) return { status: "unavailable", count: 0 };
+  if (snapshot.status === "ready" || snapshot.status === "degraded") {
+    return { status: "current", count: snapshot.count };
+  }
+  if (snapshot.status === "empty") {
+    return { status: "empty", count: 0 };
+  }
+  if (snapshot.status === "stale") {
+    return { status: "stale", count: snapshot.count };
+  }
+  return { status: "unavailable", count: 0 };
+}
+
+function sceneSignalFromOverlay(
+  state: OverlayLoadState | undefined,
+): RadiusSceneFeedSignal {
+  if (!state) return { status: "unloaded", count: 0 };
+  if (state.status === "loading") return { status: "loading", count: 0 };
+  if (state.status === "error") return { status: "unavailable", count: 0 };
+  if (state.status === "stale" || state.status === "partial") {
+    return { status: "stale", count: state.count };
+  }
+  return state.count > 0
+    ? { status: "current", count: state.count }
+    : { status: "empty", count: 0 };
+}
+
+const SCENE_URL_LAYERS = new Set([
+  "aerial",
+  "cameras",
+  "cemeteries",
+  "civic",
+  "incidents",
+  "parking",
+  "radar",
+  "traffic",
+  "trails",
+  "transit",
+]);
+
+function sceneShowParam(scene: ResolvedRadiusScene): string {
+  const shown = scene.activeLayers.filter((layer) => SCENE_URL_LAYERS.has(layer));
+  return shown.length > 0 ? shown.join(",") : "none";
+}
+
+function sceneOverlayKeys(id: RadiusSceneId): OverlayKey[] {
+  if (id === "outside-now") return ["parks", "mobility"];
+  if (id === "what-changed") return ["planning"];
+  return [];
+}
+
+function mergeSceneBounds(
+  ...boundsList: Array<OverlayBounds | null | undefined>
+): OverlayBounds | null {
+  const present = boundsList.filter(
+    (bounds): bounds is OverlayBounds => Boolean(bounds),
+  );
+  if (present.length === 0) return null;
+  return [
+    [
+      Math.min(...present.map((bounds) => bounds[0][0])),
+      Math.min(...present.map((bounds) => bounds[0][1])),
+    ],
+    [
+      Math.max(...present.map((bounds) => bounds[1][0])),
+      Math.max(...present.map((bounds) => bounds[1][1])),
+    ],
+  ];
+}
+
+function pointSceneBounds(
+  points: ReadonlyArray<{ lng: number; lat: number }>,
+): OverlayBounds | null {
+  if (points.length === 0) return null;
+  return [
+    [
+      Math.min(...points.map((point) => point.lng)),
+      Math.min(...points.map((point) => point.lat)),
+    ],
+    [
+      Math.max(...points.map((point) => point.lng)),
+      Math.max(...points.map((point) => point.lat)),
+    ],
+  ];
+}
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
@@ -399,6 +562,10 @@ type Props = {
    *  smart seed); view keys (music-tonight) surface as the reason line's
    *  one-tap action instead of auto-flipping a shareable lens. */
   smartDefault?: SmartMapDefault;
+  /** Shared live-condition evidence for Radius Scenes. This is kept separate
+   * from smartDefault because a quiet cold-open can still have current,
+   * safety-checked outdoor conditions. */
+  sceneContext?: MapSceneContext;
 };
 
 export default function AppMap({
@@ -437,9 +604,17 @@ export default function AppMap({
   showSearchControls = true,
   onVisualReady,
   smartDefault = null,
+  sceneContext = { conditions: "unavailable", outdoorSafetyHold: null },
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
+  useEffect(
+    () =>
+      startMapPerfSession(
+        isBrowseMap ? {} : { navigationStartMs: null },
+      ),
+    [isBrowseMap],
+  );
   const routeSearchParams = useSearchParams();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
   const [resultScope, setResultScope] = useState<Scope>(() =>
@@ -685,6 +860,13 @@ export default function AppMap({
     if (typeof window === "undefined") return new Set();
     const raw = new URLSearchParams(window.location.search).get("show") ?? "";
     return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  });
+  const [activeSceneId, setActiveSceneId] = useState<RadiusSceneId | null>(() => {
+    if (typeof window === "undefined") return null;
+    const parsed = parseRadiusSceneId(
+      new URLSearchParams(window.location.search).get("scene"),
+    );
+    return parsed === "within-15-minutes" ? null : parsed;
   });
   // A shared URL with an explicit `show=` contract must reproduce the sender's
   // layer state, not inherit unrelated choices from this device. `show=none`
@@ -934,7 +1116,14 @@ export default function AppMap({
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
   const nearbyRouteCameraAppliedRef = useRef(false);
-  const { userLoc, userAccuracyM, locationFixTimestamp, locating, goNearMe } =
+  const {
+    userLoc,
+    userAccuracyM,
+    locationFixTimestamp,
+    locationAvailability,
+    locating,
+    goNearMe,
+  } =
     useMapLocation({
       isBrowseMap,
       rankingSeed: locationSeed.ranking,
@@ -1026,6 +1215,8 @@ export default function AppMap({
     showIncidents, setShowIncidents,
     showRotorcraft, setShowRotorcraft,
     showCameras, setShowCameras,
+    applyReferenceLayerPlan,
+    restoreReferenceLayerPlan,
   } = useMapLayerToggles({
     compactSubjectMap,
     deepLinkLayers,
@@ -1060,6 +1251,8 @@ export default function AppMap({
     return next;
   }, [amenityGroups, selectedDiscovery]);
   const amenityLayerActive = visibleAmenityGroups.size > 0;
+  const foregroundReferenceActive =
+    amenityLayerActive || Boolean(activeSceneId);
   const { osmPlaces, osmLoading, osmError } = useOsmPlaces({
     wantsOsmInitially,
     activeAmenityGroupCount: visibleAmenityGroups.size,
@@ -1087,14 +1280,47 @@ export default function AppMap({
   const [cameraHealth, setCameraHealth] = useState<LiveLayerHealth>(() =>
     liveLayerHealth({ source: "Maryland CHART", disabled: true }),
   );
-  const transitHealth = useMemo(
-    () =>
+  const [roadClosureHealth, setRoadClosureHealth] =
+    useState<LiveLayerHealth>(() =>
       liveLayerHealth({
-        source: "Frederick County TransIT",
+        source: "Maryland SHA road closures",
+        disabled: true,
+      }),
+    );
+  const [cameraFeatureBounds, setCameraFeatureBounds] =
+    useState<TrafficCameraBounds | null>(null);
+  const [roadClosureBounds, setRoadClosureBounds] =
+    useState<OfficialRoadClosureBounds | null>(null);
+  const [liveBusSnapshot, setLiveBusSnapshot] =
+    useState<LiveBusLayerSnapshot | null>(null);
+  const rememberLiveBusSnapshot = useCallback((next: LiveBusLayerSnapshot) => {
+    setLiveBusSnapshot((current) =>
+      current?.status === next.status && current.count === next.count
+        ? current
+        : next,
+    );
+  }, []);
+  const transitRouteCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const feature of transitLines.features) {
+      const raw = feature.properties.routeId ?? feature.properties.route_id;
+      if (typeof raw === "string" && raw.trim()) ids.add(raw.trim());
+    }
+    return ids.size || transitLines.features.length;
+  }, [transitLines.features]);
+  const transitHealth = useMemo(
+    () => {
+      const shapeSource = transitLines.features[0]?.properties.source;
+      return liveLayerHealth({
+        source:
+          typeof shapeSource === "string"
+            ? shapeSource
+            : "Frederick County TransIT",
         count: transitLines.features.length,
         unavailable: transitLines.features.length === 0,
-      }),
-    [transitLines.features.length],
+      });
+    },
+    [transitLines.features],
   );
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
@@ -1378,6 +1604,42 @@ export default function AppMap({
     () => parseLayersParam(routeLayersParam),
     [routeLayersParam],
   );
+  const [overlayFeatureStates, setOverlayFeatureStates] = useState<
+    Partial<Record<OverlayKey, OverlayLoadState>>
+  >({});
+  const [overlayFeatureBounds, setOverlayFeatureBounds] = useState<
+    Partial<Record<OverlayKey, OverlayBounds | null>>
+  >({});
+  const rememberOverlayFeatureState = useCallback(
+    (key: OverlayKey, next: OverlayLoadState) => {
+      const checkedAt = next.checkedAt ? Date.parse(next.checkedAt) : Number.NaN;
+      const normalized =
+        key === "planning" &&
+        next.status === "ready" &&
+        (!Number.isFinite(checkedAt) || Date.now() - checkedAt > 24 * 60 * 60 * 1000)
+          ? { ...next, status: "stale" as const }
+          : next;
+      setOverlayFeatureStates((current) => {
+        const previous = current[key];
+        return previous?.status === normalized.status &&
+          previous.count === normalized.count &&
+          previous.checkedAt === normalized.checkedAt
+          ? current
+          : { ...current, [key]: normalized };
+      });
+    },
+    [],
+  );
+  const rememberOverlayFeatureBounds = useCallback(
+    (key: OverlayKey, bounds: OverlayBounds | null) => {
+      setOverlayFeatureBounds((current) => {
+        const previous = current[key];
+        if (JSON.stringify(previous) === JSON.stringify(bounds)) return current;
+        return { ...current, [key]: bounds };
+      });
+    },
+    [],
+  );
   const writeActiveOverlays = (next: OverlayKey[]) => {
     replaceMapUrl((params) => {
       const serialized = serializeLayers(next);
@@ -1392,6 +1654,237 @@ export default function AppMap({
         ? activeOverlays.filter((key) => key !== k)
         : [...activeOverlays, k],
     );
+  };
+
+  const radiusSceneSignals = useMemo<RadiusSceneSignals>(
+    () => ({
+      location: locationAvailability,
+      transit: {
+        routeCount: transitRouteCount,
+        vehicles: sceneSignalFromBuses(
+          visibleTransit ? liveBusSnapshot : null,
+        ),
+        serviceAlerts: { status: "unavailable", count: 0 },
+      },
+      roads: {
+        workZones: mergeSceneFeedSignals(
+          roadWorkZones.features.length > 0
+            ? {
+                status: "current",
+                count: roadWorkZones.features.filter(
+                  (feature) => feature.properties.lifecycle !== "scheduled",
+                ).length,
+              }
+            : { status: "unavailable", count: 0 },
+          sceneSignalFromLayer(roadClosureHealth),
+        ),
+        incidents: sceneSignalFromLayer(incidentHealth),
+        cameras: sceneSignalFromLayer(cameraHealth),
+        contextCount:
+          civic.length +
+          floodContext.features.length +
+          snowRoutes.features.length,
+      },
+      outdoors: {
+        parks: sceneSignalFromOverlay(overlayFeatureStates.parks),
+        trailCount: trailLines.features.length,
+        amenityCount:
+          overlayFeatureStates.mobility?.status === "ready"
+            ? overlayFeatureStates.mobility.count
+            : 0,
+        conditions: sceneContext.conditions,
+        safetyHold: sceneContext.outdoorSafetyHold ?? null,
+      },
+      changes: {
+        planningProjects: sceneSignalFromOverlay(
+          overlayFeatureStates.planning,
+        ),
+        publicHearingCount: 0,
+        aerialPhotoCount: AERIAL_PHOTOS.length,
+        historicRecordCount: cemeteries.length,
+      },
+      reachability: {
+        // The dedicated reach view always has a straight-line fallback when
+        // the metered street-network polygon is unavailable.
+        engine: "ready",
+        // The full inventory is only input to the reach calculation. Calling
+        // it reachable before the isochrone runs would turn a capability into
+        // a false result count.
+        candidateCount: null,
+      },
+    }),
+    [
+      cameraHealth,
+      cemeteries.length,
+      civic.length,
+      floodContext.features.length,
+      incidentHealth,
+      liveBusSnapshot,
+      locationAvailability,
+      overlayFeatureStates.parks,
+      overlayFeatureStates.mobility,
+      overlayFeatureStates.planning,
+      roadClosureHealth,
+      roadWorkZones.features,
+      sceneContext.conditions,
+      sceneContext.outdoorSafetyHold,
+      snowRoutes.features.length,
+      trailLines.features.length,
+      transitRouteCount,
+      visibleTransit,
+    ],
+  );
+  const radiusScenes = useMemo(
+    () =>
+      RADIUS_SCENE_IDS.map((id) =>
+        resolveRadiusScene(id, radiusSceneSignals),
+      ),
+    [radiusSceneSignals],
+  );
+  const sceneHydratedRef = useRef(false);
+  const sceneCameraPendingRef = useRef<{
+    id: RadiusSceneId;
+    expiresAt: number;
+    fallbackApplied: boolean;
+  } | null>(null);
+  const [sceneCameraRequest, setSceneCameraRequest] = useState(0);
+  const requestSceneCamera = useCallback((id: RadiusSceneId) => {
+    sceneCameraPendingRef.current = {
+      id,
+      // County GIS adapters allow up to 15 seconds. Keep one focus request
+      // alive through that same honest deadline so a slow valid response can
+      // still reframe once instead of leaving an apparently empty county map.
+      expiresAt:
+        Date.now() +
+        (id === "outside-now" || id === "what-changed"
+          ? 16_000
+          : id === "buses-now"
+            ? 9_000
+            : 6_000),
+      fallbackApplied: false,
+    };
+    setSceneCameraRequest((request) => request + 1);
+  }, []);
+
+  useEffect(() => {
+    const syncSceneFromUrl = () => {
+      const next = parseRadiusSceneId(
+        new URLSearchParams(window.location.search).get("scene"),
+      );
+      sceneHydratedRef.current = false;
+      if (next === "within-15-minutes") {
+        setActiveSceneId(null);
+        replaceMapUrl((params) => {
+          params.delete("scene");
+          params.set("mode", "radius");
+          params.set("minutes", "15");
+        });
+        return;
+      }
+      setActiveSceneId(next);
+    };
+    window.addEventListener("popstate", syncSceneFromUrl);
+    if (
+      parseRadiusSceneId(
+        new URLSearchParams(window.location.search).get("scene"),
+      ) === "within-15-minutes"
+    ) {
+      syncSceneFromUrl();
+    }
+    return () => window.removeEventListener("popstate", syncSceneFromUrl);
+  }, []);
+
+  const applySceneLayerPlan = useCallback(
+    (scene: ResolvedRadiusScene) => {
+      applyReferenceLayerPlan(new Set(scene.activeLayers));
+      clearMapSelection();
+      deepLinkPlaceAppliedRef.current = true;
+      deepLinkEventAppliedRef.current = true;
+      setAmenityGroups(new Set());
+      setShowSavedOnly(false);
+      setFieldNotesOnly(false);
+      setAerialSeason("all");
+      setSelectedAerial(null);
+      setSelectedCemetery(null);
+      setScrubHour(null);
+    },
+    [applyReferenceLayerPlan, clearMapSelection],
+  );
+
+  const writeSceneUrl = useCallback((scene: ResolvedRadiusScene) => {
+    replaceMapUrl((params) => {
+      for (const key of [
+        "intent",
+        "sub",
+        "open",
+        "deals",
+        "music",
+        "t",
+        "amenity",
+        "q",
+        "at",
+        "place",
+        "event",
+        "aerial",
+      ]) {
+        params.delete(key);
+      }
+      params.set("scene", scene.definition.id);
+      params.set("show", sceneShowParam(scene));
+      const overlays = serializeLayers(sceneOverlayKeys(scene.definition.id));
+      if (overlays) params.set("layers", overlays);
+      else params.delete("layers");
+    });
+  }, []);
+
+  // A scene URL is a complete task contract. Reproduce it even if an older
+  // hand-written/shared link contains only `scene=` and omits its layers.
+  useEffect(() => {
+    if (!activeSceneId || sceneHydratedRef.current) return;
+    const scene = radiusScenes.find(
+      (candidate) => candidate.definition.id === activeSceneId,
+    );
+    if (!scene?.availability.canActivate) {
+      setActiveSceneId(null);
+      replaceMapUrlSilently((params) => params.delete("scene"));
+      return;
+    }
+    sceneHydratedRef.current = true;
+    applySceneLayerPlan(scene);
+    writeSceneUrl(scene);
+    requestSceneCamera(scene.definition.id);
+  }, [activeSceneId, applySceneLayerPlan, radiusScenes, requestSceneCamera, writeSceneUrl]);
+
+  const exitRadiusScene = useCallback(() => {
+    restoreReferenceLayerPlan();
+    setActiveSceneId(null);
+    replaceMapUrlSilently((params) => params.delete("scene"));
+  }, [restoreReferenceLayerPlan]);
+
+  const activateRadiusScene = (id: RadiusSceneId) => {
+    if (id === "within-15-minutes") {
+      haptic("light");
+      track("map_scene", { scene: id });
+      window.history.pushState(null, "", "/map?mode=radius&minutes=15");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      return;
+    }
+
+    const scene = radiusScenes.find((candidate) => candidate.definition.id === id);
+    if (!scene?.availability.canActivate) return;
+
+    haptic("light");
+    track("map_scene", {
+      scene: id,
+      availability: scene.availability.status,
+    });
+    clearMapSelection();
+    setSmartNoteDismissed(true);
+    applySceneLayerPlan(scene);
+    setActiveSceneId(id);
+    sceneHydratedRef.current = true;
+    writeSceneUrl(scene);
+    requestSceneCamera(id);
   };
 
   // Saved-only lens (continuity P2): filter the pins to the user's own
@@ -1690,10 +2183,11 @@ export default function AppMap({
     () =>
       buildCuratedGeoJson(resultScopedPlaces, {
         amenitiesActive: amenityGroups.size > 0,
+        sceneFocusActive: Boolean(activeSceneId),
         visualMatchSet,
         searchPlaceSet,
       }),
-    [amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet],
+    [activeSceneId, amenityGroups, resultScopedPlaces, searchPlaceSet, visualMatchSet],
   );
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
@@ -2420,6 +2914,7 @@ export default function AppMap({
 
   const pickSearch = async (r: SearchResult) => {
     haptic("light");
+    exitRadiusScene();
     clearMapSelection();
     if (r.temporary && r.provider === "Mapbox") {
       const sessionToken = searchSessionRef.current;
@@ -2793,6 +3288,123 @@ export default function AppMap({
     });
   };
 
+  const roadSceneBounds = useMemo(
+    () =>
+      mergeSceneBounds(
+        overlayCollectionBounds(
+          roadWorkZones as unknown as GeoJSON.FeatureCollection,
+        ),
+        pointSceneBounds(
+          liveIncidents.map((incident) => incident.coordinate),
+        ),
+        cameraFeatureBounds,
+        roadClosureBounds,
+      ),
+    [cameraFeatureBounds, liveIncidents, roadClosureBounds, roadWorkZones],
+  );
+  const transitNetworkBounds = useMemo(
+    () =>
+      overlayCollectionBounds(
+        transitLines as unknown as GeoJSON.FeatureCollection,
+      ),
+    [transitLines],
+  );
+  const visibleChangeBounds = useMemo(
+    () => {
+      const planning = overlayFeatureStates.planning;
+      if (!planning || planning.status === "loading") {
+        return overlayFeatureBounds.planning ?? null;
+      }
+      return mergeSceneBounds(
+        overlayFeatureBounds.planning,
+        overlayCollectionBounds(
+          aerialGeoJson as unknown as GeoJSON.FeatureCollection,
+        ),
+      );
+    },
+    [aerialGeoJson, overlayFeatureBounds.planning, overlayFeatureStates.planning],
+  );
+
+  // Scene cameras wait briefly for the evidence they just turned on. The map
+  // shows the county as an immediate fallback, then reframes once if buses or
+  // County records arrive. It never keeps chasing a moving feed after that.
+  useEffect(() => {
+    const pending = sceneCameraPendingRef.current;
+    const map = mapRef.current?.getMap();
+    if (!pending || !mapLoaded || !map || pending.id !== activeSceneId) return;
+    const scene = radiusScenes.find(
+      (candidate) => candidate.definition.id === pending.id,
+    );
+    if (!scene) return;
+
+    if (pending.id === "outside-now" && userLoc) {
+      cameraIntentRef.current = true;
+      fitNearbyRadius(map, userLoc);
+      sceneCameraPendingRef.current = null;
+      return;
+    }
+
+    const evidenceBounds =
+      pending.id === "buses-now"
+        ? liveBusSnapshot && liveBusSnapshot.status !== "loading"
+          ? liveBusSnapshot.bounds ?? transitNetworkBounds
+          : null
+        : pending.id === "roads-now"
+          ? roadSceneBounds
+          : pending.id === "outside-now"
+            ? overlayFeatureBounds.parks
+            : pending.id === "what-changed"
+              ? visibleChangeBounds
+              : null;
+
+    if (evidenceBounds) {
+      cameraIntentRef.current = true;
+      map.fitBounds(evidenceBounds, {
+        padding: countyFitPadding(),
+        maxZoom: scene.definition.camera.maxZoom,
+        duration: prefersReducedMotion() ? 0 : 850,
+        easing: CAM_EASE,
+        essential: true,
+      });
+      sceneCameraPendingRef.current = null;
+      return;
+    }
+
+    if (!pending.fallbackApplied) {
+      pending.fallbackApplied = true;
+      map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
+        padding: countyFitPadding(),
+        duration: prefersReducedMotion() ? 0 : 700,
+        easing: CAM_EASE,
+        essential: true,
+      });
+    }
+
+    const remaining = pending.expiresAt - Date.now();
+    if (remaining <= 0) {
+      sceneCameraPendingRef.current = null;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (sceneCameraPendingRef.current === pending) {
+        sceneCameraPendingRef.current = null;
+      }
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeSceneId,
+    liveBusSnapshot,
+    mapLoaded,
+    overlayFeatureBounds.parks,
+    overlayFeatureBounds.planning,
+    radiusScenes,
+    roadSceneBounds,
+    sceneCameraRequest,
+    transitNetworkBounds,
+    userLoc,
+    visibleChangeBounds,
+  ]);
+
   // Per-event Frederick hour-of-day + day key, derived once from the events
   // prop (deterministic over fixed timestamps). The scrubber filters same-day
   // events to those live/soon at the chosen hour; other-day events stay put so
@@ -2954,6 +3566,7 @@ export default function AppMap({
     id: MapEdgeOverlayId,
     next: boolean,
   ) => {
+    exitRadiusScene();
     wakeMapEdgeTools();
     haptic("light");
     track("map_edge_tool", { tool: id, on: next });
@@ -3048,6 +3661,7 @@ export default function AppMap({
       data-map-place-marks={dock ? placeMarksHealth : undefined}
       data-map-amenity-marks={dock ? amenityMarksHealth : undefined}
       data-map-interface={mapInterfaceState}
+      data-map-scene={dock && activeSceneId ? activeSceneId : undefined}
       data-flood-context-count={dock ? floodContext.features.length : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
@@ -3382,6 +3996,9 @@ export default function AppMap({
           dragRotate={false}
           pitchWithRotate={false}
           touchPitch={false}
+          // Give thumbs a little forgiveness without making neighboring pins
+          // ambiguous. This changes hit testing only; marker artwork stays put.
+          clickTolerance={8}
           // Leash the camera to the county (+ buffer) so flings don't
           // sail off into empty tiles the user then has to scroll back
           // from — and so the place set always has context on screen.
@@ -3438,6 +4055,10 @@ export default function AppMap({
           }}
           onClick={onClick}
           onLoad={(e) => {
+            // `touchPitch={false}` prevents two-finger tilting, but MapLibre's
+            // combined pinch handler can still rotate unless it is disabled
+            // directly. Pinch zoom remains available.
+            e.target.touchZoomRotate.disableRotation();
             edgeToolsLastWakeRef.current = Number.NEGATIVE_INFINITY;
             wakeMapEdgeTools();
             // MapLibre's compact control begins expanded and normally waits
@@ -3721,6 +4342,16 @@ export default function AppMap({
               inspect on a phone without covering congestion or incident pins. */}
           {showTraffic ? <RoadWorkZones show data={roadWorkZones} gate={liveLayerGate} /> : null}
 
+          {/* Maryland's official active-closure point and segment layers ride
+              the same Roads control. They load only when Roads is visible;
+              scheduled closures stay visibly distinct from current impacts. */}
+          <OfficialRoadClosures
+            show={showTraffic}
+            gate={liveLayerGate}
+            onHealth={setRoadClosureHealth}
+            onBounds={setRoadClosureBounds}
+          />
+
           {/* Live public scanner incidents — caution pins (crashes, wires
               down, fires) that self-refresh and age out. Empty until the
               FredScanner feed is configured; polls only while its toggle is on. */}
@@ -3749,6 +4380,7 @@ export default function AppMap({
           <TrafficCameras
             show={showCameras}
             onHealth={setCameraHealth}
+            onBounds={setCameraFeatureBounds}
           />
 
           {/* #3 toggleable line overlays — rendered BEFORE the point
@@ -3887,7 +4519,11 @@ export default function AppMap({
           {/* Live vehicles and route lines are one honest Transit layer. The
               old always-on vehicles made the dock say "No layers" while buses
               were visibly moving on the map. */}
-          <LiveBuses show={visibleTransit} gate={liveLayerGate} />
+          <LiveBuses
+            show={visibleTransit}
+            gate={liveLayerGate}
+            onHealthChange={rememberLiveBusSnapshot}
+          />
           {/* MARC trains ride the SAME Transit toggle — one honest layer.
               DOM markers sit above the canvas, so a train at Point of Rocks
               never hides beneath its marc-station pin. */}
@@ -3916,7 +4552,16 @@ export default function AppMap({
           {/* GIS overlays (6.3/6.4): parks, farmers markets, public art.
               Self-contained (lazy fetch, own Sources/Layers, own click
               popups) so this block stays out of the main render path. */}
-          <MapOverlays active={activeOverlays} />
+          <MapOverlays
+            active={activeOverlays}
+            onFeatureState={rememberOverlayFeatureState}
+            onFeatureBounds={rememberOverlayFeatureBounds}
+          />
+          <CityMobilityOverlay
+            active={activeOverlays.includes("mobility")}
+            onFeatureState={rememberOverlayFeatureState}
+            onFeatureBounds={rememberOverlayFeatureBounds}
+          />
           {/* County boundary — the quiet always-on county edge (6.1).
               Committed static GIS polygon, drawn as an outline UNDER the
               municipal lines and pins so the map reads as a county field
@@ -4052,7 +4697,7 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": 0.14,
+                "circle-opacity": foregroundReferenceActive && dock ? 0.025 : 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
@@ -4071,7 +4716,7 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": 0.55,
+                "circle-opacity": foregroundReferenceActive && dock ? 0.08 : 0.55,
                 "circle-blur": 0.25,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
@@ -4079,7 +4724,7 @@ export default function AppMap({
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.32,
+                "circle-stroke-opacity": foregroundReferenceActive && dock ? 0.08 : 0.32,
               }}
             />
             <Layer
@@ -4101,6 +4746,7 @@ export default function AppMap({
                 "text-halo-color": "rgba(0,0,0,0.3)",
                 "text-halo-width": 1.1,
                 "text-halo-blur": 0.4,
+                "text-opacity": foregroundReferenceActive && dock ? 0.05 : 1,
               }}
             />
             {/* Individual unclustered points — same icon language, smaller
@@ -4128,7 +4774,9 @@ export default function AppMap({
                 "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
-              paint={{ "icon-opacity": 0.8 }}
+              paint={{
+                "icon-opacity": foregroundReferenceActive && dock ? 0.08 : 0.8,
+              }}
             />
           </Source>
 
@@ -4279,7 +4927,7 @@ export default function AppMap({
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9.1, 25, 14.7, 100, 18.9],
                       ],
                   "circle-opacity":
-                    amenityLayerActive && dock ? 0.04 : 0.18,
+                    foregroundReferenceActive && dock ? 0.04 : 0.18,
                   "circle-blur": 0.55,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-opacity-transition": { duration: mapPaintDuration },
@@ -4311,7 +4959,7 @@ export default function AppMap({
                     : CURATED_CLUSTER_COLOR,
                   "circle-stroke-width": 1.1,
                   "circle-stroke-opacity":
-                    amenityLayerActive && dock ? 0.04 : 0.34,
+                    foregroundReferenceActive && dock ? 0.04 : 0.34,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-stroke-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -4340,7 +4988,7 @@ export default function AppMap({
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 4.8, 4, 6.1, 25, 10.2, 100, 13.6],
                       ],
                   "circle-opacity":
-                    amenityLayerActive && dock ? 0.12 : 0.92,
+                    foregroundReferenceActive && dock ? 0.12 : 0.92,
                   "circle-stroke-color": compactSubjectMap
                     ? "#FAF3E2"
                     : "#F7F2E8",
@@ -4404,15 +5052,15 @@ export default function AppMap({
                   "text-opacity": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
-                        7, amenityLayerActive && dock ? 0.12 : 1,
-                        11.25, amenityLayerActive && dock ? 0.12 : 1,
-                        12, amenityLayerActive && dock ? 0.02 : 0.18,
+                        7, foregroundReferenceActive && dock ? 0.12 : 1,
+                        11.25, foregroundReferenceActive && dock ? 0.12 : 1,
+                        12, foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ]
                     : [
                         "interpolate", ["linear"], ["zoom"],
-                        7, amenityLayerActive && dock ? 0.12 : 1,
-                        14.25, amenityLayerActive && dock ? 0.12 : 1,
-                        15, amenityLayerActive && dock ? 0.02 : 0.18,
+                        7, foregroundReferenceActive && dock ? 0.12 : 1,
+                        14.25, foregroundReferenceActive && dock ? 0.12 : 1,
+                        15, foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ],
                   "text-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -4462,7 +5110,7 @@ export default function AppMap({
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 9, 15, 15, 18, 20],
                 "circle-color": BRAND.colors.functionalAmber,
                 "circle-opacity":
-                  amenityLayerActive && dock ? 0.03 : 0.26,
+                  foregroundReferenceActive && dock ? 0.03 : 0.26,
                 "circle-blur": 0.55,
               }}
             />
@@ -4498,7 +5146,7 @@ export default function AppMap({
                   : ["case", ["==", ["get", "dimmed"], true], 0.6, 1.4],
                 "circle-opacity": selectedSlug && dock
                   ? 0.2
-                  : amenityLayerActive && dock
+                  : foregroundReferenceActive && dock
                   ? 0.1
                   : compactSubjectMap
                   ? 0.96
@@ -4536,7 +5184,7 @@ export default function AppMap({
               paint={{
                 "icon-opacity": selectedSlug && dock
                   ? 0.2
-                  : amenityLayerActive && dock
+                  : foregroundReferenceActive && dock
                     ? 0.12
                     : 1,
                 "icon-opacity-transition": { duration: mapPaintDuration },
@@ -4590,7 +5238,7 @@ export default function AppMap({
                 // on the clean map. Dropped 0.28 → 0.15 so the shrunk
                 // non-matches recede hard and the grown matches carry the eye.
                 //
-                "icon-opacity": selectedSlug && dock ? 0.16 : amenityLayerActive && dock ? 0.1 : [
+                "icon-opacity": selectedSlug && dock ? 0.16 : foregroundReferenceActive && dock ? 0.1 : [
                   "interpolate", ["linear"], ["zoom"],
                   15.8, 0,
                   16.2, [
@@ -4657,7 +5305,7 @@ export default function AppMap({
                 "text-halo-width": 1.1,
                 "text-opacity": selectedSlug && dock
                   ? 0.14
-                  : amenityLayerActive && dock
+                  : foregroundReferenceActive && dock
                     ? 0.14
                     : [
                         "case",
@@ -5326,6 +5974,20 @@ export default function AppMap({
             placeCount={inViewPlaces.length}
             eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
+            placesInView={inViewPlaces}
+            placesInViewOrigin={userLoc ?? viewCenter}
+            selectedPlaceSlug={selectedSlug}
+            onPickPlaceInView={(place) => {
+              const map = mapRef.current?.getMap();
+              if (map) {
+                cameraIntentRef.current = true;
+                smoothFocus(map, [place.geom.lng, place.geom.lat], {
+                  minZoom: 15,
+                  maxStep: 6,
+                });
+              }
+              openMapSelection({ kind: "place", value: place });
+            }}
             q={q}
             setQ={setMapQuery}
             searchMatches={searchMatches}
@@ -5342,64 +6004,117 @@ export default function AppMap({
             openNowUnavailableLabel={dock.openNowUnavailableLabel}
             savedCount={followedSlugs.size}
             showSavedOnly={showSavedOnly}
-            setShowSavedOnly={setShowSavedOnly}
+            setShowSavedOnly={(value) => {
+              exitRadiusScene();
+              setShowSavedOnly(value);
+            }}
             fieldNotesCount={fieldNotesCount}
             fieldNotesOnly={fieldNotesOnly}
-            setFieldNotesOnly={setFieldNotesOnly}
+            setFieldNotesOnly={(value) => {
+              exitRadiusScene();
+              setFieldNotesOnly(value);
+            }}
             amenityCount={amenityCount}
             amenityGroupCounts={amenityGroupCounts}
             communityReportCount={communityReportCount}
             amenityGroups={amenityGroups}
-            setAmenityGroups={setAmenityGroups}
+            setAmenityGroups={(value) => {
+              exitRadiusScene();
+              setAmenityGroups(value);
+            }}
             focusNearestAmenity={focusNearestAmenity}
             civicAvailable={civic.length > 0}
             showCivic={showCivic}
-            setShowCivic={setShowCivic}
+            setShowCivic={(value) => {
+              exitRadiusScene();
+              setShowCivic(value);
+            }}
             transitHealth={transitHealth}
             showTransit={showTransit}
-            setShowTransit={setShowTransit}
+            setShowTransit={(value) => {
+              exitRadiusScene();
+              setShowTransit(value);
+            }}
             trailCount={trailLines.features.length}
             showTrails={showTrails}
-            setShowTrails={setShowTrails}
+            setShowTrails={(value) => {
+              exitRadiusScene();
+              setShowTrails(value);
+            }}
             aerialCount={AERIAL_PHOTOS.length}
             showAerial={showAerial}
-            setShowAerial={setShowAerial}
+            setShowAerial={(value) => {
+              exitRadiusScene();
+              setShowAerial(value);
+            }}
             aerialSeasons={aerialSeasonItems}
             aerialSeason={aerialSeason}
-            onAerialSeason={(k) => { setAerialSeason(k as AerialSeason); haptic("light"); }}
+            onAerialSeason={(k) => {
+              exitRadiusScene();
+              setAerialSeason(k as AerialSeason);
+              haptic("light");
+            }}
             cemeteryCount={cemeteries.length}
             showCemeteries={showCemeteries}
-            setShowCemeteries={setShowCemeteries}
+            setShowCemeteries={(value) => {
+              exitRadiusScene();
+              setShowCemeteries(value);
+            }}
             parkingCount={parking.length}
             showParking={showParking}
-            setShowParking={setShowParking}
+            setShowParking={(value) => {
+              exitRadiusScene();
+              setShowParking(value);
+            }}
             showRadar={showRadar}
-            setShowRadar={setShowRadar}
+            setShowRadar={(value) => {
+              exitRadiusScene();
+              setShowRadar(value);
+            }}
             radarHealth={radarHealth}
             showTraffic={showTraffic}
-            setShowTraffic={setShowTraffic}
+            setShowTraffic={(value) => {
+              exitRadiusScene();
+              setShowTraffic(value);
+            }}
             floodContextCount={floodContext.features.length}
             snowRouteCount={snowRoutes.features.length}
             roadsNowActive={showTraffic || showCivic || showIncidents}
             roadsNowFullyOn={showTraffic && showCivic && showIncidents}
             setShowRoadsNow={(show) => {
+              exitRadiusScene();
               setShowTraffic(show);
               setShowCivic(show);
               setShowIncidents(show);
             }}
             showIncidents={showIncidents}
-            setShowIncidents={setShowIncidents}
+            setShowIncidents={(value) => {
+              exitRadiusScene();
+              setShowIncidents(value);
+            }}
             incidentHealth={incidentHealth}
             showRotorcraft={showRotorcraft}
-            setShowRotorcraft={setShowRotorcraft}
+            setShowRotorcraft={(value) => {
+              exitRadiusScene();
+              setShowRotorcraft(value);
+            }}
             showCameras={showCameras}
-            setShowCameras={setShowCameras}
+            setShowCameras={(value) => {
+              exitRadiusScene();
+              setShowCameras(value);
+            }}
             cameraHealth={cameraHealth}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
-            toggleOverlay={toggleOverlay}
+            toggleOverlay={(key) => {
+              exitRadiusScene();
+              toggleOverlay(key);
+            }}
             scrubHour={scrubHour}
-            setScrubHour={setScrubHour}
+            setScrubHour={(hour) => {
+              exitRadiusScene();
+              setScrubHour(hour);
+            }}
             userLoc={userLoc}
             locating={locating}
             geoMsg={geoMsg}
@@ -5424,10 +6139,15 @@ export default function AppMap({
             discoveries={discoveries}
             selectedDiscoveryId={selectedDiscovery?.id ?? null}
             onSelectDiscovery={(id) => {
+              exitRadiusScene();
               const discovery = discoveries.find((item) => item.id === id);
               if (discovery) showDiscovery(discovery);
             }}
             onPaneOpenChange={handleDockPaneOpenChange}
+            radiusScenes={radiusScenes}
+            activeRadiusSceneId={activeSceneId}
+            onRadiusScene={activateRadiusScene}
+            onExitRadiusScene={exitRadiusScene}
             suppressContextRail={
               selectionOpen ||
               showResultsHere ||

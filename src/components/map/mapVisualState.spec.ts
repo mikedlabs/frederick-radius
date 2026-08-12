@@ -31,6 +31,14 @@ describe("map place visual state", () => {
     })).toEqual({ dimmed: true, emph: false });
   });
 
+  it("lets a Radius scene lead over business pins", () => {
+    expect(mapPlaceVisualState("gravel-and-grind", {
+      amenitiesActive: false,
+      sceneFocusActive: true,
+      matchSlugs: new Set(["gravel-and-grind"]),
+    })).toEqual({ dimmed: true, emph: false });
+  });
+
   it("removes paint transitions for reduced motion", () => {
     expect(mapPaintTransitionDuration(false)).toBe(180);
     expect(mapPaintTransitionDuration(true)).toBe(0);

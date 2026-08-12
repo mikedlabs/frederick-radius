@@ -14,15 +14,18 @@
  * "Historic cemeteries"). This registry holds only the overlays that
  * have no live-layer twin.
  *
- * Each overlay loads lazily on toggle from its endpoint (static GeoJSON
- * with a long cache and an ETag, per 6.3), so toggling one never blocks
- * first paint and an untouched layer costs nothing. Layers whose data is
- * not seeded yet carry `ready: false`: the control can show them as
- * coming soon rather than toggling an empty source.
+ * Each overlay loads lazily on toggle from its endpoint (committed GeoJSON or
+ * a small, allowlisted server normalization of an official public source), so
+ * toggling one never blocks first paint and an untouched layer costs nothing.
+ * Every response has an ETag and source-appropriate cache policy. Layers whose
+ * data is not ready carry `ready: false`: the control can show them as coming
+ * soon rather than toggling an empty source.
  */
 
 export type OverlayKey =
   | "parks"
+  | "planning"
+  | "mobility"
   | "art"
   | "markets"
   | "bridges";
@@ -33,6 +36,10 @@ export type OverlayDef = {
   label: string;
   /** One line on what the layer draws and where it comes from. */
   sources: string;
+  /** Honest domain limit repeated in the feature popup. */
+  caveat?: string;
+  /** Quiet identity above the feature name in its popup. */
+  popupLabel: string;
   /** Lazy GeoJSON endpoint, fetched on first toggle. */
   endpoint: string;
   /** False until the layer's data is seeded; the control shows it as
@@ -42,8 +49,41 @@ export type OverlayDef = {
 
 export const OVERLAYS: OverlayDef[] = [
   {
+    key: "parks",
+    label: "County parks",
+    popupLabel: "County park",
+    sources: "From Frederick County Government's public parks GIS layer.",
+    caveat:
+      "A mapped park does not confirm that its facilities are open or available right now.",
+    endpoint: "/api/overlays/parks",
+    ready: true,
+  },
+  {
+    key: "planning",
+    label: "Projects & applications",
+    popupLabel: "Planning and project record",
+    sources:
+      "Official City and County planning, project, and development-review records.",
+    caveat:
+      "Planning, application, approval, and construction are different stages. Open a record to see the source's exact status.",
+    endpoint: "/api/overlays/planning",
+    ready: true,
+  },
+  {
+    key: "mobility",
+    label: "City walking network",
+    popupLabel: "City walking record",
+    sources:
+      "Sidewalks, ramps, and Path Plan records from the City of Frederick's public GIS.",
+    caveat:
+      "Only paths explicitly marked existing may support route context. Planned and proposed paths are shown for context, and the advertised City bike-path service is currently unavailable.",
+    endpoint: "/api/overlays/city-mobility",
+    ready: true,
+  },
+  {
     key: "art",
     label: "Public art",
+    popupLabel: "Public art",
     sources: "The curated Frederick public art trail, with photos and artists",
     endpoint: "/api/overlays/public-art",
     // The curated file intentionally contains no approved pieces yet. Do not
@@ -72,7 +112,7 @@ export function parseLayersParam(raw: string | null | undefined): OverlayKey[] {
 
 /**
  * Serialize the active set back to a stable ?layers= value: registry
- * order (parks, art, markets, bridges), comma-joined, empty string when
+ * order (parks, planning, mobility, art, markets, bridges), comma-joined, empty string when
  * nothing is active (so the param drops out of the URL rather than
  * lingering as ?layers=).
  */

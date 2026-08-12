@@ -13,7 +13,12 @@ import { OVERLAYS, parseLayersParam, serializeLayers } from "@/lib/overlays";
  */
 describe("overlay registry", () => {
   it("defines exactly the GIS overlays with no live-layer twin", () => {
-    expect(OVERLAYS.map((o) => o.key)).toEqual(["art"]);
+    expect(OVERLAYS.map((o) => o.key)).toEqual([
+      "parks",
+      "planning",
+      "mobility",
+      "art",
+    ]);
   });
 
   it("has no duplicate trails or cemeteries overlay (they are live layers)", () => {
@@ -24,20 +29,21 @@ describe("overlay registry", () => {
 
   it("does not advertise a layer before its reviewed data is ready", () => {
     const ready = OVERLAYS.filter((o) => o.ready).map((o) => o.key).sort();
-    expect(ready).toEqual([]);
+    expect(ready).toEqual(["mobility", "parks", "planning"]);
   });
 });
 
 describe("parseLayersParam", () => {
   it("parses a comma list and drops unknown keys", () => {
-    expect(parseLayersParam("art,parks")).toEqual(["art"]);
+    expect(parseLayersParam("art,parks")).toEqual(["art", "parks"]);
     expect(parseLayersParam("art,phantom,bridges")).toEqual(["art"]);
     // Retired keys no longer toggle a layer from a stale shared URL.
     expect(parseLayersParam("art,historic,trails")).toEqual(["art"]);
+    expect(parseLayersParam("mobility,phantom")).toEqual(["mobility"]);
   });
 
   it("is whitespace and case tolerant, dedupes, and handles empty", () => {
-    expect(parseLayersParam(" ART , art , Parks ")).toEqual(["art"]);
+    expect(parseLayersParam(" ART , art , Parks ")).toEqual(["art", "parks"]);
     expect(parseLayersParam("")).toEqual([]);
     expect(parseLayersParam(null)).toEqual([]);
   });
@@ -45,10 +51,11 @@ describe("parseLayersParam", () => {
 
 describe("serializeLayers", () => {
   it("round-trips in stable registry order", () => {
-    expect(serializeLayers(["art", "parks"])).toBe("art");
-    expect(serializeLayers(["parks", "art"])).toBe("art");
+    expect(serializeLayers(["art", "parks"])).toBe("parks,art");
+    expect(serializeLayers(["parks", "art"])).toBe("parks,art");
     expect(parseLayersParam(serializeLayers(["bridges", "art"]))).toEqual(["art"]);
-    expect(serializeLayers(["bridges", "parks"])).toBe("");
+    expect(serializeLayers(["bridges", "parks"])).toBe("parks");
+    expect(serializeLayers(["mobility", "parks"])).toBe("parks,mobility");
   });
 
   it("is empty when nothing is active, so the param drops from the URL", () => {

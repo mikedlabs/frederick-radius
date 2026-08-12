@@ -7,7 +7,7 @@ import {
   shouldShowAvailableNow,
   synchronizeDealDay,
 } from "./DealsBrowser";
-import type { DealRow } from "@/lib/loaders/todaysDeals";
+import type { DealRow } from "@/lib/deals/dealRow";
 
 function deal(overrides: Partial<DealRow> = {}): DealRow {
   return {

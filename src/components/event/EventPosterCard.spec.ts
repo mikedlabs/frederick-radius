@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventPosterCard from "@/components/event/EventPosterCard";
 import EventCard from "@/components/event/EventCard";
@@ -29,6 +29,10 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
     ...overrides,
   } as EventWithMeta;
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("EventPosterCard visual trust", () => {
   it("falls back to honest category artwork for an unattributed place photo", () => {
@@ -187,5 +191,82 @@ describe("EventPosterCard visual trust", () => {
 
     expect(html).toContain("lg:min-h-[270px]");
     expect(html).not.toContain("lg:aspect-[4/3]");
+  });
+
+  it("refuses an unsupported live prop and explains a started event's unknown end", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          starts_at: "2026-07-30T09:15:00-04:00",
+          ends_at: "2026-07-30T23:59:00-04:00",
+        }),
+        variant: "glance",
+        live: true,
+        nowISO: "2026-07-30T11:31:00-04:00",
+      }),
+    );
+
+    expect(html).toContain("Started at 9:15 AM · end time unavailable");
+    expect(html).not.toContain("live-dot");
+    expect(html).not.toContain(">Now<");
+  });
+
+  it("rechecks a stale live prop against now and lifecycle status", () => {
+    const futureHtml = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          starts_at: "2026-07-30T18:00:00-04:00",
+          ends_at: "2026-07-30T20:00:00-04:00",
+        }),
+        variant: "glance",
+        live: true,
+        nowISO: "2026-07-30T17:00:00-04:00",
+      }),
+    );
+    const cancelledHtml = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: event({
+          starts_at: "2026-07-30T18:00:00-04:00",
+          ends_at: "2026-07-30T20:00:00-04:00",
+          status: "cancelled",
+        }),
+        variant: "glance",
+        live: true,
+        nowISO: "2026-07-30T19:00:00-04:00",
+      }),
+    );
+
+    expect(futureHtml).not.toContain("live-dot");
+    expect(futureHtml).not.toContain(">Now<");
+    expect(cancelledHtml).not.toContain("live-dot");
+    expect(cancelledHtml).not.toContain(">Now<");
+    expect(cancelledHtml).toContain("Cancelled");
+  });
+
+  it("uses the injected card clock for reason chips in tile and poster layouts", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-01-15T12:00:00.000Z"));
+    const startsSoon = event({
+      starts_at: "2026-07-30T19:00:00-04:00",
+      ends_at: "2026-07-30T21:00:00-04:00",
+    });
+    const nowISO = "2026-07-30T18:00:00-04:00";
+
+    const tileHtml = renderToStaticMarkup(
+      createElement(EventCard, {
+        event: startsSoon,
+        variant: "tile",
+        nowISO,
+      }),
+    );
+    const posterHtml = renderToStaticMarkup(
+      createElement(EventPosterCard, {
+        event: startsSoon,
+        nowISO,
+      }),
+    );
+
+    expect(tileHtml).toContain("Starting soon");
+    expect(posterHtml).toContain("Starting soon");
   });
 });

@@ -95,4 +95,10 @@ describe("eventPinFromEvent", () => {
     expect(pin.source_verified).toBe(false);
     expect(pin).not.toHaveProperty("source_url");
   });
+
+  it("keeps the all-day flag needed by the map's live-time guard", () => {
+    const pin = eventPinFromEvent(event({ is_all_day: true }), NOW);
+
+    expect(pin.is_all_day).toBe(true);
+  });
 });

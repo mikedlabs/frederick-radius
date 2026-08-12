@@ -704,7 +704,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               ) : null}
 
               <Sect>Good for</Sect>
-              <div className="eb-chips">
+              <div className="eb-chips" role="group" aria-label="Event qualities">
                 <EbChip on={kidsOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setKidsOnly(!kidsOnly); }}>
                   Kid-friendly
                 </EbChip>
@@ -741,7 +741,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               {categories.length > 0 && (
                 <>
                   <Sect>Category</Sect>
-                  <div className="eb-chips">
+                  <div className="eb-chips" role="group" aria-label="Event categories">
                     <EbChip on={!cat} onClick={() => { haptic("light"); setCat(null); }}>
                       Any category
                     </EbChip>

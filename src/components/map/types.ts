@@ -45,9 +45,16 @@ export type RoadWorkZoneFC = {
       detail?: string;
       laneImpact?: string;
       status?: string;
+      /** Machine-readable lifecycle used to keep scheduled work visually and
+       * semantically distinct from an impact that is current now. */
+      lifecycle?: "current" | "scheduled";
+      impactKind?: "closure" | "limited" | "work-zone";
       startAt?: string;
       endAt?: string;
       updatedAt?: string;
+      checkedAt?: string;
+      crossStreets?: string;
+      sourceLabel?: string;
       sourceUrl: string;
     };
   }>;
@@ -147,6 +154,7 @@ export type EventPin = {
   title: string;
   starts_at: string;
   ends_at?: string;
+  is_all_day?: boolean;
   venue_name: string;
   /** The venue's PLACE slug when the event is hosted at a known place —
    *  the join key that lets a place's peek card say "live music here

@@ -575,6 +575,41 @@ describe("selected-place decision cue", () => {
     });
   });
 
+  it.each([
+    { label: "missing", ends_at: undefined },
+    { label: "equal-to-start", ends_at: "2026-08-03T13:15:00.000Z" },
+    { label: "end-of-day sentinel", ends_at: "2026-08-04T03:59:00.000Z" },
+  ])("does not turn a started event with a $label end into a happening-now cue", ({ ends_at }) => {
+    const surface = buildMapPeekDecisionSurface({
+      place: { slug: "creek", deal_hook: undefined },
+      hostedEvent: {
+        slug: "uncertain-session",
+        title: "Uncertain session",
+        starts_at: "2026-08-03T13:15:00.000Z",
+        ends_at,
+        venue_name: "Carroll Creek Amphitheater",
+        lng: ORIGIN.lng,
+        lat: ORIGIN.lat,
+        category: "music",
+        source_label: "Example publisher",
+        source_url: "https://example.test/event",
+        source_confidence: "verified",
+        source_verified: true,
+        verified_at: "2026-08-03T15:00:00.000Z",
+        verification_expires_at: "2026-08-04T15:00:00.000Z",
+      },
+      nearestGarage: { name: "Carroll Creek Garage", distM: 180 },
+      now: NOW,
+    });
+
+    expect(surface?.lead.kind).toBe("parking");
+    expect(
+      [surface?.lead, ...(surface?.alternatives ?? [])].some(
+        (item) => item?.eventState === "happening-now",
+      ),
+    ).toBe(false);
+  });
+
   it("uses nearest mapped wording and never claims an unmapped utility does not exist", () => {
     const cue = buildMapPeekDecisionCue({
       place: { slug: "park", deal_hook: undefined },

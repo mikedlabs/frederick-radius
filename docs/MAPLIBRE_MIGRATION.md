@@ -15,6 +15,10 @@ worker. `src/lib/map/frederickFlavorStyle.ts` builds the style from
 `frederickBasemapFlavor.ts`; `src/components/map/useFrederickFlavorStyle.ts`
 is the one hook every surface calls.
 
+The current package, worker, and shared worker runtime are pinned together at
+MapLibre GL JS 6.3.0. `tests/maplibre-worker-version.spec.ts` blocks a future
+package-only upgrade from shipping a mismatched worker pair.
+
 Surfaces, in the order they moved: EventsMapInner, OverheadMap,
 CollectClient, ReportClient, AerialTimeMachine, then AppMap + RadiusMap +
 TransitMap together. The last three had to move in one commit — they share

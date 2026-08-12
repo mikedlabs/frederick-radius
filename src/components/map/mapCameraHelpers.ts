@@ -40,19 +40,16 @@ export function isCountyOverview(map: CameraSnapshot): boolean {
   );
 }
 
-// Does this browser have a usable WebGL context? The GL renderer needs one;
-// without it the canvas stays blank, and neither mapbox-gl v3 nor maplibre-gl
-// ships the old `supported()` helper, so probe directly. Conservative: any throw or missing context → treat as no
-// WebGL and fall back to the list view. SSR returns true so we never flash the
-// fallback during hydration — the real check runs in a mount effect.
+// Does this browser have the WebGL 2 context required by MapLibre GL JS v6?
+// A WebGL 1-only probe is a false positive: MapLibre can mount its canvas but
+// cannot render, leaving a blank map instead of Radius's accessible fallback.
+// Conservative: any throw or missing context means no map. SSR returns true so
+// the real capability check can run after mount without a hydration flash.
 export function hasWebGL(): boolean {
   if (typeof document === "undefined" || typeof window === "undefined") return true;
   try {
     const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
+    return Boolean(canvas.getContext("webgl2"));
   } catch {
     return false;
   }

@@ -14,6 +14,7 @@ import type { Amenity } from "@/lib/loaders/amenities";
 import type { LngLat } from "@/lib/geo";
 import { easternDayKey } from "@/lib/tz";
 import { easternHourFloat } from "@/lib/map/scrubTime";
+import { effectiveTimedEventEndMs } from "@/lib/eventWhenLabel";
 import {
   AMENITY_GROUPS,
   AMENITY_KIND_TO_CAT,
@@ -297,10 +298,12 @@ export function buildCuratedGeoJson(
   resultScopedPlaces: MapPinPlace[],
   {
     amenitiesActive,
+    sceneFocusActive,
     visualMatchSet,
     searchPlaceSet,
   }: {
     amenitiesActive: boolean;
+    sceneFocusActive?: boolean;
     visualMatchSet: ReadonlySet<string> | null;
     searchPlaceSet: ReadonlySet<string> | null;
   },
@@ -310,6 +313,7 @@ export function buildCuratedGeoJson(
     features: resultScopedPlaces.map((p) => {
       const visual = mapPlaceVisualState(p.slug, {
         amenitiesActive,
+        sceneFocusActive,
         matchSlugs: visualMatchSet,
       });
       return {
@@ -500,17 +504,28 @@ export function buildCemeteryGeoJson(cemeteries: CemeteryPin[]) {
 // events to those live/soon at the chosen hour; other-day events stay put so
 // a weekend event isn't hidden while scrubbing today.
 export function buildEventScrubTimes(
-  events: { starts_at: string; ends_at?: string | null }[],
+  events: {
+    starts_at: string;
+    ends_at?: string | null;
+    is_all_day?: boolean;
+  }[],
 ): { startH: number; endH: number; dayKey: string }[] {
   return events.map((e) => {
     const start = new Date(e.starts_at);
     const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
     const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
-    let endH = NaN;
-    if (e.ends_at) {
-      const localEnd = new Date(new Date(e.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" }));
-      endH = easternHourFloat({ hour: localEnd.getHours(), minute: localEnd.getMinutes() });
-    }
+    // An all-day row owns the whole date. Timed rows use the same bounded
+    // visibility end as Events: a missing/equal end gets two hours, while an
+    // inflated end-of-day stamp can never hold the scrubber until midnight.
+    const end = e.is_all_day
+      ? null
+      : new Date(effectiveTimedEventEndMs(e));
+    const localEnd = end
+      ? new Date(end.toLocaleString("en-US", { timeZone: "America/New_York" }))
+      : null;
+    const endH = localEnd
+      ? easternHourFloat({ hour: localEnd.getHours(), minute: localEnd.getMinutes() })
+      : 24;
     return { startH, endH, dayKey: easternDayKey(start) };
   });
 }

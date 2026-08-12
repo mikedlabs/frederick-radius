@@ -267,6 +267,24 @@ describe("EventsExplorer event time windows", () => {
     expect(eventMatchesTimeWindow(brunch, "week", bounds)).toBe(true);
   });
 
+  it("keeps a just-started unknown-end event in Today without requiring a live claim", () => {
+    const market = event("market", "community", "2026-08-01T09:15:00-04:00");
+    delete (market as Partial<EventWithMeta>).ends_at;
+    expect(eventMatchesTimeWindow(market, "today", bounds)).toBe(true);
+    expect(eventMatchesTimeWindow(market, "week", bounds)).toBe(true);
+  });
+
+  it("drops an unknown-end event after its bounded visibility window", () => {
+    const market = event("market", "community", "2026-08-01T09:15:00-04:00");
+    delete (market as Partial<EventWithMeta>).ends_at;
+    expect(
+      eventMatchesTimeWindow(market, "today", {
+        ...bounds,
+        now: Date.parse("2026-08-01T11:15:01-04:00"),
+      }),
+    ).toBe(false);
+  });
+
   it("drops the brunch card after it really ends", () => {
     const brunch = event("brunch", "food", "2026-08-01T10:00:00-04:00");
     brunch.ends_at = "2026-08-01T12:00:00-04:00";

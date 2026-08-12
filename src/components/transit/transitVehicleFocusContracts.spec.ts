@@ -38,7 +38,10 @@ describe("stop-to-bus map focus contracts", () => {
     );
 
     expect(source).toContain("focusVehicleId?: string");
-    expect(source).toContain('feedCurrent: feedStatus === "ready"');
+    // A degraded feed still has current vehicle positions; it only lacks
+    // arrival estimates. Stale or unavailable positions must never focus.
+    expect(source).toContain("effectiveFeedStatus");
+    expect(source).toContain('effectiveFeedStatus === "ready" || effectiveFeedStatus === "degraded"');
     expect(source).toContain("findCurrentTransitVehicle");
     expect(source).toContain("activeSelected");
     expect(source).toContain("SHAPES_BY_ROUTE");

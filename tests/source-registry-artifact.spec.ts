@@ -48,6 +48,20 @@ describe("generated source registry", () => {
     );
   });
 
+  it("keeps the operational metadata needed to trace a source", () => {
+    const brewery = GENERATED.find((source) => source.id === "open_brewery_db");
+
+    expect(brewery).toMatchObject({
+      url: "https://api.openbrewerydb.org/v1/breweries?by_state=maryland&per_page=200",
+      license: "open, attribution requested",
+      refreshCadence: "weekly",
+      snapshotCadence: "daily",
+      changeCadence: null,
+      schemaFile: "schemas/open_brewery_db.json",
+      transformFile: "transforms/open_brewery_db.ts",
+    });
+  });
+
   it("fails closed on health fields that could silently suppress a source", () => {
     const base = `
 sources:

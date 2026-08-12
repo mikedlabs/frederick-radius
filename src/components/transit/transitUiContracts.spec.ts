@@ -73,6 +73,10 @@ describe("transit UI interaction contracts", () => {
       "utf8",
     );
     const page = readFileSync("src/app/(app)/transit/page.tsx", "utf8");
+    const mapSource = readFileSync(
+      "src/components/transit/TransitMap.tsx",
+      "utf8",
+    );
 
     expect(page).toContain("<TransitStopFinder");
     expect(source).toContain("Search bus stops by name");
@@ -85,8 +89,13 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain(
       'prediction.scheduleRelationship !== "NO_DATA"',
     );
-    expect(page).toContain("TRANSIT_NETWORK");
-    expect(page).toContain("shapeVariants");
+    // Network geometry is owned by TransitMap. The page passes the official
+    // route-shape loader result instead of duplicating the static network
+    // contract in two components.
+    expect(page).toContain("getFrederickTransitRouteShapes");
+    expect(page).toContain("shapes={shapes}");
+    expect(mapSource).toContain("TRANSIT_NETWORK");
+    expect(mapSource).toContain("shapeVariants");
     expect(page).toContain("<TransitServiceAlerts");
   });
 

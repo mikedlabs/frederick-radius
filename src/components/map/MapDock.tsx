@@ -8,12 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Armchair, Baby, Beer, Bike, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Clock3, Coffee, Dog, Droplets, Gauge, Heart, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, Toilet, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Clock3, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Toilet, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
-import type { BrowseDockInfo } from "./types";
+import type { BrowseDockInfo, MapPinPlace } from "./types";
 import { formatDistance, type LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
@@ -44,6 +44,11 @@ import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { mapSearchResultLimit } from "./mapSearchVisibility";
+import type {
+  RadiusSceneId,
+  ResolvedRadiusScene,
+} from "./radiusScenes";
+import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -147,6 +152,11 @@ export type MapDockProps = {
   placeCount: number;
   eventCount: number;
   closingSoonCount: number;
+  /** Keyboard/screen-reader alternative to hunting points in the WebGL canvas. */
+  placesInView: readonly MapPinPlace[];
+  placesInViewOrigin: LngLat | null;
+  selectedPlaceSlug?: string | null;
+  onPickPlaceInView: (place: MapPinPlace) => void;
 
   // ── Search, folded into the dock's top row (the map's ONE search). ──
   q: string;
@@ -265,6 +275,13 @@ export type MapDockProps = {
    *  filtering. Goes to zero once the suggestion is dismissed, because from
    *  then on any layer still lit is one the visitor decided to keep. */
   smartSeededLayerCount?: number;
+
+  /** Task-shaped map views. Scenes compose existing layers and evidence; the
+   * dock only presents and activates the resolved plans. */
+  radiusScenes: readonly ResolvedRadiusScene[];
+  activeRadiusSceneId: RadiusSceneId | null;
+  onRadiusScene: (id: RadiusSceneId) => void;
+  onExitRadiusScene: () => void;
 };
 
 /** A dock chip: color-dotted pill with an optional mono count. ≥44px
@@ -346,6 +363,38 @@ function HeadRow({
 
 function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
+}
+
+const SCENE_ICONS: Record<RadiusSceneId, LucideIcon> = {
+  "buses-now": BusFront,
+  "roads-now": Construction,
+  "outside-now": Trees,
+  "what-changed": History,
+  "within-15-minutes": TimerReset,
+};
+
+function radiusSceneStatus(scene: ResolvedRadiusScene): string {
+  const { id } = scene.definition;
+  const { status, reason } = scene.availability;
+  if (status === "needs-location") return "Use location";
+  if (status === "loading") return "Loading";
+  if (status === "caution") return "Check first";
+  if (status === "unavailable") return "Unavailable";
+  if (status === "limited") {
+    if (id === "buses-now") return "Routes";
+    if (id === "what-changed") {
+      return reason.startsWith("Open this view") ? "Check now" : "Archive";
+    }
+    if (id === "outside-now" && reason.startsWith("Open this view")) {
+      return "Check now";
+    }
+    return "Available";
+  }
+  const count = reason.match(/^(\d+)\s/)?.[1];
+  if (id === "buses-now" && count) return `${count} live`;
+  if (id === "roads-now" && count) return `${count} current`;
+  if (id === "what-changed" && count) return `${count} records`;
+  return "Ready";
 }
 
 function formatLayerUpdate(timestamp: string | null): string | null {
@@ -718,11 +767,13 @@ export default function MapDock(props: MapDockProps) {
     url.searchParams.delete("amenity");
     url.searchParams.delete("show");
     url.searchParams.delete("layers");
+    url.searchParams.delete("scene");
     window.history.replaceState(window.history.state, "", url.toString());
   };
 
   const pickIntent = (key: string | null) => {
     haptic("light");
+    props.onExitRadiusScene();
     track("map_dock", { pane: "what", pick: key ?? "everything" });
     setParams((q) => {
       q.delete("sub");
@@ -733,6 +784,7 @@ export default function MapDock(props: MapDockProps) {
   };
   const pickSub = (key: string | null) => {
     haptic("light");
+    props.onExitRadiusScene();
     setParams((q) => {
       if (key && browse.subKey !== key) q.set("sub", key);
       else q.delete("sub");
@@ -742,6 +794,7 @@ export default function MapDock(props: MapDockProps) {
   const toggleOpenNow = () => {
     if (props.openNowAvailable === false) return;
     haptic("light");
+    props.onExitRadiusScene();
     track("map_dock", { pane: "when", pick: browse.openNow ? "open-off" : "open-now" });
     setParams((q) => {
       if (browse.openNow) q.delete("open");
@@ -750,6 +803,7 @@ export default function MapDock(props: MapDockProps) {
   };
   const toggleDealsToday = () => {
     haptic("light");
+    props.onExitRadiusScene();
     track("map_dock", { pane: "when", pick: browse.dealsOn ? "deals-off" : "deals-today" });
     setParams((q) => {
       if (browse.dealsOn) q.delete("deals");
@@ -758,6 +812,7 @@ export default function MapDock(props: MapDockProps) {
   };
   const toggleMusicTonight = () => {
     haptic("light");
+    props.onExitRadiusScene();
     track("map_dock", { pane: "when", pick: browse.musicTonight ? "music-off" : "music-tonight" });
     setParams((q) => {
       if (browse.musicTonight) {
@@ -770,6 +825,7 @@ export default function MapDock(props: MapDockProps) {
   };
   const pickWindow = (k: string) => {
     haptic("light");
+    props.onExitRadiusScene();
     setParams((q) => {
       // A general event window and the narrower live-music lens are mutually
       // exclusive. Never leave a hidden `t` value waiting to reappear later.
@@ -793,6 +849,7 @@ export default function MapDock(props: MapDockProps) {
   // this readout and the camera, including changes made from the top-bar chip.
   const goTown = (slug: string, name: string) => {
     haptic("light");
+    props.onExitRadiusScene();
     setNearMeRequested(false);
     setWhereSel({ kind: "town", slug, name });
     setScope(`town:${slug}`);
@@ -800,6 +857,7 @@ export default function MapDock(props: MapDockProps) {
   };
   const goCounty = () => {
     haptic("light");
+    props.onExitRadiusScene();
     setNearMeRequested(false);
     setWhereSel({ kind: "county" });
     setScope("county");
@@ -809,6 +867,7 @@ export default function MapDock(props: MapDockProps) {
   // not clobber a chosen town scope on every map mount): set the lens, then
   // run the map's own locate.
   const pickNearMe = () => {
+    props.onExitRadiusScene();
     setNearMeRequested(true);
     setWhereSel({ kind: "nearme" });
     setScope("nearme");
@@ -904,16 +963,27 @@ export default function MapDock(props: MapDockProps) {
 
   const timeActive = browse.openNow || browse.dealsOn || browse.musicTonight
     || browse.timeModeExplicit || props.scrubHour != null;
+  const activeRadiusScene = props.activeRadiusSceneId
+    ? props.radiusScenes.find(
+        (scene) => scene.definition.id === props.activeRadiusSceneId,
+      ) ?? null
+    : null;
   const firstAmenityLabel = [...props.amenityGroups]
     .map((key) => PUBLIC_AMENITY_GROUPS.find((group) => group.key === key)?.label)
     .find((label): label is string => Boolean(label));
-  const contentsSummary = mapContentsSummary({
-    area: whereText,
-    amenity: firstAmenityLabel,
-    intent: intent?.label,
-    time: timeActive ? when.text : undefined,
-    layer: layerBits[0] ?? lensLabels[0],
-  });
+  const contentsSummary = activeRadiusScene
+    ? activeRadiusScene.definition.label
+    : mapContentsSummary({
+        area: whereText,
+        amenity: firstAmenityLabel,
+        intent: intent?.label,
+        time: timeActive ? when.text : undefined,
+        layer: layerBits[0] ?? lensLabels[0],
+      });
+  const activeSceneCaution =
+    activeRadiusScene?.availability.status === "caution"
+      ? activeRadiusScene.availability.reason
+      : null;
   const refinementCount =
     (intent ? 1 : 0) +
     (browse.openNow ? 1 : 0) +
@@ -924,7 +994,9 @@ export default function MapDock(props: MapDockProps) {
     (activeWhereSel.kind !== "county" ? 1 : 0) +
     visibleLayerCount;
   const activeOptionCount =
-    refinementCount + (props.selectedDiscoveryId ? 1 : 0);
+    refinementCount +
+    (props.selectedDiscoveryId ? 1 : 0) +
+    (activeRadiusScene ? 1 : 0);
   // What the VISITOR has chosen, which is what decides whether the map is
   // still at rest. Subtracting the smart seeds matters because the two
   // features otherwise cancel: the smart default lights a layer on exactly
@@ -967,6 +1039,7 @@ export default function MapDock(props: MapDockProps) {
     haptic("light");
     track("map_dock", { pane: "clear", pick: "all" });
     updateMapSearch("");
+    props.onExitRadiusScene();
     clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
@@ -995,7 +1068,7 @@ export default function MapDock(props: MapDockProps) {
     // The deep focus target goes too, because the camera has just returned to
     // the whole county and a shared URL must reopen in that same state.
     setParams((q) => {
-      for (const key of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers", "at", "place", SCOPE_PARAM]) {
+      for (const key of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers", "scene", "at", "place", SCOPE_PARAM]) {
         q.delete(key);
       }
     });
@@ -1004,6 +1077,7 @@ export default function MapDock(props: MapDockProps) {
   const clearLayers = () => {
     haptic("light");
     track("map_dock", { pane: "layers", pick: "clear" });
+    props.onExitRadiusScene();
     clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
@@ -1026,6 +1100,7 @@ export default function MapDock(props: MapDockProps) {
       q.delete("amenity");
       q.delete("show");
       q.delete("layers");
+      q.delete("scene");
     });
   };
 
@@ -1071,11 +1146,13 @@ export default function MapDock(props: MapDockProps) {
   const radarUpdate = formatLayerUpdate(props.radarHealth.timestamp);
   const incidentUpdate = formatLayerUpdate(props.incidentHealth.timestamp);
   const cameraUpdate = formatLayerUpdate(props.cameraHealth.timestamp);
-  const activeContextKicker = props.showRadar
-    ? radarClock
-      ? `Radar · updated ${radarClock}`
-      : "Radar · loading"
-    : "Showing";
+  const activeContextKicker = activeRadiusScene
+    ? "Radius view"
+    : props.showRadar
+      ? radarClock
+        ? `Radar · updated ${radarClock}`
+        : "Radar · loading"
+      : "Showing";
 
   const paneTitle =
     pane === "contents" ? "Choose what to see"
@@ -1095,6 +1172,7 @@ export default function MapDock(props: MapDockProps) {
   };
 
   const toggleAmenity = (key: string) => {
+    props.onExitRadiusScene();
     props.setAmenityGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -1105,6 +1183,7 @@ export default function MapDock(props: MapDockProps) {
 
   const pickSingleAmenity = (key: string) => {
     haptic("light");
+    props.onExitRadiusScene();
     const isOnlyActive =
       props.amenityGroups.size === 1 && props.amenityGroups.has(key);
     props.setAmenityGroups(isOnlyActive ? new Set() : new Set([key]));
@@ -1249,6 +1328,7 @@ export default function MapDock(props: MapDockProps) {
             aria-label="Current map view"
             data-map-context-rail
             data-map-top-surface="context"
+            data-scene-caution={activeSceneCaution ? "true" : undefined}
           >
             <span
               className="sr-only"
@@ -1262,7 +1342,7 @@ export default function MapDock(props: MapDockProps) {
               type="button"
               className="map-context-rail-open tap-44"
               onClick={() => togglePane("contents")}
-              aria-label={`Change map view: ${contentsSummary}`}
+              aria-label={`Change map view: ${contentsSummary}${activeSceneCaution ? `. ${activeSceneCaution}` : ""}`}
             >
               <span className="map-context-rail-icon" aria-hidden>
                 <Layers3 className="h-3.5 w-3.5" strokeWidth={2.2} />
@@ -1270,6 +1350,11 @@ export default function MapDock(props: MapDockProps) {
               <span className="map-context-rail-copy">
                 <span className="map-context-rail-kicker">{activeContextKicker}</span>
                 <span className="map-context-rail-summary">{contentsSummary}</span>
+                {activeSceneCaution && (
+                  <span className="map-context-rail-detail">
+                    {activeSceneCaution}
+                  </span>
+                )}
               </span>
               <ChevronRight className="map-context-rail-arrow h-3.5 w-3.5" strokeWidth={2.3} aria-hidden />
             </button>
@@ -1775,6 +1860,51 @@ export default function MapDock(props: MapDockProps) {
 
             {pane === "contents" && (
               <div className="dock-content-list" role="group" aria-label="Choose what you need from the map">
+                <section className="dock-scenes" aria-labelledby="dock-scenes-title">
+                  <div className="dock-scenes-heading">
+                    <span id="dock-scenes-title">Quick views</span>
+                    <small>Radius sets up the map.</small>
+                  </div>
+                  <div className="dock-scene-grid" role="group" aria-label="Quick map views">
+                    {props.radiusScenes.map((scene) => {
+                      const Icon = SCENE_ICONS[scene.definition.id];
+                      const active = props.activeRadiusSceneId === scene.definition.id;
+                      const unavailable =
+                        scene.availability.status === "unavailable" &&
+                        !scene.availability.canActivate;
+                      return (
+                        <button
+                          key={scene.definition.id}
+                          type="button"
+                          className="dock-scene"
+                          data-on={active || undefined}
+                          data-status={scene.availability.status}
+                          aria-pressed={active}
+                          aria-disabled={unavailable}
+                          aria-label={`${scene.definition.label}${/[.!?]$/.test(scene.definition.label) ? "" : "."} ${scene.availability.reason}`}
+                          title={scene.availability.reason}
+                          onClick={() => {
+                            if (unavailable) return;
+                            if (active) props.onExitRadiusScene();
+                            else props.onRadiusScene(scene.definition.id);
+                            closePane();
+                          }}
+                        >
+                          <span className="dock-scene-icon" aria-hidden>
+                            <Icon className="h-[17px] w-[17px]" strokeWidth={2.15} />
+                          </span>
+                          <span className="dock-scene-copy">
+                            <strong>{scene.definition.label}</strong>
+                            <small>{radiusSceneStatus(scene)}</small>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+                <div className="dock-content-heading" aria-hidden>
+                  Build a view
+                </div>
                 <div className="dock-content-primary">
                 <button
                   type="button"
@@ -1846,6 +1976,15 @@ export default function MapDock(props: MapDockProps) {
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
                 </div>
+                <MapInViewPlacesDisclosure
+                  places={props.placesInView}
+                  sortOrigin={props.placesInViewOrigin}
+                  selectedSlug={props.selectedPlaceSlug}
+                  onPick={(place) => {
+                    props.onPickPlaceInView(place);
+                    closePane();
+                  }}
+                />
                 <div className="dock-content-secondary" aria-label="Map area and sharing">
                   <button
                     type="button"
@@ -2496,6 +2635,13 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   ))}
                 </div>
+                {props.activeOverlays.includes("mobility") && (
+                  <p className="dock-hint" role="status">
+                    Zoom in on Frederick City for sidewalk detail. Existing
+                    paths can support route context; planned paths cannot. The
+                    City bike-path feed is currently unavailable.
+                  </p>
+                )}
                 {props.showAerial && (
                   <HeadRow
                     color="var(--app-accent-press)"

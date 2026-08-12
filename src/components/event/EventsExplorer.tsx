@@ -324,18 +324,25 @@ export function eventMatchesTimeWindow(
   const start = Date.parse(event.starts_at);
   if (!Number.isFinite(start)) return false;
   const live = isEventLiveNow(event, nowDate);
+  const startedToday =
+    start <= bounds.now &&
+    dayKeyEastern(event.starts_at) === dayKeyEastern(nowDate.toISOString());
   if (time === "today") {
-    return live || (start >= bounds.now && start < bounds.next24);
+    return startedToday || (start >= bounds.now && start < bounds.next24);
   }
   if (time === "weekend") {
     const weekendIsNow =
       bounds.now >= bounds.weekendStart && bounds.now < bounds.weekendEnd;
     return (
-      (live && weekendIsNow) ||
+      ((live || startedToday) && weekendIsNow) ||
       (start >= bounds.weekendStart && start < bounds.weekendEnd)
     );
   }
-  return live || (start >= bounds.now && start < bounds.now + 7 * 86_400_000);
+  return (
+    live ||
+    startedToday ||
+    (start >= bounds.now && start < bounds.now + 7 * 86_400_000)
+  );
 }
 
 // Chronological sort key. An IN-PROGRESS date-range listing (isRangeListing —
@@ -1043,6 +1050,7 @@ export default function EventsExplorer({
             visual={eventCardVisual(primaryLead)}
             live={live.has(primaryLead.slug)}
             priorityImage
+            nowISO={nowISO}
           />
         </div>
       )}
@@ -1172,7 +1180,7 @@ export default function EventsExplorer({
         >
           {filtered.slice(0, 200).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
-              <EventCard event={e} variant="compact" />
+              <EventCard event={e} variant="compact" nowISO={nowISO} />
             </li>
           ))}
           {filtered.length > 200 && (
@@ -1265,7 +1273,7 @@ export default function EventsExplorer({
         <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
-              <EventCard event={e} />
+              <EventCard event={e} nowISO={nowISO} />
             </li>
           ))}
           {filtered.length > 100 && (
@@ -1322,22 +1330,24 @@ export default function EventsExplorer({
                     visual={leadVisual}
                     live={live.has(lead.slug)}
                     priorityImage
+                    nowISO={nowISO}
                   />
                 ) : lead && !leadMovedBeforeRail ? (
                   <EventCard
                     event={lead}
                     variant="glance"
                     live={live.has(lead.slug)}
+                    nowISO={nowISO}
                   />
                 ) : null}
                 {totalRest > 0 && (
                   <>
                     {preview.length > 0 && (
-                      <CompactEventList events={preview} live={live} />
+                      <CompactEventList events={preview} live={live} nowISO={nowISO} />
                     )}
                     {expanded.length > 0 && (
                       <div className="reveal-up">
-                        <CompactEventList events={expanded} live={live} />
+                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
                       </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
@@ -1412,7 +1422,7 @@ export default function EventsExplorer({
               >
                 {utilityFiltered.slice(0, 80).map((e) => (
                   <li key={`${e.slug}-${e.starts_at}`}>
-                    <EventCard event={e} variant="compact" />
+                    <EventCard event={e} variant="compact" nowISO={nowISO} />
                   </li>
                 ))}
                 {!dataComplete && summary.utilityCount > utilityFiltered.length && (
@@ -1441,9 +1451,11 @@ export default function EventsExplorer({
 function CompactEventList({
   events,
   live,
+  nowISO,
 }: {
   events: EventWithMeta[];
   live: ReadonlySet<string>;
+  nowISO: string;
 }) {
   if (events.length === 0) return null;
   return (
@@ -1460,6 +1472,7 @@ function CompactEventList({
             event={event}
             variant="compact"
             live={live.has(event.slug)}
+            nowISO={nowISO}
           />
         </li>
       ))}
@@ -1472,17 +1485,20 @@ function PromotedEvent({
   visual,
   priorityImage,
   live,
+  nowISO,
 }: {
   event: EventWithMeta;
   visual: EventCardVisual | null;
   priorityImage: boolean;
   live: boolean;
+  nowISO: string;
 }) {
   return (
     <EventCard
       event={event}
       variant="feature"
       live={live}
+      nowISO={nowISO}
       priorityImage={priorityImage}
       visual={visual ?? undefined}
     />

@@ -10,6 +10,7 @@ import {
   explicitAreaInQuery,
   hasResolvedNearbyArea,
   nearbyQueryNeedsAreaChoice,
+  preferredAskScope,
   queryNeedsNearbyContext,
   queryIsLocalDiscovery,
   scheduleAskDeadline,
@@ -53,6 +54,17 @@ describe("Ask Radius evidence labels", () => {
 });
 
 describe("Ask Radius nearby context", () => {
+  it("reuses a fresh consented device fix instead of the unscoped county default", () => {
+    expect(preferredAskScope(null, true)).toBe("nearme");
+    expect(preferredAskScope("nearme", true)).toBe("nearme");
+
+    // Explicit browsing choices remain authoritative. Device permission
+    // should sharpen an unscoped answer, not silently discard a chosen area.
+    expect(preferredAskScope("county", true)).toBe("county");
+    expect(preferredAskScope("town:brunswick", true)).toBe("town:brunswick");
+    expect(preferredAskScope("county", false)).toBe("county");
+  });
+
   it("recognizes questions that need a deliberate location", () => {
     expect(queryNeedsNearbyContext("Find breakfast near me")).toBe(true);
     expect(queryNeedsNearbyContext("Where is the closest trash can?")).toBe(true);

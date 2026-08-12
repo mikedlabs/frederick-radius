@@ -42,6 +42,10 @@ import { isOpenNow } from "@/lib/hours";
 import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import {
+  applyLivePlaceEvidenceMap,
+  type LivePlaceEvidence,
+} from "@/lib/live-place-evidence";
+import {
   eventsLive,
   eventsNext24h,
   type EventWithMeta,
@@ -115,6 +119,12 @@ export type NearbyOptions = {
    * When absent, the existing in-memory Haversine path remains authoritative.
    */
   placeDistances?: ReadonlyMap<string, number>;
+  /**
+   * Optional current database evidence, loaded by the server route under a
+   * short deadline. Keeping the merge pure preserves deterministic ranking
+   * tests and lets every database failure fall back to the shipped snapshot.
+   */
+  placeEvidence?: ReadonlyMap<string, LivePlaceEvidence>;
 };
 
 /**
@@ -186,11 +196,21 @@ export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
   // `openPlaces` and the Today section labels it "Open near you." Keep only
   // recently confirmed open/closing-soon rows so an hours gap is never shown
   // as an availability claim.
-  const openPlaces = clientPlacesWithinRadius(
+  const nearbyPlaces = clientPlacesWithinRadius(
     origin,
     radiusM,
     opts.placeDistances,
+  );
+  const openPlaces = applyLivePlaceEvidenceMap(
+    nearbyPlaces,
+    opts.placeEvidence ?? new Map(),
+    now,
   )
+    .filter(
+      (place) =>
+        place.is_operational !== "closed_permanently" &&
+        place.is_operational !== "closed_temporarily",
+    )
     .filter((p) => isOpenNow(p.open_status))
     .slice(0, limit);
 

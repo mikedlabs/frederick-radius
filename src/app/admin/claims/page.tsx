@@ -104,7 +104,7 @@ function Queue({ rows }: { rows: Row[] }) {
 
       <section className="mt-6">
         {pending.length === 0 ? (
-          <AllClear>No claims are waiting for review.</AllClear>
+          <AllClear>No submissions are waiting for review.</AllClear>
         ) : (
           <>
             <SectionLabel>Oldest first</SectionLabel>
@@ -206,6 +206,15 @@ function SubmissionCard({ row }: { row: Row }) {
         </div>
       ) : null}
 
+      {isOwnerListingCheck(row.kind) ? (
+        <div className="mt-3">
+          <Notice tone="cool">
+            This is owner-provided evidence. Approving records the moderation
+            decision; it does not change the public listing automatically.
+          </Notice>
+        </div>
+      ) : null}
+
       <form action={reviewSubmission} className="mt-4 grid grid-cols-2 gap-2">
         <input type="hidden" name="id" value={row.id} />
         <AdminButton
@@ -253,13 +262,22 @@ function waitTone(days: number): Tone {
 
 function fieldEntries(payload: unknown): [string, string][] {
   if (!payload || typeof payload !== "object") return [];
-  return Object.entries(payload as Record<string, unknown>)
-    .map(([k, v]) => [k, v == null ? "" : String(v)] as [string, string])
+  const record = payload as Record<string, unknown>;
+  if (
+    record.via === "owner-manage" &&
+    (record.action === "confirmed" || record.action === "change")
+  ) {
+    return ownerListingFieldEntries(record);
+  }
+  return Object.entries(record)
+    .map(([k, v]) => [fieldLabel(k), displayValue(k, v)] as [string, string])
     .filter(([, v]) => v.trim() !== "");
 }
 
 function kindLabel(kind: string): string {
   if (kind === "business_claim") return "Business claim";
+  if (kind === "listing_confirmation") return "Listing check";
+  if (kind === "listing_change") return "Listing change";
   if (kind === "place") return "Place";
   if (kind === "event") return "Event";
   if (kind === "special") return "Special";
@@ -271,4 +289,125 @@ function submissionTitle(row: Row): string {
   const candidate = p.business_name ?? p.name ?? p.title;
   if (typeof candidate === "string" && candidate.trim()) return candidate;
   return row.submitter_name || row.submitter_email || "Untitled submission";
+}
+
+function isOwnerListingCheck(kind: string): boolean {
+  return kind === "listing_confirmation" || kind === "listing_change";
+}
+
+const OWNER_LISTING_FIELD_ORDER = [
+  "action",
+  "fields",
+  "proposed_status",
+  "proposed_hours",
+  "proposed_phone",
+  "proposed_website",
+  "details",
+  "current_status",
+  "current_hours",
+  "current_hours_checked_at",
+  "current_phone",
+  "current_website",
+  "current_listing_checked_at",
+  "observed_at",
+  "review_by",
+  "expires_at",
+  "field_expires_at",
+  "claim_submission_id",
+] as const;
+
+function ownerListingFieldEntries(
+  payload: Record<string, unknown>,
+): [string, string][] {
+  return OWNER_LISTING_FIELD_ORDER.map((key) => [
+    fieldLabel(key),
+    displayValue(key, payload[key]),
+  ] as [string, string]).filter(([, value]) => value.trim() !== "");
+}
+
+function fieldLabel(key: string): string {
+  const labels: Record<string, string> = {
+    action: "Owner report",
+    fields: "Details covered",
+    proposed_status: "Proposed status",
+    proposed_hours: "Proposed hours",
+    proposed_phone: "Proposed phone",
+    proposed_website: "Proposed website",
+    details: "Owner note",
+    current_status: "Current status",
+    current_hours: "Current hours shown",
+    current_hours_checked_at: "Hours last checked",
+    current_phone: "Current phone",
+    current_website: "Current website",
+    current_listing_checked_at: "Listing last checked",
+    observed_at: "Owner observed",
+    review_by: "Review by",
+    expires_at: "Evidence expires",
+    field_expires_at: "Field refresh windows",
+    claim_submission_id: "Approved claim",
+  };
+  return labels[key] ?? key.replaceAll("_", " ");
+}
+
+function displayValue(key: string, value: unknown): string {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map(humanizeCode).join(", ");
+  if (key === "field_expires_at" && typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as Record<string, string>;
+      return Object.entries(parsed)
+        .map(([field, expires]) => `${humanizeCode(field)}: ${formatAuditDate(expires)}`)
+        .join(" · ");
+    } catch {
+      return value;
+    }
+  }
+  if (
+    typeof value === "string" &&
+    [
+      "observed_at",
+      "review_by",
+      "expires_at",
+      "current_hours_checked_at",
+      "current_listing_checked_at",
+    ].includes(key)
+  ) {
+    return formatAuditDate(value);
+  }
+  if (value === "[remove]") return "Remove this value";
+  if (
+    typeof value === "string" &&
+    ["action", "current_status", "proposed_status"].includes(key)
+  ) {
+    return humanizeCode(value);
+  }
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function humanizeCode(value: unknown): string {
+  const text = String(value);
+  const known: Record<string, string> = {
+    confirmed: "Details confirmed",
+    change: "Change requested",
+    operational: "Open and operating",
+    closed_temporarily: "Temporarily closed",
+    closed_permanently: "Permanently closed",
+    needs_verification: "Not yet confirmed",
+  };
+  return known[text] ?? text.replaceAll("_", " ");
+}
+
+function formatAuditDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

@@ -363,6 +363,12 @@ export default function TransitMap({
     );
   }
 
+  const shapeSourceLabel =
+    shapes.sourceLabel ??
+    (typeof shapes.features[0]?.properties.source === "string"
+      ? shapes.features[0].properties.source
+      : "TransIT route data");
+
   return (
     <div className="space-y-2">
       {highlightRoutes && (
@@ -681,7 +687,7 @@ export default function TransitMap({
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--app-cool)" }}
           />
-          TransIT Frederick · {shapes.features.length} published route patterns
+          TransIT Frederick · {shapeSourceLabel} · {shapes.features.length} route patterns
           {renderStops.length > 0 && ` · ${renderStops.length} stops`}
         </span>
       )}

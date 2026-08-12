@@ -15,6 +15,13 @@ import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 import { installCountySpotlight } from "@/components/map/countySpotlight";
 import { BRAND } from "@/lib/brand";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/maplibre";
+import { hasWebGL } from "@/components/map/mapCameraHelpers";
+import {
+  FREDERICK_BROWSE_MAX_BOUNDS,
+  FREDERICK_BROWSE_MIN_ZOOM,
+  FREDERICK_MAX_ZOOM,
+  toFlatBounds,
+} from "@/components/map/constants";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -197,6 +204,12 @@ export default function RadiusMap({
   // device). Mapbox throws on init in these cases; without catching it
   // the map goes blank while the page still says "N places in radius."
   const [mapFailed, setMapFailed] = useState(false);
+  useEffect(() => {
+    const check = window.setTimeout(() => {
+      if (!hasWebGL()) setMapFailed(true);
+    }, 0);
+    return () => window.clearTimeout(check);
+  }, []);
   // The place a user tapped on the map — shows the preview popup. Null
   // when no place is selected (the default).
   const [selected, setSelected] = useState<{
@@ -544,18 +557,25 @@ export default function RadiusMap({
           longitude: center.lng,
           latitude: center.lat,
           zoom: 13,
-          // Gentle tilt so the 3D relief reads as dimensional depth
-          // without distorting the reach circle into an unreadable
-          // ellipse — enough to feel the ridges, not a flight-sim angle.
-          pitch: 32,
+          // Keep this 2D until Radius owns a licensed/local DEM. Pitching a
+          // flat basemap only distorts the reach shape and implies terrain
+          // the data does not provide.
+          pitch: 0,
         }}
-        maxPitch={70}
+        maxPitch={0}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
+        clickTolerance={8}
+        maxBounds={toFlatBounds(FREDERICK_BROWSE_MAX_BOUNDS)}
+        minZoom={FREDERICK_BROWSE_MIN_ZOOM}
+        maxZoom={FREDERICK_MAX_ZOOM}
+        reuseMaps
+        fadeDuration={120}
         // Mapbox's logo and credits must remain visible; the compact ⓘ badge
         // (added as a child control) satisfies that without the text bar.
         attributionControl={false}
+        maplibreLogo={false}
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -565,6 +585,9 @@ export default function RadiusMap({
         // anonymous dots. styleimagemissing inside the installer covers
         // any category not eagerly added, and survives style reloads.
         onLoad={(e) => {
+          // Preserve pinch zoom but stop the combined touch handler from
+          // rotating this intentionally flat map.
+          e.target.touchZoomRotate.disableRotation();
           installCategoryMarkers(e.target);
           // Install the generated sprite images before mounting the symbol
           // layer. Depending on styleimagemissing alone makes the renderer log

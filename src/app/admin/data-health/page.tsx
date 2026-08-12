@@ -9,6 +9,7 @@ import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import PLACES_CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
+import SOURCE_REGISTRY_RAW from "@/data/source-registry.generated.json" with { type: "json" };
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import {
   getAnomalies,
@@ -19,12 +20,21 @@ import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
 import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
 import { isGooglePlaceId } from "@/lib/provenance";
-import { sourceLedgerNeedsAction } from "@/lib/quality/source-ledger";
+import {
+  sourceLedgerNeedsAction,
+  type SourceManifestEntry,
+} from "@/lib/quality/source-ledger";
+import {
+  buildSourceCoverageReport,
+  sourceCoverageObservationsFromLedger,
+  sourceSurfaceDeclarationsFromFeeds,
+} from "@/lib/quality/source-coverage";
 import { loadDataHealthPageRuntime } from "@/lib/loaders/dataHealthPage";
 import {
   FeedSnapshotStorage,
   SourceHealthLedger,
 } from "@/components/admin/SourceHealthLedger";
+import { SourceCoverageControlPlane } from "@/components/admin/SourceCoverageControlPlane";
 import {
   AdminShell,
   Section,
@@ -57,6 +67,7 @@ export const dynamic = "force-dynamic";
 
 const SCORES = SCORES_RAW as { computed_at: string; counts: Record<string, number> };
 const DEDUP = DEDUP_RAW as Record<string, { canonical: string }>;
+const SOURCE_REGISTRY = SOURCE_REGISTRY_RAW as SourceManifestEntry[];
 
 /** The shell paints immediately; the board streams in behind Suspense. This
  *  page's loads are the heaviest on the admin surface (a live iCal fetch plus
@@ -146,6 +157,15 @@ async function Board() {
   // availability and content drift live in the tripwire/snapshot sections.
   const feeds = feedStatuses();
   const dark = darkFeedCount();
+
+  const sourceCoverage = buildSourceCoverageReport(
+    SOURCE_REGISTRY,
+    sourceCoverageObservationsFromLedger(sourceLedger),
+    sourceSurfaceDeclarationsFromFeeds([
+      ...feeds.keyed,
+      ...feeds.keyless,
+    ]),
+  );
 
   const unparseableTotal = unparseable.reduce((a, r) => a + r.count, 0);
   const sourceLedgerProblems = sourceLedger.filter(sourceLedgerNeedsAction);
@@ -331,6 +351,7 @@ async function Board() {
         )}
       </Section>
 
+      <SourceCoverageControlPlane report={sourceCoverage} />
       <SourceHealthLedger rows={sourceLedger} />
       <FeedSnapshotStorage telemetry={snapshotStorage} />
 

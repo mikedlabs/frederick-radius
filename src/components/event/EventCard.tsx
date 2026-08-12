@@ -26,6 +26,11 @@ import {
 } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import EventPosterCard from "@/components/event/EventPosterCard";
+import {
+  eventHasTrustworthyEnd,
+  isEventLiveNow,
+  startedEventTimingDisclosure,
+} from "@/lib/eventWhenLabel";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
 // the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
@@ -40,6 +45,7 @@ export default function EventCard({
   whyItMatters,
   priorityImage = true,
   visual,
+  nowISO,
 }: {
   event: EventWithMeta;
   /**
@@ -89,7 +95,20 @@ export default function EventCard({
    * clearly labeled photograph of the venue rather than an event image.
    */
   visual?: EventCardVisual;
+  /** Server-captured page time, used for stable started/unknown-end copy. */
+  nowISO?: string;
 }) {
+  const status = event.status ?? "scheduled";
+  const cardNow = nowISO ? new Date(nowISO) : null;
+  // Presentation-level guard: even if a stale caller passes `live`, a card
+  // cannot render Live/Now unless the event carries a usable end time.
+  const confirmedLive =
+    status === "scheduled" &&
+    live &&
+    (cardNow
+      ? isEventLiveNow(event, cardNow)
+      : !event.is_all_day && eventHasTrustworthyEnd(event));
+
   // A feature always remains a visual poster. The poster component resolves
   // photographs through the source-aware eventCardVisual gate and otherwise
   // paints honest category artwork; it never promotes event.hero_image raw.
@@ -100,7 +119,8 @@ export default function EventCard({
         visual={visual}
         priorityImage={priorityImage}
         whyItMatters={whyItMatters}
-        live={live}
+        live={confirmedLive}
+        nowISO={nowISO}
       />
     );
   }
@@ -110,9 +130,12 @@ export default function EventCard({
   // Lifecycle status — a cancelled or postponed event still shows
   // (a user looking for it needs to KNOW), but with a loud badge and
   // a struck-through title so it can never be mistaken for "on."
-  const status = event.status ?? "scheduled";
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
+  const timingText =
+    status === "scheduled" && cardNow
+      ? startedEventTimingDisclosure(event, cardNow) ?? date.time
+      : date.time;
   // Badge palette: red for cancelled, amber for postponed.
   // Text-safe status color. Plain --app-warning (amber) fails WCAG AA both as
   // inline text on cream and as white-on-fill badge; --app-warning-press is the
@@ -182,8 +205,8 @@ export default function EventCard({
             <span className="font-semibold" style={{ color: statusBg }}>{statusText} · </span>
           )}
           {hideDate
-            ? date.time
-            : `${date.weekday} ${date.month} ${date.day}${date.time ? ` · ${date.time}` : ""}`}
+            ? timingText
+            : `${date.weekday} ${date.month} ${date.day}${timingText ? ` · ${timingText}` : ""}`}
         </span>
       </article>
     );
@@ -232,9 +255,9 @@ export default function EventCard({
             dense listing without borrowing the positive green. */}
         <span
           aria-hidden
-          className={`h-2 w-2 shrink-0 rounded-full${live ? " live-dot" : ""}`}
-          style={{ background: live ? "var(--app-amber)" : accent }}
-          title={live ? "Live now" : categoryLabel}
+          className={`h-2 w-2 shrink-0 rounded-full${confirmedLive ? " live-dot" : ""}`}
+          style={{ background: confirmedLive ? "var(--app-amber)" : accent }}
+          title={confirmedLive ? "Live now" : categoryLabel}
         />
 
         {/* Title + meta share one 44px link target. The old title-only anchor
@@ -257,7 +280,7 @@ export default function EventCard({
               className="block truncate text-[11px] font-normal leading-tight"
               style={{ color: "var(--app-ink-3)" }}
             >
-              <span className="font-mono tabular-nums">{date.time}</span>
+              <span className="font-mono tabular-nums">{timingText}</span>
               {venueLabel && (
                 <>
                   {" · "}
@@ -312,14 +335,14 @@ export default function EventCard({
     // color band are gone — the tab IS the category now. The wrapper reserves
     // the tab's height so it never clips inside a rail (no parent change).
     const tabBg = `color-mix(in srgb, ${accent} 68%, var(--app-ink))`;
-    const reasons = eventReasons(event);
+    const reasons = eventReasons(event, cardNow ?? undefined);
     return (
       <div className="relative flex h-full flex-col pt-[14px]">
         <span
           className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
           style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-on-brand)" }}
         >
-          {live ? "Live now" : categoryLabel}
+          {confirmedLive ? "Live now" : categoryLabel}
         </span>
         {/* Compact horizontal layout — date block beside the content, no empty
             header band, no bottom-pinned reasons. h-full/flex-1: in a flex
@@ -353,7 +376,7 @@ export default function EventCard({
               {event.title}
             </Link>
             <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
+              <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</span>
               {venueLabel ? <> · {venueLabel}</> : null}
             </p>
             {accessLabel && (
@@ -446,7 +469,7 @@ export default function EventCard({
                     It was Catoctin Forest, the same green as "Free" forty
                     lines below, so happening-now and costs-nothing read as
                     one signal. Text on --app-amber-text (AA on Cream). */}
-                {live && (
+                {confirmedLive && (
                   <span
                     className="inline-flex items-center gap-1 font-medium"
                     style={{ color: "var(--app-amber-text)" }}
@@ -462,7 +485,7 @@ export default function EventCard({
                 )}
                 <span>
                   {date.weekday} {date.month} {date.day}
-                  {date.time ? ` · ${date.time}` : ""}
+                  {timingText ? ` · ${timingText}` : ""}
                 </span>
                 {statusText && (
                   <span className="font-medium" style={{ color: statusBg }}>
@@ -581,7 +604,7 @@ export default function EventCard({
           </Link>
         </div>
         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          <span className="font-mono tabular-nums">{date.time}</span>{venueLabel ? ` · ${venueLabel}` : ""}
+          <span className="font-mono tabular-nums">{timingText}</span>{venueLabel ? ` · ${venueLabel}` : ""}
         </p>
         <div className="mt-2 flex items-center gap-2">
           {cat && (

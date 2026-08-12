@@ -11,6 +11,7 @@ type MapEventInput = Pick<
   | "title"
   | "starts_at"
   | "ends_at"
+  | "is_all_day"
   | "venue_name"
   | "venue_place_slug"
   | "geom"
@@ -44,6 +45,7 @@ export function eventPinFromEvent(
     title: event.title,
     starts_at: event.starts_at,
     ends_at: event.ends_at,
+    is_all_day: event.is_all_day,
     venue_name: event.venue_name,
     venue_place_slug: event.venue_place_slug,
     lng: event.geom.lng,

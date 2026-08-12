@@ -58,8 +58,13 @@ test("expanded map search carries the exact map state through a place detail", a
   ).toBe(mapReturnHref);
   await placeResult.click();
 
+  // A cold local server can still be generating the static place page after
+  // the link has been activated. Prove the journey reached the detail route
+  // before asserting against its client-side return control.
+  await expect(page).toHaveURL(/\/places\//, { timeout: 15_000 });
+
   const detailBack = page.getByRole("link", { name: "Back to map" });
-  await expect(detailBack).toBeVisible();
+  await expect(detailBack).toBeVisible({ timeout: 10_000 });
   await expect(detailBack).toHaveAttribute("href", mapReturnHref!);
   await detailBack.click();
 

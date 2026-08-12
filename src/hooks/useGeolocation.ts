@@ -104,22 +104,22 @@ export function readCachedPosition(): { lng: number; lat: number } | null {
 export function useGeolocation() {
   const [state, setState] = useState<GeoState>({ status: "idle" });
 
-  // Hydrate cached position on mount (no permission prompt yet)
+  // Hydrate cached position on mount (no permission prompt yet), then follow
+  // fixes granted by another surface in this tab. Without the same-document
+  // listener, choosing Near me in the top bar updated its own hook but left Ask
+  // showing the county fallback until a reload.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const raw = window.sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const cached = JSON.parse(raw) as GeoPosition;
-      if (Date.now() - cached.timestamp < TTL_MS) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating client-only cached position on mount; sessionStorage is unavailable during SSR
-        setState({ status: "granted", position: cached });
-      } else {
-        window.sessionStorage.removeItem(STORAGE_KEY);
-      }
-    } catch {
-      // ignore parse errors
-    }
+    const syncCachedPosition = () => {
+      const cached = readCachedGeoPosition();
+      setState(
+        cached ? { status: "granted", position: cached } : { status: "idle" },
+      );
+    };
+    syncCachedPosition();
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
+    return () =>
+      window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncCachedPosition);
   }, []);
 
   const requestPosition = useCallback((enableHighAccuracy: boolean) => {

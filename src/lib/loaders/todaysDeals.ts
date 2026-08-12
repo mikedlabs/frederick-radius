@@ -2,6 +2,13 @@ import data from "@/data/field-notes.json";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { verifiedLabel, fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import type { DealRow } from "@/lib/deals/dealRow";
+
+export {
+  dealHoursForDay,
+  dealOfferForDay,
+  type DealRow,
+} from "@/lib/deals/dealRow";
 
 /**
  * Today's Deals — the verified, day-of-week-aware specials happening TODAY,
@@ -611,46 +618,6 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
         a.name.localeCompare(b.name),
     )
     .slice(0, limit);
-}
-
-/** One verified deal, shaped for the day-aware /deals almanac browser. */
-export type DealRow = {
-  slug: string;
-  name: string;
-  town?: string;
-  category?: string;
-  photo?: string;
-  /** Backward-compatible full display offer, with leading day + hours removed. */
-  offer: string;
-  /** Short scan headline distilled without replacing the complete offer. */
-  headline: string;
-  /** A source-stated restriction lifted from the offer, when present. */
-  terms?: string;
-  /** Complete cleaned public offer before any selected-day narrowing. */
-  fullOffer: string;
-  /** Selected-day display copy. Unrelated weekday clauses are excluded. */
-  offerByDay?: Partial<Record<number, string>>;
-  /** Selected-day time labels. Mixed schedules stay separate here. */
-  hoursByDay?: Partial<Record<number, string>>;
-  /** Shared run-time only. Undefined when timing differs by weekday. */
-  hours?: string;
-  /** Weekday indices (0=Sun) named in the deal text. Empty = a standing
-   *  special with no fixed day — shown honestly on its own shelf, never
-   *  pinned to a day it doesn't claim. */
-  days: number[];
-  source_url?: string;
-  verified: string | null;
-  confidence: string;
-};
-
-/** Selected-day offer with a safe fallback for standing/legacy rows. */
-export function dealOfferForDay(row: DealRow, day: number): string {
-  return row.offerByDay?.[day] ?? row.offer;
-}
-
-/** Selected-day timing with a safe fallback for standing/legacy rows. */
-export function dealHoursForDay(row: DealRow, day: number): string | undefined {
-  return row.hoursByDay?.[day] ?? row.hours;
 }
 
 /**

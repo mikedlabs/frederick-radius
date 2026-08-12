@@ -1,11 +1,16 @@
+import TRANSIT_RAW from "@/data/transit.json";
+import TRANSIT_NETWORK from "@/data/transit-network.json";
+import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+
 /**
  * TransIT Frederick — public transit routes + stops.
  *
- * HONEST SOURCING: this module serves Maryland Open Data route lines and
- * stop points. The separate, confirmed TransIT static GTFS snapshot lives in
- * src/data/transit.json, while GTFS-realtime vehicle and TripUpdates feeds are
- * handled by transitRealtime.ts. Do not describe this weekly Socrata geometry
- * as live vehicle or arrival data.
+ * HONEST SOURCING: committed official TransIT GTFS is the canonical route
+ * geometry for every Radius surface. Maryland Open Data remains a named,
+ * fail-soft geometry fallback and the source for route/stop freshness context.
+ * GTFS-realtime vehicle and TripUpdates feeds are handled by
+ * transitRealtime.ts. Static route geometry must never be described as live
+ * vehicle or arrival data.
  *
  * What IS reliable + keyless today on Maryland Open Data (Socrata):
  *   - "Frederick County TransIT Routes" (2xca-jw6k) — 36 routes with
@@ -195,9 +200,95 @@ export async function getFrederickTransitRoutes(): Promise<TransitRoute[]> {
 export type LineFC = {
   type: "FeatureCollection";
   features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
+  source?: "official-gtfs" | "maryland-open-data-fallback";
+  sourceLabel?: string;
+  generatedAt?: string;
 };
 
-import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+type StaticTransitData = {
+  generatedAt?: string;
+  routes: Array<{ id: string; short: string; name: string }>;
+  shapes?: Record<string, number[][]>;
+};
+
+type StaticTransitNetwork = {
+  shapeVariants?: Record<
+    string,
+    Array<{
+      id: string;
+      directionIds: number[];
+      headsigns: string[];
+      points: number[][];
+    }>
+  >;
+};
+
+/**
+ * Build the one canonical route collection from the committed official GTFS
+ * snapshot. The build steward validates route/shape references before these
+ * files reach main, so map consumers receive stable GTFS route IDs rather than
+ * provider-specific GIS segment IDs. GTFS points are [lat, lng]; GeoJSON uses
+ * [lng, lat].
+ */
+export function officialTransitRouteShapesFC(): LineFC {
+  const data = TRANSIT_RAW as StaticTransitData;
+  const network = TRANSIT_NETWORK as StaticTransitNetwork;
+  const routeById = new Map(data.routes.map((route) => [route.id, route]));
+  const publishedShapes =
+    network.shapeVariants && Object.keys(network.shapeVariants).length > 0
+      ? Object.entries(network.shapeVariants).flatMap(([routeId, variants]) =>
+          variants.map((variant) => ({
+            routeId,
+            variantId: variant.id,
+            directionIds: variant.directionIds,
+            headsigns: variant.headsigns,
+            points: variant.points,
+          })),
+        )
+      : Object.entries(data.shapes ?? {}).map(([routeId, points]) => ({
+          routeId,
+          variantId: routeId,
+          directionIds: [] as number[],
+          headsigns: [] as string[],
+          points,
+        }));
+
+  return {
+    type: "FeatureCollection",
+    source: "official-gtfs",
+    sourceLabel: "Official TransIT GTFS",
+    generatedAt: data.generatedAt,
+    features: publishedShapes.flatMap(
+      ({ routeId, variantId, directionIds, headsigns, points }) => {
+        const coordinates = points
+          .filter(
+            (point) =>
+              point.length >= 2 &&
+              Number.isFinite(point[0]) &&
+              Number.isFinite(point[1]),
+          )
+          .map(([lat, lng]) => [lng, lat]);
+        if (coordinates.length < 2) return [];
+        const route = routeById.get(routeId);
+        return [
+          {
+            type: "Feature" as const,
+            geometry: { type: "LineString", coordinates },
+            properties: {
+              routeId,
+              name: route?.name ?? "TransIT route",
+              short: route?.short ?? "",
+              variantId,
+              directionIds: directionIds.join(","),
+              headsigns: headsigns.join(" · "),
+              source: "Official TransIT GTFS",
+            },
+          },
+        ];
+      },
+    ),
+  };
+}
 
 export function transitRouteShapesFC(raw: unknown): LineFC {
   const feats = (raw as { features?: Feature[] })?.features;
@@ -213,20 +304,38 @@ export function transitRouteShapesFC(raw: unknown): LineFC {
       const [s, w, n, e] = BBOX;
       if (lat < s || lat > n || lng < w || lng > e) continue;
       const p = f.properties ?? {};
+      const routeId = pick(p, "route_id", "Route ID", "gis_object_id") ?? "unknown";
       out.push({
         type: "Feature",
         geometry: g,
         properties: {
-          name: pick(p, "route_name", "Route Name", "routename") ?? "Route",
+          routeId,
+          name:
+            pick(p, "route_name", "Route Name", "routename") ??
+            canonicalRouteName(p) ??
+            "TransIT route",
+          short: routeId,
           destination: pick(p, "destination", "Destination") ?? "",
+          source: "Maryland Open Data fallback",
         },
       });
     }
   }
-  return { type: "FeatureCollection", features: out };
+  return {
+    type: "FeatureCollection",
+    source: "maryland-open-data-fallback",
+    sourceLabel: "Maryland Open Data fallback",
+    features: out,
+  };
 }
 
-export async function getFrederickTransitRouteShapes(): Promise<LineFC> {
+/**
+ * Fetch the secondary GIS geometry only when the committed official GTFS
+ * snapshot cannot produce a drawable route collection. This feed is useful
+ * resilience, but it is not allowed to silently replace the rider-facing
+ * network because its segment IDs and publication timing differ from GTFS.
+ */
+export async function getMarylandOpenDataTransitRouteShapes(): Promise<LineFC> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -235,17 +344,38 @@ export async function getFrederickTransitRouteShapes(): Promise<LineFC> {
       headers: { Accept: "application/json" },
       next: { revalidate: 604800 },
     });
-    if (!res.ok) return { type: "FeatureCollection", features: [] };
+    if (!res.ok) {
+      return {
+        type: "FeatureCollection",
+        source: "maryland-open-data-fallback",
+        sourceLabel: "Maryland Open Data fallback",
+        features: [],
+      };
+    }
     // Display-slimming (payload audit 2026-07-02: raw route shapes were
     // 247 KB of /map HTML). 5 decimals ≈ 1.1 m; 0.00008° ≈ 9 m — routes
     // follow roads users zoom into, so the tolerance stays tighter than
     // the boundary overlays'. Applied here, not in the pure normalizer.
-    return slimGeometryFC(transitRouteShapesFC(await res.json()), { decimals: 5, tolerance: 0.00008 });
+    return slimGeometryFC(transitRouteShapesFC(await res.json()), {
+      decimals: 5,
+      tolerance: 0.00008,
+    });
   } catch {
-    return { type: "FeatureCollection", features: [] };
+    return {
+      type: "FeatureCollection",
+      source: "maryland-open-data-fallback",
+      sourceLabel: "Maryland Open Data fallback",
+      features: [],
+    };
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function getFrederickTransitRouteShapes(): Promise<LineFC> {
+  const official = officialTransitRouteShapesFC();
+  if (official.features.length > 0) return official;
+  return getMarylandOpenDataTransitRouteShapes();
 }
 
 // ── Stops (#3 phase 2 — Proposal D: data freshness gate) ──────────

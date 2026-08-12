@@ -42,6 +42,11 @@ describe("runtime source health registry", () => {
 
     expect(sourceIds).toContain("mta_marc_rt");
     expect(sourceIds).toContain("md_wzdx");
+    expect(sourceIds).toContain("md_sha_road_closures");
+    expect(sourceIds).toContain("cof_sidewalks");
+    expect(sourceIds).toContain("cof_path_plan");
+    expect(sourceIds).toContain("cof_capital_improvement");
+    expect(sourceIds).toContain("cof_development_review");
     expect(sourceIds).toContain("fc_planning_projects");
     expect(sourceIds).not.toContain("fcpl_libraries");
     expect(sourceIds).not.toContain("visit_frederick");

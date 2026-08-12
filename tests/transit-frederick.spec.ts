@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { normalizeTransitRoutes } from "@/lib/integrations/transitFrederick";
+import { describe, it, expect, vi } from "vitest";
+import {
+  getFrederickTransitRouteShapes,
+  normalizeTransitRoutes,
+  normalizeTransitStops,
+  officialTransitRouteShapesFC,
+  transitRouteShapesFC,
+} from "@/lib/integrations/transitFrederick";
 
 // Socrata GeoJSON export shape (the_geom -> feature.geometry, other
 // columns -> properties, lowercased/underscored).
@@ -131,7 +137,54 @@ describe("normalizeTransitRoutes — 2026 schema (rt_long_nm)", () => {
   });
 });
 
-import { transitRouteShapesFC } from "@/lib/integrations/transitFrederick";
+describe("officialTransitRouteShapesFC (canonical geometry)", () => {
+  it("publishes GTFS route IDs and names for every route pattern", () => {
+    const fc = officialTransitRouteShapesFC();
+
+    expect(fc.source).toBe("official-gtfs");
+    expect(fc.sourceLabel).toBe("Official TransIT GTFS");
+    expect(fc.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(fc.features.length).toBeGreaterThan(17);
+    expect(
+      fc.features.every(
+        (feature) =>
+          typeof feature.properties.routeId === "string" &&
+          feature.properties.routeId.length > 0 &&
+          typeof feature.properties.name === "string" &&
+          feature.properties.name.length > 0 &&
+          feature.properties.source === "Official TransIT GTFS",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the realtime-compatible Route 15 identity and its published patterns", () => {
+    const route15 = officialTransitRouteShapesFC().features.filter(
+      (feature) => feature.properties.short === "15",
+    );
+
+    expect(route15.length).toBeGreaterThan(0);
+    expect(
+      route15.every(
+        (feature) =>
+          feature.properties.routeId === "9349" &&
+          feature.properties.name === "15 Connector" &&
+          typeof feature.properties.variantId === "string",
+      ),
+    ).toBe(true);
+  });
+
+  it("uses the committed official snapshot without calling the GIS fallback", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      const fc = await getFrederickTransitRouteShapes();
+      expect(fc.source).toBe("official-gtfs");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+});
+
 describe("transitRouteShapesFC (geometry foundation)", () => {
   it("keeps in-county route lines with light props, drops the rest", () => {
     const fc = transitRouteShapesFC(raw);
@@ -143,15 +196,38 @@ describe("transitRouteShapesFC (geometry foundation)", () => {
     expect(fc.features.length).toBeGreaterThanOrEqual(2);
     expect(names).toContain("Route 10 Golden Mile");
     expect(fc.features.every((f) => f.geometry)).toBe(true);
+    expect(fc.source).toBe("maryland-open-data-fallback");
+    expect(
+      fc.features.every(
+        (feature) =>
+          typeof feature.properties.routeId === "string" &&
+          typeof feature.properties.name === "string" &&
+          feature.properties.source === "Maryland Open Data fallback",
+      ),
+    ).toBe(true);
+  });
+  it("retains Route 15 identity and a canonical name in the fallback", () => {
+    const route15 = transitRouteShapesFC(raw2026).features.find(
+      (feature) => feature.properties.routeId === "15",
+    );
+    expect(route15?.properties).toMatchObject({
+      routeId: "15",
+      short: "15",
+      name: "15 Connector",
+      source: "Maryland Open Data fallback",
+    });
   });
   it("returns empty FC for junk", () => {
-    expect(transitRouteShapesFC(null)).toEqual({ type: "FeatureCollection", features: [] });
+    expect(transitRouteShapesFC(null)).toEqual({
+      type: "FeatureCollection",
+      source: "maryland-open-data-fallback",
+      sourceLabel: "Maryland Open Data fallback",
+      features: [],
+    });
   });
 });
 
 // Stops loader (added Proposal D — MD Open Data 4zcx-89nc).
-import { normalizeTransitStops } from "@/lib/integrations/transitFrederick";
-
 const stopsRaw = {
   type: "FeatureCollection",
   features: [

@@ -39,20 +39,29 @@ describe("horizonOf — live gate", () => {
     expect(horizonOf(future, bounds(["trivia"]))).toBe("later");
   });
 
-  it("live-set still overrides a started event whose end is unreliable/past", () => {
-    // Started an hour ago, end mistakenly equals start (degenerate window);
-    // the live-set keeps it live because it HAS started.
+  it("a live-set flag cannot override an unreliable end", () => {
+    // Started an hour ago, end mistakenly equals start (degenerate window).
+    // Keep it visible under Today, but do not claim it is happening now.
     const started = ev("featured", NOW - HOUR, NOW - HOUR);
-    expect(horizonOf(started, bounds(["featured"]))).toBe("live");
+    expect(horizonOf(started, bounds(["featured"]))).toBe("today");
   });
 
-  it("keeps a zero-duration feed row live for the assumed two-hour runtime", () => {
+  it("keeps a zero-duration feed row under Today for the assumed visibility window", () => {
     const start = NOW - HOUR;
     const zeroDuration = ev("brunch", start, start);
-    expect(horizonOf(zeroDuration, bounds())).toBe("live");
+    expect(horizonOf(zeroDuration, bounds())).toBe("today");
     expect(
       horizonOf(zeroDuration, { ...bounds(), now: start + 2 * HOUR + 1 }),
     ).toBeNull();
+  });
+
+  it("keeps an end-of-day sentinel under Today without promoting it live", () => {
+    const sentinel = {
+      slug: "exercise",
+      starts_at: "2026-07-01T09:15:00-04:00",
+      ends_at: "2026-07-01T23:59:00-04:00",
+    };
+    expect(horizonOf(sentinel, bounds(["exercise"]))).toBe("today");
   });
 
   it("a not-yet-started event today is 'today', not live", () => {

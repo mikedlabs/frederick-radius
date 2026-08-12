@@ -7,13 +7,6 @@ import { Layer, Popup, Source, useMap } from "react-map-gl/maplibre";
 import type { MapLayerMouseEvent } from "maplibre-gl";
 import type { RoadWorkZoneFC } from "./types";
 
-const SOURCE_ID = "radius-wzdx-work-zones";
-const CASING_ID = "radius-wzdx-work-zones-casing";
-const LINE_ID = "radius-wzdx-work-zones-line";
-const HIT_ID = "radius-wzdx-work-zones-hit";
-const POINT_ID = "radius-wzdx-work-zones-point";
-const POINT_HIT_ID = "radius-wzdx-work-zones-point-hit";
-
 type WorkZonePopup = RoadWorkZoneFC["features"][number]["properties"] & {
   lng: number;
   lat: number;
@@ -43,15 +36,27 @@ export default function RoadWorkZones({
   show,
   data,
   gate,
+  sourceKey = "wzdx-work-zones",
+  defaultSourceLabel = "Maryland WZDx · Road work",
 }: {
   show: boolean;
   data: RoadWorkZoneFC;
   /** Puts this internally-owned popup under AppMap's one-foreground gate. */
   gate?: LiveLayerGate;
+  /** Multiple official road feeds share this renderer under the one Traffic
+   * control, so each source needs stable, non-colliding MapLibre layer ids. */
+  sourceKey?: string;
+  defaultSourceLabel?: string;
 }) {
   const { current: map } = useMap();
   const [popup, setPopup] = useState<WorkZonePopup | null>(null);
   useLiveLayerGate(gate, () => setPopup(null));
+  const sourceId = `radius-${sourceKey}`;
+  const casingId = `${sourceId}-casing`;
+  const lineId = `${sourceId}-line`;
+  const hitId = `${sourceId}-hit`;
+  const pointId = `${sourceId}-point`;
+  const pointHitId = `${sourceId}-point-hit`;
 
   useEffect(() => {
     const instance = map?.getMap();
@@ -76,9 +81,20 @@ export default function RoadWorkZones({
         detail: string("detail"),
         laneImpact: string("laneImpact"),
         status: string("status"),
+        lifecycle:
+          string("lifecycle") === "scheduled" ? "scheduled" : "current",
+        impactKind:
+          string("impactKind") === "closure"
+            ? "closure"
+            : string("impactKind") === "limited"
+              ? "limited"
+              : "work-zone",
         startAt: string("startAt"),
         endAt: string("endAt"),
         updatedAt: string("updatedAt"),
+        checkedAt: string("checkedAt"),
+        crossStreets: string("crossStreets"),
+        sourceLabel: string("sourceLabel"),
         sourceUrl:
           string("sourceUrl") ??
           "https://chart.maryland.gov/",
@@ -91,7 +107,7 @@ export default function RoadWorkZones({
       instance.getCanvas().style.cursor = "";
     };
 
-    const hitLayers = [HIT_ID, POINT_HIT_ID].filter((id) =>
+    const hitLayers = [hitId, pointHitId].filter((id) =>
       instance.getLayer(id),
     );
     if (hitLayers.length === 0) return;
@@ -107,22 +123,23 @@ export default function RoadWorkZones({
         instance.off("mouseleave", id, leave);
       }
     };
-  }, [data, gate, map, show]);
+  }, [data, gate, hitId, map, pointHitId, show]);
 
   if (!show || data.features.length === 0) return null;
 
   const end = timeLabel(popup?.endAt);
   const updated = timeLabel(popup?.updatedAt);
+  const checked = timeLabel(popup?.checkedAt);
 
   return (
     <>
       <Source
-        id={SOURCE_ID}
+        id={sourceId}
         type="geojson"
         data={data as unknown as GeoJSON.FeatureCollection}
       >
         <Layer
-          id={CASING_ID}
+          id={casingId}
           type="line"
           filter={["==", ["geometry-type"], "LineString"]}
           layout={{ "line-cap": "round", "line-join": "round" }}
@@ -133,19 +150,32 @@ export default function RoadWorkZones({
           }}
         />
         <Layer
-          id={LINE_ID}
+          id={lineId}
           type="line"
           filter={["==", ["geometry-type"], "LineString"]}
           layout={{ "line-cap": "round", "line-join": "round" }}
           paint={{
-            "line-color": "#F4A340",
+            "line-color": [
+              "match",
+              ["get", "impactKind"],
+              "closure",
+              "#C8442F",
+              "limited",
+              "#D77A2F",
+              "#F4A340",
+            ],
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 12, 2.25, 16, 4.5],
             "line-dasharray": [1.2, 1.1],
-            "line-opacity": 0.95,
+            "line-opacity": [
+              "case",
+              ["==", ["get", "lifecycle"], "scheduled"],
+              0.58,
+              0.95,
+            ],
           }}
         />
         <Layer
-          id={HIT_ID}
+          id={hitId}
           type="line"
           filter={["==", ["geometry-type"], "LineString"]}
           layout={{ "line-cap": "round", "line-join": "round" }}
@@ -156,19 +186,32 @@ export default function RoadWorkZones({
           }}
         />
         <Layer
-          id={POINT_ID}
+          id={pointId}
           type="circle"
           filter={["==", ["geometry-type"], "Point"]}
           paint={{
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 14, 8],
-            "circle-color": "#F4A340",
+            "circle-color": [
+              "match",
+              ["get", "impactKind"],
+              "closure",
+              "#C8442F",
+              "limited",
+              "#D77A2F",
+              "#F4A340",
+            ],
             "circle-stroke-color": "#5B321D",
             "circle-stroke-width": 2,
-            "circle-opacity": 0.96,
+            "circle-opacity": [
+              "case",
+              ["==", ["get", "lifecycle"], "scheduled"],
+              0.62,
+              0.96,
+            ],
           }}
         />
         <Layer
-          id={POINT_HIT_ID}
+          id={pointHitId}
           type="circle"
           filter={["==", ["geometry-type"], "Point"]}
           paint={{
@@ -206,7 +249,7 @@ export default function RoadWorkZones({
                   className="text-[10px] font-bold uppercase tracking-[0.11em]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  Maryland WZDx · Road work
+                  {popup.sourceLabel ?? defaultSourceLabel}
                 </p>
                 <h3
                   className="mt-0.5 text-[15px] font-semibold leading-tight"
@@ -239,6 +282,14 @@ export default function RoadWorkZones({
                 {[popup.laneImpact, popup.detail].filter(Boolean).join(" · ")}
               </p>
             ) : null}
+            {popup.crossStreets ? (
+              <p
+                className="mt-1 text-[12px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Between {popup.crossStreets}
+              </p>
+            ) : null}
             <div
               className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]"
               style={{ color: "var(--app-ink-3)" }}
@@ -246,6 +297,7 @@ export default function RoadWorkZones({
               {popup.status ? <span>{popup.status}</span> : null}
               {end ? <span>Expected through {end}</span> : null}
               {updated ? <span>Updated {updated}</span> : null}
+              {checked ? <span>Checked {checked}</span> : null}
             </div>
             <a
               href={popup.sourceUrl}

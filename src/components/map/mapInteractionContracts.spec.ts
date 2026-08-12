@@ -109,4 +109,14 @@ describe("map interaction state contracts", () => {
     expect(css).toContain("animation: map-lock-on 520ms");
     expect(css).not.toContain("animation: map-lock-on 520ms var(--app-ease-out) infinite");
   });
+
+  it("keeps the mobile map flat while preserving pinch zoom and forgiving taps", () => {
+    const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
+
+    expect(source).toContain("dragRotate={false}");
+    expect(source).toContain("touchPitch={false}");
+    expect(source).toContain("e.target.touchZoomRotate.disableRotation()");
+    expect(source).toContain("clickTolerance={8}");
+    expect(source).not.toContain("touchZoomRotate={false}");
+  });
 });

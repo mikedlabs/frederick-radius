@@ -3,8 +3,9 @@
  *
  * Pulse intentionally does not fetch or serialize this payload during its
  * initial render. The first map reveal calls this endpoint instead. The
- * integration's upstream request is cached for one week, and these response
- * headers let the edge serve repeat map opens without another function run.
+ * committed official GTFS snapshot is canonical; Maryland Open Data is used
+ * only if that snapshot has no drawable routes. These response headers let
+ * the edge serve repeat map opens without another function run.
  */
 import { NextResponse } from "next/server";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
@@ -25,5 +26,13 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ shapes }, { headers: CACHE_HEADERS });
+  return NextResponse.json(
+    {
+      shapes,
+      source: shapes.source,
+      sourceLabel: shapes.sourceLabel,
+      generatedAt: shapes.generatedAt,
+    },
+    { headers: CACHE_HEADERS },
+  );
 }

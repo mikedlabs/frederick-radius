@@ -125,9 +125,12 @@ describe("road intelligence model", () => {
       title: "Bridge repair",
       laneImpact: "1 lane closed",
       status: "Active",
+      lifecycle: "current",
+      impactKind: "work-zone",
       startAt: NOW.toISOString(),
       endAt: undefined,
       updatedAt: NOW.toISOString(),
+      sourceLabel: "Maryland WZDx · Road work",
       sourceUrl: MDOT_WZDX_SOURCE_URL,
     });
     expect(feature.properties).not.toHaveProperty("positionConfidence");

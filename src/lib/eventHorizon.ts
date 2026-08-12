@@ -11,8 +11,11 @@
  * Pure and unit-tested: every boundary is injected (no hidden clock),
  * so it is deterministic and runs identically on server and client.
  */
-import { easternParts, easternWallToUtcISO } from "@/lib/tz";
-import { effectiveTimedEventEndMs } from "@/lib/eventWhenLabel";
+import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
+import {
+  effectiveTimedEventEndMs,
+  isEventLiveNow,
+} from "@/lib/eventWhenLabel";
 
 export type Horizon = "live" | "today" | "weekend" | "week" | "later";
 
@@ -114,28 +117,22 @@ export function horizonOf<E extends EventLike>(
     if (start <= b.now) return "later";
     // future range: fall through to the dated buckets on its opening day.
   } else {
-    // "Live" requires the event to have actually STARTED. The curated live-set
-    // (b.live) may override an unreliable or missing END time, but it must NEVER
-    // force a FUTURE event live — that's what let an upstream feed's mis-dated
-    // occurrence (a far-future instance) render "Happening now". So the gate is:
-    // started AND (still running OR flagged live). A future start can never match.
-    // "Still running" trusts the stated end only up to MAX_LIVE_SESSION_MS
-    // after start: feeds stamp end-of-day ends on daytime events, which kept
-    // a noon event in "Happening now" at 11 PM (beta-reviewer catch, Jul
-    // 2026). Past the cap it falls to the dated buckets like any over event.
-    // A missing/equal/invalid feed end is a common placeholder, not evidence
-    // that the event lasts zero minutes. Use the same assumed runtime as the
-    // rest of the app so a 10 AM event remains visible after 10:00.
+    // "Live" requires a started event AND a usable end time that still lies in
+    // the future. A live-set flag is not allowed to overrule missing, equal,
+    // invalid, or end-of-day-sentinel data: those rows remain discoverable for
+    // a bounded period, but their cards disclose "end time unavailable"
+    // instead of making an unsupported live claim.
     const liveUntil = effectiveTimedEventEndMs(e);
-    if (start <= b.now && (liveUntil >= b.now || b.live.has(e.slug))) return "live";
+    if (isEventLiveNow(e, new Date(b.now))) return "live";
     if (liveUntil < b.now) return null; // over, and not live → not upcoming
-    // STARTED but no longer live (the session cap expired even though the
-    // feed's stated end runs to midnight): neither "happening now" nor
-    // "coming up" is true, so it belongs in neither. Letting it fall
-    // through put five earlier-today events at the TOP of "Coming up" at
-    // 9:47 PM (fresh-eyes audit, Jul 2026) — noon anniversaries and
-    // afternoon programs presented as still ahead of you.
-    if (start <= b.now) return null;
+    if (start <= b.now) {
+      // An event that started today but has no trustworthy end stays under
+      // Today while its bounded visibility window is open. It must never fall
+      // into Coming up: that would present an already-started event as future.
+      return easternDayKey(new Date(start)) === easternDayKey(new Date(b.now))
+        ? "today"
+        : null;
+    }
   }
 
   if (start >= b.now && start < b.next24) return "today";

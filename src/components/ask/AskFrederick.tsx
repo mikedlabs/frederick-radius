@@ -340,6 +340,22 @@ function storedAskScope(): Scope | null {
   return getScope();
 }
 
+/**
+ * Ask is a decision surface, so a fresh browser-approved device fix is more
+ * useful than an unscoped county default. Keep an explicit whole-county or
+ * named-town choice; otherwise reuse the short-lived, on-device fix as Near
+ * me. Network/IP estimates never enter this function.
+ */
+export function preferredAskScope(
+  storedScope: Scope | null,
+  hasDevicePosition: boolean,
+): Scope | null {
+  if (!hasDevicePosition || (storedScope && storedScope !== "nearme")) {
+    return storedScope;
+  }
+  return "nearme";
+}
+
 function askContextKey(
   scope: Scope | null,
   fallbackHomeScope: Scope | null,
@@ -1178,6 +1194,7 @@ export default function AskFrederick({
   const visibleResultRef = useRef<AskResult | null>(null);
   const submittedQueryRef = useRef("");
   const locationRequestPendingRef = useRef(false);
+  const approvedLocationCheckRef = useRef(false);
   const pendingNearbyQueryRef = useRef<{
     query: string;
     selfContained: boolean;
@@ -1195,6 +1212,7 @@ export default function AskFrederick({
   // follows; signed-out visitors transparently retain the device-local saves.
   const { slugs: followedPlaceSlugs } = useFollowedSlugs();
   const geolocation = useGeolocation();
+  const refreshGrantedLocation = geolocation.requestIfGranted;
   const workspace = mode === "workspace";
   const hasDevicePosition =
     geolocation.state.status === "granted" || hasCachedPosition;
@@ -1208,9 +1226,12 @@ export default function AskFrederick({
 
   useEffect(() => {
     setInteractionReady(true);
-    setCurrentScope(storedAskScope());
+    const cachedPosition = readCachedPosition();
+    setCurrentScope(
+      preferredAskScope(storedAskScope(), Boolean(cachedPosition)),
+    );
     setHomeScope(parseScope(getHomeMuni()));
-    setHasCachedPosition(Boolean(readCachedPosition()));
+    setHasCachedPosition(Boolean(cachedPosition));
     const unsubscribe = subscribeScopeChange((scope) => {
       requestIdRef.current += 1;
       abortRef.current?.abort();
@@ -1224,6 +1245,15 @@ export default function AskFrederick({
       abortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (approvedLocationCheckRef.current || readCachedPosition()) return;
+    approvedLocationCheckRef.current = true;
+    // This never opens a permission prompt. It only refreshes a position when
+    // the browser says the visitor already granted geolocation, matching the
+    // map's returning-visitor contract.
+    void refreshGrantedLocation();
+  }, [refreshGrantedLocation]);
 
   useEffect(() => {
     if (!showAreaChooser) return;
@@ -1313,10 +1343,11 @@ export default function AskFrederick({
     const pending = pendingNearbyQueryRef.current;
     const wasRequested = locationRequestPendingRef.current;
     if (!pending && !wasRequested) {
-      // A fresh cached fix is useful for ranking, but passive hydration is
-      // not a new scope choice. In particular, it must not replace an
-      // explicit town or abort a permalink request already in flight.
+      // A fresh browser-approved fix restores Ask's nearby default. Preserve an
+      // explicit county or town choice, and never abort a permalink request
+      // already in flight.
       setHasCachedPosition(true);
+      setCurrentScope((scope) => preferredAskScope(scope, true));
       return;
     }
     locationRequestPendingRef.current = false;
@@ -1410,7 +1441,10 @@ export default function AskFrederick({
     // Keep an unset scope distinct from an explicitly chosen whole-county
     // scope. Local place hunts should ask for an area on a visitor's first
     // request; a person who deliberately chose the county should keep it.
-    const selectedScope = options.scope ?? getScope() ?? currentScope;
+    const selectedScope =
+      options.scope ??
+      currentScope ??
+      preferredAskScope(getScope(), Boolean(position));
     const resolvedScope = requestScope(contextualQuery, selectedScope, Boolean(position));
     // URL questions can run before the mount effect hydrates React state.
     // Reading the browser preference here keeps that first request correctly

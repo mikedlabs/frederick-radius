@@ -15,6 +15,11 @@ import {
   type EventCardVisual,
 } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import {
+  eventHasTrustworthyEnd,
+  isEventLiveNow,
+  startedEventTimingDisclosure,
+} from "@/lib/eventWhenLabel";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -27,6 +32,8 @@ export type EventPosterCardProps = {
   whyItMatters?: string;
   /** Compact shelves do not add an outer live badge, so the poster owns it. */
   live?: boolean;
+  /** Server-captured page time, used for stable started/unknown-end copy. */
+  nowISO?: string;
   /**
    * Shelf cards keep a taller desktop face so two-line titles, metadata, and
    * reason chips never collide with the category row.
@@ -72,8 +79,10 @@ export default function EventPosterCard({
   priorityImage = true,
   whyItMatters,
   live = false,
+  nowISO,
   layout = "hero",
 }: EventPosterCardProps) {
+  const cardNow = nowISO ? new Date(nowISO) : null;
   const safeVisual = posterVisualForEvent(event, visual);
   const onPhoto = safeVisual !== null;
   const date = eventDateBlock(event);
@@ -85,9 +94,19 @@ export default function EventPosterCard({
   const status = event.status ?? "scheduled";
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
+  const confirmedLive =
+    status === "scheduled" &&
+    live &&
+    (cardNow
+      ? isEventLiveNow(event, cardNow)
+      : !event.is_all_day && eventHasTrustworthyEnd(event));
+  const timingText =
+    status === "scheduled" && cardNow
+      ? startedEventTimingDisclosure(event, cardNow) ?? date.time
+      : date.time;
   const statusBg =
     isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
-  const reasons = eventReasons(event);
+  const reasons = eventReasons(event, cardNow ?? undefined);
   const accessLabel = communicationAccessLabels(event)[0];
   const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
   const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
@@ -188,7 +207,7 @@ export default function EventPosterCard({
         {/* Amber fill with Ink on top — the brand table's own spec for the
             live/caution state (5.7:1, clears AA). It was the positive green
             with white text, which made LIVE and Free the same signal. */}
-        {live && (
+        {confirmedLive && (
           <span
             className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
             style={{ background: "var(--app-amber)", color: "var(--app-ink)" }}
@@ -236,8 +255,8 @@ export default function EventPosterCard({
               {date.weekday} {date.month} {date.day}
             </span>
           )}
-          {date.time && (
-            <span className="font-mono tabular-nums">{" · "}{date.time}</span>
+          {timingText && (
+            <span className="font-mono tabular-nums">{" · "}{timingText}</span>
           )}
           {venueLabel ? ` · ${venueLabel}` : ""}
           {safeVisual && event.distance_m !== undefined

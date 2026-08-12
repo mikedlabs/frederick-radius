@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { warmMapPlaces } from "./mapPlacesClient";
 
 /**
  * MapWarmup — start downloading the heavy map chunk while the server is
@@ -19,6 +20,7 @@ import { useEffect } from "react";
 export default function MapWarmup() {
   useEffect(() => {
     void import("./AppMap");
+    warmMapPlaces();
   }, []);
   return null;
 }
