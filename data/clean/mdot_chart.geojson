@@ -6,29 +6,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.559326,
-          39.50969
-        ]
-      },
-      "properties": {
-        "external_id": "c5012bb35e51067a006ad32ec4235c0a",
-        "incident_type": "special",
-        "description": "MD 17 (WOLFSVILLE RD) @ US 40 (BALTO NATIONAL PIKE) [Traffic Control Signal]",
-        "county": "Frederick",
-        "road": "MD 17",
-        "direction": "North",
-        "location": "MD 17 (WOLFSVILLE RD) @ US 40 (BALTO NATIONAL PIKE) [Traffic Control Signal]",
-        "severity": "low",
-        "started_at": "2026-08-10T22:33:23.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           -77.35535,
           39.324097
         ]

@@ -6,20 +6,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.57323891742772,
-          39.45877840504259
+          -77.54129116774614,
+          39.37379089469058
         ]
       },
       "properties": {
-        "external_id": "22472266",
+        "external_id": "22486106",
         "summary": "Roadway Tree Maintenance",
-        "description": "Called reported a tree has fallen across the road. location Palmer Rd, Middle town. it's a dead end. \n\ncaller mentioned her house is at 8383 Palmer Rd, and it's not far from her place. more informatio",
-        "address": "Palmer Rd Middletown, Maryland, 21769",
+        "description": "A large tree branch fell and completely blocked traffic on Ella Ct. this afternoon.  My neighbors and I cut it up enough to remove it from the roadway, and left it on the shoulder of Ella Ct.  Please",
+        "address": "Ella Ct Jefferson, Maryland, 21755",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-10T19:52:58.000Z",
-        "url": "https://seeclickfix.com/issues/22472266",
+        "reported_at": "2026-08-12T00:27:28.000Z",
+        "url": "https://seeclickfix.com/issues/22486106",
         "source": "seeclickfix"
       }
     },
@@ -28,64 +28,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.54582020339828,
-          39.47951778998439
+          -77.39800738399998,
+          39.472263965000025
         ]
       },
       "properties": {
-        "external_id": "22469908",
-        "summary": "Roadway Mowing Request",
-        "description": "Mowing request due to obstructed view of roadway",
-        "address": "8939 Old Harmony Rd Myersville, Maryland, 21773",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-10T17:10:23.000Z",
-        "url": "https://seeclickfix.com/issues/22469908",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.58417696579554,
-          39.501982002962094
-        ]
-      },
-      "properties": {
-        "external_id": "22469643",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Caller is requesting removal of a dead tree located on his property but it's about 15 feet on the road. The tree may fall and create a hazard on the roadway as the tree is dead. Please call the number",
-        "address": "9811 Mount Tabor Rd Myersville, Maryland, 21773",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-10T16:54:22.000Z",
-        "url": "https://seeclickfix.com/issues/22469643",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.18094242999942,
-          39.39570365859095
-        ]
-      },
-      "properties": {
-        "external_id": "22468087",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Tree down across the roadway at 5943 Woodville Rd",
-        "address": "5943 Woodville Rd Mount Airy, Maryland, 21771",
+        "external_id": "22484774",
+        "summary": "Roadway General Request",
+        "description": "I live at 4519 Monrovia Blvd, intersecting with Stovepipe LN. The light in front of my house has not worked in over 7 to 8 years. It just flickers and goes out all night long.  I reported it several y",
+        "address": "21701 Frederick, Maryland",
         "status": "closed",
         "status_raw": "Closed",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-10T15:14:13.000Z",
-        "url": "https://seeclickfix.com/issues/22468087",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-11T21:40:59.000Z",
+        "url": "https://seeclickfix.com/issues/22484774",
         "source": "seeclickfix"
       }
     },
@@ -94,196 +50,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.3591,
-          39.3347
+          -77.50701914373508,
+          39.41220164223312
         ]
       },
       "properties": {
-        "external_id": "22467917",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "Follow-up to previously closed request #34035. That request resulted in patching near the entrance/front section of Bealls Farm Ct under the FY24 Patch & Repair contract, but the pavement failure insi",
-        "address": "3621 Bealls Farm Ct Urbana, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-10T15:05:03.000Z",
-        "url": "https://seeclickfix.com/issues/22467917",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.40095085267022,
-          39.28825045541013
-        ]
-      },
-      "properties": {
-        "external_id": "22466242",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "This is a county turnaround that sees regular use by utility trucks, garbage trucks, county vehicles, and other heavy traffic. The surface is in poor condition and needs maintenance.\nI would appreciat",
-        "address": "7621 Stewart Hill Rd Adamstown, Maryland, 21710",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-10T13:20:05.000Z",
-        "url": "https://seeclickfix.com/issues/22466242",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.3994834057053,
-          39.287301765111806
-        ]
-      },
-      "properties": {
-        "external_id": "22466171",
-        "summary": "Roadway Mowing Request",
-        "description": "Hi guys, the entire street has to be mowed back. the street is already tight and so the branches and weeds and grass growing into the street makes turns very hard",
-        "address": "7635 Stewart Hill Rd Adamstown, Maryland, 21710",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-10T13:14:45.000Z",
-        "url": "https://seeclickfix.com/issues/22466171",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.57967340057725,
-          39.331798289272704
-        ]
-      },
-      "properties": {
-        "external_id": "22465470",
-        "summary": "Gravel Road Maintenance",
-        "description": "Can I get about a 1/2 load of gravel to fill in some potholes? Also, I could use about 80 cubic yards of fill dirt back on the farm if you have any you are looking to unload. Just dumped sited is prep",
-        "address": "3401-3729 Ausherman Rd Knoxville, MD, 21758, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Gravel Road Maintenance",
-        "reported_at": "2026-08-10T12:04:02.000Z",
-        "url": "https://seeclickfix.com/issues/22465470",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.55406049431957,
-          39.358801494692315
-        ]
-      },
-      "properties": {
-        "external_id": "22465126",
-        "summary": "Roadway Tree Maintenance",
-        "description": "When leaving our Copperfield subdivision and trying to see oncoming traffic on MD 180, there is a tree with limbs (located at 3246 Jefferson Pike) blocking the view when looking to the right as leavin",
-        "address": "Copperfield Dr Jefferson, Maryland, 21755",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-10T10:02:44.000Z",
-        "url": "https://seeclickfix.com/issues/22465126",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.507288845958,
-          39.475594339648
-        ]
-      },
-      "properties": {
-        "external_id": "22464618",
-        "summary": "Roadway Mowing Request",
-        "description": "Coming up hill between 8924-8931 Hawbottom Road, left hand side of roadway needs trimming/weeds cut. In fact entire road way needs side of road mowed , from US Route 40 to the end of county maintenanc",
-        "address": "8924 Hawbottom Rd Middletown, MD, 21769, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-10T03:44:10.000Z",
-        "url": "https://seeclickfix.com/issues/22464618",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.4079,
-          39.4189
-        ]
-      },
-      "properties": {
-        "external_id": "22458466",
-        "summary": "Sewer Issue",
-        "description": "utility cover covered in concrete",
-        "address": "100-198 E 4th St Frederick, Maryland, 21701",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Sewer Issue",
-        "reported_at": "2026-08-08T21:33:00.000Z",
-        "url": "https://seeclickfix.com/issues/22458466",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.4102,
-          39.4141
-        ]
-      },
-      "properties": {
-        "external_id": "22458375",
-        "summary": "Sewer Issue",
-        "description": "Broken gas utility cover",
-        "address": "18 E Patrick St Frederick, Maryland, 21701",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Sewer Issue",
-        "reported_at": "2026-08-08T21:12:26.000Z",
-        "url": "https://seeclickfix.com/issues/22458375",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.34748971342205,
-          39.399820258420384
-        ]
-      },
-      "properties": {
-        "external_id": "22458024",
+        "external_id": "22483276",
         "summary": "Water Issue",
-        "description": "water valve box in roadway is damaged and above the pavement level, potential hazard",
-        "address": "Ridgefield Ln & Spring Ridge Pkwy Spring Ridge, MD, 21701, USA",
-        "status": "closed",
-        "status_raw": "Closed",
+        "description": "",
+        "address": "6520 Jefferson Blvd Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
         "category": "Water Issue",
-        "reported_at": "2026-08-08T19:52:33.000Z",
-        "url": "https://seeclickfix.com/issues/22458024",
+        "reported_at": "2026-08-11T19:30:39.000Z",
+        "url": "https://seeclickfix.com/issues/22483276",
         "source": "seeclickfix"
       }
     },
@@ -292,20 +72,328 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.60106876380793,
-          39.52937980415014
+          -77.50705124724279,
+          39.41223961054234
         ]
       },
       "properties": {
-        "external_id": "22451312",
+        "external_id": "22483185",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Providing on behalf of property owner @ 6606 Jefferson Blvd. Experiencing runoff issues when the existing road inlet in the macadam swale is overwhelmed during moderate rain events.",
+        "address": "6520 Jefferson Blvd Frederick, MD, 21703, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-11T19:24:54.000Z",
+        "url": "https://seeclickfix.com/issues/22483185",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.38172642764714,
+          39.39570005740355
+        ]
+      },
+      "properties": {
+        "external_id": "22482969",
         "summary": "Roadway Tree Maintenance",
-        "description": "Tree down in the left land on Pleasant Walk Rd near the little store on the corner.",
-        "address": "Pleasant Walk Rd Myersville, Maryland, 21773",
+        "description": "Tree on side of roadway. Damaged constituent cable box. Wants to know and ETA on removal of tree",
+        "address": "5927 Quinn Orchard Rd Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T19:11:01.000Z",
+        "url": "https://seeclickfix.com/issues/22482969",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5597,
+          39.4265
+        ]
+      },
+      "properties": {
+        "external_id": "22481539",
+        "summary": "Roadway Mowing Request",
+        "description": "mower broke many campaign signs southbound 17.",
+        "address": "21769 Middletown, Maryland",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-11T17:37:49.000Z",
+        "url": "https://seeclickfix.com/issues/22481539",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.47534252119965,
+          39.30841102248608
+        ]
+      },
+      "properties": {
+        "external_id": "22480996",
+        "summary": "Roadway Tree Maintenance",
+        "description": "At Adams St. and Mountville Rd trees and branches have fell on the sidewalks and side of the roadway.",
+        "address": "Adams St Adamstown, Maryland, 21710",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T17:04:56.000Z",
+        "url": "https://seeclickfix.com/issues/22480996",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.280890791342,
+          39.359319782518
+        ]
+      },
+      "properties": {
+        "external_id": "22480980",
+        "summary": "Roadway General Request",
+        "description": "I lived at 4519 Monrovia Blvd, 9 years, this coming October. Since this light has been installed, maybe a year or so since we’ve moved in, it’s never worked properly. It just flickers a little when it",
+        "address": "4519 Monrovia Blvd Monrovia, MD, 21770, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-11T17:03:00.000Z",
+        "url": "https://seeclickfix.com/issues/22480980",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.48904571751555,
+          39.32941236285691
+        ]
+      },
+      "properties": {
+        "external_id": "22480919",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Constituent states that trees and bushes are in need of trimming at Ballenger Creek Rd and Cap Stine Rd",
+        "address": "3512 Ballenger Creek Pike Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T16:58:45.000Z",
+        "url": "https://seeclickfix.com/issues/22480919",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3821821517228,
+          39.39524450096587
+        ]
+      },
+      "properties": {
+        "external_id": "22480113",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Tree came down during last night's storm. Requesting the county remove. Not in roadway.",
+        "address": "5921 Quinn Orchard Rd Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T16:09:07.000Z",
+        "url": "https://seeclickfix.com/issues/22480113",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.51824173029432,
+          39.425419226676595
+        ]
+      },
+      "properties": {
+        "external_id": "22480042",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Mr. Doherty said he called yesterday about tree limbs that fell in the roadway at the corner of Garnet Drive and Jasper Road. He noticed today that someone had pushed everything into the culvert. He w",
+        "address": "4224 Garnet Dr Middletown, Maryland, 21769",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T16:05:58.000Z",
+        "url": "https://seeclickfix.com/issues/22480042",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.32145086271706,
+          39.38646118479475
+        ]
+      },
+      "properties": {
+        "external_id": "22479806",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Missing water main access cover in road.",
+        "address": "Broadmoor Ter N Ijamsville, Maryland, 21754",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-11T15:49:57.000Z",
+        "url": "https://seeclickfix.com/issues/22479806",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5415632024128,
+          39.45569110117741
+        ]
+      },
+      "properties": {
+        "external_id": "22479500",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Caller called in on the 5th about the same issue but still hasn't been resolved. His trailer is about 13' and hits the low hanging limbs on Pete Wiles Rd. He says there's about a dozen trees that need",
+        "address": "8000-8098 Pete Wiles Rd Middletown, MD, 21769, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T15:27:43.000Z",
+        "url": "https://seeclickfix.com/issues/22479500",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.62397365533931,
+          39.43736742010868
+        ]
+      },
+      "properties": {
+        "external_id": "22479004",
+        "summary": "Roadway General Request",
+        "description": "Constituent states that Mt Church Rd has become unsafe due to excessive speed being traveled by vehicles on the roadway in front of his home and the entire stretch of this roadway. Requesting to evalu",
+        "address": "1330 Mountain Church Rd Middletown, Maryland, 21769",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-11T14:55:25.000Z",
+        "url": "https://seeclickfix.com/issues/22479004",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.232458897509,
+          39.392029992022
+        ]
+      },
+      "properties": {
+        "external_id": "22478663",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "growing washout",
+        "address": "12403 Catoctin View Dr Mount Airy, Maryland, 21771",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-11T14:31:41.000Z",
+        "url": "https://seeclickfix.com/issues/22478663",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.53901426565788,
+          39.49555387950569
+        ]
+      },
+      "properties": {
+        "external_id": "22478205",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Culvert near this property is damaged which is causing drainage issues and washing out road. The constituent is requesting area to be cleaned out and possibly placing a warning sign for trucks so that",
+        "address": "3708 Brethren Church Rd Myersville, Maryland, 21773",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-11T14:02:07.000Z",
+        "url": "https://seeclickfix.com/issues/22478205",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.44166826710183,
+          39.37892946170682
+        ]
+      },
+      "properties": {
+        "external_id": "22477544",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Tree fell down from storm yesterday and is blocking sidwalk.",
+        "address": "6511 Ballenger Run Blvd Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T13:14:29.000Z",
+        "url": "https://seeclickfix.com/issues/22477544",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.26174543484197,
+          39.43347561864429
+        ]
+      },
+      "properties": {
+        "external_id": "22477520",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Tree across the roadway at 7240 Central Church Rd.",
+        "address": "7240 Central Church Rd New Market, Maryland, 21774",
         "status": "closed",
         "status_raw": "Closed",
         "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-07T18:35:07.000Z",
-        "url": "https://seeclickfix.com/issues/22451312",
+        "reported_at": "2026-08-11T13:12:32.000Z",
+        "url": "https://seeclickfix.com/issues/22477520",
         "source": "seeclickfix"
       }
     },
@@ -314,20 +402,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.52336768318125,
-          39.48179879920564
+          -77.36205309702504,
+          39.39421780305844
         ]
       },
       "properties": {
-        "external_id": "22450629",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Drainage pipe underneath the driveway near the road needs to be extended.",
-        "address": "9043 Hollow Rd Middletown, Maryland, 21769",
+        "external_id": "22477299",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Turtle ran over by vehicle, likely dead.",
+        "address": "River Oaks Ter Bartonsville, MD, 21704, USA",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-07T17:39:00.000Z",
-        "url": "https://seeclickfix.com/issues/22450629",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-11T12:54:44.000Z",
+        "url": "https://seeclickfix.com/issues/22477299",
         "source": "seeclickfix"
       }
     },
@@ -336,108 +424,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.47084248693234,
-          39.47855701433268
+          -77.54289349426652,
+          39.30356999144157
         ]
       },
       "properties": {
-        "external_id": "22450469",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Constituent says culvert is filled with debris and is causing flooding on the roadway",
-        "address": "8813 Indian Springs Rd Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-07T17:25:42.000Z",
-        "url": "https://seeclickfix.com/issues/22450469",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.47044909671338,
-          39.47905802434816
-        ]
-      },
-      "properties": {
-        "external_id": "22450390",
-        "summary": "Property Damage",
-        "description": "Constituent said mailbox was damaged by snowplow. Someone came out and put a bungy cord around it and said someone else would be out to complete the repair, but it never happened. He said that he want",
-        "address": "8821 Indian Springs Rd Frederick, MD, 21702, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Property Damage",
-        "reported_at": "2026-08-07T17:19:53.000Z",
-        "url": "https://seeclickfix.com/issues/22450390",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.4805936158913,
-          39.50636738746176
-        ]
-      },
-      "properties": {
-        "external_id": "22449967",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Requesting stop sign on Hamburg Rd. Caller says we recently installed a guardrail in the area, but says it would be beneficial for a stop sign as well. He said his wife was involved in an accident in",
-        "address": "10023-10181 Hamburg Rd Frederick, MD, 21702, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-07T16:49:32.000Z",
-        "url": "https://seeclickfix.com/issues/22449967",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.34469668816062,
-          39.3918158834711
-        ]
-      },
-      "properties": {
-        "external_id": "22447811",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "At 5724 and 5730 Bells Lane, the drainage areas on this road is filled with storm debris which overflows onto the roadway. Constituent would like the county to clean out the culvert and setup a design",
-        "address": "5724 Bells Ln Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-07T14:03:02.000Z",
-        "url": "https://seeclickfix.com/issues/22447811",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.45886797430995,
-          39.525462475379065
-        ]
-      },
-      "properties": {
-        "external_id": "22446670",
-        "summary": "Gravel Road Maintenance",
-        "description": "Constituent requesting the gravel road portion of Mountaindale be visited for repairs AW",
-        "address": "5770-6000 Mountaindale Rd Thurmont, MD, 21788, USA",
+        "external_id": "22476888",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Constituent reports tree across the road on Lander Road near Sunrise Dr.",
+        "address": "Lander Rd Jefferson, Maryland, 21755",
         "status": "closed",
         "status_raw": "Closed",
-        "category": "Gravel Road Maintenance",
-        "reported_at": "2026-08-07T11:48:45.000Z",
-        "url": "https://seeclickfix.com/issues/22446670",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-11T12:13:47.000Z",
+        "url": "https://seeclickfix.com/issues/22476888",
         "source": "seeclickfix"
       }
     }
