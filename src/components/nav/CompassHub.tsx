@@ -16,6 +16,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   History,
   Landmark,
   List,
@@ -86,15 +87,6 @@ const GROUP_META: Record<
 
 const COMPASS_INTENT_DEFINITIONS = [
   {
-    id: "decide-now",
-    label: "Decide now",
-    description: "Ask Radius, find something open, or make a plan.",
-    moreLabel: "More for right now",
-    icon: Sparkles,
-    groupIds: ["decide"],
-    featuredIds: ["open-now", "plan", "collections"],
-  },
-  {
     id: "go-out",
     label: "Eat, drink & go out",
     description: "Find restaurants, drinks, food trucks, events, and live music.",
@@ -106,7 +98,7 @@ const COMPASS_INTENT_DEFINITIONS = [
   {
     id: "get-around",
     label: "Get around",
-    description: "Open the map, parking, transit, or road cameras.",
+    description: "Use the map, parking, transit, or road cameras.",
     moreLabel: "More ways to get around",
     icon: Route,
     groupIds: ["getting-around"],
@@ -320,6 +312,34 @@ export function commonCompassTasks(
   });
 }
 
+export function compassSuggestionForHour(hour: number): {
+  itemId: "events" | "open-now";
+  reason: string;
+} {
+  if (hour >= 5 && hour < 10) {
+    return {
+      itemId: "open-now",
+      reason: "Start with places that have current morning hours.",
+    };
+  }
+  if (hour >= 10 && hour < 17) {
+    return {
+      itemId: "events",
+      reason: "See what is happening around Frederick County today.",
+    };
+  }
+  if (hour >= 17 && hour < 22) {
+    return {
+      itemId: "events",
+      reason: "See what is on around Frederick County tonight.",
+    };
+  }
+  return {
+    itemId: "open-now",
+    reason: "Find somewhere with posted hours for right now.",
+  };
+}
+
 function subscribeHomeTown(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -397,7 +417,7 @@ export default function CompassHub() {
   const [query, setQuery] = useState("");
   const [deckView, setDeckView] = useState<CompassDeckView | null>(null);
   const [activeIntent, setActiveIntent] =
-    useState<CompassIntentId | null>("decide-now");
+    useState<CompassIntentId | null>(null);
   const [editingPins, setEditingPins] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([
     ...DEFAULT_TOOL_DECK_PIN_IDS,
@@ -530,6 +550,14 @@ export default function CompassHub() {
     const item = itemById.get(id);
     return item ? [item] : [];
   });
+  // Noon is the stable server/first-client snapshot. Once local settings are
+  // hydrated, the row quietly changes to the device's current daypart.
+  const contextualSuggestion = compassSuggestionForHour(
+    hydrated ? new Date().getHours() : 12,
+  );
+  const contextualItem = contextualSuggestion
+    ? itemById.get(contextualSuggestion.itemId) ?? null
+    : null;
   const activeIntentDefinition = COMPASS_INTENT_DEFINITIONS.find(
     (intent) => intent.id === activeIntent,
   );
@@ -567,9 +595,12 @@ export default function CompassHub() {
     deckView && deckView !== "all" && !isCompassIntentId(deckView)
       ? groups.find((group) => group.id === deckView) ?? null
       : null;
-  const selectedIntentItems = selectedIntent
+  const selectedIntentGroups = selectedIntent
     ? selectedIntent.groupIds.flatMap(
-        (groupId) => groups.find((group) => group.id === groupId)?.items ?? [],
+        (groupId) => {
+          const group = groups.find((candidate) => candidate.id === groupId);
+          return group ? [group] : [];
+        },
       )
     : [];
   return (
@@ -588,7 +619,7 @@ export default function CompassHub() {
             className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Compass
+            Compass · All tools
           </p>
           <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
             What do you need?
@@ -642,6 +673,14 @@ export default function CompassHub() {
         />
       ) : (
         <>
+          {contextualItem && contextualSuggestion ? (
+            <ContextualToolSuggestion
+              item={contextualItem}
+              reason={contextualSuggestion.reason}
+              intentProps={intentProps}
+            />
+          ) : null}
+
           <PinnedTools
             items={pinnedItems}
             intentProps={intentProps}
@@ -668,7 +707,7 @@ export default function CompassHub() {
         title={
           selectedIntent?.label ??
           selectedGroup?.label ??
-          (editingPins ? "Manage shortcuts" : "All tools")
+          (editingPins ? "Edit shortcuts" : "All tools")
         }
         description={
           editingPins
@@ -695,28 +734,37 @@ export default function CompassHub() {
           {editingPins ? (
             <p
               aria-live="polite"
-              className={`min-h-4 text-[11px] ${pinNotice ? "" : "sr-only"}`}
+              className={`min-h-4 text-[12px] ${pinNotice ? "" : "sr-only"}`}
               style={{ color: "var(--app-ink-3)" }}
             >
               {pinNotice || "Pin changes will be announced here."}
             </p>
           ) : null}
 
-          {selectedIntent ? (
-            <ToolLedger
-              items={selectedIntentItems}
+          {editingPins ? (
+            <DeckToolBrowser
+              key="edit-shortcuts"
+              groups={directory.groups}
               pinnedIds={pinnedIds}
               onTogglePin={togglePin}
               intentProps={intentProps}
-              showPinControls={editingPins}
+              showPinControls
+            />
+          ) : selectedIntent ? (
+            <DeckToolBrowser
+              key={selectedIntent.id}
+              groups={selectedIntentGroups}
+              pinnedIds={pinnedIds}
+              onTogglePin={togglePin}
+              intentProps={intentProps}
             />
           ) : selectedGroup ? (
-            <ToolLedger
-              items={selectedGroup.items}
+            <DeckToolBrowser
+              key={selectedGroup.id}
+              groups={[selectedGroup]}
               pinnedIds={pinnedIds}
               onTogglePin={togglePin}
               intentProps={intentProps}
-              showPinControls={editingPins}
             />
           ) : (
             <DeckGroupDirectory
@@ -754,7 +802,7 @@ function PinnedTools({
           className="inline-flex min-h-11 items-center rounded-full px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
-          Manage
+          Edit
         </button>
       </div>
 
@@ -782,8 +830,18 @@ function PinnedTools({
                       aria-hidden
                     />
                   </span>
-                  <span className="line-clamp-2 max-w-full text-[10.5px] font-semibold leading-[1.15]">
+                  <span className="line-clamp-2 max-w-full text-[11.5px] font-semibold leading-[1.2]">
                     {item.label}
+                    {item.external ? (
+                      <>
+                        <ExternalLink
+                          className="ml-1 inline-block h-3 w-3 align-[-0.1em]"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                        <span className="sr-only"> Opens in a new tab.</span>
+                      </>
+                    ) : null}
                   </span>
                 </Link>
               </li>
@@ -800,12 +858,72 @@ function PinnedTools({
           }}
         >
           <span className="block text-[13px] font-semibold">Choose your shortcuts</span>
-          <span className="mt-1 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          <span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             Open all tools and pin the ones you use most.
           </span>
         </button>
       )}
 
+    </section>
+  );
+}
+
+function ContextualToolSuggestion({
+  item,
+  reason,
+  intentProps,
+}: {
+  item: DirectoryItem;
+  reason: string;
+  intentProps: (item: DirectoryItem) => LinkIntentProps;
+}) {
+  return (
+    <section aria-labelledby="compass-suggestion-heading">
+      <Link
+        href={item.href}
+        prefetch={false}
+        {...externalLinkProps(item)}
+        {...intentProps(item)}
+        className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        style={{
+          borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
+          background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
+        }}
+      >
+        <span
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{
+            color: "var(--app-brand-press)",
+            background: "color-mix(in srgb, var(--app-brand) 10%, transparent)",
+          }}
+          aria-hidden
+        >
+          <Sparkles className="h-[18px] w-[18px]" strokeWidth={2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            id="compass-suggestion-heading"
+            className="block text-[11px] font-semibold uppercase tracking-[0.08em]"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Useful right now
+          </span>
+          <span className="mt-0.5 block text-[14px] font-semibold leading-tight">
+            {item.label}
+          </span>
+          <span
+            className="mt-0.5 block text-[12px] leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {reason}
+          </span>
+        </span>
+        <ArrowRight
+          className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
+          strokeWidth={2.2}
+          aria-hidden
+        />
+      </Link>
     </section>
   );
 }
@@ -821,7 +939,7 @@ function RecentTools({
     <section aria-labelledby="compass-recent-heading" className="flex min-w-0 items-center gap-2.5">
       <h2
         id="compass-recent-heading"
-        className="shrink-0 text-[11px] font-medium"
+        className="shrink-0 text-[12px] font-medium"
         style={{ color: "var(--app-ink-3)" }}
       >
         Recent
@@ -835,7 +953,7 @@ function RecentTools({
                 prefetch={false}
                 {...externalLinkProps(item)}
                 {...intentProps(item)}
-                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
                   borderColor: "var(--app-border)",
                   color: "var(--app-ink)",
@@ -848,6 +966,9 @@ function RecentTools({
                   aria-hidden
                 />
                 {item.label}
+                {item.external ? (
+                  <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
+                ) : null}
               </Link>
             </li>
           ))}
@@ -896,7 +1017,12 @@ export function liveLineForIntent(
     const key = keys.find((candidate) => candidate.id === keyId);
     const face = key?.faces?.[0];
     if (key?.status === "ok" && face?.value && face.label) {
-      return `${face.value} ${face.label}`;
+      const value = face.value.trim();
+      const label = face.label.trim();
+      if (label.toLocaleLowerCase().startsWith(value.toLocaleLowerCase())) {
+        return label;
+      }
+      return /^\d+$/.test(value) ? `${value} ${label}` : `${value} · ${label}`;
     }
   }
   return null;
@@ -998,7 +1124,7 @@ function CompassIntentBoard({
                     {intent.label}
                   </span>
                   <span
-                    className="mt-1 block text-[11.5px] leading-snug"
+                    className="mt-1 block text-[12px] leading-snug"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {intent.description}
@@ -1007,7 +1133,7 @@ function CompassIntentBoard({
                     // The one live fact this intent can currently state, from
                     // the county's own feeds. Creek, because it is data.
                     <span
-                      className="mt-1 block text-[11px] font-medium tabular-nums leading-snug"
+                      className="mt-1 block text-[12px] font-medium tabular-nums leading-snug"
                       style={{ color: "var(--app-cool)" }}
                     >
                       {liveLines[intent.id]}
@@ -1046,7 +1172,7 @@ function CompassIntentBoard({
                             strokeWidth={2}
                             aria-hidden
                           />
-                          <span className="line-clamp-2 text-[11px] font-semibold leading-[1.15]">
+                          <span className="line-clamp-2 text-[12px] font-semibold leading-[1.2]">
                             {item.label}
                           </span>
                         </Link>
@@ -1056,7 +1182,7 @@ function CompassIntentBoard({
                   <button
                     type="button"
                     onClick={() => onOpen(intent.id)}
-                    className="tactile-interactive flex min-h-11 w-full items-center justify-between border-t px-3 text-left text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    className="tactile-interactive flex min-h-11 w-full items-center justify-between border-t px-3 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                     style={{
                       borderColor: "var(--app-border)",
                       color: "var(--app-brand-press)",
@@ -1074,7 +1200,7 @@ function CompassIntentBoard({
       <button
         type="button"
         onClick={() => onOpen("all")}
-        className="tactile-interactive flex min-h-11 w-full items-center gap-2 rounded-[var(--app-radius-md)] px-2 text-left text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        className="tactile-interactive flex min-h-11 w-full items-center gap-2 rounded-[var(--app-radius-md)] px-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         style={{ color: "var(--app-brand-press)" }}
       >
         <span
@@ -1125,16 +1251,16 @@ function DeckGroupDirectory({
                 aria-hidden
               />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">{group.label}</span>
+              <span className="block text-[14px] font-semibold">{group.label}</span>
               <span
-                className="mt-0.5 block truncate text-[10.5px]"
+                className="mt-0.5 block truncate text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {group.description}
               </span>
             </span>
             <span
-              className="font-mono text-[10px] tabular-nums"
+              className="font-mono text-[11px] tabular-nums"
               style={{ color: "var(--app-ink-3)" }}
             >
               {group.items.length}
@@ -1189,6 +1315,7 @@ function ToolSearchResults({
           pinnedIds={pinnedIds}
           onTogglePin={onTogglePin}
           intentProps={intentProps}
+          showPinControls
         />
       ) : (
         <EmptySearch query={query} />
@@ -1212,7 +1339,7 @@ function EmptySearch({ query }: { query: string }) {
       }}
     >
       <p className="text-[13px] font-semibold">No tool is named “{query}.”</p>
-      <p className="mt-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         Search Frederick itself or ask Radius in plain language.
       </p>
     </div>
@@ -1274,11 +1401,11 @@ function CompassSearchActions({
             aria-hidden
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-[12px] font-semibold leading-tight">
+            <span className="block text-[13px] font-semibold leading-tight">
               {item.label}
             </span>
             <span
-              className="mt-1 block line-clamp-1 text-[10px]"
+              className="mt-1 block line-clamp-1 text-[12px]"
               style={{ color: "var(--app-ink-3)" }}
             >
               {item.description}
@@ -1291,6 +1418,102 @@ function CompassSearchActions({
           />
         </Link>
       ))}
+    </div>
+  );
+}
+
+function DeckToolBrowser({
+  groups,
+  pinnedIds,
+  onTogglePin,
+  intentProps,
+  showPinControls = false,
+}: {
+  groups: ToolDeckGroup[];
+  pinnedIds: string[];
+  onTogglePin: (item: DirectoryItem) => void;
+  intentProps: (item: DirectoryItem) => LinkIntentProps;
+  showPinControls?: boolean;
+}) {
+  const [filter, setFilter] = useState("");
+  const visibleGroups = searchToolDeckGroups(groups, filter);
+  const total = groups.reduce((count, group) => count + group.items.length, 0);
+  const showGroupHeadings = groups.length > 1;
+
+  return (
+    <div className="space-y-4">
+      {total > 7 ? (
+        <label className="block">
+          <span className="sr-only">Search tools in this section</span>
+          <span className="relative block">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <input
+              type="search"
+              role="searchbox"
+              inputMode="search"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="Filter these tools"
+              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{
+                borderColor: "var(--app-border)",
+                color: "var(--app-ink)",
+              }}
+            />
+            {filter ? (
+              <button
+                type="button"
+                onClick={() => setFilter("")}
+                aria-label="Clear section search"
+                className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
+          </span>
+        </label>
+      ) : null}
+
+      {visibleGroups.length > 0 ? (
+        visibleGroups.map((group) => (
+          <section key={group.id} className="space-y-2.5">
+            {showGroupHeadings ? (
+              <div>
+                <h3 className="text-[14px] font-semibold">{group.label}</h3>
+                <p
+                  className="mt-0.5 text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {group.description}
+                </p>
+              </div>
+            ) : null}
+            <ToolLedger
+              items={group.items}
+              pinnedIds={pinnedIds}
+              onTogglePin={onTogglePin}
+              intentProps={intentProps}
+              showPinControls={showPinControls}
+            />
+          </section>
+        ))
+      ) : (
+        <p
+          role="status"
+          className="rounded-[var(--app-radius-md)] border px-4 py-5 text-[13px] font-medium"
+          style={{
+            borderColor: "var(--app-border)",
+            color: "var(--app-ink-3)",
+          }}
+        >
+          No tools in this section match “{filter.trim()}.”
+        </p>
+      )}
     </div>
   );
 }
@@ -1340,17 +1563,28 @@ function ToolLedger({
                   {item.label}
                 </span>
                 <span
-                  className="mt-0.5 block line-clamp-2 text-[10.5px] leading-snug"
+                  className="mt-0.5 block line-clamp-2 text-[12px] leading-snug"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {item.description}
                 </span>
               </span>
-              <ArrowRight
-                className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5"
-                strokeWidth={2.2}
-                aria-hidden
-              />
+              {item.external ? (
+                <>
+                  <ExternalLink
+                    className="h-4 w-4 shrink-0 opacity-55"
+                    strokeWidth={2.1}
+                    aria-hidden
+                  />
+                  <span className="sr-only"> Opens in a new tab.</span>
+                </>
+              ) : (
+                <ArrowRight
+                  className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5"
+                  strokeWidth={2.2}
+                  aria-hidden
+                />
+              )}
             </Link>
             {showPinControls ? (
               <button

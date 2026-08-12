@@ -226,6 +226,12 @@
       "production_state": "migration_recorded",
       "migration_record": "public_event_archive_by_slug",
       "note": "Supabase migration history records public_event_archive_by_slug at version 20260804022701. Live checks confirmed the exact-slug RPC returns only canonical_slug and snapshot, invalid slugs return no rows, anon and authenticated cannot select the archive tables, and only the function is executable."
+    },
+    {
+      "file": "0041_data_truth_foundation.sql",
+      "sha256": "4b95d322f614acc7ea5f095b838681a6c892c7806caffad542e406b3ffed3ca3",
+      "production_state": "effects_absent",
+      "note": "Live Supabase check on 2026-08-11 found all four tables and expected indexes absent; no migration history record exists."
     }
   ]
 }

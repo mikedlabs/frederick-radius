@@ -10,13 +10,27 @@ import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import type { TravelMode } from "@/lib/geo";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
-import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
-import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
+import {
+  applyMapboxFieldGuideConfig,
+  installMapboxFieldGuideTerrain,
+  MAPBOX_FIELD_GUIDE_CONFIG,
+  MAPBOX_FIELD_GUIDE_STYLE,
+  MAPBOX_LABEL_FONT_MEDIUM,
+} from "@/components/map/mapboxFieldGuideStyle";
 import { installCountySpotlight } from "@/components/map/countySpotlight";
 import { BRAND } from "@/lib/brand";
-import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/maplibre";
+import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { hasWebGL } from "@/components/map/mapCameraHelpers";
+import {
+  FREDERICK_BROWSE_MAX_BOUNDS,
+  FREDERICK_BROWSE_MIN_ZOOM,
+  FREDERICK_MAX_ZOOM,
+  toFlatBounds,
+} from "@/components/map/constants";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { isFatalMapboxError } from "@/components/map/mapboxFailure";
 
 /**
  * RadiusMap — the big interactive county canvas for /radius.
@@ -33,16 +47,17 @@ import "maplibre-gl/dist/maplibre-gl.css";
  *    the canvas + overlays.
  */
 
-const Map = dynamic(() => import("react-map-gl/maplibre").then((m) => m.default), {
+const Map = dynamic(() => import("react-map-gl/mapbox").then((m) => m.default), {
   ssr: false,
   loading: () => null,
 });
-const Source = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Source), { ssr: false });
-const Layer = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Layer), { ssr: false });
-const AttributionControl = dynamic(() => import("react-map-gl/maplibre").then((m) => m.AttributionControl), { ssr: false });
-const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-map-gl/maplibre").then((m) => m.Popup), { ssr: false });
+const Source = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Source), { ssr: false });
+const Layer = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Layer), { ssr: false });
+const AttributionControl = dynamic(() => import("react-map-gl/mapbox").then((m) => m.AttributionControl), { ssr: false });
+const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker), { ssr: false });
+const Popup = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Popup), { ssr: false });
 
+const MAP_LOAD_WATCHDOG_MS = 18_000;
 // Frederick County bbox in the [W, S, E, N] form Mapbox wants for
 // fitBounds. Source: src/lib/integrations/overpass.ts (kept in sync).
 const COUNTY_BOUNDS: [[number, number], [number, number]] = [
@@ -175,7 +190,7 @@ export default function RadiusMap({
 }) {
   const accentHex = MODE_HEX[mode] ?? ACCENTS.slate;
   const mapRef = useRef<MapRef | null>(null);
-  const mapStyle = useFrederickFlavorStyle();
+  const mapLoadedRef = useRef(false);
   const [categoryMarkersReady, setCategoryMarkersReady] = useState(false);
   // Map layers in the DEFAULT (Nearby) map — the GIS overlays were only
   // reachable in Whole-county mode before, so the field-guide layers
@@ -197,6 +212,23 @@ export default function RadiusMap({
   // device). Mapbox throws on init in these cases; without catching it
   // the map goes blank while the page still says "N places in radius."
   const [mapFailed, setMapFailed] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  useEffect(() => {
+    const check = window.setTimeout(() => {
+      if (!MAPBOX_TOKEN || !hasWebGL()) setMapFailed(true);
+    }, 0);
+    return () => window.clearTimeout(check);
+  }, []);
+  // A blocked style request or stalled renderer does not always emit a useful
+  // error. Bound the cold load so this surface can never remain an empty canvas.
+  useEffect(() => {
+    if (mapLoaded || mapFailed) return;
+    const watchdog = window.setTimeout(
+      () => setMapFailed(true),
+      MAP_LOAD_WATCHDOG_MS,
+    );
+    return () => window.clearTimeout(watchdog);
+  }, [mapFailed, mapLoaded]);
   // The place a user tapped on the map — shows the preview popup. Null
   // when no place is selected (the default).
   const [selected, setSelected] = useState<{
@@ -478,10 +510,10 @@ export default function RadiusMap({
     }
   };
 
-  // Branded fallback for runtime WebGL/tile failure. Audit: "Map did not
+  // Branded fallback for runtime WebGL/style failure. Audit: "Map did not
   // load. Nearby places still work." + a retry, instead of a blank box. The
   // reach controls + within-reach list below keep working. (There is no
-  // longer a no-token case: the basemap is served from this origin.)
+  // false claim that the missing canvas also removed those non-map tools.)
   if (mapFailed) {
     return (
       <div
@@ -496,16 +528,14 @@ export default function RadiusMap({
           <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             Nearby places still work. The controls and list below are all here.
           </p>
-          {mapFailed && (
-            <button
-              type="button"
-              onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
-              className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}
-            >
-              Try again
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+            className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
+            style={{ background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -521,13 +551,14 @@ export default function RadiusMap({
         ref={(r) => {
           mapRef.current = r as unknown as MapRef | null;
         }}
-        mapStyle={mapStyle}
-        // Catch fatal init failure (WebGL off, blocked context) → branded
-        // fallback instead of a blank box. Transient tile errors are
-        // ignored so they don't nuke a working map.
+        mapboxAccessToken={MAPBOX_TOKEN}
+        mapStyle={MAPBOX_FIELD_GUIDE_STYLE}
+        config={MAPBOX_FIELD_GUIDE_CONFIG}
+        // Catch credential, style, and cold-load request failures. Transient
+        // tile errors after a successful load do not replace a working map.
         onError={(e) => {
           const msg = String(e?.error?.message ?? "").toLowerCase();
-          if (msg.includes("webgl") || msg.includes("failed to initialize") || msg.includes("context")) {
+          if (isFatalMapboxError(msg, mapLoadedRef.current)) {
             setMapFailed(true);
           }
         }}
@@ -544,18 +575,25 @@ export default function RadiusMap({
           longitude: center.lng,
           latitude: center.lat,
           zoom: 13,
-          // Gentle tilt so the 3D relief reads as dimensional depth
-          // without distorting the reach circle into an unreadable
-          // ellipse — enough to feel the ridges, not a flight-sim angle.
-          pitch: 32,
+          // Keep this 2D until Radius owns a licensed/local DEM. Pitching a
+          // flat basemap only distorts the reach shape and implies terrain
+          // the data does not provide.
+          pitch: 0,
         }}
-        maxPitch={70}
+        maxPitch={0}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
+        clickTolerance={8}
+        maxBounds={toFlatBounds(FREDERICK_BROWSE_MAX_BOUNDS)}
+        minZoom={FREDERICK_BROWSE_MIN_ZOOM}
+        maxZoom={FREDERICK_MAX_ZOOM}
+        reuseMaps
+        fadeDuration={120}
         // Mapbox's logo and credits must remain visible; the compact ⓘ badge
         // (added as a child control) satisfies that without the text bar.
         attributionControl={false}
+        logoPosition="bottom-left"
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -565,7 +603,14 @@ export default function RadiusMap({
         // anonymous dots. styleimagemissing inside the installer covers
         // any category not eagerly added, and survives style reloads.
         onLoad={(e) => {
+          mapLoadedRef.current = true;
+          setMapLoaded(true);
+          // Preserve pinch zoom but stop the combined touch handler from
+          // rotating this intentionally flat map.
+          e.target.touchZoomRotate.disableRotation();
           installCategoryMarkers(e.target);
+          applyMapboxFieldGuideConfig(e.target);
+          installMapboxFieldGuideTerrain(e.target);
           // Install the generated sprite images before mounting the symbol
           // layer. Depending on styleimagemissing alone makes the renderer log
           // one warning per category during the first render even though the
@@ -576,10 +621,6 @@ export default function RadiusMap({
           // as a field-guide page of ONE place, not a window onto an
           // endless world. Eases back as you zoom into a neighborhood.
           installCountySpotlight(e.target);
-          // 3D relief is off for now. It rode Mapbox's proprietary terrain
-          // DEM, which the self-hosted basemap has no license to serve; a
-          // county hillshade built from USGS 3DEP belongs in the same
-          // /public/basemap extract as the tiles, and that is follow-up work.
         }}
         // The invisible hit-pad is listed FIRST so a fingertip near a tiny
         // icon still resolves to the place (Fitts-friendly tap target).
@@ -667,7 +708,7 @@ export default function RadiusMap({
             layout={{
               "text-field": ["get", "name"],
               "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 17, 13],
-              "text-font": MAP_LABEL_FONT_MEDIUM,
+              "text-font": MAPBOX_LABEL_FONT_MEDIUM,
               "text-anchor": "top",
               "text-offset": [0, 1.0],
               "text-optional": true,
@@ -986,9 +1027,14 @@ export default function RadiusMap({
       </div>
 
       {/* Hint for the tap interaction — quiet, only visible when an
-          onCenterChange handler is provided (i.e. user can move pins). */}
+          onCenterChange handler is provided (i.e. user can move pins).
+          It follows Mapbox's logo on the upper-left shelf so the persistent
+          bottom sheet cannot cover either surface. */}
       {onCenterChange && (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[var(--z-map-control)]">
+        <div
+          data-radius-move-hint
+          className="pointer-events-none absolute left-3 top-28 z-[var(--z-map-control)]"
+        >
           <span
             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
             style={{
@@ -1004,7 +1050,10 @@ export default function RadiusMap({
 
       {/* Camera controls — Fit radius / Show county. Right side so they
           don't sit over the Mapbox attribution at the bottom-left. */}
-      <div className="absolute right-3 top-3 z-[var(--z-map-control)] flex flex-col gap-1.5">
+      <div
+        data-radius-map-tools
+        className="absolute right-3 top-3 z-[var(--z-map-control)] flex flex-col gap-1.5"
+      >
         <button
           type="button"
           onClick={fitToRadius}
@@ -1044,8 +1093,14 @@ export default function RadiusMap({
         </button>
         {layersOpen && (
           <div
-            className="flex flex-col gap-1 rounded-[var(--app-radius-md)] border p-1.5 shadow-[var(--app-shadow-2)]"
-            style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)", borderColor: "var(--app-border)", backdropFilter: "blur(8px)" }}
+            data-radius-layer-menu
+            className="absolute top-[5.25rem] flex w-max max-w-[calc(100vw-5.5rem)] flex-col gap-1 rounded-[var(--app-radius-md)] border p-1.5 shadow-[var(--app-shadow-2)]"
+            style={{
+              right: "calc(100% + 0.5rem)",
+              background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)",
+              borderColor: "var(--app-border)",
+              backdropFilter: "blur(8px)",
+            }}
           >
             {/* Live buses — a real-time layer (not a static overlay), so
                 its own toggle. Cool-tinted to match the transit identity. */}

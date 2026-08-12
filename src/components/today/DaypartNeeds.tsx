@@ -211,16 +211,60 @@ export function daypartPickScopeLabel(
   return "Countywide picks";
 }
 
-/** The lead card already prints hours and distance. Use the first remaining
- * evidence-backed reason to explain why it outranked the alternatives without
- * repeating those visible facts or exposing an internal score. */
+function leadAvailabilityClause(place: DaypartPick): string | null {
+  if (place.confidence !== "confirmed") return null;
+  const fact = place.fact?.trim();
+  if (!fact) return null;
+  const until = fact.match(/^Open until\s+(.+)$/i);
+  if (until) return `It is open until ${until[1]}`;
+  const closing = fact.match(/^Closing soon\s*[·-]\s*(.+)$/i);
+  if (closing) return `It closes soon at ${closing[1]}`;
+  if (/^Open 24 hours$/i.test(fact)) return "It is open 24 hours";
+  if (/^Open now$/i.test(fact)) return "Current hours show it is open now";
+  return null;
+}
+
+function leadDistanceClause(distance: string | null | undefined): string | null {
+  const value = distance?.trim();
+  if (!value) return null;
+  const walk = value.match(/^(\d+)\s+min walk$/i);
+  if (walk) return `a ${walk[1]}-minute walk from you`;
+  const miles = value.match(/^([\d.]+)\s+mi$/i);
+  if (miles) return `${miles[1]} ${miles[1] === "1" ? "mile" : "miles"} from you`;
+  const feet = value.match(/^(\d+)\s+ft$/i);
+  if (feet) return `${feet[1]} feet from you`;
+  return `${value} from you`;
+}
+
+/** Explain the lead with the evidence a person can act on first. Exact current
+ * hours and consented-device distance beat popularity or review-volume
+ * signals; editorial and third-party evidence remain useful tie-breakers when
+ * the live answer cannot state either one. */
 export function daypartLeadReason(
   picks: readonly DaypartPick[],
 ): string | null {
-  const reasons = picks[0]?.decisionReasons ?? [];
-  return reasons.find(
-    (reason) => reason.id !== "availability" && reason.id !== "proximity",
-  )?.label ?? null;
+  const lead = picks[0];
+  if (!lead) return null;
+  const availability = leadAvailabilityClause(lead);
+  const distance = leadDistanceClause(lead.distance);
+  if (availability && distance) return `${availability} and is ${distance}.`;
+  if (availability) return `${availability}.`;
+  if (distance) return `It is ${distance}.`;
+
+  const reasons = lead.decisionReasons ?? [];
+  const priority = [
+    "availability",
+    "proximity",
+    "intent-fit",
+    "local-favorite",
+    "hidden-gem",
+    "review-evidence",
+  ];
+  for (const id of priority) {
+    const reason = reasons.find((candidate) => candidate.id === id);
+    if (reason) return reason.label;
+  }
+  return reasons[0]?.label ?? null;
 }
 
 /** Ask the photo proxy for its 1x1 failure signal. This particular shelf can

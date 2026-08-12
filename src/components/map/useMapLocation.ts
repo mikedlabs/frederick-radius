@@ -53,6 +53,7 @@ export function useMapLocation({
   userLoc: LngLat | null;
   userAccuracyM: number | null;
   locationFixTimestamp: number | null;
+  locationAvailability: "available" | "requestable" | "unavailable";
   locating: boolean;
   goNearMe: () => void;
 } {
@@ -242,5 +243,19 @@ export function useMapLocation({
     requestSharedGeolocation();
   };
 
-  return { userLoc, userAccuracyM, locationFixTimestamp, locating, goNearMe };
+  const locationAvailability = userLoc
+    ? "available"
+    : sharedGeolocationState.status === "denied" ||
+        sharedGeolocationState.status === "unavailable"
+      ? "unavailable"
+      : "requestable";
+
+  return {
+    userLoc,
+    userAccuracyM,
+    locationFixTimestamp,
+    locationAvailability,
+    locating,
+    goNearMe,
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Layer, Source } from "react-map-gl/maplibre";
+import { Layer, Source } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BOUNDS } from "./constants";
 
 type LightningLayerState =

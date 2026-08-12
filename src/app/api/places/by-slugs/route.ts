@@ -3,6 +3,8 @@ import {
   normalizeRequestedPlaceSlugs,
   resolvePlacesBySlugs,
 } from "@/lib/loaders/placesBySlugs";
+import { loadLivePlaceEvidence } from "@/lib/loaders/livePlaceEvidence";
+import { applyLivePlaceEvidenceMap } from "@/lib/live-place-evidence";
 
 /**
  * GET /api/places/by-slugs?slugs=a,b,c
@@ -42,7 +44,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const places = resolvePlacesBySlugs(slugs);
+  const snapshotPlaces = resolvePlacesBySlugs(slugs);
+  const evidence = await loadLivePlaceEvidence(
+    snapshotPlaces.map((place) => place.slug),
+  );
+  const places = applyLivePlaceEvidenceMap(snapshotPlaces, evidence);
 
   return NextResponse.json(
     { places },

@@ -9,6 +9,7 @@ export function mapPlaceVisualState(
   slug: string,
   options: {
     amenitiesActive: boolean;
+    sceneFocusActive?: boolean;
     matchSlugs: ReadonlySet<string> | null;
   },
 ): MapPlaceVisualState {
@@ -16,8 +17,13 @@ export function mapPlaceVisualState(
   return {
     dimmed:
       options.amenitiesActive ||
+      options.sceneFocusActive === true ||
       (options.matchSlugs ? !matches : false),
-    emph: !options.amenitiesActive && Boolean(options.matchSlugs) && matches,
+    emph:
+      !options.amenitiesActive &&
+      !options.sceneFocusActive &&
+      Boolean(options.matchSlugs) &&
+      matches,
   };
 }
 

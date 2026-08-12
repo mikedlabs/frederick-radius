@@ -51,6 +51,20 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain("fitBounds(");
   });
 
+  it("keeps transit controls readable when the basemap cannot load", () => {
+    const source = readFileSync(
+      "src/components/transit/TransitMap.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("MAP_LOAD_WATCHDOG_MS = 18_000");
+    expect(source).toContain("isFatalMapboxError(msg, mapLoadedRef.current)");
+    expect(source).toContain("The transit map is temporarily unavailable");
+    expect(source).toContain("The route and arrival information on this page is still available.");
+    expect(source).toContain("transit-map-canvas");
+    expect(source.indexOf("<select")).toBeLessThan(source.indexOf("{mapFailed ? ("));
+  });
+
   it("makes stops on the main map tappable and opens the shared arrival detail", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
     // The arrivals drawer itself moved to the selection-surfaces child (#77);
@@ -73,6 +87,10 @@ describe("transit UI interaction contracts", () => {
       "utf8",
     );
     const page = readFileSync("src/app/(app)/transit/page.tsx", "utf8");
+    const mapSource = readFileSync(
+      "src/components/transit/TransitMap.tsx",
+      "utf8",
+    );
 
     expect(page).toContain("<TransitStopFinder");
     expect(source).toContain("Search bus stops by name");
@@ -85,8 +103,13 @@ describe("transit UI interaction contracts", () => {
     expect(source).toContain(
       'prediction.scheduleRelationship !== "NO_DATA"',
     );
-    expect(page).toContain("TRANSIT_NETWORK");
-    expect(page).toContain("shapeVariants");
+    // Network geometry is owned by TransitMap. The page passes the official
+    // route-shape loader result instead of duplicating the static network
+    // contract in two components.
+    expect(page).toContain("getFrederickTransitRouteShapes");
+    expect(page).toContain("shapes={shapes}");
+    expect(mapSource).toContain("TRANSIT_NETWORK");
+    expect(mapSource).toContain("shapeVariants");
     expect(page).toContain("<TransitServiceAlerts");
   });
 

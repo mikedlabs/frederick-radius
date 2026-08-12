@@ -14,10 +14,16 @@ export type SourceRegistryArtifactRow = {
   id: string;
   name: string;
   owner: string | null;
+  url: string | null;
+  license: string | null;
   status: string;
   collection: "pipeline" | "runtime" | "workflow" | null;
   refreshCadence: string;
+  snapshotCadence: string | null;
+  changeCadence: string | null;
   manifestLastSuccess: string | null;
+  schemaFile: string | null;
+  transformFile: string | null;
   evidenceAliases: string[];
   rowsRequired: boolean;
 };
@@ -26,12 +32,16 @@ type ManifestRow = {
   id?: unknown;
   name?: unknown;
   owner?: unknown;
+  url?: unknown;
+  license?: unknown;
   status?: unknown;
   collection?: unknown;
   refresh_cadence?: unknown;
   snapshot_cadence?: unknown;
   change_cadence?: unknown;
   last_success?: unknown;
+  schema_file?: unknown;
+  transform_file?: unknown;
   evidence_aliases?: unknown;
   rows_required?: unknown;
 };
@@ -138,10 +148,16 @@ export function buildSourceRegistryArtifact(text: string): SourceRegistryArtifac
       id,
       name,
       owner: scalar(row.owner),
+      url: scalar(row.url),
+      license: scalar(row.license),
       status,
       collection,
       refreshCadence,
+      snapshotCadence: scalar(row.snapshot_cadence),
+      changeCadence: scalar(row.change_cadence),
       manifestLastSuccess,
+      schemaFile: scalar(row.schema_file),
+      transformFile: scalar(row.transform_file),
       evidenceAliases: [...new Set(evidenceAliases)].sort(),
       rowsRequired: row.rows_required === true,
     };

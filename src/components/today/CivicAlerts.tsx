@@ -19,7 +19,10 @@ import {
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
 import type { OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 
-type UnifiedAlert = {
+export type UnifiedAlert = {
+  /** Provider-stable identity. Alert counts are derived after de-duplicating
+   * this key, so repeated feed rows never become fake "+N more" urgency. */
+  identity: string;
   source: "NWS" | "NPS" | "MDOT" | "CITY" | "HEALTH";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
@@ -34,6 +37,17 @@ type UnifiedAlert = {
    *  deep links (e.g. a traffic row → /pulse?open=traffic) stay in-app. */
   external?: boolean;
 };
+
+export function dedupeUnifiedAlerts(
+  alerts: readonly UnifiedAlert[],
+): UnifiedAlert[] {
+  const seen = new Set<string>();
+  return alerts.filter((alert) => {
+    if (seen.has(alert.identity)) return false;
+    seen.add(alert.identity);
+    return true;
+  });
+}
 
 const EASTERN_TIME_ZONE = "America/New_York";
 const EASTERN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -126,6 +140,7 @@ function normalize(
     // "Until 8 PM" tail + scope chip.
     const until = untilLabel(a.ends_at, now);
     out.push({
+      identity: `nws:${a.id}`,
       source: "NWS",
       severity,
       title: a.event,
@@ -144,6 +159,7 @@ function normalize(
       a.category === "Park Closure" ? "warning" :
       a.category === "Caution" ? "advisory" : "info";
     out.push({
+      identity: `nps:${a.id}`,
       source: "NPS",
       severity,
       title: a.title,
@@ -160,7 +176,7 @@ function normalize(
   const order = { emergency: 0, warning: 1, advisory: 2, info: 3 } as const;
   // Heads up is a HIGH-SIGNAL interruption layer, not a feed: drop "info"
   // (low-confidence/routine) so it never cries wolf. Sort worst-first.
-  return out
+  return dedupeUnifiedAlerts(out)
     .filter((a) => a.severity !== "info")
     .sort((a, b) => order[a.severity] - order[b.severity]);
 }
@@ -173,6 +189,7 @@ function trafficAlerts(now: Date, incidents: ChartIncident[]): UnifiedAlert[] {
   const top = qualifying[0];
   return [
     {
+      identity: `mdot-chart:${top.id}`,
       source: "MDOT",
       severity: "warning",
       title: chartTodayTitle(top),
@@ -189,6 +206,7 @@ function roadIntelligenceAlert(
 ): UnifiedAlert[] {
   if (!signal) return [];
   return [{
+    identity: `mdot-road:${signal.id}`,
     source: "MDOT",
     severity: signal.severity,
     title: signal.title,
@@ -211,6 +229,10 @@ function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
       alert.kind === "health-closing" ||
       /\b(?:warning|advisory|recall|exposure|contaminat|suspend|cancel|restricted)\b/i.test(copy);
     return {
+      // The same official notice can appear in more than one narrow Alert
+      // Center category. Its canonical public URL identifies the notice more
+      // accurately than the category-prefixed ingest id.
+      identity: `official:${alert.url}`,
       source: alert.kind === "city-emergency" ? "CITY" as const : "HEALTH" as const,
       severity: urgent
         ? "warning" as const

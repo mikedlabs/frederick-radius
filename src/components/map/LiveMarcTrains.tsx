@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
-import { Marker, Popup } from "react-map-gl/maplibre";
+import { Marker, Popup } from "react-map-gl/mapbox";
 import { TrainFront } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { exposeMarkerChild } from "./markerA11y";

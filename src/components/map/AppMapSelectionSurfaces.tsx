@@ -12,7 +12,7 @@
  */
 
 import Link from "next/link";
-import { Popup } from "react-map-gl/maplibre";
+import { Popup } from "react-map-gl/mapbox";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { ComponentProps } from "react";
 import BottomDrawer from "@/components/ui/BottomDrawer";

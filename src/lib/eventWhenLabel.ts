@@ -1,5 +1,109 @@
 import { easternDayKey, easternParts } from "@/lib/tz";
 
+type EventTiming = {
+  starts_at: string;
+  ends_at?: string | null;
+  is_all_day?: boolean;
+};
+
+const EASTERN_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+const EASTERN_TIME = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+function easternClock(date: Date): {
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  const parts = EASTERN_CLOCK.formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return {
+    hour: value("hour"),
+    minute: value("minute"),
+    second: value("second"),
+  };
+}
+
+/**
+ * Several public calendars use 11:59 PM as a placeholder for "no end time."
+ * It is not evidence that a morning program is still running at night.
+ */
+export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
+  if (e.is_all_day || !e.ends_at) return false;
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(end.getTime()) ||
+    end.getTime() <= start.getTime() ||
+    easternDayKey(start) !== easternDayKey(end)
+  ) {
+    return false;
+  }
+  const clock = easternClock(end);
+  const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
+  const durationMs = end.getTime() - start.getTime();
+  return looksLikeEndOfDay && durationMs >= 10 * 60 * 60 * 1000;
+}
+
+/** A real, usable end-time claim rather than a missing, zero, or sentinel end. */
+export function eventHasTrustworthyEnd(e: EventTiming): boolean {
+  if (!e.ends_at) return false;
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(end.getTime()) ||
+    end.getTime() <= start.getTime()
+  ) {
+    return false;
+  }
+  if (e.is_all_day) return true;
+  return !eventHasEndOfDaySentinel(e);
+}
+
+/** Noon plus an end-of-day sentinel is a date anchor, not a noon start. */
+export function isDateOnlyEventAnchor(e: EventTiming): boolean {
+  if (!eventHasEndOfDaySentinel(e)) return false;
+  const start = easternClock(new Date(e.starts_at));
+  return start.hour === 12 && start.minute === 0 && start.second === 0;
+}
+
+/**
+ * Honest disclosure for a timed event that has begun without a usable end.
+ * The Events board receives a server-captured clock, so this stays stable
+ * across hydration instead of consulting Date.now() inside a card.
+ */
+export function startedEventTimingDisclosure(
+  e: EventTiming,
+  now: Date,
+): string | null {
+  if (e.is_all_day || eventHasTrustworthyEnd(e) || isDateOnlyEventAnchor(e)) {
+    return null;
+  }
+  const start = new Date(e.starts_at);
+  if (
+    !Number.isFinite(start.getTime()) ||
+    !Number.isFinite(now.getTime()) ||
+    start.getTime() > now.getTime()
+  ) {
+    return null;
+  }
+  return `Started at ${EASTERN_TIME.format(start)} · end time unavailable`;
+}
+
 /**
  * Honest "when" label for an event relative to now, in America/New_York.
  *
@@ -32,12 +136,10 @@ const ASSUMED_RUNTIME_MS = 2 * 3_600_000;
  *  session; past that the stated end lies more often than it informs. */
 export const MAX_LIVE_SESSION_MS = 8 * 3_600_000;
 
-/** The end we trust for a TIMED event: its stated end when later than the
- *  start, else a 2h assumed runtime, but never more than MAX_LIVE_SESSION_MS
- *  past the start. Shared by isEventEnded and isEventLiveNow so a started
- *  event is one or the other, never both. That symmetry is the fix: this
- *  cap used to live only in isEventLiveNow, so isEventEnded trusted an
- *  inflated end verbatim and a finished afternoon show never demoted. */
+/** The visibility end for a TIMED event: its stated end when later than the
+ *  start, else a 2h grace, but never more than MAX_LIVE_SESSION_MS past the
+ *  start. This grace keeps an unknown-end event discoverable briefly; it is
+ *  deliberately NOT enough evidence to call that event "Live now." */
 export function effectiveTimedEventEndMs(e: {
   starts_at: string;
   ends_at?: string | null;
@@ -86,14 +188,15 @@ export function isEventEnded(
  *    midnight-to-midnight; the 3 AM audit found Senior Yoga "live");
  *  - a stated end is trusted only up to MAX_LIVE_SESSION_MS after start,
  *    so end-of-day/range stamps can't keep a noon event live at 11 PM;
- *  - no/invalid/zero duration gets the same ASSUMED_RUNTIME_MS grace
- *    isEventEnded grants.
+ *  - no/invalid/zero/sentinel duration is never promoted to live. It may stay
+ *    visible briefly with an explicit "end time unavailable" disclosure, but
+ *    a guessed runtime cannot support a live claim.
  */
 export function isEventLiveNow(
-  e: { starts_at: string; ends_at?: string | null; is_all_day?: boolean },
+  e: EventTiming,
   now: Date,
 ): boolean {
-  if (e.is_all_day) return false;
+  if (e.is_all_day || !eventHasTrustworthyEnd(e)) return false;
   const start = Date.parse(e.starts_at);
   if (!Number.isFinite(start) || start > now.getTime()) return false;
   return now.getTime() < effectiveTimedEventEndMs(e);

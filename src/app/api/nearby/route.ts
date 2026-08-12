@@ -6,6 +6,11 @@ import {
   postgisNearbyPlaceDistances,
 } from "@/lib/spatial/place-spatial-index";
 import { roundCoord } from "@/lib/walkTime";
+import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
+import {
+  loadLivePlaceEvidence,
+  MAX_LIVE_PLACE_EVIDENCE_SLUGS,
+} from "@/lib/loaders/livePlaceEvidence";
 
 /**
  * GET /api/nearby?lng=&lat=&limit=&radiusM=
@@ -93,20 +98,32 @@ export async function GET(request: Request) {
     ...(radiusM ? { radiusM } : {}),
   };
   const mode = postgisNearbyMode();
-  let ctx = nearbyNow(approximateOrigin, baseOptions);
+  // Start the current-evidence read while the optional PostGIS lookup runs.
+  // Haversine is sufficient for choosing the bounded candidate set; PostGIS
+  // remains authoritative for final distances when its verified mirror is on.
+  const evidenceCandidates = clientPlacesWithinRadius(
+    approximateOrigin,
+    effectiveRadiusM,
+  )
+    .slice(0, MAX_LIVE_PLACE_EVIDENCE_SLUGS)
+    .map((place) => place.slug);
+  const evidencePromise = loadLivePlaceEvidence(evidenceCandidates);
+  let distances: Map<string, number> | null = null;
 
   if (mode === "on") {
-    const distances = await postgisNearbyPlaceDistances(
+    distances = await postgisNearbyPlaceDistances(
       approximateOrigin,
       effectiveRadiusM,
     );
-    if (distances) {
-      ctx = nearbyNow(approximateOrigin, {
-        ...baseOptions,
-        placeDistances: distances,
-      });
-    }
-  } else if (mode === "shadow") {
+  }
+  const placeEvidence = await evidencePromise;
+  const ctx = nearbyNow(approximateOrigin, {
+    ...baseOptions,
+    ...(distances ? { placeDistances: distances } : {}),
+    placeEvidence,
+  });
+
+  if (mode === "shadow") {
     // Shadow work cannot change the response or add latency. It records only
     // aggregate parity—never the query origin, place slugs, or raw distances.
     after(async () => {
@@ -124,6 +141,7 @@ export async function GET(request: Request) {
       const shadow = nearbyNow(approximateOrigin, {
         ...baseOptions,
         placeDistances: distances,
+        placeEvidence,
       });
       const baselinePlaces = ctx.openPlaces;
       const shadowPlaces = shadow.openPlaces;

@@ -168,3 +168,24 @@ describe("map list photos", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("map list recovery copy", () => {
+  it("does not refer to hidden map controls when the map failed", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        places: [],
+        events: [],
+        userLoc: null,
+        failureMode: true,
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+
+    expect(html).toContain("No fallback results are available");
+    expect(html).toContain("Reload the map or use the page navigation");
+    expect(html).not.toContain("in this view");
+    expect(html).not.toContain("filter in the dock");
+    expect(html).not.toContain("switch back to the map");
+  });
+});

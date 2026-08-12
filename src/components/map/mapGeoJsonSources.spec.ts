@@ -130,9 +130,33 @@ describe("buildEventScrubTimes", () => {
     expect(t.dayKey).toBe("2026-08-05");
   });
 
-  it("marks a missing end as NaN so the scrubber treats it as open-ended", () => {
+  it("gives a missing end the same bounded two-hour visibility window as Events", () => {
     const [t] = buildEventScrubTimes([{ starts_at: "2026-08-05T23:00:00.000Z" }]);
-    expect(Number.isNaN(t.endH)).toBe(true);
+    expect(t.startH).toBeCloseTo(19, 5);
+    expect(t.endH).toBeCloseTo(21, 5);
+  });
+
+  it("caps an end-of-day placeholder instead of implying an all-evening event", () => {
+    const [t] = buildEventScrubTimes([
+      {
+        starts_at: "2026-08-05T13:15:00.000Z",
+        ends_at: "2026-08-06T03:59:00.000Z",
+      },
+    ]);
+    expect(t.startH).toBeCloseTo(9.25, 5);
+    expect(t.endH).toBeCloseTo(17.25, 5);
+  });
+
+  it("keeps an all-day row available throughout its date", () => {
+    const [t] = buildEventScrubTimes([
+      {
+        starts_at: "2026-08-05T04:00:00.000Z",
+        ends_at: "2026-08-06T04:00:00.000Z",
+        is_all_day: true,
+      },
+    ]);
+    expect(t.startH).toBe(0);
+    expect(t.endH).toBe(24);
   });
 });
 

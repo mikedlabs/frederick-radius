@@ -32,6 +32,7 @@ import { isOpenNow } from "@/lib/hours";
 import { easternMoment, smartMapDefault } from "@/lib/map/smartDefaults";
 import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
+import { eventMatchesMapNowWindow } from "@/lib/events/map-window";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import {
@@ -41,16 +42,20 @@ import {
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
+import MapLoadingScene from "./MapLoadingScene";
+import {
+  loadMapPlaces,
+  resetMapPlacesRequest,
+} from "./mapPlacesClient";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
  *
  * Everything here used to run server-side in the page, which forced the
  * whole route dynamic (reading `searchParams` opts a Next 16 route out
- * of ISR). The server now ships the UNFILTERED data — all places (pins
- * are clustered, so "everything" is the designed default anyway), the
- * civic/amenity/line layers, and the next week's mappable events — and
- * this component applies the URL-driven view on the client:
+ * of ISR). The cached map-place request is warmed from the static shell,
+ * while the server streams civic/amenity/line layers and the next week's
+ * mappable events. This component then applies the URL-driven view:
  *
  *   ?intent / ?sub  — the intent chip filters (INTENT_BY_KEY matchers
  *                     run fine against MapPinPlace records)
@@ -86,16 +91,14 @@ import {
 function eventTimePredicate(
   mode: TimeMode,
   now: Date,
-): (startsAt: string, endsAt?: string) => boolean {
+): (startsAt: string, endsAt?: string, isAllDay?: boolean) => boolean {
   const nowMs = now.getTime();
   if (mode === "now") {
-    const horizon = nowMs + 90 * 60_000;
-    return (s, e) => {
-      const sMs = Date.parse(s);
-      const eMs = e ? Date.parse(e) : sMs;
-      if (!Number.isFinite(sMs)) return false;
-      return (sMs <= nowMs && eMs >= nowMs) || (sMs >= nowMs && sMs <= horizon);
-    };
+    return (s, e, isAllDay) =>
+      eventMatchesMapNowWindow(
+        { starts_at: s, ends_at: e, is_all_day: isAllDay },
+        now,
+      );
   }
   if (mode === "tonight") {
     const { year, month, day } = easternParts(now);
@@ -125,7 +128,6 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 }
 
 export default function BrowseMapClient({
-  places: allPlaces,
   dealSlugsToday,
   civic,
   amenities,
@@ -145,8 +147,6 @@ export default function BrowseMapClient({
   snowRoutes = EMPTY_SNOW_ROUTE_FC,
   smartSignals = null,
 }: {
-  /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
-  places: MapPinPlace[];
   /** Slugs running a verified special today (server-computed, day-gated). */
   dealSlugsToday: string[];
   civic: CivicPin[];
@@ -177,6 +177,7 @@ export default function BrowseMapClient({
   /** Server-computed live signals for the smart cold-open default (map
    *  program phase 1). Null keeps the map's old quiet cold open. */
   smartSignals?: {
+    conditionsStatus: "current" | "stale" | "unavailable";
     outdoorSafetyHold?: {
       kind: "weather" | "air-quality";
       reason: string;
@@ -187,6 +188,26 @@ export default function BrowseMapClient({
   } | null;
 }) {
   const sp = useSearchParams();
+  const [placeAttempt, setPlaceAttempt] = useState(0);
+  const [placeLoad, setPlaceLoad] = useState<
+    | { status: "loading"; places: MapPinPlace[] }
+    | { status: "ready"; places: MapPinPlace[] }
+    | { status: "error"; places: MapPinPlace[] }
+  >({ status: "loading", places: [] });
+  useEffect(() => {
+    let alive = true;
+    void loadMapPlaces()
+      .then((payload) => {
+        if (alive) setPlaceLoad({ status: "ready", places: payload.places });
+      })
+      .catch(() => {
+        if (alive) setPlaceLoad({ status: "error", places: [] });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [placeAttempt]);
+  const allPlaces = placeLoad.places;
   const intentParam = sp.get("intent") ?? undefined;
   const subParam = sp.get("sub") ?? undefined;
   const tParam = sp.get("t") ?? undefined;
@@ -334,7 +355,9 @@ export default function BrowseMapClient({
   const counts: Partial<Record<TimeMode, number>> = {};
   for (const mode of ["now", "tonight", "weekend", "all"] as const) {
     const pred = eventTimePredicate(mode, now);
-    counts[mode] = weekEvents.filter((e) => pred(e.starts_at, e.ends_at)).length;
+    counts[mode] = weekEvents.filter((e) =>
+      pred(e.starts_at, e.ends_at, e.is_all_day),
+    ).length;
   }
   // ?music=tonight — the live-music lens: the event layer collapses to
   // tonight's confirmed shows (isLiveMusicEvent over the pin's own
@@ -356,7 +379,7 @@ export default function BrowseMapClient({
   // calendar pucks before the visitor made a choice.
   if (timeModeExplicit || musicTonight) {
     for (const e of weekEvents) {
-      if (!matchTime(e.starts_at, e.ends_at)) continue;
+      if (!matchTime(e.starts_at, e.ends_at, e.is_all_day)) continue;
       if (
         musicTonight &&
         !isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title })
@@ -380,7 +403,7 @@ export default function BrowseMapClient({
   const tonightPred = eventTimePredicate("tonight", now);
   const musicTonightCount = weekEvents.filter(
     (e) =>
-      tonightPred(e.starts_at, e.ends_at) &&
+      tonightPred(e.starts_at, e.ends_at, e.is_all_day) &&
       isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title }),
   ).length;
 
@@ -407,7 +430,7 @@ export default function BrowseMapClient({
   const [smartDefault] = useState(() => {
     const explicitStateKeys = [
       "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
-      "c", "in", "amenity", "aerial",
+      "c", "in", "amenity", "aerial", "scene",
     ];
     if (!smartSignals) return null;
     if (explicitStateKeys.some((key) => sp.has(key))) return null;
@@ -417,6 +440,53 @@ export default function BrowseMapClient({
       parkingCount: parking.length,
     });
   });
+
+  if (placeLoad.status === "loading") {
+    return (
+      <MapLoadingScene
+        height="100%"
+        status="Loading Frederick County places."
+      />
+    );
+  }
+
+  if (placeLoad.status === "error") {
+    return (
+      <div
+        role="alert"
+        className="grid h-full place-items-center px-6 text-center"
+        style={{ background: "var(--app-bg-sunken)" }}
+      >
+        <div className="max-w-sm">
+          <p
+            className="font-serif text-lg font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            The place layer did not load.
+          </p>
+          <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
+            The map kept your view. Try the place layer again.
+          </p>
+          <button
+            type="button"
+            className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
+            style={{
+              borderColor: "var(--app-border-strong)",
+              background: "var(--app-bg-elevated)",
+              color: "var(--app-ink)",
+            }}
+            onClick={() => {
+              resetMapPlacesRequest();
+              setPlaceLoad({ status: "loading", places: [] });
+              setPlaceAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppMapClient
@@ -439,6 +509,10 @@ export default function BrowseMapClient({
       floodContext={floodContext}
       snowRoutes={snowRoutes}
       smartDefault={smartDefault}
+      sceneContext={{
+        outdoorSafetyHold: smartSignals?.outdoorSafetyHold ?? null,
+        conditions: smartSignals?.conditionsStatus ?? "unavailable",
+      }}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope

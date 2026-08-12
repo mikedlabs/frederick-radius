@@ -171,7 +171,11 @@ export default function MapList({
   const empty = rows.length === 0 && eventRows.length === 0;
 
   return (
-    <div className="map-list" role="region" aria-label="Map results, as a list">
+    <div
+      className="map-list"
+      role="region"
+      aria-label={failureMode ? "Available results without the map" : "Map results, as a list"}
+    >
       <div
         className="mx-auto mb-1 flex max-w-[680px] items-baseline justify-between gap-3 px-2"
         aria-live="polite"
@@ -181,7 +185,7 @@ export default function MapList({
           {events.length > 0
             ? ` · ${events.length.toLocaleString("en-US")} ${events.length === 1 ? "event" : "events"}`
             : ""}
-          {" "}in this view
+          {failureMode ? " available" : " in this view"}
         </span>
         <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
           {userLoc
@@ -193,10 +197,13 @@ export default function MapList({
       </div>
       {empty ? (
         <div className="map-list-empty">
-          <p className="font-serif map-list-empty-title">Nothing matches yet</p>
+          <p className="font-serif map-list-empty-title">
+            {failureMode ? "No fallback results are available" : "Nothing matches yet"}
+          </p>
           <p className="map-list-empty-sub">
-            Loosen a filter in the dock, or switch back to the map to browse the
-            whole county.
+            {failureMode
+              ? "Reload the map or use the page navigation to keep browsing."
+              : "Loosen a filter in the dock, or switch back to the map to browse the whole county."}
           </p>
         </div>
       ) : (
@@ -204,7 +211,7 @@ export default function MapList({
           {eventRows.length > 0 && (
             <section className="map-list-section" aria-labelledby="map-list-events-title">
               <h2 id="map-list-events-title" className="map-list-section-title">
-                Happening here
+                {failureMode ? "Events" : "Happening here"}
               </h2>
               <ul className="map-list-rows">
                 {eventRows.map((event) => {
@@ -246,7 +253,7 @@ export default function MapList({
           {rows.length > 0 && (
             <section className="map-list-section" aria-labelledby="map-list-places-title">
               <h2 id="map-list-places-title" className="map-list-section-title">
-                Places in view
+                {failureMode ? "Places" : "Places in view"}
               </h2>
               <ul className="map-list-rows">
                 {rows.map((p) => {

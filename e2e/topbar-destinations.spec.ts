@@ -23,9 +23,9 @@ for (const viewport of [
 
     const header = page.locator("header").first();
     const pulse = header.getByRole("link", { name: /^Pulse:/ });
-    const compass = header.getByRole("link", { name: "Open Compass" });
+    const compass = header.getByRole("link", { name: "Open Compass tools" });
 
-    await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(1);
 
     const dimensions = await header.evaluate((element) => ({
       clientWidth: element.clientWidth,

@@ -1,11 +1,11 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState } from "react";
 import { ArrowRight, Map as MapIcon } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { MapLineFC } from "@/components/map/types";
+import AppMapClient from "@/components/map/AppMapClient";
 
 /**
  * The county trail map for /trails. Tap-to-activate so Mapbox only loads
@@ -17,18 +17,6 @@ import type { MapLineFC } from "@/components/map/types";
  * layer (defaulted ON here via trailsLayerDefault). The county outline
  * frames it, and the trailhead points are tappable pins.
  */
-const AppMapClient = dynamic(() => import("@/components/map/AppMapClient"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="flex h-[64vh] min-h-[400px] w-full items-center justify-center rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-    >
-      <span className="text-[13px]">Bringing up the map</span>
-    </div>
-  ),
-});
-
 export default function TrailsMap({
   places,
   trailLines,
@@ -75,10 +63,11 @@ export default function TrailsMap({
             fullBleed
             showSearchControls={false}
           />
-          {/* Surface legend for the trail lines. Bottom-left, out of the way
-              of the map's own controls (top-right layer tray, bottom nav). */}
+          {/* Surface legend for the trail lines. It sits below Mapbox's compact
+              upper legal shelf so the marks and key remain legible together. */}
           <div
-            className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-2 text-[11px] font-medium shadow-[var(--app-shadow-1)]"
+            data-trail-map-legend
+            className="pointer-events-none absolute left-3 top-12 z-10 flex flex-col gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-2 text-[11px] font-medium shadow-[var(--app-shadow-1)]"
             style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)", color: "var(--app-ink-2)" }}
           >
             <span className="flex items-center gap-1.5">

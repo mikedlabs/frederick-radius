@@ -97,7 +97,6 @@ import {
   getFrederickTransitRoutes,
   getFrederickTransitRouteShapes,
   getTransitFreshness,
-  type LineFC,
 } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
 import TransitMap from "@/components/transit/TransitMapClient";
@@ -110,7 +109,6 @@ import TransitStopFinder from "@/components/transit/TransitStopFinder";
 import TransitServiceAlerts from "@/components/transit/TransitServiceAlerts";
 import PageBloom from "@/components/ui/PageBloom";
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
-import TRANSIT_NETWORK from "@/data/transit-network.json" with { type: "json" };
 import { CURRENT_TRANSIT_STOP_COUNT } from "@/lib/transit-static";
 
 export const metadata: Metadata = {
@@ -168,79 +166,6 @@ function sourceDate(iso: string | undefined): string | null {
   }).format(date);
 }
 
-/** The official static GTFS snapshot is the canonical network on this page.
- * Maryland Open Data remains a fail-soft fallback and a freshness comparison,
- * but it can lag behind newly published routes. GTFS points are [lat, lng];
- * GeoJSON coordinates are [lng, lat]. */
-function staticTransitShapes(): LineFC {
-  const data = TRANSIT_RAW as {
-    routes: Array<{ id: string; short: string; name: string }>;
-    shapes?: Record<string, number[][]>;
-  };
-  const network = TRANSIT_NETWORK as {
-    shapeVariants?: Record<
-      string,
-      Array<{
-        id: string;
-        directionIds: number[];
-        headsigns: string[];
-        points: number[][];
-      }>
-    >;
-  };
-  const routeById = new Map(data.routes.map((route) => [route.id, route]));
-  const publishedShapes =
-    network.shapeVariants && Object.keys(network.shapeVariants).length > 0
-      ? Object.entries(network.shapeVariants).flatMap(([routeId, variants]) =>
-          variants.map((variant) => ({
-            routeId,
-            variantId: variant.id,
-            directionIds: variant.directionIds,
-            headsigns: variant.headsigns,
-            points: variant.points,
-          })),
-        )
-      : Object.entries(data.shapes ?? {}).map(([routeId, points]) => ({
-          routeId,
-          variantId: routeId,
-          directionIds: [] as number[],
-          headsigns: [] as string[],
-          points,
-        }));
-  return {
-    type: "FeatureCollection",
-    features: publishedShapes.flatMap(
-      ({ routeId, variantId, directionIds, headsigns, points }) => {
-        const coordinates = points
-          .filter(
-            (point) =>
-              point.length >= 2 &&
-              Number.isFinite(point[0]) &&
-              Number.isFinite(point[1]),
-          )
-          .map(([lat, lng]) => [lng, lat]);
-        if (coordinates.length < 2) return [];
-        const route = routeById.get(routeId);
-        return [
-          {
-            type: "Feature" as const,
-            geometry: { type: "LineString", coordinates },
-            properties: {
-              routeId,
-              name: route?.name ?? "TransIT route",
-              short: route?.short ?? "",
-              variantId,
-              directionIds: directionIds.join(","),
-              headsigns: headsigns.join(" · "),
-              source: "Official TransIT GTFS",
-            },
-          },
-        ];
-      },
-    ),
-  };
-}
-
 function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout?: "rail" | "grid" }) {
   const Icon = intent.icon;
   return (
@@ -276,14 +201,12 @@ function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout
 }
 
 export default async function TransitPage() {
-  const canonicalShapes = staticTransitShapes();
   // All network fetches run in parallel; each revalidates on its own schedule.
-  // The committed official GTFS network avoids a cold Maryland Open Data call.
-  // The latter remains a fail-soft fallback if a future build lacks shapes.
+  // The shared shape loader returns committed official GTFS first for this
+  // page, Pulse, and the main map. Maryland Open Data is only its named,
+  // fail-soft fallback if a future generated snapshot lacks drawable shapes.
   const [shapes, routes, freshness, board, alerts] = await Promise.all([
-    canonicalShapes.features.length > 0
-      ? Promise.resolve(canonicalShapes)
-      : getFrederickTransitRouteShapes(),
+    getFrederickTransitRouteShapes(),
     getFrederickTransitRoutes(),
     getTransitFreshness(),
     getMarcBoard(new Date()),

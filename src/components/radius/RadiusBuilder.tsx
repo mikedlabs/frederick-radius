@@ -31,6 +31,7 @@ import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { isOpenNow } from "@/lib/hours";
 import { mayAssertNoneOpen } from "@/lib/hours-availability";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import {
@@ -192,6 +193,7 @@ export default function RadiusBuilder({
    *  shown as a compact "happening within reach" section. */
   events?: RadiusEventPin[];
 }) {
+  const searchParams = useSearchParams();
   // Places source: client-bundled, slim, already-decorated — but
   // loaded LAZILY (see useClientPlaces) so the 1.5MB JSON parse stays
   // off the critical path. The map paints, the reach controls are
@@ -209,7 +211,12 @@ export default function RadiusBuilder({
   );
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
-  const [minutes, setMinutes] = useState(10);
+  const [minutes, setMinutes] = useState(() => {
+    const requested = Number(searchParams.get("minutes"));
+    return Number.isInteger(requested) && requested >= 1 && requested <= 30
+      ? requested
+      : 10;
+  });
   // Fine-tune disclosure: the exact mode + minutes controls are folded
   // away by default so the one-tap presets lead and the card stays calm.
   // The minority who want an exact reach open it; everyone else never

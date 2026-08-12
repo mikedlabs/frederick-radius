@@ -43,18 +43,33 @@ describe("isEventEnded — the /today 'is it over?' floor", () => {
   });
 });
 
-describe("isEventEnded is the exact complement of isEventLiveNow (started, timed)", () => {
-  const e = { starts_at: "2026-07-12T13:00:00-04:00", ends_at: "2026-07-12T23:59:00-04:00" };
+describe("isEventLiveNow — evidence floor", () => {
+  const e = { starts_at: "2026-07-12T13:00:00-04:00", ends_at: "2026-07-12T16:00:00-04:00" };
   for (const iso of [
     "2026-07-12T14:00:00-04:00", // 2 PM, within cap
-    "2026-07-12T20:30:00-04:00", // 8:30 PM, within cap
-    "2026-07-12T22:00:00-04:00", // 10 PM, past cap
+    "2026-07-12T15:30:00-04:00", // 3:30 PM, before the confirmed end
+    "2026-07-12T16:30:00-04:00", // 4:30 PM, after the confirmed end
   ]) {
-    it(`no event is both live and ended at ${iso}`, () => {
+    it(`a confirmed-end event is never both live and ended at ${iso}`, () => {
       const now = at(iso);
       expect(isEventLiveNow(e, now)).toBe(!isEventEnded(e, now));
     });
   }
+
+  it("keeps an unknown-end event briefly discoverable without calling it live", () => {
+    const unknownEnd = { starts_at: "2026-07-12T13:00:00-04:00" };
+    const now = at("2026-07-12T14:00:00-04:00");
+    expect(isEventEnded(unknownEnd, now)).toBe(false);
+    expect(isEventLiveNow(unknownEnd, now)).toBe(false);
+  });
+
+  it("does not trust an end-of-day sentinel as a live end", () => {
+    const sentinel = {
+      starts_at: "2026-07-12T09:15:00-04:00",
+      ends_at: "2026-07-12T23:59:00-04:00",
+    };
+    expect(isEventLiveNow(sentinel, at("2026-07-12T11:00:00-04:00"))).toBe(false);
+  });
 
   it("all-day events are never live-now", () => {
     const today = { starts_at: "2026-07-12T00:00:00-04:00", is_all_day: true };

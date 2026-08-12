@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
-import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -25,6 +24,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/events" },
@@ -161,8 +161,6 @@ async function EventsBoard({
   now: Date;
   eventsPromise: EventsPromise;
 }) {
-  const seedLive = eventsLive(now);
-
   // The unified set is assembled in lib/loaders/unifiedEvents, the SAME
   // function /today counts from, so the two surfaces can never disagree
   // about "this weekend" again. All sources inside it are fail-soft; the
@@ -176,7 +174,12 @@ async function EventsBoard({
     ]);
   const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForBrowse);
   const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForBrowse);
-  const liveSlugs = seedLive.map((e) => e.slug);
+  // Derive liveness from the complete unified public set. Using only the
+  // bundled seed catalog omitted legitimately live external-feed events even
+  // though the horizon correctly filed them under Happening now.
+  const liveSlugs = publicEvents
+    .filter((event) => isEventLiveNow(event, now))
+    .map((event) => event.slug);
 
   // The ingested "Civic & municipal calendar" series is a SEPARATE data
   // source (the daily-ingest table), so it must run through the same
@@ -324,7 +327,12 @@ async function EventsBoard({
           <ol className="space-y-2">
             {civicEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
+                <EventCard
+                  event={e}
+                  variant="glance"
+                  live={liveSlugs.includes(e.slug)}
+                  nowISO={now.toISOString()}
+                />
               </li>
             ))}
           </ol>
@@ -346,7 +354,12 @@ async function EventsBoard({
           <ol className="space-y-2">
             {reminderEvents.slice(0, 24).map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard event={e} variant="glance" live={false} />
+                <EventCard
+                  event={e}
+                  variant="glance"
+                  live={false}
+                  nowISO={now.toISOString()}
+                />
               </li>
             ))}
           </ol>

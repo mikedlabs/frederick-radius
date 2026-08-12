@@ -215,6 +215,22 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         keywords: ["near me", "closest", "around me"],
       },
       {
+        id: "mobility-map",
+        label: "Accessible paths map",
+        description: "See mapped City sidewalks, ramps, and paths. This does not confirm an accessible route.",
+        href: "/map?scene=outside-now",
+        icon: "route",
+        tone: "civic",
+        keywords: [
+          "wheelchair",
+          "mobility",
+          "step free",
+          "accessible path",
+          "curb ramp",
+          "sidewalk",
+        ],
+      },
+      {
         id: "parking",
         label: "Parking",
         description: "Find downtown garages and event parking guidance.",

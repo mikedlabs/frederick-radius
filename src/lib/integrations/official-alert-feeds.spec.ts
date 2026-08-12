@@ -3,6 +3,7 @@ import {
   getOfficialCivicAlertsResult,
   isLocallyRelevantCivicAlert,
   OFFICIAL_CIVIC_ALERT_FEEDS,
+  officialCivicAlertExpiresAt,
   parseOfficialAlertFeed,
 } from "./official-alert-feeds";
 
@@ -94,7 +95,7 @@ describe("official CivicPlus alert parsing", () => {
       scope: "county",
       publishedAt: "2026-07-24T01:45:11.000Z",
       occurredAt: null,
-      expiresAt: null,
+      expiresAt: "2026-08-23T01:45:11.000Z",
       confidence: "official",
       provenance: {
         publisher: "Frederick County Health Department",
@@ -113,6 +114,7 @@ describe("official CivicPlus alert parsing", () => {
         <item>
           <title>Health notice</title>
           <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=25</link>
+          <pubDate>Tue, 28 Jul 2026 10:00:00 -0500</pubDate>
           <description>
             The first official sentence contains the useful local facts and
             gives a reader enough context before opening the source. This
@@ -143,6 +145,62 @@ describe("official CivicPlus alert parsing", () => {
     expect(
       parseOfficialAlertFeed(xml, OFFICIAL_CIVIC_ALERT_FEEDS[0]).alerts,
     ).toEqual([]);
+  });
+
+  it("does not let an undated current-feed item remain active forever", () => {
+    const xml = `<rss><channel><item>
+      <title>Undated emergency notice</title>
+      <link>https://www.cityoffrederickmd.gov/AlertCenter.aspx?AID=91</link>
+      <description>Read the current instructions.</description>
+    </item></channel></rss>`;
+
+    expect(
+      parseOfficialAlertFeed(
+        xml,
+        OFFICIAL_CIVIC_ALERT_FEEDS[0],
+        "2026-07-28T16:30:00.000Z",
+      ).alerts,
+    ).toEqual([]);
+  });
+
+  it("expires routine emergency and closing notices conservatively", () => {
+    const xml = `<rss><channel><item>
+      <title>Old emergency notice</title>
+      <link>https://www.cityoffrederickmd.gov/AlertCenter.aspx?AID=92</link>
+      <pubDate>Wed, 01 Jul 2026 10:00:00 -0500</pubDate>
+      <description>Read the official notice.</description>
+    </item></channel></rss>`;
+
+    expect(
+      parseOfficialAlertFeed(
+        xml,
+        OFFICIAL_CIVIC_ALERT_FEEDS[0],
+        "2026-07-28T16:30:00.000Z",
+      ).alerts,
+    ).toEqual([]);
+    expect(
+      officialCivicAlertExpiresAt(
+        "city-emergency",
+        "2026-07-01T15:00:00.000Z",
+      ),
+    ).toBe("2026-07-15T15:00:00.000Z");
+  });
+
+  it("gives a dated burn ban a wider but still finite active window", () => {
+    const xml = `<rss><channel><item>
+      <title>County burn ban</title>
+      <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=93</link>
+      <pubDate>Wed, 01 Apr 2026 10:00:00 -0500</pubDate>
+      <description>Outdoor burning is restricted.</description>
+    </item></channel></rss>`;
+
+    const parsed = parseOfficialAlertFeed(
+      xml,
+      OFFICIAL_CIVIC_ALERT_FEEDS[1],
+      "2026-07-28T16:30:00.000Z",
+    );
+    expect(parsed.alerts).toHaveLength(1);
+    expect(parsed.alerts[0].expiresAt).toBe("2026-09-28T15:00:00.000Z");
   });
 
   it("rejects a 200 HTML error page as a changed feed shape", () => {

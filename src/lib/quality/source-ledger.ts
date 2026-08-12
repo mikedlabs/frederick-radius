@@ -12,10 +12,16 @@ export type SourceManifestEntry = {
   id: string;
   name: string;
   owner: string | null;
+  url: string | null;
+  license: string | null;
   status: string;
   collection: SourceCollection | null;
   refreshCadence: string;
+  snapshotCadence: string | null;
+  changeCadence: string | null;
   manifestLastSuccess: string | null;
+  schemaFile: string | null;
+  transformFile: string | null;
   evidenceAliases: string[];
   rowsRequired: boolean;
 };

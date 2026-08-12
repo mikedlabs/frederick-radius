@@ -2,6 +2,7 @@ import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import type { OpenStatus } from "@/lib/hours";
 import { formatTime } from "@/lib/hours";
 import type { ImpactConfidence } from "@/lib/impact-engine";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import type { NearbyUtility } from "./mapNearby";
 import type { EventPin, MapPinPlace } from "./types";
 
@@ -711,7 +712,6 @@ export function buildMapPeekDecisionSurface({
 }: MapPeekDecisionInput): MapPeekDecisionSurface | null {
   const nowMs = Date.parse(now);
   const eventStart = time(hostedEvent?.starts_at);
-  const eventEnd = time(hostedEvent?.ends_at);
   if (!Number.isFinite(nowMs)) return null;
 
   const candidates: MapDecisionCandidate[] = [];
@@ -734,10 +734,7 @@ export function buildMapPeekDecisionSurface({
       mapDecisionEvidenceState(hostedEventEvidence, now) === "current",
   );
   const hostedEventIsUnderway = Boolean(
-    eventStart !== null &&
-      eventStart <= nowMs &&
-      eventEnd !== null &&
-      nowMs < eventEnd,
+    hostedEvent && isEventLiveNow(hostedEvent, new Date(nowMs)),
   );
   const hostedEventIsUpcoming = Boolean(
     eventStart !== null &&

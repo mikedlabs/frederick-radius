@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
 import { Suspense } from "react";
-import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
@@ -33,7 +32,6 @@ import type {
   FloodContextFC,
   SnowRouteFC,
 } from "@/components/map/AppMapClient";
-import type { MapPinPlace } from "@/components/map/types";
 import BrowseMapClient from "@/components/map/BrowseMapClient";
 import MapModeGate from "@/components/map/MapModeGate";
 import MapWarmup from "@/components/map/MapWarmup";
@@ -78,94 +76,9 @@ import {
   FC_SNOW_COMMAND_SOURCE,
   getCountySnowRoutes,
 } from "@/lib/integrations/fcSnowCommand";
+import { mapPinPlaces } from "@/lib/map/placePins";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
-
-/**
- * Slim the SSR payload for /browse before it ships to the client.
- *
- * /browse renders ~1,700 places into the initial HTML. decoratePlace
- * returns the full PlaceCardData; that's overkill for the map +
- * in-view drawer surfaces, and the size matters — every place is
- * stamped into HTML times the place count.
- *
- * Fields stripped here:
- *   - google_photos      (5.7 MB by itself — only used by detail page
- *                         gallery and PlaceSheet's multi-photo deck,
- *                         which has on-demand fallback)
- *   - description         (long; only the detail page renders it)
- *   - review_snippet      (~120 chars × 1,700 ≈ 200 KB; detail-only)
- *   - review_author       (rendered alongside review_snippet)
- *   - google_hours        (array of 7 weekday strings; detail-only)
- *   - hours               (curated weekly schedule object; detail-only,
- *                         open_status is already pre-computed)
- *   - amenities           (array; rendered by detail page only)
- *
- * KEPT for pins, filters, and the immediate peek:
- *   - open_status, name, slug, category, geom, source, short_blurb,
- *     field-note flags, is_verified, and municipality.
- *
- * Photo URLs stay OUT of this ~1,700-row payload. The list face hydrates only
- * rows approaching its scroll viewport through one batched by-slugs request;
- * the place sheet and map peek keep their existing one-place hydration paths.
- *
- * The detail page (/places/[slug]) loads its own full data via
- * getPlaceBySlug, so nothing the stripped fields power is lost — they
- * just stop riding along on the map's HTML.
- */
-/** Slim decorated places, memoized per 5-minute bucket (was a module-scope
- *  const). Module scope froze `now` at lambda init: decoratePlace defaults
- *  now = new Date() evaluated ONCE, so a warm serverless instance served
- *  hours-old open_status — the "?open=now" filter, openNowCount chip, and
- *  "closing soon" badges all computed from that dead clock (the baked
- *  closesAt values were visible in the flight payload). A plain in-lambda
- *  memo (NOT unstable_cache: ~1,700 records would flirt with its 2MB
- *  serialization ceiling) re-decorates at most once per bucket per instance
- *  and also moves the ~1,700 decoratePlace calls off cold-start module init
- *  onto the first request. Same 5-minute bucket trick as
- *  cachedUpcomingEvents below. */
-let openPlacesMemo: { bucket: number; places: ReturnType<typeof slimPlace>[] } | null = null;
-function openPlaces(now: Date): ReturnType<typeof slimPlace>[] {
-  const bucket = Math.floor(now.getTime() / 300_000);
-  if (openPlacesMemo?.bucket === bucket) return openPlacesMemo.places;
-  const places = publicPlaces().map((p) => slimPlace(p, now));
-  openPlacesMemo = { bucket, places };
-  return places;
-}
-function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date): MapPinPlace {
-  const d = decoratePlace(p, undefined, now);
-  // WHITELIST, not blacklist. The old strip removed 7 heavy fields and shipped
-  // the other ~40 (address, phone, website, blurbs, license, provenance dates,
-  // photo URLs...) — ~2.2KB per place x 1,627 places = the 3.58MB flight
-  // payload, plus ~138KB of literal "$undefined" tokens for absent keys. Pins,
-  // filters, and the dedupe index need exactly the MapPinPlace fields; the
-  // sheet hydrates the full record on tap from /api/places/by-slugs (cached,
-  // immutable-ish). Undefined values are DROPPED so the flight payload stops
-  // paying for keys with no value.
-  const pin: MapPinPlace = {
-    slug: d.slug,
-    name: d.name,
-    category: d.category,
-    subcategories: d.subcategories,
-    geom: d.geom,
-    open_status: d.open_status,
-    is_verified: d.is_verified,
-    field_notes: d.field_notes,
-    source: d.source,
-    // google_place_id + feature_score deliberately NOT shipped (~107 KB
-    // across 1,627 pins). Their only client read is AppMap's DedupeRecord
-    // for the OSM-vs-curated check, where they can never fire: isSamePlace's
-    // id-equality branch needs BOTH sides to carry a Google id and OSM
-    // records never do. The type keeps them optional so full PlaceCardData
-    // records (SavedList, radius) still satisfy MapPinPlace structurally.
-    municipality: d.municipality,
-    short_blurb: d.short_blurb,
-    primary_type: d.primary_type,
-  };
-  return Object.fromEntries(
-    Object.entries(pin).filter(([, v]) => v !== undefined),
-  ) as MapPinPlace;
-}
 
 export const metadata: Metadata = {
   alternates: { canonical: "/map" },
@@ -462,7 +375,10 @@ const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
  *  t/at/amenity) on the client. */
 async function BrowseMapArea() {
   const now = new Date();
-  const allPlaces = openPlaces(now);
+  // Server-side consumers still need the same pin projection for amenity
+  // dedupe. The browser receives it from /api/map/places instead of having
+  // all ~1,700 rows serialized into this route's HTML/RSC response.
+  const allPlaces = mapPinPlaces(now);
   const [
     situationSnapshot,
     roadIntelligence,
@@ -766,6 +682,21 @@ async function BrowseMapArea() {
         now,
       )
     : null;
+  const mapConditionSources = situationSnapshot
+    ? [situationSnapshot.sources.weather, situationSnapshot.sources.air]
+    : [];
+  const mapConditionsStatus: "current" | "stale" | "unavailable" =
+    mapConditionSources.length === 2 &&
+    mapConditionSources.every(
+      (source) =>
+        source.availability === "available" && source.freshness === "fresh",
+    )
+      ? "current"
+      : mapConditionSources.some(
+            (source) => source.availability === "available",
+          )
+        ? "stale"
+        : "unavailable";
 
   // Transit stop dots + MARC stations with next trains (map phase 3).
   // Bus stops come from the committed static TransIT GTFS snapshot. Preserve
@@ -804,7 +735,6 @@ async function BrowseMapArea() {
   return (
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
       <BrowseMapClient
-        places={allPlaces}
         // Slugs of places running a verified special today power the When
         // pane's "Deals today" view without sending unscheduled deal copy to
         // every map pin.
@@ -833,6 +763,7 @@ async function BrowseMapArea() {
         // default. Each one reads a snapshot this render already fetched;
         // a missing snapshot degrades to a quiet cold open, never an error.
         smartSignals={{
+          conditionsStatus: mapConditionsStatus,
           outdoorSafetyHold: mapSafetyHold && mapSafetyHold.kind !== "unavailable"
             ? {
                 kind: mapSafetyHold.kind === "nws" ? "weather" : "air-quality",

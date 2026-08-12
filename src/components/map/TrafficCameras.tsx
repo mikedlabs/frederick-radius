@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Marker, Popup } from "react-map-gl/maplibre";
+import { Marker, Popup } from "react-map-gl/mapbox";
 import { Video, ExternalLink } from "lucide-react";
 import type { TrafficCamera } from "@/lib/integrations/chartCameras";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/lib/live-layer-health";
 
 const RETRY_MS = 60_000;
+export type TrafficCameraBounds = [[number, number], [number, number]];
 
 /**
  * TrafficCameras — the map's SHA/CHART traffic-camera layer. FrederickScanner
@@ -21,14 +22,18 @@ const RETRY_MS = 60_000;
 export default function TrafficCameras({
   show,
   onHealth,
+  onBounds,
 }: {
   show: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
+  onBounds?: (bounds: TrafficCameraBounds | null) => void;
 }) {
   const [cameras, setCameras] = useState<TrafficCamera[]>([]);
   const [selected, setSelected] = useState<TrafficCamera | null>(null);
   const onHealthRef = useRef(onHealth);
   useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
+  const onBoundsRef = useRef(onBounds);
+  useEffect(() => { onBoundsRef.current = onBounds; }, [onBounds]);
 
   useEffect(() => {
     if (!show || cameras.length > 0) return;
@@ -48,6 +53,20 @@ export default function TrafficCameras({
         const d = (await r.json()) as { cameras?: TrafficCamera[] };
         if (alive && Array.isArray(d.cameras)) {
           setCameras(d.cameras);
+          onBoundsRef.current?.(
+            d.cameras.length > 0
+              ? [
+                  [
+                    Math.min(...d.cameras.map((camera) => camera.lng)),
+                    Math.min(...d.cameras.map((camera) => camera.lat)),
+                  ],
+                  [
+                    Math.max(...d.cameras.map((camera) => camera.lng)),
+                    Math.max(...d.cameras.map((camera) => camera.lat)),
+                  ],
+                ]
+              : null,
+          );
           onHealthRef.current?.(
             liveLayerHealth({
               source: "Maryland CHART",

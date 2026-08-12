@@ -3,6 +3,8 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import PHOTO_CREDITS_RAW from "@/data/event-venue-photo-credits.json" with { type: "json" };
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import { googlePhotoNameFromProxyUrl } from "@/lib/google-photo-policy";
+import { loadLivePlaceEvidence } from "@/lib/loaders/livePlaceEvidence";
+import { applyLivePlaceEvidence } from "@/lib/live-place-evidence";
 
 type CompactPhotoCredit = Omit<GooglePhotoAttribution, "photo_name">;
 const PHOTO_CREDITS = PHOTO_CREDITS_RAW as unknown as Record<
@@ -25,13 +27,18 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const place = clientPlaceBySlug(slug);
-  if (!place) {
+  const snapshotPlace = clientPlaceBySlug(slug);
+  if (!snapshotPlace) {
     return NextResponse.json(
       { place: null },
       { status: 404, headers: { "Cache-Control": "public, max-age=60" } },
     );
   }
+  const evidence = await loadLivePlaceEvidence([slug]);
+  const place = applyLivePlaceEvidence(
+    snapshotPlace,
+    evidence.get(snapshotPlace.slug),
+  );
   const compactPhotoCredit = PHOTO_CREDITS[slug];
   const photoName = place.google_photo_url
     ? googlePhotoNameFromProxyUrl(place.google_photo_url)

@@ -208,7 +208,9 @@ test.describe("map search selection", () => {
     // Pan the visible map above the bottom search sheet. A bare click can
     // legitimately select a town or pin at that coordinate; a drag exercises
     // the dismiss-before-pan contract without opening map content.
-    const canvas = page.locator("canvas.maplibregl-canvas");
+    const canvas = page.locator(
+      "canvas.mapboxgl-canvas, canvas.maplibregl-canvas",
+    );
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.move(box!.x + 195, box!.y + 300);
@@ -270,7 +272,9 @@ test.describe("map search selection", () => {
     expect(geometry.overlaps, JSON.stringify(geometry)).toBe(false);
 
     await expect(peek).toBeFocused();
-    await page.locator("canvas.maplibregl-canvas").focus();
+    await page
+      .locator("canvas.mapboxgl-canvas, canvas.maplibregl-canvas")
+      .focus();
     await page.keyboard.press("Escape");
     await expect(peek).toHaveCount(0);
     await expect(search).toBeFocused();

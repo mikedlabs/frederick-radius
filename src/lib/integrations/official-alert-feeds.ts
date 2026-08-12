@@ -3,10 +3,11 @@
  * Health Department.
  *
  * CivicPlus publishes one RSS feed per active-alert category. Presence in
- * these feeds is the provider's explicit active state; publication age alone
- * does not expire an item (an annual burn ban can legitimately stay active
- * for months). When an item disappears from the current feed, Radius simply
- * stops returning it.
+ * these feeds is the provider's explicit active state, but it is not enough to
+ * keep an undated or abandoned record active forever. Radius therefore
+ * applies a conservative category-specific ceiling in addition to requiring
+ * current-feed membership. Long-running burn bans get a much wider window
+ * than emergency and closing notices.
  *
  * These feeds are useful official signals, not complete emergency coverage.
  * The Health Department categories in particular cover only that department's
@@ -133,6 +134,31 @@ export const OFFICIAL_CIVIC_ALERT_FEEDS: readonly FeedDefinition[] = [
 const COVERAGE_NOTE =
   "Official City Alert Center and Health Department categories are checked independently. They do not represent complete City or County emergency coverage.";
 
+const MAX_ACTIVE_AGE_DAYS: Record<OfficialCivicAlertKind, number> = {
+  "city-emergency": 14,
+  "health-burn-ban": 180,
+  "health-closing": 14,
+  "health-notice": 30,
+};
+const DAY_MS = 24 * 60 * 60 * 1_000;
+
+/**
+ * CivicPlus does not expose a reliable expiration field in these RSS items.
+ * This is a publication-safety ceiling, not a claim about when the underlying
+ * notice legally ends. The canonical source remains the authority.
+ */
+export function officialCivicAlertExpiresAt(
+  kind: OfficialCivicAlertKind,
+  publishedAt: string | null,
+): string | null {
+  if (!publishedAt) return null;
+  const publishedMs = Date.parse(publishedAt);
+  if (!Number.isFinite(publishedMs)) return null;
+  return new Date(
+    publishedMs + MAX_ACTIVE_AGE_DAYS[kind] * DAY_MS,
+  ).toISOString();
+}
+
 function decodeEntities(value: string): string {
   return value
     .replace(/&#(\d+);/g, (_, decimal: string) =>
@@ -243,6 +269,7 @@ export function parseOfficialAlertFeed(
 
   const asOf = isoOrNull(tagText("lastBuildDate", xml));
   const providerUpdatedAt = asOf;
+  const retrievedMs = Date.parse(retrievedAt);
   const alerts: OfficialCivicAlert[] = [];
   const itemPattern = /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
   let itemMatch: RegExpExecArray | null;
@@ -259,6 +286,14 @@ export function parseOfficialAlertFeed(
     // hand the reader back to the canonical official notice.
     const summary = officialSummary(rawDescription, 240);
     const publishedAt = isoOrNull(tagText("pubDate", block));
+    const expiresAt = officialCivicAlertExpiresAt(definition.id, publishedAt);
+    // An undated item cannot earn an indefinitely active public state. A
+    // dated item that crossed the safety ceiling remains available at its
+    // official page but no longer displaces live Pulse information.
+    if (!expiresAt) continue;
+    if (Number.isFinite(retrievedMs) && Date.parse(expiresAt) <= retrievedMs) {
+      continue;
+    }
     const provenance: OfficialSignalProvenance = {
       publisher: definition.publisher,
       authority: "official-government",
@@ -281,7 +316,7 @@ export function parseOfficialAlertFeed(
       active: true,
       publishedAt,
       occurredAt: null,
-      expiresAt: null,
+      expiresAt,
       confidence: "official",
       provenance,
     });

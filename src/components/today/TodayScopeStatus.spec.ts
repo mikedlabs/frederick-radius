@@ -14,16 +14,21 @@ describe("TodayScopeStatus", () => {
     expect(todayScopeStatusText("nearme")).toBe(
       "Nearby place picks · Countywide weather and events",
     );
+    expect(todayScopeStatusText("nearme", false)).toBe(
+      "Location needed for nearby picks · Countywide weather and events",
+    );
     expect(todayScopeStatusText("county")).toBe("Countywide briefing");
     expect(todayScopeStatusText(null)).toBe("Countywide briefing");
   });
 
-  it("renders an accessible live status with the server-safe county snapshot", () => {
+  it("renders an accessible live status and an explicit location opt-in", () => {
     const html = renderToStaticMarkup(createElement(TodayScopeStatus));
 
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('data-testid="today-scope-status"');
     expect(html).toContain("Countywide briefing");
+    expect(html).toContain('type="button"');
+    expect(html).toContain("Use my location");
   });
 });

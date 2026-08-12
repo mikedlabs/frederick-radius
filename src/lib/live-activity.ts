@@ -6,28 +6,19 @@
 
 import { ACCENTS } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
-
-/** Default event length when a feed gives a start but no end. */
-const DEFAULT_EVENT_MS = 3 * 60 * 60 * 1000;
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 
 /**
- * True only when `now` falls inside the event window. Pure, with `now`
- * injected so it is unit-testable. A missing, invalid, or
- * start-or-earlier `ends_at` defaults to start + 3h. This is the one
- * temporal source of truth for any "Live now" label; provenance
- * (live-feed vs curated) is NOT a temporal signal.
+ * True only when `now` falls inside a trustworthy event window. Missing,
+ * invalid, equal, and end-of-day-sentinel ends fail closed: a guessed runtime
+ * may keep an event discoverable elsewhere, but cannot support "Live now."
  */
 export function isHappeningNow(
   starts_at: string,
   ends_at: string | null | undefined,
   now: Date,
 ): boolean {
-  const start = new Date(starts_at).getTime();
-  if (!Number.isFinite(start)) return false;
-  let end = ends_at ? new Date(ends_at).getTime() : NaN;
-  if (!Number.isFinite(end) || end <= start) end = start + DEFAULT_EVENT_MS;
-  const t = now.getTime();
-  return t >= start && t <= end;
+  return isEventLiveNow({ starts_at, ends_at }, now);
 }
 
 export type ActivityIcon = "music" | "rain" | "alert" | "sparkles";
@@ -64,9 +55,8 @@ export function buildActivities({
   for (const e of liveEvents.slice(0, 1)) {
     // Self-defensive: a "Live now" label must be temporal, not a
     // provenance guess. When the caller provides times, only label it
-    // live if it is genuinely happening now. (When no times are given
-    // the caller is responsible for the live set; behavior unchanged.)
-    if (e.starts_at && !isHappeningNow(e.starts_at, e.ends_at, now)) continue;
+    // live if it is genuinely happening now. Provenance alone is never enough.
+    if (!e.starts_at || !isHappeningNow(e.starts_at, e.ends_at, now)) continue;
     list.push({
       id: `live-${e.slug}`,
       kind: "live-event",

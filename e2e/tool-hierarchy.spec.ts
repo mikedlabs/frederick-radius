@@ -36,7 +36,6 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
     'section[aria-labelledby="compass-browse-heading"]',
   );
   const intentLabels = [
-    "Decide now",
     "Eat, drink & go out",
     "Get around",
     "Essentials & local help",
@@ -46,12 +45,11 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
     const chapter = browse.getByRole("button", { name: new RegExp(`^${label}\\b`) });
     await expect(chapter).toBeVisible();
   }
-  await expect(browse.locator("section")).toHaveCount(5);
-  await expect(browse.getByRole("link", { name: "Open now" })).toBeVisible();
+  await expect(browse.locator("section")).toHaveCount(4);
   await expect(
     browse.getByRole("button", { name: /^All tools\b/ }),
   ).toBeVisible();
-  await expect(browse.getByRole("link")).toHaveCount(3);
+  await expect(browse.getByRole("link")).toHaveCount(0);
   const visibleHrefs = await compass.locator("a:visible").evaluateAll((links) =>
     links.map((link) => link.getAttribute("href")),
   );
@@ -76,7 +74,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   expect(dialogBox?.width ?? 0).toBeGreaterThanOrEqual(388);
   await expect(dialog.getByRole("button", { name: "All tools" })).toBeVisible();
   await expect(dialog.getByRole("link", { name: /^Brunch guide\b/ })).toBeVisible();
-  await expect(dialog.getByRole("searchbox")).toHaveCount(0);
+  await expect(dialog.getByRole("searchbox")).toHaveCount(1);
   await expect(dialog.getByRole("button", { name: /^Pin / })).toHaveCount(0);
 
   await dialog.getByRole("button", { name: "All tools" }).click();
@@ -119,12 +117,12 @@ test("Compass persists pinned tools on this device", async ({ page }) => {
     "true",
   );
 
-  await page.getByRole("button", { name: "Manage" }).click();
-  let dialog = page.getByRole("dialog", { name: "Manage shortcuts" });
+  await page.getByRole("button", { name: "Edit" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit shortcuts" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("searchbox")).toHaveCount(0);
-  await dialog.getByRole("button", { name: /Food & drink\b/ }).click();
-  dialog = page.getByRole("dialog", { name: "Food & drink" });
+  const toolFilter = dialog.getByRole("searchbox", { name: "Search tools in this section" });
+  await expect(toolFilter).toBeVisible();
+  await toolFilter.fill("brunch");
   const pinBrunch = dialog.getByRole("button", { name: "Pin Brunch guide" });
   await expect(pinBrunch).toHaveAttribute("aria-pressed", "false");
   await pinBrunch.click();
@@ -145,7 +143,7 @@ test("Compass persists pinned tools on this device", async ({ page }) => {
       ]),
     );
 
-  await dialog.getByRole("button", { name: "Close Food & drink" }).click();
+  await dialog.getByRole("button", { name: "Close Edit shortcuts" }).click();
   await expect(dialog).toBeHidden();
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
@@ -159,6 +157,32 @@ test("Compass persists pinned tools on this device", async ({ page }) => {
   await expect(pinned.locator("li")).toHaveCount(5);
   await expect(
     pinned.getByRole("link", { name: /^Brunch guide\b/ }),
+  ).toBeVisible();
+});
+
+test("Compass routes everyday language and exposes pinning in results", async ({
+  page,
+}) => {
+  await page.addInitScript((key) => window.localStorage.removeItem(key), COMPASS_PINS_KEY);
+  await page.goto("/compass", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
+    "data-compass-ready",
+    "true",
+  );
+
+  const search = page.getByRole("searchbox", { name: "Search all Radius tools" });
+  await search.fill("closest trash can");
+  await expect(page.getByRole("link", { name: /^Trash cans\b/ })).toBeVisible();
+  const pinTrash = page.getByRole("button", { name: "Pin Trash cans" });
+  await expect(pinTrash).toBeVisible();
+  await pinTrash.click();
+  await expect(page.getByRole("button", { name: "Unpin Trash cans" })).toBeVisible();
+
+  await search.fill("anything fun tonight");
+  await expect(
+    page
+      .locator('section[aria-labelledby="compass-search-heading"]')
+      .getByRole("link", { name: /^Events\b/ }),
   ).toBeVisible();
 });
 

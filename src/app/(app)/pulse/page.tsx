@@ -45,7 +45,6 @@ import {
   explainLongerSegments,
   incidentNoun,
   leadTravelTime,
-  roadAttentionScopeLabel,
   selectRoadTravelSummary,
   travelMinutes,
 } from "@/lib/live/roadIntelligenceModel";
@@ -57,13 +56,19 @@ import PulseBoard, {
   type PulseTile,
   type PulseHero,
   type PulseHeroChip,
-  type PulseHeroFact,
 } from "@/components/pulse/PulseBoard";
-import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
 import { compareAlertPriority } from "@/lib/alert-priority";
-import { powerOutageDisplay, powerOutageTone, pulseAlertPriority, pulseStatusState, shouldAqiLead } from "@/lib/pulse/signal-priority";
+import {
+  civicAlertPriority,
+  powerOutageDisplay,
+  powerOutageTone,
+  pulseAqiPriority,
+  pulseAlertPriority,
+  pulseStatusState,
+  selectPulseLeadCandidate,
+} from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
@@ -84,12 +89,6 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
-}
-
-function titleCaseWords(value: string): string {
-  return value
-    .toLocaleLowerCase()
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
 /** Give the observation its date as well as its hour. Around midnight, a bare
@@ -437,7 +436,6 @@ export default async function PulsePage() {
   const affectedOutageAreas = [...outages.munis]
     .filter((area) => area.customers_out > 0)
     .sort((a, b) => b.customers_out - a.customers_out);
-  const largestOutageArea = affectedOutageAreas[0] ?? null;
 
   // Only count NWS alerts that haven't already expired. The feed
   // includes alerts with `ends_at` in the past until the cache cycles,
@@ -458,10 +456,6 @@ export default async function PulsePage() {
     (report) => report.state === "recent",
   );
   const leadOfficialAlert = officialCivicAlerts[0] ?? null;
-  const officialAlertShouldLead = Boolean(
-    leadOfficialAlert &&
-      (leadOfficialAlert.kind === "city-emergency" || !activeAlerts[0]),
-  );
   // The shared snapshot has already rejected unavailable or stale AirNow
   // observations. An empty successful read stays distinct from a fresh one and
   // therefore keeps the briefing partial instead of creating a false all-clear.
@@ -542,38 +536,110 @@ export default async function PulsePage() {
   const leadTraffic = highTraffic[0];
   const leadSchool = schoolAlerts[0];
   const leadSafety = severeSafety[0];
-  const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
+  const leadCandidate = selectPulseLeadCandidate([
+    leadAlert && {
+      id: "weather-alert",
+      family: "weather" as const,
+      priority: pulseAlertPriority(leadAlert),
+      reason: `NWS ${leadAlert.event}`,
+      observedAt: leadAlert.starts_at,
+    },
+    leadOfficialAlert && {
+      id: "official-alert",
+      family: "civic" as const,
+      priority: civicAlertPriority(leadOfficialAlert.kind),
+      reason:
+        leadOfficialAlert.kind === "city-emergency"
+          ? "official City emergency"
+          : `official ${leadOfficialAlert.kind.replaceAll("-", " ")}`,
+      observedAt: leadOfficialAlert.publishedAt,
+    },
+    leadSafety && {
+      id: "fire-rescue",
+      family: "fire-rescue" as const,
+      priority: 2,
+      reason: "severe fire or rescue dispatch",
+      observedAt: leadSafety.received_at,
+    },
+    breakingPolice && {
+      id: "police",
+      family: "police" as const,
+      priority: 2,
+      reason: "fresh official public-safety release",
+      observedAt: breakingPolice.publishedAt,
+    },
+    leadSchool && {
+      id: "schools",
+      family: "schools" as const,
+      priority: leadSchool.status === "closed" ? 4 : 5,
+      reason: `FCPS ${leadSchool.status.replaceAll("_", " ")}`,
+      observedAt: leadSchool.published_at,
+    },
+    roadLead && {
+      id: "road-intelligence",
+      family: "traffic" as const,
+      priority:
+        roadLead.severity === "emergency"
+          ? 3
+          : roadLead.severity === "warning"
+            ? 6
+            : 7,
+      reason: `${roadLead.sourceLabel} ${roadLead.severity}`,
+      observedAt: roadLead.observedAt,
+    },
+    leadTraffic && {
+      id: "traffic-incident",
+      family: "traffic" as const,
+      priority: 6,
+      reason: "high-severity MDOT traffic incident",
+      observedAt: leadTraffic.started_at,
+    },
+    outagesActive && {
+      id: "power",
+      family: "power" as const,
+      priority: outageTone === "danger" ? 5 : 8,
+      reason:
+        outageTone === "danger"
+          ? "widespread utility outage"
+          : "localized utility outage",
+      observedAt: outageResult.asOf,
+    },
+    aqiActive && aqiWorst && {
+      id: "air",
+      family: "air" as const,
+      priority: pulseAqiPriority(aqiWorst.category.id),
+      reason: `AirNow ${aqiWorst.category.name.toLowerCase()} reading`,
+      observedAt: airQualityObservedAt(aqiWorst)?.toISOString(),
+    },
+  ]);
 
   let heroLine = "No major disruptions appear in the checked feeds.";
   let heroSub = "Open any condition below to see its source and latest details.";
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
-  let heroFacts: PulseHeroFact[] = [];
   let heroTone: PulseHero["tone"] = heroDegraded
     ? "warning"
     : allClear
       ? "positive"
       : "warning";
 
-  if (heroDegraded) {
+  if (!leadCandidate && heroDegraded) {
     heroLine = "The available feeds show no major disruptions.";
     heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
-  } else if (aqiLeads && aqiWorst) {
+  } else if (leadCandidate?.id === "air" && aqiWorst) {
     heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
     heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
     heroSub = aqiGuidance(aqiWorst.category.id);
-    heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
+    const observedAt = airQualityObservedAt(aqiWorst)?.toISOString();
+    heroLeadMeta = [
+      `AQI ${aqiWorst.aqi}`,
+      observedAt ? `AirNow observed ${timeAgo(observedAt)}` : `Observed ${aqiClock(aqiWorst)}`,
+    ].join(" · ");
     heroActionLabel = "See the air-quality reading";
-    heroFacts = [
-      { label: "Current AQI", value: String(aqiWorst.aqi), detail: aqiWorst.reportingArea },
-      { label: "Category", value: aqiWorst.category.name },
-      { label: "Pollutant", value: aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase()) },
-      { label: "Observed", value: aqiClock(aqiWorst) },
-    ];
-  } else if (officialAlertShouldLead && leadOfficialAlert) {
-    heroTone = "warning";
+  } else if (leadCandidate?.id === "official-alert" && leadOfficialAlert) {
+    heroTone = leadOfficialAlert.kind === "city-emergency" ? "danger" : "warning";
     heroLeadKey = "alerts";
     heroLine = leadOfficialAlert.title;
     heroSub =
@@ -582,125 +648,51 @@ export default async function PulsePage() {
     heroLeadMeta = [
       leadOfficialAlert.scope === "city" ? "City of Frederick" : "Frederick County",
       leadOfficialAlert.publishedAt
-        ? timeAgo(leadOfficialAlert.publishedAt)
-        : null,
+        ? `Published ${timeAgo(leadOfficialAlert.publishedAt)}`
+        : "Publication time unavailable",
     ].filter(Boolean).join(" · ");
     heroActionLabel = "Read the official notice";
-    heroFacts = [
-      {
-        label: "Publisher",
-        value: leadOfficialAlert.provenance.publisher,
-      },
-      {
-        label: "Area",
-        value:
-          leadOfficialAlert.scope === "city"
-            ? "City of Frederick"
-            : "Frederick County",
-      },
-      { label: "Status", value: "Active notice" },
-      {
-        label: "Published",
-        value: leadOfficialAlert.publishedAt
-          ? timeAgo(leadOfficialAlert.publishedAt) || "Current notice"
-          : "Current notice",
-      },
-    ];
-  } else if (leadAlert) {
+  } else if (leadCandidate?.id === "weather-alert" && leadAlert) {
     heroTone = pulseAlertPriority(leadAlert) <= 4 ? "danger" : "warning";
     heroLeadKey = "alerts";
     heroLine = leadAirSummary?.levelLabel
       ? `MDE Code ${leadAirSummary.levelLabel} air-quality alert for Frederick County.`
       : `${leadAlert.event} for Frederick County.`;
     heroSub = alertGuidance(leadAlert.event, leadAlert.headline, leadAlert.description, freshAqiObs, marcNow);
-    heroLeadMeta = leadAirSummary
-      ? [leadAirSummary.forecastPeriod, alertEndLabel(leadAlert.ends_at)].filter(Boolean).join(" · ")
-      : alertEndLabel(leadAlert.ends_at);
+    heroLeadMeta = [
+      `Issued ${timeAgo(leadAlert.starts_at) || "recently"}`,
+      leadAirSummary?.forecastPeriod,
+      alertEndLabel(leadAlert.ends_at),
+    ].filter(Boolean).join(" · ");
     heroActionLabel = "Read the Frederick alert";
-    heroFacts = [
-      { label: "Severity", value: leadAlert.severity },
-      { label: "Urgency", value: leadAlert.urgency },
-      { label: "Scope", value: "Frederick County" },
-      { label: "Timing", value: alertEndLabel(leadAlert.ends_at) || "Active now" },
-    ];
-  } else if (aqiActive && aqiWorst) {
-    heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
-    heroLeadKey = "air";
-    heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
-    heroSub = aqiGuidance(aqiWorst.category.id);
-    heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
-    heroActionLabel = "See the air-quality reading";
-    heroFacts = [
-      { label: "Current AQI", value: String(aqiWorst.aqi), detail: aqiWorst.reportingArea },
-      { label: "Category", value: aqiWorst.category.name },
-      { label: "Pollutant", value: aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase()) },
-      { label: "Observed", value: aqiClock(aqiWorst) },
-    ];
-  } else if (breakingPolice) {
+  } else if (leadCandidate?.id === "police" && breakingPolice) {
     heroTone = "danger";
     heroLeadKey = "police";
     heroLine = breakingPolice.title;
     heroSub = `${breakingPolice.source} published this update. Read the official release for confirmed details and any instructions.`;
-    heroLeadMeta = [breakingPolice.sourceShort, timeAgo(breakingPolice.publishedAt)].filter(Boolean).join(" · ");
+    heroLeadMeta = [breakingPolice.sourceShort, `Published ${timeAgo(breakingPolice.publishedAt) || "recently"}`].join(" · ");
     heroActionLabel = "Read the official safety update";
-    heroFacts = [
-      { label: "Record", value: "Official release" },
-      { label: "Publisher", value: breakingPolice.sourceShort },
-      { label: "Published", value: timeAgo(breakingPolice.publishedAt) || "Recently" },
-      { label: "Area", value: "Frederick" },
-    ];
-  } else if (outagesActive) {
+  } else if (leadCandidate?.id === "power") {
     heroTone = outageTone;
     heroLeadKey = "power";
     heroLine = `Potomac Edison reports ${outages.total_out.toLocaleString()} customers without power.`;
     heroSub = "Check the affected areas to see whether the outage is near you.";
-    heroLeadMeta = "Potomac Edison service area";
+    heroLeadMeta = [
+      "Potomac Edison service area",
+      outageResult.asOf ? `Updated ${timeAgo(outageResult.asOf)}` : "Source time unavailable",
+    ].join(" · ");
     heroActionLabel = "Check affected areas";
-    heroFacts = [
-      {
-        label: "Customers out",
-        value: outages.total_out.toLocaleString(),
-        detail: `${outageShare}% of ${outages.total_served.toLocaleString()} served`,
-      },
-      {
-        label: "Affected areas",
-        value: affectedOutageAreas.length.toLocaleString(),
-        detail: "Municipality-level reports",
-      },
-      {
-        label: "Largest report",
-        value: largestOutageArea ? titleCaseWords(largestOutageArea.area) : "County total",
-        detail: largestOutageArea
-          ? `${largestOutageArea.customers_out.toLocaleString()} customers out`
-          : undefined,
-      },
-      {
-        label: "Utility update",
-        value: outageResult.asOf ? timeAgo(outageResult.asOf) : "Current report",
-      },
-    ];
-  } else if (roadLead) {
+  } else if (leadCandidate?.id === "road-intelligence" && roadLead) {
     heroLeadKey = "traffic";
     heroTone = roadLead.severity === "emergency" ? "danger" : "warning";
     heroLine = roadLead.title;
     heroSub = roadLead.detail;
     heroLeadMeta = [
       roadLead.scope,
-      roadLead.observedAt ? timeAgo(roadLead.observedAt) : null,
+      roadLead.observedAt ? `Observed ${timeAgo(roadLead.observedAt)}` : "Source time unavailable",
     ].filter(Boolean).join(" · ");
     heroActionLabel = "Check the road details";
-    heroFacts = [
-      { label: roadAttentionScopeLabel(roadLead), value: roadLead.scope },
-      { label: "Status", value: roadLead.severity === "emergency" ? "Emergency" : "Use caution" },
-      { label: "Source", value: roadLead.sourceLabel },
-      {
-        label: "Observed",
-        value: roadLead.observedAt
-          ? timeAgo(roadLead.observedAt) || "Current report"
-          : "Current report",
-      },
-    ];
-  } else if (leadTraffic) {
+  } else if (leadCandidate?.id === "traffic-incident" && leadTraffic) {
     heroLeadKey = "traffic";
     // Humanized at the boundary: no raw CHART enum or ramp code reaches the
     // hero. chartHeroSentence adds the local street alias; chartTypeSentence
@@ -710,29 +702,12 @@ export default async function PulsePage() {
     heroSub = trafficLanes
       ? `${chartTypeSentence(leadTraffic)} ${trafficLanes}. Check the location before choosing your route.`
       : `${chartTypeSentence(leadTraffic)} Check the incident location before choosing your route.`;
-    heroLeadMeta = humanizeChartText(leadTraffic.location);
+    heroLeadMeta = [
+      humanizeChartText(leadTraffic.location),
+      leadTraffic.started_at ? `Reported ${timeAgo(leadTraffic.started_at)}` : "Source time unavailable",
+    ].join(" · ");
     heroActionLabel = "Check the road impact";
-    heroFacts = [
-      {
-        label: "Road",
-        value: leadTraffic.road || humanizeChartText(leadTraffic.location),
-        detail: leadTraffic.direction ? humanizeChartText(leadTraffic.direction) : undefined,
-      },
-      { label: "Type", value: humanizeChartText(leadTraffic.type) },
-      {
-        label: "Lane impact",
-        value: leadTraffic.lanes_affected
-          ? humanizeChartText(leadTraffic.lanes_affected)
-          : "Check the incident",
-      },
-      {
-        label: "Reported",
-        value: leadTraffic.started_at
-          ? timeAgo(leadTraffic.started_at) || "Active now"
-          : "Active now",
-      },
-    ];
-  } else if (leadSchool) {
+  } else if (leadCandidate?.id === "schools" && leadSchool) {
     heroLeadKey = "schools";
     heroLine = leadSchool.status === "closed"
       ? "FCPS posted a school closure update."
@@ -742,35 +717,15 @@ export default async function PulsePage() {
           ? "FCPS posted an early-dismissal update."
           : "FCPS has a schedule update.";
     heroSub = leadSchool.title;
-    heroLeadMeta = timeAgo(leadSchool.published_at);
+    heroLeadMeta = `Published ${timeAgo(leadSchool.published_at) || "recently"}`;
     heroActionLabel = "Read the FCPS update";
-    heroFacts = [
-      {
-        label: "Status",
-        value:
-          leadSchool.status === "closed"
-            ? "Closure update"
-            : leadSchool.status === "delayed"
-              ? "Delayed opening"
-              : "Early dismissal",
-      },
-      { label: "Published", value: timeAgo(leadSchool.published_at) || "Recently" },
-      { label: "System", value: "Frederick County" },
-      { label: "Source", value: "FCPS" },
-    ];
-  } else if (leadSafety) {
+  } else if (leadCandidate?.id === "fire-rescue" && leadSafety) {
     heroLeadKey = "safety";
     heroTone = "danger";
     heroLine = `PulsePoint reports ${severeSafety.length} high-priority fire or rescue ${severeSafety.length === 1 ? "call" : "calls"}.`;
     heroSub = `Most recent: ${leadSafety.type}${leadSafety.address ? ` near ${leadSafety.address}` : ""}.`;
-    heroLeadMeta = timeAgo(leadSafety.received_at);
+    heroLeadMeta = `Received ${timeAgo(leadSafety.received_at) || "recently"}`;
     heroActionLabel = "See active calls";
-    heroFacts = [
-      { label: "High-priority calls", value: severeSafety.length.toLocaleString() },
-      { label: "Latest call", value: leadSafety.type },
-      { label: "Location", value: leadSafety.address || "Frederick County" },
-      { label: "Received", value: timeAgo(leadSafety.received_at) || "Recently" },
-    ];
   }
 
   // Rivers — group the live gauges and pick a representative reading for
@@ -1008,29 +963,21 @@ export default async function PulsePage() {
       : id === 3 ? "sensitive groups"
       : id === 2 ? "moderate"
       : "good";
-  const aqiPct = aqiWorst ? clampPercent((aqiWorst.aqi / 300) * 100) : 0;
-
-  const powerPct = powerAvailable ? clampPercent((outages.total_out / 2000) * 100) : 0;
   const unaffectedOutageAreaCount = Math.max(0, outages.munis.length - affectedOutageAreas.length);
 
   const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
   const riverFloodRef = riverPeekSite?.floodStages?.minor ?? null;
-  // The ring is a stage CLAIM: how far the water sits from NWS minor flood
-  // stage. Only forecast points carry official stages, and floodStage.ts is
-  // explicit that inventing one for the other gauges would be unsafe — the
-  // old `|| 15` fallback did exactly that. A site without a stage renders as
-  // a plain reading (height + trend), never as a fraction of a made-up flood.
+  // Only forecast points carry an official stage. The compact card prints the
+  // measurement and trend directly; it never turns the value into a decorative
+  // percentage or invents a reference stage for another gauge.
   const riverHasStage = riverPeekHeight != null && riverFloodRef != null;
-  const riverPct = riverHasStage
-    ? clampPercent((riverPeekHeight / riverFloodRef) * 100)
-    : 0;
-
-  const fixitPct = clampPercent((fixit.length / 25) * 100);
   const activeOfficialAlertCount =
     activeAlerts.length + officialCivicAlerts.length;
-  const leadDisplayedAlert = officialAlertShouldLead
+  const leadDisplayedAlert = leadCandidate?.id === "official-alert"
     ? leadOfficialAlert
-    : leadAlert ?? leadOfficialAlert;
+    : leadCandidate?.id === "weather-alert"
+      ? leadAlert
+      : leadAlert ?? leadOfficialAlert;
   const officialAlertsDegraded = !officialAlertsCheckComplete;
   const officialAlertsCountLabel = leadDisplayedAlert
     ? "event" in leadDisplayedAlert
@@ -1096,7 +1043,7 @@ export default async function PulsePage() {
           body: <PulseWeatherPanel forecast={forecast} aqiObs={freshAqiObs} />,
         } as PulseTile]
       : []),
-    // ── Numeric feeds → animated gauge rings ──
+    // ── Numeric feeds → direct, source-backed readings ──
     // Air quality: an ambient environmental reading. A missing fresh reading
     // stays visible as an exact degraded tile, so the hero does not need a
     // generic "some feeds" warning with no source or next step.
@@ -1105,8 +1052,8 @@ export default async function PulsePage() {
           key: "air",
           // One face, each fact once. The old strings put "ozone" in the
           // label, the count, and the unit, and the number in two of them —
-          // the tile read as an echo. Label is the stable subject, the gauge
-          // carries the number, the unit names the pollutant and its category.
+          // the tile read as an echo. Label is the stable subject, the reading
+          // carries the number, and the unit names pollutant and category.
           label: "Air quality",
           iconName: "Wind",
           countLabel: aqiObservationLabel(aqiWorst.parameter, aqiWorst.aqi),
@@ -1115,7 +1062,7 @@ export default async function PulsePage() {
           attention: situationActive.air,
           reading: true,
           kind: "gauge",
-          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `${aqiPollutantTitle ?? "AQI"} · ${aqiShort(aqiWorst.category.id)}` },
+          gauge: { value: aqiWorst.aqi, unit: `${aqiPollutantTitle ?? "AQI"} · ${aqiShort(aqiWorst.category.id)}` },
           sourceLabel: "AirNow · EPA",
           body: aqiBody,
         } as PulseTile]
@@ -1128,6 +1075,8 @@ export default async function PulsePage() {
           active: false,
           attention: false,
           degraded: true,
+          reading: true,
+          keepVisibleWhenUnavailable: true,
           kind: "status",
           sourceLabel: "AirNow · EPA",
           peek: "No fresh Frederick reading",
@@ -1163,7 +1112,6 @@ export default async function PulsePage() {
       kind: "gauge",
       gauge: {
         value: outages.total_out,
-        pct: powerPct,
         comma: true,
         unit: outageDisplay.unit,
       },
@@ -1420,6 +1368,10 @@ export default async function PulsePage() {
                 ? "The official feeds report no major traffic incident, severe road condition, or active work-zone closure in Frederick County."
                 : "At least one official road feed could not be checked. Open MDOT CHART before relying on this result.",
             ),
+      action: {
+        href: "/map?show=roads,incidents,cameras",
+        label: "Show roads and incidents on the map",
+      },
     },
     {
       key: "schools",
@@ -1483,7 +1435,7 @@ export default async function PulsePage() {
       attention: false,
       availability: fixitAvailable ? "current" : "unavailable",
       kind: "gauge",
-      gauge: { value: fixit.length, pct: fixitPct, unit: "open reports" },
+      gauge: { value: fixit.length, unit: "open reports" },
       sourceLabel: "FCG FixIT · SeeClickFix",
       body: fixit.length > 0
         ? fixit.slice(0, 10).map((i) => (
@@ -1720,15 +1672,13 @@ export default async function PulsePage() {
       availability: riversAvailable ? "current" : "unavailable",
       // Only a real gauge height is a reading; "No data" is an absence.
       reading: riverPeekHeight != null,
-      // The RING requires an official NWS flood stage to be a fraction of.
-      // A site without one still shows its height and trend as plain text,
-      // per floodStage.ts: making no stage claim is the honest render.
+      // A site without an official NWS flood stage still shows its height and
+      // trend as plain text. No display invents a denominator.
       kind: riverHasStage ? "gauge" : "status",
       ...(riverHasStage
         ? {
             gauge: {
               value: riverPeekHeight,
-              pct: riverPct,
               decimals: 1,
               unit: `ft · ${riverPeekDir ?? "steady"}`,
             },
@@ -2024,12 +1974,11 @@ export default async function PulsePage() {
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
     allClear,
-    degraded: heroDegraded,
+    degraded: urgentDegraded,
     tone: heroTone,
     line: heroLine,
     sub: heroSub,
     renderedAt: nowMs,
-    facts: heroFacts,
     leadKey: heroLeadKey,
     leadMeta: heroLeadMeta,
     actionLabel: heroActionLabel,

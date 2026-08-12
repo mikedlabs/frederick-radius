@@ -29,10 +29,12 @@ const contentSecurityPolicy = [
   [
     "connect-src 'self'",
     ...(!isProduction ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
-    // No mapbox.com entries: the basemap is served from this origin, and
-    // the remaining Mapbox REST calls (isochrone, matrix, geocode, search
-    // box, static images) are made server-side by our own API routes, which
-    // no browser CSP governs.
+    // The flagship Map, Radius, and Transit canvases use Mapbox GL directly
+    // for the branded basemap, terrain, traffic, and map telemetry. Keep the
+    // browser allowance narrow; search, geocoding, directions, and static
+    // images still run through our server-side routes.
+    "https://api.mapbox.com",
+    "https://events.mapbox.com",
     //
     // RainViewer weather radar (the map's Radar layer): the frame index
     // lives on api., the tiles on tilecache. — and the GL renderer fetches

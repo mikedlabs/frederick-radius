@@ -3,7 +3,7 @@
 // Extracted from AppMap.tsx (#77); behavior is byte-identical to the inline
 // originals.
 
-import type { Map as MapboxMap } from "maplibre-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import type { LngLat } from "@/lib/geo";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { nearbyReachBounds } from "./mapNearbyScope";
@@ -40,19 +40,16 @@ export function isCountyOverview(map: CameraSnapshot): boolean {
   );
 }
 
-// Does this browser have a usable WebGL context? The GL renderer needs one;
-// without it the canvas stays blank, and neither mapbox-gl v3 nor maplibre-gl
-// ships the old `supported()` helper, so probe directly. Conservative: any throw or missing context → treat as no
-// WebGL and fall back to the list view. SSR returns true so we never flash the
-// fallback during hydration — the real check runs in a mount effect.
+// Does this browser have the WebGL 2 context required by MapLibre GL JS v6?
+// A WebGL 1-only probe is a false positive: MapLibre can mount its canvas but
+// cannot render, leaving a blank map instead of Radius's accessible fallback.
+// Conservative: any throw or missing context means no map. SSR returns true so
+// the real capability check can run after mount without a hydration flash.
 export function hasWebGL(): boolean {
   if (typeof document === "undefined" || typeof window === "undefined") return true;
   try {
     const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
+    return Boolean(canvas.getContext("webgl2"));
   } catch {
     return false;
   }
@@ -94,7 +91,9 @@ export function countyFitPadding(measureDock = true): { top: number; right: numb
     return { top: 96, right: 32, bottom: 64, left: 32 };
   }
   const mapRect = measureDock
-    ? document.querySelector<HTMLElement>(".maplibregl-map")?.getBoundingClientRect()
+    ? document
+        .querySelector<HTMLElement>(".mapboxgl-map, .maplibregl-map")
+        ?.getBoundingClientRect()
     : undefined;
   const dock = measureDock
     ? document.querySelector<HTMLElement>("[data-map-dock]")

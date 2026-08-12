@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  hasWebGL,
   isCountyOverview,
   municipalityDisplayName,
   scrubInstant,
@@ -15,6 +16,45 @@ const countyCenter = {
 function camera(zoom: number, center = countyCenter) {
   return { getZoom: () => zoom, getCenter: () => center };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("hasWebGL", () => {
+  it("accepts a usable WebGL 2 context", () => {
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("document", {
+      createElement: () => ({
+        getContext: (kind: string) => kind === "webgl2" ? {} : null,
+      }),
+    });
+
+    expect(hasWebGL()).toBe(true);
+  });
+
+  it("rejects a WebGL 1-only browser instead of allowing a blank map", () => {
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("document", {
+      createElement: () => ({
+        getContext: (kind: string) => kind === "webgl" ? {} : null,
+      }),
+    });
+
+    expect(hasWebGL()).toBe(false);
+  });
+
+  it("falls back when context creation throws", () => {
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("document", {
+      createElement: () => ({
+        getContext: () => { throw new Error("context blocked"); },
+      }),
+    });
+
+    expect(hasWebGL()).toBe(false);
+  });
+});
 
 describe("isCountyOverview", () => {
   it("treats the settled county fit as an overview", () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
-import { Marker, Popup, Source, Layer } from "react-map-gl/maplibre";
+import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";
@@ -57,6 +57,23 @@ type LiveVehicle = {
   nextStop?: NextStop;
 };
 
+type FeedStatus =
+  | "loading"
+  | "ready"
+  | "degraded"
+  | "empty"
+  | "stale"
+  | "error";
+
+export type LiveBusLayerSnapshot = {
+  status: FeedStatus;
+  count: number;
+  /** Seconds since the provider's last reported update. */
+  ageSeconds: number;
+  /** First current extent for scene framing; later movement never chases it. */
+  bounds: [[number, number], [number, number]] | null;
+};
+
 /** Minutes-to-arrival label for a next-stop ETA. `nowMs` is state (updated on
  *  the 1s tick), never Date.now() in render — the purity rule. Returns null
  *  when there's no predicted time, so the UI shows the stop name alone. */
@@ -81,6 +98,7 @@ const SELECTABLE_STOP_BY_ID = new Map(
 
 const POLL_MS = 15_000;
 const PROVIDER_STALE_MS = 40_000;
+const CLIENT_TIMEOUT_MS = 8_000;
 // Glide paced to the poll: with a 1.4s glide against a 15s poll, buses
 // sprinted for a moment and then sat frozen for ~13s - burst-and-freeze
 // (owner report, 2026-07-19: the motion could look better). Easing across
@@ -88,6 +106,29 @@ const PROVIDER_STALE_MS = 40_000;
 // speed, still only ever toward genuinely reported fixes along the real
 // route shape - paced presentation, never extrapolation.
 const GLIDE_MS = 14_000;
+// Bus reports only arrive every 15 seconds, and their on-screen travel between
+// reports is usually a few pixels. Driving React at display refresh rate for
+// that entire window needlessly rerenders every marker, popup, and control.
+// Twelve visual commits per second keeps those tiny movements fluid while
+// cutting the typical 60 Hz React work by about 80%. requestAnimationFrame
+// still owns the clock, so background tabs pause naturally and the final
+// reported position is never delayed by a timer backlog.
+export const LIVE_BUS_GLIDE_VISUAL_UPDATE_MS = 1_000 / 12;
+
+export function shouldCommitLiveBusGlideFrame({
+  now,
+  lastCommitAt,
+  progress,
+}: {
+  now: number;
+  lastCommitAt: number;
+  progress: number;
+}): boolean {
+  return (
+    progress >= 1 ||
+    now - lastCommitAt >= LIVE_BUS_GLIDE_VISUAL_UPDATE_MS
+  );
+}
 
 // --- Route-polyline geometry (snap-to-route glide) --------------------------
 // Distances are in lat-corrected degrees: cheap, and only ever compared to
@@ -210,6 +251,7 @@ export default function LiveBuses({
   focusVehicleId,
   focusRequestId,
   gate,
+  onHealthChange,
 }: {
   show: boolean;
   highlightRouteId?: string;
@@ -217,9 +259,40 @@ export default function LiveBuses({
   focusRequestId?: number;
   /** Puts this internally-owned popup under AppMap's one-foreground gate. */
   gate?: LiveLayerGate;
+  /** Lets the parent explain scene readiness without fetching the feed twice. */
+  onHealthChange?: (snapshot: LiveBusLayerSnapshot) => void;
+}) {
+  // A visible Transit layer is one live-feed session. Unmounting the session
+  // when the layer turns off retires its vehicles, timestamps, selection, and
+  // timers together, so an old bus can never flash as current when Transit is
+  // turned back on while the replacement request is still in flight.
+  if (!show) return null;
+  return (
+    <VisibleLiveBuses
+      highlightRouteId={highlightRouteId}
+      focusVehicleId={focusVehicleId}
+      focusRequestId={focusRequestId}
+      gate={gate}
+      onHealthChange={onHealthChange}
+    />
+  );
+}
+
+function VisibleLiveBuses({
+  highlightRouteId,
+  focusVehicleId,
+  focusRequestId,
+  gate,
+  onHealthChange,
+}: {
+  highlightRouteId?: string;
+  focusVehicleId?: string;
+  focusRequestId?: number;
+  gate?: LiveLayerGate;
+  onHealthChange?: (snapshot: LiveBusLayerSnapshot) => void;
 }) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
-  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "stale" | "error">("loading");
+  const [feedStatus, setFeedStatus] = useState<FeedStatus>("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
   useLiveLayerGate(gate, () => setSelected(null));
@@ -233,6 +306,13 @@ export default function LiveBuses({
   const { buses: savedBuses, toggle: toggleSavedBus } =
     useSavedTransitBuses();
   const [ago, setAgo] = useState(0);
+  const effectiveFeedStatus: FeedStatus =
+    (feedStatus === "ready" ||
+      feedStatus === "degraded" ||
+      feedStatus === "empty") &&
+    ago * 1000 > PROVIDER_STALE_MS
+      ? "stale"
+      : feedStatus;
   // Wall-clock now (ms), refreshed on the 1s tick — drives the next-stop ETA
   // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
   // until the first poll/tick stamps it; etaLabel() suppresses ETAs at 0.
@@ -252,7 +332,10 @@ export default function LiveBuses({
     vehicles,
     vehicleId: focusVehicleId,
     expectedRouteId: highlightRouteId,
-    feedCurrent: feedStatus === "ready",
+    // Degraded means current positions without arrival estimates. The vehicle
+    // itself is still current and can be focused honestly.
+    feedCurrent:
+      effectiveFeedStatus === "ready" || effectiveFeedStatus === "degraded",
     nowMs,
   });
   const activeSelected =
@@ -260,15 +343,46 @@ export default function LiveBuses({
       ? focusedVehicle.vehicleId
       : selected;
 
-  useEffect(() => { posRef.current = pos; }, [pos]);
-
-  // Poll the live feed only while the Transit layer is on.
   useEffect(() => {
-    if (!show) return;
+    const bounds: LiveBusLayerSnapshot["bounds"] = vehicles.length > 0
+      ? [
+          [
+            Math.min(...vehicles.map((vehicle) => vehicle.lng)),
+            Math.min(...vehicles.map((vehicle) => vehicle.lat)),
+          ],
+          [
+            Math.max(...vehicles.map((vehicle) => vehicle.lng)),
+            Math.max(...vehicles.map((vehicle) => vehicle.lat)),
+          ],
+        ]
+      : null;
+    onHealthChange?.({
+      status: effectiveFeedStatus,
+      count: vehicles.length,
+      ageSeconds: ago,
+      bounds,
+    });
+  }, [ago, effectiveFeedStatus, onHealthChange, vehicles]);
+
+  // The wrapper mounts this session only while Transit is on. Poll only while
+  // the document is visible, and refresh immediately when the rider returns.
+  useEffect(() => {
     let alive = true;
+    let inFlight = false;
+    let controller: AbortController | null = null;
     const load = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      controller = new AbortController();
+      const timeout = window.setTimeout(
+        () => controller?.abort(),
+        CLIENT_TIMEOUT_MS,
+      );
       try {
-        const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
+        const r = await fetch("/api/transit/vehicles", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         if (!r.ok) throw new Error(`Transit feed returned ${r.status}`);
         const d = (await r.json()) as {
           vehicles?: LiveVehicle[];
@@ -289,7 +403,15 @@ export default function LiveBuses({
           const providerAge = Math.max(0, Date.now() - providerTime);
           const delayed = providerAge > PROVIDER_STALE_MS;
           setVehicles(d.vehicles);
-          setFeedStatus(delayed ? "stale" : d.vehicles.length > 0 ? "ready" : "empty");
+          setFeedStatus(
+            delayed
+              ? "stale"
+              : d.vehicles.length === 0
+                ? "empty"
+                : d.status === "degraded"
+                  ? "degraded"
+                  : "ready",
+          );
           setAgo(Math.floor(providerAge / 1000));
           setNowMs(Date.now());
           setPollSeq((s) => s + 1);
@@ -297,16 +419,35 @@ export default function LiveBuses({
       } catch {
         if (alive) {
           setFeedStatus((current) =>
-            current === "ready" || current === "stale" ? "stale" : "error",
+            current === "ready" || current === "degraded" || current === "stale"
+              ? "stale"
+              : "error",
           );
         }
+      } finally {
+        window.clearTimeout(timeout);
+        inFlight = false;
       }
     };
-    load();
-    const poll = setInterval(load, POLL_MS);
-    const tick = setInterval(() => { setAgo((a) => a + 1); setNowMs(Date.now()); }, 1000);
-    return () => { alive = false; clearInterval(poll); clearInterval(tick); };
-  }, [show]);
+    const loadWhileVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    loadWhileVisible();
+    const poll = window.setInterval(loadWhileVisible, POLL_MS);
+    const tick = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      setAgo((a) => a + 1);
+      setNowMs(Date.now());
+    }, 1000);
+    document.addEventListener("visibilitychange", loadWhileVisible);
+    return () => {
+      alive = false;
+      controller?.abort();
+      window.clearInterval(poll);
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", loadWhileVisible);
+    };
+  }, []);
 
   // Ease each bus from its current screen position to its new report — along
   // the route polyline where it fits, straight-line otherwise.
@@ -364,35 +505,56 @@ export default function LiveBuses({
     // rAF keeps setState out of the effect body.
     const dur = reduced ? 0 : GLIDE_MS;
     const start = performance.now();
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    let lastCommitAt = start - LIVE_BUS_GLIDE_VISUAL_UPDATE_MS;
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     const step = (now: number) => {
       const t = dur === 0 ? 1 : Math.min(1, (now - start) / dur);
-      // Long glides read as steady driving only when LINEAR; easeInOut
-      // over 14s looks like a bus lurching between every fix. Short
-      // glides (reduced-data snaps) keep the soft ease.
-      const e = dur >= 5_000 ? t : t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      const next: Record<string, Pos> = {};
-      for (const tw of tweens) {
-        if (tw.mode === "route") {
-          const s = lerp(tw.sFrom, tw.sTo, e);
-          const at = pointAtArc(tw.shape, s);
-          // Travelling backward along the shape -> flip the heading 180°.
-          const bearing = tw.sTo >= tw.sFrom ? at.bearing : (at.bearing + 180) % 360;
-          next[tw.id] = { lng: at.lng, lat: at.lat, bearing, moving: tw.moving, len: tw.len };
-        } else {
-          next[tw.id] = {
-            lng: lerp(tw.fromLng, tw.toLng, e),
-            lat: lerp(tw.fromLat, tw.toLat, e),
-            bearing: tw.bearing,
-            moving: tw.moving, len: tw.len,
-          };
+      if (
+        shouldCommitLiveBusGlideFrame({
+          now,
+          lastCommitAt,
+          progress: t,
+        })
+      ) {
+        // Long glides read as steady driving only when LINEAR; easeInOut
+        // over 14s looks like a bus lurching between every fix. Short
+        // glides (reduced-data snaps) keep the soft ease.
+        const e = dur >= 5_000 ? t : t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const next: Record<string, Pos> = {};
+        for (const tw of tweens) {
+          if (tw.mode === "route") {
+            const s = lerp(tw.sFrom, tw.sTo, e);
+            const at = pointAtArc(tw.shape, s);
+            // Travelling backward along the shape -> flip the heading 180°.
+            const bearing = tw.sTo >= tw.sFrom ? at.bearing : (at.bearing + 180) % 360;
+            next[tw.id] = { lng: at.lng, lat: at.lat, bearing, moving: tw.moving, len: tw.len };
+          } else {
+            next[tw.id] = {
+              lng: lerp(tw.fromLng, tw.toLng, e),
+              lat: lerp(tw.fromLat, tw.toLat, e),
+              bearing: tw.bearing,
+              moving: tw.moving, len: tw.len,
+            };
+          }
         }
+        // Keep the ref in lockstep with the committed visual position. If a
+        // fresh provider report arrives before React flushes its effects, the
+        // next glide still begins exactly where the rider last saw the bus.
+        posRef.current = next;
+        setPos(next);
+        lastCommitAt = now;
       }
-      setPos(next);
-      if (t < 1) rafRef.current = requestAnimationFrame(step);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        rafRef.current = null;
+      }
     };
     rafRef.current = requestAnimationFrame(step);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
   }, [vehicles, reduced]);
 
   // The selected bus's path-ahead: a line from its REPORTED fix to its next
@@ -422,7 +584,7 @@ export default function LiveBuses({
   // two-minute window for its reported next stop. It is not a background push
   // and never invents an ETA when TransIT does not provide one.
   useEffect(() => {
-    if (!watching || feedStatus === "stale" || nowMs <= 0) return;
+    if (!watching || effectiveFeedStatus === "stale" || nowMs <= 0) return;
     const vehicle = vehicles.find((candidate) => candidate.vehicleId === watching);
     const stop = vehicle?.nextStop;
     if (!stop?.etaEpoch) return;
@@ -434,18 +596,17 @@ export default function LiveBuses({
     if (alertedStopRef.current === alertKey) return;
     alertedStopRef.current = alertKey;
     haptic("warning");
-  }, [feedStatus, nowMs, vehicles, watching]);
+  }, [effectiveFeedStatus, nowMs, vehicles, watching]);
 
-  if (!show) return null;
   if (vehicles.length === 0) {
     return (
       <div className="map-live-status" role="status" aria-live="polite">
-        <span aria-hidden className={feedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
-        {feedStatus === "loading"
+        <span aria-hidden className={effectiveFeedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
+        {effectiveFeedStatus === "loading"
           ? "Loading live buses"
-          : feedStatus === "error"
+          : effectiveFeedStatus === "error"
             ? "Live bus positions unavailable"
-            : feedStatus === "stale"
+            : effectiveFeedStatus === "stale"
               ? "Live bus feed delayed"
             : "No buses reporting right now"}
       </div>
@@ -454,10 +615,16 @@ export default function LiveBuses({
 
   return (
     <>
-      {feedStatus === "stale" && (
+      {effectiveFeedStatus === "stale" && (
         <div className="map-live-status" role="status" aria-live="polite">
           <span aria-hidden className="map-live-status-dot" />
           Bus feed delayed · last update {ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago
+        </div>
+      )}
+      {effectiveFeedStatus === "degraded" && (
+        <div className="map-live-status" role="status" aria-live="polite">
+          <span aria-hidden className="map-live-status-dot" />
+          Buses live · arrival estimates unavailable
         </div>
       )}
       <style>{
@@ -546,8 +713,8 @@ export default function LiveBuses({
                 setSelected(v.vehicleId);
                 setSaveNotice(null);
               }}
-              aria-label={`${label}: TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${feedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
-              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: feedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
+              aria-label={`${label}: TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${effectiveFeedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
+              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: effectiveFeedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
               {/* Fresh-data ripple: re-keying on pollSeq remounts it, so the
                   one-shot ring fires on every poll the bus is on screen. */}
@@ -638,19 +805,19 @@ export default function LiveBuses({
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
         const color = route?.color ?? "#285D73";
         const stateLabel =
-          feedStatus === "stale"
+          effectiveFeedStatus === "stale"
             ? "Last reported position"
             : p.moving
               ? "Moving now"
               : "At a stop";
         const etaDeltaMinutes =
-          feedStatus !== "stale" && v.nextStop?.etaEpoch && nowMs > 0
+          effectiveFeedStatus !== "stale" && v.nextStop?.etaEpoch && nowMs > 0
             ? (v.nextStop.etaEpoch * 1000 - nowMs) / 60_000
             : null;
         const hasUsableEta =
           etaDeltaMinutes !== null && etaDeltaMinutes >= -1;
         const eta =
-          feedStatus === "stale" ? null : etaLabel(v.nextStop?.etaEpoch, nowMs);
+          effectiveFeedStatus === "stale" ? null : etaLabel(v.nextStop?.etaEpoch, nowMs);
         const etaMinutes =
           hasUsableEta
             ? Math.max(0, Math.ceil(etaDeltaMinutes))
@@ -683,7 +850,7 @@ export default function LiveBuses({
           (bus) => bus.watchId === transitBusWatchId(busRef),
         );
         const canSaveExactRun =
-          Boolean(v.tripId && targetStop) && feedStatus === "ready";
+          Boolean(v.tripId && targetStop) && effectiveFeedStatus === "ready";
         const canToggleSaved = busSaved || canSaveExactRun;
         return (
           <Popup
@@ -758,7 +925,7 @@ export default function LiveBuses({
                 </div>
               )}
               {v.nextStop?.etaEpoch &&
-                feedStatus !== "stale" &&
+                effectiveFeedStatus !== "stale" &&
                 (hasUsableEta || isWatching) && (
                 <button
                   type="button"
@@ -901,9 +1068,11 @@ export default function LiveBuses({
                 </p>
               ) : null}
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
-                {feedStatus === "stale"
+                {effectiveFeedStatus === "stale"
                   ? `Feed delayed · last update ${ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago`
-                  : `Updated ${ago}s ago · live from TransIT`}
+                  : effectiveFeedStatus === "degraded"
+                    ? "Bus positions live · arrival estimates unavailable"
+                    : `Updated ${ago}s ago · live from TransIT`}
               </div>
             </div>
           </Popup>

@@ -65,3 +65,115 @@ export function validateOwnerPost(input: OwnerPostInput): string | null {
   }
   return null;
 }
+
+/**
+ * A listing check from an already-approved owner. This is deliberately a
+ * moderation input, not a place mutation: the server records what the owner
+ * observed and the admin queue decides whether the public listing changes.
+ */
+export const OWNER_LISTING_CHANGE_FIELDS = [
+  "status",
+  "hours",
+  "phone",
+  "website",
+  "other",
+] as const;
+
+export type OwnerListingChangeField =
+  (typeof OWNER_LISTING_CHANGE_FIELDS)[number];
+
+export type OwnerProposedStatus =
+  | "operational"
+  | "closed_temporarily"
+  | "closed_permanently";
+
+export type OwnerListingConfirmationInput = {
+  decision: "confirmed" | "change" | "";
+  changed_fields: OwnerListingChangeField[];
+  proposed_status: OwnerProposedStatus | "";
+  proposed_hours: string;
+  proposed_phone: string;
+  proposed_website: string;
+  details: string;
+};
+
+const OWNER_PROPOSED_STATUSES = new Set<OwnerProposedStatus>([
+  "operational",
+  "closed_temporarily",
+  "closed_permanently",
+]);
+
+const OWNER_LISTING_FIELD_SET = new Set<string>(
+  OWNER_LISTING_CHANGE_FIELDS,
+);
+
+/**
+ * Validate one owner listing check. The shape is intentionally small and the
+ * limits are server-enforced because the management token is a capability
+ * credential, not a reason to trust arbitrary client input.
+ */
+export function validateOwnerListingConfirmation(
+  input: OwnerListingConfirmationInput,
+): string | null {
+  if (input.decision !== "confirmed" && input.decision !== "change") {
+    return "Choose whether the listing is current or needs a change.";
+  }
+
+  if (input.details.trim().length > 2_000) {
+    return "Keep the note under 2,000 characters.";
+  }
+  if (input.proposed_hours.trim().length > 2_000) {
+    return "Keep the hours under 2,000 characters.";
+  }
+  if (input.proposed_phone.trim().length > 80) {
+    return "Keep the phone number under 80 characters.";
+  }
+  if (input.proposed_website.trim().length > 500) {
+    return "Keep the website under 500 characters.";
+  }
+
+  const uniqueFields = new Set(input.changed_fields);
+  if (
+    uniqueFields.size !== input.changed_fields.length ||
+    input.changed_fields.some((field) => !OWNER_LISTING_FIELD_SET.has(field))
+  ) {
+    return "Choose valid listing details to change.";
+  }
+
+  if (input.decision === "confirmed") {
+    if (input.changed_fields.length > 0) {
+      return "A confirmed listing cannot include changed details.";
+    }
+    return null;
+  }
+
+  if (input.changed_fields.length === 0) {
+    return "Choose at least one detail that needs changing.";
+  }
+  if (
+    uniqueFields.has("status") &&
+    !OWNER_PROPOSED_STATUSES.has(input.proposed_status as OwnerProposedStatus)
+  ) {
+    return "Choose the business’s current status.";
+  }
+  if (uniqueFields.has("hours") && !input.proposed_hours.trim()) {
+    return "Enter the current hours.";
+  }
+  if (uniqueFields.has("other") && !input.details.trim()) {
+    return "Tell us what else needs changing.";
+  }
+
+  const website = input.proposed_website.trim();
+  if (uniqueFields.has("website") && website) {
+    try {
+      const parsed = new URL(website);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return "Enter a website beginning with http:// or https://.";
+      }
+    } catch {
+      return "Enter a complete website address.";
+    }
+  }
+
+  return null;
+}

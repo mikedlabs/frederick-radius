@@ -322,11 +322,16 @@ test.describe("compact page entrances", () => {
 
   test("Events keeps the final category above the fixed bottom navigation", async ({ page }) => {
     await page.goto("/events", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-events-interaction-ready]"))
+      .toHaveAttribute("data-events-interaction-ready", "true");
     const filters = page.getByRole("button", { name: /^Filters/ });
     await filters.click();
 
     const dialog = page.getByRole("dialog", { name: "Event filters" });
-    const categoryButtons = dialog.locator(".eb-chips").nth(1).locator("button");
+    await expect(dialog).toBeVisible();
+    const categoryButtons = dialog
+      .getByRole("group", { name: "Event categories" })
+      .getByRole("button");
     const finalCategory = categoryButtons.last();
     await expect(finalCategory).toBeVisible();
     await finalCategory.scrollIntoViewIfNeeded();

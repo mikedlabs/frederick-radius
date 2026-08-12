@@ -110,6 +110,24 @@ export const KEYLESS_FEEDS: FeedDef[] = [
     powers: "Lane-level roadwork and closure geometry under the map's Traffic view",
   },
   {
+    name: "Maryland SHA road closures",
+    sourceIds: ["md_sha_road_closures"],
+    powers:
+      "Official current and scheduled closures under the map's Roads Now view",
+  },
+  {
+    name: "City of Frederick walking network",
+    sourceIds: ["cof_sidewalks", "cof_path_plan"],
+    powers:
+      "Sidewalks, ramps, existing paths, and clearly separated planning context in Browse and Outside now",
+  },
+  {
+    name: "City of Frederick change records",
+    sourceIds: ["cof_capital_improvement", "cof_development_review"],
+    powers:
+      "Capital projects and development-review records in the map's What changed view",
+  },
+  {
     name: "MDOT CHART road intelligence",
     sourceIds: [
       "mdot_chart_tss",

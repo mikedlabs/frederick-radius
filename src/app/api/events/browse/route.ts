@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { prepareEventsForBrowse } from "@/lib/events/browsePayload";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 
 export const revalidate = 300;
 
@@ -16,8 +16,10 @@ export const revalidate = 300;
  */
 export async function GET() {
   const now = new Date();
-  const liveSlugs = eventsLive(now).map((event) => event.slug);
   const { publicEvents, sourceHealth } = await assembleUnifiedEvents(now);
+  const liveSlugs = publicEvents
+    .filter((event) => isEventLiveNow(event, now))
+    .map((event) => event.slug);
   const bounds = buildHorizonBounds(now, new Set(liveSlugs));
   const events = prepareEventsForBrowse(publicEvents, bounds);
 

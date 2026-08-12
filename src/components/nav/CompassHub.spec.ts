@@ -11,6 +11,7 @@ import {
   ALL_COMPASS_TOOLS_ID,
   buildToolDeckDirectory,
   buildToolDeckGroups,
+  compassSuggestionForHour,
   compassShortcutGridClass,
   commonCompassTasks,
   liveLineForIntent,
@@ -243,7 +244,7 @@ describe("compass live lines", () => {
     ).toBe("10 buses moving");
     expect(
       liveLineForIntent("local-help", [key("weather", "78°", "partly sunny")]),
-    ).toBe("78° partly sunny");
+    ).toBe("78° · partly sunny");
   });
 
   it("falls through the intent's priority order when the lead feed is down", () => {
@@ -252,7 +253,7 @@ describe("compass live lines", () => {
         key("buses", "10", "buses moving", "unavailable"),
         key("traffic", "17 min", "I-70 to the county line"),
       ]),
-    ).toBe("17 min I-70 to the county line");
+    ).toBe("17 min · I-70 to the county line");
   });
 
   it("stays silent rather than rendering a placeholder", () => {
@@ -264,6 +265,18 @@ describe("compass live lines", () => {
         key("buses", "", "buses moving"),
       ]),
     ).toBeNull();
-    expect(liveLineForIntent("decide-now", [key("buses", "10", "buses moving")])).toBeNull();
+    expect(liveLineForIntent("explore-yours", [key("buses", "10", "buses moving")])).toBeNull();
+  });
+});
+
+describe("Compass contextual suggestion", () => {
+  it("uses events during the day and evening without opening a duplicate intent", () => {
+    expect(compassSuggestionForHour(14)).toMatchObject({ itemId: "events" });
+    expect(compassSuggestionForHour(19)).toMatchObject({ itemId: "events" });
+  });
+
+  it("uses verified-hours discovery in the morning and late at night", () => {
+    expect(compassSuggestionForHour(8)).toMatchObject({ itemId: "open-now" });
+    expect(compassSuggestionForHour(23)).toMatchObject({ itemId: "open-now" });
   });
 });

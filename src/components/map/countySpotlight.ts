@@ -20,7 +20,7 @@
  * All writes are guarded and idempotent; the style reloads on nav, so we
  * reapply on style.load.
  */
-import type { Map as GLMap } from "maplibre-gl";
+import type { Map as GLMap } from "mapbox-gl";
 import COUNTY from "@/data/county-boundary.json";
 import { BRAND } from "@/lib/brand";
 
