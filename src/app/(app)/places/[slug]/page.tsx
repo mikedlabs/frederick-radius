@@ -54,6 +54,7 @@ import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
+import type { DecisionAction } from "@/lib/decision/telemetry";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -199,11 +200,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     );
   const mobileCommerceAction =
     mobileCommerceLink?.type === "order"
-      ? { icon: ShoppingBag, label: "Order" }
+      ? { icon: ShoppingBag, label: "Order", decisionAction: "order" as const }
       : mobileCommerceLink?.type === "menu"
-        ? { icon: UtensilsCrossed, label: "Menu" }
+        ? { icon: UtensilsCrossed, label: "Menu", decisionAction: "menu" as const }
         : mobileCommerceLink?.type === "reservation"
-          ? { icon: CalendarCheck, label: "Reserve" }
+          ? { icon: CalendarCheck, label: "Reserve", decisionAction: "reservation" as const }
           : null;
   // Drop anything that has already ended before mapping. place.upcoming_events
   // is baked at data-build time, so without this a venue can show a past
@@ -257,7 +258,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
     // pad here created a large empty tail beneath every place.
-    <div className="space-y-5 reveal-up sm:space-y-6">
+    <div
+      className="space-y-5 reveal-up sm:space-y-6"
+      data-decision-surface="place"
+      data-decision-entity="place"
+      data-decision-id={place.slug}
+      data-decision-position="detail"
+    >
       {/* Records this slug into the device-local recent-places list
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
@@ -281,7 +288,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
-      <header className="overflow-hidden rounded-[var(--app-radius-xl)] tactile tactile-e2">
+      <header
+        className="overflow-hidden rounded-[var(--app-radius-xl)] tactile tactile-e2"
+        data-decision-impression="true"
+        data-decision-surface="place"
+        data-decision-entity="place"
+        data-decision-id={place.slug}
+        data-decision-position="detail"
+      >
         <PlaceHero
           slug={place.slug}
           name={place.name}
@@ -390,18 +404,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       )}
 
       <div className="hidden grid-cols-2 gap-2 lg:grid">
-        <ActionButton href={googleUrl} icon={Navigation} label="Directions" external primary />
-        {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" />}
-        {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
+        <ActionButton href={googleUrl} icon={Navigation} label="Directions" decisionAction="directions" external primary />
+        {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" decisionAction="email" />}
+        {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" decisionAction="call" />}
         {place.website && (
           <ActionButton
             href={place.website}
             icon={Globe}
             label="Website"
+            decisionAction="website"
             external
           />
         )}
-        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
+        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" decisionAction="directions" external />
       </div>
 
       <CommerceActions
@@ -650,6 +665,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           ariaLabel={`Directions to ${place.name}`}
           external
           primary
+          decisionAction="directions"
         />
         {place.email && (
           <MobileBarLink
@@ -657,6 +673,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             icon={Mail}
             label="Email"
             ariaLabel={`Email ${place.name}`}
+            decisionAction="email"
           />
         )}
         {place.phone && (
@@ -665,6 +682,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             icon={Phone}
             label="Call"
             ariaLabel={`Call ${place.name}`}
+            decisionAction="call"
           />
         )}
         {mobileCommerceLink && mobileCommerceAction ? (
@@ -673,6 +691,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             icon={mobileCommerceAction.icon}
             label={mobileCommerceAction.label}
             ariaLabel={`${mobileCommerceAction.label} at ${place.name}`}
+            decisionAction={mobileCommerceAction.decisionAction}
             external
           />
         ) : place.website && !place.email ? (
@@ -681,6 +700,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             icon={Globe}
             label="Website"
             ariaLabel={`${place.name} website`}
+            decisionAction="website"
             external
           />
         ) : null}
@@ -690,12 +710,20 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 }
 
 function ActionButton({
-  href, icon: Icon, label, external, primary = false,
-}: { href: string; icon: typeof Phone; label: string; external?: boolean; primary?: boolean }) {
+  href, icon: Icon, label, decisionAction, external, primary = false,
+}: {
+  href: string;
+  icon: typeof Phone;
+  label: string;
+  decisionAction: DecisionAction;
+  external?: boolean;
+  primary?: boolean;
+}) {
   const Comp = external ? "a" : Link;
   return (
     <Comp
       href={href}
+      data-decision-action={decisionAction}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className="tap-44 tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-semibold"
       style={primary

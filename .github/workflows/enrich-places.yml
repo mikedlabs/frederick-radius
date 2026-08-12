@@ -54,6 +54,9 @@ jobs:
         continue-on-error: true
         run: npm run gates -- --fail-high
 
+      - name: Promote reviewed place artifacts
+        run: npm run data:release:write -- --stream places
+
       - name: Stage exact enrichment outputs
         run: |
           set -euo pipefail
@@ -63,6 +66,7 @@ jobs:
           install -D -m 0644 src/data/places-client.json "$root/src/data/places-client.json"
           install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
           install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
+          install -D -m 0644 src/data/data-release.json "$root/src/data/data-release.json"
       - name: Upload exact enrichment outputs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -88,6 +92,7 @@ jobs:
         src/data/places-client.json
         src/data/places-client-hours.json
         src/data/event-venue-photo-credits.json
+        src/data/data-release.json
       commit_message: "data: refresh Google enrichment for curated places (automated)"
       title: "data: refresh curated place enrichment"
       body: |

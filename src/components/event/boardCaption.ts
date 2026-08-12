@@ -180,11 +180,15 @@ export function countLine(args: {
   /** False when the board has only a partial/degraded collection in memory. */
   complete?: boolean;
 }): string {
-  const ev = `${args.events} ${args.events === 1 ? "event" : "events"}${args.complete === false ? " loaded" : ""}`;
+  // "Event listings" names what this number actually counts. A recurring
+  // series can contribute several dated rows, so this must not read like a
+  // count of unique real-world happenings. Partial collections say so
+  // directly instead of mixing "N loaded" with larger horizon totals.
+  const ev = `${args.events} ${args.events === 1 ? "event listing" : "event listings"}${args.complete === false ? " shown" : ""}`;
   const where =
     args.townName ??
     `${args.townCount} ${args.townCount === 1 ? "town" : "towns"}`;
-  return `${ev} · ${where}`;
+  return `${ev} · ${where}${args.complete === false ? " · partial results" : ""}`;
 }
 
 /**

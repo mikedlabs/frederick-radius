@@ -1,25 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppMapClient, {
-  type CivicPin,
   type EventPin,
   type MapLineFC,
-  type RoadWorkZoneFC,
-  type FloodContextFC,
-  type SnowRouteFC,
-  type CemeteryPin,
 } from "@/components/map/AppMapClient";
+import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import {
-  EMPTY_FLOOD_CONTEXT_FC,
-  EMPTY_ROAD_WORK_ZONE_FC,
-  EMPTY_SNOW_ROUTE_FC,
-} from "@/components/map/types";
-import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
-import type { ParkingPin } from "@/lib/map/parking";
-import type { OsmPlace } from "@/lib/integrations/overpass";
-import type { Amenity } from "@/lib/loaders/amenities";
+  EMPTY_DEFERRED_BROWSE_LAYERS,
+} from "@/components/map/deferredBrowseLayers";
 import {
   AMENITY_GROUPS,
   FREDERICK_BROWSE_MAX_BOUNDS,
@@ -29,7 +19,11 @@ import {
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { getIntentByKey, INTENTS } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
-import { easternMoment, smartMapDefault } from "@/lib/map/smartDefaults";
+import {
+  easternMoment,
+  smartMapDefault,
+  type SmartMapDefault,
+} from "@/lib/map/smartDefaults";
 import { mayOfferOpenNow } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { eventMatchesMapNowWindow } from "@/lib/events/map-window";
@@ -47,15 +41,19 @@ import {
   loadMapPlaces,
   resetMapPlacesRequest,
 } from "./mapPlacesClient";
+import { loadMapLayers } from "./mapLayersClient";
+import type { MapLayerGroup } from "./deferredBrowseLayers";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
  *
  * Everything here used to run server-side in the page, which forced the
  * whole route dynamic (reading `searchParams` opts a Next 16 route out
- * of ISR). The cached map-place request is warmed from the static shell,
- * while the server streams civic/amenity/line layers and the next week's
- * mappable events. This component then applies the URL-driven view:
+ * of ISR). The cached map-place request is warmed from the static shell.
+ * Optional civic, amenity, live, line, and event layers begin loading only
+ * after that core place request succeeds, so a slow provider cannot hold the
+ * first usable map behind the loading scene. This component then applies the
+ * URL-driven view:
  *
  *   ?intent / ?sub  — the intent chip filters (INTENT_BY_KEY matchers
  *                     run fine against MapPinPlace records)
@@ -129,63 +127,17 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 
 export default function BrowseMapClient({
   dealSlugsToday,
-  civic,
-  amenities,
-  extraAmenities,
-  trailLines,
-  transitLines,
-  municipalBoundaries,
   countyBoundary,
-  cemeteries,
-  parking,
-  weekEvents,
   transitStops,
   marcStations,
-  foodTruckPins,
-  roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
-  floodContext = EMPTY_FLOOD_CONTEXT_FC,
-  snowRoutes = EMPTY_SNOW_ROUTE_FC,
-  smartSignals = null,
 }: {
   /** Slugs running a verified special today (server-computed, day-gated). */
   dealSlugsToday: string[];
-  civic: CivicPin[];
-  amenities: Amenity[];
-  extraAmenities: OsmPlace[];
-  trailLines: MapLineFC;
-  transitLines: MapLineFC;
-  municipalBoundaries: MapLineFC;
+  /** The committed county edge is the only server-provided geometry. */
   countyBoundary: MapLineFC;
-  cemeteries: CemeteryPin[];
-  /** Downtown parking garages (static metadata + live availability),
-   *  drawn as the opt-in Parking layer. */
-  parking: ParkingPin[];
-  /** Draw-only, geolocated events for the next ~7 days, pre-shaped as
-   *  pins server-side. This component windows them per ?t=. */
-  weekEvents: EventPin[];
   /** Bus-stop dots + MARC stations for the Transit layer (phase 3). */
   transitStops: TransitStopPin[];
   marcStations: MarcStationPin[];
-  /** Operator-confirmed live locations; empty until a vendor drops a beacon. */
-  foodTruckPins: FoodTruckMapPin[];
-  /** Official Maryland work zones, already reduced to Frederick geometry. */
-  roadWorkZones?: RoadWorkZoneFC;
-  /** Static high-water context. It never represents a current closure. */
-  floodContext?: FloodContextFC;
-  /** Current SnowCommand route-operation reports, shown with Roads. */
-  snowRoutes?: SnowRouteFC;
-  /** Server-computed live signals for the smart cold-open default (map
-   *  program phase 1). Null keeps the map's old quiet cold open. */
-  smartSignals?: {
-    conditionsStatus: "current" | "stale" | "unavailable";
-    outdoorSafetyHold?: {
-      kind: "weather" | "air-quality";
-      reason: string;
-    } | null;
-    activeWeatherAlert: boolean;
-    marketsOpenTodayCount: number;
-    roadsTrendingLongerCount: number;
-  } | null;
 }) {
   const sp = useSearchParams();
   const [placeAttempt, setPlaceAttempt] = useState(0);
@@ -194,6 +146,9 @@ export default function BrowseMapClient({
     | { status: "ready"; places: MapPinPlace[] }
     | { status: "error"; places: MapPinPlace[] }
   >({ status: "loading", places: [] });
+  const [deferredLayers, setDeferredLayers] = useState(
+    EMPTY_DEFERRED_BROWSE_LAYERS,
+  );
   useEffect(() => {
     let alive = true;
     void loadMapPlaces()
@@ -207,13 +162,88 @@ export default function BrowseMapClient({
       alive = false;
     };
   }, [placeAttempt]);
+  useEffect(() => {
+    if (placeLoad.status !== "ready") return;
+    let alive = true;
+
+    void loadMapLayers(["context"])
+      .then((payload) => {
+        if (alive) {
+          setDeferredLayers(payload);
+        }
+      })
+      .catch(() => {
+        // Optional layers have always failed soft. The committed place and
+        // county layers remain usable, and a later navigation retries.
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [placeLoad.status]);
   const allPlaces = placeLoad.places;
+  const {
+    civic,
+    extraAmenities,
+    amenities,
+    trailLines,
+    transitLines,
+    municipalBoundaries,
+    cemeteries,
+    parking,
+    weekEvents,
+    foodTruckPins,
+    roadWorkZones,
+    floodContext,
+    snowRoutes,
+    smartSignals,
+  } = deferredLayers;
   const intentParam = sp.get("intent") ?? undefined;
   const subParam = sp.get("sub") ?? undefined;
   const tParam = sp.get("t") ?? undefined;
   const openParam = sp.get("open") ?? undefined;
   const atParam = sp.get("at") ?? undefined;
   const amenityParam = sp.get("amenity") ?? undefined;
+
+  const requestLayerGroups = useCallback((groups: readonly MapLayerGroup[]) => {
+    void loadMapLayers(groups)
+      .then(setDeferredLayers)
+      .catch(() => {
+        // The active tool remains selected and can be retried on a later tap.
+      });
+  }, []);
+
+  useEffect(() => {
+    if (placeLoad.status !== "ready") return;
+    const requested = new Set<MapLayerGroup>();
+    const show = new Set(
+      (sp.get("show") ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+    if (isTimeMode(sp.get("t") ?? undefined) || sp.get("music") === "tonight") {
+      requested.add("events");
+    }
+    if (amenityParam) requested.add("amenities");
+    if (show.has("trails") || show.has("cemeteries")) requested.add("outdoors");
+    if (show.has("transit")) requested.add("transit");
+    if (show.has("parking")) requested.add("parking");
+    if (show.has("civic") || show.has("traffic") || show.has("incidents")) {
+      requested.add("roads");
+    }
+    const requestedScope = parseScope(sp.get(SCOPE_PARAM));
+    if (requestedScope && requestedScope !== "county") requested.add("boundaries");
+    const scene = sp.get("scene");
+    if (scene === "buses-now") requested.add("transit");
+    if (scene === "roads-now") requested.add("roads");
+    if (scene === "outside-now") {
+      requested.add("outdoors");
+      requested.add("amenities");
+    }
+    if (scene === "what-changed") requested.add("boundaries");
+    if (requested.size > 0) requestLayerGroups([...requested]);
+  }, [amenityParam, placeLoad.status, requestLayerGroups, sp]);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -427,19 +457,27 @@ export default function BrowseMapClient({
   // already chose, and the smart default stays silent. Latched once per
   // mount: the visibility-refresh `now` must not flip suggestions under a
   // person mid-session.
-  const [smartDefault] = useState(() => {
+  const smartDefaultResolved = useRef(false);
+  const [smartDefault, setSmartDefault] = useState<SmartMapDefault | null>(null);
+  useEffect(() => {
+    if (smartDefaultResolved.current || !smartSignals) return;
     const explicitStateKeys = [
       "show", "t", "music", "deals", "intent", "sub", "open", "q", "at",
       "c", "in", "amenity", "aerial", "scene",
     ];
-    if (!smartSignals) return null;
-    if (explicitStateKeys.some((key) => sp.has(key))) return null;
-    return smartMapDefault(easternMoment(now), {
-      ...smartSignals,
-      musicTonightCount,
-      parkingCount: parking.length,
-    });
-  });
+    smartDefaultResolved.current = true;
+    if (explicitStateKeys.some((key) => sp.has(key))) return;
+    const timer = window.setTimeout(() => {
+      setSmartDefault(
+        smartMapDefault(easternMoment(now), {
+          ...smartSignals,
+          musicTonightCount,
+          parkingCount: parking.length,
+        }),
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [musicTonightCount, now, parking.length, smartSignals, sp]);
 
   if (placeLoad.status === "loading") {
     return (
@@ -513,6 +551,7 @@ export default function BrowseMapClient({
         outdoorSafetyHold: smartSignals?.outdoorSafetyHold ?? null,
         conditions: smartSignals?.conditionsStatus ?? "unavailable",
       }}
+      onLayerDemand={requestLayerGroups}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope

@@ -45,6 +45,10 @@ const EXPECTED_NAVIGATION_ABORTS = [
   // that the search, layer, camera, and selected place all survive; completed
   // 5xx responses remain release-blocking through the response guard above.
   /^\/api\/map\/places$/,
+  // Deferred map groups are read-only and session-deduped. Navigating to a
+  // place page can cancel a context/layer request that the old map no longer
+  // needs; completed server failures remain release-blocking above.
+  /^\/api\/map\/layers$/,
   /^\/api\/overlays\/parks$/,
 ];
 
@@ -116,12 +120,21 @@ function installRuntimeGuards(
       options.allowBasemapNavigationAbort === true &&
       url.pathname === "/basemap/frederick-county.pmtiles" &&
       /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    // The explicit map → place → map journey performs two verified client
+    // navigations. A chunk preload owned by the page being left can be
+    // canceled after the destination has already committed; the assertions
+    // below still prove that both destinations hydrate and restore state.
+    const staleChunkNavigationAbort =
+      options.allowOptimizedImageNavigationAbort === true &&
+      url.pathname.startsWith("/_next/static/chunks/") &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
     if (
       url.origin === appOrigin &&
       !canceledRscPrefetch &&
       !documentedNavigationAbort &&
       !optimizedImageNavigationAbort &&
-      !basemapNavigationAbort
+      !basemapNavigationAbort &&
+      !staleChunkNavigationAbort
     ) {
       issues.push(`${failure} ${url.pathname}`);
     }

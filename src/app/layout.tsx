@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
+import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
@@ -271,6 +272,7 @@ export default function RootLayout({
           duration={3000}
         />
         <Plausible />
+        <DecisionTelemetryObserver />
         {/* Gate real-user telemetry to PRODUCTION so preview and local traffic
             do not pollute the product and Core Web Vitals data used to judge
             the live site. VERCEL_ENV is production, preview, or development. */}

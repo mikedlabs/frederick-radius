@@ -110,6 +110,9 @@ jobs:
         run: |
           npm run style:lint
           npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
+      - name: Promote reviewed venue-event artifacts
+        if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
+        run: npm run data:release:write -- --stream venue-events
       - name: Stage exact review files
         if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
         run: |
@@ -117,6 +120,7 @@ jobs:
           install -D -m 0644 src/data/venue-event-source-inventory.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-inventory.json"
           install -D -m 0644 src/data/venue-events.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-events.json"
           install -D -m 0644 src/data/venue-event-source-state.json "$RUNNER_TEMP/automated-pr-output/src/data/venue-event-source-state.json"
+          install -D -m 0644 src/data/data-release.json "$RUNNER_TEMP/automated-pr-output/src/data/data-release.json"
 
       - name: Pin review artifact name to this generator attempt
         id: artifact-name
@@ -155,6 +159,7 @@ jobs:
         src/data/venue-event-source-inventory.json
         src/data/venue-events.json
         src/data/venue-event-source-state.json
+        src/data/data-release.json
       commit_message: "data: refresh venue events (automated)"
       title: "data: refresh venue events"
       body: |

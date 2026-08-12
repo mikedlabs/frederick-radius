@@ -5,7 +5,7 @@ import {
 } from "@/lib/search/index";
 import { isEventSearchIntent } from "@/lib/search";
 import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
@@ -128,36 +128,27 @@ export async function GET(request: NextRequest) {
   const skipLiveEventAssembly =
     !isEventSearchIntent(q) &&
     ((mapRequest && baseAnswersMap) || baseHasAtmHandoff);
-  // Rank against the LIVE unified event set, not just the ~30 curated
-  // seeds: searching "pride" found nothing while "Pride at the Pubs" led
-  // /events (fresh-eyes audit, Jul 2026). The assembly is the same
-  // 5-minute-shared cache /today and /events read, so the usual cost
-  // here is a cache hit; if it ever fails it degrades to the seeds
-  // rather than failing the search.
+  // Rank against the promoted event archive, not just the small curated seed
+  // set. The archive is refreshed in the background and has a cancellable
+  // sub-second read budget, so a search can discover current events without
+  // starting publisher fan-out in a visitor request.
   let searchResult = base;
   let liveEventsUnavailable = false;
   if (!skipLiveEventAssembly) {
-    if (mapRequest) {
-      // Event-shaped map searches deliberately await the owned unified
-      // assembly. Its provider work has hard deadlines and cancellation;
-      // returning on an independent response timer would leave that work
-      // running after the request had already ended.
-      try {
-        const events = (await assembleUnifiedEvents(new Date())).publicEvents;
-        searchResult = qualifiedSearchIndex(
-          q,
-          limit,
-          events,
-          searchContext,
-        );
-      } catch {
-        liveEventsUnavailable = true;
-      }
-    } else {
-      const events = await assembleUnifiedEvents(new Date())
-        .then((u) => u.publicEvents)
-        .catch(() => undefined);
-      searchResult = qualifiedSearchIndex(q, limit, events, searchContext);
+    try {
+      // Both Map and global Find use the same durable archive contract. A
+      // resolved snapshot may still be degraded because the archive is stale,
+      // missing, or timed out; that state is not a healthy empty calendar.
+      const snapshot = await loadEventArchiveSnapshot(new Date());
+      liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
+      searchResult = qualifiedSearchIndex(
+        q,
+        limit,
+        snapshot.publicEvents,
+        searchContext,
+      );
+    } catch {
+      liveEventsUnavailable = true;
     }
   }
   // The global ATM action is a handoff into Map's live provider search. Once
@@ -187,7 +178,7 @@ export async function GET(request: NextRequest) {
   }
 
   // A real query that found nothing is a data gap — bank it after responding.
-  if (results.length === 0 && !mapAtmHandoff) {
+  if (results.length === 0 && !mapAtmHandoff && !liveEventsUnavailable) {
     after(() => recordSearchMiss(q, "search"));
   }
 

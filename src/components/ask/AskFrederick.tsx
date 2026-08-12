@@ -467,9 +467,23 @@ function AskSourceCard({
   const saveTarget = sourceSaveTarget(source);
   const phone = source.phone?.replace(/[^+\d]/g, "");
   const displayPhoto = canDisplayAskSourcePhoto(source);
+  const decisionEntity = saveTarget?.type ?? "source";
+  const decisionId = saveTarget?.id ?? source.slug;
+  const decisionPosition = source.isPrimaryRankedResult ? "lead" : "result";
+  const decisionOpenAction =
+    sourceOpenLabel(source) === "Directions"
+      ? "directions"
+      : external
+        ? "website"
+        : "open";
   return (
     <article
       data-ask-source-index={index}
+      data-decision-impression="true"
+      data-decision-surface="ask"
+      data-decision-entity={decisionEntity}
+      data-decision-id={decisionId}
+      data-decision-position={decisionPosition}
       className="overflow-hidden border-y"
       style={{
         borderColor: "var(--app-border)",
@@ -515,6 +529,7 @@ function AskSourceCard({
               </p>
               <Link
                 href={source.href}
+                data-decision-action={decisionOpenAction}
                 target={external ? "_blank" : undefined}
                 rel={external ? "noopener noreferrer" : undefined}
                 onClick={() => {
@@ -588,6 +603,7 @@ function AskSourceCard({
       >
         <Link
           href={source.href}
+          data-decision-action={decisionOpenAction}
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           onClick={() => {
@@ -607,6 +623,7 @@ function AskSourceCard({
         {source.email ? (
           <a
             href={`mailto:${source.email}`}
+            data-decision-action="email"
             onClick={() => haptic("light")}
             aria-label={`Email ${source.name}`}
             className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
@@ -619,6 +636,7 @@ function AskSourceCard({
         {phone ? (
           <a
             href={`tel:${phone}`}
+            data-decision-action="call"
             onClick={() => haptic("light")}
             aria-label={`Call ${source.name} at ${source.phone}`}
             className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"

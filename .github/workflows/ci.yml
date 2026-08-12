@@ -60,6 +60,9 @@ jobs:
           node --test
           scripts/lib/production-rollback.test.mjs
           scripts/lib/basemap-platform.test.mjs
+          scripts/lib/basemap-release.test.mjs
+          scripts/lib/data-release.test.mjs
+          scripts/lib/promoted-build-network-guard.test.mjs
       - name: Build
         run: npm run build
         env:
@@ -67,6 +70,9 @@ jobs:
           # degrade when these are absent. Provide empty defaults so the
           # build exercises the real code paths without external calls.
           NEXT_TELEMETRY_DISABLED: "1"
+          # Next's route/type analysis crosses Node's ~2 GB default heap on a
+          # cold Linux runner. Keep enough headroom for the OS and Chromium.
+          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Production browser and connected-journey gate
@@ -101,6 +107,11 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Build the production app
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Exercise combined dependency failures and app upgrades
@@ -113,6 +124,7 @@ jobs:
           --retries=1
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
       - name: Keep chaos failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -371,7 +371,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
     // pad here created a large empty tail beneath every event.
-    <div className="space-y-5 sm:space-y-6">
+    <div
+      className="space-y-5 sm:space-y-6"
+      data-decision-surface="events"
+      data-decision-entity="event"
+      data-decision-id={event.slug}
+      data-decision-position="detail"
+    >
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -459,6 +465,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
        * Shader-rim around the whole card for parity with the Today
        * editorial moments. */}
       <header
+        data-decision-impression="true"
+        data-decision-surface="events"
+        data-decision-entity="event"
+        data-decision-id={event.slug}
+        data-decision-position="detail"
         className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{
           borderColor: "var(--app-border)",
@@ -770,6 +781,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {physicalAttendance && hasPreciseLocation && directionsUrl && (
               <a
                 href={directionsUrl}
+                data-decision-action="directions"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={dirPrimary ? primaryCls : quietCls}
@@ -780,12 +792,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               </a>
             )}
             {thirdAction && (thirdAction.external ? (
-              <a href={thirdAction.href} target="_blank" rel="noopener noreferrer" className={primaryCls} style={primaryStyle}>
+              <a
+                href={thirdAction.href}
+                data-decision-action={
+                  event.ticket_url
+                    ? "ticket"
+                    : event.rsvp_url
+                      ? "reservation"
+                      : "website"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={primaryCls}
+                style={primaryStyle}
+              >
                 <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
                 {thirdAction.label}
               </a>
             ) : (
-              <Link href={thirdAction.href} className={primaryCls} style={primaryStyle}>
+              <Link href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
                 <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
                 {thirdAction.label}
               </Link>
@@ -1019,6 +1044,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 label="Announcement"
                 ariaLabel={`Organizer's announcement for ${event.title}`}
                 external
+                decisionAction="website"
               />
             )}
             <MobileBarLink
@@ -1027,6 +1053,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               label="What's on"
               ariaLabel="Find something else on today"
               primary
+              decisionAction="open"
             />
           </>
         ) : hasEnded ? (
@@ -1037,6 +1064,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 icon={MapPin}
                 label="Venue"
                 ariaLabel={`Venue page for ${event.title}`}
+                decisionAction="open"
               />
             )}
             <MobileBarLink
@@ -1045,6 +1073,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               label="What's on"
               ariaLabel="Find something else on today"
               primary
+              decisionAction="open"
             />
           </>
         ) : (
@@ -1071,6 +1100,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 ariaLabel={`Tickets for ${event.title}`}
                 external
                 primary
+                decisionAction="ticket"
               />
             )}
             {!event.ticket_url && attendance !== "physical" && onlineActionUrl && (
@@ -1081,6 +1111,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 ariaLabel={`Online details for ${event.title}`}
                 external
                 primary
+                decisionAction="website"
               />
             )}
             {physicalAttendance && hasPreciseLocation && directionsUrl && (
@@ -1090,6 +1121,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 label="Directions"
                 ariaLabel={`Directions to ${event.venue_name || event.title}`}
                 external
+                decisionAction="directions"
               />
             )}
           </>

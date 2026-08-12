@@ -31,15 +31,27 @@ export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 650;
 export const TODAY_EVENT_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 60 * 1_000;
 const TODAY_EVENT_HORIZON_DAYS = 9;
 const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
+export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 700;
+export const EVENT_BROWSE_HORIZON_DAYS = 90;
+export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 
-function snapshotBounds(now: Date): { start: Date; end: Date } {
+type EventArchiveSnapshotOptions = {
+  horizonDays?: number;
+  limit?: number;
+  timeoutMs?: number;
+};
+
+function snapshotBounds(
+  now: Date,
+  horizonDays: number,
+): { start: Date; end: Date } {
   const today = easternParts(now);
   const horizon = easternParts(
     new Date(
       Date.UTC(
         today.year,
         today.month - 1,
-        today.day + TODAY_EVENT_HORIZON_DAYS,
+        today.day + horizonDays,
         12,
       ),
     ),
@@ -179,9 +191,40 @@ export function hydrateTodayEventSnapshot(
 export async function loadTodayEventSnapshot(
   now = new Date(),
 ): Promise<UnifiedEvents> {
+  return loadEventArchiveSnapshot(now, {
+    horizonDays: TODAY_EVENT_HORIZON_DAYS,
+    limit: TODAY_EVENT_SNAPSHOT_LIMIT,
+    timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+  });
+}
+
+/**
+ * Bounded durable read for discovery surfaces that need a wider horizon.
+ *
+ * A visitor reads the archive written by the background source worker. This
+ * function never contacts a publisher, geocoder, or ticketing provider. The
+ * limits are clamped so a malformed caller cannot turn one page view into an
+ * unbounded database response.
+ */
+export async function loadEventArchiveSnapshot(
+  now = new Date(),
+  options: EventArchiveSnapshotOptions = {},
+): Promise<UnifiedEvents> {
+  const horizonDays = Math.max(
+    1,
+    Math.min(120, Math.floor(options.horizonDays ?? EVENT_BROWSE_HORIZON_DAYS)),
+  );
+  const limit = Math.max(
+    1,
+    Math.min(2_000, Math.floor(options.limit ?? EVENT_BROWSE_SNAPSHOT_LIMIT)),
+  );
+  const timeoutMs = Math.max(
+    100,
+    Math.min(1_500, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
+  );
   const sql = getSql();
   if (!sql) return curatedFallback(now);
-  const { start, end } = snapshotBounds(now);
+  const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
       select status,
@@ -205,7 +248,7 @@ export async function loadTodayEventSnapshot(
         and canonical.starts_at < ${end}
         and coalesce(canonical.ends_at, canonical.starts_at) >= ${start}
       order by canonical.starts_at asc, canonical.id
-      limit ${TODAY_EVENT_SNAPSHOT_LIMIT}
+      limit ${limit}
     )
     select coalesce(
              (
@@ -228,7 +271,7 @@ export async function loadTodayEventSnapshot(
   `;
   const rows = await beforeDeadline(
     pending,
-    TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+    timeoutMs,
   );
   const envelope = rows?.[0];
   return envelope ? hydrateTodayEventSnapshot(envelope, now) : curatedFallback(now);

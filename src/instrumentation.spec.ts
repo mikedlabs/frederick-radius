@@ -27,4 +27,19 @@ describe("instrumentation startup", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("installs the promoted-build fetch boundary before Sentry setup", async () => {
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    vi.stubEnv("SENTRY_DSN", "");
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    register();
+
+    await expect(fetch("https://publisher.example/feed?token=secret")).rejects.toThrow(
+      "https://publisher.example/feed",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

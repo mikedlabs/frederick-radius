@@ -73,6 +73,7 @@ import {
 } from "@/lib/integrations/event-adapter-result";
 import { mapEventSourcesWithConcurrency } from "@/lib/integrations/event-source-circuit";
 import { rememberServedEvents } from "@/lib/events/served-event-snapshot";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -194,6 +195,110 @@ function readAdapter<T>(
     if (eventAdapterIsDegraded(result)) markUnavailable();
     return result.items;
   });
+}
+
+function isSaneFeedEvent(e: EventWithMeta): boolean {
+  return (
+    !hasImplausibleStartTime(e) &&
+    !titleIsJustVenue(e.title, e.venue_name) &&
+    !isFacilityBooking(e.title)
+  );
+}
+
+function mergeUnifiedEventCards(
+  curatedUpcoming: EventWithMeta[],
+  liveCards: EventWithMeta[],
+  venueCards: EventWithMeta[],
+  ingestedCards: EventWithMeta[],
+): EventWithMeta[] {
+  // One unified, deduplicated, time-sorted set. Curated rows lead, followed by
+  // runtime feeds, reviewed venue snapshots, and finally database-ingested
+  // rows, so the richer/first-party representation wins a slug collision.
+  const bySlug = new Map<string, EventWithMeta>();
+  for (const e of [
+    ...curatedUpcoming,
+    ...liveCards.filter(isSaneFeedEvent),
+    ...venueCards.filter(isSaneFeedEvent),
+    ...ingestedCards.filter(isSaneFeedEvent),
+  ]) {
+    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
+  }
+
+  const venueCleaned = [...bySlug.values()].map((e) => {
+    const v = cleanVenueName(e.venue_name) ?? "";
+    const t = stripFacilityPrefix(e.title);
+    return v === e.venue_name && t === e.title
+      ? e
+      : { ...e, venue_name: v, title: t };
+  });
+
+  return dedupeCrossSourceShows(
+    dedupeKeysHomeGames(
+      dedupeCuratedClusters(
+        venueCleaned.sort(
+          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+        ),
+      ),
+    ),
+  );
+}
+
+async function decorateUnifiedEvents(
+  events: EventWithMeta[],
+  now: Date,
+  options: { upgradeGeoms: boolean },
+): Promise<EventWithMeta[]> {
+  // Geocoding is a runtime enrichment. The promoted-data build keeps the
+  // reviewed coordinates already present in its artifacts and makes no live
+  // Mapbox request.
+  let positioned = events;
+  if (options.upgradeGeoms) {
+    try {
+      positioned = await upgradeEventGeoms(events);
+    } catch {
+      // Geocode upgrade failed — pins stay at their pre-upgrade geom.
+    }
+  }
+
+  let decorated = positioned;
+  try {
+    decorated = withVenueThumbs(positioned);
+  } catch {
+    // Photo join failed — cards render without the venue thumb.
+  }
+
+  try {
+    return applyEventNotices(decorated, now);
+  } catch {
+    // Notice stamp failed — cards render without cancel/postpone badges.
+    return decorated;
+  }
+}
+
+/**
+ * Deterministic event set for application compilation. It uses only the
+ * hand-reviewed seeds and the promoted venue snapshot; live publishers,
+ * geocoding, and the optional event database remain runtime freshness paths.
+ */
+export async function assemblePromotedEvents(now: Date): Promise<UnifiedEvents> {
+  const unified = await decorateUnifiedEvents(
+    mergeUnifiedEventCards(
+      allUpcoming(now),
+      [],
+      venueEventsAsCards(now),
+      [],
+    ),
+    now,
+    { upgradeGeoms: false },
+  );
+  return {
+    unified,
+    publicEvents: unified.filter(isPublicEvent),
+    sourceHealth: {
+      degraded: true,
+      unavailable: ["live event refresh (runtime only)"],
+    },
+  };
 }
 
 // Exported for offline diagnostics only (tsx scripts can't call the
@@ -370,88 +475,16 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // duplicates dropped by the same content matcher the live feeds use.
   const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), curatedUpcoming);
 
-  // Three guards on FEED/EXTRACTED rows only (curated seeds are hand-authored):
-  //   1. Time sanity — a theater curtain at 7 AM is a parsing artifact;
-  //      withhold it rather than publish a wrong time (June-9 audit P1-11).
-  //   2. Title says something — a lineup placeholder titled with the venue's
-  //      own name ("JoJo's Restaurant & Tap House" at JoJo's) is not an event
-  //      (Reddit reader report, 2026-07-17).
-  //   3. A facility BOOKING is not a happening — municipal calendars publish
-  //      pavilion rentals and program blocks (even a private memorial) beside
-  //      real events (2026-07-17 today-page review).
-  const sane = (e: EventWithMeta) =>
-    !hasImplausibleStartTime(e) &&
-    !titleIsJustVenue(e.title, e.venue_name) &&
-    !isFacilityBooking(e.title);
-
-  // One unified, deduplicated, time-sorted set; second-pass dedup catches
-  // curated-vs-curated duplicates, keeping the richer record per cluster.
-  // Ingested cards go LAST so a curated/live row with the same slug always wins
-  // (richer record), and so an ingested duplicate the content-dedupe missed
-  // still can't override a first-party event.
-  const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane), ...ingestedCards.filter(sane)]) {
-    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
-  }
-  // Centroid-geom repair AFTER dedupe (each unique address geocodes once
-  // for the whole merged set) and BEFORE withVenueThumbs, whose fuzzy
-  // photo-join paths gate on a precise geocode — an upgraded geom both
-  // moves the /map pin onto the venue and opens that join. Fail-soft and
-  // 30-day-cached per address (see mapboxGeocode.ts); a warm pass adds ~0.
-  // dedupeCrossSourceShows LAST among the dedupes: it needs the whole merged,
-  // time-sorted set (the same show arrives from a venue lineup AND a discovery
-  // feed with different titles/slugs, one row a bare noon placeholder).
-  // One venue-name cleaning pass for EVERY surface: cleanVenueName nulls
-  // degenerate scraps a feed leaked into its location field ("MD", a bare
-  // county, metadata dumps) so no card ever renders "at MD ·" copy. Real
-  // names pass through untouched; done before the dedupes so venue-keyed
-  // matching compares cleaned values.
-  const venueCleaned = [...bySlug.values()].map((e) => {
-    const v = cleanVenueName(e.venue_name) ?? "";
-    const t = stripFacilityPrefix(e.title);
-    return v === e.venue_name && t === e.title ? e : { ...e, venue_name: v, title: t };
-  });
-  // Dedupe + time-sort produces the floor every surface can fall back to.
-  const deduped = dedupeCrossSourceShows(
-    dedupeKeysHomeGames(
-      dedupeCuratedClusters(
-        venueCleaned.sort(
-          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-        ),
-      ),
+  const unified = await decorateUnifiedEvents(
+    mergeUnifiedEventCards(
+      curatedUpcoming,
+      liveCards,
+      venueCards,
+      ingestedCards,
     ),
+    now,
+    { upgradeGeoms: true },
   );
-
-  // Three tail decorations follow: the geocode upgrade, the venue-photo join,
-  // and the owner event-notices stamp. assembleRaw feeds /today, /events,
-  // /live-music and /check-a-date off ONE cached call, and each op has a throw
-  // path, so an unguarded failure would take all four surfaces to the error
-  // boundary at once. Each is wrapped to degrade to its input — a missing
-  // pin-upgrade, thumbnail, or notice is invisible; a dead board is not.
-  let positioned = deduped;
-  try {
-    positioned = await upgradeEventGeoms(deduped);
-  } catch {
-    // Geocode upgrade failed — pins stay at their pre-upgrade geom.
-  }
-
-  let decorated = positioned;
-  try {
-    decorated = withVenueThumbs(positioned);
-  } catch {
-    // Photo join failed — cards render without the venue thumb.
-  }
-
-  // Owner event-notices stamp LAST, after every dedupe, so a cancellation wins
-  // no matter which source's row survived the merge. A cancelled/postponed
-  // stamp flows to every surface: classify.ts lanes it out of "What's on",
-  // cards badge it, the detail banner reads it.
-  let unified = decorated;
-  try {
-    unified = applyEventNotices(decorated, now);
-  } catch {
-    // Notice stamp failed — cards render without cancel/postpone badges.
-  }
 
   return {
     unified,
@@ -561,6 +594,8 @@ const cachedAssemble = unstable_cache(
 );
 
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
+  if (isPromotedDataBuild()) return assemblePromotedEvents(now);
+
   // The app always requests a current feed snapshot, while diagnostics may
   // deliberately assemble a historical/future instant. Preserve that explicit
   // behavior without fragmenting the hot user-facing cache by timestamp.

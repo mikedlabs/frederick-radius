@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { withStatementTimeout } from "@/lib/db/statement-timeout";
 import { sendPush, configurePush } from "@/lib/push";
+import { pushDeliveryFinalUpdate } from "@/lib/push-open-attribution";
 import { shouldDeliver } from "./push-delivery";
 import type { PushPayload } from "./push";
 
@@ -99,13 +100,14 @@ export async function fanoutToTopic(
     }
   }
 
-  // Record the final delivered count for visibility.
-  if (sent > 0) {
-    await db
-      .update(push_log)
-      .set({ sent_count: sent })
-      .where(eq(push_log.id, claim[0].id));
-  }
+  // Record the final delivered count even when it is zero. The same atomic
+  // update preserves one open that may have arrived immediately after the
+  // provider accepted a push, or clears that provisional value when every
+  // delivery failed.
+  await db
+    .update(push_log)
+    .set(pushDeliveryFinalUpdate(sent))
+    .where(eq(push_log.id, claim[0].id));
 
   // integrity-06 (foundational half): advance last_seen_at on every
   // SUCCESSFUL delivery, not just on subscribe. This is the precondition for

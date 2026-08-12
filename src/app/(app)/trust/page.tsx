@@ -4,10 +4,8 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
-import CLIENT_PLACES from "@/data/places-client.json";
 import CostTransparency from "@/components/trust/CostTransparency";
-import { clientPlaces } from "@/lib/loaders/places-client";
-import { summarizeCoverage } from "@/lib/quality/coverage";
+import { publicDataSnapshot } from "@/lib/public-data-snapshot";
 import { getDb } from "@/lib/db/client";
 import { commerce_link_reports } from "@/lib/db/schema";
 import { count, eq } from "drizzle-orm";
@@ -32,9 +30,9 @@ export const metadata: Metadata = {
     "See where Frederick Radius data comes from and what its source labels mean.",
 };
 
-// The coverage numbers below use the wall clock (hours freshness decays), so
-// a purely static render would slowly drift dishonest. Daily is fresh enough
-// for figures that move by single places per day.
+// The public counts are immutable for a promoted data version. Revalidation
+// can update the streamed correction line, but cannot silently change those
+// counts without a new reviewed release.
 export const revalidate = 86_400;
 
 const pct = (part: number, total: number): string =>
@@ -104,10 +102,27 @@ async function FixedReportLine() {
 }
 
 export default async function TrustPage() {
-  const placeCount = new Intl.NumberFormat("en-US").format(CLIENT_PLACES.length);
-  // The same measurements the internal coverage board runs — shown here so
-  // this page proves its claims instead of asserting them. Aggregate only.
-  const coverage = summarizeCoverage(clientPlaces());
+  const snapshot = publicDataSnapshot();
+  const placeCount = new Intl.NumberFormat("en-US").format(
+    snapshot.counts.activePublicPlaces.value,
+  );
+  const coverage = {
+    total: snapshot.counts.activePublicPlaces.value,
+    mapped: snapshot.counts.mappedPlaces.value,
+    hours: snapshot.counts.placesWithCurrentHours.value,
+    copy: snapshot.counts.placesWithDecisionCopy.value,
+    photo: snapshot.counts.placesWithPhoto.value,
+    action: snapshot.counts.placesWithAction.value,
+  };
+  const dataVersion = snapshot.dataVersion.slice("sha256:".length, 19);
+  const placePromotion = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "America/New_York",
+  }).format(new Date(snapshot.counts.activePublicPlaces.asOf));
+  const latestPromotion = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "America/New_York",
+  }).format(new Date(snapshot.lastSuccessfulDataPromotion));
   return (
     <div className="relative space-y-6">
       <PageBloom variant="cool" />
@@ -302,10 +317,20 @@ export default async function TrustPage() {
         >
           The state of the data, measured.
         </h2>
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Active data release <code>{dataVersion}</code>. The latest successful
+          promotion was {latestPromotion}.
+        </p>
         <ul
           className="space-y-2.5 text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Mapped.</strong>{" "}
+            {coverage.mapped.toLocaleString("en-US")} of{" "}
+            {coverage.total.toLocaleString("en-US")} public places have usable
+            coordinates.
+          </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Hours.</strong>{" "}
             {coverage.hours.toLocaleString("en-US")} of{" "}
@@ -313,6 +338,11 @@ export default async function TrustPage() {
             {pct(coverage.hours, coverage.total)}) carry posted hours fresh
             enough for an open-now answer. Everywhere else the app says it does
             not know instead of guessing.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Decision copy.</strong>{" "}
+            {coverage.copy.toLocaleString("en-US")} places ({pct(coverage.copy, coverage.total)})
+            carry specific, publishable copy that passed the shipped quality rules.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Photos.</strong>{" "}
@@ -329,8 +359,10 @@ export default async function TrustPage() {
           </li>
         </ul>
         <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-          These figures are measured from the shipped place index and refresh
-          at least daily.
+          Place figures were measured from the shipped index when it was
+          promoted on {placePromotion}. Upcoming-event and source-health totals
+          are not shown because those runtime-only facts are not yet part of
+          the promoted snapshot.
         </p>
       </section>
 

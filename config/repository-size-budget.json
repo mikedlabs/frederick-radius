@@ -1,14 +1,22 @@
 {
   "version": 1,
   "defaultMaxBytes": 1048576,
-  "totalMaxBytes": 200000000,
+  "totalMaxBytes": 235000000,
   "categoryBudgets": {
     "source-of-truth": 3200000,
-    "deployment-required-snapshot": 21800000,
+    "deployment-required-snapshot": 53000000,
     "generated-artifact": 5000000,
     "design-archive": 17200000
   },
   "exceptions": [
+    {
+      "path": "public/basemap/frederick-county.pmtiles",
+      "category": "deployment-required-snapshot",
+      "maxBytes": 30000000,
+      "deploymentRequired": true,
+      "provenance": "Reviewed Frederick County extract of the pinned 2026-07-22 Protomaps build; its digest and source are recorded in src/data/basemap-release.json.",
+      "regenerationCommand": "npm run basemap:materialize"
+    },
     {
       "path": "public/brand/campaign/cartographic-ripple-background.png",
       "category": "source-of-truth",

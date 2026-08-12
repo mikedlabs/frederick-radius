@@ -115,10 +115,15 @@ draft must read like a person typing in a thread, not composed copy:
 - **One unified event set:** `src/lib/loaders/unifiedEvents.ts` is THE
   assembly (curated + iCal + Ticketmaster + Bandsintown + venue lineups,
   deduped, classified, time-sanity-guarded). /today and /events both call
-  it; never count events from a different query.
+  it; never count events from a different query. During application builds it
+  deliberately reads only promoted curated + venue snapshots; publisher feeds
+  rejoin through the same assembly at runtime.
 - **After changing place data or its cleaning:** regenerate the client
   dataset — `npm run build:client-places` (search/map/funnel read
-  `places-client.json`, not the loaders). Lesson of PR #503.
+  `places-client.json`, not the loaders), run its gates, then update the
+  reviewed release stream with `npm run data:release:write -- --stream places`.
+  Application builds validate committed artifacts and never regenerate them.
+  Lesson of PR #503.
 - **After changing how CACHED data is cleaned/shaped:** bump the
   `unstable_cache` key (e.g. `ingested-series-vN`) — the cache persists
   across deploys. Lesson of PR #509.

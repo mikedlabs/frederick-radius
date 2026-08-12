@@ -47,6 +47,7 @@ jobs:
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',
                 'docs/hours-refresh-review.md',
+                'src/data/data-release.json',
                 'src/data/event-venue-photo-credits.json',
                 'src/data/place-refresh-identities.json',
                 'src/data/places-client-hours.json',
@@ -54,11 +55,13 @@ jobs:
                 'src/data/places-hours-refresh.json',
               ],
               'bot/transit-steward': [
+                'src/data/data-release.json',
                 'src/data/transit-network.json',
                 'src/data/transit-trips.json',
                 'src/data/transit.json',
               ],
               'bot/curated-place-enrichment': [
+                'src/data/data-release.json',
                 'src/data/event-venue-photo-credits.json',
                 'src/data/place-refresh-identities.json',
                 'src/data/places-client-hours.json',
@@ -67,23 +70,35 @@ jobs:
               ],
               'bot/business-info-refresh': [
                 'src/data/business-info.json',
+                'src/data/data-release.json',
                 'src/data/descriptions.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
               ],
               'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
               'bot/venue-event-refresh': [
+                'src/data/data-release.json',
                 'src/data/venue-event-source-inventory.json',
                 'src/data/venue-event-source-state.json',
                 'src/data/venue-events.json',
               ],
               'bot/google-photo-attribution-backfill': [
                 'docs/coverage-scorecard.md',
+                'src/data/data-release.json',
                 'src/data/event-venue-photo-credits.json',
                 'src/data/place-refresh-identities.json',
                 'src/data/places-client-hours.json',
                 'src/data/places-client.json',
                 'src/data/places-enrichment.json',
               ],
-              'bot/official-commerce-link-refresh': ['src/data/business-info.json'],
+              'bot/official-commerce-link-refresh': [
+                'src/data/business-info.json',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+              ],
             };
 
             const allowlist = allowedByBranch[branch];

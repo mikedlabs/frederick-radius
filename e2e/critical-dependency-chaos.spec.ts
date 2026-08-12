@@ -29,7 +29,10 @@ async function installDependencyChaos(page: Page) {
       (pathname === "/api/search" && searchQuery === "coffee nearby")
     ) {
       remember("hanging", route);
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Keep the request pending long enough for a real browser to paint and
+      // expose the retry state. A 300 ms abort could finish during Playwright's
+      // click stabilization, testing scheduler timing instead of the product.
+      await new Promise((resolve) => setTimeout(resolve, 750));
       await route.abort("timedout");
       return;
     }

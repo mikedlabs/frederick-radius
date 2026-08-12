@@ -15,6 +15,10 @@ import {
   openReturnBridge,
 } from "@/lib/return-bridge";
 import { track } from "@/lib/track";
+import {
+  decisionContextFromPath,
+  trackDecision,
+} from "@/lib/decision/telemetry";
 import { toast } from "sonner";
 
 /**
@@ -187,6 +191,17 @@ export default function SaveButton({
         haptic(wasSaved ? "light" : "medium");
         toggle();
         if (refType === "event") track("save_event", { on: !wasSaved });
+        if (!wasSaved && refType !== "radius") {
+          const context = decisionContextFromPath(window.location.pathname);
+          trackDecision({
+            stage: "action",
+            surface: context.surface,
+            entityKind: refType,
+            entityId: refId,
+            position: context.position,
+            action: "save",
+          });
+        }
         // Event saves also register a device-scoped reminder (critic-1).
         // isSaved is the PRE-toggle state, so the new state is !isSaved.
         if (refType === "event") void syncSavedEventReminder(refId, !wasSaved);

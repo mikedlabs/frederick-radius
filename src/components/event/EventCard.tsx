@@ -160,6 +160,13 @@ export default function EventCard({
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const accessLabel = communicationAccessLabels(event)[0];
   const cardVisual = eventCardVisual(event);
+  const decisionAttributes = {
+    "data-decision-impression": "true",
+    "data-decision-surface": "events",
+    "data-decision-entity": "event",
+    "data-decision-id": event.slug,
+    "data-decision-position": "result",
+  } as const;
 
   // Utility variant — TINY single muted line for the civic / municipal
   // long tail: board meetings, recurring pickups, posted notices. One
@@ -170,6 +177,7 @@ export default function EventCard({
   if (variant === "utility") {
     return (
       <article
+        {...decisionAttributes}
         className="group relative flex min-h-11 items-center gap-2.5 border-b px-1.5"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -185,6 +193,7 @@ export default function EventCard({
         </span>
         <Link
           href={`/events/${event.slug}`}
+          data-decision-action="open"
           prefetch={false}
           className={`flex min-h-11 min-w-0 self-stretch flex-1 items-center truncate text-[13px] outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""
@@ -220,6 +229,7 @@ export default function EventCard({
   if (variant === "compact") {
     return (
       <article
+        {...decisionAttributes}
         className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -267,6 +277,7 @@ export default function EventCard({
         <div className="min-w-0 flex-1">
           <Link
             href={`/events/${event.slug}`}
+            data-decision-action="open"
             prefetch={false}
             className={`flex min-h-11 min-w-0 flex-col justify-center outline-none after:absolute after:inset-0 focus-visible:underline ${
               isCancelled ? "line-through opacity-70" : ""
@@ -350,6 +361,7 @@ export default function EventCard({
             card fills it — otherwise a two-line neighbor leaves this tile
             floating over a blank band. */}
         <article
+          {...decisionAttributes}
           className="tactile tactile-interactive group relative flex flex-1 gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5"
           style={{
             borderColor: "var(--app-border)",
@@ -368,6 +380,7 @@ export default function EventCard({
             )}
             <Link
               href={`/events/${event.slug}`}
+              data-decision-action="open"
               prefetch={false}
               className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
               style={{ color: "var(--app-ink)" }}
@@ -428,6 +441,7 @@ export default function EventCard({
   if (variant === "glance") {
     return (
       <article
+        {...decisionAttributes}
         className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
         style={{
           borderColor: "var(--app-border)",
@@ -440,6 +454,7 @@ export default function EventCard({
       >
         <Link
           href={`/events/${event.slug}`}
+          data-decision-action="open"
           prefetch={false}
           className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
           style={{ color: "var(--app-ink)" }}
@@ -581,7 +596,10 @@ export default function EventCard({
   }
 
   return (
-    <article className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3">
+    <article
+      {...decisionAttributes}
+      className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3"
+    >
       <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -595,6 +613,7 @@ export default function EventCard({
           )}
           <Link
             href={`/events/${event.slug}`}
+            data-decision-action="open"
             prefetch={false}
             className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}

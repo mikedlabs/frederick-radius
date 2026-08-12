@@ -230,8 +230,23 @@
     {
       "file": "0041_data_truth_foundation.sql",
       "sha256": "4b95d322f614acc7ea5f095b838681a6c892c7806caffad542e406b3ffed3ca3",
-      "production_state": "effects_absent",
-      "note": "Live Supabase check on 2026-08-11 found all four tables and expected indexes absent; no migration history record exists."
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_foundation",
+      "note": "Supabase migration history records data_truth_foundation at version 20260812193905. Live verification confirmed all four tables, their expected indexes, RLS enabled, and no anon/authenticated grants."
+    },
+    {
+      "file": "0042_data_truth_least_privilege.sql",
+      "sha256": "3d54f1f4fe54911cb8f5c1f9ac5355ac49c3e0cf5fd4092e49ed5562de30ee45",
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_least_privilege",
+      "note": "Supabase migration history records data_truth_least_privilege at version 20260812194058. Live verification confirmed service_role has only SELECT and INSERT on append-only evidence tables, narrow column UPDATE grants, and CRUD on resolved_field_state."
+    },
+    {
+      "file": "0043_decision_daily_aggregates.sql",
+      "sha256": "cb6b51be1615fba5d43ebd26af886d6c1463f7aa0c71e3d2495aa7f8bc18018d",
+      "production_state": "migration_recorded",
+      "migration_record": "decision_daily_aggregates",
+      "note": "Supabase migration history records decision_daily_aggregates at version 20260812200141. Live verification confirmed the composite primary key and categorical constraints, RLS enabled, no PUBLIC/anon/authenticated grants, service_role SELECT and INSERT, and column-only UPDATE on count and updated_at."
     }
   ]
 }

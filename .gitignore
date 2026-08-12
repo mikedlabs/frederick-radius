@@ -118,11 +118,6 @@ audit-reports/
 design-review/screenshots/
 # Closure-detector output: a local review artifact, regenerated each run.
 scripts/reports/
-# County basemap extract: ~30MB binary produced at build time by
-# scripts/fetch-basemap.mjs (pinned Protomaps build + bbox). Tracking it
-# would rewrite the whole blob on every refresh; the repo-size gate says no.
-public/basemap/frederick-county.pmtiles
-# Basemap style assets: sprites + glyph ranges, fetched at build time beside
-# the county extract by scripts/fetch-basemap.mjs. Never tracked.
-public/basemap/fonts/
-public/basemap/sprites/
+# The county PMTiles extract, sprites, and glyphs are intentionally tracked
+# promoted artifacts. Application builds verify their release manifest and do
+# not download or regenerate them. See ADR-002 and `npm run basemap:verify`.

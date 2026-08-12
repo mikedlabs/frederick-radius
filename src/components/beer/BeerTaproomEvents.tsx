@@ -10,6 +10,7 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import { easternDayKey } from "@/lib/tz";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 
 /**
  * The taproom radar — the live layer that makes /beer a tonight
@@ -95,9 +96,12 @@ type Matched = { event: EventWithMeta; brewerySlug: string };
 export default async function BeerTaproomEvents() {
   const now = new Date();
   const limit = new Date(now.getTime() + WEEK_MS);
+  const promotedBuild = isPromotedDataBuild();
   const [monocacy, venueLive, unified] = await Promise.all([
-    getCachedLiveEventsForSources(["monocacy"], 7),
-    getCachedBeerVenueEvents(),
+    promotedBuild
+      ? Promise.resolve({ events: [], sources_succeeded: [], sources_failed: [] })
+      : getCachedLiveEventsForSources(["monocacy"], 7),
+    promotedBuild ? Promise.resolve([]) : getCachedBeerVenueEvents(),
     assembleUnifiedEvents(now).catch(() => ({ publicEvents: [] as EventWithMeta[] })),
   ]);
   const eventBySlug = new Map(

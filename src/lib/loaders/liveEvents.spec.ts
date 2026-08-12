@@ -134,6 +134,7 @@ describe("getLiveCardEventBySlug", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it("resolves a committed venue card without starting any provider", async () => {
@@ -167,6 +168,24 @@ describe("getLiveCardEventBySlug", () => {
   expect(mocks.fetchFrederickKeys).not.toHaveBeenCalled();
   expect(mocks.fetchSquarespaceVenueEvents).not.toHaveBeenCalled();
 });
+
+  it("refuses provider fanout in a promoted-data build", async () => {
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+
+    await expect(
+      getLiveCardEventBySlug("unarchived-show-2026-08-02"),
+    ).rejects.toMatchObject({
+      name: "LiveEventLookupIncompleteError",
+      sources: ["promoted-snapshot-only"],
+    });
+
+    expect(mocks.getCachedLiveEvents).not.toHaveBeenCalled();
+    expect(mocks.fetchTicketmasterSports).not.toHaveBeenCalled();
+    expect(mocks.fetchBandsintownForArtists).not.toHaveBeenCalled();
+    expect(mocks.fetchVisitFrederick).not.toHaveBeenCalled();
+    expect(mocks.fetchFrederickKeys).not.toHaveBeenCalled();
+    expect(mocks.fetchSquarespaceVenueEvents).not.toHaveBeenCalled();
+  });
 
 it("returns a fast provider hit without waiting for a never-settling source", async () => {
     const fast = liveEvent("fast", "Fast Match");

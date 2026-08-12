@@ -223,6 +223,7 @@ describe("EventsExplorer deferred browse reconciliation", () => {
       loadedCount: 7,
       dataComplete: false,
       anyFilter: false,
+      sourceDegraded: true,
       hasLead: true,
       peek: 3,
     });
@@ -240,6 +241,7 @@ describe("EventsExplorer deferred browse reconciliation", () => {
       loadedCount: 4,
       dataComplete: false,
       anyFilter: false,
+      sourceDegraded: false,
       hasLead: true,
       peek: 3,
     });
@@ -248,6 +250,24 @@ describe("EventsExplorer deferred browse reconciliation", () => {
       groupCount: 9,
       totalRest: 8,
       canExpand: true,
+    });
+  });
+
+  it("does not mix a stale horizon total into degraded partial results", () => {
+    const state = eventGroupRenderState({
+      summaryCount: 47,
+      loadedCount: 4,
+      dataComplete: false,
+      anyFilter: false,
+      sourceDegraded: true,
+      hasLead: true,
+      peek: 3,
+    });
+
+    expect(state).toEqual({
+      groupCount: 4,
+      totalRest: 3,
+      canExpand: false,
     });
   });
 });

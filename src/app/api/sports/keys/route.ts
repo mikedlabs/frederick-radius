@@ -13,7 +13,11 @@ import { getKeysScoreToday } from "@/lib/integrations/keysScore";
  * /today into one upstream call per 30s. The client polls this only while a
  * game is live (see KeysScore.tsx).
  */
-export const revalidate = 30;
+// A score is a runtime fact, not release data. Keeping this route dynamic
+// prevents `next build` from turning an upstream score request into a deploy
+// dependency; the response and normalized upstream result retain their own
+// 30-second caches below.
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const game = await getKeysScoreToday(new Date()).catch(() => null);

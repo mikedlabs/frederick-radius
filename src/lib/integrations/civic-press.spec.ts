@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   featuredPoliceRelease,
+  getCivicPressReleasesResult,
   type CivicPressItem,
 } from "./civic-press";
 
@@ -50,5 +51,23 @@ describe("featuredPoliceRelease", () => {
     "Emergency Announcement: Shelter in Place",
   ])("keeps the real incident or directive %s eligible", (title) => {
     expect(featuredPoliceRelease([policeItem(title, 1)], NOW)?.title).toBe(title);
+  });
+});
+
+describe("promoted-data build boundary", () => {
+  it("does not request civic feeds while generating a release", async () => {
+    const previous = process.env.RADIUS_DATA_MODE;
+    process.env.RADIUS_DATA_MODE = "promoted";
+    try {
+      const result = await getCivicPressReleasesResult();
+      expect(result.items).toEqual([]);
+      expect(result.sourceHealth).toEqual({
+        degraded: true,
+        unavailable: ["City of Frederick", "Frederick County"],
+      });
+    } finally {
+      if (previous === undefined) delete process.env.RADIUS_DATA_MODE;
+      else process.env.RADIUS_DATA_MODE = previous;
+    }
   });
 });

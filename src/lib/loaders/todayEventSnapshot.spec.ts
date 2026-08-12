@@ -11,6 +11,7 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import {
+  loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
   TODAY_EVENT_SNAPSHOT_MAX_AGE_MS,
@@ -160,5 +161,40 @@ describe("Today durable event snapshot", () => {
     expect(page).not.toMatch(/assembleUnifiedEvents\s*\(/);
     expect(endpoint).toContain("loadTodayEventSnapshot(now)");
     expect(endpoint).not.toMatch(/assembleUnifiedEvents\s*\(/);
+  });
+
+  it("keeps the Events board and its continuation on the durable archive", () => {
+    const page = readFileSync(
+      new URL("../../app/(app)/events/(list)/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const endpoint = readFileSync(
+      new URL("../../app/api/events/browse/route.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(page).toContain("loadEventArchiveSnapshot(now)");
+    expect(page).not.toMatch(/assembleUnifiedEvents\s*\(/);
+    expect(endpoint).toContain("loadEventArchiveSnapshot(now)");
+    expect(endpoint).not.toMatch(/assembleUnifiedEvents\s*\(/);
+  });
+
+  it("uses a wider but still bounded archive read for event discovery", async () => {
+    let strings: readonly string[] = [];
+    let values: readonly unknown[] = [];
+    mocks.getSql.mockReturnValue((
+      parts: TemplateStringsArray,
+      ...parameters: unknown[]
+    ) => {
+      strings = [...parts];
+      values = parameters;
+      return Promise.resolve([envelope()]);
+    });
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
+    expect(strings.join(" ")).toContain("limit");
+    expect(values).toContain(1_500);
   });
 });

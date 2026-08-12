@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import {
@@ -16,9 +16,6 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import MunicipalEvents from "@/components/event/MunicipalEvents";
-import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
-import { LIFTED_INGEST_SOURCES } from "@/lib/loaders/ingestedEvents";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -56,8 +53,8 @@ export const revalidate = 300;
  *      music / Free / Happy hour / Family / Civic) steer ONE reflowing
  *      horizon spine (feature lead + glance cards), with map + search +
  *      lenses on the same filtered set. Every event lands in exactly once.
- *   3. GOVERNMENT & NOTICES — civic meetings + town reminders + the
- *      municipal series, fenced off at the bottom, collapsed.
+ *   3. GOVERNMENT & NOTICES — civic meetings + town reminders from the
+ *      same promoted event archive, fenced off at the bottom, collapsed.
  *   4. HONESTY FOOTER — what feeds, where to submit.
  *
  * Server-rendered shell; the explorer is the client browse surface and
@@ -81,10 +78,10 @@ export const revalidate = 300;
 export default async function EventsIndexPage() {
   const now = new Date();
 
-  // Shared, intentionally NOT awaited here — see the streaming note above. A
-  // single awaited promise resolves once across both consumers below, and
-  // assembleUnifiedEvents is itself unstable_cache-wrapped.
-  const eventsPromise = assembleUnifiedEvents(now);
+  // The background archive job owns live-provider fan-out. A visitor receives
+  // one bounded durable read, so an external calendar can never hold this page
+  // open. The promise still streams behind the board fallback on a cold DB.
+  const eventsPromise = loadEventArchiveSnapshot(now);
 
   return (
     <div className="relative space-y-4">
@@ -146,13 +143,12 @@ export default async function EventsIndexPage() {
   );
 }
 
-type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+type EventsPromise = ReturnType<typeof loadEventArchiveSnapshot>;
 
 /**
  * The event-dependent body: the explorer board + the fenced "Government &
- * notices" sections. Awaits the shared events promise (plus the ingested civic
- * series, which is fail-soft) and does all the derivation the page used to do
- * inline at the top of the server component.
+ * notices" sections. It awaits one bounded promoted-archive read and does all
+ * the derivation the page used to do inline at the top of the server component.
  */
 async function EventsBoard({
   now,
@@ -161,17 +157,10 @@ async function EventsBoard({
   now: Date;
   eventsPromise: EventsPromise;
 }) {
-  // The unified set is assembled in lib/loaders/unifiedEvents, the SAME
-  // function /today counts from, so the two surfaces can never disagree
-  // about "this weekend" again. All sources inside it are fail-soft; the
-  // civic ingest below keeps the same .catch guards. Feed failures must
-  // never block or break /events.
-  const [{ unified, publicEvents, sourceHealth }, ingestedSeries, ingestedSummary] =
-    await Promise.all([
-      eventsPromise,
-      getIngestedSeries().catch(() => []),
-      getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
-    ]);
+  // The background archive refresh assembles all publisher sources. Visitors
+  // receive one bounded durable read, so no calendar or secondary database
+  // query can hold the page open.
+  const { unified, publicEvents, sourceHealth } = await eventsPromise;
   const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForBrowse);
   const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForBrowse);
   // Derive liveness from the complete unified public set. Using only the
@@ -180,38 +169,6 @@ async function EventsBoard({
   const liveSlugs = publicEvents
     .filter((event) => isEventLiveNow(event, now))
     .map((event) => event.slug);
-
-  // The ingested "Civic & municipal calendar" series is a SEPARATE data
-  // source (the daily-ingest table), so it must run through the same
-  // classifier — otherwise a private rental ("Attaboy … Wedding") or a
-  // CANCELLED meeting that landed in the feed renders raw (the live-audit
-  // leak). Keep civic/municipal/public series; drop private rentals and
-  // cancelled outright, exactly as the card lanes do.
-  const publicSeries = ingestedSeries.filter((s) => {
-    const lane = classifyEvent({ title: s.title, category: s.category ?? undefined });
-    if (lane === "private_rental" || lane === "cancelled") return false;
-    // The lifted sources' (FCPL/FCVFRA) PUBLIC draws now appear in the main
-    // rails above, so keep them out of this civic strip — no double-listing.
-    // Their civic/reminder rows (none today, but future-proof) still belong here.
-    if (lane === "public" && LIFTED_INGEST_SOURCES.has(s.sourceDomain)) return false;
-    return true;
-  });
-  // PAYLOAD WINDOW (perf audit: /events shipped 1.28MB HTML, 913KB of it
-  // inline RSC — and the driver wasn't the explorer, it was THIS
-  // collapsed-by-default civic module receiving every ingested series
-  // with full descriptions + occurrence arrays). Serialize only what the
-  // tucked view can show: series starting in the next 30 days, capped at
-  // 80, 4 occurrences each. The header's "270 series" count comes from
-  // `summary`, which stays complete — the number stays honest.
-  const civicWindowMs = +now + 30 * 864e5;
-  const civicSeries = publicSeries
-    .filter((s) => +new Date(s.nextStart) <= civicWindowMs)
-    .slice(0, 80)
-    .map((s) => ({
-      ...s,
-      description: s.description ? s.description.slice(0, 160) : null,
-      occurrences: s.occurrences.slice(0, 4),
-    }));
 
   // Facet lists, only for values actually present.
   const catSlugs = [...new Set(publicEvents.map((e) => e.category).filter(Boolean))];
@@ -366,25 +323,7 @@ async function EventsBoard({
         </CollapsibleSection>
       )}
 
-      {/* ── 7. CIVIC & MUNICIPAL CALENDAR — the long tail of recurring
-          municipal series + notices (the ingested calendar), COLLAPSED by
-          default so municipal gravity never competes with the events above.
-          Present but tucked, never dumped. */}
-      {publicSeries.length > 0 && (
-        <CollapsibleSection
-          title="Civic & municipal calendar"
-          count={publicSeries.length}
-          countLabel="series"
-          countAriaOnly
-          storageKey="fr.events.official"
-          defaultOpen={false}
-          className="[&>button]:min-h-11"
-        >
-          <MunicipalEvents series={civicSeries} summary={ingestedSummary} />
-        </CollapsibleSection>
-      )}
-
-      {/* ── 8. SUBSCRIBE — the county in your own calendar app. webcal://
+      {/* ── 7. SUBSCRIBE — the county in your own calendar app. webcal://
           is the subscription protocol every major calendar client claims
           (Apple/Outlook natively; Google via "from URL"), backed by
           /api/calendar/[feed]. The feed refreshes itself, so additions and

@@ -10,6 +10,7 @@ import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { isInNextSevenDayTownWindow } from "@/lib/guided/town-event-window";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 
 /**
  * Per-municipality rolling seven-day event counts for the town cards.
@@ -32,14 +33,16 @@ import { isInNextSevenDayTownWindow } from "@/lib/guided/town-event-window";
  * Cached (revalidate hourly, tagged "events") so /towns never pays the live
  * fetch on a normal render.
  */
-async function buildNextSevenDayPublicEventCounts(): Promise<Record<string, number>> {
+export async function buildNextSevenDayPublicEventCounts(): Promise<Record<string, number>> {
   const now = new Date();
 
   const curatedUpcoming = allUpcoming(now);
   const venueCards = venueEventsAsCards(now);
-  const { events: liveRaw } = await getLiveEvents(60).catch(() => ({
-    events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
-  }));
+  const { events: liveRaw } = isPromotedDataBuild()
+    ? { events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"] }
+    : await getLiveEvents(60).catch(() => ({
+        events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
+      }));
   // Same boundary mapping + dedup against curated that /events does.
   const liveCards = dedupeLiveAgainstCurated(
     collapseRecurringEvents(liveRaw.map(liveToCardEvent)),

@@ -12,6 +12,7 @@ const operationalReady: OperationalReadinessEvidence = {
     search: "ready",
     eventArchive: "ready",
     sourceHealth: "ready",
+    dataTruth: "ready",
   },
   heartbeats: {
     feeds: "current",
@@ -125,6 +126,7 @@ describe("public surface release readiness", () => {
           search: "unknown",
           eventArchive: "unknown",
           sourceHealth: "unknown",
+          dataTruth: "unknown",
         },
         heartbeats: { feeds: "unknown", eventArchive: "unknown" },
       },
