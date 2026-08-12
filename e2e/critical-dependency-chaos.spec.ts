@@ -164,7 +164,13 @@ test.describe("critical surfaces under combined dependency failure", () => {
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/map");
     const mapSearch = page.getByRole("combobox", { name: "Search this map" });
-    await expect(mapSearch).toBeVisible();
+    // The production map deliberately allows its deferred renderer up to
+    // 15 seconds on a cold start before it swaps to the readable fallback.
+    // Required CI runners are also building and serving the production app,
+    // so Playwright's five-second default can expire while the healthy map
+    // chunk is still inside that documented startup budget. Keep the guard
+    // strict, but judge the control against the product's real boundary.
+    await expect(mapSearch).toBeVisible({ timeout: 15_000 });
     await mapSearch.fill("coffee nearby");
     await expect
       .poll(() => hits.hanging.includes("/api/search"))
