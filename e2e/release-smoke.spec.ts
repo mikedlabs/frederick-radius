@@ -39,6 +39,13 @@ const EXPECTED_NAVIGATION_ABORTS = [
   // user follows the full-page link. Navigation cancels that image request;
   // real HTTP failures remain covered by the response-status guard above.
   /^\/api\/static-map$/,
+  // The map catalog and selected overlay are read-only GETs. Opening a place
+  // page may cancel either request, and returning to the map starts a fresh
+  // request from the restored URL state. The journey assertions below prove
+  // that the search, layer, camera, and selected place all survive; completed
+  // 5xx responses remain release-blocking through the response guard above.
+  /^\/api\/map\/places$/,
+  /^\/api\/overlays\/parks$/,
 ];
 
 const VIEWPORTS = [
