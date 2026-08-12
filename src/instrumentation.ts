@@ -8,8 +8,14 @@
  * runtime failure, and no data ever leaves the process.
  */
 import * as Sentry from "@sentry/nextjs";
+import { installPromotedBuildFetchGuard } from "@/lib/data-release-mode";
 
 export function register() {
+  // Application builds consume only reviewed, committed snapshots. Install
+  // the guard before any observability setup so a new static route cannot
+  // quietly reintroduce a publisher fetch into the deployment boundary.
+  installPromotedBuildFetchGuard();
+
   const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
   if (!dsn) return;
   if (process.env.NEXT_RUNTIME === "nodejs" || process.env.NEXT_RUNTIME === "edge") {

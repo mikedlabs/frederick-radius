@@ -19,6 +19,7 @@ export type MigrationReadiness = {
   search: MigrationReadinessState;
   eventArchive: MigrationReadinessState;
   sourceHealth: MigrationReadinessState;
+  dataTruth: MigrationReadinessState;
 };
 
 export type HeartbeatReadiness = {
@@ -39,6 +40,8 @@ export type SurfaceReadinessReason =
   | "event_archive_schema_unknown"
   | "source_health_schema_missing"
   | "source_health_schema_unknown"
+  | "data_truth_schema_missing"
+  | "data_truth_schema_unknown"
   | "feed_heartbeat_missing"
   | "feed_heartbeat_stale"
   | "feed_heartbeat_failed"
@@ -71,6 +74,7 @@ export const UNKNOWN_OPERATIONAL_READINESS: OperationalReadinessEvidence = {
     search: "unknown",
     eventArchive: "unknown",
     sourceHealth: "unknown",
+    dataTruth: "unknown",
   },
   heartbeats: {
     feeds: "unknown",
@@ -201,6 +205,15 @@ export function derivePublicReleaseReadiness(input: {
       state: migrations.sourceHealth,
       missingReason: "source_health_schema_missing",
       unknownReason: "source_health_schema_unknown",
+      missingStatus: "partial",
+      surfaces: PUBLIC_SURFACES,
+    },
+    {
+      state: migrations.dataTruth,
+      missingReason: "data_truth_schema_missing",
+      unknownReason: "data_truth_schema_unknown",
+      // This evidence store improves publication quality but is not yet a
+      // runtime dependency for the four public decision surfaces.
       missingStatus: "partial",
       surfaces: PUBLIC_SURFACES,
     },

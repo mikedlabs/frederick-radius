@@ -13,6 +13,12 @@ describe("Starter Plausible event budget", () => {
     expect(PLAUSIBLE_GOAL_EVENTS.has("keep_radius_offer")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("keep_radius_success")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("pwa_launch")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_open")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_action")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_helpful")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_not_relevant")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_wrong")).toBe(true);
+    expect(PLAUSIBLE_GOAL_EVENTS.has("decision_impression")).toBe(true);
     expect(PLAUSIBLE_GOAL_EVENTS.has("map_ready")).toBe(false);
     expect(PLAUSIBLE_GOAL_EVENTS.has("moment_spotlight_view")).toBe(false);
   });
@@ -21,6 +27,8 @@ describe("Starter Plausible event budget", () => {
     expect(shouldSendToPlausible("save_place", { on: true })).toBe(true);
     expect(shouldSendToPlausible("save_place", { on: false })).toBe(false);
     expect(shouldSendToPlausible("map_dock", { pick: "what" })).toBe(false);
+    expect(shouldSendToPlausible("decision_impression", { position: "lead" })).toBe(true);
+    expect(shouldSendToPlausible("decision_impression", { position: "result" })).toBe(false);
   });
 
   it("queues a goal without relying on the retired domain variable", () => {

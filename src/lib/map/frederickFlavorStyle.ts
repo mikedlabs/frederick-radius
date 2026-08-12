@@ -8,8 +8,7 @@ import { FREDERICK_FLAVOR } from "@/lib/map/frederickBasemapFlavor";
  * Tiles come from the county PMTiles extract in /public/basemap — a
  * 30 MB static file covering Frederick County plus a margin, zooms
  * 0–15, cut from the same Protomaps build the bench judged. Sprites
- * and glyphs still ride the /admin/basemap/assets relay until they are
- * vendored next to the tiles. No Mapbox token, no per-load billing,
+ * and glyphs are reviewed promoted artifacts beside the tiles. No Mapbox token, no per-load billing,
  * no third-party fetch from the browser.
  *
  * Shared by the bench pane and the full-screen preview so the judged

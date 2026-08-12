@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "./events";
 import {
   compactUnifiedEvents,
+  assembleUnifiedEvents,
   hydrateUnifiedEvents,
   withAbortableTimeout,
   type UnifiedEvents,
@@ -9,6 +10,8 @@ import {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 function event(
@@ -110,5 +113,22 @@ describe("abortable event source deadlines", () => {
 
     await expect(result).resolves.toBe("events");
     expect(sourceSignal?.aborted).toBe(false);
+  });
+});
+
+describe("promoted event release", () => {
+  it("assembles committed events without contacting a publisher", async () => {
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await assembleUnifiedEvents(new Date());
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["live event refresh (runtime only)"],
+    });
+    expect(result.publicEvents.every((item) => item.source !== "ticketmaster")).toBe(true);
   });
 });

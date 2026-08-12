@@ -4,16 +4,12 @@ import { useEffect } from "react";
 import { warmMapPlaces } from "./mapPlacesClient";
 
 /**
- * MapWarmup — start downloading the heavy map chunk while the server is
- * still streaming the data half of /map.
+ * MapWarmup — start downloading the heavy map chunk and committed place
+ * snapshot from the static shell.
  *
- * The browse map is a serial chain: shell → (server waits on ~10 feeds
- * inside Suspense) → flight arrives → hydrate → next/dynamic fetches the
- * AppMap chunk (the premium GL renderer, the app's biggest script) → style/tiles. This
- * component mounts from the SHELL, outside the Suspense boundary, so the
- * dynamic-import fetch overlaps the server wait instead of queuing behind
- * it. By the time BrowseMapArea streams in, the module is warm and the
- * dynamic() resolves from cache.
+ * This component mounts outside the Suspense boundary, so the two core
+ * browser requests overlap hydration. Provider-backed context deliberately
+ * starts later, from BrowseMapClient, and can never delay this path.
  *
  * Renders nothing; the import result is intentionally discarded.
  */

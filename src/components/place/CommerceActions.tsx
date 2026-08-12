@@ -8,6 +8,7 @@ import {
   orderCommerceForDetail,
 } from "@/lib/commerce/links";
 import ReportLinkButton from "./ReportLinkButton";
+import type { DecisionAction } from "@/lib/decision/telemetry";
 
 const TYPE_ICON: Record<CommerceLinkType, typeof ShoppingBag> = {
   menu: UtensilsCrossed,
@@ -21,6 +22,13 @@ const TYPE_ICON: Record<CommerceLinkType, typeof ShoppingBag> = {
 
 /** One clear lead action: order-ahead, else menu, else reserve. */
 const PRIMARY_PRIORITY: CommerceLinkType[] = ["order", "menu", "reservation"];
+
+function decisionActionForCommerce(type: CommerceLinkType): DecisionAction {
+  if (type === "menu") return "menu";
+  if (type === "reservation") return "reservation";
+  if (type === "order" || type === "delivery" || type === "catering") return "order";
+  return "website";
+}
 
 /**
  * The place-detail commerce section — one calm block that supersedes the old
@@ -103,6 +111,7 @@ export default function CommerceActions({
               href={l.url}
               target="_blank"
               rel="noopener noreferrer"
+              data-decision-action={decisionActionForCommerce(l.type)}
               className="rounded-full"
               iconLeft={<Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />}
               iconRight={

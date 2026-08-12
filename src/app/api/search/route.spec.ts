@@ -3,16 +3,21 @@ import { NextRequest } from "next/server";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 const mocks = vi.hoisted(() => ({
-  assembleUnifiedEvents: vi.fn(),
+  loadEventArchiveSnapshot: vi.fn(),
   approxLocation: vi.fn(),
+  recordSearchMiss: vi.fn(),
 }));
 
-vi.mock("@/lib/loaders/unifiedEvents", () => ({
-  assembleUnifiedEvents: mocks.assembleUnifiedEvents,
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
+  loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
 }));
 
 vi.mock("@/lib/ip-geo", () => ({
   approxLocation: mocks.approxLocation,
+}));
+
+vi.mock("@/lib/telemetry/searchMiss", () => ({
+  recordSearchMiss: mocks.recordSearchMiss,
 }));
 
 import { GET } from "./route";
@@ -52,8 +57,9 @@ function liveEvent(): EventWithMeta {
 describe("GET /api/search map fast path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.assembleUnifiedEvents.mockResolvedValue({
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
       publicEvents: [liveEvent()],
+      sourceHealth: { degraded: false, unavailable: [] },
     });
     mocks.approxLocation.mockResolvedValue({
       origin: null,
@@ -76,7 +82,7 @@ describe("GET /api/search map fast path", () => {
         type: "action",
         href: expectedHref,
       });
-      expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+      expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
     },
   );
 
@@ -85,7 +91,7 @@ describe("GET /api/search map fast path", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.assembleUnifiedEvents).toHaveBeenCalledOnce();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
     expect(body.results).toContainEqual(
       expect.objectContaining({
         id: "event:radius-investor-showcase",
@@ -102,7 +108,7 @@ describe("GET /api/search map fast path", () => {
     expect(body.results).toContainEqual(
       expect.objectContaining({ type: "place" }),
     );
-    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
   });
 
   it("lets map ATM searches fall through to the live provider", async () => {
@@ -111,7 +117,7 @@ describe("GET /api/search map fast path", () => {
 
     expect(response.status).toBe(200);
     expect(body.results).toEqual([]);
-    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
   });
 
   it("preserves the ATM handoff in global search", async () => {
@@ -123,11 +129,11 @@ describe("GET /api/search map fast path", () => {
       id: "action:map-atm",
       href: "/map?q=ATM",
     });
-    expect(mocks.assembleUnifiedEvents).not.toHaveBeenCalled();
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
   });
 
   it("labels honest base results when live event enrichment rejects", async () => {
-    mocks.assembleUnifiedEvents.mockRejectedValue(
+    mocks.loadEventArchiveSnapshot.mockRejectedValue(
       new Error("Live event assembly unavailable"),
     );
 
@@ -139,9 +145,48 @@ describe("GET /api/search map fast path", () => {
     expect(body.meta.liveEventsUnavailable).toBe(true);
   });
 
+  it.each(["map", "global"])(
+    "labels a resolved degraded archive in %s search",
+    async (origin) => {
+      mocks.loadEventArchiveSnapshot.mockResolvedValue({
+        publicEvents: [],
+        sourceHealth: {
+          degraded: true,
+          unavailable: ["event archive"],
+        },
+      });
+
+      const response = await GET(request("events tonight", origin));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.results.length).toBeGreaterThan(0);
+      expect(body.meta.liveEventsUnavailable).toBe(true);
+      expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns an honest unavailable response and does not bank a false miss", async () => {
+    mocks.loadEventArchiveSnapshot.mockResolvedValue({
+      publicEvents: [],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["event archive"],
+      },
+    });
+
+    const response = await GET(request("zzqxwvnotreal", "global"));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.results).toEqual([]);
+    expect(body.meta.liveEventsUnavailable).toBe(true);
+    expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
+  });
+
   it("does not use the map-only fast path for global search", async () => {
     await GET(request("public restroom", "global"));
 
-    expect(mocks.assembleUnifiedEvents).toHaveBeenCalledOnce();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
   });
 });

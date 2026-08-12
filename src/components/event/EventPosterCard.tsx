@@ -120,6 +120,11 @@ export default function EventPosterCard({
   return (
     <>
     <article
+      data-decision-impression="true"
+      data-decision-surface="events"
+      data-decision-entity="event"
+      data-decision-id={event.slug}
+      data-decision-position="lead"
       className={`tactile tactile-feature tactile-ring tactile-interactive group relative w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
         onPhoto
           ? `aspect-[3/2] ${layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"}`
@@ -240,6 +245,7 @@ export default function EventPosterCard({
       <div className="absolute inset-x-0 bottom-0 p-4">
         <Link
           href={`/events/${event.slug}`}
+          data-decision-action="open"
           prefetch={false}
           className={`flex min-h-11 items-end font-serif text-[21px] leading-[1.08] tracking-tight outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""

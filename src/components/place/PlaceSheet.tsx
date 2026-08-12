@@ -40,6 +40,11 @@ import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/p
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import { normalizeMapReturnTo, withMapReturnTo } from "@/lib/map-return";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
+import {
+  decisionContextFromPath,
+  trackDecision,
+  type DecisionAction,
+} from "@/lib/decision/telemetry";
 
 /**
  * Bottom-sheet detail view for a place. The presence/drag/focus/exit
@@ -288,6 +293,17 @@ function PlaceSheetContent({
     placeActions(effectivePlace),
     place.category,
   );
+
+  useEffect(() => {
+    const context = decisionContextFromPath(window.location.pathname);
+    trackDecision({
+      stage: "impression",
+      surface: context.surface,
+      entityKind: "place",
+      entityId: place.slug,
+      position: "sheet",
+    });
+  }, [place.slug]);
 
   return (
     <>
@@ -730,7 +746,7 @@ function PlaceSheetContent({
         {/* One reliable lead action, two visible alternatives, and everything
             else behind a calm disclosure. Provider colors no longer flatten
             every capability into an equally loud pill. */}
-        <PlaceSheetActions groups={actionGroups} />
+        <PlaceSheetActions groups={actionGroups} entityId={place.slug} />
 
         {/* Footer — link to full page + share */}
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
@@ -813,17 +829,35 @@ const ACTION_ICON = {
   menu: BookOpen,
 } as const;
 
-function PlaceSheetActions({ groups }: { groups: PlaceActionGroups }) {
+function decisionActionForPlaceAction(action: PlaceAction): DecisionAction {
+  if (action.key === "directions") return "directions";
+  if (action.key === "call") return "call";
+  if (action.key === "email") return "email";
+  if (action.key === "website" || action.key === "instagram") return "website";
+  if (action.key === "menu") return "menu";
+  if (action.key === "reserve" || action.key === "reserve-search") return "reservation";
+  if (action.key === "order" || action.key === "order-search") return "order";
+  if (action.key === "parking") return "parking";
+  return "open";
+}
+
+function PlaceSheetActions({
+  groups,
+  entityId,
+}: {
+  groups: PlaceActionGroups;
+  entityId: string;
+}) {
   const { primary, secondary, more } = groups;
   if (!primary) return null;
 
   return (
     <section className="mt-5 space-y-2" aria-label="Place actions">
-      <PlaceActionLink action={primary} priority="primary" />
+      <PlaceActionLink action={primary} priority="primary" entityId={entityId} />
       {secondary.length > 0 ? (
         <div className={`grid gap-2 ${secondary.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
           {secondary.map((action) => (
-            <PlaceActionLink key={action.key} action={action} priority="secondary" />
+            <PlaceActionLink key={action.key} action={action} priority="secondary" entityId={entityId} />
           ))}
         </div>
       ) : null}
@@ -850,7 +884,7 @@ function PlaceSheetActions({ groups }: { groups: PlaceActionGroups }) {
           </summary>
           <div className="border-t px-3" style={{ borderColor: "var(--app-border)" }}>
             {more.map((action) => (
-              <PlaceActionLink key={action.key} action={action} priority="row" />
+              <PlaceActionLink key={action.key} action={action} priority="row" entityId={entityId} />
             ))}
           </div>
         </details>
@@ -862,9 +896,11 @@ function PlaceSheetActions({ groups }: { groups: PlaceActionGroups }) {
 function PlaceActionLink({
   action,
   priority,
+  entityId,
 }: {
   action: PlaceAction;
   priority: "primary" | "secondary" | "row";
+  entityId: string;
 }) {
   const Icon = ACTION_ICON[action.icon];
   const primary = priority === "primary";
@@ -872,7 +908,17 @@ function PlaceActionLink({
   return (
     <a
       href={action.href}
-      onClick={() => haptic("light")}
+      onClick={() => {
+        haptic("light");
+        trackDecision({
+          stage: "action",
+          surface: "place",
+          entityKind: "place",
+          entityId,
+          position: "sheet",
+          action: decisionActionForPlaceAction(action),
+        });
+      }}
       target={action.external ? "_blank" : undefined}
       rel={action.external ? "noopener noreferrer" : undefined}
       className={

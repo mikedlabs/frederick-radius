@@ -209,6 +209,7 @@ export function eventGroupRenderState({
   loadedCount,
   dataComplete,
   anyFilter,
+  sourceDegraded,
   hasLead,
   peek,
 }: {
@@ -216,13 +217,15 @@ export function eventGroupRenderState({
   loadedCount: number;
   dataComplete: boolean;
   anyFilter: boolean;
+  sourceDegraded: boolean;
   hasLead: boolean;
   peek: number;
 }): { groupCount: number; totalRest: number; canExpand: boolean } {
-  // A degraded response can add rows that were absent from the server
-  // snapshot. Keep the trusted complete count when it is larger, but never
-  // let that stale summary hide rows that are already present in the client.
-  const groupCount = !dataComplete && !anyFilter
+  // A healthy bounded preview can use the server's complete summary. Once a
+  // live source is degraded, that summary is no longer a defensible total:
+  // use only the rows still available in memory so the horizon headings agree
+  // with the masthead's partial-results count.
+  const groupCount = !dataComplete && !anyFilter && !sourceDegraded
     ? Math.max(summaryCount ?? 0, loadedCount)
     : loadedCount;
   const totalRest = Math.max(0, groupCount - (hasLead ? 1 : 0));
@@ -1310,6 +1313,7 @@ export default function EventsExplorer({
               loadedCount: g.events.length,
               dataComplete,
               anyFilter: contentFilterActive,
+              sourceDegraded: currentSourceHealth.degraded,
               hasLead: Boolean(lead),
               peek: PEEK,
             });

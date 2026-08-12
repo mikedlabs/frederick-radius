@@ -63,6 +63,9 @@ jobs:
       - name: Test photo policy
         run: npx vitest run src/lib/google-photo-backfill.spec.ts src/lib/google-photo-policy.spec.ts src/lib/loaders/places-client-photo-policy.spec.ts
 
+      - name: Promote reviewed place artifacts
+        run: npm run data:release:write -- --stream places
+
       - name: Stage exact photo outputs
         run: |
           set -euo pipefail
@@ -72,6 +75,7 @@ jobs:
           install -D -m 0644 src/data/places-client.json "$root/src/data/places-client.json"
           install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
           install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
+          install -D -m 0644 src/data/data-release.json "$root/src/data/data-release.json"
           install -D -m 0644 docs/coverage-scorecard.md "$root/docs/coverage-scorecard.md"
       - name: Upload exact photo outputs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -98,6 +102,7 @@ jobs:
         src/data/places-client.json
         src/data/places-client-hours.json
         src/data/event-venue-photo-credits.json
+        src/data/data-release.json
         docs/coverage-scorecard.md
       commit_message: "data: backfill exact Google photo attribution"
       title: "data: restore attributable business photos"

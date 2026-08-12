@@ -66,6 +66,7 @@ type Common = {
   iconRight?: ReactNode;
   children?: ReactNode;
   "aria-label"?: string;
+  "data-decision-action"?: string;
 };
 
 type ButtonAsButton = Common & {
@@ -104,6 +105,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
         target={props.target}
         rel={props.rel}
         aria-label={props["aria-label"]}
+        data-decision-action={props["data-decision-action"]}
         onClick={props.onClick}
         className={cls}
         style={mergedStyle}
@@ -122,6 +124,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       disabled={(props.disabled ?? false) || loading}
       aria-busy={loading || undefined}
       aria-label={props["aria-label"]}
+      data-decision-action={props["data-decision-action"]}
       onClick={props.onClick}
       className={`${cls} disabled:pointer-events-none disabled:opacity-50`}
       style={mergedStyle}

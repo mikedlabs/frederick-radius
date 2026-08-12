@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { getDb, getSql } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { sendPush, configurePush } from "@/lib/push";
+import { pushDeliveryFinalUpdate } from "@/lib/push-open-attribution";
 import { shouldDeliver } from "@/lib/push-delivery";
 import type { PushPayload } from "@/lib/push";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -223,8 +224,9 @@ export async function broadcast(
     }
   }
 
-  if (sent > 0) {
-    await db.update(push_log).set({ sent_count: sent }).where(eq(push_log.id, claim[0].id));
-  }
+  await db
+    .update(push_log)
+    .set(pushDeliveryFinalUpdate(sent))
+    .where(eq(push_log.id, claim[0].id));
   return { attempted: rows.length, sent, gone, held };
 }

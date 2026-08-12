@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { prepareEventsForBrowse } from "@/lib/events/browsePayload";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
@@ -16,7 +16,7 @@ export const revalidate = 300;
  */
 export async function GET() {
   const now = new Date();
-  const { publicEvents, sourceHealth } = await assembleUnifiedEvents(now);
+  const { publicEvents, sourceHealth } = await loadEventArchiveSnapshot(now);
   const liveSlugs = publicEvents
     .filter((event) => isEventLiveNow(event, now))
     .map((event) => event.slug);

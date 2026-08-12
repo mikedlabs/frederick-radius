@@ -99,6 +99,7 @@ import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
 import { collapseInitialMapAttribution } from "./mapAttribution";
+import type { MapLayerGroup } from "./deferredBrowseLayers";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -580,6 +581,9 @@ type Props = {
    * from smartDefault because a quiet cold-open can still have current,
    * safety-checked outdoor conditions. */
   sceneContext?: MapSceneContext;
+  /** Browse-only demand signal for provider-backed layers. The map can expose
+   * every tool without fetching its data until someone turns it on. */
+  onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
 };
 
 export default function AppMap({
@@ -619,6 +623,7 @@ export default function AppMap({
   onVisualReady,
   smartDefault = null,
   sceneContext = { conditions: "unavailable", outdoorSafetyHold: null },
+  onLayerDemand,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
@@ -1306,6 +1311,25 @@ export default function AppMap({
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
+  useEffect(() => {
+    if (!onLayerDemand) return;
+    const groups = new Set<MapLayerGroup>();
+    if (visibleAmenityGroups.size > 0) groups.add("amenities");
+    if (showTrails || visibleCemeteries) groups.add("outdoors");
+    if (visibleTransit) groups.add("transit");
+    if (visibleParking) groups.add("parking");
+    if (showCivic || showTraffic) groups.add("roads");
+    if (groups.size > 0) onLayerDemand([...groups]);
+  }, [
+    onLayerDemand,
+    showCivic,
+    showTraffic,
+    showTrails,
+    visibleAmenityGroups,
+    visibleCemeteries,
+    visibleParking,
+    visibleTransit,
+  ]);
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   // (The radar toggle itself stamps time so nobody mistakes minutes-old
   // radar for real time.)
@@ -6228,6 +6252,7 @@ export default function AppMap({
               setShowCemeteries(value);
             }}
             parkingCount={parking.length}
+            providerLayersAvailable={Boolean(onLayerDemand)}
             showParking={showParking}
             setShowParking={(value) => {
               exitRadiusScene();

@@ -2,10 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getCachedPublicHealthSnapshot: vi.fn(),
+  publicDataSnapshot: vi.fn(),
 }));
 
 vi.mock("@/lib/public-health", () => ({
   getCachedPublicHealthSnapshot: mocks.getCachedPublicHealthSnapshot,
+}));
+
+vi.mock("@/lib/public-data-snapshot", () => ({
+  publicDataSnapshot: mocks.publicDataSnapshot,
 }));
 
 import { GET } from "./route";
@@ -13,6 +18,12 @@ import { GET } from "./route";
 describe("GET /api/health", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.publicDataSnapshot.mockReturnValue({
+      schemaVersion: 1,
+      dataVersion: `sha256:${"a".repeat(64)}`,
+      lastSuccessfulDataPromotion: "2026-08-12T12:00:00Z",
+      counts: {},
+    });
   });
 
   it("returns a non-cacheable public operational snapshot", async () => {
@@ -50,6 +61,7 @@ describe("GET /api/health", () => {
           search: "ready",
           eventArchive: "ready",
           sourceHealth: "ready",
+          dataTruth: "ready",
         },
         heartbeats: {
           status: "current",
@@ -77,6 +89,7 @@ describe("GET /api/health", () => {
       status: "operational",
       database: { status: "reachable" },
       readiness: { status: "ready" },
+      release: { dataVersion: `sha256:${"a".repeat(64)}` },
     });
   });
 
@@ -105,6 +118,7 @@ describe("GET /api/health", () => {
           search: "ready",
           eventArchive: "ready",
           sourceHealth: "ready",
+          dataTruth: "ready",
         },
         heartbeats: {
           status: "degraded",

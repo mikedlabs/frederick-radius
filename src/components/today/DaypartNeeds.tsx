@@ -361,6 +361,12 @@ function DaypartPickCard({
         href={`/places/${place.slug}`}
         prefetch={false}
         data-today-place-lead={lead ? "true" : undefined}
+        data-decision-impression="true"
+        data-decision-surface="today"
+        data-decision-entity="place"
+        data-decision-id={place.slug}
+        data-decision-position={lead ? "lead" : "alternative"}
+        data-decision-action="open"
         className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
           lead ? "w-[14.5rem]" : "w-[10.75rem]"
         }`}
@@ -428,6 +434,12 @@ function DaypartPickCard({
       href={`/places/${place.slug}`}
       prefetch={false}
       data-today-place-lead={lead ? "true" : undefined}
+      data-decision-impression="true"
+      data-decision-surface="today"
+      data-decision-entity="place"
+      data-decision-id={place.slug}
+      data-decision-position={lead ? "lead" : "alternative"}
+      data-decision-action="open"
       className={`group flex h-full min-h-[76px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
         lead ? "w-[14.5rem]" : "w-[10.75rem]"
       }`}

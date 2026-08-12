@@ -385,10 +385,21 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = safeNavigationTarget(event.notification.data && event.notification.data.url);
-  // Fire-and-forget open ping so the composer can count opens per send.
+  // POST is deliberate: this endpoint changes aggregate state, and a
+  // same-origin POST carries the Origin evidence required by the server's CSRF
+  // guard. Keep the request inside waitUntil as well; a worker may otherwise
+  // be terminated before a fire-and-forget attribution ping leaves the device.
   const n = event.notification.data && event.notification.data.n;
-  if (n) fetch("/api/push/opened?n=" + encodeURIComponent(n), { keepalive: true }).catch(() => {});
-  event.waitUntil(
+  const opened = n
+    ? fetch("/api/push/opened?n=" + encodeURIComponent(n), {
+        method: "POST",
+        mode: "same-origin",
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
+      }).catch(() => undefined)
+    : Promise.resolve(undefined);
+  const navigation =
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
@@ -399,8 +410,8 @@ self.addEventListener("notificationclick", (event) => {
         const first = clients[0];
         if (first && "navigate" in first) return first.navigate(url).then(() => first.focus());
         return self.clients.openWindow(url);
-      }),
-  );
+      });
+  event.waitUntil(Promise.all([opened, navigation]));
 });
 `;
 

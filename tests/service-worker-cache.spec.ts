@@ -228,4 +228,35 @@ describe("service worker cache boundaries", () => {
     await pending;
     expect(worker.openWindow).toHaveBeenCalledWith("/today");
   });
+
+  it("keeps a same-origin POST open ping alive with the click navigation", async () => {
+    const worker = await workerHarness();
+    worker.fetch.mockResolvedValueOnce(response("https://frederick.example/api/push/opened"));
+    let pending: Promise<unknown> | undefined;
+    worker.listeners.get("notificationclick")!({
+      notification: {
+        data: {
+          url: "/events/alive-at-five",
+          n: "11111111-1111-4111-8111-111111111111",
+        },
+        close: vi.fn(),
+      },
+      waitUntil(value: Promise<unknown>) {
+        pending = value;
+      },
+    });
+
+    await pending;
+    expect(worker.fetch).toHaveBeenCalledWith(
+      "/api/push/opened?n=11111111-1111-4111-8111-111111111111",
+      expect.objectContaining({
+        method: "POST",
+        mode: "same-origin",
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
+      }),
+    );
+    expect(worker.openWindow).toHaveBeenCalledWith("/events/alive-at-five");
+  });
 });

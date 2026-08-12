@@ -2,19 +2,16 @@
  * Fetch the self-hosted county basemap extract (task #36).
  *
  * public/basemap/frederick-county.pmtiles is a ~30 MB binary that the
- * repo-size gate rightly refuses to track: every re-extract rewrites the
- * whole file, which is git-history poison. Instead it is produced at
- * build time: download the pinned go-pmtiles release and extract the newest
- * compatible Protomaps build for the county bbox. Ordinary daily archives are
- * retained for only a week, so the source is resolved from Protomaps' official
- * build index instead of pinning an expiring date. Set
- * PROTOMAPS_PLANET_BUILD_URL to use a self-hosted immutable source.
+ * repository tracks as a promoted deployment snapshot. This script is an
+ * explicit candidate-materialization tool; application builds NEVER invoke it.
+ * It downloads the pinned go-pmtiles release and extracts a compatible
+ * Protomaps build for the county bbox. Set PROTOMAPS_PLANET_BUILD_URL to select
+ * an immutable source, review the rendered map, then run
+ * `npm run basemap:promote -- --release-id <id>` to update both manifests.
  *
- * Behavior: file already present -> no-op (local dev after first run,
- * and CI caches). Missing and fetchable -> extract (~20 s, ~31 MB
- * transfer). Missing and unfetchable -> hard fail on CI and Vercel (a
- * green build without the basemap would ship blank maps), soft warn locally
- * (sandboxes without GitHub egress can still run the non-map surfaces).
+ * Behavior: file already present -> no-op. Missing and fetchable -> extract
+ * (~20 s, ~31 MB transfer). Missing and unfetchable -> fail in CI or Vercel,
+ * warn locally. The verify-only build boundary is scripts/basemap-release.mjs.
  */
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
@@ -45,7 +42,9 @@ const CURL_DOWNLOAD_ARGS = [
 // relay under /admin/basemap/assets, which Basic Auth gates — fine for the
 // judging bench, impossible for a public map, whose visitors would get 401s
 // instead of fonts. Vendored here beside the tiles, gitignored like them.
-const ASSET_UPSTREAM = "https://protomaps.github.io/basemaps-assets";
+const ASSET_COMMIT = "028c18f713baecad011301ff7a69acc39bcc2ae7";
+const ASSET_UPSTREAM =
+  `https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@${ASSET_COMMIT}`;
 const SPRITES = [
   "sprites/v4/light.json",
   "sprites/v4/light.png",

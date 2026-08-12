@@ -18,6 +18,7 @@ import { formatHoursLine, type OpenStatus } from "@/lib/hours";
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { logActivity, track } from "@/lib/track";
+import { trackDecision } from "@/lib/decision/telemetry";
 import PlacePhoto from "@/components/place/PlacePhoto";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
@@ -182,6 +183,16 @@ export default function MapPeek({
   const aroundCount = decisionCue ? 1 + decisionAlternatives.length : 0;
 
   useEffect(() => {
+    trackDecision({
+      stage: "impression",
+      surface: "map",
+      entityKind: "place",
+      entityId: place.slug,
+      position: "result",
+    });
+  }, [place.slug]);
+
+  useEffect(() => {
     if (!decisionCandidateId || !decisionKind) return;
     const exposureKey = `${place.slug}:${decisionCandidateId}:${decisionReasonIds}`;
     if (exposedDecisionRef.current === exposureKey) return;
@@ -223,6 +234,14 @@ export default function MapPeek({
     url.searchParams.delete("event");
     haptic("light");
     track("map_share", { surface: "place", slug: place.slug });
+    trackDecision({
+      stage: "action",
+      surface: "map",
+      entityKind: "place",
+      entityId: place.slug,
+      position: "result",
+      action: "share",
+    });
     try {
       if (navigator.share) {
         await navigator.share({
@@ -247,6 +266,18 @@ export default function MapPeek({
     }
   };
 
+  const openDetails = () => {
+    trackDecision({
+      stage: "open",
+      surface: "map",
+      entityKind: "place",
+      entityId: place.slug,
+      position: "result",
+      action: "open",
+    });
+    onDetails();
+  };
+
   return (
     <MapResultSurface
       className="map-peek"
@@ -260,7 +291,7 @@ export default function MapPeek({
           type="button"
           className="map-peek-visual"
           data-loading={photoPending || undefined}
-          onClick={onDetails}
+          onClick={openDetails}
           aria-label={`Open details for ${place.name}`}
         >
           {photoUrl ? (
@@ -299,7 +330,7 @@ export default function MapPeek({
           <span className="map-peek-cat" style={{ color: catColor }}>
             {cat?.name ?? place.category}
           </span>
-          <button type="button" className="map-peek-title-button" onClick={onDetails}>
+          <button type="button" className="map-peek-title-button" onClick={openDetails}>
             <span id={nameId} className="map-peek-name font-serif">{place.name}</span>
           </button>
           {locationLine && <span className="map-peek-address">{locationLine}</span>}
@@ -312,7 +343,7 @@ export default function MapPeek({
               </>
             )}
           </span>
-          <button type="button" className="map-peek-details-link" onClick={onDetails}>
+          <button type="button" className="map-peek-details-link" onClick={openDetails}>
             Details
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
           </button>
@@ -374,6 +405,14 @@ export default function MapPeek({
           onClick={() => {
             haptic("light");
             track("map_peek", { pick: "directions" });
+            trackDecision({
+              stage: "action",
+              surface: "map",
+              entityKind: "place",
+              entityId: place.slug,
+              position: "result",
+              action: "directions",
+            });
           }}
         >
           <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -387,6 +426,16 @@ export default function MapPeek({
           onClick={() => {
             haptic("light");
             track("map_peek", { pick: saved ? "unsave" : "save" });
+            if (!saved) {
+              trackDecision({
+                stage: "action",
+                surface: "map",
+                entityKind: "place",
+                entityId: place.slug,
+                position: "result",
+                action: "save",
+              });
+            }
             void toggleSave();
           }}
         >

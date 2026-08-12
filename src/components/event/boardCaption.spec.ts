@@ -87,21 +87,21 @@ describe("activeWhenPreset ↔ ?lens/?tod mapping", () => {
 
 describe("countLine", () => {
   it("counts events + the true town count, never a hardcoded number", () => {
-    expect(countLine({ events: 128, townName: null, townCount: 9 })).toBe("128 events · 9 towns");
-    expect(countLine({ events: 1, townName: null, townCount: 1 })).toBe("1 event · 1 town");
+    expect(countLine({ events: 128, townName: null, townCount: 9 })).toBe("128 event listings · 9 towns");
+    expect(countLine({ events: 1, townName: null, townCount: 1 })).toBe("1 event listing · 1 town");
   });
   it("names the picked town instead of the county tally", () => {
     expect(countLine({ events: 12, townName: "Brunswick", townCount: 9 })).toBe(
-      "12 events · Brunswick",
+      "12 event listings · Brunswick",
     );
   });
-  it("labels a partial collection as loaded instead of implying a total", () => {
+  it("labels partial results instead of implying a complete total", () => {
     expect(
       countLine({ events: 27, townName: null, townCount: 3, complete: false }),
-    ).toBe("27 events loaded · 3 towns");
+    ).toBe("27 event listings shown · 3 towns · partial results");
     expect(
       countLine({ events: 1, townName: "Frederick", townCount: 1, complete: false }),
-    ).toBe("1 event loaded · Frederick");
+    ).toBe("1 event listing shown · Frederick · partial results");
   });
 });
 

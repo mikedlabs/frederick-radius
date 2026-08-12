@@ -19,27 +19,45 @@ vi.mock("@/lib/beta-gate", () => ({ verifyMemberCookie: mocks.verifyMemberCookie
 
 import { POST } from "./route";
 
-function request(body: string = "{}") {
+function request(body: string = "{}", cookie?: string) {
   return new NextRequest("https://frederickradius.app/api/track", {
     method: "POST",
     headers: {
       "content-type": "application/json",
       origin: "https://frederickradius.app",
       "x-forwarded-for": "198.51.100.9",
+      ...(cookie ? { cookie } : {}),
     },
     body,
   });
 }
 
-/** A drizzle-ish db: member lookup returns `member` (or none); event insert resolves. */
-function fakeDb({ member }: { member?: { opted_out: boolean } | null }) {
+/** A drizzle-ish db with member lookup, member insert, and aggregate upsert. */
+function fakeDb({
+  member,
+  aggregateError = false,
+}: {
+  member?: { opted_out: boolean } | null;
+  aggregateError?: boolean;
+}) {
   const limitMock = vi.fn().mockResolvedValue(member ? [member] : []);
   const whereMock = vi.fn(() => ({ limit: limitMock }));
   const fromMock = vi.fn(() => ({ where: whereMock }));
   const selectMock = vi.fn(() => ({ from: fromMock }));
-  const valuesMock = vi.fn().mockResolvedValue(undefined);
+  const onConflictDoUpdateMock = aggregateError
+    ? vi.fn().mockRejectedValue(new Error("aggregate unavailable"))
+    : vi.fn().mockResolvedValue(undefined);
+  const valuesMock = vi.fn((value: Record<string, unknown>) => {
+    if ("day" in value && "surface" in value) return { onConflictDoUpdate: onConflictDoUpdateMock };
+    return Promise.resolve(undefined);
+  });
   const insertMock = vi.fn(() => ({ values: valuesMock }));
-  return { db: { select: selectMock, insert: insertMock }, insertMock, valuesMock };
+  return {
+    db: { select: selectMock, insert: insertMock },
+    insertMock,
+    valuesMock,
+    onConflictDoUpdateMock,
+  };
 }
 
 const MEMBER_ID = "aGVsbG8td29ybGQtaWQ";
@@ -85,6 +103,88 @@ describe("POST /api/track guards", () => {
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
+  it("increments an anonymous decision aggregate without storing entity or route data", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "decision_action",
+        path: "/places/cafe-nola-frederick?from=ask",
+        props: {
+          surface: "ask",
+          entity_kind: "place",
+          entity_id: "cafe-nola-frederick",
+          position: "lead",
+          action: "directions",
+        },
+      },
+    });
+    mocks.verifyMemberCookie.mockResolvedValue(null);
+    const { db, valuesMock, onConflictDoUpdateMock } = fakeDb({ member: null });
+    mocks.getDb.mockReturnValue(db);
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(204);
+    expect(onConflictDoUpdateMock).toHaveBeenCalledTimes(1);
+    expect(valuesMock).toHaveBeenCalledTimes(1);
+    const aggregate = valuesMock.mock.calls[0][0] as Record<string, unknown>;
+    expect(aggregate).toMatchObject({
+      surface: "ask",
+      stage: "action",
+      entity_kind: "place",
+      position: "lead",
+      action: "directions",
+      count: 1,
+    });
+    expect(aggregate).not.toHaveProperty("entity_id");
+    expect(aggregate).not.toHaveProperty("path");
+    expect(aggregate).not.toHaveProperty("member_id");
+  });
+
+  it("rejects arbitrary dimensions in the reserved decision namespace", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "decision_action",
+        props: {
+          surface: "ask",
+          entity_kind: "place",
+          entity_id: "cafe-nola-frederick",
+          position: "lead",
+          action: "directions",
+          query: "coffee and bikes",
+        },
+      },
+    });
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(400);
+    expect(mocks.verifyMemberCookie).not.toHaveBeenCalled();
+    expect(mocks.getDb).not.toHaveBeenCalled();
+  });
+
+  it("honors the anonymous analytics opt-out cookie before identity or DB work", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "decision_impression",
+        props: {
+          surface: "today",
+          entity_kind: "place",
+          entity_id: "cafe-nola-frederick",
+          position: "lead",
+        },
+      },
+    });
+
+    const res = await POST(request("{}", "fr_analytics_optout=1"));
+
+    expect(res.status).toBe(204);
+    expect(mocks.verifyMemberCookie).not.toHaveBeenCalled();
+    expect(mocks.getDb).not.toHaveBeenCalled();
+  });
+
   it("fails closed with 503 when the database is unconfigured", async () => {
     mocks.getDb.mockReturnValue(null);
     const res = await POST(request());
@@ -95,6 +195,28 @@ describe("POST /api/track guards", () => {
     const { db, insertMock } = fakeDb({ member: { opted_out: true } });
     mocks.getDb.mockReturnValue(db);
     const res = await POST(request());
+    expect(res.status).toBe(204);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not aggregate a decision from a persisted opted-out member", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "decision_impression",
+        props: {
+          surface: "today",
+          entity_kind: "place",
+          entity_id: "cafe-nola-frederick",
+          position: "lead",
+        },
+      },
+    });
+    const { db, insertMock } = fakeDb({ member: { opted_out: true } });
+    mocks.getDb.mockReturnValue(db);
+
+    const res = await POST(request());
+
     expect(res.status).toBe(204);
     expect(insertMock).not.toHaveBeenCalled();
   });
@@ -115,6 +237,41 @@ describe("POST /api/track guards", () => {
     expect(insertMock).toHaveBeenCalledTimes(1);
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ member_id: MEMBER_ID, event: "page_view", path: "/today" }),
+    );
+  });
+
+  it("keeps member logging when the anonymous aggregate write fails", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "decision_open",
+        path: "/events/alive-at-five-2026",
+        props: {
+          surface: "events",
+          entity_kind: "event",
+          entity_id: "alive-at-five-2026",
+          position: "lead",
+          action: "open",
+        },
+      },
+    });
+    const { db, valuesMock, onConflictDoUpdateMock } = fakeDb({
+      member: { opted_out: false },
+      aggregateError: true,
+    });
+    mocks.getDb.mockReturnValue(db);
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(204);
+    expect(onConflictDoUpdateMock).toHaveBeenCalledTimes(1);
+    expect(valuesMock).toHaveBeenCalledTimes(2);
+    expect(valuesMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        member_id: MEMBER_ID,
+        event: "decision_open",
+        path: "/events/alive-at-five-2026",
+      }),
     );
   });
 

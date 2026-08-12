@@ -14,6 +14,7 @@ const operationalReady: OperationalReadinessEvidence = {
     search: "ready",
     eventArchive: "ready",
     sourceHealth: "ready",
+    dataTruth: "ready",
   },
   heartbeats: {
     feeds: "current",

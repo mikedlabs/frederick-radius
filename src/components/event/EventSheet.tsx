@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
@@ -18,6 +18,7 @@ import { formatDistance } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { trackDecision, type DecisionAction } from "@/lib/decision/telemetry";
 import {
   eventAttendanceLabel,
   eventAttendanceMode,
@@ -125,6 +126,22 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
     physicalAttendance &&
     (event.geo_confidence === "venue_match" || event.geo_confidence === "exact_address");
   const eventVisual = eventCardVisual(event);
+
+  useEffect(() => {
+    trackDecision({
+      stage: "impression",
+      surface: "events",
+      entityKind: "event",
+      entityId: event.slug,
+      position: "sheet",
+    });
+  }, [event.slug]);
+
+  const attendanceDecisionAction: DecisionAction = event.ticket_url
+    ? "ticket"
+    : event.rsvp_url
+      ? "reservation"
+      : "website";
 
   return (
     <>
@@ -303,7 +320,17 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             {ticketHref && !isCancelled && (
               <a
                 href={ticketHref}
-                onClick={() => haptic("light")}
+                onClick={() => {
+                  haptic("light");
+                  trackDecision({
+                    stage: "action",
+                    surface: "events",
+                    entityKind: "event",
+                    entityId: event.slug,
+                    position: "sheet",
+                    action: attendanceDecisionAction,
+                  });
+                }}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="tactile-lift tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
@@ -323,7 +350,17 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             {preciseGeo && (
               <a
                 href={directionsHref(event.geom.lat, event.geom.lng)}
-                onClick={() => haptic("light")}
+                onClick={() => {
+                  haptic("light");
+                  trackDecision({
+                    stage: "action",
+                    surface: "events",
+                    entityKind: "event",
+                    entityId: event.slug,
+                    position: "sheet",
+                    action: "directions",
+                  });
+                }}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
@@ -390,7 +427,18 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
             <Link
               href={`/events/${event.slug}`}
-              onClick={() => { haptic("light"); onClose(); }}
+              onClick={() => {
+                haptic("light");
+                trackDecision({
+                  stage: "open",
+                  surface: "events",
+                  entityKind: "event",
+                  entityId: event.slug,
+                  position: "sheet",
+                  action: "open",
+                });
+                onClose();
+              }}
               className="inline-flex items-center gap-1 font-medium"
               style={{ color: "var(--app-brand-press)" }}
             >

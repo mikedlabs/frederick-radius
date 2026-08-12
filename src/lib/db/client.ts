@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 
 type DB = ReturnType<typeof drizzle<typeof schema>>;
 export type Database = DB;
@@ -13,6 +14,10 @@ function resolveUrl(): string | undefined {
 }
 
 export function getDb(): DB | null {
+  // Static generation must never depend on an optional live database. Pages
+  // use their existing committed/empty fallbacks while runtime requests keep
+  // the normal connection path.
+  if (isPromotedDataBuild()) return null;
   if (_db) return _db;
   const url = resolveUrl();
   if (!url) return null;
@@ -41,7 +46,7 @@ export function getSql(): ReturnType<typeof postgres> | null {
 }
 
 export function dbAvailable(): boolean {
-  return Boolean(resolveUrl());
+  return !isPromotedDataBuild() && Boolean(resolveUrl());
 }
 
 export async function closeDb(): Promise<void> {

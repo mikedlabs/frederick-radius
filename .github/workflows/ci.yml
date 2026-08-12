@@ -60,6 +60,9 @@ jobs:
           node --test
           scripts/lib/production-rollback.test.mjs
           scripts/lib/basemap-platform.test.mjs
+          scripts/lib/basemap-release.test.mjs
+          scripts/lib/data-release.test.mjs
+          scripts/lib/promoted-build-network-guard.test.mjs
       - name: Build
         run: npm run build
         env:

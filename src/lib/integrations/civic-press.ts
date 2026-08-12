@@ -22,6 +22,7 @@
 
 import { createSingleFlight } from "@/lib/single-flight";
 import { unstable_cache } from "next/cache";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 
 export type CivicPressLane = "police" | "advisory" | "civic";
 
@@ -233,6 +234,15 @@ const getCivicPressReleasesCached = unstable_cache(
 /** Health-aware result. A failed source stays cached for the same refresh
  * window, so a refused connection is not retried from every RSC render. */
 export function getCivicPressReleasesResult(): Promise<CivicPressResult> {
+  if (isPromotedDataBuild()) {
+    return Promise.resolve({
+      items: [],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["City of Frederick", "Frederick County"],
+      },
+    });
+  }
   if (process.env.NODE_ENV === "test") {
     return loadCivicPressOnce(
       "current",

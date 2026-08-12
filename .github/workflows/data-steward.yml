@@ -147,6 +147,10 @@ jobs:
         continue-on-error: true
         run: npm run gates -- --fail-high
 
+      - name: Promote reviewed place artifacts
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        run: npm run data:release:write -- --stream places
+
       # Move only the reviewed output boundary into runner storage. The
       # credentialed publisher receives no generator worktree or source keys.
       - name: Stage exact core outputs
@@ -161,6 +165,7 @@ jobs:
             src/data/places-client.json \
             src/data/places-client-hours.json \
             src/data/event-venue-photo-credits.json \
+            src/data/data-release.json \
             docs/coverage-scorecard.md \
             docs/hours-refresh-review.md
           do
@@ -250,6 +255,9 @@ jobs:
       - name: Validate transit snapshot
         run: npm test -- tests/transit-static-snapshot.spec.ts
 
+      - name: Promote reviewed transit artifacts
+        run: npm run data:release:write -- --stream transit
+
       - name: Stage exact transit outputs
         env:
           ARTIFACT_ROOT: ${{ runner.temp }}/data-steward-transit-output
@@ -258,7 +266,8 @@ jobs:
           for path in \
             src/data/transit.json \
             src/data/transit-network.json \
-            src/data/transit-trips.json
+            src/data/transit-trips.json \
+            src/data/data-release.json
           do
             install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
           done
@@ -294,6 +303,7 @@ jobs:
         src/data/places-client.json
         src/data/places-client-hours.json
         src/data/event-venue-photo-credits.json
+        src/data/data-release.json
         docs/coverage-scorecard.md
         docs/hours-refresh-review.md
       commit_message: "data: nightly steward refresh (automated)"
@@ -341,6 +351,7 @@ jobs:
         src/data/transit.json
         src/data/transit-network.json
         src/data/transit-trips.json
+        src/data/data-release.json
       commit_message: "data: refresh Frederick TransIT GTFS"
       title: "data: refresh Frederick TransIT GTFS"
       body: |

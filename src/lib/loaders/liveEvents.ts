@@ -30,6 +30,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import {
   eventAttendanceMode,
   isLikelyEventActionUrl,
@@ -305,8 +306,11 @@ export async function getLiveCardEventBySlug(
   // The background warmer and archive jobs own that work. A dated event
   // that has not reached durable storage yet is an honest recovery state,
   // not permission to leave provider promises alive after the page deadline.
-  if (options.allowNetwork === false) {
-    throw new LiveEventLookupIncompleteError(["live-network-disabled"]);
+  const promotedBuild = isPromotedDataBuild();
+  if (options.allowNetwork === false || promotedBuild) {
+    throw new LiveEventLookupIncompleteError([
+      promotedBuild ? "promoted-snapshot-only" : "live-network-disabled",
+    ]);
   }
 
   const sourceBudget = Math.min(

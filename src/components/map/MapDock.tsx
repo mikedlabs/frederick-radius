@@ -210,6 +210,9 @@ export type MapDockProps = {
   showCemeteries: boolean;
   setShowCemeteries: SetState<boolean>;
   parkingCount: number;
+  /** The browse map can request currently-unloaded provider layers on tap.
+   * Keeps the controls discoverable without prefetching every provider. */
+  providerLayersAvailable?: boolean;
   showParking: boolean;
   setShowParking: SetState<boolean>;
   showRadar: boolean;
@@ -1221,11 +1224,15 @@ export default function MapDock(props: MapDockProps) {
     visibleSearchMatches.length === 0;
   const visibleTimeWindows = TIME_WINDOWS.filter(
     (window) =>
+      props.providerLayersAvailable ||
       (browse.eventWindowCounts[window.key] ?? 0) > 0 ||
       (browse.timeModeExplicit && browse.timeMode === window.key) ||
       (browse.musicTonight && window.key === "tonight"),
   );
-  const showLiveMusic = browse.musicTonight || browse.musicTonightCount > 0;
+  const showLiveMusic =
+    props.providerLayersAvailable ||
+    browse.musicTonight ||
+    browse.musicTonightCount > 0;
   const showDeals = browse.dealsOn || browse.dealsTodayCount > 0;
   const hasEventChoices = visibleTimeWindows.length > 0 || showLiveMusic;
   const activeSearchIndex =
@@ -2200,7 +2207,7 @@ export default function MapDock(props: MapDockProps) {
                           }
                           color="var(--app-brand)"
                           onClick={() => pickWindow(w.key)}
-                          count={browse.eventWindowCounts[w.key] ?? 0}
+                          count={browse.eventWindowCounts[w.key] || undefined}
                         >
                           {w.label}
                         </Chip>
@@ -2333,18 +2340,18 @@ export default function MapDock(props: MapDockProps) {
                     what it is showing and where the information comes from. */}
                 <Sect>Useful now</Sect>
                 <div className="dock-chips">
-                  {props.parkingCount > 0 && (
+                  {(props.parkingCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showParking}
                       color="var(--app-cool)"
                       onClick={() => props.setShowParking((v) => !v)}
-                      count={props.parkingCount}
+                      count={props.parkingCount || undefined}
                       title="Downtown city parking garages, with availability when the city feed provides it"
                     >
                       Parking
                     </Chip>
                   )}
-                  {props.transitHealth.status !== "unavailable" && (
+                  {(props.transitHealth.status !== "unavailable" || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showTransit}
                       color="var(--app-cool)"
@@ -2368,12 +2375,12 @@ export default function MapDock(props: MapDockProps) {
                   >
                     Radar
                   </Chip>
-                  {(props.communityReportCount > 0 || communityReportsOn) && (
+                  {(props.communityReportCount > 0 || communityReportsOn || props.providerLayersAvailable) && (
                     <Chip
                       on={communityReportsOn}
                       color="var(--app-warning-press)"
                       onClick={() => toggleAmenity("community")}
-                      count={props.communityReportCount}
+                      count={props.communityReportCount || undefined}
                       title="Reviewed, unexpired reports submitted by the Frederick community"
                     >
                       Community reports
@@ -2518,12 +2525,12 @@ export default function MapDock(props: MapDockProps) {
               <div>
                 <Sect>Frederick details</Sect>
                 <div className="dock-chips">
-                  {props.trailCount > 0 && (
+                  {(props.trailCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showTrails}
                       color="var(--app-positive)"
                       onClick={() => props.setShowTrails((v) => !v)}
-                      count={props.trailCount}
+                      count={props.trailCount || undefined}
                       title="County trails"
                     >
                       Trails
@@ -2541,12 +2548,12 @@ export default function MapDock(props: MapDockProps) {
                       Aerial photos
                     </Chip>
                   )}
-                  {props.cemeteryCount > 0 && (
+                  {(props.cemeteryCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showCemeteries}
                       color="var(--app-ink-2)"
                       onClick={() => props.setShowCemeteries((v) => !v)}
-                      count={props.cemeteryCount}
+                      count={props.cemeteryCount || undefined}
                       title="Historic cemeteries from county records"
                     >
                       Cemeteries

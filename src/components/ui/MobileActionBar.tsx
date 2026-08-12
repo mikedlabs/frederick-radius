@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import type { DecisionAction } from "@/lib/decision/telemetry";
 
 /**
  * MobileActionBar — the thumb-reachable primary-action dock for the
@@ -106,6 +107,7 @@ export function MobileBarLink({
   external,
   download,
   ariaLabel,
+  decisionAction,
 }: {
   href: string;
   icon: LucideIcon;
@@ -114,10 +116,12 @@ export function MobileBarLink({
   external?: boolean;
   download?: boolean;
   ariaLabel?: string;
+  decisionAction?: DecisionAction;
 }) {
   return (
     <a
       href={href}
+      data-decision-action={decisionAction}
       aria-label={ariaLabel ?? label}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       {...(download ? { download: true } : {})}

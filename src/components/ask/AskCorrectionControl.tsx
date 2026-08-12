@@ -8,6 +8,11 @@ import {
 } from "@/lib/feedback";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import {
+  decisionEntityFromPath,
+  trackDecision,
+  type DecisionAction,
+} from "@/lib/decision/telemetry";
 
 const CORRECTION_OPTIONS = Object.entries(ASK_CORRECTION_REASONS) as Array<
   [AskCorrectionReason, (typeof ASK_CORRECTION_REASONS)[AskCorrectionReason]]
@@ -29,6 +34,18 @@ export default function AskCorrectionControl({
   const reasonsId = useId();
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<CorrectionStatus>("idle");
+  const decisionEntity = decisionEntityFromPath(resultRef);
+
+  function recordDecisionFeedback(action: DecisionAction) {
+    trackDecision({
+      stage: "feedback",
+      surface: "ask",
+      entityKind: decisionEntity.entityKind,
+      entityId: decisionEntity.entityId,
+      position: "result",
+      action,
+    });
+  }
 
   async function sendCorrection(reason: AskCorrectionReason) {
     if (status === "sending" || status === "sent") return;
@@ -52,6 +69,11 @@ export default function AskCorrectionControl({
         reason,
         result: resultRef ?? "none",
       });
+      recordDecisionFeedback(
+        reason === "hours_wrong" || reason === "closed"
+          ? "wrong"
+          : "not_relevant",
+      );
     } catch {
       setStatus("error");
       haptic("error");
@@ -77,20 +99,34 @@ export default function AskCorrectionControl({
       style={{ borderColor: "var(--app-border)" }}
       data-ask-correction
     >
-      <button
-        type="button"
-        className="tap-44 inline-flex min-h-11 items-center text-[11px] font-semibold transition active:opacity-70"
-        style={{ color: "var(--app-ink-3)" }}
-        aria-expanded={expanded}
-        aria-controls={reasonsId}
-        onClick={() => {
-          haptic("light");
-          setExpanded((value) => !value);
-          if (status === "error") setStatus("idle");
-        }}
-      >
-        Not right
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          className="tap-44 inline-flex min-h-11 items-center text-[11px] font-semibold transition active:opacity-70"
+          style={{ color: "var(--app-ink-3)" }}
+          onClick={() => {
+            haptic("success");
+            recordDecisionFeedback("helpful");
+            setStatus("sent");
+          }}
+        >
+          Helpful
+        </button>
+        <button
+          type="button"
+          className="tap-44 inline-flex min-h-11 items-center text-[11px] font-semibold transition active:opacity-70"
+          style={{ color: "var(--app-ink-3)" }}
+          aria-expanded={expanded}
+          aria-controls={reasonsId}
+          onClick={() => {
+            haptic("light");
+            setExpanded((value) => !value);
+            if (status === "error") setStatus("idle");
+          }}
+        >
+          Not right
+        </button>
+      </div>
 
       {expanded ? (
         <div id={reasonsId} className="pb-1">

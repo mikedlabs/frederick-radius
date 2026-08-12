@@ -8,10 +8,12 @@ basemap work.
 
 ## What ships now
 
-The county extract is fetched at build time (`scripts/fetch-basemap.mjs`)
-into `public/basemap/`: the PMTiles archive, the Protomaps sprite set,
-three Noto glyph stacks over four Latin ranges, and a vendored MapLibre
-worker. `src/lib/map/frederickFlavorStyle.ts` builds the style from
+The county extract is a tracked, promoted deployment snapshot under
+`public/basemap/`: the PMTiles archive, the Protomaps sprite set, three Noto
+glyph stacks over four Latin ranges, and a vendored MapLibre worker. The
+application build verifies `src/data/basemap-release.json` without network
+access. `scripts/fetch-basemap.mjs` is an explicit candidate materializer,
+never a build hook. `src/lib/map/frederickFlavorStyle.ts` builds the style from
 `frederickBasemapFlavor.ts`; `src/components/map/useFrederickFlavorStyle.ts`
 is the one hook every surface calls.
 

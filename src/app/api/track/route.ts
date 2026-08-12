@@ -1,21 +1,34 @@
 /**
- * POST /api/track — the first-party per-member event log.
+ * POST /api/track — member activity plus a privacy-safe decision rollup.
  *
  * The public analytics ingest for NFC members. It copies the security posture of
- * /api/collect exactly: same-origin only, per-IP rate limit, a hard body-size cap
- * read before any work, then strict validation. Identity comes from the signed
- * httpOnly `fr_member` cookie, never the body, so a caller can only ever log
- * against its own member id. A request with no or invalid member cookie, or from
- * a member who opted out, is DROPPED with 204 (analytics must never error into
- * the product, and a silent drop reveals nothing about which members exist). It
- * FAILS CLOSED with 503 when the database is unconfigured.
+ * /api/collect exactly: same-origin only, per-IP rate limit, a hard body-size
+ * cap read before any work, then strict validation. The six canonical decision
+ * events also increment an anonymous daily counter with fixed categorical
+ * dimensions only. That rollup never stores a visitor/member id, entity slug,
+ * route, query, answer, IP, coordinates, or free text.
+ *
+ * Existing member-linked behavior remains: identity comes from the signed
+ * httpOnly `fr_member` cookie, never the body, and non-decision events from a
+ * visitor without a member cookie are dropped. Client and persisted member
+ * opt-outs stop both writes. Anonymous aggregate failures are fail-soft;
+ * a valid member still receives the existing 503 when the DB is unavailable.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { nfc_events, nfc_members } from "@/lib/db/schema";
+import {
+  decision_daily_aggregates,
+  nfc_events,
+  nfc_members,
+} from "@/lib/db/schema";
 import { verifyMemberCookie } from "@/lib/beta-gate";
-import { MEMBER_COOKIE } from "@/lib/nfc-constants";
+import {
+  ANALYTICS_OPTOUT_COOKIE,
+  MEMBER_COOKIE,
+} from "@/lib/nfc-constants";
+import { parseDecisionAggregateEvent } from "@/lib/decision/telemetry";
+import { easternDayKey } from "@/lib/tz";
 import {
   isRateLimited,
   isSameOriginMutationRequest,
@@ -129,28 +142,91 @@ export async function POST(req: NextRequest) {
       : null;
   const props = body.props === undefined ? null : sanitizeProps(body.props);
 
-  // 5. Identity from the signed cookie only. No member → drop silently (the
-  //    common case for the non-NFC public; it must never surface an error).
-  const memberId = await verifyMemberCookie(req.cookies.get(MEMBER_COOKIE)?.value);
-  if (!memberId) return drop();
-
-  // 6. Fail closed: no database means we cannot record the event.
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore });
+  // The public aggregate accepts exactly the canonical decision contract. An
+  // event in the reserved decision namespace with arbitrary dimensions is a
+  // bad request, not a value to clean or bucket after the fact.
+  const decisionAggregate = parseDecisionAggregateEvent(event, body.props);
+  if (event.startsWith("decision_") && !decisionAggregate) {
+    return NextResponse.json(
+      { error: "invalid-decision-event" },
+      { status: 400, headers: noStore },
+    );
   }
 
-  try {
-    // Confirm the member exists and has not opted out; both gate the write.
-    const member = (
-      await db
-        .select({ opted_out: nfc_members.opted_out })
-        .from(nfc_members)
-        .where(eq(nfc_members.id, memberId))
-        .limit(1)
-    )[0];
-    if (!member || member.opted_out) return drop();
+  // Defense in depth: the client normally never sends after opt-out, but the
+  // server honors the cookie even if a script replays the request directly.
+  if (req.cookies.get(ANALYTICS_OPTOUT_COOKIE)?.value === "1") return drop();
 
+  // 5. Identity from the signed cookie only. Anonymous decision events may
+  //    reach the aggregate; all other anonymous events retain the old drop.
+  const memberId = await verifyMemberCookie(req.cookies.get(MEMBER_COOKIE)?.value);
+  if (!memberId && !decisionAggregate) return drop();
+
+  // 6. A missing DB still fails closed for a valid member (existing contract),
+  //    while anonymous measurement stays invisible and fail-soft.
+  const db = getDb();
+  if (!db) {
+    return memberId
+      ? NextResponse.json(
+          { error: "database-unavailable" },
+          { status: 503, headers: noStore },
+        )
+      : drop();
+  }
+
+  // A persisted member opt-out is authoritative for both member activity and
+  // the anonymous rollup. Check it before either write.
+  if (memberId) {
+    try {
+      const member = (
+        await db
+          .select({ opted_out: nfc_members.opted_out })
+          .from(nfc_members)
+          .where(eq(nfc_members.id, memberId))
+          .limit(1)
+      )[0];
+      if (!member || member.opted_out) return drop();
+    } catch {
+      return drop();
+    }
+  }
+
+  if (decisionAggregate) {
+    try {
+      await db
+        .insert(decision_daily_aggregates)
+        .values({
+          day: easternDayKey(new Date()),
+          surface: decisionAggregate.surface,
+          stage: decisionAggregate.stage,
+          entity_kind: decisionAggregate.entityKind,
+          position: decisionAggregate.position,
+          action: decisionAggregate.action,
+          count: 1,
+        })
+        .onConflictDoUpdate({
+          target: [
+            decision_daily_aggregates.day,
+            decision_daily_aggregates.surface,
+            decision_daily_aggregates.stage,
+            decision_daily_aggregates.entity_kind,
+            decision_daily_aggregates.position,
+            decision_daily_aggregates.action,
+          ],
+          set: {
+            count: sql`${decision_daily_aggregates.count} + 1`,
+            updated_at: new Date(),
+          },
+        });
+    } catch {
+      // Analytics is not product state. A missing migration or transient
+      // counter failure must not break the visitor's action or member logging.
+    }
+  }
+
+  if (!memberId) return drop();
+
+  try {
     await db.insert(nfc_events).values({
       member_id: memberId,
       event,
@@ -158,7 +234,7 @@ export async function POST(req: NextRequest) {
       props: props ?? undefined,
     });
   } catch {
-    // Never throw into product; a transient failure just loses one event.
+    // Never throw into product; a transient failure just loses one member event.
     return drop();
   }
   return drop();

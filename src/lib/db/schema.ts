@@ -1,7 +1,7 @@
 import {
   pgTable, uuid, text, integer, real, boolean, jsonb, date,
   smallint, timestamp, index, uniqueIndex, doublePrecision,
-  check, customType,
+  check, customType, primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { CommerceLink } from "@/lib/commerce/types";
@@ -622,6 +622,64 @@ export const nfc_events = pgTable(
   (t) => ({
     memberCreatedIdx: index("nfc_events_member_created_idx").on(t.member_id, t.created_at),
     createdIdx: index("nfc_events_created_idx").on(t.created_at),
+  }),
+);
+
+/**
+ * Privacy-safe product funnel rollup (migration 0043).
+ *
+ * One row represents one Eastern calendar day and a fixed categorical
+ * decision context. It intentionally has no visitor/member id, entity slug,
+ * route, query, answer, coordinates, or other free text. The public ingest
+ * atomically increments `count`; the admin decision page reads the rollup.
+ */
+export const decision_daily_aggregates = pgTable(
+  "decision_daily_aggregates",
+  {
+    day: date("day").notNull(),
+    surface: text("surface").notNull(),
+    stage: text("stage").notNull(),
+    entity_kind: text("entity_kind").notNull(),
+    position: text("position").notNull(),
+    action: text("action").notNull(),
+    count: integer("count").notNull().default(0),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({
+      name: "decision_daily_aggregates_pk",
+      columns: [t.day, t.surface, t.stage, t.entity_kind, t.position, t.action],
+    }),
+    countCheck: check("decision_daily_aggregates_count_check", sql`${t.count} >= 0`),
+    surfaceCheck: check(
+      "decision_daily_aggregates_surface_check",
+      sql`${t.surface} in ('today', 'ask', 'map', 'events', 'place', 'saved', 'compass', 'search')`,
+    ),
+    stageCheck: check(
+      "decision_daily_aggregates_stage_check",
+      sql`${t.stage} in ('impression', 'open', 'action', 'feedback')`,
+    ),
+    entityKindCheck: check(
+      "decision_daily_aggregates_entity_kind_check",
+      sql`${t.entity_kind} in ('place', 'event', 'answer', 'tool', 'amenity', 'route', 'source')`,
+    ),
+    positionCheck: check(
+      "decision_daily_aggregates_position_check",
+      sql`${t.position} in ('lead', 'alternative', 'result', 'detail', 'sheet', 'action_bar')`,
+    ),
+    actionCheck: check(
+      "decision_daily_aggregates_action_check",
+      sql`${t.action} in ('none', 'open', 'directions', 'call', 'email', 'website', 'menu', 'order', 'parking', 'reservation', 'ticket', 'save', 'share', 'helpful', 'not_relevant', 'wrong')`,
+    ),
+    stageActionCheck: check(
+      "decision_daily_aggregates_stage_action_check",
+      sql`(
+        (${t.stage} = 'impression' and ${t.action} = 'none') or
+        (${t.stage} = 'open' and ${t.action} = 'open') or
+        (${t.stage} = 'action' and ${t.action} in ('directions', 'call', 'email', 'website', 'menu', 'order', 'parking', 'reservation', 'ticket', 'save', 'share')) or
+        (${t.stage} = 'feedback' and ${t.action} in ('helpful', 'not_relevant', 'wrong'))
+      )`,
+    ),
   }),
 );
 

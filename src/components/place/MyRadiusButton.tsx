@@ -14,6 +14,7 @@ import {
   openReturnBridge,
 } from "@/lib/return-bridge";
 import { toast } from "sonner";
+import { trackDecision } from "@/lib/decision/telemetry";
 
 /**
  * MyRadiusButton — the prominent text-style follow CTA the user
@@ -116,6 +117,14 @@ export default function MyRadiusButton({
       setOptimisticFollowed(nowFollowed);
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
+        trackDecision({
+          stage: "action",
+          surface: "place",
+          entityKind: "place",
+          entityId: slug,
+          position: "detail",
+          action: "save",
+        });
         toast.success(`Saved · ${name}`, {
           description: authed ? undefined : "On this device. Sign in to keep saves everywhere.",
           duration: offerKeepAction ? 7000 : undefined,

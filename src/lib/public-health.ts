@@ -292,6 +292,40 @@ const MIGRATION_REQUIREMENTS: readonly MigrationRequirement[] = [
     "recent_observations",
     "updated_at",
   ]),
+  ...columns("dataTruth", "dataset_versions", [
+    "dataset_key",
+    "source_key",
+    "version_key",
+    "content_hash",
+    "status",
+    "checked_at",
+    "valid_until",
+  ]),
+  ...columns("dataTruth", "dataset_feature_versions", [
+    "dataset_version_id",
+    "dataset_key",
+    "feature_key",
+    "content_hash",
+    "observed_at",
+    "checked_at",
+  ]),
+  ...columns("dataTruth", "field_observations", [
+    "source_key",
+    "entity_kind",
+    "entity_key",
+    "field_name",
+    "value_status",
+    "checked_at",
+    "valid_until",
+  ]),
+  ...columns("dataTruth", "resolved_field_state", [
+    "entity_kind",
+    "entity_key",
+    "field_name",
+    "resolution_status",
+    "checked_at",
+    "valid_until",
+  ]),
 ];
 
 async function defaultOperationalReadiness(
@@ -471,6 +505,7 @@ async function defaultOperationalReadiness(
     search: "missing",
     eventArchive: "missing",
     sourceHealth: "missing",
+    dataTruth: "missing",
   };
   for (const row of rows) {
     if (

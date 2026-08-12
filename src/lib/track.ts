@@ -47,6 +47,15 @@ export const PLAUSIBLE_GOAL_EVENTS = new Set([
   "report_submit",
   "feedback_send",
   "share_today",
+  // Cross-surface outcomes. Only LEAD impressions reach Plausible (see the
+  // gate below), so Radius can measure the public decision funnel without
+  // billing and dashboard noise from every alternative card that scrolls by.
+  "decision_impression",
+  "decision_open",
+  "decision_action",
+  "decision_helpful",
+  "decision_not_relevant",
+  "decision_wrong",
 ]);
 
 export function shouldSendToPlausible(
@@ -54,6 +63,7 @@ export function shouldSendToPlausible(
   props?: Record<string, string | number | boolean>,
 ): boolean {
   if (!PLAUSIBLE_GOAL_EVENTS.has(event)) return false;
+  if (event === "decision_impression" && props?.position !== "lead") return false;
   // A save goal means activation, not undoing a save later.
   if ((event === "save_place" || event === "save_event") && props?.on === false) return false;
   return true;
