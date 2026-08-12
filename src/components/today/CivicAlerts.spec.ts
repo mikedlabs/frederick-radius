@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import {
+  alertCardSummary,
   dedupeUnifiedAlerts,
   nwsDisplaySeverity,
   untilLabel,
   type UnifiedAlert,
 } from "./CivicAlerts";
+
+describe("alertCardSummary", () => {
+  it("does not mistake the periods in a.m. for the end of an official notice", () => {
+    const summary = alertCardSummary(
+      "Due to increased security measures, portions of Catoctin Mountain Park will be closed from approximately 8:00 a.m. Friday, August 8 through Sunday, August 16, 2026. Roads outside the park remain open.",
+    );
+
+    expect(summary).toContain("8:00 a.m.");
+    expect(summary).not.toMatch(/8:00 a\.$/);
+    expect(summary).toMatch(/…$/);
+  });
+
+  it("keeps a complete short first sentence", () => {
+    expect(
+      alertCardSummary(
+        "The visitor center is closed today. Trails remain open.",
+      ),
+    ).toBe("The visitor center is closed today.");
+  });
+});
 
 function alert(overrides: Partial<NwsAlert> = {}): NwsAlert {
   return {
