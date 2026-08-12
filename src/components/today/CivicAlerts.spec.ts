@@ -1,11 +1,43 @@
 import { describe, expect, it } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import {
+  alertCardSummary,
   dedupeUnifiedAlerts,
   nwsDisplaySeverity,
   untilLabel,
   type UnifiedAlert,
 } from "./CivicAlerts";
+
+describe("alertCardSummary", () => {
+  it("does not mistake the periods in a.m. for the end of an official notice", () => {
+    const summary = alertCardSummary(
+      "Due to increased security measures, portions of Catoctin Mountain Park will be closed from approximately 8:00 a.m. Friday, August 8 through Sunday, August 16, 2026. Roads outside the park remain open.",
+    );
+
+    expect(summary).toContain("8:00 a.m.");
+    expect(summary).not.toMatch(/8:00 a\.$/);
+    expect(summary).toMatch(/…$/);
+  });
+
+  it("preserves short official copy rather than guessing at sentence boundaries", () => {
+    expect(
+      alertCardSummary(
+        "The visitor center is closed today. Trails remain open.",
+      ),
+    ).toBe("The visitor center is closed today. Trails remain open.");
+  });
+
+  it.each([
+    "The road will be closed from Aug. 8 through Aug. 16, 2026. Detours are posted.",
+    "The closure affects Washington, D.C. and Frederick County through Friday. Roads remain open.",
+    "Frederick County offices at 12 E. Church St. will close at 3 p.m. today. Essential services continue.",
+    "The closure begins at 8:00 a.m. Roads outside the park remain open.",
+    "Call 301-600-0000 ext. 123. Service remains available.",
+    "Stop at the signed gate (near the visitor center.) Follow ranger directions.",
+  ])("does not corrupt punctuation in a short notice: %s", (notice) => {
+    expect(alertCardSummary(notice)).toBe(notice);
+  });
+});
 
 function alert(overrides: Partial<NwsAlert> = {}): NwsAlert {
   return {

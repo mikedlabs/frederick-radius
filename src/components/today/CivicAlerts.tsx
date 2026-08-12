@@ -26,8 +26,8 @@ export type UnifiedAlert = {
   source: "NWS" | "NPS" | "MDOT" | "CITY" | "HEALTH";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
-  /** Short one-line tail under the title (e.g. "Until 8:00 PM" or
-   *  the first sentence of the description). Never a wall of text. */
+  /** Short tail under the title (e.g. "Until 8:00 PM" or an intentionally
+   *  shortened official excerpt). Never a wall of text. */
   tail: string;
   /** Affected-area summary as a short chip ("Frederick + 23 counties").
    *  Replaces the old raw `areaDesc` semicolon dump. */
@@ -92,13 +92,25 @@ function summarizeArea(raw: string): string {
   return `${lead} + ${rest} ${rest === 1 ? "area" : "areas"}`;
 }
 
-/** Pull the first sentence (or first 120 chars) out of a long NWS
- *  description so the card never overflows. */
-function firstSentence(body: string): string {
+const ALERT_CARD_SUMMARY_LIMIT = 140;
+
+/**
+ * Keep an official notice compact without trying to infer sentence grammar.
+ * Public notices contain times, dates, initials, addresses, and abbreviations
+ * that make a regex sentence detector unsafe. Preserve short copy verbatim;
+ * shorten long copy only at a complete word and make that edit visible.
+ */
+export function alertCardSummary(body: string): string {
   if (!body) return "";
   const s = body.replace(/\s+/g, " ").trim();
-  const m = s.match(/^[^.!?]{20,160}[.!?]/);
-  return (m?.[0] ?? s.slice(0, 140)).trim();
+  if (s.length <= ALERT_CARD_SUMMARY_LIMIT) return s;
+
+  const window = s.slice(0, ALERT_CARD_SUMMARY_LIMIT - 1);
+  const lastWordBreak = window.lastIndexOf(" ");
+  const safeEnd = lastWordBreak >= Math.floor(ALERT_CARD_SUMMARY_LIMIT * 0.7)
+    ? lastWordBreak
+    : window.length;
+  return `${window.slice(0, safeEnd).trimEnd()}…`;
 }
 
 /** NWS assigns Air Quality Alert products severity=Unknown, even when the
@@ -144,7 +156,7 @@ function normalize(
       source: "NWS",
       severity,
       title: a.event,
-      tail: until || firstSentence(a.headline || a.description),
+      tail: until || alertCardSummary(a.headline || a.description),
       scope: summarizeArea(a.area),
       // Pulse already carries the Frederick-specific timing, guidance, scope,
       // and full NWS bulletin. Open that native detail first; its source action
@@ -163,7 +175,7 @@ function normalize(
       source: "NPS",
       severity,
       title: a.title,
-      tail: firstSentence(a.description),
+      tail: alertCardSummary(a.description),
       scope: a.parkName,
       url: a.url,
       external: true,
@@ -240,7 +252,7 @@ function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
           ? "advisory" as const
           : "info" as const,
       title: alert.title,
-      tail: firstSentence(alert.summary) || "Active official notice",
+      tail: alertCardSummary(alert.summary) || "Active official notice",
       scope: alert.scope === "city" ? "City of Frederick" : "Frederick County",
       url: alert.url,
       external: true,
