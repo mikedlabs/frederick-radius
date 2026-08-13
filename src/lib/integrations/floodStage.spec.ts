@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { classifyFlood, FLOOD_STAGES, nwsGaugeUrl } from "@/lib/integrations/floodStage";
+import {
+  classifyFlood,
+  currentFloodCoverage,
+  FLOOD_STAGES,
+  nwsGaugeUrl,
+  worstCurrentFloodReading,
+} from "@/lib/integrations/floodStage";
 
 const monocacyFrederick = FLOOD_STAGES["01643000"]; // action 13 / minor 15 / mod 17 / major 20
 
@@ -65,5 +71,130 @@ describe("FLOOD_STAGES data integrity", () => {
 
   it("builds the official NWS gauge URL", () => {
     expect(nwsGaugeUrl("FDKM2")).toBe("https://water.noaa.gov/gauges/FDKM2");
+  });
+});
+
+describe("worstCurrentFloodReading", () => {
+  const now = new Date("2026-08-13T16:00:00.000Z");
+
+  it("selects the worst current official category instead of the first gauge", () => {
+    const result = worstCurrentFloodReading([
+      {
+        id: "normal",
+        gageHeightFt: 4,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T15:45:00.000Z",
+      },
+      {
+        id: "action",
+        gageHeightFt: 13.5,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T15:40:00.000Z",
+      },
+      {
+        id: "minor",
+        gageHeightFt: 15.2,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T15:30:00.000Z",
+      },
+    ], now);
+
+    expect(result?.site.id).toBe("minor");
+    expect(result?.category.key).toBe("minor");
+    expect(result?.observedAt).toBe("2026-08-13T15:30:00.000Z");
+  });
+
+  it("does not promote a stale or future high-water observation as live", () => {
+    const result = worstCurrentFloodReading([
+      {
+        id: "stale-major",
+        gageHeightFt: 21,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T12:00:00.000Z",
+      },
+      {
+        id: "future-major",
+        gageHeightFt: 21,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T16:06:00.000Z",
+      },
+      {
+        id: "current-normal",
+        gageHeightFt: 4,
+        floodStages: monocacyFrederick,
+        observedAt: "2026-08-13T15:45:00.000Z",
+      },
+    ], now);
+
+    expect(result?.site.id).toBe("current-normal");
+    expect(result?.category.key).toBe("normal");
+  });
+
+  it("uses the gage-height timestamp rather than a newer streamflow timestamp", () => {
+    const result = worstCurrentFloodReading([{
+      id: "stale-height-fresh-flow",
+      gageHeightFt: 21,
+      floodStages: monocacyFrederick,
+      observedAt: "2026-08-13T15:50:00.000Z",
+      gageHistory: [{ at: "2026-08-13T12:00:00.000Z" }],
+    }], now);
+
+    expect(result).toBeNull();
+  });
+
+  it("returns the actual gage-height timestamp used for a current category", () => {
+    const result = worstCurrentFloodReading([{
+      id: "current-height-newer-flow",
+      gageHeightFt: 13.5,
+      floodStages: monocacyFrederick,
+      observedAt: "2026-08-13T15:55:00.000Z",
+      gageHistory: [{ at: "2026-08-13T15:30:00.000Z" }],
+    }], now);
+
+    expect(result).toMatchObject({
+      category: { key: "action" },
+      observedAt: "2026-08-13T15:30:00.000Z",
+    });
+  });
+
+  it("requires source health and every expected forecast point before earning countywide coverage", () => {
+    const currentNormal = [{
+      id: "01643000",
+      gageHeightFt: 4,
+      floodStages: monocacyFrederick,
+      observedAt: "2026-08-13T15:45:00.000Z",
+    }];
+    const staleNormal = [{
+      ...currentNormal[0],
+      id: "stale-normal",
+      observedAt: "2026-08-13T12:00:00.000Z",
+    }];
+    const allCurrent = Object.entries(FLOOD_STAGES).map(([id, floodStages]) => ({
+      id,
+      gageHeightFt: Math.max(0, floodStages.action - 5),
+      floodStages,
+      observedAt: "2026-08-13T15:45:00.000Z",
+    }));
+
+    expect(currentFloodCoverage(false, currentNormal, now)).toEqual({
+      status: "unavailable",
+      worst: null,
+    });
+    expect(currentFloodCoverage(true, [], now)).toEqual({
+      status: "incomplete",
+      worst: null,
+    });
+    expect(currentFloodCoverage(true, staleNormal, now)).toEqual({
+      status: "incomplete",
+      worst: null,
+    });
+    expect(currentFloodCoverage(true, currentNormal, now)).toMatchObject({
+      status: "incomplete",
+      worst: { category: { key: "normal" } },
+    });
+    expect(currentFloodCoverage(true, allCurrent, now)).toMatchObject({
+      status: "current",
+      worst: { category: { key: "normal" } },
+    });
   });
 });

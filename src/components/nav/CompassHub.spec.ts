@@ -15,6 +15,7 @@ import {
   compassShortcutGridClass,
   commonCompassTasks,
   liveLineForIntent,
+  liveSuggestionForDeck,
   searchToolDeckGroups,
 } from "./CompassHub";
 
@@ -132,6 +133,10 @@ describe("Compass Tool Deck model", () => {
     expect(directory.label).toBe("All tools");
     expect(directory.groups).toEqual(groups);
     expect(directory.total).toBe(flattenTools(groups).length);
+    expect(RADIUS_TOOLS).toHaveLength(63);
+    expect(directory.total).toBe(
+      64 + (CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED ? 1 : 0),
+    );
     expect(tasks.map((item) => item.id)).toEqual(
       DEFAULT_TOOL_DECK_PIN_IDS,
     );
@@ -256,6 +261,33 @@ describe("compass live lines", () => {
     ).toBe("17 min · I-70 to the county line");
   });
 
+  it("puts an active road condition ahead of routine moving buses", () => {
+    expect(
+      liveLineForIntent("get-around", [
+        key("buses", "10", "buses moving"),
+        key("traffic", "2", "incidents"),
+      ]),
+    ).toBe("2 incidents");
+  });
+
+  it("puts a power outage ahead of a clear weather reading", () => {
+    expect(
+      liveLineForIntent("local-help", [
+        key("weather", "Clear", "no alerts"),
+        key("power", "78", "customers out"),
+      ]),
+    ).toBe("78 customers out");
+  });
+
+  it("uses the remaining deck feeds in the intent rows without inventing state", () => {
+    expect(
+      liveLineForIntent("explore-yours", [
+        key("news", "6", "local headlines"),
+        key("water", "9", "gauges reporting"),
+      ]),
+    ).toBe("6 local headlines");
+  });
+
   it("stays silent rather than rendering a placeholder", () => {
     // A row with no live fact keeps its plain registry sentence. An honest
     // absence, never "—" or "loading".
@@ -266,6 +298,81 @@ describe("compass live lines", () => {
       ]),
     ).toBeNull();
     expect(liveLineForIntent("explore-yours", [key("buses", "10", "buses moving")])).toBeNull();
+  });
+});
+
+describe("Compass live suggestion", () => {
+  const key = (id: string, value: string, label: string, status = "ok") => ({
+    id,
+    status,
+    faces: [{ value, label }],
+  });
+
+  it("promotes an outage when weather is clear", () => {
+    expect(
+      liveSuggestionForDeck(
+        [
+          key("weather", "Clear", "no alerts"),
+          key("power", "1,204", "customers out"),
+        ],
+        12,
+      ),
+    ).toMatchObject({
+      itemId: "county-pulse",
+      label: "Power outages",
+      href: "/pulse?open=power",
+      eyebrow: "Needs attention",
+    });
+  });
+
+  it("keeps a small countywide outage visible without taking over the recommendation", () => {
+    expect(
+      liveSuggestionForDeck(
+        [
+          key("weather", "Clear", "no alerts"),
+          key("power", "7", "customers out"),
+        ],
+        12,
+      ),
+    ).toBeNull();
+  });
+
+  it("promotes serious traffic over routine commute-hour buses", () => {
+    expect(
+      liveSuggestionForDeck(
+        [
+          key("buses", "12", "buses moving"),
+          key("traffic", "3", "incidents"),
+        ],
+        8,
+      ),
+    ).toMatchObject({
+      label: "Road incidents",
+      href: "/pulse?open=traffic",
+      eyebrow: "Needs attention",
+    });
+  });
+
+  it("keeps routine readings out of the single recommendation slot", () => {
+    expect(
+      liveSuggestionForDeck(
+        [
+          key("weather", "Clear", "no alerts"),
+          key("power", "All on", "no outages"),
+          key("buses", "9", "buses moving"),
+        ],
+        12,
+      ),
+    ).toBeNull();
+  });
+
+  it("does not promote a number from a feed that is unavailable", () => {
+    expect(
+      liveSuggestionForDeck(
+        [key("traffic", "4", "incidents", "unavailable")],
+        8,
+      ),
+    ).toBeNull();
   });
 });
 

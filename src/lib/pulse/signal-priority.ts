@@ -1,4 +1,5 @@
 import { alertPriority } from "@/lib/alert-priority";
+import type { FloodKey } from "@/lib/integrations/floodStage";
 
 export type PulseAlertSignal = {
   event: string;
@@ -21,6 +22,17 @@ export function pulseAqiPriority(categoryId: number): number {
   return Number.POSITIVE_INFINITY;
 }
 
+/** An official NWS stage category is a live water condition, not a decorative
+ * gauge reading. Action stage is an advisory; minor flooding and above rank
+ * alongside immediate weather and public-safety conditions. */
+export function pulseFloodPriority(category: FloodKey): number {
+  if (category === "major") return 1;
+  if (category === "moderate") return 2;
+  if (category === "minor") return 3;
+  if (category === "action") return 6;
+  return Number.POSITIVE_INFINITY;
+}
+
 /** A measured AQI can lead a low-priority statement, but never displace an
  * equally ranked or stronger warning such as a Tornado Warning. */
 export function shouldAqiLead(
@@ -40,7 +52,8 @@ export type PulseLeadFamily =
   | "schools"
   | "traffic"
   | "power"
-  | "air";
+  | "air"
+  | "water";
 
 export type PulseLeadCandidate = {
   id: string;
@@ -55,12 +68,13 @@ export type PulseLeadCandidate = {
 const FAMILY_TIE_BREAK: Record<PulseLeadFamily, number> = {
   weather: 0,
   civic: 1,
-  "fire-rescue": 2,
-  police: 3,
-  schools: 4,
-  traffic: 5,
-  power: 6,
-  air: 7,
+  water: 2,
+  "fire-rescue": 3,
+  police: 4,
+  schools: 5,
+  traffic: 6,
+  power: 7,
+  air: 8,
 };
 
 function observedMs(value: string | null | undefined): number {
@@ -114,6 +128,8 @@ export function powerOutageTone(
  * reported outage must still be named honestly instead of pairing a non-zero
  * gauge with "all served."
  */
+export const SIGNIFICANT_POWER_OUTAGE_CUSTOMERS = 25;
+
 export function powerOutageDisplay(
   totalOut: number,
   available: boolean,
@@ -134,7 +150,7 @@ export function powerOutageDisplay(
   }
   const customerNoun = totalOut === 1 ? "customer" : "customers";
   const reportVerb = totalOut === 1 ? "is" : "are";
-  if (totalOut < 25) {
+  if (totalOut < SIGNIFICANT_POWER_OUTAGE_CUSTOMERS) {
     return {
       countLabel: `${totalOut.toLocaleString("en-US")} reported`,
       unit: `${customerNoun} out`,
@@ -155,9 +171,95 @@ export type PulseStatusSignals = {
   power: boolean;
   schools: boolean;
   air: boolean;
+  /** A current USGS reading at NWS action stage or higher. */
+  flood: boolean;
   /** A fresh official police/public-safety release selected for breaking treatment. */
   police: boolean;
 };
+
+export function pulseUrgentFeedsDegraded(checks: {
+  situationPartial: boolean;
+  safetyUnavailable: boolean;
+  officialAlertsComplete: boolean;
+  riverCurrent: boolean;
+}): boolean {
+  return (
+    checks.situationPartial ||
+    checks.safetyUnavailable ||
+    !checks.officialAlertsComplete ||
+    !checks.riverCurrent
+  );
+}
+
+export type PulseOperationalSignals = {
+  marcAlerts: number;
+  airportIssues: readonly string[];
+  campDavidRestricted: boolean;
+};
+
+export type PulseOperationalBriefing = {
+  active: boolean;
+  line: string;
+  sub: string;
+};
+
+/**
+ * Describe meaningful service/access changes without escalating them into an
+ * emergency. This is the middle state between "all quiet" and an advisory.
+ */
+export function pulseOperationalBriefing(
+  signals: PulseOperationalSignals,
+): PulseOperationalBriefing {
+  const marcActive = signals.marcAlerts > 0;
+  const airportsActive = signals.airportIssues.length > 0;
+  const activeCount = Number(marcActive) + Number(airportsActive) + Number(signals.campDavidRestricted);
+
+  if (activeCount === 0) {
+    return {
+      active: false,
+      line: "No major disruptions appear in the checked feeds.",
+      sub: "Open any condition below to see its source and latest details.",
+    };
+  }
+  if (marcActive && activeCount === 1) {
+    return {
+      active: true,
+      line: "MARC has a Brunswick Line service update.",
+      sub: "Open MARC trains below for the affected service and current details.",
+    };
+  }
+  if (airportsActive && activeCount === 1) {
+    return {
+      active: true,
+      line: signals.airportIssues.length === 1
+        ? `${signals.airportIssues[0]} is reporting a travel delay.`
+        : "Regional airports are reporting travel delays.",
+      sub: "Open Airports below to see which terminals are affected.",
+    };
+  }
+  if (signals.campDavidRestricted && activeCount === 1) {
+    return {
+      active: true,
+      line: "Camp David airspace restrictions are expanded.",
+      sub: "Open the airspace update below for the affected area and current FAA details.",
+    };
+  }
+
+  const details = [
+    marcActive
+      ? `${signals.marcAlerts} MARC service ${signals.marcAlerts === 1 ? "alert" : "alerts"}`
+      : null,
+    airportsActive
+      ? `${signals.airportIssues.length} regional ${signals.airportIssues.length === 1 ? "airport has" : "airports have"} delays`
+      : null,
+    signals.campDavidRestricted ? "Camp David airspace is expanded" : null,
+  ].filter((detail): detail is string => Boolean(detail));
+  return {
+    active: true,
+    line: "Travel and access conditions have live updates.",
+    sub: `${details.join(". ")}. Open an active item below for details.`,
+  };
+}
 
 /**
  * The masthead and the breaking strip must read from the same situation model.
@@ -168,11 +270,18 @@ export type PulseStatusSignals = {
 export function pulseStatusState(
   signals: PulseStatusSignals,
   urgentFeedsDegraded: boolean,
-): { hasActive: boolean; heroDegraded: boolean; allClear: boolean } {
+  operationalActive = false,
+): {
+  hasActive: boolean;
+  hasOperational: boolean;
+  heroDegraded: boolean;
+  allClear: boolean;
+} {
   const hasActive = Object.values(signals).some(Boolean);
   return {
     hasActive,
-    heroDegraded: !hasActive && urgentFeedsDegraded,
-    allClear: !hasActive && !urgentFeedsDegraded,
+    hasOperational: operationalActive,
+    heroDegraded: !hasActive && !operationalActive && urgentFeedsDegraded,
+    allClear: !hasActive && !operationalActive && !urgentFeedsDegraded,
   };
 }

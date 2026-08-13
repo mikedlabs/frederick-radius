@@ -2,6 +2,11 @@ import { buildHorizonBounds, groupByHorizon, isRangeListing } from "@/lib/eventH
 import { eventDateBlock } from "@/lib/events/format";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { compareForLead } from "@/lib/events/lead-rank";
+import {
+  eventHasPreciseDisplayLocation,
+  type GeoConfidence,
+} from "@/lib/events/geo-confidence";
+import { eventFitsTonightWindow } from "@/lib/ask/event-filter";
 import { currentMeal } from "@/lib/meal";
 import { CUISINES } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -28,6 +33,7 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 export type AskEvent = {
   slug: string;
   title: string;
+  description?: string | null;
   starts_at: string;
   ends_at: string;
   is_all_day?: boolean;
@@ -42,7 +48,22 @@ export type AskEvent = {
   ticket_url?: string | null;
   is_free?: boolean;
   price_text?: string | null;
+  placement?: "venue" | "geocoded" | "needs_review";
+  geo_confidence?: GeoConfidence;
+  distance_m?: number;
 };
+
+/**
+ * Event distance is only useful when the unified loader explicitly stamped
+ * the coordinate as a resolved venue or exact address. Feed/town centroids
+ * and unknown points remain useful calendar rows, but never become precise
+ * "276 ft away" claims.
+ */
+export function eventHasCredibleLocation(
+  event: AskEvent,
+): event is AskEvent & { geom: LngLat } {
+  return eventHasPreciseDisplayLocation(event);
+}
 
 /** Preserve an explicit town scope before building a time-window block. The
  * search layer already scopes hits, but context formerly reintroduced the
@@ -68,7 +89,7 @@ export function scopeAskEventsByProximity<T extends AskEvent>(
   query: string,
   origin?: LngLat | null,
   canShowDistance = true,
-): T[] {
+): Array<T & { distance_m?: number }> {
   const asksWalkingDistance = /\b(?:walking\s+distance|walkable|within\s+(?:an?\s+)?(?:easy\s+)?walk)\b/i.test(query);
   const asksNearby = asksWalkingDistance ||
     /\b(?:near\s+me|nearby|closest|nearest|close\s+to\s+me|around\s+me)\b/i.test(query);
@@ -78,11 +99,13 @@ export function scopeAskEventsByProximity<T extends AskEvent>(
   return events
     .map((event) => ({
       event,
-      distance: event.geom ? haversineMeters(origin, event.geom) : Infinity,
+      distance: eventHasCredibleLocation(event)
+        ? haversineMeters(origin, event.geom)
+        : Infinity,
     }))
     .filter(({ distance }) => distance <= maxDistanceMeters)
     .sort((a, b) => a.distance - b.distance)
-    .map(({ event }) => event);
+    .map(({ event, distance }) => ({ ...event, distance_m: distance }));
 }
 
 /**
@@ -310,12 +333,12 @@ export function eventContextLines(
     label = "TOMORROW";
   } else if (anchor === "tonight") {
     // Evening only: what's still ahead from late afternoon on. LIVE rows
-    // are exempt from the hour gate — a show that started at 3 and is
-    // still going IS tonight's answer. All-day listings stay too.
+    // are allowed only when they are ordinary timed events that carry into
+    // the evening — not all-day or day-length feed rows.
     picked = [
       ...of("live"),
-      ...of("today").filter((e) => e.is_all_day || easternHour(e.starts_at) >= 16),
-    ];
+      ...of("today"),
+    ].filter((event) => eventFitsTonightWindow(event as Event, now));
     label = "TONIGHT";
   } else {
     picked = [...of("live"), ...of("today")];
@@ -396,6 +419,12 @@ const CATEGORY_HINTS: Record<string, string[]> = {
  * chronological order breaks ties (stable sort over date-sorted input).
  */
 export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
+  if (/\b(?:closest|nearest)\b/i.test(query)) {
+    return [...picked].sort((a, b) =>
+      (a.distance_m ?? Number.POSITIVE_INFINITY) -
+      (b.distance_m ?? Number.POSITIVE_INFINITY),
+    );
+  }
   if (
     /\b(?:biggest|major|main|headline|headliner|marquee|must[- ]see)\b/i.test(
       query,
@@ -407,7 +436,7 @@ export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
     .toLowerCase()
     .split(/[^a-z]+/)
     .filter((t) => t.length > 1 && !STOP_TOKENS.has(t));
-  if (tokens.length === 0) return picked;
+  if (tokens.length === 0) return [...picked].sort(compareForLead);
   const hinted = new Set(
     Object.entries(CATEGORY_HINTS)
       .filter(([, words]) => words.some((w) => tokens.includes(w)))
@@ -425,7 +454,7 @@ export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
       (musicHinted && isMusic(e)) || (e.category && hinted.has(e.category)) ? 3 : 0;
     return text + catBoost;
   };
-  return [...picked].sort((a, b) => score(b) - score(a));
+  return [...picked].sort((a, b) => score(b) - score(a) || compareForLead(a, b));
 }
 
 /**

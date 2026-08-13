@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   UPDATE_PROMPT_DURATION_MS,
+  UPDATE_PROMPT_SNOOZE_MS,
   shouldReloadForAcceptedUpdate,
+  shouldOfferUpdatePrompt,
   updatePromptPresentation,
 } from "./ServiceWorkerRegister";
 
@@ -34,5 +36,20 @@ describe("service-worker controller changes", () => {
   it("reloads once after the visitor accepts an update", () => {
     expect(shouldReloadForAcceptedUpdate(true, false)).toBe(true);
     expect(shouldReloadForAcceptedUpdate(true, true)).toBe(false);
+  });
+});
+
+describe("service-worker update prompt snooze", () => {
+  it("does not repeat the same waiting update after an in-app navigation", () => {
+    const now = Date.parse("2026-08-13T18:00:00Z");
+    expect(shouldOfferUpdatePrompt(now - 5_000, now)).toBe(false);
+  });
+
+  it("offers the waiting update again after the short snooze expires", () => {
+    const now = Date.parse("2026-08-13T18:00:00Z");
+    expect(
+      shouldOfferUpdatePrompt(now - UPDATE_PROMPT_SNOOZE_MS, now),
+    ).toBe(true);
+    expect(shouldOfferUpdatePrompt(null, now)).toBe(true);
   });
 });

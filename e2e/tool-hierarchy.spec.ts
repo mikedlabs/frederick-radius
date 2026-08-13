@@ -47,7 +47,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   }
   await expect(browse.locator("section")).toHaveCount(4);
   await expect(
-    browse.getByRole("button", { name: /^All tools\b/ }),
+    browse.getByRole("button", { name: /^All (?:64|65) tools\b/ }),
   ).toBeVisible();
   await expect(browse.getByRole("link")).toHaveCount(0);
   const visibleHrefs = await compass.locator("a:visible").evaluateAll((links) =>
@@ -81,15 +81,21 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   await expect(page).toHaveURL(/[?&]deck=all(?:&|$)/);
   dialog = page.getByRole("dialog", { name: "All tools" });
   await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(/6[45] tools, organized by category/);
   await expect(dialog.getByRole("button")).toHaveCount(10);
-  await expect(dialog.getByRole("searchbox")).toHaveCount(0);
+  await expect(dialog.getByRole("searchbox")).toHaveCount(1);
+  await expect(
+    dialog.getByRole("heading", { name: "Find something" }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("heading", { name: "Conditions & help" }),
+  ).toBeVisible();
+  await expect(dialog.getByRole("link", { name: /^County scanner\b/ })).toBeVisible();
 
   await dialog
-    .getByRole("button", { name: /Conditions & help\b/ })
+    .getByRole("button", { name: /^Conditions & help\b/ })
     .click();
-  await expect(page).toHaveURL(/[?&]deck=live(?:&|$)/);
-  dialog = page.getByRole("dialog", { name: "Conditions & help" });
-  await expect(dialog.getByRole("button", { name: "All tools" })).toBeVisible();
+  await expect(page).toHaveURL(/[?&]deck=all(?:&|$)/);
   await expect(dialog.getByRole("link", { name: /^County scanner\b/ })).toBeVisible();
 
   expect(
@@ -104,7 +110,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   await page.goBack();
   await expect(page).toHaveURL(/\/compass$/);
   await expect(
-    page.getByRole("dialog", { name: "Conditions & help" }),
+    page.getByRole("dialog", { name: "All tools" }),
   ).toBeHidden();
 });
 

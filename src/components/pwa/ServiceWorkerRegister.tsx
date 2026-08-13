@@ -4,6 +4,21 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 export const UPDATE_PROMPT_DURATION_MS = 10_000;
+export const UPDATE_PROMPT_SNOOZE_MS = 30 * 60 * 1_000;
+const UPDATE_PROMPT_SNOOZE_KEY = "fr.update-prompt-snoozed-at.v1";
+
+/**
+ * "Later" means later, including after an in-app route change. The app shell
+ * can remount this registrar while the same worker is still waiting; without
+ * a short session-scoped snooze, every remount presents the same update again.
+ */
+export function shouldOfferUpdatePrompt(
+  snoozedAt: number | null,
+  now = Date.now(),
+): boolean {
+  if (snoozedAt === null || !Number.isFinite(snoozedAt)) return true;
+  return now - snoozedAt >= UPDATE_PROMPT_SNOOZE_MS;
+}
 
 /**
  * Keep update controls reachable without covering the map's thumb controls.
@@ -75,12 +90,35 @@ export default function ServiceWorkerRegister() {
     let reloaded = false;
     let registration: ServiceWorkerRegistration | null = null;
 
+    const snoozedAt = (): number | null => {
+      try {
+        const stored = window.sessionStorage.getItem(UPDATE_PROMPT_SNOOZE_KEY);
+        if (!stored) return null;
+        const value = Number(stored);
+        return Number.isFinite(value) ? value : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const snoozeUpdatePrompt = () => {
+      try {
+        window.sessionStorage.setItem(
+          UPDATE_PROMPT_SNOOZE_KEY,
+          String(Date.now()),
+        );
+      } catch {
+        // A blocked storage API should never block the update controls.
+      }
+    };
+
     /**
      * Show the "Update available" toast for a specific waiting worker.
      * Remains long enough to act on without permanently occupying app chrome.
      * Another update dismisses the old notice before offering the new one.
      */
     const promptForUpdate = (waiting: ServiceWorker) => {
+      if (!shouldOfferUpdatePrompt(snoozedAt())) return;
       if (toastId !== undefined) {
         toast.dismiss(toastId);
       }
@@ -98,10 +136,11 @@ export default function ServiceWorkerRegister() {
           },
         },
         // Keep both choices explicit for keyboard and screen-reader users.
-        // "Later" dismisses; the next real update re-offers it.
+        // "Later" dismisses this waiting worker across route changes, then
+        // offers it again after the short session-scoped snooze expires.
         cancel: {
           label: "Later",
-          onClick: () => {},
+          onClick: snoozeUpdatePrompt,
         },
       });
     };

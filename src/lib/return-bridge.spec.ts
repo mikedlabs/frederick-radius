@@ -57,11 +57,11 @@ describe("Return Bridge state", () => {
     expect(returnVisit.sessions).toBe(2);
   });
 
-  it("qualifies a real saved value in session one, not a cold landing", () => {
+  it("offers one quiet Home Screen path after a first visitor has stayed", () => {
     const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
     expect(
       returnBridgeOfferReason(firstVisit, { socialEntry: false, now: NOW }),
-    ).toBeNull();
+    ).toBe("visit");
 
     const saved = recordReturnBridgeValue(firstVisit, "event", NOW + 1);
     expect(
@@ -139,11 +139,27 @@ describe("Return Bridge state", () => {
   });
 
   it("lets value offers replace lower-priority pending offers", () => {
+    expect(shouldReplaceReturnBridgeOffer("visit", "social")).toBe(true);
+    expect(shouldReplaceReturnBridgeOffer("visit", "return")).toBe(true);
+    expect(shouldReplaceReturnBridgeOffer("visit", "value")).toBe(true);
     expect(shouldReplaceReturnBridgeOffer("social", "value")).toBe(true);
     expect(shouldReplaceReturnBridgeOffer("return", "value")).toBe(true);
     expect(shouldReplaceReturnBridgeOffer("social", "return")).toBe(true);
     expect(shouldReplaceReturnBridgeOffer("value", "social")).toBe(false);
     expect(shouldReplaceReturnBridgeOffer("value", "value")).toBe(false);
+  });
+
+  it("does not repeat an automatic invitation that was already shown", () => {
+    const firstVisit = beginReturnBridgeSession(emptyReturnBridgeState(), NOW);
+    const shown = markReturnBridgeOfferShown(firstVisit, NOW + 10_000);
+    const returnVisit = { ...shown, sessions: 2 };
+
+    expect(
+      returnBridgeOfferReason(returnVisit, {
+        socialEntry: false,
+        now: NOW + RETURN_BRIDGE_SESSION_GAP_MS + 20_000,
+      }),
+    ).toBeNull();
   });
 });
 

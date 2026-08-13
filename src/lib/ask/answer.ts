@@ -52,7 +52,7 @@ import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
 import { clientPlaceBySlug, clientPlaces } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
-import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, scopeAskEventsByProximity, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, eventHasCredibleLocation, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, scopeAskEventsByProximity, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import {
   getOpenStatus,
   isOpenNow,
@@ -2378,12 +2378,33 @@ export async function askFrederick(
         new Promise<undefined>((resolve) => setTimeout(resolve, 1_500)),
       ])
     : undefined;
+  const eventQualifiers = parseSearchQualifiers(q);
+  const namedEventMunicipality = municipalityNamedInQuery(q);
+  const queryEventMunicipality = namedEventMunicipality?.slug ??
+    (eventQualifiers.downtown
+      ? "frederick"
+      : eventQualifiers.regions.length > 0
+        ? null
+        : context.municipality);
   const townScopedLoadedEventPool = loadedEventPool
-    ? scopeAskEvents(loadedEventPool, context.municipality)
+    ? scopeAskEvents(loadedEventPool, queryEventMunicipality)
     : undefined;
-  const scopedLoadedEventPool = townScopedLoadedEventPool
+  const regionScopedLoadedEventPool = townScopedLoadedEventPool?.filter((event) =>
+    municipalityMatchesRegions(event.municipality, eventQualifiers.regions),
+  );
+  const appliesFrederickDowntownRadius =
+    eventQualifiers.downtown &&
+    (!namedEventMunicipality || namedEventMunicipality.slug === "frederick");
+  const downtownScopedLoadedEventPool = regionScopedLoadedEventPool?.filter((event) =>
+    !appliesFrederickDowntownRadius || (
+      event.municipality === "frederick" &&
+      eventHasCredibleLocation(event) &&
+      haversineMeters(FREDERICK_CENTER, event.geom) <= DOWNTOWN_RADIUS_M
+    ),
+  );
+  const scopedLoadedEventPool = downtownScopedLoadedEventPool
     ? scopeAskEventsByProximity(
-        townScopedLoadedEventPool,
+        downtownScopedLoadedEventPool,
         q,
         context.origin,
         context.canShowDistance !== false,
@@ -2434,13 +2455,39 @@ export async function askFrederick(
           availabilityQualifiers,
         )
       : availabilitySemanticQuery;
+  // A named town is an explicit destination, even when the visitor's saved
+  // context is Frederick. For event retrieval, preserve that destination and
+  // remove only the generic "downtown" token that otherwise means downtown
+  // Frederick in the shared search qualifier. Unqualified downtown keeps its
+  // established Frederick meaning.
+  const namedTownEventQuery =
+    eventGrounding &&
+    namedEventMunicipality &&
+    namedEventMunicipality.slug !== "frederick" &&
+    eventQualifiers.downtown
+      ? availabilitySearchQuery.replace(/\bdowntown\b/gi, " ").replace(/\s+/g, " ").trim()
+      : availabilitySearchQuery;
+  const eventSearchContext: QualifiedSearchContext =
+    eventGrounding && namedEventMunicipality
+      ? {
+          ...context,
+          origin: context.origin ?? namedEventMunicipality.centroid,
+          municipality: namedEventMunicipality.slug,
+          contextLabel: eventQualifiers.downtown
+            ? `Downtown ${namedEventMunicipality.name}`
+            : namedEventMunicipality.name,
+          canShowDistance: context.origin
+            ? context.canShowDistance
+            : false,
+        }
+      : context;
   const retrieval = qualifiedSearch(
-    availabilitySearchQuery,
+    namedTownEventQuery,
     12,
     eventPool,
     availabilityConstraint
       ? { ...availabilitySearchContext, now: availabilityConstraint.at }
-      : context,
+      : eventSearchContext,
   );
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
@@ -2538,8 +2585,19 @@ export async function askFrederick(
   });
   if (strictNearest && availabilitySearchContext.origin) {
     filteredHits.sort((a, b) => {
-      const aDistance = a.type === "place" ? a.place.distance_m ?? Infinity : Infinity;
-      const bDistance = b.type === "place" ? b.place.distance_m ?? Infinity : Infinity;
+      const eventDistance = (hit: SearchHit): number => {
+        if (hit.type === "place") return hit.place.distance_m ?? Infinity;
+        if (
+          hit.type === "event" &&
+          context.origin &&
+          eventHasCredibleLocation(hit.event)
+        ) {
+          return haversineMeters(context.origin, hit.event.geom);
+        }
+        return Infinity;
+      };
+      const aDistance = eventDistance(a);
+      const bDistance = eventDistance(b);
       return aDistance - bDistance;
     });
   }
@@ -2707,11 +2765,11 @@ export async function askFrederick(
   let eventCitationPool: AskSource[] = [];
   const eventContextPool = communicationAccessEventDiscovery
     ? eventPool
-    : scopedLoadedEventPool && asksDeafCommunityOrCommunicationAccess(q)
-      ? scopedLoadedEventPool.filter((event) =>
+    : eventPool && asksDeafCommunityOrCommunicationAccess(q)
+      ? eventPool.filter((event) =>
           hasDeafCommunityOrCommunicationAccess(event),
         )
-      : scopedLoadedEventPool;
+      : eventPool;
   if (anchor && eventContextPool) {
     try {
       const ctx = eventContextLines(eventContextPool, anchor, now, q);
@@ -2725,7 +2783,7 @@ export async function askFrederick(
         eyebrow: formatEventWhen(e as Event),
         reason: communicationAccessLabels(e as Event)[0]
           ?? (e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match"),
-        distance: canExposeDistance(context) && context.origin && e.geom
+        distance: canExposeDistance(context) && context.origin && eventHasCredibleLocation(e)
           ? formatDistance(haversineMeters(context.origin, e.geom))
           : undefined,
         confidence: "high",
@@ -2958,8 +3016,8 @@ export async function askFrederick(
           reason: accessLabel
             ?? (e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match"),
           detail: safeAskDescription(e.title, e.description)?.slice(0, 140),
-          distance: canExposeDistance(context) && e.distance_m != null
-            ? formatDistance(e.distance_m)
+          distance: canExposeDistance(context) && context.origin && eventHasCredibleLocation(e)
+            ? formatDistance(haversineMeters(context.origin, e.geom))
             : undefined,
           confidence: "high",
           photo_url: e.hero_image,

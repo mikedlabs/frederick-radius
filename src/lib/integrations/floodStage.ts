@@ -79,6 +79,34 @@ export type FloodCategory = {
   toFloodFt: number;
 };
 
+export type FloodReadingLike = {
+  id?: string;
+  gageHeightFt?: number;
+  floodStages?: FloodStages;
+  observedAt?: string;
+  gageHistory?: readonly { at: string }[];
+};
+
+export type ClassifiedFloodReading<T extends FloodReadingLike> = {
+  site: T;
+  category: FloodCategory;
+  /** Timestamp for the gage-height value used in the classification. */
+  observedAt: string;
+};
+
+export type CurrentFloodCoverage<T extends FloodReadingLike> = {
+  status: "current" | "incomplete" | "unavailable";
+  worst: ClassifiedFloodReading<T> | null;
+};
+
+const FLOOD_RANK: Record<FloodKey, number> = {
+  normal: 0,
+  action: 1,
+  minor: 2,
+  moderate: 3,
+  major: 4,
+};
+
 /**
  * Classify a live gage height against a gauge's NWS flood categories.
  * Returns null when we have no reading or the gauge is not a forecast point
@@ -100,4 +128,74 @@ export function classifyFlood(
   if (gageHeightFt >= s.action)
     return { key: "action", label: "Near flood stage", tone: "warning", floodStageFt, toFloodFt };
   return { key: "normal", label: "Normal", tone: "neutral", floodStageFt, toFloodFt };
+}
+
+/**
+ * Find the most consequential current NWS category across a set of gauges.
+ * USGS gauges normally report every fifteen minutes. A two-hour ceiling is
+ * deliberately generous for a delayed observation while preventing an old
+ * high-water reading from reappearing as a live Pulse warning.
+ */
+export function worstCurrentFloodReading<T extends FloodReadingLike>(
+  sites: readonly T[],
+  now: Date = new Date(),
+  maxAgeMs = 2 * 60 * 60 * 1000,
+): ClassifiedFloodReading<T> | null {
+  const nowMs = now.getTime();
+  if (!Number.isFinite(nowMs)) return null;
+
+  let worst: ClassifiedFloodReading<T> | null = null;
+  for (const site of sites) {
+    // A WaterSite's general observedAt may come from a newer streamflow
+    // measurement. Flood category uses gage height, so prefer that series's
+    // own latest timestamp when it is available.
+    const gageObservedAt = site.gageHistory?.at(-1)?.at ?? site.observedAt;
+    const observedMs = gageObservedAt ? Date.parse(gageObservedAt) : Number.NaN;
+    if (
+      !Number.isFinite(observedMs) ||
+      observedMs > nowMs + 5 * 60 * 1000 ||
+      nowMs - observedMs > maxAgeMs
+    ) continue;
+
+    const category = classifyFlood(site.gageHeightFt, site.floodStages);
+    if (!category) continue;
+    if (
+      !worst ||
+      FLOOD_RANK[category.key] > FLOOD_RANK[worst.category.key] ||
+      (FLOOD_RANK[category.key] === FLOOD_RANK[worst.category.key] &&
+        category.toFloodFt < worst.category.toFloodFt)
+    ) {
+      worst = { site, category, observedAt: gageObservedAt! };
+    }
+  }
+  return worst;
+}
+
+/**
+ * Trust boundary for an all-clear claim. A successful HTTP response is not
+ * enough: at least one forecast-point gage-height observation must also be
+ * current. A normal category then becomes positive evidence of no active
+ * flood-stage condition; an empty or stale payload remains incomplete.
+ */
+export function currentFloodCoverage<T extends FloodReadingLike>(
+  sourceAvailable: boolean,
+  sites: readonly T[],
+  now: Date = new Date(),
+): CurrentFloodCoverage<T> {
+  if (!sourceAvailable) return { status: "unavailable", worst: null };
+  const worst = worstCurrentFloodReading(sites, now);
+  const expectedIds = Object.keys(FLOOD_STAGES);
+  const freshIds = new Set(
+    sites.flatMap((site) => {
+      if (!site.id || !Object.hasOwn(FLOOD_STAGES, site.id)) return [];
+      return worstCurrentFloodReading([site], now) ? [site.id] : [];
+    }),
+  );
+  // A single normal forecast point is evidence for that gauge, not the whole
+  // county. Keep the board partial until all six expected NWS points are fresh.
+  if (freshIds.size !== expectedIds.length) {
+    return { status: "incomplete", worst };
+  }
+  if (!worst) return { status: "incomplete", worst: null };
+  return { status: "current", worst };
 }

@@ -19,6 +19,109 @@ type ShapesState =
   | { status: "ready"; shapes: LineFC }
   | { status: "error" };
 
+type TransitFeedStatus = "ok" | "degraded" | "unavailable";
+
+type TransitCollectionPayload = {
+  available?: unknown;
+  status?: unknown;
+  vehicles?: unknown;
+  alerts?: unknown;
+};
+
+export type TransitClosedSummary = {
+  text: string;
+  tone: "current" | "attention";
+};
+
+function collectionState(
+  payload: TransitCollectionPayload | null,
+  key: "vehicles" | "alerts",
+): { available: boolean; count: number; status: TransitFeedStatus } {
+  const status = payload?.status;
+  const collection = payload?.[key];
+  if (
+    payload?.available !== true ||
+    !Array.isArray(collection) ||
+    (status !== "ok" && status !== "degraded")
+  ) {
+    return { available: false, count: 0, status: "unavailable" };
+  }
+  return { available: true, count: collection.length, status };
+}
+
+/**
+ * A zero only appears when the corresponding provider answered. Failed,
+ * malformed, and unavailable responses stay unavailable instead of becoming
+ * "no buses" or "no alerts."
+ */
+export function buildTransitClosedSummary(
+  vehiclePayload: TransitCollectionPayload | null,
+  alertPayload: TransitCollectionPayload | null,
+): TransitClosedSummary {
+  const vehicles = collectionState(vehiclePayload, "vehicles");
+  const alerts = collectionState(alertPayload, "alerts");
+  const parts: string[] = [];
+
+  if (!vehicles.available) {
+    parts.push("Bus locations unavailable");
+  } else if (vehicles.count === 0) {
+    parts.push("No buses reporting positions");
+  } else {
+    parts.push(
+      `${vehicles.count} ${vehicles.count === 1 ? "bus" : "buses"} reporting`,
+    );
+  }
+
+  if (!alerts.available) {
+    parts.push("alerts unavailable");
+  } else if (alerts.count === 0) {
+    parts.push("no service alerts posted");
+  } else {
+    parts.push(
+      `${alerts.count} service ${alerts.count === 1 ? "alert" : "alerts"}`,
+    );
+  }
+
+  if (vehicles.available && vehicles.status === "degraded") {
+    parts.push("ETAs limited");
+  }
+  if (alerts.available && alerts.status === "degraded") {
+    parts.push("alert feed incomplete");
+  }
+
+  return {
+    text: parts.join(" · "),
+    tone:
+      !vehicles.available ||
+      !alerts.available ||
+      vehicles.status === "degraded" ||
+      alerts.status === "degraded" ||
+      alerts.count > 0
+        ? "attention"
+        : "current",
+  };
+}
+
+async function readCollection(
+  href: string,
+  signal: AbortSignal,
+): Promise<TransitCollectionPayload | null> {
+  try {
+    const response = await fetch(href, {
+      signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as unknown;
+    return payload && typeof payload === "object"
+      ? (payload as TransitCollectionPayload)
+      : null;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return null;
+    return null;
+  }
+}
+
 function isLineFC(value: unknown): value is LineFC {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { type?: unknown; features?: unknown };
@@ -37,7 +140,23 @@ function isLineFC(value: unknown): value is LineFC {
 export default function BusesReveal() {
   const [open, setOpen] = useState(false);
   const [shapesState, setShapesState] = useState<ShapesState>({ status: "idle" });
+  const [closedSummary, setClosedSummary] = useState<TransitClosedSummary>({
+    text: "Checking live service…",
+    tone: "current",
+  });
   const requestRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      readCollection("/api/transit/vehicles", controller.signal),
+      readCollection("/api/transit/alerts", controller.signal),
+    ]).then(([vehicles, alerts]) => {
+      if (controller.signal.aborted) return;
+      setClosedSummary(buildTransitClosedSummary(vehicles, alerts));
+    });
+    return () => controller.abort();
+  }, []);
 
   const loadShapes = useCallback(async () => {
     requestRef.current?.abort();
@@ -89,6 +208,7 @@ export default function BusesReveal() {
         type="button"
         onClick={toggleOpen}
         aria-label={open ? "Hide current buses" : "Show current buses"}
+        aria-describedby="pulse-live-buses-summary"
         aria-expanded={open}
         aria-controls="pulse-live-buses"
         className="tactile-interactive flex min-h-11 w-full items-center justify-between gap-3 rounded-[var(--app-radius-sm)] border px-3 py-2 text-left transition active:scale-[0.99]"
@@ -113,8 +233,21 @@ export default function BusesReveal() {
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
               {open ? "Buses right now" : "Show current buses"}
             </span>
-            <span className="block text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {open ? "Route progress, map, and next stops" : "See every route and follow buses in real time"}
+            <span
+              id="pulse-live-buses-summary"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="block min-h-[1rem] max-w-[min(68vw,28rem)] truncate text-[10.5px]"
+              style={{
+                color:
+                  !open && closedSummary.tone === "attention"
+                    ? "var(--app-warning)"
+                    : "var(--app-ink-3)",
+              }}
+              title={open ? undefined : closedSummary.text}
+            >
+              {open ? "Route progress, map, and next stops" : closedSummary.text}
             </span>
           </span>
         </span>
