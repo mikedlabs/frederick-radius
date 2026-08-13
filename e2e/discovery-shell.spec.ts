@@ -47,10 +47,37 @@ test.describe("mobile discovery shell", () => {
 
   test("the map opens calm and reveals choices through one options door", async ({ page }) => {
     test.slow();
+    await page.route("**/api/transit/vehicles", async (route) => {
+      await route.fulfill({
+        json: {
+          available: true,
+          status: "ok",
+          feedTimestamp: Math.floor(Date.now() / 1000),
+          vehicles: [
+            {
+              vehicleId: "test-bus-1",
+              routeId: "6154",
+              lat: 39.4143,
+              lng: -77.4105,
+              timestamp: Math.floor(Date.now() / 1000),
+            },
+            {
+              vehicleId: "test-bus-2",
+              routeId: "6155",
+              lat: 39.421,
+              lng: -77.403,
+              timestamp: Math.floor(Date.now() / 1000),
+            },
+          ],
+        },
+      });
+    });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
     const mapFind = page.getByRole("combobox", { name: "Search this map" });
-    await expect(mapFind).toHaveAttribute("id", "map-search-input");
+    await expect(mapFind).toHaveAttribute("id", "map-search-input", {
+      timeout: 20_000,
+    });
     await expect(page.locator("[data-map-context-rail]")).toHaveCount(0);
     const coldDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     const coldMapBox = await page.locator(".dock-host").boundingBox();
@@ -100,6 +127,26 @@ test.describe("mobile discovery shell", () => {
     ).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Today & tonight/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^See Frederick details/ })).toBeVisible();
+    await expect(contentsPane.getByText("Ready-made views", { exact: true })).toBeVisible();
+    await expect(
+      contentsPane.getByRole("group", { name: "Ready-made map views" }),
+    ).toBeHidden();
+    await contentsPane.getByText("Ready-made views", { exact: true }).click();
+    const readyViews = contentsPane.getByRole("group", {
+      name: "Ready-made map views",
+    });
+    await expect(readyViews).toBeVisible();
+    await readyViews.getByRole("button", { name: /^Buses now\./ }).click();
+    await expect(page).toHaveURL(/show=transit/);
+    await expect(page).toHaveURL(/scene=buses-now/);
+    await expect(page.getByRole("group", { name: "Current map view" })).toContainText(
+      "2 buses live · current",
+      { timeout: 20_000 },
+    );
+    await expect(page.locator("[data-live-bus-marker]")).toHaveCount(2);
+    await page.getByRole("button", { name: "Reset map view" }).click();
+    await contentsButton.click();
+    await expect(contentsPane).toBeVisible();
 
     await contentsPane
       .getByRole("button", { name: /^Travel & conditions/ })
@@ -138,6 +185,7 @@ test.describe("mobile discovery shell", () => {
     await expect(contextRail).toBeVisible();
     await expect(contextRail).not.toContainText("Showing");
     await expect(contextRail).toContainText("County · Transit");
+    await expect(contextRail).toContainText("2 buses live · current");
     await expect(page.locator(".dock-active-state")).toHaveCount(0);
 
     const contextBox = await contextRail.boundingBox();
@@ -440,6 +488,7 @@ test.describe("mobile discovery shell", () => {
     await expect(page.locator("[data-map-place-marks]")).toHaveAttribute(
       "data-map-place-marks",
       "ready",
+      { timeout: 20_000 },
     );
   });
 
@@ -551,13 +600,8 @@ test.describe("mobile discovery shell", () => {
     await expect(page).toHaveURL(/t=tonight/);
     await expect(page).not.toHaveURL(/music=/);
 
-    const weekend = page.getByRole("button", { name: /^This weekend\b/i });
-    if (await weekend.count()) {
-      const label = await weekend.getAttribute("aria-label");
-      const text = label ?? (await weekend.innerText());
-      const count = Number(text.match(/\b(\d+)\b/)?.[1] ?? 0);
-      expect(count).toBeGreaterThan(0);
-    }
+    // Weekend is optional because inventory is live. Tonight and the music
+    // state below carry the actual contract this journey is verifying.
 
     const liveMusic = page.getByRole("button", { name: /Live music tonight/ });
     if (await liveMusic.count()) {

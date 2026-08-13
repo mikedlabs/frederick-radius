@@ -61,6 +61,36 @@ describe("Radius scene definitions", () => {
 });
 
 describe("buses-now", () => {
+  it("can open the first live session when mapped routes are available", () => {
+    const unloaded = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.routeCount = 12;
+        value.transit.vehicles = { status: "unavailable", count: 0 };
+      }),
+    );
+    expect(unloaded.availability).toMatchObject({
+      status: "limited",
+      canActivate: true,
+      canRecommend: false,
+    });
+    expect(unloaded.availability.reason).toBe(
+      "Open this view to check live bus positions.",
+    );
+
+    const deferredRoutes = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.vehicles = { status: "unloaded", count: 0 };
+      }),
+    );
+    expect(deferredRoutes.availability).toMatchObject({
+      status: "limited",
+      canActivate: true,
+      canRecommend: false,
+    });
+  });
+
   it("is ready only when route context and the live feed are current", () => {
     const ready = resolveRadiusScene(
       "buses-now",

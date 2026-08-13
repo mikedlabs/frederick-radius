@@ -45,6 +45,7 @@ describe("stop-to-bus map focus contracts", () => {
     expect(source).toContain("findCurrentTransitVehicle");
     expect(source).toContain("activeSelected");
     expect(source).toContain("SHAPES_BY_ROUTE");
-    expect(source).toContain('aria-label={`${label}: TransIT');
+    expect(source).toContain('aria-label={`Live TransIT bus ${label}');
+    expect(source).toContain("reported position");
   });
 });

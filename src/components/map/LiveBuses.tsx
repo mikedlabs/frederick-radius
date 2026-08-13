@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
-import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
+import { BellRing, Bookmark, BookmarkCheck, BusFront } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";
 import { readableTextOn } from "@/lib/color/readableText";
@@ -247,6 +247,10 @@ type Tween =
 
 export default function LiveBuses({
   show,
+  compactOverview = false,
+  overviewZoom = null,
+  showInlineStatus = true,
+  onExpandOverview,
   highlightRouteId,
   focusVehicleId,
   focusRequestId,
@@ -254,6 +258,15 @@ export default function LiveBuses({
   onHealthChange,
 }: {
   show: boolean;
+  /** County browse maps collapse the vehicle knot at broad zoom. Embedded
+   * transit maps retain their existing per-vehicle presentation. */
+  compactOverview?: boolean;
+  overviewZoom?: number | null;
+  /** The mobile browse map explains feed state in its context rail. */
+  showInlineStatus?: boolean;
+  onExpandOverview?: (
+    bounds: [[number, number], [number, number]],
+  ) => void;
   highlightRouteId?: string;
   focusVehicleId?: string;
   focusRequestId?: number;
@@ -270,6 +283,10 @@ export default function LiveBuses({
   return (
     <VisibleLiveBuses
       highlightRouteId={highlightRouteId}
+      compactOverview={compactOverview}
+      overviewZoom={overviewZoom}
+      showInlineStatus={showInlineStatus}
+      onExpandOverview={onExpandOverview}
       focusVehicleId={focusVehicleId}
       focusRequestId={focusRequestId}
       gate={gate}
@@ -280,12 +297,22 @@ export default function LiveBuses({
 
 function VisibleLiveBuses({
   highlightRouteId,
+  compactOverview,
+  overviewZoom,
+  showInlineStatus,
+  onExpandOverview,
   focusVehicleId,
   focusRequestId,
   gate,
   onHealthChange,
 }: {
   highlightRouteId?: string;
+  compactOverview: boolean;
+  overviewZoom: number | null;
+  showInlineStatus: boolean;
+  onExpandOverview?: (
+    bounds: [[number, number], [number, number]],
+  ) => void;
   focusVehicleId?: string;
   focusRequestId?: number;
   gate?: LiveLayerGate;
@@ -342,6 +369,19 @@ function VisibleLiveBuses({
     focusedVehicle && focusKey !== dismissedFocusKey
       ? focusedVehicle.vehicleId
       : selected;
+
+  const aggregateOverview =
+    compactOverview &&
+    activeSelected == null &&
+    overviewZoom !== null &&
+    overviewZoom < 11.6 &&
+    vehicles.length > 1;
+  const aggregateCenter = aggregateOverview
+    ? {
+        lng: vehicles.reduce((sum, vehicle) => sum + vehicle.lng, 0) / vehicles.length,
+        lat: vehicles.reduce((sum, vehicle) => sum + vehicle.lat, 0) / vehicles.length,
+      }
+    : null;
 
   useEffect(() => {
     const bounds: LiveBusLayerSnapshot["bounds"] = vehicles.length > 0
@@ -599,7 +639,7 @@ function VisibleLiveBuses({
   }, [effectiveFeedStatus, nowMs, vehicles, watching]);
 
   if (vehicles.length === 0) {
-    return (
+    return showInlineStatus ? (
       <div className="map-live-status" role="status" aria-live="polite">
         <span aria-hidden className={effectiveFeedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
         {effectiveFeedStatus === "loading"
@@ -610,22 +650,59 @@ function VisibleLiveBuses({
               ? "Live bus feed delayed"
             : "No buses reporting right now"}
       </div>
-    );
+    ) : null;
   }
 
   return (
     <>
-      {effectiveFeedStatus === "stale" && (
+      {showInlineStatus && effectiveFeedStatus === "stale" && (
         <div className="map-live-status" role="status" aria-live="polite">
           <span aria-hidden className="map-live-status-dot" />
           Bus feed delayed · last update {ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago
         </div>
       )}
-      {effectiveFeedStatus === "degraded" && (
+      {showInlineStatus && effectiveFeedStatus === "degraded" && (
         <div className="map-live-status" role="status" aria-live="polite">
           <span aria-hidden className="map-live-status-dot" />
           Buses live · arrival estimates unavailable
         </div>
+      )}
+      {aggregateCenter && (
+        <Marker
+          ref={exposeMarkerChild}
+          longitude={aggregateCenter.lng}
+          latitude={aggregateCenter.lat}
+          anchor="center"
+        >
+          <button
+            type="button"
+            className="map-live-bus-aggregate"
+            data-delayed={effectiveFeedStatus === "stale" || undefined}
+            aria-label={
+              effectiveFeedStatus === "stale"
+                ? `${vehicles.length} buses last reported. Feed delayed. Zoom in to see routes.`
+                : `${vehicles.length} live buses. Zoom in to see routes.`
+            }
+            onClick={(event) => {
+              event.stopPropagation();
+              haptic("light");
+              onExpandOverview?.([
+                [
+                  Math.min(...vehicles.map((vehicle) => vehicle.lng)),
+                  Math.min(...vehicles.map((vehicle) => vehicle.lat)),
+                ],
+                [
+                  Math.max(...vehicles.map((vehicle) => vehicle.lng)),
+                  Math.max(...vehicles.map((vehicle) => vehicle.lat)),
+                ],
+              ]);
+            }}
+          >
+            <BusFront size={15} strokeWidth={2.3} aria-hidden />
+            <strong>{vehicles.length}</strong>
+            <span>{effectiveFeedStatus === "stale" ? "reported" : "live"}</span>
+          </button>
+        </Marker>
       )}
       <style>{
         "@keyframes fr-bus-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}" +
@@ -684,7 +761,7 @@ function VisibleLiveBuses({
           </Marker>
         </>
       )}
-      {vehicles.map((v) => {
+      {!aggregateOverview && vehicles.map((v) => {
         const p = pos[v.vehicleId];
         if (!p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
@@ -713,7 +790,8 @@ function VisibleLiveBuses({
                 setSelected(v.vehicleId);
                 setSaveNotice(null);
               }}
-              aria-label={`${label}: TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${effectiveFeedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
+              aria-label={`Live TransIT bus ${label}, ${route?.name ?? "route unavailable"}, vehicle ${v.vehicleId}, ${effectiveFeedStatus === "stale" ? "last reported position" : p.moving ? "movement reported" : "reported position"}`}
+              data-live-bus-marker
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: effectiveFeedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
               {/* Fresh-data ripple: re-keying on pollSeq remounts it, so the
@@ -780,9 +858,9 @@ function VisibleLiveBuses({
                 key={`badge-${pollSeq}`}
                 aria-hidden
                 style={{
-                  display: "grid", placeItems: "center",
-                  minWidth: 24, height: 24, padding: "0 5px",
-                  borderRadius: 999,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
+                  minWidth: 34, height: 24, padding: "0 5px",
+                  borderRadius: 8,
                   background: color, color: text,
                   fontSize: 11, fontWeight: 700, lineHeight: 1,
                   border: "2px solid #fff",
@@ -792,7 +870,8 @@ function VisibleLiveBuses({
                   animation: reduced ? undefined : "fr-bus-pop 420ms ease-out",
                 }}
               >
-                {label}
+                <BusFront size={10} strokeWidth={2.4} />
+                <span>{label}</span>
               </span>
             </button>
           </Marker>
@@ -808,8 +887,8 @@ function VisibleLiveBuses({
           effectiveFeedStatus === "stale"
             ? "Last reported position"
             : p.moving
-              ? "Moving now"
-              : "At a stop";
+              ? "Movement reported"
+              : "Reported position";
         const etaDeltaMinutes =
           effectiveFeedStatus !== "stale" && v.nextStop?.etaEpoch && nowMs > 0
             ? (v.nextStop.etaEpoch * 1000 - nowMs) / 60_000
