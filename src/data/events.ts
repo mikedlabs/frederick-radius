@@ -139,15 +139,23 @@ const at = (offsetDays: number, hour: number, minute = 0): string => {
  * Hosted by Downtown Frederick Partnership at the Carroll Creek Amphitheater.
  * $5 cash admission, 21+ only, $7 drink tokens.
  *
- * Lineup verified via maximumcountry.com (Maximum Country 93.5 FM, the series'
- * media partner). Cross-referenced with downtownfrederick.org/aliveatfive.
+ * Season lineup verified via maximumcountry.com (Maximum Country 93.5 FM,
+ * the series' media partner). Same-week organizer changes override the season
+ * announcement and carry their own verification date below.
  */
 function aliveAtFiveSeason(): Event[] {
   // Per-week food-truck lineup goes in the optional `trucks` field on
   // each row. Update this list once a week as DFP announces who's at
   // Carroll Creek; the event detail page renders them as chips. Leave
   // the field omitted (or empty) for weeks that haven't been announced.
-  const LINEUP: Array<{ date: string; offset: number; band: string; trucks?: string[] }> = [
+  const LINEUP: Array<{
+    date: string;
+    offset: number;
+    band: string;
+    trucks?: string[];
+    sourceUrl?: string;
+    verifiedAt?: string;
+  }> = [
     { date: "2026-05-07", offset: -7,  band: "24K Event Band" },
     { date: "2026-05-14", offset: 0,   band: "The National Bohemians" },
     { date: "2026-05-21", offset: 7,   band: "Glamour Kitty" },
@@ -162,7 +170,17 @@ function aliveAtFiveSeason(): Event[] {
     { date: "2026-07-23", offset: 70,  band: "Stitch Early" },
     { date: "2026-07-30", offset: 77,  band: "Reverend Smackmaster" },
     { date: "2026-08-06", offset: 84,  band: "Ballistic Berry" },
-    { date: "2026-08-13", offset: 91,  band: "Conor & the Wild Hunt" },
+    {
+      date: "2026-08-13",
+      offset: 91,
+      band: "Freddie Long",
+      // DFP changed the published occurrence on Aug 12. The page slug still
+      // names the originally announced act, but the organizer's current title
+      // and lineup copy both name Freddie Long.
+      sourceUrl:
+        "https://downtownfrederick.org/vm-event/alive-five-conor-the-wild-hunt-americana-folk/",
+      verifiedAt: "2026-08-13T20:38:00.000Z",
+    },
     { date: "2026-08-20", offset: 98,  band: "My Chemical Bromance" },
     { date: "2026-08-27", offset: 105, band: "Kate Cosentino" },
     { date: "2026-09-03", offset: 112, band: "Pebble to Pearl" },
@@ -171,7 +189,7 @@ function aliveAtFiveSeason(): Event[] {
     { date: "2026-09-24", offset: 133, band: "Special Delivery Band" },
   ];
 
-  return LINEUP.map(({ date, offset, band, trucks }, idx) => {
+  return LINEUP.map(({ date, offset, band, trucks, sourceUrl, verifiedAt }, idx) => {
     const isOpener = idx === 0;
     const isFinale = idx === LINEUP.length - 1;
     const title = isOpener
@@ -214,10 +232,11 @@ function aliveAtFiveSeason(): Event[] {
         food: "Rotating food vendors on site each week.",
       },
       ticket_url: "https://downtownfrederick.org/aliveatfive/",
-      source_url: "https://downtownfrederick.org/aliveatfive/",
+      source_url: sourceUrl ?? "https://downtownfrederick.org/aliveatfive/",
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,
+      ...(verifiedAt ? { last_verified_at: verifiedAt } : {}),
       // hero_image intentionally omitted. The earlier SUMMER FIREWORKS
       // pick was the wrong shot — fireworks-over-Carroll-Creek is a
       // 4th-of-July image, not Alive @ Five. Falling through to

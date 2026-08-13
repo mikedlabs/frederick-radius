@@ -145,7 +145,8 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     await moreForTodayButton.click();
     await expect(moreForTodayButton).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("link", { name: /Food trucks/i })).toBeVisible();
+    const foodTrucksLink = page.getByRole("link", { name: /Food trucks/i });
+    await expect(foodTrucksLink).toBeVisible();
     await expect
       .poll(() => hits.malformed.includes("/api/food-trucks/live"))
       .toBe(true);
@@ -155,7 +156,10 @@ test.describe("critical surfaces under combined dependency failure", () => {
     await expect
       .poll(() => hits.unavailable.includes("/api/sports/local"))
       .toBe(true);
-    await expect(page.getByText(/No food trucks|Nothing.*food truck/i)).toHaveCount(0);
+    await expect(foodTrucksLink).toContainText(/published stops.*local vendors/i);
+    await expect(foodTrucksLink).not.toContainText(
+      /No food trucks|Nothing.*food truck/i,
+    );
 
     // MAP: separately break the primary Radius index and the county-bounded
     // backup. Neither outage may be translated into a confident zero-result

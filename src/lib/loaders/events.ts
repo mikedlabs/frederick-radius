@@ -198,8 +198,74 @@ function venuesMatch(a: string, b: string): boolean {
 }
 
 /**
- * Drops live or county-feed events that duplicate a curated event.
- * Curated always wins (P0-4). A live event is a duplicate when:
+ * Some publishers lead a recurring program with the series name and put the
+ * week's performer after punctuation ("Alive @ Five · Conor & the Wild
+ * Hunt"). A second feed can carry stale performer copy for the same program.
+ * Title similarity cannot catch that conflict, but a substantial shared
+ * series prefix plus the same venue and clock can. Keep this intentionally
+ * narrow: the prefix must name a recognizable series, not a generic word such
+ * as "music" or "trivia".
+ */
+function recurringSeriesTitle(title: string): string | null {
+  const prefix =
+    title.split(/(?:\s+[·|:–—]\s*|\s+-\s+)/u, 1)[0]?.trim() ?? "";
+  const normalized = normLoose(prefix);
+  return normalized.length >= 8 ? normalized : null;
+}
+
+function sameRecurringSeries(a: EventWithMeta, b: EventWithMeta): boolean {
+  const aSeries = recurringSeriesTitle(a.title);
+  const bSeries = recurringSeriesTitle(b.title);
+  return Boolean(
+    aSeries &&
+      bSeries &&
+      aSeries === bSeries &&
+      (a.is_recurring || b.is_recurring),
+  );
+}
+
+const SERIES_OCCURRENCE_TOLERANCE_MS = 5 * 60 * 1000;
+
+function sameRecurringSeriesOccurrence(
+  a: EventWithMeta,
+  b: EventWithMeta,
+): boolean {
+  return (
+    sameRecurringSeries(a, b) &&
+    Math.abs(+new Date(a.starts_at) - +new Date(b.starts_at)) <=
+      SERIES_OCCURRENCE_TOLERANCE_MS
+  );
+}
+
+function sameEventVenue(a: EventWithMeta, b: EventWithMeta): boolean {
+  if (
+    a.venue_place_slug &&
+    b.venue_place_slug
+  ) {
+    return a.venue_place_slug === b.venue_place_slug;
+  }
+  if (venuesMatch(a.venue_name, b.venue_name)) return true;
+  const precise = new Set(["venue_match", "exact_address"]);
+  return (
+    precise.has(a.geo_confidence) &&
+    precise.has(b.geo_confidence) &&
+    haversineMeters(a.geom, b.geom) <= 50
+  );
+}
+
+function editorialVerificationTime(event: EventWithMeta): number {
+  // Live adapters stamp last_verified_at with fetch time. That proves the row
+  // was retrieved, not that its title was changed by the publisher. Only an
+  // editorially verified row may use this timestamp to settle a copy conflict.
+  if (!event.is_verified || !event.last_verified_at) return 0;
+  const value = +new Date(event.last_verified_at);
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Drops live or county-feed events that duplicate a curated event. The
+ * curated row wins because live-feed last_verified_at is fetch time, not a
+ * publisher-change timestamp. A live event is a duplicate when:
  *
  *   1. starts within 60 minutes AND venues + titles both match
  *      (conservative, requires all three signals — original P0-4 rule)
@@ -223,16 +289,17 @@ export function dedupeLiveAgainstCurated(
       const within = Math.abs(+new Date(c.starts_at) - lt) <= 60 * 60 * 1000;
       if (!within) return false;
       // Path 1: conservative all-three-signal match
-      if (venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title)) {
-        return true;
-      }
+      let duplicate =
+        venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title);
+      // Same recurring program, same place, same clock. The performer suffix
+      // may conflict because one source has not picked up a lineup change.
+      duplicate ||=
+        sameEventVenue(c, l) && sameRecurringSeriesOccurrence(c, l);
       // Path 2: strong title match — venue divergence is OK because
       // municipal feeds use generic placeholders ("Frederick County
       // Calendar") that won't match the curated specific venue.
-      if (titlesMatchStrong(c.title, l.title)) {
-        return true;
-      }
-      return false;
+      duplicate ||= titlesMatchStrong(c.title, l.title);
+      return duplicate;
     });
   });
 }
@@ -246,8 +313,10 @@ export function dedupeLiveAgainstCurated(
  * ingested as curated). Both rendered, same physical event.
  *
  * Picks the BETTER version from each cluster:
- *   - Has hero_image > no hero_image (richer card)
- *   - Has description > no description
+ *   - Editorial verification over live-feed retrieval
+ *   - Newer editorial verification evidence next
+ *   - Then hero_image > no hero_image (richer card)
+ *   - Then description > no description
  *   - Otherwise keep the earlier entry (stable)
  */
 export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] {
@@ -257,14 +326,32 @@ export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] 
     const dupeIdx = out.findIndex((kept) => {
       const kt = +new Date(kept.starts_at);
       if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
-      return titlesMatchStrong(kept.title, e.title);
+      return (
+        titlesMatchStrong(kept.title, e.title) ||
+        (sameEventVenue(kept, e) &&
+          sameRecurringSeriesOccurrence(kept, e))
+      );
     });
     if (dupeIdx === -1) {
       out.push(e);
       continue;
     }
-    // Pick the richer record between the two.
+    // Human/editor verification outranks live-feed fetch freshness. A live
+    // adapter's timestamp only says when we retrieved the row and must never
+    // undo a confirmed last-minute act, cancellation, or time correction.
     const kept = out[dupeIdx];
+    if (Boolean(e.is_verified) !== Boolean(kept.is_verified)) {
+      if (e.is_verified) out[dupeIdx] = e;
+      continue;
+    }
+    // Between two editorially verified rows, the newer editorial check wins.
+    const challengerVerified = editorialVerificationTime(e);
+    const keptVerified = editorialVerificationTime(kept);
+    if (challengerVerified !== keptVerified) {
+      if (challengerVerified > keptVerified) out[dupeIdx] = e;
+      continue;
+    }
+    // With equal/unknown verification evidence, pick the richer record.
     const challengerScore =
       (e.hero_image ? 2 : 0) + (e.description ? 1 : 0);
     const keptScore =
