@@ -26,7 +26,6 @@ import {
   Dog,
   ParkingCircle,
   Bike,
-  Toilet,
   Sun,
   Music,
   ShoppingBag,
@@ -37,6 +36,7 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 
 type AmenityMeta = {
   /** Lucide icon component. */
@@ -55,7 +55,7 @@ const AMENITY_META: Record<string, AmenityMeta> = {
   "dog-friendly": { icon: Dog, label: "Dogs OK" },
   "parking-lot": { icon: ParkingCircle, label: "Parking" },
   "bike-rack": { icon: Bike, label: "Bike" },
-  restroom: { icon: Toilet, label: "Restroom" },
+  restroom: { icon: RestroomMark, label: "Restroom" },
   patio: { icon: Sun, label: "Patio" },
   "live-music": { icon: Music, label: "Live music" },
   takeout: { icon: ShoppingBag, label: "Takeout" },

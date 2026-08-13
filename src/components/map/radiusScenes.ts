@@ -356,6 +356,20 @@ function resolveBuses(signals: RadiusSceneSignals): RadiusSceneAvailability {
         : "The live vehicle feed is current, but no buses are reporting now.",
     };
   }
+  if (routes === 0 && feedIsCurrent(vehicles)) {
+    const hasVehicles = feedHasCurrentItems(vehicles);
+    return {
+      status: "limited",
+      // The route bundle is deferred until this task is chosen. A current,
+      // vehicle feed must not disable the very control that loads it, and its
+      // status must agree with the ambient buses already visible on the map.
+      canActivate: true,
+      canRecommend: hasVehicles,
+      reason: hasVehicles
+        ? `${vehicles.count} live ${vehicles.count === 1 ? "bus is" : "buses are"} reporting now. Open this view for routes and stops.`
+        : "No buses are reporting right now. Open this view for routes and stops.",
+    };
+  }
   if (routes > 0 && vehicles.status === "unavailable") {
     return {
       status: "limited",

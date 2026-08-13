@@ -5,7 +5,7 @@ import {
   Coffee,
   UtensilsCrossed,
   Baby,
-  Toilet,
+  MapPin,
   ParkingCircle,
   Phone,
   Search,
@@ -148,7 +148,7 @@ export default function PlacesIndexPage() {
             { label: "With kids", href: "/map?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
             { label: "Outdoors", href: "/map?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
             { label: "Parking", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
-            { label: "Nearby essentials", href: "/amenities", icon: Toilet, color: "var(--app-cool)" },
+            { label: "Nearby essentials", href: "/amenities", icon: MapPin, color: "var(--app-cool)" },
             { label: "Browse by town", href: "/towns", icon: Building2, color: "var(--app-brand)" },
           ].map((m) => {
             const Icon = m.icon;

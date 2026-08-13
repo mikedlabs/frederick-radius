@@ -224,6 +224,44 @@ describe("LiveBuses feed sessions", () => {
     ).not.toBeNull();
   });
 
+  it("opens the complete transit map from the ambient county preview", async () => {
+    const onEnterTransitMode = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() =>
+        response(
+          currentFeed({
+            vehicles: [
+              VEHICLE,
+              { ...VEHICLE, vehicleId: "bus-2", routeId: "6155", lat: 39.43 },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      root.render(
+        createElement(LiveBuses, {
+          show: true,
+          preview: true,
+          compactOverview: true,
+          overviewZoom: 9.4,
+          showInlineStatus: false,
+          onEnterTransitMode,
+        }),
+      );
+    });
+    await settle();
+
+    const aggregate = container.querySelector<HTMLButtonElement>(
+      '[aria-label="2 live buses. Open the transit map for routes and stops."]',
+    );
+    expect(aggregate).not.toBeNull();
+    act(() => aggregate?.click());
+    expect(onEnterTransitMode).toHaveBeenCalledOnce();
+  });
+
   it("does not call a delayed aggregate live", async () => {
     vi.stubGlobal(
       "fetch",

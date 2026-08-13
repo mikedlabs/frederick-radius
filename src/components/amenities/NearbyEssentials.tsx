@@ -9,10 +9,10 @@ import {
   Map,
   PawPrint,
   PlugZap,
-  Toilet,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/Button";
 
 const NEED_ICONS: Record<EssentialNeedId, LucideIcon> = {
-  restroom: Toilet,
+  restroom: RestroomMark,
   water: Droplets,
   trash: Trash2,
   "dog-bags": PawPrint,

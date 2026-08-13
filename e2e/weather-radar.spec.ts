@@ -29,13 +29,13 @@ test.describe("weather radar", () => {
 
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Explore this map" }).click();
     const options = page.getByRole("region", { name: "Choose what to see" });
     await options
-      .getByRole("button", { name: "Travel & conditions" })
+      .getByRole("button", { name: "Conditions" })
       .click();
 
-    const layers = page.getByRole("region", { name: "Travel & conditions" });
+    const layers = page.getByRole("region", { name: "Conditions" });
     const radar = layers.getByRole("button", { name: "Radar" });
     await radar.click();
 

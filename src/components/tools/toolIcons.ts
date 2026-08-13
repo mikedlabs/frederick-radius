@@ -31,7 +31,6 @@ import {
   Sparkles,
   Store,
   Tag,
-  Toilet,
   Trash2,
   Trees,
   Truck,
@@ -40,6 +39,7 @@ import {
   Wifi,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 import type { RadiusToolIcon } from "@/data/radius-tools";
 
 /**
@@ -83,7 +83,7 @@ export const TOOL_ICONS: Record<RadiusToolIcon, LucideIcon> = {
   sparkles: Sparkles,
   store: Store,
   tag: Tag,
-  toilet: Toilet,
+  toilet: RestroomMark,
   trash: Trash2,
   trees: Trees,
   truck: Truck,

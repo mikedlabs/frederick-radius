@@ -47,6 +47,7 @@ describe("getFieldAmenities", () => {
             lng: -77.4102,
             lat: 39.4143,
             photo_url: "https://example.com/trash.jpg",
+            created_at: new Date("2026-08-13T14:30:00.000Z"),
           },
         ]),
       ),
@@ -59,6 +60,7 @@ describe("getFieldAmenities", () => {
         name: "Creekside trash can",
         detail: "South rail",
         photo: "https://example.com/trash.jpg",
+        observedAt: "2026-08-13T14:30:00.000Z",
       }),
     ]);
   });

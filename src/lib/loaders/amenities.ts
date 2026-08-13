@@ -32,6 +32,9 @@ export type Amenity = {
   /** Reference photo URL (field-collected points only; the /collect tool
    *  uploads it to blob storage). Undefined for static/OSM amenities. */
   photo?: string;
+  /** Observation time for first-party field records and live infrastructure
+   * readings. Static map points intentionally omit it. */
+  observedAt?: string;
 };
 
 const AMENITIES = AMENITIES_RAW as Amenity[];

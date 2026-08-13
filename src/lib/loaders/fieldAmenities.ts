@@ -61,6 +61,7 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
             lng: field_amenities.lng,
             lat: field_amenities.lat,
             photo_url: field_amenities.photo_url,
+            created_at: field_amenities.created_at,
           })
           .from(field_amenities)
           .where(eq(field_amenities.status, "approved")),
@@ -86,6 +87,7 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
         lng: r.lng,
         lat: r.lat,
         photo: r.photo_url ?? undefined,
+        observedAt: r.created_at?.toISOString(),
       });
     }
     return out;

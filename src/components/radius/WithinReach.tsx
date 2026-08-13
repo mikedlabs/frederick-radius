@@ -8,13 +8,13 @@ import {
   Trees,
   Palette,
   ShoppingBag,
-  Toilet,
   SquareParking,
   Droplets,
   Trash2,
   Armchair,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { Amenity } from "@/lib/loaders/amenities";
@@ -67,7 +67,7 @@ const GROUPS: Group[] = [
   { key: "park", label: "Park", icon: Trees, color: "var(--app-brand-2)", cats: ["park", "trail", "playground", "outdoors"] },
   { key: "art", label: "Art", icon: Palette, color: "#7E2C6F", cats: ["gallery", "museum", "theater"] },
   { key: "shops", label: "Shops", icon: ShoppingBag, color: "var(--app-cool)", cats: ["shopping", "market", "book-store"] },
-  { key: "restroom", label: "Restroom", icon: Toilet, color: "var(--app-cool)", amenity: "restroom" },
+  { key: "restroom", label: "Restroom", icon: RestroomMark, color: "var(--app-cool)", amenity: "restroom" },
   { key: "water", label: "Water", icon: Droplets, color: "var(--app-cool)", amenity: "water", mapGroup: "water" },
   { key: "trash", label: "Trash", icon: Trash2, color: "var(--app-ink-3)", amenity: "trash", mapGroup: "trash" },
   { key: "bench", label: "Seat", icon: Armchair, color: "var(--app-ink-3)", amenity: "bench", mapGroup: "seating" },

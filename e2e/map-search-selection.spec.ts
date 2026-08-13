@@ -543,22 +543,25 @@ test.describe("map search selection", () => {
 
   test("groups live road context behind one honest control", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Explore this map" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: /Travel & conditions/ })
+      .getByRole("button", { name: /Get around/ })
       .click();
 
     const roads = page
-      .getByRole("region", { name: "Travel & conditions" })
-      .getByRole("button", { name: "Roads now" });
+      .getByRole("region", { name: "Get around" })
+      .getByRole("button", { name: "Road reports", exact: true });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await roads.click();
 
-    await expect(page.getByRole("region", { name: "Travel & conditions" })).toBeVisible();
-    const reopenedLayers = page.getByRole("region", { name: "Travel & conditions" });
+    await expect(page.getByRole("region", { name: "Get around" })).toBeVisible();
+    const reopenedLayers = page.getByRole("region", { name: "Get around" });
     await expect(
-      reopenedLayers.getByRole("button", { name: "Roads now" }),
+      reopenedLayers.getByRole("button", {
+        name: "Road reports",
+        exact: true,
+      }),
     ).toHaveAttribute("aria-pressed", "true");
     await reopenedLayers.getByText("Sources and limits").click();
     await expect(reopenedLayers.getByText(/Maryland CHART, WZDx, and county-published reports/)).toBeVisible();
@@ -566,25 +569,31 @@ test.describe("map search selection", () => {
     await expect(reopenedLayers.getByText(/Medical and personal calls stay hidden/)).toBeVisible();
   });
 
-  test("adds the full Roads now view without erasing a deep-linked road layer", async ({ page }) => {
+  test("adds grouped road reports without erasing a deep-linked road layer", async ({ page }) => {
     await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Explore this map" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: /Travel & conditions/ })
+      .getByRole("button", { name: /Get around/ })
       .click();
 
-    const layers = page.getByRole("region", { name: "Travel & conditions" });
-    const roads = layers.getByRole("button", { name: "Roads now" });
+    const layers = page.getByRole("region", { name: "Get around" });
+    const roads = layers.getByRole("button", {
+      name: "Road reports",
+      exact: true,
+    });
     await expect(roads).toHaveAttribute("aria-pressed", "false");
     await expect(layers.getByText(/Official road reports are on/)).toBeVisible();
 
     await roads.click();
 
     await expect(layers).toBeVisible();
-    const reopenedLayers = page.getByRole("region", { name: "Travel & conditions" });
+    const reopenedLayers = page.getByRole("region", { name: "Get around" });
     await expect(
-      reopenedLayers.getByRole("button", { name: "Roads now" }),
+      reopenedLayers.getByRole("button", {
+        name: "Road reports",
+        exact: true,
+      }),
     ).toHaveAttribute("aria-pressed", "true");
     await reopenedLayers.getByText("Sources and limits").click();
     await expect(reopenedLayers.getByText(/Maryland CHART, WZDx, and county-published reports/)).toBeVisible();

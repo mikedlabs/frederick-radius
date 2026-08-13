@@ -10,7 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity, Toilet } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
   SearchResult,
@@ -948,7 +948,7 @@ function EmptyHint({
       subtitle: "See the current local calendar.",
       Icon: Calendar,
     },
-    { href: "/amenities", title: "Nearby essentials", subtitle: "Find the closest mapped restroom, water, trash, seating, or dog bags.", Icon: Toilet },
+    { href: "/amenities", title: "Nearby essentials", subtitle: "Find the closest mapped restroom, water, trash, seating, or dog bags.", Icon: MapPin },
     { href: "/pulse", title: "Live conditions", subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
   ];
 

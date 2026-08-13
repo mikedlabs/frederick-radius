@@ -121,6 +121,8 @@ export function buildFilteredOsmGeoJson(
         website: p.website ?? "",
         opening_hours: p.opening_hours ?? "",
         cuisine: p.cuisine ?? "",
+        wheelchair: p.wheelchair ?? "",
+        outdoor_seating: p.outdoor_seating ? "yes" : "",
         observed_at: p.observed_at ?? "",
       },
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
@@ -189,6 +191,8 @@ export function buildAmenityGeoJson({
         website: p.website ?? "",
         opening_hours: p.opening_hours ?? "",
         cuisine: "",
+        wheelchair: p.wheelchair ?? "",
+        outdoor_seating: p.outdoor_seating ? "yes" : "",
         // Carries a community-report's reference photo through to the popup
         // (OSM amenities have none; the field reports the /report tool adds do).
         photo: p.photo ?? "",
@@ -217,10 +221,12 @@ export function buildAmenityGeoJson({
         website: "",
         opening_hours: "",
         cuisine: "",
+        wheelchair: "",
+        outdoor_seating: "",
         // Reference photo (field-collected points only) — surfaced in the
         // popup. Empty string for OSM/static amenities.
         photo: a.photo ?? "",
-        observed_at: "",
+        observed_at: a.observedAt ?? "",
       },
       geometry: { type: "Point" as const, coordinates: [a.lng, a.lat] },
     }));
@@ -278,6 +284,7 @@ export function buildAmenitySelectionPoints({
         address: amenity.detail,
         city: municipalityDisplayName(amenity.municipality),
         photo: amenity.photo,
+        observed_at: amenity.observedAt,
         kind: category,
       };
     }),

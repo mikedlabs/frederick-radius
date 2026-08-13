@@ -405,6 +405,24 @@ describe("selected-place decision cue", () => {
     });
   });
 
+  it("keeps live parking availability in the selected-place answer", () => {
+    const surface = buildMapPeekDecisionSurface({
+      place: { slug: "creek", deal_hook: undefined },
+      nearestGarage: {
+        name: "Carroll Creek Garage",
+        distM: 180,
+        available: 42,
+      },
+      now: NOW,
+    });
+
+    expect(surface?.lead).toMatchObject({
+      kind: "parking",
+      headline: "Parking · 0.1 mi",
+    });
+    expect(surface?.lead.detail).toContain("42 spaces reported available");
+  });
+
   it("reduces outcome telemetry to stable candidate and reason ids", () => {
     const surface = buildMapPeekDecisionSurface({
       place: { slug: "creek", deal_hook: undefined },

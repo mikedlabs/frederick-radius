@@ -10,8 +10,8 @@ import {
   Images,
   LoaderCircle,
   LocateFixed,
+  MapPin,
   Siren,
-  Toilet,
   TrafficCone,
   type LucideIcon,
 } from "lucide-react";
@@ -208,7 +208,7 @@ export default function MapEdgeTools({
           aria-label="Find a nearby essential"
           onClick={onWake}
         >
-          <Toilet className="h-5 w-5" strokeWidth={2.15} aria-hidden />
+          <MapPin className="h-5 w-5" strokeWidth={2.15} aria-hidden />
           <span className="map-edge-tool-label">
             <span className="map-edge-tool-label-long">Nearby essentials</span>
             <span className="map-edge-tool-label-short">Essentials</span>

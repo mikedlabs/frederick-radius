@@ -135,6 +135,41 @@ describe("buses-now", () => {
       canRecommend: false,
     });
     expect(scene.availability.reason).toContain("no buses are reporting");
+
+    const deferredRoutes = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.routeCount = 0;
+        value.transit.vehicles = { status: "empty", count: 0 };
+      }),
+    );
+    expect(deferredRoutes.availability).toMatchObject({
+      status: "limited",
+      canActivate: true,
+      canRecommend: false,
+    });
+    expect(deferredRoutes.availability.reason).toContain(
+      "routes and stops",
+    );
+  });
+
+  it("keeps reporting live buses while the route bundle is still deferred", () => {
+    const scene = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.routeCount = 0;
+        value.transit.vehicles = { status: "current", count: 5 };
+      }),
+    );
+
+    expect(scene.availability).toMatchObject({
+      status: "limited",
+      canActivate: true,
+      canRecommend: true,
+    });
+    expect(scene.availability.reason).toBe(
+      "5 live buses are reporting now. Open this view for routes and stops.",
+    );
   });
 });
 
