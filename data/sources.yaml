@@ -46,8 +46,8 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-12T11:00:33.743Z
-    last_success: 2026-08-12T11:00:33.743Z
+    last_validated: 2026-08-13T11:01:18.074Z
+    last_success: 2026-08-13T11:01:18.074Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -69,8 +69,8 @@ sources:
     contact: https://chart.maryland.gov
     status: active
     collection: pipeline
-    last_validated: 2026-08-12T11:00:34.213Z
-    last_success: 2026-08-12T11:00:34.213Z
+    last_validated: 2026-08-13T11:01:18.616Z
+    last_success: 2026-08-13T11:01:18.616Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
@@ -78,8 +78,8 @@ sources:
       chart.maryland.gov/Incidents/GetIncidents URL became an HTML page;
       this is CHART's current JSON export endpoint. The transform filters
       to Frederick County and removes signal/camera maintenance noise.
-    last_changed: 2026-08-12T11:00:34.213Z
-    last_payload_sha256: 4680013d76d1a4d6b3306ce1fa2a748e4cb9323f11dc0a140edd89f134699e61
+    last_changed: 2026-08-13T11:01:18.616Z
+    last_payload_sha256: 9ecdafe2ce4c617b6be7420a06e6918223f34a6f429bfe957ee733c49d03be4d
 
   - id: seeclickfix
     name: SeeClickFix Frederick County 311
@@ -93,8 +93,8 @@ sources:
     contact: https://seeclickfix.com
     status: active
     collection: pipeline
-    last_validated: 2026-08-12T11:00:34.763Z
-    last_success: 2026-08-12T11:00:34.763Z
+    last_validated: 2026-08-13T11:01:18.775Z
+    last_success: 2026-08-13T11:01:18.775Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -103,8 +103,8 @@ sources:
       silently ignored by the SeeClickFix v2 API and returns the
       global feed; the integration also applies a hard in-county bbox
       post-filter as defense in depth.
-    last_changed: 2026-08-12T11:00:34.763Z
-    last_payload_sha256: c8b839ac643d887c0cdd014e89fd36ef1295d99efa6903a771d2d2920ab31075
+    last_changed: 2026-08-13T11:01:18.775Z
+    last_payload_sha256: 20554b98afe7704841de1ddb7583a4e84c13e38ec264629e27ea3ae37000ef31
 
   - id: nws_forecast
     name: National Weather Service Forecast, Frederick
@@ -121,15 +121,15 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-12T11:00:36.667Z
-    last_success: 2026-08-12T11:00:36.667Z
+    last_validated: 2026-08-13T11:01:22.738Z
+    last_success: 2026-08-13T11:01:22.738Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
       Two step API. The worker reads the points response, follows
       properties.forecast, then stores the forecast periods.
-    last_changed: 2026-08-12T11:00:36.667Z
-    last_payload_sha256: dde72c337257c1cc83a3ea08e9c20b5a8e1e205b404bb086c1f16cdd8cf05183
+    last_changed: 2026-08-13T11:01:22.738Z
+    last_payload_sha256: 25c4fc6b00c15d71b17f02d977020b47e01fd2032d2fe99c89702b4edacb4862
 
   - id: nws_alerts
     name: National Weather Service Active Alerts, Frederick County
@@ -143,8 +143,8 @@ sources:
     contact: https://www.weather.gov/disclaimer
     status: active
     collection: pipeline
-    last_validated: 2026-08-12T11:00:37.720Z
-    last_success: 2026-08-12T11:00:37.720Z
+    last_validated: 2026-08-13T11:01:23.659Z
+    last_success: 2026-08-13T11:01:23.659Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
@@ -182,18 +182,21 @@ sources:
   - id: md_imap_arcgis
     name: Maryland iMAP Services
     owner: Maryland Department of Information Technology
-    url: https://geodata.md.gov/imap/rest/services
+    url: https://mdgeodata.md.gov/imap/rest/services
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
     license: public, State of Maryland
     contact: https://imap.maryland.gov
     status: scaffold
-    last_validated: null
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Parcels, physical boundaries, and state parks layers.
+    notes: |
+      Current Maryland iMAP service root. This generic catalog row is not
+      evidence that every layer is suitable for Radius; exact datasets still
+      need their own adapter, field allowlist, lifecycle rules, and product use.
 
   - id: osm_overpass
     name: OpenStreetMap via Overpass
@@ -847,6 +850,31 @@ sources:
       answers. The runtime adapter keeps only current Frederick County work
       zones and preserves provider confidence, schedule, and lane-impact
       caveats. A work-zone row does not establish that a route is passable.
+
+  - id: md_sha_road_closures
+    name: Maryland SHA Active Road Closures
+    owner: Maryland Department of Transportation State Highway Administration
+    url: https://mdgeodata.md.gov/appdata/rest/services/SHA_RoadClosure/RoadClosureActive/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: realtime
+    snapshot_cadence: daily
+    change_cadence: realtime
+    license: official public-facing MDOT SHA service; attribution retained; endpoint
+      does not state a standalone reuse license
+    contact: https://roads.maryland.gov/mdotsha/pages/index.aspx?PageId=813
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/md-road-closures.ts
+    notes: |
+      Keyless current and scheduled closure geometry under the existing Roads
+      view. The runtime adapter pages both official point and segment layers,
+      keeps only Frederick County FIPS 24021, joins them by the official GUID,
+      and distinguishes current, scheduled, stale, partial, and unavailable.
+      A failed or incomplete response never becomes an empty-roads claim.
 
   - id: mdot_chart_tss
     name: Maryland CHART Traffic Speed Sensors
@@ -1854,14 +1882,42 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: monthly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone
+      reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Bike network for the walkable, trail, and Plan experiences.
+    notes: |
+      The City advertises this service, but the ArcGIS endpoint currently
+      returns error 500 ("Could not generate or find MSD"). Keep it out of the
+      product until the City repairs the service and a live response is
+      validated. Do not infer bike routes from the broken endpoint.
+
+  - id: cof_sidewalks
+    name: City of Frederick Sidewalks and Ramps
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    snapshot_cadence: monthly
+    change_cadence: monthly
+    license: City-published public GIS service; source link retained; no standalone
+      reuse license found
+    contact: https://www.cityoffrederickmd.gov/1307/Maps-Apps
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/frederickCityMobility.ts
+    notes: |
+      Viewport-bounded runtime access to layers 0 (sidewalk ramps) and 2
+      (sidewalk lines). Ramps provide crossing context only; a mapped ramp or
+      sidewalk never claims a complete accessible route or current clearance.
 
   - id: cof_path_plan
     name: City of Frederick Path Plan
@@ -1870,14 +1926,19 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: quarterly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone
+      reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Planned path network, paired with bike paths and sidewalks.
+    transform_file: src/lib/integrations/frederickCityMobility.ts
+    notes: |
+      Viewport-bounded Path Plan layer. Only segments whose official STATUS is
+      EXISTING may inform a route. PLANNED, PROPOSED, DEV, and unknown records
+      remain visible planning context and are never treated as traversable.
 
   - id: cof_historic_district
     name: City of Frederick Historic District
@@ -1950,14 +2011,19 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone
+      reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: City projects, feeds a what is changing near you civic surface.
+    transform_file: src/lib/integrations/cityFrederickChanges.ts
+    notes: |
+      Official City project records under the existing What changed map scene.
+      Project stage is preserved; a planning-stage record is never presented
+      as active construction.
 
   - id: cof_development_review
     name: City of Frederick Development Review
@@ -1966,14 +2032,19 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone
+      reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Active development and planning projects.
+    transform_file: src/lib/integrations/cityFrederickChanges.ts
+    notes: |
+      Official City development-review records under the existing What changed
+      scene. Pending means under review; complete does not by itself establish
+      approval, permitting, or construction.
 
   - id: cof_snow_removal
     name: City of Frederick Snow Removal
