@@ -677,7 +677,7 @@ export type MapPeekDecisionInput = {
   // ignored until schedule, source, and freshness evidence travel with it.
   place: Pick<MapPinPlace, "slug"> & { deal_hook?: string };
   hostedEvent?: EventPin | null;
-  nearestGarage?: { name: string; distM: number } | null;
+  nearestGarage?: { name: string; distM: number; available?: number | null } | null;
   nearbyUtilities?: NearbyUtility[];
   now: string;
 };
@@ -856,10 +856,14 @@ export function buildMapPeekDecisionSurface({
         overlay: "parking",
       }],
     });
+    const availabilityDetail =
+      nearestGarage.available != null
+        ? `${nearestGarage.available} spaces reported available. `
+        : "";
     cues.set(id, {
       kind: "parking",
       headline: `Parking · ${formatDistance(nearestGarage.distM)}`,
-      detail: `${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} away.`,
+      detail: `${availabilityDetail}${nearestGarage.name} is mapped ${formatDistance(nearestGarage.distM)} away.`,
       sourceLabel: "City of Frederick parking map",
       sourceUrl: "https://www.cityoffrederickmd.gov/207/Parking",
     });

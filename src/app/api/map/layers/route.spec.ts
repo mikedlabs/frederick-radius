@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   isRateLimited: vi.fn(async () => false),
   mapPinPlaces: vi.fn(() => []),
   fetchMapillaryTrash: vi.fn(async () => []),
+  getFieldAmenities: vi.fn(async () => []),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -17,6 +18,9 @@ vi.mock("@/lib/map/placePins", () => ({
 }));
 vi.mock("@/lib/integrations/mapillary", () => ({
   fetchMapillaryTrash: mocks.fetchMapillaryTrash,
+}));
+vi.mock("@/lib/loaders/fieldAmenities", () => ({
+  getFieldAmenities: mocks.getFieldAmenities,
 }));
 
 import { GET } from "./route";
@@ -93,5 +97,6 @@ describe("GET /api/map/layers request boundary", () => {
     expect(body.amenities).toEqual(expect.any(Array));
     expect(body.parking).toEqual(expect.any(Array));
     expect(mocks.mapPinPlaces).toHaveBeenCalledOnce();
+    expect(mocks.getFieldAmenities).toHaveBeenCalledOnce();
   });
 });

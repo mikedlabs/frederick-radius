@@ -259,7 +259,7 @@ import {
   PlacePopup,
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
-import MapDock from "./MapDock";
+import MapDock, { type TransitAlertSnapshot } from "./MapDock";
 import MapEdgeTools from "./MapEdgeTools";
 import type { MapEdgeOverlayId, MapEdgeOverlayState } from "./mapEdgeToolsModel";
 import MapDiscoveryOverlay from "./MapDiscoveryOverlay";
@@ -1313,6 +1313,12 @@ export default function AppMap({
     activeAmenityGroupCount: visibleAmenityGroups.size,
   });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
+  // Live vehicle positions are ambient map intelligence, not the complete
+  // Transit layer. Start the small feed alongside the base map so its single
+  // county signal is ready as the canvas settles; route lines, stops, MARC,
+  // URL state, and saved preferences remain behind a deliberate Transit task.
+  const ambientLiveBuses = isBrowseMap && !compactSubjectMap;
+  const liveBusesVisible = visibleTransit || ambientLiveBuses;
   // When someone chooses a live conditions layer, that task owns the canvas.
   // The full business catalog stays available as soon as the layer is off,
   // but it should not compete with buses, routes, weather, or road signals.
@@ -1336,6 +1342,16 @@ export default function AppMap({
   const operationalLayerActive =
     Boolean(activeSceneId) ||
     (operationalLayerRequested && !explicitPlaceTaskActive);
+  // At the untouched county overview, raw catalog totals do not help someone
+  // decide what to do. Let town labels and the highest-value live signal own
+  // that frame; clusters return as soon as the person zooms, searches, chooses
+  // a category, or opens any task-shaped view.
+  const quietCountyOverview =
+    isBrowseMap &&
+    resultScope === "county" &&
+    !offOverview &&
+    !explicitPlaceTaskActive &&
+    !operationalLayerRequested;
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
@@ -1390,6 +1406,8 @@ export default function AppMap({
     useState<OfficialRoadClosureBounds | null>(null);
   const [liveBusSnapshot, setLiveBusSnapshot] =
     useState<LiveBusLayerSnapshot | null>(null);
+  const [transitAlertSnapshot, setTransitAlertSnapshot] =
+    useState<TransitAlertSnapshot | null>(null);
   const rememberLiveBusSnapshot = useCallback((next: LiveBusLayerSnapshot) => {
     setLiveBusSnapshot((current) =>
       current?.status === next.status && current.count === next.count
@@ -1398,8 +1416,63 @@ export default function AppMap({
     );
   }, []);
   useEffect(() => {
-    if (!visibleTransit) setLiveBusSnapshot(null);
-  }, [visibleTransit]);
+    if (!liveBusesVisible) setLiveBusSnapshot(null);
+  }, [liveBusesVisible]);
+  useEffect(() => {
+    if (!liveBusesVisible) {
+      setTransitAlertSnapshot(null);
+      return;
+    }
+    let active = true;
+    let controller: AbortController | null = null;
+
+    const load = async () => {
+      if (document.visibilityState === "hidden") return;
+      controller?.abort();
+      controller = new AbortController();
+      setTransitAlertSnapshot((current) => current ?? { status: "loading", count: 0 });
+      try {
+        const response = await fetch("/api/transit/alerts", {
+          signal: controller.signal,
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Transit bulletins request failed");
+        const body = (await response.json()) as {
+          available?: boolean;
+          status?: "ok" | "degraded" | "unavailable";
+          alerts?: unknown[];
+        };
+        if (!active) return;
+        if (body.available === false || body.status === "unavailable" || !Array.isArray(body.alerts)) {
+          setTransitAlertSnapshot({ status: "error", count: 0 });
+        } else if (body.status === "degraded") {
+          setTransitAlertSnapshot({ status: "stale", count: body.alerts.length });
+        } else {
+          setTransitAlertSnapshot({
+            status: body.alerts.length > 0 ? "ready" : "empty",
+            count: body.alerts.length,
+          });
+        }
+      } catch (error) {
+        if (!active || (error as { name?: string }).name === "AbortError") return;
+        setTransitAlertSnapshot({ status: "error", count: 0 });
+      }
+    };
+
+    void load();
+    const interval = window.setInterval(() => void load(), 60_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      active = false;
+      controller?.abort();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [liveBusesVisible]);
   const transitRouteCount = useMemo(() => {
     const ids = new Set<string>();
     for (const feature of transitLines.features) {
@@ -1758,10 +1831,24 @@ export default function AppMap({
       transit: {
         routeCount: transitRouteCount,
         vehicles: sceneSignalFromBuses(
-          visibleTransit ? liveBusSnapshot : null,
-          visibleTransit,
+          liveBusesVisible ? liveBusSnapshot : null,
+          liveBusesVisible,
         ),
-        serviceAlerts: { status: "unavailable", count: 0 },
+        serviceAlerts: transitAlertSnapshot
+          ? {
+              status:
+                transitAlertSnapshot.status === "ready"
+                  ? "current"
+                  : transitAlertSnapshot.status === "empty"
+                    ? "empty"
+                    : transitAlertSnapshot.status === "loading"
+                      ? "loading"
+                      : transitAlertSnapshot.status === "stale"
+                        ? "stale"
+                        : "unavailable",
+              count: transitAlertSnapshot.count,
+            }
+          : { status: "unloaded", count: 0 },
       },
       roads: {
         workZones: mergeSceneFeedSignals(
@@ -1817,6 +1904,7 @@ export default function AppMap({
       floodContext.features.length,
       incidentHealth,
       liveBusSnapshot,
+      transitAlertSnapshot,
       locationAvailability,
       overlayFeatureStates.parks,
       overlayFeatureStates.mobility,
@@ -1828,7 +1916,7 @@ export default function AppMap({
       snowRoutes.features.length,
       trailLines.features.length,
       transitRouteCount,
-      visibleTransit,
+      liveBusesVisible,
     ],
   );
   const radiusScenes = useMemo(
@@ -2590,6 +2678,13 @@ export default function AppMap({
           website: props.website,
           opening_hours: props.opening_hours,
           cuisine: props.cuisine,
+          wheelchair:
+            props.wheelchair === "yes" ||
+            props.wheelchair === "no" ||
+            props.wheelchair === "limited"
+              ? props.wheelchair
+              : undefined,
+          outdoor_seating: props.outdoor_seating === "yes" || undefined,
           photo: props.photo || undefined,
           observed_at: props.observed_at || undefined,
           lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
@@ -3106,8 +3201,32 @@ export default function AppMap({
     // both instant and shareable.
     if (r.type === "action" && r.id.startsWith("action:map-")) {
       const target = new URL(r.href, window.location.origin);
+      const sceneParam = target.searchParams.get("scene");
+      const radiusModeRequested = target.searchParams.get("mode") === "radius";
       const amenityParam = target.searchParams.get("amenity");
       const showParam = target.searchParams.get("show");
+      const requestedScene = parseRadiusSceneId(sceneParam);
+
+      // Outcome searches such as "buses now" and "what changed" should
+      // change this map immediately. Navigating from /map to /map does not
+      // reliably remount the one-time deep-link initializer, so invoking the
+      // shared scene controller here is both faster and more predictable.
+      if (requestedScene) {
+        setMapQuery("");
+        activateRadiusScene(requestedScene);
+        return;
+      }
+
+      // The travel-reach result is a map mode rather than a Radius scene. Let
+      // the existing URL-backed mode subscriber do the work without ejecting
+      // the reader or layering it on top of an old query.
+      if (radiusModeRequested) {
+        setMapQuery("");
+        window.history.pushState(null, "", `${target.pathname}${target.search}`);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        return;
+      }
+
       if (amenityParam || showParam) {
         const requestedShow = new Set(
           (showParam ?? "")
@@ -4060,8 +4179,8 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Use Browse to find nearby
-          places, check today and tonight, see conditions, or add Frederick details.
+          or minus to zoom when the map has focus. Open What to see to find
+          nearby places, current events, travel details, or local conditions.
         </p>
 
         {!mapError && (
@@ -4124,8 +4243,8 @@ export default function AppMap({
           interactiveLayerIds={[
             ...(!operationalLayerActive
               ? [
-                  "clusters",
-                  ...(curatedClusters ? ["curated-clusters"] : []),
+                  ...(!quietCountyOverview ? ["clusters"] : []),
+                  ...(curatedClusters && !quietCountyOverview ? ["curated-clusters"] : []),
                   "osm-icons",
                   "curated-icons",
                   "curated-active-icons",
@@ -4751,7 +4870,8 @@ export default function AppMap({
               old always-on vehicles made the dock say "No layers" while buses
               were visibly moving on the map. */}
           <LiveBuses
-            show={visibleTransit}
+            show={liveBusesVisible}
+            preview={!visibleTransit}
             compactOverview={Boolean(dock)}
             overviewZoom={cameraZoom}
             showInlineStatus={!dock}
@@ -4767,6 +4887,7 @@ export default function AppMap({
                 essential: true,
               });
             }}
+            onEnterTransitMode={() => activateRadiusScene("buses-now")}
             gate={liveLayerGate}
             onHealthChange={rememberLiveBusSnapshot}
           />
@@ -4943,7 +5064,7 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": operationalLayerActive
+                "circle-opacity": operationalLayerActive || quietCountyOverview
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.025
@@ -4966,7 +5087,7 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": operationalLayerActive
+                "circle-opacity": operationalLayerActive || quietCountyOverview
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.08
@@ -4978,7 +5099,7 @@ export default function AppMap({
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": operationalLayerActive
+                "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.08
@@ -5004,7 +5125,7 @@ export default function AppMap({
                 "text-halo-color": "rgba(0,0,0,0.3)",
                 "text-halo-width": 1.1,
                 "text-halo-blur": 0.4,
-                "text-opacity": operationalLayerActive
+                "text-opacity": operationalLayerActive || quietCountyOverview
                   ? 0
                   : foregroundReferenceActive && dock
                     ? 0.05
@@ -5192,7 +5313,7 @@ export default function AppMap({
                         14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 13, 25, 21, 100, 27],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9.1, 25, 14.7, 100, 18.9],
                       ],
-                  "circle-opacity": operationalLayerActive
+                  "circle-opacity": operationalLayerActive || quietCountyOverview
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.04
@@ -5227,7 +5348,7 @@ export default function AppMap({
                     ? BRAND.colors.functionalAmber
                     : CURATED_CLUSTER_COLOR,
                   "circle-stroke-width": 1.1,
-                  "circle-stroke-opacity": operationalLayerActive
+                  "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.04
@@ -5259,7 +5380,7 @@ export default function AppMap({
                         14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 4.8, 4, 6.1, 25, 10.2, 100, 13.6],
                       ],
-                  "circle-opacity": operationalLayerActive
+                  "circle-opacity": operationalLayerActive || quietCountyOverview
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.12
@@ -5268,7 +5389,7 @@ export default function AppMap({
                     ? "#FAF3E2"
                     : "#F7F2E8",
                   "circle-stroke-width": compactSubjectMap ? 2 : 1.6,
-                  "circle-stroke-opacity": operationalLayerActive
+                  "circle-stroke-opacity": operationalLayerActive || quietCountyOverview
                     ? 0
                     : foregroundReferenceActive && dock
                       ? 0.12
@@ -5333,15 +5454,15 @@ export default function AppMap({
                   "text-opacity": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
-                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        11.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        12, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        11.25, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        12, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ]
                     : [
                         "interpolate", ["linear"], ["zoom"],
-                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        14.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
-                        15, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        14.25, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        15, operationalLayerActive || quietCountyOverview ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ],
                   "text-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -6327,7 +6448,8 @@ export default function AppMap({
             }}
             transitHealth={transitHealth}
             showTransit={showTransit}
-            liveBusSnapshot={visibleTransit ? liveBusSnapshot : null}
+            liveBusSnapshot={liveBusesVisible ? liveBusSnapshot : null}
+            transitAlertSnapshot={liveBusesVisible ? transitAlertSnapshot : null}
             setShowTransit={(value) => {
               exitRadiusScene();
               setShowTransit(value);

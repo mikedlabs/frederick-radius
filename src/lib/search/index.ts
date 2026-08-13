@@ -251,6 +251,17 @@ function isTransitMapQuery(query: string): boolean {
     containsAnyPhrase(query, ["commute", "public", "route", "routes", "schedule", "schedules", "station", "stations"]);
 }
 
+function isLiveBusMapQuery(query: string): boolean {
+  return containsAnyPhrase(query, [
+    "live bus",
+    "live buses",
+    "buses now",
+    "bus now",
+    "where are the buses",
+    "where is the bus",
+  ]);
+}
+
 function isTonightMapQuery(query: string): boolean {
   if (query === "tonight") return true;
   if (!containsPhrase(query, "tonight")) return false;
@@ -381,11 +392,18 @@ const MAP_ACTIONS: readonly MapAction[] = [
     matches: isParkingMapQuery,
   },
   {
+    id: "action:map-live-buses",
+    title: "See live buses now",
+    subtitle: "Open current TransIT positions with routes and stops.",
+    href: "/map?scene=buses-now",
+    matches: isLiveBusMapQuery,
+  },
+  {
     id: "action:map-transit",
     title: "Show transit on the map",
     subtitle: "See bus stops, routes, and MARC stations.",
     href: "/map?show=transit",
-    matches: isTransitMapQuery,
+    matches: (query) => isTransitMapQuery(query) && !isLiveBusMapQuery(query),
   },
   {
     id: "action:map-radar",
@@ -403,7 +421,7 @@ const MAP_ACTIONS: readonly MapAction[] = [
     id: "action:map-roads",
     title: "Show roads now",
     subtitle: "See current road flow, official reports, and public incidents.",
-    href: "/map?show=roads",
+    href: "/map?scene=roads-now",
     matches: (query) =>
       query === "traffic" ||
       query === "roads" ||
@@ -413,7 +431,43 @@ const MAP_ACTIONS: readonly MapAction[] = [
         "road closure",
         "road closures",
         "what are the roads like",
+        "roads now",
       ]),
+  },
+  {
+    id: "action:map-outside-now",
+    title: "See outdoor conditions now",
+    subtitle: "Open parks, paths, and the conditions that affect them.",
+    href: "/map?scene=outside-now",
+    matches: (query) => containsAnyPhrase(query, [
+      "outside now",
+      "outdoor conditions",
+      "go outside now",
+    ]),
+  },
+  {
+    id: "action:map-what-changed",
+    title: "See what changed",
+    subtitle: "Open mapped projects, civic records, and recent changes.",
+    href: "/map?scene=what-changed",
+    matches: (query) => containsAnyPhrase(query, [
+      "what changed",
+      "new projects",
+      "recent projects",
+      "planning changes",
+    ]),
+  },
+  {
+    id: "action:map-within-15",
+    title: "See what is within 15 minutes",
+    subtitle: "Compare useful places from one starting point.",
+    href: "/map?mode=radius&minutes=15",
+    matches: (query) => containsAnyPhrase(query, [
+      "within 15 minutes",
+      "15 minutes away",
+      "fifteen minutes away",
+      "fifteen minutes from me",
+    ]),
   },
   {
     id: "action:map-cameras",
@@ -772,6 +826,10 @@ const MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY = new Set([
   "action:map-cameras",
   "action:map-incidents",
   "action:map-transit",
+  "action:map-live-buses",
+  "action:map-outside-now",
+  "action:map-what-changed",
+  "action:map-within-15",
 ]);
 
 const MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS = new Set([
@@ -785,6 +843,10 @@ const MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS = new Set([
   "action:map-outlets",
   "action:map-parking",
   "action:map-transit",
+  "action:map-live-buses",
+  "action:map-outside-now",
+  "action:map-what-changed",
+  "action:map-within-15",
   "action:map-radar",
   "action:map-roads",
   "action:map-cameras",

@@ -31,6 +31,15 @@ export async function GET() {
       feedTimestamp: result.feedTimestamp,
       feeds: result.feeds,
     },
-    { headers: { "Cache-Control": "no-store" } },
+    {
+      headers: {
+        // Browsers always revalidate the live answer. Vercel may briefly
+        // coalesce simultaneous map visitors so one crowd does not fan out
+        // into duplicate provider requests within the same few seconds.
+        "Cache-Control": "private, no-store",
+        "Vercel-CDN-Cache-Control":
+          "public, s-maxage=5, stale-while-revalidate=10",
+      },
+    },
   );
 }

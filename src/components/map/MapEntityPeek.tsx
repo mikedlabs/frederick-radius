@@ -12,6 +12,7 @@ import {
   TrainFront,
 } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import RestroomMark from "@/components/icons/RestroomMark";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { sizedImage } from "@/lib/format/img";
@@ -35,6 +36,17 @@ function eventWhen(startsAt: string): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  }).format(date);
+}
+
+function observedWhen(value?: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   }).format(date);
 }
 
@@ -120,6 +132,11 @@ export function MapRawPeek({
   const distance = distanceOrigin
     ? formatDistance(haversineMeters(distanceOrigin, { lat, lng }))
     : null;
+  const fieldPhoto = !isPlace ? item.photo : null;
+  const observed = !isPlace ? observedWhen(item.observed_at) : null;
+  const isRestroom =
+    category.toLowerCase().includes("restroom") ||
+    contextLabel?.toLowerCase().includes("restroom") === true;
 
   return (
     <MapResultSurface
@@ -137,9 +154,28 @@ export function MapRawPeek({
             color,
             background: `color-mix(in srgb, ${color} 11%, var(--app-bg-sunken))`,
           }}
-          aria-hidden
+          aria-hidden={!fieldPhoto || undefined}
         >
-          <MapPin className="h-7 w-7" strokeWidth={1.9} />
+          {fieldPhoto ? (
+            // Field and community photos are first-party evidence for the
+            // mapped point, not decorative catalog art. Show that evidence on
+            // the mobile surface instead of discarding it below desktop size.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fieldPhoto}
+              alt={`Field photo of ${item.name}`}
+              width={156}
+              height={156}
+              decoding="async"
+              className="map-raw-photo"
+            />
+          ) : (
+            isRestroom ? (
+              <RestroomMark className="h-8 w-8" strokeWidth={1.75} />
+            ) : (
+              <MapPin className="h-7 w-7" strokeWidth={1.9} />
+            )
+          )}
         </span>
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color }}>
@@ -150,6 +186,17 @@ export function MapRawPeek({
           {distance && <span className="map-peek-detail">{distance} from you</span>}
           {!isPlace && item.cuisine && (
             <span className="map-peek-detail">{item.cuisine}</span>
+          )}
+          {!isPlace && item.wheelchair && (
+            <span className="map-peek-detail">
+              Wheelchair access: {item.wheelchair === "yes" ? "mapped" : item.wheelchair}
+            </span>
+          )}
+          {!isPlace && item.outdoor_seating && (
+            <span className="map-peek-detail">Outdoor seating mapped</span>
+          )}
+          {observed && (
+            <span className="map-peek-detail">Observed {observed}</span>
           )}
           {source && (
             <a

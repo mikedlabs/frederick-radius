@@ -166,16 +166,20 @@ export default function BrowseMapClient({
     if (placeLoad.status !== "ready") return;
     let alive = true;
 
-    void loadMapLayers(["context"])
-      .then((payload) => {
-        if (alive) {
-          setDeferredLayers(payload);
-        }
-      })
-      .catch(() => {
-        // Optional layers have always failed soft. The committed place and
-        // county layers remain usable, and a later navigation retries.
-      });
+    // Committed place context and the small decision-signal snapshot load in
+    // parallel after the first usable map. The signal request carries only
+    // summarized weather, air, market, and road-trend facts; full road layers
+    // remain demand-loaded when someone asks for them.
+    for (const group of ["context", "signals"] as const) {
+      void loadMapLayers([group])
+        .then((payload) => {
+          if (alive) setDeferredLayers(payload);
+        })
+        .catch(() => {
+          // Optional layers have always failed soft. The committed place and
+          // county layers remain usable, and a later navigation retries.
+        });
+    }
 
     return () => {
       alive = false;

@@ -6,39 +6,35 @@ const TILE_PNG = Buffer.from(
   "base64",
 );
 
-/**
- * The guidance is intentionally driven by live weather on the real page.
- * Rewrite only the serialized server prop in a client-navigation Flight
- * response so this release contract remains deterministic on quiet-weather
- * CI runs. Starting on /today avoids buffering or altering streamed HTML.
+/** The guidance is driven by the same deferred signal snapshot as the map.
+ * Rewrite that JSON response so this remains deterministic on quiet-weather
+ * CI runs without depending on a private Next.js Flight serialization shape.
  */
 async function forceActiveWeatherAlert(page: Page) {
-  await page.route("**/map?*", async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (url.pathname !== "/map" || !url.searchParams.has("_rsc")) {
+  await page.route("**/api/map/layers?*", async (route) => {
+    const url = new URL(route.request().url());
+    const groups = (url.searchParams.get("groups") ?? "").split(",");
+    if (!groups.includes("signals")) {
       await route.continue();
       return;
     }
 
     const response = await route.fetch();
-    let html = await response.text();
-    const serializedFalse = '"activeWeatherAlert":false';
-    const serializedTrue = '"activeWeatherAlert":true';
-    const carriesSignal =
-      html.includes(serializedFalse) || html.includes(serializedTrue);
-    expect(carriesSignal).toBe(true);
-
-    html = html.replaceAll(serializedFalse, serializedTrue);
-    const headers = response.headers();
-    // route.fetch() gives us decoded text. Do not send the upstream encoding
-    // or byte count with the rewritten body or the browser cannot hydrate it.
-    delete headers["content-encoding"];
-    delete headers["content-length"];
+    const body = (await response.json()) as {
+      smartSignals?: Record<string, unknown> | null;
+    };
+    expect(body.smartSignals).not.toBeNull();
     await route.fulfill({
-      status: response.status(),
-      headers,
-      body: html,
+      response,
+      json: {
+        ...body,
+        smartSignals: {
+          ...body.smartSignals,
+          conditionsStatus: "current",
+          outdoorSafetyHold: null,
+          activeWeatherAlert: true,
+        },
+      },
     });
   });
 }
@@ -140,14 +136,14 @@ test.describe("mobile map guidance and legal furniture", () => {
     await expect(guidance).toBeHidden();
     await expect.poll(() => radarIndexRequests).toBeGreaterThan(0);
 
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     const options = page.getByRole("region", { name: "Choose what to see" });
     await options
-      .getByRole("button", { name: "Travel & conditions" })
+      .getByRole("button", { name: "Conditions" })
       .click();
     await expect(
       page
-        .getByRole("region", { name: "Travel & conditions" })
+        .getByRole("region", { name: "Conditions" })
         .getByRole("button", { name: "Radar" }),
     ).toHaveAttribute("aria-pressed", "true");
   });

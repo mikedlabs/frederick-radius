@@ -26,10 +26,10 @@ describe("map cold-open contract", () => {
     expect(browseClient).toContain(
       'if (placeLoad.status !== "ready") return;',
     );
-    expect(browseClient).toContain('loadMapLayers(["context"])');
+    expect(browseClient).toContain('for (const group of ["context", "signals"] as const)');
     expect(layerClient).toContain("fetch(`/api/map/layers?groups=");
     expect(browseClient.indexOf('if (placeLoad.status !== "ready") return;'))
-      .toBeLessThan(browseClient.indexOf('loadMapLayers(["context"])'));
+      .toBeLessThan(browseClient.indexOf('for (const group of ["context", "signals"] as const)'));
   });
 
   it("uses intent-gated provider groups and the durable event archive", () => {

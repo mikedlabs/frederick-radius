@@ -280,24 +280,24 @@ test("event filters and map layers acknowledge the tap before data work finishes
   });
 
   await page.goto("/map", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Choose what to see" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   await page
     .getByRole("region", { name: "Choose what to see" })
     .getByRole("button", {
-      name: "Check travel and live conditions",
+      name: /^Get around/,
     })
     .click();
   const transit = page
-    .getByRole("region", { name: "Travel & conditions" })
-    .getByRole("button", { name: /Transit/ });
+    .getByRole("region", { name: "Get around" })
+    .getByRole("button", { name: /Transit routes/ });
   await expect(transit).toHaveAttribute("aria-pressed", "false");
   await transit.click();
-  await expect(page.getByRole("region", { name: "Travel & conditions" })).toBeVisible({
+  await expect(page.getByRole("region", { name: "Get around" })).toBeVisible({
     timeout: 300,
   });
   await expect(
     page
-      .getByRole("region", { name: "Travel & conditions" })
-      .getByRole("button", { name: /Transit/ }),
+      .getByRole("region", { name: "Get around" })
+      .getByRole("button", { name: /Transit routes/ }),
   ).toHaveAttribute("aria-pressed", "true");
 });

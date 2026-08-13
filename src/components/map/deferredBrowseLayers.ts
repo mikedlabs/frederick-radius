@@ -22,6 +22,7 @@ const EMPTY_LINE_FC: MapLineFC = {
 
 export const MAP_LAYER_GROUPS = [
   "context",
+  "signals",
   "amenities",
   "events",
   "outdoors",
@@ -181,6 +182,9 @@ export function mergeDeferredBrowseLayerGroup(
       amenities: incoming.amenities,
       parking: incoming.parking,
     };
+  }
+  if (group === "signals") {
+    return { ...current, smartSignals: incoming.smartSignals };
   }
   if (group === "amenities") {
     return {

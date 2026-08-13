@@ -78,7 +78,16 @@ test.describe("mobile discovery shell", () => {
     await expect(mapFind).toHaveAttribute("id", "map-search-input", {
       timeout: 20_000,
     });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
     await expect(page.locator("[data-map-context-rail]")).toHaveCount(0);
+    await expect(page.locator(".map-live-bus-aggregate")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-live-bus-marker]")).toHaveCount(0);
     const coldDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     const coldMapBox = await page.locator(".dock-host").boundingBox();
     expect(coldDockBox?.y ?? 0).toBeGreaterThan(
@@ -88,7 +97,7 @@ test.describe("mobile discovery shell", () => {
     await expect(mapFind).toBeFocused();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    const contentsButton = page.getByRole("button", { name: "Browse map contents" });
+    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
     const locate = page.getByRole("button", { name: "Locate me on the map" });
@@ -123,20 +132,19 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane).toBeVisible();
     await expect(contentsPane).toBeFocused();
     await expect(
-      contentsPane.getByRole("button", { name: /^Find nearby/ }),
+      contentsPane.getByRole("button", { name: /^Near me/ }),
     ).toBeVisible();
-    await expect(contentsPane.getByRole("button", { name: /^Today & tonight/ })).toBeVisible();
-    await expect(contentsPane.getByRole("button", { name: /^See Frederick details/ })).toBeVisible();
-    await expect(contentsPane.getByText("Ready-made views", { exact: true })).toBeVisible();
-    await expect(
-      contentsPane.getByRole("group", { name: "Ready-made map views" }),
-    ).toBeHidden();
-    await contentsPane.getByText("Ready-made views", { exact: true }).click();
-    const readyViews = contentsPane.getByRole("group", {
-      name: "Ready-made map views",
-    });
-    await expect(readyViews).toBeVisible();
-    await readyViews.getByRole("button", { name: /^Buses now\./ }).click();
+    await expect(contentsPane.getByRole("button", { name: /^Happening/ })).toBeVisible();
+    await expect(contentsPane.getByRole("button", { name: /^Get around/ })).toBeVisible();
+    await expect(contentsPane.getByRole("button", { name: /^Conditions/ })).toBeVisible();
+    await expect(contentsPane.getByRole("button", { name: /^What changed/ })).toBeVisible();
+    await expect(contentsPane.getByRole("button", { name: /^More/ })).toBeVisible();
+    await expect(contentsPane.getByText("Ready-made views", { exact: true })).toHaveCount(0);
+    await contentsPane.getByRole("button", { name: /^Get around/ }).click();
+    await page
+      .getByRole("region", { name: "Get around" })
+      .getByRole("button", { name: /^Buses now\./ })
+      .click();
     await expect(page).toHaveURL(/show=transit/);
     await expect(page).toHaveURL(/scene=buses-now/);
     await expect(page.getByRole("group", { name: "Current map view" })).toContainText(
@@ -149,29 +157,29 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane).toBeVisible();
 
     await contentsPane
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
-    const layersPane = page.getByRole("region", { name: "Travel & conditions" });
+    const layersPane = page.getByRole("region", { name: "Get around" });
     await expect(layersPane).toBeVisible();
     await expect(layersPane.getByRole("button", { name: /Transit/ })).toBeVisible();
-    await expect(layersPane.getByRole("button", { name: /Radar/ })).toBeVisible();
+    await expect(layersPane.getByRole("button", { name: /Radar/ })).toHaveCount(0);
     await expect(layersPane.getByRole("button", { name: "Back" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
     await expect(layersPane.getByRole("button", { name: /Trails/ })).toHaveCount(0);
     await layersPane.getByRole("button", { name: "Back" }).click();
-    await contentsPane.getByRole("button", { name: /^See Frederick details/ }).click();
-    const localLayersPane = page.getByRole("region", { name: "Frederick details" });
+    await contentsPane.getByRole("button", { name: /^More/ }).click();
+    const localLayersPane = page.getByRole("region", { name: "More map details" });
     await expect(localLayersPane).toBeVisible();
     await expect(localLayersPane.getByRole("button", { name: /Trails/ })).toBeVisible();
     await localLayersPane.getByRole("button", { name: "Back" }).click();
-    await contentsPane.getByRole("button", { name: /^Travel & conditions/ }).click();
+    await contentsPane.getByRole("button", { name: /^Get around/ }).click();
     const transit = layersPane.getByRole("button", { name: /Transit/ });
     await expect(transit).toHaveAttribute("aria-pressed", "false");
     await transit.click();
     await expect(layersPane).toBeVisible();
     await layersPane.getByRole("button", { name: "Done" }).click();
     await expect(contentsButton).toBeFocused();
-    await expect(contentsButton).toContainText("Browse");
+    await expect(contentsButton).toContainText("What to see");
     // Active state is explained in words by the context rail. The old
     // unitless count badge was deliberately removed from the Browse control.
     await expect(contentsButton.locator(".dock-layer-count")).toHaveCount(0);
@@ -227,9 +235,9 @@ test.describe("mobile discovery shell", () => {
     await contentsButton.click();
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
-    const reopenedLayersPane = page.getByRole("region", { name: "Travel & conditions" });
+    const reopenedLayersPane = page.getByRole("region", { name: "Get around" });
     await expect(
       reopenedLayersPane.getByRole("button", { name: /Transit/ }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -248,7 +256,7 @@ test.describe("mobile discovery shell", () => {
       name: "Choose what to see",
     });
     await finalContentsPane
-      .getByRole("button", { name: /^Find nearby/ })
+      .getByRole("button", { name: /^Near me/ })
       .click();
     const placesPane = page.getByRole("region", { name: "Find nearby" });
     await expect(placesPane).toBeVisible();
@@ -386,7 +394,7 @@ test.describe("mobile discovery shell", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const contentsButton = page.getByRole("button", { name: "Browse map contents" });
+    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     const dockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     expect(dockBox?.height ?? 999).toBeLessThanOrEqual(60);
@@ -410,9 +418,9 @@ test.describe("mobile discovery shell", () => {
 
     const paneScroll = page.locator("#dock-pane .dock-pane-scroll");
     await pane
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
-    const layersPane = page.getByRole("region", { name: "Travel & conditions" });
+    const layersPane = page.getByRole("region", { name: "Get around" });
     await expect(layersPane).toBeVisible();
     const layersPaneBox = await layersPane.boundingBox();
     expect((layersPaneBox?.height ?? 999) / (mapBox?.height ?? 1)).toBeLessThanOrEqual(0.72);
@@ -425,7 +433,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const regularContents = page.getByRole("button", { name: "Browse map contents" });
+    const regularContents = page.getByRole("button", { name: "Choose what to see on this map" });
     await regularContents.click();
     const regularMapBox = await page.locator(".dock-host").boundingBox();
     const regularContentsBox = await page
@@ -442,10 +450,10 @@ test.describe("mobile discovery shell", () => {
     ).toBeLessThanOrEqual(1);
     await page
       .getByRole("region", { name: "Choose what to see" })
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
     const regularLayersBox = await page
-      .getByRole("region", { name: "Travel & conditions" })
+      .getByRole("region", { name: "Get around" })
       .boundingBox();
     expect(
       (regularLayersBox?.height ?? 999) / (regularMapBox?.height ?? 1),
@@ -454,7 +462,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 844, height: 390 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const landscapeContents = page.getByRole("button", { name: "Browse map contents" });
+    const landscapeContents = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(landscapeContents).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Search this map" })).toBeVisible();
     await landscapeContents.click();
@@ -505,12 +513,12 @@ test.describe("mobile discovery shell", () => {
       "ready",
       { timeout: 20_000 },
     );
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
     await page
-      .getByRole("region", { name: "Travel & conditions" })
+      .getByRole("region", { name: "Get around" })
       .getByRole("button", { name: "Clear layers" })
       .click();
     await expect(page).not.toHaveURL(/amenity=/);
@@ -522,19 +530,19 @@ test.describe("mobile discovery shell", () => {
     );
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).not.toHaveURL(/amenity=|show=|layers=/);
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
     await expect(
-      page.getByRole("region", { name: "Travel & conditions" }).getByRole("button", {
+      page.getByRole("region", { name: "Get around" }).getByRole("button", {
         name: /Transit/,
       }),
     ).toHaveAttribute("aria-pressed", "false");
-    await page.getByRole("region", { name: "Travel & conditions" }).getByRole("button", { name: "Back" }).click();
-    await page.getByRole("region", { name: "Choose what to see" }).getByRole("button", { name: /^See Frederick details/ }).click();
+    await page.getByRole("region", { name: "Get around" }).getByRole("button", { name: "Back" }).click();
+    await page.getByRole("region", { name: "Choose what to see" }).getByRole("button", { name: /^More/ }).click();
     await expect(
-      page.getByRole("region", { name: "Frederick details" }).getByRole("button", {
+      page.getByRole("region", { name: "More map details" }).getByRole("button", {
         name: /Public art/,
       }),
     ).toHaveCount(0);
@@ -542,12 +550,12 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?at=39.4142,-77.4105&show=transit", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Browse map contents" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
-      .getByRole("button", { name: /^Travel & conditions/ })
+      .getByRole("button", { name: /^Get around/ })
       .click();
     await expect(
-      page.getByRole("region", { name: "Travel & conditions" }).getByRole("button", {
+      page.getByRole("region", { name: "Get around" }).getByRole("button", {
         name: /Transit/,
       }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -556,10 +564,10 @@ test.describe("mobile discovery shell", () => {
       waitUntil: "domcontentloaded",
     });
     await expect(page).toHaveURL(/layers=art/);
-    await page.getByRole("button", { name: "Browse map contents" }).click();
-    await page.getByRole("button", { name: /^See Frederick details/ }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: /^More/ }).click();
     await expect(
-      page.getByRole("region", { name: "Frederick details" }).getByRole("button", {
+      page.getByRole("region", { name: "More map details" }).getByRole("button", {
         name: /Public art/,
       }),
     ).toHaveCount(0);
@@ -591,8 +599,8 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?music=tonight&t=weekend", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Browse map contents" }).click();
-    await page.getByRole("button", { name: /^Today & tonight/ }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+    await page.getByRole("button", { name: /^Happening/ }).click();
 
     // The active music lens keeps Tonight reachable even when the event count
     // is zero. Other windows may appear only when they have real inventory.

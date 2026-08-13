@@ -247,10 +247,12 @@ type Tween =
 
 export default function LiveBuses({
   show,
+  preview = false,
   compactOverview = false,
   overviewZoom = null,
   showInlineStatus = true,
   onExpandOverview,
+  onEnterTransitMode,
   highlightRouteId,
   focusVehicleId,
   focusRequestId,
@@ -258,6 +260,9 @@ export default function LiveBuses({
   onHealthChange,
 }: {
   show: boolean;
+  /** Ambient county-map mode: live vehicles are visible, while route lines,
+   * stops, and MARC remain off until the rider deliberately enters Transit. */
+  preview?: boolean;
   /** County browse maps collapse the vehicle knot at broad zoom. Embedded
    * transit maps retain their existing per-vehicle presentation. */
   compactOverview?: boolean;
@@ -267,6 +272,8 @@ export default function LiveBuses({
   onExpandOverview?: (
     bounds: [[number, number], [number, number]],
   ) => void;
+  /** Promotes the ambient preview into the complete transit map. */
+  onEnterTransitMode?: () => void;
   highlightRouteId?: string;
   focusVehicleId?: string;
   focusRequestId?: number;
@@ -282,11 +289,13 @@ export default function LiveBuses({
   if (!show) return null;
   return (
     <VisibleLiveBuses
+      preview={preview}
       highlightRouteId={highlightRouteId}
       compactOverview={compactOverview}
       overviewZoom={overviewZoom}
       showInlineStatus={showInlineStatus}
       onExpandOverview={onExpandOverview}
+      onEnterTransitMode={onEnterTransitMode}
       focusVehicleId={focusVehicleId}
       focusRequestId={focusRequestId}
       gate={gate}
@@ -296,16 +305,19 @@ export default function LiveBuses({
 }
 
 function VisibleLiveBuses({
+  preview,
   highlightRouteId,
   compactOverview,
   overviewZoom,
   showInlineStatus,
   onExpandOverview,
+  onEnterTransitMode,
   focusVehicleId,
   focusRequestId,
   gate,
   onHealthChange,
 }: {
+  preview: boolean;
   highlightRouteId?: string;
   compactOverview: boolean;
   overviewZoom: number | null;
@@ -313,6 +325,7 @@ function VisibleLiveBuses({
   onExpandOverview?: (
     bounds: [[number, number], [number, number]],
   ) => void;
+  onEnterTransitMode?: () => void;
   focusVehicleId?: string;
   focusRequestId?: number;
   gate?: LiveLayerGate;
@@ -370,12 +383,15 @@ function VisibleLiveBuses({
       ? focusedVehicle.vehicleId
       : selected;
 
+  // The ambient map signal is intentionally one aggregate at every zoom.
+  // Expanding it into fifteen moving controls beside a selected place made
+  // the preview compete with the task the person had actually chosen. The
+  // complete Transit view still reveals every vehicle, route, and stop.
   const aggregateOverview =
-    compactOverview &&
     activeSelected == null &&
-    overviewZoom !== null &&
-    overviewZoom < 11.6 &&
-    vehicles.length > 1;
+    vehicles.length > 1 &&
+    (preview ||
+      (compactOverview && overviewZoom !== null && overviewZoom < 11.6));
   const aggregateCenter = aggregateOverview
     ? {
         lng: vehicles.reduce((sum, vehicle) => sum + vehicle.lng, 0) / vehicles.length,
@@ -680,12 +696,16 @@ function VisibleLiveBuses({
             data-delayed={effectiveFeedStatus === "stale" || undefined}
             aria-label={
               effectiveFeedStatus === "stale"
-                ? `${vehicles.length} buses last reported. Feed delayed. Zoom in to see routes.`
-                : `${vehicles.length} live buses. Zoom in to see routes.`
+                ? `${vehicles.length} buses last reported. Feed delayed.${preview ? " Open the transit map for routes and stops." : " Zoom in to see routes."}`
+                : `${vehicles.length} live buses.${preview ? " Open the transit map for routes and stops." : " Zoom in to see routes."}`
             }
             onClick={(event) => {
               event.stopPropagation();
               haptic("light");
+              if (preview) {
+                onEnterTransitMode?.();
+                return;
+              }
               onExpandOverview?.([
                 [
                   Math.min(...vehicles.map((vehicle) => vehicle.lng)),

@@ -13,9 +13,10 @@ import {
   isInFrederickCounty,
 } from "@/components/map/constants";
 import {
-  Trash2, Recycle, Droplet, Armchair, Zap, Plug, PawPrint, Dog, Toilet, Plus,
+  Trash2, Recycle, Droplet, Armchair, Zap, Plug, PawPrint, Dog, Plus,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 
 /** Fixed picker types. kind matches the AmenityKind union + /api/collect's
  *  allow-list; Icon + label are the one-tap picker; color tints the dot.
@@ -29,7 +30,7 @@ const TYPES: { kind: string; label: string; Icon: LucideIcon; color: string }[] 
   { kind: "outlet", label: "Outlet", Icon: Plug, color: "#4A4A48" },
   { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "#285D73" },
   { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "#315A43" },
-  { kind: "restroom", label: "Restroom", Icon: Toilet, color: "#285D73" },
+  { kind: "restroom", label: "Restroom", Icon: RestroomMark, color: "#285D73" },
   { kind: "other", label: "Other", Icon: Plus, color: "#B5462B" },
 ];
 const COLOR_FOR = (kind: string) => TYPES.find((t) => t.kind === kind)?.color ?? "#B5462B";

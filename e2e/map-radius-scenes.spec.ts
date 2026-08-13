@@ -6,7 +6,7 @@ test.use({
   permissions: ["geolocation"],
 });
 
-test("Radius ready-made views compose an honest, shareable mobile map", async ({
+test("Radius task views compose an honest, shareable mobile map", async ({
   page,
 }) => {
   // This journey deliberately reloads the map after exercising several
@@ -35,13 +35,17 @@ test("Radius ready-made views compose an honest, shareable mobile map", async ({
     timeout: 20_000,
   });
 
-  const browse = page.getByRole("button", { name: "Browse map contents" });
+  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
   await browse.click();
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await expect(chooser.getByText("Ready-made views", { exact: true })).toBeVisible();
+  const chooser = page.locator("#dock-pane");
+  await expect(chooser).toHaveAccessibleName("Choose what to see");
+  await expect(chooser.getByRole("button", { name: /^Near me/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Get around/ })).toBeVisible();
+  await expect(chooser.getByText("Ready-made views", { exact: true })).toHaveCount(0);
 
   // WebGL pins have a real HTML path: collapsed by default, then named,
   // keyboard-operable results with phone-sized targets when requested.
+  await chooser.getByRole("button", { name: /^Near me/ }).click();
   const placesInView = chooser.locator("[data-map-in-view-places]");
   await expect(placesInView).toBeVisible();
   await expect(placesInView.locator("details")).not.toHaveAttribute("open", "");
@@ -50,11 +54,12 @@ test("Radius ready-made views compose an honest, shareable mobile map", async ({
   await expect(firstPlaceResult).toBeVisible();
   expect((await firstPlaceResult.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
 
-  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await chooser.getByRole("button", { name: "Back" }).click();
+  await chooser.getByRole("button", { name: /^Get around/ }).click();
   const sceneButtons = chooser.getByRole("group", {
-    name: "Ready-made map views",
+    name: "Travel map views",
   }).getByRole("button");
-  await expect(sceneButtons).toHaveCount(5);
+  await expect(sceneButtons).toHaveCount(3);
   for (const control of await sceneButtons.all()) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -86,7 +91,7 @@ test("Radius ready-made views compose an honest, shareable mobile map", async ({
   // person's original setup. Transit must not leak into tomorrow's map.
   await browse.click();
   await chooser
-    .getByRole("button", { name: /^Travel & conditions/ })
+    .getByRole("button", { name: /^Get around/ })
     .click();
   await page.getByRole("button", { name: /^Parking/ }).click();
   await expect(host).not.toHaveAttribute("data-map-scene", "buses-now");
@@ -100,9 +105,9 @@ test("Radius ready-made views compose an honest, shareable mobile map", async ({
 
   // A Radius view is a reproducible map state, not just a local animation.
   await page.getByRole("button", { name: "Back" }).click();
-  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await chooser.getByRole("button", { name: /^Get around/ }).click();
   await chooser
-    .getByRole("group", { name: "Ready-made map views" })
+    .getByRole("group", { name: "Travel map views" })
     .getByRole("button", { name: /^Buses now\./ })
     .click();
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -119,7 +124,7 @@ test("Radius ready-made views compose an honest, shareable mobile map", async ({
     .toBe('{"parking":true,"radar":true}');
 });
 
-test("ready-made views remain usable on a narrow phone", async ({ page }) => {
+test("task views remain usable on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/map", { waitUntil: "domcontentloaded" });
 
@@ -127,11 +132,10 @@ test("ready-made views remain usable on a narrow phone", async ({ page }) => {
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Browse map contents" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
 
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  const chooser = page.locator("#dock-pane");
   await expect(chooser).toBeVisible();
-  await chooser.getByText("Ready-made views", { exact: true }).click();
   await page.waitForTimeout(350);
   const chooserBox = await chooser.boundingBox();
   expect(chooserBox?.x ?? -1).toBeGreaterThanOrEqual(0);
@@ -139,14 +143,9 @@ test("ready-made views remain usable on a narrow phone", async ({ page }) => {
     320,
   );
 
-  const sceneButtons = chooser
-    .getByRole("group", { name: "Ready-made map views" })
-    .getByRole("button");
-  await expect(sceneButtons).toHaveCount(5);
-  await expect(
-    chooser.getByRole("button", { name: /^What changed\?/ }),
-  ).toContainText("Check now");
-  for (const control of await sceneButtons.all()) {
+  const taskButtons = chooser.locator(".dock-content-primary").getByRole("button");
+  await expect(taskButtons).toHaveCount(5);
+  for (const control of await taskButtons.all()) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
@@ -228,12 +227,9 @@ test("What changed keeps City project lifecycle and source context visible", asy
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Browse map contents" }).click();
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByText("Ready-made views", { exact: true }).click();
-  await chooser
-    .getByRole("button", { name: /^What changed\?/ })
-    .click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  const chooser = page.locator("#dock-pane");
+  await chooser.getByRole("button", { name: /^What changed/ }).click();
 
   await expect(host).toHaveAttribute("data-map-scene", "what-changed");
   await expect
@@ -346,9 +342,9 @@ test("Outside now reveals City walking records without adding another map contro
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Browse map contents" }).click();
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  const chooser = page.locator("#dock-pane");
+  await chooser.getByRole("button", { name: /^Conditions/ }).click();
   await chooser
     .getByRole("button", { name: /^Outside now\./ })
     .click();

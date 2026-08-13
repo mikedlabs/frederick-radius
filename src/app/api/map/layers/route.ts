@@ -128,6 +128,7 @@ export async function GET(request: Request) {
   const now = new Date();
   const groups = parseMapLayerGroups(canonicalGroup);
   const wants = (group: MapLayerGroup) => groups.has(group);
+  const needsSignals = wants("signals") || wants("roads");
   const needsPlaces = wants("context") || wants("amenities");
   const allPlaces = needsPlaces ? mapPinPlaces(now) : [];
 
@@ -151,21 +152,21 @@ export async function GET(request: Request) {
     parkingOccupancy,
     eventSnapshot,
   ] = await Promise.all([
-    wants("roads")
+    needsSignals
       ? withDeadlineFallback<CurrentSituationSnapshot | null>(
           getCurrentSituationSnapshot(),
           4_500,
           null,
         )
       : Promise.resolve(null),
-    wants("roads")
+    needsSignals
       ? withDeadlineFallback<RoadIntelligenceSnapshot | null>(
           getRoadIntelligenceSnapshot(),
           4_500,
           null,
         )
       : Promise.resolve(null),
-    wants("roads")
+    needsSignals
       ? withDeadlineFallback(marketsOpenToday(now), 4_500, [])
       : Promise.resolve([]),
     wants("amenities")
@@ -205,7 +206,7 @@ export async function GET(request: Request) {
     wants("outdoors")
       ? withDeadlineFallback(getHistoricCemeteries(), 3_000, [])
       : Promise.resolve([]),
-    wants("amenities")
+    wants("context") || wants("amenities")
       ? withDeadlineFallback(getFieldAmenities(), 3_000, [])
       : Promise.resolve([]),
     wants("amenities")
@@ -248,15 +249,24 @@ export async function GET(request: Request) {
       ]
     : [];
 
-  const riverGaugeAmenities: Amenity[] = waterSites.map((site) => ({
-    id: `usgs:${site.id}`,
-    kind: "river_gauge" as const,
-    name: site.river ? `${site.river} gauge` : "USGS gauge",
-    detail: site.name,
-    municipality: site.municipality,
-    lng: site.lng,
-    lat: site.lat,
-  }));
+  const riverGaugeAmenities: Amenity[] = waterSites.map((site) => {
+    const readings = [
+      site.gageHeightFt != null ? `${site.gageHeightFt.toFixed(2)} ft gauge height` : null,
+      site.streamflowCfs != null
+        ? `${Math.round(site.streamflowCfs).toLocaleString("en-US")} ft³/s flow`
+        : null,
+    ].filter((value): value is string => Boolean(value));
+    return {
+      id: `usgs:${site.id}`,
+      kind: "river_gauge" as const,
+      name: site.river ? `${site.river} gauge` : "USGS gauge",
+      detail: readings.length > 0 ? readings.join(" · ") : site.name,
+      municipality: site.municipality,
+      lng: site.lng,
+      lat: site.lat,
+      observedAt: site.observedAt,
+    };
+  });
   const evChargingAmenities: Amenity[] = evStations.map((station) => ({
     id: `mdev:${station.id}`,
     kind: "ev_charging" as const,
@@ -436,12 +446,12 @@ export async function GET(request: Request) {
     cemeteries,
     parking,
     weekEvents,
-    roadWorkZones: roadIntelligence
+    roadWorkZones: wants("roads") && roadIntelligence
       ? selectRoadWorkZoneFeatureCollection(roadIntelligence)
       : { type: "FeatureCollection", features: [] },
     floodContext,
     snowRoutes,
-    smartSignals: wants("roads")
+    smartSignals: needsSignals
       ? {
           conditionsStatus,
           outdoorSafetyHold:

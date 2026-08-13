@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Toilet, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, CloudSun, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -49,6 +50,11 @@ import type {
   ResolvedRadiusScene,
 } from "./radiusScenes";
 import type { LiveBusLayerSnapshot } from "./LiveBuses";
+
+export type TransitAlertSnapshot = {
+  status: "loading" | "ready" | "empty" | "stale" | "error";
+  count: number;
+};
 import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
@@ -60,7 +66,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 };
 
 const ESSENTIAL_ICONS: Record<string, LucideIcon> = {
-  restroom: Toilet,
+  restroom: RestroomMark,
   water: Droplets,
   trash: Trash2,
   dog: Dog,
@@ -96,7 +102,7 @@ const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
 
 /** The map begins as an observation surface. These controls are revealed only
  *  after a person opens Browse; none compete with the county on load. */
-type Pane = "contents" | "what" | "amenities" | "when" | "where" | "discover" | "layers" | "localLayers";
+type Pane = "contents" | "what" | "amenities" | "when" | "where" | "discover" | "layers" | "conditions" | "localLayers";
 type PlaceReveal = "categories";
 
 /** Where the camera is pointed, per the user's own choice in the Where
@@ -202,6 +208,9 @@ export type MapDockProps = {
   /** Current vehicle-feed state while Transit is visible. Kept separate from
    * the static route health so the interface never calls a route line live. */
   liveBusSnapshot: LiveBusLayerSnapshot | null;
+  /** Provider-published service bulletins. Empty is not presented as a
+   * blanket promise that the network is running normally. */
+  transitAlertSnapshot: TransitAlertSnapshot | null;
   trailCount: number;
   showTrails: boolean;
   setShowTrails: SetState<boolean>;
@@ -1147,10 +1156,34 @@ export default function MapDock(props: MapDockProps) {
     : pane === "when" ? "Today & tonight"
     : pane === "where" ? "Choose an area"
     : pane === "discover" ? "Highlights"
-    : pane === "layers" ? "Travel & conditions"
-    : pane === "localLayers" ? "Frederick details"
+    : pane === "layers" ? "Get around"
+    : pane === "conditions" ? "Conditions"
+    : pane === "localLayers" ? "More map details"
     : "";
-  const isLayerPane = pane === "layers" || pane === "localLayers";
+  const isLayerPane = pane === "layers" || pane === "conditions" || pane === "localLayers";
+
+  const liveBusPositionLine =
+    props.liveBusSnapshot?.status === "ready" ||
+    props.liveBusSnapshot?.status === "degraded"
+      ? `${props.liveBusSnapshot.count} ${props.liveBusSnapshot.count === 1 ? "bus" : "buses"} reporting now`
+      : props.liveBusSnapshot?.status === "stale"
+        ? "Bus positions are delayed"
+        : props.liveBusSnapshot?.status === "empty"
+          ? "No buses reporting right now"
+          : props.liveBusSnapshot?.status === "error"
+            ? "Live bus positions are unavailable"
+            : "Checking live buses";
+  const liveBusLine =
+    props.transitAlertSnapshot?.status === "ready" &&
+    props.transitAlertSnapshot.count > 0
+      ? `${liveBusPositionLine} · ${props.transitAlertSnapshot.count} service ${props.transitAlertSnapshot.count === 1 ? "bulletin" : "bulletins"}`
+      : liveBusPositionLine;
+  const whatChangedScene = props.radiusScenes.find(
+    (scene) => scene.definition.id === "what-changed",
+  );
+  const whatChangedUnavailable =
+    whatChangedScene?.availability.status === "unavailable" &&
+    !whatChangedScene.availability.canActivate;
 
   const togglePlaceReveal = (next: PlaceReveal) => {
     setPlaceReveal((current) => (current === next ? null : next));
@@ -1212,6 +1245,44 @@ export default function MapDock(props: MapDockProps) {
         // share and clipboard APIs are unavailable.
       }
     }
+  };
+
+  const sceneButton = (id: RadiusSceneId) => {
+    const scene = props.radiusScenes.find(
+      (candidate) => candidate.definition.id === id,
+    );
+    if (!scene) return null;
+    const Icon = SCENE_ICONS[id];
+    const active = props.activeRadiusSceneId === id;
+    const unavailable =
+      scene.availability.status === "unavailable" &&
+      !scene.availability.canActivate;
+    return (
+      <button
+        key={id}
+        type="button"
+        className="dock-scene"
+        data-on={active || undefined}
+        data-status={scene.availability.status}
+        aria-pressed={active}
+        disabled={unavailable}
+        aria-label={`${scene.definition.label}. ${scene.availability.reason}`}
+        title={scene.availability.reason}
+        onClick={() => {
+          if (active) props.onExitRadiusScene();
+          else props.onRadiusScene(id);
+          closePane();
+        }}
+      >
+        <span className="dock-scene-icon" aria-hidden>
+          <Icon className="h-[17px] w-[17px]" strokeWidth={2.15} />
+        </span>
+        <span className="dock-scene-copy">
+          <strong>{scene.definition.label}</strong>
+          <small>{radiusSceneStatus(scene)}</small>
+        </span>
+      </button>
+    );
   };
 
   const visibleSearchMatches = props.searchMatches.slice(0, searchResultLimit);
@@ -1443,7 +1514,7 @@ export default function MapDock(props: MapDockProps) {
                 // moment the eye is on it. No questions promised here — the
                 // Ask handoff isn't wired to this box, and a signifier must
                 // not overpromise.
-                placeholder="Search this map"
+                placeholder="Coffee, events, restrooms…"
                 aria-label="Search this map"
                 role="combobox"
                 aria-autocomplete="list"
@@ -1735,13 +1806,13 @@ export default function MapDock(props: MapDockProps) {
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label="Browse map contents"
-            title={contentsSummary}
+            aria-label="Choose what to see on this map"
+            title={`Choose what to see on this map. ${contentsSummary}`}
             onClick={() => togglePane("contents")}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
-              Browse
+              What to see
             </span>
             {/* No numeral badge: data-on already tints the button and the
                 context rail states the same state IN WORDS ("Downtown ·
@@ -1846,8 +1917,8 @@ export default function MapDock(props: MapDockProps) {
                     <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Find nearby</strong>
-                    <small>Places, public essentials, and travel reach</small>
+                    <strong>Near me</strong>
+                    <small>Food, coffee, parks, and public essentials</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1861,7 +1932,7 @@ export default function MapDock(props: MapDockProps) {
                     <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Today &amp; tonight</strong>
+                    <strong>Happening</strong>
                     <small>{timeActive ? when.text : "Events, open places, music, and deals"}</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -1873,14 +1944,12 @@ export default function MapDock(props: MapDockProps) {
                   onClick={() => openContentsPane("layers")}
                 >
                   <span className="dock-content-icon" aria-hidden>
-                    <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    <BusFront className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Travel &amp; conditions</strong>
+                    <strong>Get around</strong>
                     <small>
-                      {visibleLayerCount > 0
-                        ? `${visibleLayerCount} ${visibleLayerCount === 1 ? "layer" : "layers"} showing`
-                        : "Traffic, transit, parking, radar, and alerts"}
+                      {liveBusLine}
                     </small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -1888,82 +1957,45 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
-                  data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
-                  onClick={() => openContentsPane("localLayers")}
+                  data-on={(props.showRadar || props.roadsNowActive) || undefined}
+                  onClick={() => openContentsPane("conditions")}
                 >
                   <span className="dock-content-icon" aria-hidden>
-                    <Trees className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    <CloudSun className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>See Frederick details</strong>
-                    <small>Trails and history on the map, with your saved places</small>
+                    <strong>Conditions</strong>
+                    <small>Weather, radar, roads, and outdoor context</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row dock-content-row-primary"
+                  data-on={props.activeRadiusSceneId === "what-changed" || undefined}
+                  disabled={whatChangedUnavailable}
+                  onClick={() => {
+                    if (!whatChangedScene || whatChangedUnavailable) return;
+                    if (props.activeRadiusSceneId === "what-changed") props.onExitRadiusScene();
+                    else props.onRadiusScene("what-changed");
+                    closePane();
+                  }}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <History className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>What changed</strong>
+                    <small>
+                      {whatChangedScene
+                        ? radiusSceneStatus(whatChangedScene)
+                        : "Projects, civic records, and recent changes"}
+                    </small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
                 </div>
-                <MapInViewPlacesDisclosure
-                  places={props.placesInView}
-                  sortOrigin={props.placesInViewOrigin}
-                  selectedSlug={props.selectedPlaceSlug}
-                  onPick={(place) => {
-                    props.onPickPlaceInView(place);
-                    closePane();
-                  }}
-                />
-                <details className="dock-ready-views">
-                  <summary>
-                    <span className="dock-content-icon" aria-hidden>
-                      <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                    </span>
-                    <span className="dock-content-copy">
-                      <strong>Ready-made views</strong>
-                      <small>Live buses, road conditions, outdoors, and more</small>
-                    </span>
-                    <ChevronDown className="dock-ready-views-chevron h-4 w-4" strokeWidth={2.2} aria-hidden />
-                  </summary>
-                  <section className="dock-scenes" aria-labelledby="dock-scenes-title">
-                    <div className="dock-scenes-heading">
-                      <span id="dock-scenes-title">Choose a view</span>
-                      <small>Radius sets up the map.</small>
-                    </div>
-                    <div className="dock-scene-grid" role="group" aria-label="Ready-made map views">
-                      {props.radiusScenes.map((scene) => {
-                        const Icon = SCENE_ICONS[scene.definition.id];
-                        const active = props.activeRadiusSceneId === scene.definition.id;
-                        const unavailable =
-                          scene.availability.status === "unavailable" &&
-                          !scene.availability.canActivate;
-                        return (
-                          <button
-                            key={scene.definition.id}
-                            type="button"
-                            className="dock-scene"
-                            data-on={active || undefined}
-                            data-status={scene.availability.status}
-                            aria-pressed={active}
-                            disabled={unavailable}
-                            aria-label={`${scene.definition.label}${/[.!?]$/.test(scene.definition.label) ? "" : "."} ${scene.availability.reason}`}
-                            title={scene.availability.reason}
-                            onClick={() => {
-                              if (active) props.onExitRadiusScene();
-                              else props.onRadiusScene(scene.definition.id);
-                              closePane();
-                            }}
-                          >
-                            <span className="dock-scene-icon" aria-hidden>
-                              <Icon className="h-[17px] w-[17px]" strokeWidth={2.15} />
-                            </span>
-                            <span className="dock-scene-copy">
-                              <strong>{scene.definition.label}</strong>
-                              <small>{radiusSceneStatus(scene)}</small>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                </details>
-                <div className="dock-content-secondary" aria-label="Map area and sharing">
+                <div className="dock-content-secondary" aria-label="More map choices">
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"
@@ -1976,6 +2008,21 @@ export default function MapDock(props: MapDockProps) {
                     <span className="dock-content-copy">
                       <strong>Area</strong>
                       <small>{whereText}</small>
+                    </span>
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="dock-content-row dock-content-row-secondary"
+                    data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
+                    onClick={() => openContentsPane("localLayers")}
+                  >
+                    <span className="dock-content-icon" aria-hidden>
+                      <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-content-copy">
+                      <strong>More</strong>
+                      <small>Map details</small>
                     </span>
                     <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                   </button>
@@ -2112,7 +2159,7 @@ export default function MapDock(props: MapDockProps) {
                     }}
                   >
                     <span className="dock-content-icon" aria-hidden>
-                      <Toilet className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                      <MapPin className="h-[18px] w-[18px]" strokeWidth={2.1} />
                     </span>
                     <span className="dock-reveal-copy">
                       <strong>Nearby essentials</strong>
@@ -2199,6 +2246,16 @@ export default function MapDock(props: MapDockProps) {
                     </div>
                   ))}
                 </div>
+
+                <MapInViewPlacesDisclosure
+                  places={props.placesInView}
+                  sortOrigin={props.placesInViewOrigin}
+                  selectedSlug={props.selectedPlaceSlug}
+                  onPick={(place) => {
+                    props.onPickPlaceInView(place);
+                    closePane();
+                  }}
+                />
 
               </div>
             )}
@@ -2373,16 +2430,26 @@ export default function MapDock(props: MapDockProps) {
               </div>
             )}
 
-            {/* ── LAYERS — the map drapes + personal lenses + the Key, folded in
-                from the old bottom-left tray. ── */}
-            {pane === "layers" && (
+            {/* Travel and conditions are outcome-first. The scene buttons set
+                up a useful map; raw switches sit below as optional fine tune. */}
+            {(pane === "layers" || pane === "conditions") && (
               <div>
-                {/* Put decisions with immediate consequences before the
-                    archival and exploratory layers. An active layer explains
-                    what it is showing and where the information comes from. */}
-                <Sect>Useful now</Sect>
+                <Sect>{pane === "layers" ? "Choose a travel view" : "Choose a conditions view"}</Sect>
+                <div className="dock-scene-grid" role="group" aria-label={pane === "layers" ? "Travel map views" : "Conditions map views"}>
+                  {pane === "layers" ? (
+                    <>
+                      {sceneButton("buses-now")}
+                      {sceneButton("roads-now")}
+                      {sceneButton("within-15-minutes")}
+                    </>
+                  ) : (
+                    <>{sceneButton("outside-now")}</>
+                  )}
+                </div>
+
+                <Sect>Fine tune this view</Sect>
                 <div className="dock-chips">
-                  {(props.parkingCount > 0 || props.providerLayersAvailable) && (
+                  {pane === "layers" && (props.parkingCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showParking}
                       color="var(--app-cool)"
@@ -2393,17 +2460,17 @@ export default function MapDock(props: MapDockProps) {
                       Parking
                     </Chip>
                   )}
-                  {(props.transitHealth.status !== "unavailable" || props.providerLayersAvailable) && (
+                  {pane === "layers" && (props.transitHealth.status !== "unavailable" || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showTransit}
                       color="var(--app-cool)"
                       onClick={() => props.setShowTransit((v) => !v)}
-                      title="TransIT bus routes, stops, and live buses"
+                      title="TransIT route lines and stops without changing the rest of this map"
                     >
-                      Transit
+                      Transit routes
                     </Chip>
                   )}
-                  <Chip
+                  {pane === "conditions" && <Chip
                     on={props.showRadar}
                     color="var(--app-cool)"
                     onClick={() => props.setShowRadar((v) => !v)}
@@ -2416,8 +2483,8 @@ export default function MapDock(props: MapDockProps) {
                     }
                   >
                     Radar
-                  </Chip>
-                  {(props.communityReportCount > 0 || communityReportsOn || props.providerLayersAvailable) && (
+                  </Chip>}
+                  {pane === "conditions" && (props.communityReportCount > 0 || communityReportsOn || props.providerLayersAvailable) && (
                     <Chip
                       on={communityReportsOn}
                       color="var(--app-warning-press)"
@@ -2428,17 +2495,17 @@ export default function MapDock(props: MapDockProps) {
                       Community reports
                     </Chip>
                   )}
-                  <Chip
+                  {pane === "layers" && <Chip
                     on={props.roadsNowFullyOn}
                     color="var(--app-brand)"
                     onClick={() => props.setShowRoadsNow(!props.roadsNowFullyOn)}
                     title={
-                      "Current Maryland roadwork and public incident reports, with clearly labeled County flood and snow-route context. Live traffic speeds are not shown"
+                      "Add Maryland roadwork and public incident reports without changing the rest of this map. Live traffic speeds are not shown"
                     }
                   >
-                    Roads now
-                  </Chip>
-                  <Chip
+                    Road reports
+                  </Chip>}
+                  {pane === "layers" && <Chip
                     on={props.showCameras}
                     color="var(--app-cool)"
                     onClick={() => props.setShowCameras((v) => !v)}
@@ -2451,15 +2518,15 @@ export default function MapDock(props: MapDockProps) {
                     }
                   >
                     Cameras
-                  </Chip>
-                  <Chip
+                  </Chip>}
+                  {pane === "conditions" && <Chip
                     on={props.showRotorcraft}
                     color="var(--app-cool)"
                     onClick={() => props.setShowRotorcraft((v) => !v)}
                     title="Privacy-limited public helicopter activity. Medical and personal calls are never shown"
                   >
                     Helicopter activity
-                  </Chip>
+                  </Chip>}
                 </div>
 
                 {(props.showParking || props.showTransit || props.showRadar || communityReportsOn
@@ -2479,6 +2546,13 @@ export default function MapDock(props: MapDockProps) {
                         <strong>Transit</strong> · {props.transitHealth.status === "unavailable"
                           ? "The county route feed is unavailable."
                           : `${props.transitHealth.count} mapped route segments from ${props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.`}
+                        {props.transitAlertSnapshot?.status === "ready"
+                          ? ` ${props.transitAlertSnapshot.count} provider service ${props.transitAlertSnapshot.count === 1 ? "bulletin is" : "bulletins are"} active.`
+                          : props.transitAlertSnapshot?.status === "stale"
+                            ? " Provider service bulletins are delayed."
+                            : props.transitAlertSnapshot?.status === "error"
+                              ? " Provider service bulletins are unavailable."
+                              : ""}
                       </p>
                     )}
                     {props.showRadar && (

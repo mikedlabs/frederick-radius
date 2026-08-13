@@ -21,6 +21,11 @@ export async function GET() {
       available: result.available,
       feedTimestamp: result.feedTimestamp,
     },
-    { headers: { "Cache-Control": "no-store" } },
+    {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Vercel-CDN-Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+      },
+    },
   );
 }
