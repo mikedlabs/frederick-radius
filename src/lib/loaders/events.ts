@@ -198,6 +198,49 @@ function venuesMatch(a: string, b: string): boolean {
 }
 
 /**
+ * Some publishers lead a recurring program with the series name and put the
+ * week's performer after punctuation ("Alive @ Five · Conor & the Wild
+ * Hunt"). A second feed can carry stale performer copy for the same program.
+ * Title similarity cannot catch that conflict, but a substantial shared
+ * series prefix plus the same venue and clock can. Keep this intentionally
+ * narrow: the prefix must name a recognizable series, not a generic word such
+ * as "music" or "trivia".
+ */
+function recurringSeriesTitle(title: string): string | null {
+  const prefix =
+    title.split(/(?:\s+[·|:–—]\s*|\s+-\s+)/u, 1)[0]?.trim() ?? "";
+  const normalized = normLoose(prefix);
+  return normalized.length >= 8 ? normalized : null;
+}
+
+function sameRecurringSeries(a: EventWithMeta, b: EventWithMeta): boolean {
+  const aSeries = recurringSeriesTitle(a.title);
+  const bSeries = recurringSeriesTitle(b.title);
+  return Boolean(
+    aSeries &&
+      bSeries &&
+      aSeries === bSeries &&
+      (a.is_recurring || b.is_recurring),
+  );
+}
+
+function sameEventVenue(a: EventWithMeta, b: EventWithMeta): boolean {
+  if (
+    a.venue_place_slug &&
+    b.venue_place_slug
+  ) {
+    return a.venue_place_slug === b.venue_place_slug;
+  }
+  if (venuesMatch(a.venue_name, b.venue_name)) return true;
+  const precise = new Set(["venue_match", "exact_address"]);
+  return (
+    precise.has(a.geo_confidence) &&
+    precise.has(b.geo_confidence) &&
+    haversineMeters(a.geom, b.geom) <= 50
+  );
+}
+
+/**
  * Drops live or county-feed events that duplicate a curated event.
  * Curated always wins (P0-4). A live event is a duplicate when:
  *
@@ -224,6 +267,11 @@ export function dedupeLiveAgainstCurated(
       if (!within) return false;
       // Path 1: conservative all-three-signal match
       if (venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title)) {
+        return true;
+      }
+      // Same recurring program, same place, same clock. The performer suffix
+      // may conflict because one source is stale; curated source truth wins.
+      if (sameEventVenue(c, l) && sameRecurringSeries(c, l)) {
         return true;
       }
       // Path 2: strong title match — venue divergence is OK because
@@ -257,7 +305,10 @@ export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] 
     const dupeIdx = out.findIndex((kept) => {
       const kt = +new Date(kept.starts_at);
       if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
-      return titlesMatchStrong(kept.title, e.title);
+      return (
+        titlesMatchStrong(kept.title, e.title) ||
+        (sameEventVenue(kept, e) && sameRecurringSeries(kept, e))
+      );
     });
     if (dupeIdx === -1) {
       out.push(e);

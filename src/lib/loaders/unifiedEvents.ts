@@ -580,7 +580,10 @@ const cachedAssemble = unstable_cache(
   // identity instead of the old empty-slug fallback. The persistent cache is
   // shared across deployments, so this version change is required for the
   // archive worker to receive the corrected source IDs immediately.
-  ["unified-events-v28"],
+  // v29: reconcile same-clock recurring-series rows even when a last-minute
+  // performer substitution changes the title and a feed varies the venue
+  // wording. This removes the stale/current double card immediately.
+  ["unified-events-v29"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.
