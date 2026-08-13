@@ -136,7 +136,7 @@ test.describe("mobile map guidance and legal furniture", () => {
     await expect(guidance).toBeHidden();
     await expect.poll(() => radarIndexRequests).toBeGreaterThan(0);
 
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     const options = page.getByRole("region", { name: "Choose what to see" });
     await options
       .getByRole("button", { name: "Conditions" })

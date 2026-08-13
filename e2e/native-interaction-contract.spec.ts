@@ -280,7 +280,7 @@ test("event filters and map layers acknowledge the tap before data work finishes
   });
 
   await page.goto("/map", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   await page
     .getByRole("region", { name: "Choose what to see" })
     .getByRole("button", {

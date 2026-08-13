@@ -97,7 +97,7 @@ test.describe("mobile discovery shell", () => {
     await expect(mapFind).toBeFocused();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    const contentsButton = page.getByRole("button", { name: "Explore this map" });
+    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
     const locate = page.getByRole("button", { name: "Locate me on the map" });
@@ -179,7 +179,7 @@ test.describe("mobile discovery shell", () => {
     await expect(layersPane).toBeVisible();
     await layersPane.getByRole("button", { name: "Done" }).click();
     await expect(contentsButton).toBeFocused();
-    await expect(contentsButton).toContainText("Explore");
+    await expect(contentsButton).toContainText("What to see");
     // Active state is explained in words by the context rail. The old
     // unitless count badge was deliberately removed from the Browse control.
     await expect(contentsButton.locator(".dock-layer-count")).toHaveCount(0);
@@ -394,7 +394,7 @@ test.describe("mobile discovery shell", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const contentsButton = page.getByRole("button", { name: "Explore this map" });
+    const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     const dockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     expect(dockBox?.height ?? 999).toBeLessThanOrEqual(60);
@@ -433,7 +433,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const regularContents = page.getByRole("button", { name: "Explore this map" });
+    const regularContents = page.getByRole("button", { name: "Choose what to see on this map" });
     await regularContents.click();
     const regularMapBox = await page.locator(".dock-host").boundingBox();
     const regularContentsBox = await page
@@ -462,7 +462,7 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 844, height: 390 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    const landscapeContents = page.getByRole("button", { name: "Explore this map" });
+    const landscapeContents = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(landscapeContents).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Search this map" })).toBeVisible();
     await landscapeContents.click();
@@ -513,7 +513,7 @@ test.describe("mobile discovery shell", () => {
       "ready",
       { timeout: 20_000 },
     );
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -530,7 +530,7 @@ test.describe("mobile discovery shell", () => {
     );
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).not.toHaveURL(/amenity=|show=|layers=/);
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -550,7 +550,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?at=39.4142,-77.4105&show=transit", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
       .getByRole("button", { name: /^Get around/ })
       .click();
@@ -564,7 +564,7 @@ test.describe("mobile discovery shell", () => {
       waitUntil: "domcontentloaded",
     });
     await expect(page).toHaveURL(/layers=art/);
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page.getByRole("button", { name: /^More/ }).click();
     await expect(
       page.getByRole("region", { name: "More map details" }).getByRole("button", {
@@ -599,7 +599,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/map?music=tonight&t=weekend", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page.getByRole("button", { name: /^Happening/ }).click();
 
     // The active music lens keeps Tonight reachable even when the event count

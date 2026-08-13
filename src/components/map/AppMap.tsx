@@ -4179,8 +4179,8 @@ export default function AppMap({
 
         <p id="frederick-map-help" className="sr-only">
           Interactive map of Frederick County. Use arrow keys to pan and plus
-          or minus to zoom when the map has focus. Use Explore to find nearby
-          places, see what is happening, check travel, or review local conditions.
+          or minus to zoom when the map has focus. Open What to see to find
+          nearby places, current events, travel details, or local conditions.
         </p>
 
         {!mapError && (

@@ -1806,13 +1806,13 @@ export default function MapDock(props: MapDockProps) {
             data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label="Explore this map"
-            title={`Explore this map. ${contentsSummary}`}
+            aria-label="Choose what to see on this map"
+            title={`Choose what to see on this map. ${contentsSummary}`}
             onClick={() => togglePane("contents")}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
-              Explore
+              What to see
             </span>
             {/* No numeral badge: data-on already tints the button and the
                 context rail states the same state IN WORDS ("Downtown ·

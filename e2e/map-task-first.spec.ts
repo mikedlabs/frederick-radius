@@ -30,8 +30,8 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  const browse = page.getByRole("button", { name: "Explore this map" });
-  await expect(browse).toContainText("Explore");
+  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
+  await expect(browse).toContainText("What to see");
   await browse.click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await chooser.getByRole("button", { name: /^Get around/ }).click();
@@ -168,7 +168,7 @@ test("an active query uses the full mobile command width without stacking overla
     fullPage: true,
   });
 
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   await expect(results).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
 });
@@ -239,7 +239,7 @@ test("a shared map reproduces its layers without replacing this device's prefere
     timeout: 20_000,
   });
 
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   await page
     .getByRole("region", { name: "Choose what to see" })
     .getByRole("button", { name: /^Get around/ })
@@ -282,7 +282,7 @@ test("a nearby-essential choice opens one named nearest result with directions",
     timeout: 10_000,
   });
 
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await chooser.getByRole("button", { name: /^Near me/ }).click();
   await page

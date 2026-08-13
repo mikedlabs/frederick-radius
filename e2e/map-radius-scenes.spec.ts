@@ -35,7 +35,7 @@ test("Radius task views compose an honest, shareable mobile map", async ({
     timeout: 20_000,
   });
 
-  const browse = page.getByRole("button", { name: "Explore this map" });
+  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
   await browse.click();
   const chooser = page.locator("#dock-pane");
   await expect(chooser).toHaveAccessibleName("Choose what to see");
@@ -132,7 +132,7 @@ test("task views remain usable on a narrow phone", async ({ page }) => {
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
 
   const chooser = page.locator("#dock-pane");
   await expect(chooser).toBeVisible();
@@ -227,7 +227,7 @@ test("What changed keeps City project lifecycle and source context visible", asy
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   const chooser = page.locator("#dock-pane");
   await chooser.getByRole("button", { name: /^What changed/ }).click();
 
@@ -342,7 +342,7 @@ test("Outside now reveals City walking records without adding another map contro
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  await page.getByRole("button", { name: "Explore this map" }).click();
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   const chooser = page.locator("#dock-pane");
   await chooser.getByRole("button", { name: /^Conditions/ }).click();
   await chooser

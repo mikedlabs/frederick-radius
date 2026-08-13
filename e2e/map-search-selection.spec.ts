@@ -543,7 +543,7 @@ test.describe("map search selection", () => {
 
   test("groups live road context behind one honest control", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
       .getByRole("button", { name: /Get around/ })
@@ -571,7 +571,7 @@ test.describe("map search selection", () => {
 
   test("adds grouped road reports without erasing a deep-linked road layer", async ({ page }) => {
     await page.goto("/map?show=civic", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Explore this map" }).click();
+    await page.getByRole("button", { name: "Choose what to see on this map" }).click();
     await page
       .getByRole("region", { name: "Choose what to see" })
       .getByRole("button", { name: /Get around/ })
