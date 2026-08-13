@@ -4664,6 +4664,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+@media (min-width: 360px) and (max-width: 1023.98px) {
+  .dock-contents {
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px 4px;
+  }
+  .dock-contents > span {
+    max-width: 100%;
+  }
+}
 @media (max-width: 350px) {
   .dock-contents-prefix {
     display: none;

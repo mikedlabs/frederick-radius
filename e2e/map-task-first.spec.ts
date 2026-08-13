@@ -32,6 +32,11 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
 
   const browse = page.getByRole("button", { name: "Choose what to see on this map" });
   await expect(browse).toContainText("What to see");
+  const browseLabel = browse.locator(".dock-contents-label");
+  await expect(browseLabel).toBeVisible();
+  expect(
+    await browseLabel.evaluate((label) => label.scrollWidth <= label.clientWidth),
+  ).toBe(true);
   await browse.click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await chooser.getByRole("button", { name: /^Get around/ }).click();
