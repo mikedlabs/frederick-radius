@@ -149,6 +149,11 @@ describe("LiveBuses feed sessions", () => {
     expect(
       container.querySelector('[aria-label*="vehicle bus-1"]'),
     ).not.toBeNull();
+    const marker = container.querySelector<HTMLElement>("[data-live-bus-marker]");
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute("aria-label")).toContain("reported position");
+    expect(marker?.getAttribute("aria-label")).not.toContain("at a stop");
+    expect(marker?.querySelector("svg")).not.toBeNull();
 
     act(() => root.render(createElement(LiveBuses, { show: false })));
     expect(container.querySelector('[aria-label*="vehicle bus-1"]')).toBeNull();
@@ -178,6 +183,82 @@ describe("LiveBuses feed sessions", () => {
     expect(container.textContent).toContain(
       "Buses live · arrival estimates unavailable",
     );
+  });
+
+  it("lets the browse context rail own feed status and groups buses at county zoom", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() =>
+        response(
+          currentFeed({
+            vehicles: [
+              VEHICLE,
+              { ...VEHICLE, vehicleId: "bus-2", routeId: "6155", lat: 39.43 },
+            ],
+            status: "degraded",
+          }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      root.render(
+        createElement(LiveBuses, {
+          show: true,
+          compactOverview: true,
+          overviewZoom: 9.4,
+          showInlineStatus: false,
+        }),
+      );
+    });
+    await settle();
+
+    expect(container.textContent).not.toContain(
+      "Buses live · arrival estimates unavailable",
+    );
+    expect(container.querySelectorAll("[data-live-bus-marker]")).toHaveLength(0);
+    expect(container.textContent).toContain("2");
+    expect(container.textContent).toContain("live");
+    expect(
+      container.querySelector('[aria-label="2 live buses. Zoom in to see routes."]'),
+    ).not.toBeNull();
+  });
+
+  it("does not call a delayed aggregate live", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() =>
+        response(
+          currentFeed({
+            vehicles: [
+              VEHICLE,
+              { ...VEHICLE, vehicleId: "bus-2", routeId: "6155", lat: 39.43 },
+            ],
+            feedTimestamp: Math.floor(Date.now() / 1000) - 50,
+          }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      root.render(
+        createElement(LiveBuses, {
+          show: true,
+          compactOverview: true,
+          overviewZoom: 9.4,
+          showInlineStatus: false,
+        }),
+      );
+    });
+    await settle();
+
+    const aggregate = container.querySelector<HTMLElement>(
+      '[aria-label="2 buses last reported. Feed delayed. Zoom in to see routes."]',
+    );
+    expect(aggregate).not.toBeNull();
+    expect(aggregate?.dataset.delayed).toBe("true");
+    expect(aggregate?.textContent).toContain("reported");
+    expect(aggregate?.textContent).not.toContain("live");
   });
 
   it("does not poll in the background and refreshes when the page returns", async () => {

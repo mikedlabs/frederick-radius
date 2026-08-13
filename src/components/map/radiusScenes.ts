@@ -323,6 +323,20 @@ function count(...values: number[]): number {
 function resolveBuses(signals: RadiusSceneSignals): RadiusSceneAvailability {
   const routes = count(signals.transit.routeCount);
   const vehicles = signals.transit.vehicles;
+  // The realtime endpoint is independent of the deferred route bundle. The
+  // first tap must be allowed to start that live session; otherwise the view
+  // is disabled until after the very request it is supposed to trigger.
+  if (vehicles.status === "unloaded" || vehicles.status === "loading") {
+    return {
+      status: vehicles.status === "loading" ? "loading" : "limited",
+      canActivate: true,
+      canRecommend: false,
+      reason:
+        vehicles.status === "loading"
+          ? "Radius is checking current bus positions."
+          : "Open this view to check live bus positions.",
+    };
+  }
   if (routes === 0 && vehicles.status === "unavailable") {
     return {
       status: "unavailable",
@@ -340,6 +354,14 @@ function resolveBuses(signals: RadiusSceneSignals): RadiusSceneAvailability {
       reason: hasVehicles
         ? `${vehicles.count} live ${vehicles.count === 1 ? "bus is" : "buses are"} reporting now.`
         : "The live vehicle feed is current, but no buses are reporting now.",
+    };
+  }
+  if (routes > 0 && vehicles.status === "unavailable") {
+    return {
+      status: "limited",
+      canActivate: true,
+      canRecommend: false,
+      reason: "Open this view to check live bus positions.",
     };
   }
   return {

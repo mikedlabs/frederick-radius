@@ -6,7 +6,7 @@ test.use({
   permissions: ["geolocation"],
 });
 
-test("Radius quick views compose an honest, shareable mobile map", async ({
+test("Radius ready-made views compose an honest, shareable mobile map", async ({
   page,
 }) => {
   // This journey deliberately reloads the map after exercising several
@@ -38,7 +38,7 @@ test("Radius quick views compose an honest, shareable mobile map", async ({
   const browse = page.getByRole("button", { name: "Browse map contents" });
   await browse.click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await expect(chooser.getByText("Quick views", { exact: true })).toBeVisible();
+  await expect(chooser.getByText("Ready-made views", { exact: true })).toBeVisible();
 
   // WebGL pins have a real HTML path: collapsed by default, then named,
   // keyboard-operable results with phone-sized targets when requested.
@@ -50,8 +50,9 @@ test("Radius quick views compose an honest, shareable mobile map", async ({
   await expect(firstPlaceResult).toBeVisible();
   expect((await firstPlaceResult.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
 
+  await chooser.getByText("Ready-made views", { exact: true }).click();
   const sceneButtons = chooser.getByRole("group", {
-    name: "Quick map views",
+    name: "Ready-made map views",
   }).getByRole("button");
   await expect(sceneButtons).toHaveCount(5);
   for (const control of await sceneButtons.all()) {
@@ -59,7 +60,7 @@ test("Radius quick views compose an honest, shareable mobile map", async ({
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
 
-  await chooser.getByRole("button", { name: /^Buses now\./ }).click();
+  await sceneButtons.filter({ hasText: "Buses now" }).click();
   await expect(host).toHaveAttribute("data-map-scene", "buses-now");
   await expect
     .poll(() => new URL(page.url()).searchParams.get("scene"))
@@ -99,7 +100,11 @@ test("Radius quick views compose an honest, shareable mobile map", async ({
 
   // A Radius view is a reproducible map state, not just a local animation.
   await page.getByRole("button", { name: "Back" }).click();
-  await chooser.getByRole("button", { name: /^Buses now\./ }).click();
+  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await chooser
+    .getByRole("group", { name: "Ready-made map views" })
+    .getByRole("button", { name: /^Buses now\./ })
+    .click();
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(host).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
@@ -114,7 +119,7 @@ test("Radius quick views compose an honest, shareable mobile map", async ({
     .toBe('{"parking":true,"radar":true}');
 });
 
-test("quick views remain usable on a narrow phone", async ({ page }) => {
+test("ready-made views remain usable on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/map", { waitUntil: "domcontentloaded" });
 
@@ -126,6 +131,7 @@ test("quick views remain usable on a narrow phone", async ({ page }) => {
 
   const chooser = page.getByRole("region", { name: "Choose what to see" });
   await expect(chooser).toBeVisible();
+  await chooser.getByText("Ready-made views", { exact: true }).click();
   await page.waitForTimeout(350);
   const chooserBox = await chooser.boundingBox();
   expect(chooserBox?.x ?? -1).toBeGreaterThanOrEqual(0);
@@ -134,7 +140,7 @@ test("quick views remain usable on a narrow phone", async ({ page }) => {
   );
 
   const sceneButtons = chooser
-    .getByRole("group", { name: "Quick map views" })
+    .getByRole("group", { name: "Ready-made map views" })
     .getByRole("button");
   await expect(sceneButtons).toHaveCount(5);
   await expect(
@@ -223,8 +229,9 @@ test("What changed keeps City project lifecycle and source context visible", asy
     timeout: 20_000,
   });
   await page.getByRole("button", { name: "Browse map contents" }).click();
-  await page
-    .getByRole("region", { name: "Choose what to see" })
+  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await chooser
     .getByRole("button", { name: /^What changed\?/ })
     .click();
 
@@ -340,8 +347,9 @@ test("Outside now reveals City walking records without adding another map contro
     timeout: 20_000,
   });
   await page.getByRole("button", { name: "Browse map contents" }).click();
-  await page
-    .getByRole("region", { name: "Choose what to see" })
+  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  await chooser.getByText("Ready-made views", { exact: true }).click();
+  await chooser
     .getByRole("button", { name: /^Outside now\./ })
     .click();
 

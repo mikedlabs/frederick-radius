@@ -30,11 +30,11 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  const browse = page.getByRole("button", { name: "Choose what to see" });
+  const browse = page.getByRole("button", { name: "Browse map contents" });
   await expect(browse).toContainText("Browse");
   await browse.click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByRole("button", { name: "Check travel and live conditions" }).click();
+  await chooser.getByRole("button", { name: /^Travel & conditions/ }).click();
   const conditions = page.getByRole("region", { name: "Travel & conditions" });
   await expect(conditions).toBeVisible();
   await expect(conditions.getByText("Choose a layer to add live context.")).toBeVisible();
@@ -47,25 +47,25 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await conditions.getByRole("button", { name: "Done" }).click();
 
   await browse.click();
-  await expect(chooser.getByRole("button", { name: "Find something nearby" })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Find nearby/ })).toBeVisible();
   await expect(
-    chooser.getByRole("button", { name: "See what is happening today and tonight" }),
+    chooser.getByRole("button", { name: /^Today & tonight/ }),
   ).toBeVisible();
   await expect(
-    chooser.getByRole("button", { name: "Check travel and live conditions" }),
+    chooser.getByRole("button", { name: /^Travel & conditions/ }),
   ).toBeVisible();
   await expect(
-    chooser.getByRole("button", { name: "See Frederick details on the map" }),
+    chooser.getByRole("button", { name: /^See Frederick details/ }),
   ).toBeVisible();
   await page.screenshot({
     path: "output/playwright/map-polish-chooser-390x844.png",
     fullPage: true,
   });
 
-  await chooser.getByRole("button", { name: "Find something nearby" }).click();
+  await chooser.getByRole("button", { name: /^Find nearby/ }).click();
   const find = page.getByRole("region", { name: "Find nearby" });
-  await expect(find.getByRole("button", { name: "See what is within reach" })).toBeVisible();
-  await expect(find.getByRole("button", { name: "Find a nearby essential" })).toBeVisible();
+  await expect(find.getByRole("button", { name: /^Compare travel reach/ })).toBeVisible();
+  await expect(find.getByRole("button", { name: /^Nearby essentials/ })).toBeVisible();
   await expect(find.getByText("All place categories")).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => window.sessionStorage.getItem("fr_geo_v1")), {
@@ -74,10 +74,9 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     .not.toBeNull();
   await expect
     .poll(() => {
-      const camera = new URL(page.url()).searchParams.get("c");
-      return Number(camera?.split(",")[2] ?? 0);
+      return new URL(page.url()).searchParams.get("in");
     }, { timeout: 5_000 })
-    .toBeGreaterThanOrEqual(12);
+    .toBe("nearme");
   await page.screenshot({
     path: "output/playwright/map-polish-find-390x844.png",
     fullPage: true,
@@ -166,7 +165,7 @@ test("an active query uses the full mobile command width without stacking overla
     fullPage: true,
   });
 
-  await page.getByRole("button", { name: "Choose what to see" }).click();
+  await page.getByRole("button", { name: "Browse map contents" }).click();
   await expect(results).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Choose what to see" })).toBeVisible();
 });
@@ -237,10 +236,10 @@ test("a shared map reproduces its layers without replacing this device's prefere
     timeout: 20_000,
   });
 
-  await page.getByRole("button", { name: "Choose what to see" }).click();
+  await page.getByRole("button", { name: "Browse map contents" }).click();
   await page
     .getByRole("region", { name: "Choose what to see" })
-    .getByRole("button", { name: "Check travel and live conditions" })
+    .getByRole("button", { name: /^Travel & conditions/ })
     .click();
   const conditions = page.getByRole("region", { name: "Travel & conditions" });
   const transit = conditions.getByRole("button", { name: /Transit/ });
@@ -280,12 +279,12 @@ test("a nearby-essential choice opens one named nearest result with directions",
     timeout: 10_000,
   });
 
-  await page.getByRole("button", { name: "Choose what to see" }).click();
+  await page.getByRole("button", { name: "Browse map contents" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByRole("button", { name: "Find something nearby" }).click();
+  await chooser.getByRole("button", { name: /^Find nearby/ }).click();
   await page
     .getByRole("region", { name: "Find nearby" })
-    .getByRole("button", { name: "Find a nearby essential" })
+    .getByRole("button", { name: /^Nearby essentials/ })
     .click();
   const essentials = page.getByRole("region", { name: "Nearby essentials" });
   await expect(essentials.getByText("Using your location")).toBeVisible();

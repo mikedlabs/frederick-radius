@@ -48,6 +48,7 @@ import type {
   RadiusSceneId,
   ResolvedRadiusScene,
 } from "./radiusScenes";
+import type { LiveBusLayerSnapshot } from "./LiveBuses";
 import MapInViewPlacesDisclosure from "./MapInViewPlacesDisclosure";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
@@ -129,8 +130,9 @@ function whereSelectionForScope(
 
 /**
  * MapDock — the calm control surface for /map. Search and Browse are the
- * only cold controls. A deliberate options tap reveals the deeper choices in
- * a compact phone tray or desktop inspector while the map remains visible.
+ * primary cold controls. A deliberate Browse tap reveals the deeper choices,
+ * including live buses, in a compact tray or desktop inspector while the map
+ * remains visible.
  *
  *   - Places and amenities are stable catalogs, never reordered predictions.
  *   - Events remain absent until a person chooses a time.
@@ -197,6 +199,9 @@ export type MapDockProps = {
   transitHealth: LiveLayerHealth;
   showTransit: boolean;
   setShowTransit: SetState<boolean>;
+  /** Current vehicle-feed state while Transit is visible. Kept separate from
+   * the static route health so the interface never calls a route line live. */
+  liveBusSnapshot: LiveBusLayerSnapshot | null;
   trailCount: number;
   showTrails: boolean;
   setShowTrails: SetState<boolean>;
@@ -384,7 +389,7 @@ function radiusSceneStatus(scene: ResolvedRadiusScene): string {
   if (status === "caution") return "Check first";
   if (status === "unavailable") return "Unavailable";
   if (status === "limited") {
-    if (id === "buses-now") return "Routes";
+    if (id === "buses-now") return "Ready to check";
     if (id === "what-changed") {
       return reason.startsWith("Open this view") ? "Check now" : "Archive";
     }
@@ -1112,13 +1117,27 @@ export default function MapDock(props: MapDockProps) {
   const radarUpdate = formatLayerUpdate(props.radarHealth.timestamp);
   const incidentUpdate = formatLayerUpdate(props.incidentHealth.timestamp);
   const cameraUpdate = formatLayerUpdate(props.cameraHealth.timestamp);
-  const activeContextKicker = activeRadiusScene
+  const transitContextKicker = props.showTransit
+    ? props.liveBusSnapshot?.status === "ready"
+      ? `${props.liveBusSnapshot.count} ${props.liveBusSnapshot.count === 1 ? "bus" : "buses"} live · current`
+      : props.liveBusSnapshot?.status === "degraded"
+        ? `${props.liveBusSnapshot.count} ${props.liveBusSnapshot.count === 1 ? "bus" : "buses"} live · arrivals limited`
+      : props.liveBusSnapshot?.status === "stale"
+        ? "Bus feed delayed"
+        : props.liveBusSnapshot?.status === "empty"
+          ? "No buses reporting"
+          : props.liveBusSnapshot?.status === "error"
+            ? "Live positions unavailable"
+            : "Checking live buses"
+    : null;
+  const activeContextKicker = transitContextKicker
+    ?? (activeRadiusScene
     ? "Radius view"
     : props.showRadar
       ? radarClock
         ? `Radar · updated ${radarClock}`
         : "Radar · loading"
-      : "Map view";
+      : "Map view");
 
   const paneTitle =
     pane === "contents" ? "Choose what to see"
@@ -1299,6 +1318,7 @@ export default function MapDock(props: MapDockProps) {
             data-map-context-rail
             data-map-top-surface="context"
             data-scene-caution={activeSceneCaution ? "true" : undefined}
+            data-live-transit={props.showTransit ? "true" : undefined}
           >
             <span
               className="sr-only"
@@ -1306,7 +1326,7 @@ export default function MapDock(props: MapDockProps) {
               aria-live="polite"
               aria-atomic="true"
             >
-              {`Map view: ${contentsSummary}`}
+              {`${activeContextKicker}: ${contentsSummary}`}
             </span>
             <button
               type="button"
@@ -1315,7 +1335,11 @@ export default function MapDock(props: MapDockProps) {
               aria-label={`Change map view: ${contentsSummary}${activeSceneCaution ? `. ${activeSceneCaution}` : ""}`}
             >
               <span className="map-context-rail-icon" aria-hidden>
-                <Layers3 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                {props.showTransit ? (
+                  <BusFront className="h-3.5 w-3.5" strokeWidth={2.2} />
+                ) : (
+                  <Layers3 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                )}
               </span>
               <span className="map-context-rail-copy">
                 <span className="map-context-rail-kicker">{activeContextKicker}</span>
@@ -1348,7 +1372,10 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
-        {/* The only persistent map choices: search, recenter, and Browse. */}
+        {/* The persistent phone command stays intentionally small: search,
+            current location, and one door into every map view. Live transit
+            remains a clear task in Browse without taking permanent space
+            from every other map journey. */}
         <div className="dock-head">
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
@@ -1800,50 +1827,8 @@ export default function MapDock(props: MapDockProps) {
 
             {pane === "contents" && (
               <div className="dock-content-list" role="group" aria-label="Choose what you need from the map">
-                <section className="dock-scenes" aria-labelledby="dock-scenes-title">
-                  <div className="dock-scenes-heading">
-                    <span id="dock-scenes-title">Quick views</span>
-                    <small>Radius sets up the map.</small>
-                  </div>
-                  <div className="dock-scene-grid" role="group" aria-label="Quick map views">
-                    {props.radiusScenes.map((scene) => {
-                      const Icon = SCENE_ICONS[scene.definition.id];
-                      const active = props.activeRadiusSceneId === scene.definition.id;
-                      const unavailable =
-                        scene.availability.status === "unavailable" &&
-                        !scene.availability.canActivate;
-                      return (
-                        <button
-                          key={scene.definition.id}
-                          type="button"
-                          className="dock-scene"
-                          data-on={active || undefined}
-                          data-status={scene.availability.status}
-                          aria-pressed={active}
-                          aria-disabled={unavailable}
-                          aria-label={`${scene.definition.label}${/[.!?]$/.test(scene.definition.label) ? "" : "."} ${scene.availability.reason}`}
-                          title={scene.availability.reason}
-                          onClick={() => {
-                            if (unavailable) return;
-                            if (active) props.onExitRadiusScene();
-                            else props.onRadiusScene(scene.definition.id);
-                            closePane();
-                          }}
-                        >
-                          <span className="dock-scene-icon" aria-hidden>
-                            <Icon className="h-[17px] w-[17px]" strokeWidth={2.15} />
-                          </span>
-                          <span className="dock-scene-copy">
-                            <strong>{scene.definition.label}</strong>
-                            <small>{radiusSceneStatus(scene)}</small>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
                 <div className="dock-content-heading" aria-hidden>
-                  Build a view
+                  What do you need?
                 </div>
                 <div className="dock-content-primary">
                 <button
@@ -1925,6 +1910,59 @@ export default function MapDock(props: MapDockProps) {
                     closePane();
                   }}
                 />
+                <details className="dock-ready-views">
+                  <summary>
+                    <span className="dock-content-icon" aria-hidden>
+                      <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-content-copy">
+                      <strong>Ready-made views</strong>
+                      <small>Live buses, road conditions, outdoors, and more</small>
+                    </span>
+                    <ChevronDown className="dock-ready-views-chevron h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </summary>
+                  <section className="dock-scenes" aria-labelledby="dock-scenes-title">
+                    <div className="dock-scenes-heading">
+                      <span id="dock-scenes-title">Choose a view</span>
+                      <small>Radius sets up the map.</small>
+                    </div>
+                    <div className="dock-scene-grid" role="group" aria-label="Ready-made map views">
+                      {props.radiusScenes.map((scene) => {
+                        const Icon = SCENE_ICONS[scene.definition.id];
+                        const active = props.activeRadiusSceneId === scene.definition.id;
+                        const unavailable =
+                          scene.availability.status === "unavailable" &&
+                          !scene.availability.canActivate;
+                        return (
+                          <button
+                            key={scene.definition.id}
+                            type="button"
+                            className="dock-scene"
+                            data-on={active || undefined}
+                            data-status={scene.availability.status}
+                            aria-pressed={active}
+                            disabled={unavailable}
+                            aria-label={`${scene.definition.label}${/[.!?]$/.test(scene.definition.label) ? "" : "."} ${scene.availability.reason}`}
+                            title={scene.availability.reason}
+                            onClick={() => {
+                              if (active) props.onExitRadiusScene();
+                              else props.onRadiusScene(scene.definition.id);
+                              closePane();
+                            }}
+                          >
+                            <span className="dock-scene-icon" aria-hidden>
+                              <Icon className="h-[17px] w-[17px]" strokeWidth={2.15} />
+                            </span>
+                            <span className="dock-scene-copy">
+                              <strong>{scene.definition.label}</strong>
+                              <small>{radiusSceneStatus(scene)}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </details>
                 <div className="dock-content-secondary" aria-label="Map area and sharing">
                   <button
                     type="button"

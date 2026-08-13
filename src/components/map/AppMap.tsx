@@ -378,8 +378,13 @@ function mergeSceneFeedSignals(
 
 function sceneSignalFromBuses(
   snapshot: LiveBusLayerSnapshot | null,
+  requested: boolean,
 ): RadiusSceneFeedSignal {
-  if (!snapshot) return { status: "unavailable", count: 0 };
+  if (!snapshot) {
+    return requested
+      ? { status: "loading", count: 0 }
+      : { status: "unloaded", count: 0 };
+  }
   if (snapshot.status === "ready" || snapshot.status === "degraded") {
     return { status: "current", count: snapshot.count };
   }
@@ -1308,6 +1313,29 @@ export default function AppMap({
     activeAmenityGroupCount: visibleAmenityGroups.size,
   });
   const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
+  // When someone chooses a live conditions layer, that task owns the canvas.
+  // The full business catalog stays available as soon as the layer is off,
+  // but it should not compete with buses, routes, weather, or road signals.
+  const explicitPlaceTaskActive =
+    q.trim().length >= 2 ||
+    Boolean(dock?.intentKey || dock?.subKey) ||
+    amenityLayerActive ||
+    Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
+    Boolean(activeSlugs);
+  const operationalLayerRequested =
+    visibleTransit ||
+    showRadar ||
+    showTraffic ||
+    showIncidents ||
+    showCivic ||
+    showRotorcraft ||
+    showCameras;
+  // A ready-made scene is intentionally a single-purpose map. For manually
+  // toggled live layers, preserve any explicit place task so a person can
+  // still compare the condition with the place they asked to see.
+  const operationalLayerActive =
+    Boolean(activeSceneId) ||
+    (operationalLayerRequested && !explicitPlaceTaskActive);
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
@@ -1369,6 +1397,9 @@ export default function AppMap({
         : next,
     );
   }, []);
+  useEffect(() => {
+    if (!visibleTransit) setLiveBusSnapshot(null);
+  }, [visibleTransit]);
   const transitRouteCount = useMemo(() => {
     const ids = new Set<string>();
     for (const feature of transitLines.features) {
@@ -1404,6 +1435,7 @@ export default function AppMap({
   // "Show results here" tap, which keeps counts and recommendations from
   // shuffling under a person's finger while they explore.
   const [cameraBounds, setCameraBounds] = useState<MapViewportBounds | null>(null);
+  const [cameraZoom, setCameraZoom] = useState<number | null>(null);
   const [viewBounds, setViewBounds] = useState<{
     w: number;
     e: number;
@@ -1727,6 +1759,7 @@ export default function AppMap({
         routeCount: transitRouteCount,
         vehicles: sceneSignalFromBuses(
           visibleTransit ? liveBusSnapshot : null,
+          visibleTransit,
         ),
         serviceAlerts: { status: "unavailable", count: 0 },
       },
@@ -2075,6 +2108,7 @@ export default function AppMap({
   // the tab order merely because the result count is still anchored elsewhere.
   const syncCameraViewport = (viewport: MapResultViewport) => {
     setCameraBounds(viewport.bounds);
+    setCameraZoom(viewport.zoom);
     setEventSlugsInCamera(
       new Set(
         events
@@ -4088,14 +4122,18 @@ export default function AppMap({
           // Snappier label transitions on pan/zoom (default is 300ms).
           fadeDuration={120}
           interactiveLayerIds={[
-            "clusters",
-            ...(curatedClusters ? ["curated-clusters"] : []),
-            "osm-icons",
+            ...(!operationalLayerActive
+              ? [
+                  "clusters",
+                  ...(curatedClusters ? ["curated-clusters"] : []),
+                  "osm-icons",
+                  "curated-icons",
+                  "curated-active-icons",
+                  "curated-hit",
+                ]
+              : []),
             "amenity-clusters",
             "amenity-icons",
-            "curated-icons",
-            "curated-active-icons",
-            "curated-hit",
             "aerial-icons",
             "cemetery-icons",
             "transit-stop-hit",
@@ -4669,6 +4707,7 @@ export default function AppMap({
             <Layer
               id="marc-station-pins"
               type="circle"
+              minzoom={activeSceneId === "buses-now" ? 10 : undefined}
               paint={{
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 4, 14, 8],
                 "circle-color": "#5A4FCF",
@@ -4679,6 +4718,7 @@ export default function AppMap({
             <Layer
               id="marc-station-hit"
               type="circle"
+              minzoom={activeSceneId === "buses-now" ? 10 : undefined}
               paint={{
                 "circle-radius": [
                   "interpolate",
@@ -4712,6 +4752,21 @@ export default function AppMap({
               were visibly moving on the map. */}
           <LiveBuses
             show={visibleTransit}
+            compactOverview={Boolean(dock)}
+            overviewZoom={cameraZoom}
+            showInlineStatus={!dock}
+            onExpandOverview={(bounds) => {
+              const map = mapRef.current?.getMap();
+              if (!map) return;
+              cameraIntentRef.current = true;
+              map.fitBounds(bounds, {
+                padding: countyFitPadding(),
+                maxZoom: 13,
+                duration: prefersReducedMotion() ? 0 : 700,
+                easing: CAM_EASE,
+                essential: true,
+              });
+            }}
             gate={liveLayerGate}
             onHealthChange={rememberLiveBusSnapshot}
           />
@@ -4888,7 +4943,11 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": foregroundReferenceActive && dock ? 0.025 : 0.14,
+                "circle-opacity": operationalLayerActive
+                  ? 0
+                  : foregroundReferenceActive && dock
+                    ? 0.025
+                    : 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
@@ -4907,7 +4966,11 @@ export default function AppMap({
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#285D73",
-                "circle-opacity": foregroundReferenceActive && dock ? 0.08 : 0.55,
+                "circle-opacity": operationalLayerActive
+                  ? 0
+                  : foregroundReferenceActive && dock
+                    ? 0.08
+                    : 0.55,
                 "circle-blur": 0.25,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
@@ -4915,7 +4978,11 @@ export default function AppMap({
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": foregroundReferenceActive && dock ? 0.08 : 0.32,
+                "circle-stroke-opacity": operationalLayerActive
+                  ? 0
+                  : foregroundReferenceActive && dock
+                    ? 0.08
+                    : 0.32,
               }}
             />
             <Layer
@@ -4937,7 +5004,11 @@ export default function AppMap({
                 "text-halo-color": "rgba(0,0,0,0.3)",
                 "text-halo-width": 1.1,
                 "text-halo-blur": 0.4,
-                "text-opacity": foregroundReferenceActive && dock ? 0.05 : 1,
+                "text-opacity": operationalLayerActive
+                  ? 0
+                  : foregroundReferenceActive && dock
+                    ? 0.05
+                    : 1,
               }}
             />
             {/* Individual unclustered points — same icon language, smaller
@@ -4966,7 +5037,11 @@ export default function AppMap({
                 "icon-anchor": "center",
               }}
               paint={{
-                "icon-opacity": foregroundReferenceActive && dock ? 0.08 : 0.8,
+                "icon-opacity": operationalLayerActive
+                  ? 0
+                  : foregroundReferenceActive && dock
+                    ? 0.08
+                    : 0.8,
               }}
             />
           </Source>
@@ -5117,8 +5192,11 @@ export default function AppMap({
                         14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 10, 4, 13, 25, 21, 100, 27],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9.1, 25, 14.7, 100, 18.9],
                       ],
-                  "circle-opacity":
-                    foregroundReferenceActive && dock ? 0.04 : 0.18,
+                  "circle-opacity": operationalLayerActive
+                    ? 0
+                    : foregroundReferenceActive && dock
+                      ? 0.04
+                      : 0.18,
                   "circle-blur": 0.55,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-opacity-transition": { duration: mapPaintDuration },
@@ -5149,8 +5227,11 @@ export default function AppMap({
                     ? BRAND.colors.functionalAmber
                     : CURATED_CLUSTER_COLOR,
                   "circle-stroke-width": 1.1,
-                  "circle-stroke-opacity":
-                    foregroundReferenceActive && dock ? 0.04 : 0.34,
+                  "circle-stroke-opacity": operationalLayerActive
+                    ? 0
+                    : foregroundReferenceActive && dock
+                      ? 0.04
+                      : 0.34,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-stroke-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -5178,14 +5259,23 @@ export default function AppMap({
                         14.25, ["interpolate", ["linear"], ["get", "point_count"], 2, 7, 4, 9, 25, 15, 100, 20],
                         15, ["interpolate", ["linear"], ["get", "point_count"], 2, 4.8, 4, 6.1, 25, 10.2, 100, 13.6],
                       ],
-                  "circle-opacity":
-                    foregroundReferenceActive && dock ? 0.12 : 0.92,
+                  "circle-opacity": operationalLayerActive
+                    ? 0
+                    : foregroundReferenceActive && dock
+                      ? 0.12
+                      : 0.92,
                   "circle-stroke-color": compactSubjectMap
                     ? "#FAF3E2"
                     : "#F7F2E8",
                   "circle-stroke-width": compactSubjectMap ? 2 : 1.6,
+                  "circle-stroke-opacity": operationalLayerActive
+                    ? 0
+                    : foregroundReferenceActive && dock
+                      ? 0.12
+                      : 1,
                   "circle-radius-transition": { duration: mapPaintDuration },
                   "circle-opacity-transition": { duration: mapPaintDuration },
+                  "circle-stroke-opacity-transition": { duration: mapPaintDuration },
                 }}
               />
             )}
@@ -5243,15 +5333,15 @@ export default function AppMap({
                   "text-opacity": compactSubjectMap
                     ? [
                         "interpolate", ["linear"], ["zoom"],
-                        7, foregroundReferenceActive && dock ? 0.12 : 1,
-                        11.25, foregroundReferenceActive && dock ? 0.12 : 1,
-                        12, foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        11.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        12, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ]
                     : [
                         "interpolate", ["linear"], ["zoom"],
-                        7, foregroundReferenceActive && dock ? 0.12 : 1,
-                        14.25, foregroundReferenceActive && dock ? 0.12 : 1,
-                        15, foregroundReferenceActive && dock ? 0.02 : 0.18,
+                        7, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        14.25, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.12 : 1,
+                        15, operationalLayerActive ? 0 : foregroundReferenceActive && dock ? 0.02 : 0.18,
                       ],
                   "text-opacity-transition": { duration: mapPaintDuration },
                 }}
@@ -5335,7 +5425,9 @@ export default function AppMap({
                 "circle-stroke-width": compactSubjectMap
                   ? 1.6
                   : ["case", ["==", ["get", "dimmed"], true], 0.6, 1.4],
-                "circle-opacity": selectedSlug && dock
+                "circle-opacity": operationalLayerActive
+                  ? 0
+                  : selectedSlug && dock
                   ? 0.2
                   : foregroundReferenceActive && dock
                   ? 0.1
@@ -5347,7 +5439,11 @@ export default function AppMap({
                       ["==", ["get", "emph"], true], 0.96,
                       0.78,
                     ],
-                "circle-stroke-opacity": compactSubjectMap ? 0.95 : 0.72,
+                "circle-stroke-opacity": operationalLayerActive
+                  ? 0
+                  : compactSubjectMap
+                    ? 0.95
+                    : 0.72,
                 "circle-radius-transition": { duration: mapPaintDuration },
                 "circle-opacity-transition": { duration: mapPaintDuration },
               }}
@@ -5373,7 +5469,9 @@ export default function AppMap({
                 "symbol-sort-key": ["get", "pri"],
               }}
               paint={{
-                "icon-opacity": selectedSlug && dock
+                "icon-opacity": operationalLayerActive
+                  ? 0
+                  : selectedSlug && dock
                   ? 0.2
                   : foregroundReferenceActive && dock
                     ? 0.12
@@ -5429,7 +5527,7 @@ export default function AppMap({
                 // on the clean map. Dropped 0.28 → 0.15 so the shrunk
                 // non-matches recede hard and the grown matches carry the eye.
                 //
-                "icon-opacity": selectedSlug && dock ? 0.16 : foregroundReferenceActive && dock ? 0.1 : [
+                "icon-opacity": operationalLayerActive ? 0 : selectedSlug && dock ? 0.16 : foregroundReferenceActive && dock ? 0.1 : [
                   "interpolate", ["linear"], ["zoom"],
                   15.8, 0,
                   16.2, [
@@ -6229,6 +6327,7 @@ export default function AppMap({
             }}
             transitHealth={transitHealth}
             showTransit={showTransit}
+            liveBusSnapshot={visibleTransit ? liveBusSnapshot : null}
             setShowTransit={(value) => {
               exitRadiusScene();
               setShowTransit(value);
