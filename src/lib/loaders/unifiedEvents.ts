@@ -583,7 +583,9 @@ const cachedAssemble = unstable_cache(
   // v29: reconcile same-clock recurring-series rows even when a last-minute
   // performer substitution changes the title and a feed varies the venue
   // wording. This removes the stale/current double card immediately.
-  ["unified-events-v29"],
+  // v30: recurring-series reconciliation now keeps editor-verified publisher
+  // corrections ahead of later fetch timestamps from stale live feeds.
+  ["unified-events-v30"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.
