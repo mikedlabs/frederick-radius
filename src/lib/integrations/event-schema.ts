@@ -131,6 +131,8 @@ export const liveEventSchema = z
     status: z.enum(["scheduled", "cancelled", "postponed"]).default("scheduled"),
     /** When the row was pulled from its source. Server fills this. */
     last_verified_at: isoDateSchema,
+    /** When the publisher actually edited the record, when exposed. */
+    publisher_updated_at: isoDateSchema.optional(),
   })
   .refine((e) => Date.parse(e.ends_at) >= Date.parse(e.starts_at), {
     message: "ends_at before starts_at",

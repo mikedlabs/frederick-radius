@@ -18,6 +18,7 @@
  */
 import {
   allUpcoming,
+  applyOfficialPublisherUpdates,
   dedupeLiveAgainstCurated,
   dedupeCuratedClusters,
   type EventWithMeta,
@@ -453,15 +454,23 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const liveEventsRaw = liveResult.events;
   for (const source of liveResult.sources_failed) unavailable.add(source);
 
+  const collapsedLiveCards = collapseRecurringEvents(
+    // Keys go immediately AFTER tmSports (load-bearing order): on a same-game
+    // slug collision the bySlug map keeps the first inserted, so the richer
+    // Ticketmaster row (price/tickets) wins and Keys only adds net-new games.
+    [...liveEventsRaw, ...tmMusic, ...tmSports, ...keysEvents, ...bitEvents, ...sgEvents, ...ebEvents, ...vfEvents].map(liveToCardEvent),
+  );
+  // A first-party publisher modification timestamp may update the factual
+  // core of a matching curated occurrence. Fetch time alone never may.
+  const currentCurated = applyOfficialPublisherUpdates(
+    curatedUpcoming,
+    collapsedLiveCards,
+  );
+
   // Live/county + music + sports feeds, curated duplicates dropped.
   const liveCards = dedupeLiveAgainstCurated(
-    collapseRecurringEvents(
-      // Keys go immediately AFTER tmSports (load-bearing order): on a same-game
-      // slug collision the bySlug map keeps the first inserted, so the richer
-      // Ticketmaster row (price/tickets) wins and Keys only adds net-new games.
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...keysEvents, ...bitEvents, ...sgEvents, ...ebEvents, ...vfEvents].map(liveToCardEvent),
-    ),
-    curatedUpcoming,
+    collapsedLiveCards,
+    currentCurated,
   );
 
   // Extracted venue lineups folded into the same feed so a venue with a band
@@ -473,11 +482,11 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 
   // FCPL/FCVFRA ingested public draws, expanded series → cards, curated
   // duplicates dropped by the same content matcher the live feeds use.
-  const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), curatedUpcoming);
+  const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), currentCurated);
 
   const unified = await decorateUnifiedEvents(
     mergeUnifiedEventCards(
-      curatedUpcoming,
+      currentCurated,
       liveCards,
       venueCards,
       ingestedCards,
@@ -585,7 +594,9 @@ const cachedAssemble = unstable_cache(
   // wording. This removes the stale/current double card immediately.
   // v30: recurring-series reconciliation now keeps editor-verified publisher
   // corrections ahead of later fetch timestamps from stale live feeds.
-  ["unified-events-v30"],
+  // v31: DFP rows retain WordPress's publisher modification timestamp and a
+  // newer structured record can correct the matching curated occurrence.
+  ["unified-events-v31"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

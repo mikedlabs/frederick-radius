@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:
-  //  - assembleUnifiedEvents → unified-events-v26   (/today, /events, /map)
+  //  - assembleUnifiedEvents → current unified-events version (/today, /events, /map)
   //  - getCachedLiveEvents(90) → durable event-archive source horizon
   // Each source page stays below the persistent-cache byte ceiling; warming
   // the archive horizon keeps durable identity current without making a

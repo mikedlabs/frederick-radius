@@ -513,9 +513,9 @@ describe("Source Intelligence workflow", () => {
     expect(script).toContain("currentSeen");
     expect(script).toContain("if (!currentSeen)");
     expect(script).toContain("unrecognized spend classification");
-    expect(script).toContain(
-      'const legacyRunName = "Source intelligence pilot"',
-    );
+    expect(script).toContain("const legacyRunNames = new Set");
+    expect(script).toContain('"Source intelligence pilot"');
+    expect(script).toContain('"Source intelligence"');
     expect(script).toContain('provider: "tavily"');
     expect(script).toContain("reservation: 12");
     expect(script).toContain("dailyCeiling: 24");
@@ -645,32 +645,35 @@ describe("Source Intelligence workflow", () => {
     expect(blocked.outputs).toEqual({});
   });
 
-  it("reserves legacy unclassified runs against both providers", async () => {
-    const legacy = historyRun({
-      id: 99,
-      display_title: "Source intelligence pilot",
-      status: "completed",
-      conclusion: "success",
-    });
-    const tavily = await runDurableBudgetScript({
-      tool: "tavily-scout",
-      runs: [historyRun(), legacy],
-    });
-    expect(tavily.failures).toEqual([]);
-    expect(tavily.outputs["daily-reserved-credits"]).toBe("24");
+  it.each(["Source intelligence pilot", "Source intelligence"])(
+    "reserves legacy run name %s against both providers",
+    async (displayTitle) => {
+      const legacy = historyRun({
+        id: 99,
+        display_title: displayTitle,
+        status: "completed",
+        conclusion: "success",
+      });
+      const tavily = await runDurableBudgetScript({
+        tool: "tavily-scout",
+        runs: [historyRun(), legacy],
+      });
+      expect(tavily.failures).toEqual([]);
+      expect(tavily.outputs["daily-reserved-credits"]).toBe("24");
 
-    const firecrawl = await runDurableBudgetScript({
-      tool: "firecrawl-watch",
-      runs: [
-        historyRun({
-          display_title: "Source intelligence (firecrawl-live)",
-        }),
-        legacy,
-      ],
-    });
-    expect(firecrawl.failures).toEqual([]);
-    expect(firecrawl.outputs["daily-reserved-credits"]).toBe("2");
-  });
+      const firecrawl = await runDurableBudgetScript({
+        tool: "firecrawl-watch",
+        runs: [
+          historyRun({
+            display_title: "Source intelligence (firecrawl-live)",
+          }),
+          legacy,
+        ],
+      });
+      expect(firecrawl.failures).toEqual([]);
+      expect(firecrawl.outputs["daily-reserved-credits"]).toBe("2");
+    },
+  );
 
   it.each([
     {

@@ -203,7 +203,14 @@ jobs:
               },
             };
             const planRunName = "Source intelligence (plan)";
-            const legacyRunName = "Source intelligence pilot";
+            const legacyRunNames = new Set([
+              "Source intelligence pilot",
+              // Runs created before the immutable provider-specific run-name
+              // expression landed use the workflow's plain display name.
+              // They may have spent against either provider, so reserve them
+              // against both instead of failing every future scheduled run.
+              "Source intelligence",
+            ]);
             const policy = policies[process.env.SELECTED_TOOL];
             if (!policy) {
               core.setFailed("The selected live provider has no durable budget policy; no provider request is allowed.");
@@ -292,7 +299,7 @@ jobs:
               if (run.display_title === planRunName) {
                 continue;
               }
-              if (run.display_title === legacyRunName) {
+              if (legacyRunNames.has(run.display_title)) {
                 // Runs made before immutable provider names cannot be
                 // classified safely. Reserve each one against both providers
                 // rather than ignoring possible historical spend.
