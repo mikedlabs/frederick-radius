@@ -5,7 +5,10 @@ import {
   powerOutageTone,
   pulseAqiPriority,
   pulseAlertPriority,
+  pulseFloodPriority,
+  pulseOperationalBriefing,
   pulseStatusState,
+  pulseUrgentFeedsDegraded,
   selectPulseLeadCandidate,
   shouldAqiLead,
   type PulseAlertSignal,
@@ -131,6 +134,25 @@ describe("Pulse safety signal priority", () => {
     ).toBe("older-weather");
   });
 
+  it("keeps an official City emergency ahead of an equally ranked flood reading", () => {
+    expect(selectPulseLeadCandidate([
+      {
+        id: "major-flood",
+        family: "water",
+        priority: pulseFloodPriority("major"),
+        reason: "NWS major flood category",
+        observedAt: "2026-08-01T12:05:00.000Z",
+      },
+      {
+        id: "city-emergency",
+        family: "civic",
+        priority: civicAlertPriority("city-emergency"),
+        reason: "official City emergency",
+        observedAt: "2026-08-01T12:00:00.000Z",
+      },
+    ])?.id).toBe("city-emergency");
+  });
+
   it("ranks the issued Code Orange level instead of Purple timing text later in the bulletin", () => {
     const codeOrange = alert({
       event: "Air Quality Alert",
@@ -185,12 +207,14 @@ describe("pulseStatusState", () => {
     power: false,
     schools: false,
     air: false,
+    flood: false,
     police: false,
   };
 
   it("never reports all clear while a breaking police release is active", () => {
     expect(pulseStatusState({ ...quiet, police: true }, false)).toEqual({
       hasActive: true,
+      hasOperational: false,
       heroDegraded: false,
       allClear: false,
     });
@@ -200,8 +224,107 @@ describe("pulseStatusState", () => {
     expect(pulseStatusState(quiet, false).allClear).toBe(true);
     expect(pulseStatusState(quiet, true)).toEqual({
       hasActive: false,
+      hasOperational: false,
       heroDegraded: true,
       allClear: false,
+    });
+  });
+
+  it("never reports all quiet while a current flood category is active", () => {
+    expect(pulseStatusState({ ...quiet, flood: true }, false)).toEqual({
+      hasActive: true,
+      hasOperational: false,
+      heroDegraded: false,
+      allClear: false,
+    });
+  });
+
+  it("keeps operational changes out of the emergency count without calling them quiet", () => {
+    expect(pulseStatusState(quiet, false, true)).toEqual({
+      hasActive: false,
+      hasOperational: true,
+      heroDegraded: false,
+      allClear: false,
+    });
+  });
+
+  it("cannot earn all quiet when the river safety check is unavailable or stale", () => {
+    const urgentDegraded = pulseUrgentFeedsDegraded({
+      situationPartial: false,
+      safetyUnavailable: false,
+      officialAlertsComplete: true,
+      riverCurrent: false,
+    });
+
+    expect(urgentDegraded).toBe(true);
+    expect(pulseStatusState(quiet, urgentDegraded)).toMatchObject({
+      heroDegraded: true,
+      allClear: false,
+    });
+  });
+
+  it("allows the river check through only with current forecast-point coverage", () => {
+    expect(pulseUrgentFeedsDegraded({
+      situationPartial: false,
+      safetyUnavailable: false,
+      officialAlertsComplete: true,
+      riverCurrent: true,
+    })).toBe(false);
+  });
+});
+
+describe("Pulse flood priority", () => {
+  it("promotes action stage and escalates official flood categories", () => {
+    expect(pulseFloodPriority("normal")).toBe(Number.POSITIVE_INFINITY);
+    expect(pulseFloodPriority("action")).toBe(6);
+    expect(pulseFloodPriority("minor")).toBeLessThan(pulseFloodPriority("action"));
+    expect(pulseFloodPriority("major")).toBeLessThan(pulseFloodPriority("minor"));
+  });
+});
+
+describe("Pulse operational briefing", () => {
+  it("uses a specific live-update headline for a MARC alert", () => {
+    expect(pulseOperationalBriefing({
+      marcAlerts: 1,
+      airportIssues: [],
+      campDavidRestricted: false,
+    })).toEqual({
+      active: true,
+      line: "MARC has a Brunswick Line service update.",
+      sub: "Open MARC trains below for the affected service and current details.",
+    });
+  });
+
+  it("names a single delayed airport without calling it an emergency", () => {
+    expect(pulseOperationalBriefing({
+      marcAlerts: 0,
+      airportIssues: ["BWI Marshall"],
+      campDavidRestricted: false,
+    })).toMatchObject({
+      active: true,
+      line: "BWI Marshall is reporting a travel delay.",
+    });
+  });
+
+  it("surfaces an expanded Camp David restriction instead of saying all quiet", () => {
+    expect(pulseOperationalBriefing({
+      marcAlerts: 0,
+      airportIssues: [],
+      campDavidRestricted: true,
+    })).toMatchObject({
+      active: true,
+      line: "Camp David airspace restrictions are expanded.",
+    });
+  });
+
+  it("uses a neutral combined headline when several operations have changed", () => {
+    expect(pulseOperationalBriefing({
+      marcAlerts: 2,
+      airportIssues: ["Dulles"],
+      campDavidRestricted: true,
+    })).toMatchObject({
+      active: true,
+      line: "Travel and access conditions have live updates.",
     });
   });
 });

@@ -110,6 +110,8 @@ const TONE_WORD: Record<PulseHeroChip["tone"], string> = {
 
 export type PulseHero = {
   allClear: boolean;
+  /** A current service or access change exists, but no urgent condition leads. */
+  operational?: boolean;
   degraded?: boolean;
   tone?: PulseHeroChip["tone"];
   line: string;
@@ -145,13 +147,16 @@ export function pulseStatusWord({
   allClear,
   degraded,
   hasLead,
+  operational = false,
   tone,
 }: {
   allClear: boolean;
   degraded: boolean;
   hasLead: boolean;
+  operational?: boolean;
   tone: PulseHeroChip["tone"];
 }): string {
+  if (operational && !hasLead) return "Live update";
   if (degraded && !hasLead) return "Partial data";
   // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
   // row, and the same word twice in one line read as a stutter. This word's
@@ -982,6 +987,7 @@ export default function PulseBoard({
     allClear: hero.allClear,
     degraded,
     hasLead: Boolean(lead),
+    operational: hero.operational,
     tone: heroTone,
   });
 
@@ -1004,6 +1010,8 @@ export default function PulseBoard({
               >
                 {hero.allClear ? (
                   <Check className="h-4 w-4" strokeWidth={2.5} />
+                ) : hero.operational && !lead ? (
+                  <Clock className="h-4 w-4" strokeWidth={2.25} />
                 ) : (
                   <AlertTriangle className="h-4 w-4" strokeWidth={2.25} />
                 )}
@@ -1029,13 +1037,13 @@ export default function PulseBoard({
             {hero.line}
           </h1>
           <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {degraded && lead ? (
+          {degraded && (lead || hero.operational) ? (
             <p
               className="mt-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold"
               style={{ color: "var(--app-warning)" }}
             >
               <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
-              Some live checks are unavailable. This alert still comes from a current source.
+              Some other live checks are unavailable. The update above comes from a current source.
             </p>
           ) : null}
           {(hero.leadMeta || lead) && (

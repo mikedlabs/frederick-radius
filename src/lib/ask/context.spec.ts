@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, scopeAskEventsByProximity, stripInlineMarkdown, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, eventHasCredibleLocation, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, scopeAskEventsByProximity, stripInlineMarkdown, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -10,6 +10,8 @@ function ev(over: Partial<AskEvent>): AskEvent {
     title: "Event",
     starts_at: "2026-07-15T19:00:00-04:00",
     ends_at: "2026-07-15T21:00:00-04:00",
+    placement: "venue",
+    geo_confidence: "venue_match",
     ...over,
   };
 }
@@ -107,6 +109,39 @@ describe("eventContextLines", () => {
     const running = ev({ slug: "freddie", title: "Freddie Long at Pistarro's", category: "music", starts_at: "2026-07-15T15:00:00-04:00", ends_at: "2026-07-15T22:00:00-04:00" });
     const { picked } = eventContextLines([running], "tonight", six);
     expect(picked.map((e) => e.slug)).toEqual(["freddie"]);
+  });
+
+  it("does not let daytime or day-length rows crowd out a real tonight event", () => {
+    const afternoon = new Date("2026-08-13T14:20:00-04:00");
+    const aliveAtFive = ev({
+      slug: "alive-at-five",
+      title: "Alive at Five",
+      category: "music",
+      ticket_url: "https://example.com/alive",
+      starts_at: "2026-08-13T17:00:00-04:00",
+      ends_at: "2026-08-13T20:00:00-04:00",
+    });
+    const endingAtThree = ev({
+      slug: "game-time",
+      title: "Game Time",
+      starts_at: "2026-08-13T10:00:00-04:00",
+      ends_at: "2026-08-13T15:00:00-04:00",
+    });
+    const suspiciousDaylong = ev({
+      slug: "summerfest-family-theatre",
+      title: "Summerfest Family Theatre",
+      starts_at: "2026-08-13T10:00:00-04:00",
+      ends_at: "2026-08-13T22:45:00-04:00",
+    });
+
+    const { picked } = eventContextLines(
+      [endingAtThree, suspiciousDaylong, aliveAtFive],
+      "tonight",
+      afternoon,
+      "What should I do tonight near downtown Frederick?",
+    );
+
+    expect(picked.map((event) => event.slug)).toEqual(["alive-at-five"]);
   });
 
   it("does not claim an in-progress range listing occurs tonight without a dated occurrence", () => {
@@ -209,6 +244,52 @@ describe("scopeAskEvents", () => {
         false,
       ).map((event) => event.slug),
     ).toEqual(["frederick", "mount-airy"]);
+  });
+});
+
+describe("eventHasCredibleLocation", () => {
+  it("withholds a feed/town fallback centroid", () => {
+    expect(eventHasCredibleLocation(ev({
+      municipality: "frederick",
+      municipality_name: "Frederick",
+      geom: { lng: -77.4109, lat: 39.4143 },
+      placement: "geocoded",
+      geo_confidence: "area",
+    }))).toBe(false);
+  });
+
+  it("accepts a loader-resolved venue at the edge of a town", () => {
+    expect(eventHasCredibleLocation(ev({
+      municipality: "thurmont",
+      municipality_name: "Thurmont",
+      geom: { lng: -77.4612, lat: 39.6217 },
+      placement: "venue",
+      geo_confidence: "venue_match",
+    }))).toBe(true);
+  });
+});
+
+describe("nearest event ranking", () => {
+  it("preserves precise proximity ahead of editorial prominence", () => {
+    const near = ev({
+      slug: "near-program",
+      title: "Nearby Program",
+      distance_m: 120,
+    });
+    const farMarquee = ev({
+      slug: "far-marquee",
+      title: "Major Ticketed Concert",
+      category: "music",
+      ticket_url: "https://example.com/tickets",
+      distance_m: 1_900,
+    });
+
+    expect(
+      rankForSources(
+        [farMarquee, near],
+        "What is the nearest event tonight?",
+      ).map((event) => event.slug),
+    ).toEqual(["near-program", "far-marquee"]);
   });
 });
 

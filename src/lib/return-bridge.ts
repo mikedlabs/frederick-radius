@@ -32,9 +32,10 @@ export type ReturnBridgeState = {
   lastOfferAt: number;
 };
 
-export type ReturnBridgeOfferReason = "value" | "social" | "return";
+export type ReturnBridgeOfferReason = "value" | "social" | "return" | "visit";
 
 const RETURN_BRIDGE_OFFER_PRIORITY: Record<ReturnBridgeOfferReason, number> = {
+  visit: 0,
   social: 1,
   return: 2,
   value: 3,
@@ -210,7 +211,12 @@ export function returnBridgeOfferReason(
   }
   if (state.valueKind && state.valueAt > state.lastOfferAt) return "value";
   if (options.socialEntry && state.lastOfferAt === 0) return "social";
-  if (state.sessions >= 2) return "return";
+  // A person who stays long enough to understand Radius should get one clear
+  // path back before they leave. `lastOfferAt` makes this a true one-time
+  // invitation even if they close the tab without pressing Not now. A later
+  // save can still qualify as new value because it carries a newer timestamp.
+  if (state.sessions >= 2 && state.lastOfferAt === 0) return "return";
+  if (state.sessions === 1 && state.lastOfferAt === 0) return "visit";
   return null;
 }
 

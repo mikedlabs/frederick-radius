@@ -18,7 +18,11 @@ import {
   humanizeChartText,
 } from "@/lib/integrations/mdot-chart";
 import { currentFcpsOperationsNotices } from "@/lib/integrations/fcps";
-import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import {
+  fixItCountLabel,
+  getFixItIssuesResult,
+  type FixItIssuesResult,
+} from "@/lib/integrations/seeclickfix";
 import {
   isPulsePointAlert,
   isPulsePointNotable,
@@ -32,8 +36,17 @@ import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/i
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
-import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
-import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
+import {
+  getFrederickWaterSitesWithHistoryResult,
+  readingTrend,
+  type WaterSite,
+  type WaterSitesResult,
+} from "@/lib/integrations/usgsWater";
+import {
+  classifyFlood,
+  currentFloodCoverage,
+  nwsGaugeUrl,
+} from "@/lib/integrations/floodStage";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
@@ -64,9 +77,13 @@ import {
   civicAlertPriority,
   powerOutageDisplay,
   powerOutageTone,
+  SIGNIFICANT_POWER_OUTAGE_CUSTOMERS,
   pulseAqiPriority,
   pulseAlertPriority,
+  pulseFloodPriority,
+  pulseOperationalBriefing,
   pulseStatusState,
+  pulseUrgentFeedsDegraded,
   selectPulseLeadCandidate,
 } from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
@@ -295,7 +312,17 @@ export default async function PulsePage() {
     getCurrentSituationSnapshot(),
     getRoadIntelligenceSnapshot(),
     getOfficialSignalsSnapshot(),
-    withTimeoutStatus(getFixItIssues(15), FEED_MS, []),
+    withTimeout<FixItIssuesResult>(getFixItIssuesResult(15), FEED_MS, {
+      data: [],
+      open: [],
+      acknowledged: [],
+      openCount: 0,
+      acknowledgedCount: 0,
+      openAvailable: false,
+      acknowledgedAvailable: false,
+      status: "unavailable",
+      available: false,
+    }),
     // Local headlines from Google News RSS — always-on city signal.
     withTimeout(getLocalHeadlines(), FEED_MS, []),
     // Official City + County press releases (CivicPlus News Flash RSS). The
@@ -305,10 +332,10 @@ export default async function PulsePage() {
     // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
     // Six hours is ~24 readings per gauge: ample for the eight-reading trend
     // calculation without serializing the full /rivers 24-hour payload here.
-    withTimeoutStatus(
-      getFrederickWaterSitesWithHistory("PT6H"),
+    withTimeout<WaterSitesResult>(
+      getFrederickWaterSitesWithHistoryResult("PT6H"),
       FEED_MS,
-      [] as WaterSite[],
+      { data: [], available: false },
     ),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
@@ -335,9 +362,14 @@ export default async function PulsePage() {
   ]);
 
   const fixit = fixitResult.data;
-  const fixitAvailable = fixitResult.available;
+  const fixitOpenCount = fixitResult.openCount;
+  const fixitAcknowledgedCount = fixitResult.acknowledgedCount;
+  const fixitKnownCount =
+    (fixitResult.openAvailable ? fixitOpenCount : 0) +
+    (fixitResult.acknowledgedAvailable ? fixitAcknowledgedCount : 0);
+  const fixitLabel = fixItCountLabel(fixitResult);
   const rivers = riversResult.data;
-  const riversAvailable = riversResult.available;
+  const riverSourceAvailable = riversResult.available;
   const marcBoard = marcBoardResult.data;
   const marcBoardAvailable = marcBoardResult.available;
   const marcNow = new Date(situation.generatedAt);
@@ -356,15 +388,23 @@ export default async function PulsePage() {
   const safetyState = sourceDisplayState(safetySource);
   const alertsAvailable = sourceIsCurrent(weatherSource);
   const airAvailable = sourceIsCurrent(airSource);
+  const floodCoverage = currentFloodCoverage(
+    riverSourceAvailable,
+    rivers,
+    marcNow,
+  );
+  const riversCurrent = floodCoverage.status === "current";
   const officialAlertsCheckComplete =
     alertsAvailable &&
     officialSignals.stormReports.available &&
     officialSignals.civic.available &&
     !officialSignals.civic.degraded;
-  const urgentDegraded =
-    situation.summary.coverage === "partial" ||
-    safetyState === "unavailable" ||
-    !officialAlertsCheckComplete;
+  const urgentDegraded = pulseUrgentFeedsDegraded({
+    situationPartial: situation.summary.coverage === "partial",
+    safetyUnavailable: safetyState === "unavailable",
+    officialAlertsComplete: officialAlertsCheckComplete,
+    riverCurrent: riversCurrent,
+  });
   const incidentsResult = {
     data: trafficAvailable ? trafficSource.data : [],
     available: trafficAvailable,
@@ -426,7 +466,7 @@ export default async function PulsePage() {
 
   // Power outages become a page-level alert at 25+ customers. Smaller totals
   // stay quiet in the hierarchy but remain truthfully visible in the tile.
-  const outagesActive = outages.total_out >= 25;
+  const outagesActive = outages.total_out >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS;
   const outageDisplay = powerOutageDisplay(outages.total_out, powerAvailable);
   const outageTone = powerOutageTone(outages.total_out, outages.total_served);
   const outageShare =
@@ -514,20 +554,40 @@ export default async function PulsePage() {
   const roadCheckComplete =
     trafficAvailable && roadIntelligence.summary.coverage === "complete";
 
+  // A countywide water tile cannot use whichever gauge happens to render
+  // first. Compare every fresh forecast-point reading against its official NWS
+  // categories, then let the worst current category drive the hierarchy.
+  const riverGroups = groupByRiver(rivers);
+  const worstFlood = floodCoverage.worst;
+  const floodActive = Boolean(
+    worstFlood && worstFlood.category.key !== "normal",
+  );
+
+  // These are meaningful changes, but they are not county emergencies. Keep a
+  // distinct operational state so Pulse cannot say "All quiet" above a MARC
+  // alert, airport delay, or expanded Camp David restriction.
+  const airportIssues = airports.filter((airport) => airport.state !== "clear");
+  const operationalBriefing = pulseOperationalBriefing({
+    marcAlerts: marcAlerts.length,
+    airportIssues: airportIssues.map((airport) => airport.name),
+    campDavidRestricted: Boolean(campDavidTfr),
+  });
+
   // Pulse is active if any trusted urgent category is active. The featured
   // police release must use this SAME model as its breaking strip; otherwise a
   // fresh shooting or missing-person release could sit directly below an
   // "All clear" masthead. We intentionally do not add unlike records into one
   // fake situation total.
-  const { heroDegraded, allClear } = pulseStatusState({
+  const { heroDegraded, allClear, hasOperational } = pulseStatusState({
     weather: activeAlerts.length > 0 || officialCivicAlerts.length > 0,
     fireRescue: severeSafety.length > 0,
     traffic: roadTrafficActive,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
     air: aqiActive,
+    flood: floodActive,
     police: Boolean(breakingPolice),
-  }, urgentDegraded);
+  }, urgentDegraded, operationalBriefing.active);
 
   const leadAlert = activeAlerts[0];
   const leadAirSummary = leadAlert ? summarizeAirQualityAlert(leadAlert) : null;
@@ -611,6 +671,13 @@ export default async function PulsePage() {
       reason: `AirNow ${aqiWorst.category.name.toLowerCase()} reading`,
       observedAt: airQualityObservedAt(aqiWorst)?.toISOString(),
     },
+    floodActive && worstFlood && {
+      id: "flood",
+      family: "water" as const,
+      priority: pulseFloodPriority(worstFlood.category.key),
+      reason: `NWS ${worstFlood.category.label.toLowerCase()} category`,
+      observedAt: worstFlood.observedAt,
+    },
   ]);
 
   let heroLine = "No major disruptions appear in the checked feeds.";
@@ -624,7 +691,11 @@ export default async function PulsePage() {
       ? "positive"
       : "warning";
 
-  if (!leadCandidate && heroDegraded) {
+  if (!leadCandidate && hasOperational) {
+    heroTone = "cool";
+    heroLine = operationalBriefing.line;
+    heroSub = operationalBriefing.sub;
+  } else if (!leadCandidate && heroDegraded) {
     heroLine = "The available feeds show no major disruptions.";
     heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
   } else if (leadCandidate?.id === "air" && aqiWorst) {
@@ -665,6 +736,30 @@ export default async function PulsePage() {
       alertEndLabel(leadAlert.ends_at),
     ].filter(Boolean).join(" · ");
     heroActionLabel = "Read the Frederick alert";
+  } else if (leadCandidate?.id === "flood" && worstFlood) {
+    const river = titleCaseRiver(worstFlood.site.river);
+    const location = riverLocationOf(worstFlood.site.name);
+    const place = location
+      ? `${river} ${location.replace(/^./, (character) => character.toLowerCase())}`
+      : river;
+    const category = worstFlood.category;
+    heroTone = category.tone === "danger" ? "danger" : "warning";
+    heroLeadKey = "rivers";
+    heroLine = category.key === "action"
+      ? `${place} is near flood stage.`
+      : `${place} is at ${category.key} flood stage.`;
+    const stageDifference = Math.abs(category.toFloodFt).toFixed(1);
+    const stageContext = category.toFloodFt > 0
+      ? `${stageDifference} feet below flood stage`
+      : category.toFloodFt < 0
+        ? `${stageDifference} feet above flood stage`
+        : "at flood stage";
+    heroSub = `The latest gauge reads ${worstFlood.site.gageHeightFt!.toFixed(1)} feet, ${stageContext}. Check the official forecast and avoid low-water crossings.`;
+    heroLeadMeta = [
+      `USGS observed ${timeAgo(worstFlood.observedAt)}`,
+      `NWS flood stage ${category.floodStageFt.toFixed(1)} ft`,
+    ].join(" · ");
+    heroActionLabel = "See the river details";
   } else if (leadCandidate?.id === "police" && breakingPolice) {
     heroTone = "danger";
     heroLeadKey = "police";
@@ -728,21 +823,26 @@ export default async function PulsePage() {
     heroActionLabel = "See active calls";
   }
 
-  // Rivers — group the live gauges and pick a representative reading for
-  // the tile peek (the most-gauged river's first reporting gauge). Honest:
-  // height + observed time only, never a synthesized flood "stage".
-  const riverGroups = groupByRiver(rivers);
-  const riverPeekSite = riverGroups[0]?.sites.find((s) => s.gageHeightFt != null);
+  // On a calm day, use the first representative gauge. At action stage or
+  // higher, the worst current official category takes the face immediately.
+  const riverPeekSite = floodActive
+    ? worstFlood?.site
+    : riverGroups[0]?.sites.find((site) => site.gageHeightFt != null);
   const riverPeekDir = riverPeekSite ? readingTrend(riverPeekSite.gageHistory) : null;
+  const riverPeekCategory = riverPeekSite
+    ? classifyFlood(riverPeekSite.gageHeightFt, riverPeekSite.floodStages)
+    : null;
+  const riverPeekName = riverPeekSite
+    ? titleCaseRiver(riverPeekSite.river)
+    : riverGroups[0]?.river;
   const riverPeek = riverPeekSite
-    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
+    ? `${riverPeekName} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
 
   // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
   // was unreachable, so the tile self-hides rather than claim a status we
   // couldn't read; otherwise each airport is "on time" unless the feed lists a
   // delay / ground stop / closure. The peek carries the first delayed airport.
-  const airportIssues = airports.filter((a) => a.state !== "clear");
   const airportPeek = airportIssues[0]
     ? `${airportIssues[0].name} ${
         airportIssues[0].state === "closure"
@@ -966,11 +1066,10 @@ export default async function PulsePage() {
   const unaffectedOutageAreaCount = Math.max(0, outages.munis.length - affectedOutageAreas.length);
 
   const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
-  const riverFloodRef = riverPeekSite?.floodStages?.minor ?? null;
   // Only forecast points carry an official stage. The compact card prints the
   // measurement and trend directly; it never turns the value into a decorative
   // percentage or invents a reference stage for another gauge.
-  const riverHasStage = riverPeekHeight != null && riverFloodRef != null;
+  const riverHasStage = riverPeekHeight != null && riverPeekCategory != null;
   const activeOfficialAlertCount =
     activeAlerts.length + officialCivicAlerts.length;
   const leadDisplayedAlert = leadCandidate?.id === "official-alert"
@@ -1425,36 +1524,58 @@ export default async function PulsePage() {
       key: "fixit",
       label: "311 reports",
       iconName: "AlertTriangle",
-      countLabel: fixit.length > 0
-        ? `${fixit.length} open`
-        : fixitAvailable
-          ? "No open reports"
-          : "Reports unavailable",
-      accent: "var(--app-cool)",
+      countLabel: fixitLabel,
+      accent: fixitResult.status === "partial"
+        ? "var(--app-warning)"
+        : fixitAcknowledgedCount > 0
+          ? "var(--app-brand-2)"
+          : "var(--app-cool)",
       active: false,
       attention: false,
-      availability: fixitAvailable ? "current" : "unavailable",
+      availability: fixitResult.status,
       kind: "gauge",
-      gauge: { value: fixit.length, unit: "open reports" },
+      gauge: {
+        value: fixitKnownCount,
+        unit: fixitResult.status === "partial"
+          ? "known active reports · partial check"
+          : "active reports",
+      },
       sourceLabel: "FCG FixIT · SeeClickFix",
       body: fixit.length > 0
-        ? fixit.slice(0, 10).map((i) => (
-            <Row
-              key={i.id}
-              tone={i.status === "closed" ? "muted" : "cool"}
-              title={i.summary}
-              body={i.category && i.category !== i.summary ? i.category : undefined}
-              // FCG FixIt can include a resident's exact street address. Pulse
-              // is a countywide situation board, not a request-level map, so
-              // the public row keeps only time and status. The official source
-              // remains available below for anyone who needs the full record.
-              meta={[timeAgo(i.reported_at), i.status]}
-            />
-          ))
+        ? (
+          <div className="space-y-2">
+            {fixit.slice(0, 10).map((i) => (
+              <Row
+                key={i.id}
+                tone={i.status === "acknowledged" ? "cool" : "muted"}
+                title={i.summary}
+                body={i.category && i.category !== i.summary ? i.category : undefined}
+                // FCG FixIt can include a resident's exact street address.
+                // Pulse keeps only time and status on this countywide board.
+                meta={[timeAgo(i.reported_at), i.status]}
+              />
+            ))}
+            {fixitResult.status === "partial" && (
+              <p
+                className="rounded-[var(--app-radius-sm)] border px-3 py-2 text-[11px] leading-relaxed"
+                style={{
+                  borderColor: "var(--app-warning)",
+                  background: "var(--app-warning-tint-6)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                One FCG FixIT status check could not be completed. The records
+                shown here are useful, but the totals may be incomplete.
+              </p>
+            )}
+          </div>
+        )
         : emptyNote(
-            fixitAvailable
-              ? "No open 311 reports are listed right now."
-              : "FCG FixIT reports could not be loaded right now.",
+            fixitResult.status === "current"
+              ? "No open or acknowledged 311 reports are listed in the checked Frederick County records."
+              : fixitResult.status === "partial"
+                ? "One FCG FixIT status check succeeded, but the other could not be completed. The active total is incomplete."
+                : "FCG FixIT reports could not be loaded right now.",
           ),
     },
     {
@@ -1654,22 +1775,27 @@ export default async function PulsePage() {
       ),
     },
     {
-      // Rivers is live county data (rising water), not an alert — it stays a
-      // calm cool tile (active:false): no accent band, no "situation" count
-      // in the hero roll-up. The peek carries a representative gage reading
-      // so a glance gets the water level; the window lists every gauge by
-      // river with height + streamflow + observed-ago, and links to the full
-      // /rivers dashboard for 24-hour trends + the map.
+      // A normal reading remains a calm condition. A fresh NWS action-stage or
+      // flood-stage reading becomes an advisory and uses the worst current
+      // forecast point, never whichever river happened to render first.
       key: "rivers",
-      label: riverPeekHeight != null ? (riverGroups[0]?.river ?? "River") : "Rivers",
+      label: riverPeekHeight != null ? (riverPeekName ?? "River") : "Rivers",
       iconName: "Waves",
-      countLabel: rivers.length > 0
-        ? `${rivers.length} ${rivers.length === 1 ? "gauge" : "gauges"}`
-        : "No data",
-      accent: "var(--app-cool)",
-      active: false,
-      attention: false,
-      availability: riversAvailable ? "current" : "unavailable",
+      countLabel: floodActive && riverPeekCategory
+        ? riverPeekCategory.label
+        : rivers.length > 0
+          ? `${rivers.length} ${rivers.length === 1 ? "gauge" : "gauges"}`
+          : "No data",
+      accent: riverPeekCategory?.tone === "danger"
+        ? "var(--app-danger)"
+        : riverPeekCategory?.tone === "warning"
+          ? "var(--app-warning)"
+          : "var(--app-cool)",
+      active: floodActive,
+      attention: floodActive,
+      availability: floodCoverage.status === "incomplete"
+        ? "partial"
+        : floodCoverage.status,
       // Only a real gauge height is a reading; "No data" is an absence.
       reading: riverPeekHeight != null,
       // A site without an official NWS flood stage still shows its height and
@@ -1680,7 +1806,11 @@ export default async function PulsePage() {
             gauge: {
               value: riverPeekHeight,
               decimals: 1,
-              unit: `ft · ${riverPeekDir ?? "steady"}`,
+              unit: `ft · ${
+                floodActive && riverPeekCategory
+                  ? riverPeekCategory.label.toLowerCase()
+                  : riverPeekDir ?? "steady"
+              }`,
             },
           }
         : { peek: riverPeek }),
@@ -1719,7 +1849,8 @@ export default async function PulsePage() {
                     const secondary = hasHeight && s.streamflowCfs != null
                       ? `Flow ${s.streamflowCfs.toLocaleString()} ft³/s`
                       : null;
-                    const ago = s.observedAt ? timeAgo(s.observedAt) : "";
+                    const gaugeObservedAt = s.gageHistory?.at(-1)?.at ?? s.observedAt;
+                    const ago = gaugeObservedAt ? timeAgo(gaugeObservedAt) : "";
                     return (
                       <li key={s.id}>
                         <MetricCard
@@ -1974,6 +2105,7 @@ export default async function PulsePage() {
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
     allClear,
+    operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,
     tone: heroTone,
     line: heroLine,
@@ -2008,6 +2140,14 @@ export default async function PulsePage() {
         tone: aqiWorst.category.id >= 4 ? "danger" : aqiWorst.category.id >= 3 ? "warning" : "cool",
         label: `${aqiObservationLabel(aqiWorst.parameter, aqiWorst.aqi)} · ${aqiClock(aqiWorst)}`,
         key: "air",
+      });
+    }
+    if (floodActive && worstFlood) {
+      addHeroChip({
+        tone: worstFlood.category.tone === "danger" ? "danger" : "warning",
+        label: `${titleCaseRiver(worstFlood.site.river)} · ${worstFlood.category.label}`,
+        key: "rivers",
+        meta: `Observed ${timeAgo(worstFlood.observedAt)}`,
       });
     }
     if (outagesActive) {

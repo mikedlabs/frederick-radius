@@ -43,6 +43,7 @@ import { haptic } from "@/lib/haptics";
 import { getHomeMuni } from "@/lib/personalize";
 import { toolMatchesQuery } from "@/lib/search/toolQuery";
 import { track } from "@/lib/track";
+import { SIGNIFICANT_POWER_OUTAGE_CUSTOMERS } from "@/lib/pulse/signal-priority";
 import {
   DEFAULT_TOOL_DECK_PIN_IDS,
   TOOL_DECK_GROUP_DEFINITIONS,
@@ -315,6 +316,9 @@ export function commonCompassTasks(
 export function compassSuggestionForHour(hour: number): {
   itemId: "events" | "open-now";
   reason: string;
+  eyebrow?: string;
+  label?: string;
+  href?: string;
 } {
   if (hour >= 5 && hour < 10) {
     return {
@@ -338,6 +342,115 @@ export function compassSuggestionForHour(hour: number): {
     itemId: "open-now",
     reason: "Find somewhere with posted hours for right now.",
   };
+}
+
+export type CompassLiveSuggestion = {
+  itemId: "county-pulse" | "transit";
+  label: string;
+  href: string;
+  reason: string;
+  eyebrow: "Needs attention" | "Moving now";
+};
+
+type DeckLiveFace = { value: string; label: string };
+type DeckLiveKey = { id: string; status: string; faces: DeckLiveFace[] };
+
+function numericFaceValue(face: DeckLiveFace | undefined): number | null {
+  if (!face) return null;
+  const normalized = face.value.replaceAll(",", "").trim();
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
+function activeCount(
+  key: DeckLiveKey | undefined,
+  labelPattern: RegExp,
+): number {
+  if (key?.status !== "ok") return 0;
+  const face = key.faces.find((candidate) => labelPattern.test(candidate.label));
+  return numericFaceValue(face) ?? 0;
+}
+
+/**
+ * Choose one live interruption for Compass. Ordinary readings do not elbow
+ * out the daypart suggestion: only a condition that changes a resident's next
+ * move earns the slot. Commute-hour transit is the one lower-severity
+ * exception because a moving vehicle is useful only while someone is likely
+ * deciding how to travel.
+ */
+export function liveSuggestionForDeck(
+  keys: readonly DeckLiveKey[],
+  hour: number,
+): CompassLiveSuggestion | null {
+  const byId = new Map(keys.map((key) => [key.id, key] as const));
+  const candidates: Array<CompassLiveSuggestion & { priority: number }> = [];
+
+  const weatherAlerts = activeCount(byId.get("weather"), /active alerts?/i);
+  if (weatherAlerts > 0) {
+    candidates.push({
+      itemId: "county-pulse",
+      label: weatherAlerts === 1 ? "Weather alert" : "Weather alerts",
+      href: "/pulse?open=weather",
+      reason: `${weatherAlerts} ${weatherAlerts === 1 ? "weather alert is" : "weather alerts are"} active for Frederick County.`,
+      eyebrow: "Needs attention",
+      priority: 500,
+    });
+  }
+
+  const schoolNotices = activeCount(
+    byId.get("schools"),
+    /closures?|delays?/i,
+  );
+  if (schoolNotices > 0) {
+    candidates.push({
+      itemId: "county-pulse",
+      label: schoolNotices === 1 ? "School notice" : "School notices",
+      href: "/pulse?open=schools",
+      reason: `${schoolNotices} FCPS ${schoolNotices === 1 ? "closure or delay is" : "closures or delays are"} posted.`,
+      eyebrow: "Needs attention",
+      priority: 400,
+    });
+  }
+
+  const customersOut = activeCount(byId.get("power"), /customers? out/i);
+  if (customersOut >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS) {
+    candidates.push({
+      itemId: "county-pulse",
+      label: "Power outages",
+      href: "/pulse?open=power",
+      reason: `${customersOut.toLocaleString()} ${customersOut === 1 ? "customer is" : "customers are"} without power in the county.`,
+      eyebrow: "Needs attention",
+      priority: 300,
+    });
+  }
+
+  const roadIncidents = activeCount(byId.get("traffic"), /incidents?/i);
+  if (roadIncidents > 0) {
+    candidates.push({
+      itemId: "county-pulse",
+      label: roadIncidents === 1 ? "Road incident" : "Road incidents",
+      href: "/pulse?open=traffic",
+      reason: `MDOT is reporting ${roadIncidents} open ${roadIncidents === 1 ? "incident" : "incidents"} in Frederick County.`,
+      eyebrow: "Needs attention",
+      priority: 200,
+    });
+  }
+
+  const commuteHour = (hour >= 6 && hour < 10) || (hour >= 15 && hour < 19);
+  const busesMoving = activeCount(byId.get("buses"), /buses? moving/i);
+  if (commuteHour && busesMoving > 0) {
+    candidates.push({
+      itemId: "transit",
+      label: "Live transit",
+      href: "/transit",
+      reason: `${busesMoving} ${busesMoving === 1 ? "bus is" : "buses are"} reporting a live position now.`,
+      eyebrow: "Moving now",
+      priority: 100,
+    });
+  }
+
+  return candidates.sort((a, b) => b.priority - a.priority)[0] ?? null;
 }
 
 function subscribeHomeTown(onChange: () => void) {
@@ -425,6 +538,7 @@ export default function CompassHub() {
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [pinNotice, setPinNotice] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const deckLiveKeys = useDeckLiveKeys();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -552,11 +666,17 @@ export default function CompassHub() {
   });
   // Noon is the stable server/first-client snapshot. Once local settings are
   // hydrated, the row quietly changes to the device's current daypart.
-  const contextualSuggestion = compassSuggestionForHour(
-    hydrated ? new Date().getHours() : 12,
-  );
-  const contextualItem = contextualSuggestion
-    ? itemById.get(contextualSuggestion.itemId) ?? null
+  const localHour = hydrated ? new Date().getHours() : 12;
+  const contextualSuggestion =
+    liveSuggestionForDeck(deckLiveKeys, localHour) ??
+    compassSuggestionForHour(localHour);
+  const contextualBaseItem = itemById.get(contextualSuggestion.itemId) ?? null;
+  const contextualItem = contextualBaseItem
+    ? {
+        ...contextualBaseItem,
+        label: contextualSuggestion.label ?? contextualBaseItem.label,
+        href: contextualSuggestion.href ?? contextualBaseItem.href,
+      }
     : null;
   const activeIntentDefinition = COMPASS_INTENT_DEFINITIONS.find(
     (intent) => intent.id === activeIntent,
@@ -619,7 +739,7 @@ export default function CompassHub() {
             className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Compass · All tools
+            Compass · {directory.total} tools
           </p>
           <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
             What do you need?
@@ -677,6 +797,7 @@ export default function CompassHub() {
             <ContextualToolSuggestion
               item={contextualItem}
               reason={contextualSuggestion.reason}
+              eyebrow={contextualSuggestion.eyebrow}
               intentProps={intentProps}
             />
           ) : null}
@@ -698,6 +819,8 @@ export default function CompassHub() {
             onActiveIntentChange={setActiveIntent}
             onOpen={openDeck}
             intentProps={intentProps}
+            liveKeys={deckLiveKeys}
+            toolCount={directory.total}
           />
         </>
       )}
@@ -714,7 +837,7 @@ export default function CompassHub() {
             ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
             : selectedIntent?.description ??
               selectedGroup?.description ??
-              "Choose a category and go straight to the tool you need."
+              `${directory.total} tools, organized by category. Search or jump to a category.`
         }
         onClose={closeDeck}
       >
@@ -767,9 +890,13 @@ export default function CompassHub() {
               intentProps={intentProps}
             />
           ) : (
-            <DeckGroupDirectory
+            <DeckToolBrowser
+              key="all-tools"
               groups={directory.groups}
-              onOpen={changeDeckView}
+              pinnedIds={pinnedIds}
+              onTogglePin={togglePin}
+              intentProps={intentProps}
+              showCategoryNav
             />
           )}
         </div>
@@ -871,10 +998,12 @@ function PinnedTools({
 function ContextualToolSuggestion({
   item,
   reason,
+  eyebrow = "Useful right now",
   intentProps,
 }: {
   item: DirectoryItem;
   reason: string;
+  eyebrow?: string;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
@@ -906,7 +1035,7 @@ function ContextualToolSuggestion({
             className="block text-[11px] font-semibold uppercase tracking-[0.08em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Useful right now
+            {eyebrow}
           </span>
           <span className="mt-0.5 block text-[14px] font-semibold leading-tight">
             {item.label}
@@ -995,26 +1124,65 @@ function RecentTools({
  * route fans out to twelve integrations behind a 6s ceiling, and blocking a
  * navigation index on that would be a worse regression than the silence.
  *
- * Each intent names the deck keys that can speak for it, in priority order.
- * A key only speaks when its feed answered (status "ok") and it has a face
- * value; otherwise the row keeps its plain sentence — an honest absence, not
- * a placeholder.
+ * Each intent names the deck keys that can speak for it. Active alerts,
+ * closures, outages, and incidents outrank routine readings within that
+ * family; equal readings keep the declared order. A key only speaks when its
+ * feed answered (status "ok") and it has a face value. Otherwise the row
+ * keeps its plain sentence — an honest absence, not a placeholder.
  */
 const INTENT_LIVE_KEYS: Partial<Record<CompassIntentId, readonly string[]>> = {
   "go-out": ["events"],
   "get-around": ["buses", "traffic", "trains"],
-  "local-help": ["weather", "power", "schools"],
+  "local-help": ["weather", "power", "schools", "reports"],
+  "explore-yours": ["news", "water"],
 };
 
-type DeckLiveFace = { value: string; label: string };
-type DeckLiveKey = { id: string; status: string; faces: DeckLiveFace[] };
+function deckKeyImportance(key: DeckLiveKey): number {
+  if (key.status !== "ok") return Number.NEGATIVE_INFINITY;
+
+  const activePriority: Partial<Record<string, { pattern: RegExp; score: number }>> = {
+    weather: { pattern: /active alerts?/i, score: 500 },
+    schools: { pattern: /closures?|delays?/i, score: 400 },
+    power: { pattern: /customers? out/i, score: 300 },
+    traffic: { pattern: /incidents?/i, score: 200 },
+  };
+  const active = activePriority[key.id];
+  if (active && activeCount(key, active.pattern) > 0) return active.score;
+
+  // Routine readings remain useful context, but never outrank a condition
+  // that changes the resident's next move.
+  const routinePriority: Record<string, number> = {
+    events: 90,
+    buses: 80,
+    trains: 70,
+    reports: 60,
+    news: 50,
+    water: 40,
+    weather: 30,
+    traffic: 20,
+    power: 10,
+    schools: 0,
+  };
+  return routinePriority[key.id] ?? 0;
+}
 
 export function liveLineForIntent(
   intentId: CompassIntentId,
   keys: readonly DeckLiveKey[],
 ): string | null {
-  for (const keyId of INTENT_LIVE_KEYS[intentId] ?? []) {
-    const key = keys.find((candidate) => candidate.id === keyId);
+  const keyOrder = INTENT_LIVE_KEYS[intentId] ?? [];
+  const rankedKeys = keyOrder
+    .flatMap((keyId, order) => {
+      const key = keys.find((candidate) => candidate.id === keyId);
+      return key ? [{ key, order }] : [];
+    })
+    .sort(
+      (a, b) =>
+        deckKeyImportance(b.key) - deckKeyImportance(a.key) ||
+        a.order - b.order,
+    );
+
+  for (const { key } of rankedKeys) {
     const face = key?.faces?.[0];
     if (key?.status === "ok" && face?.value && face.label) {
       const value = face.value.trim();
@@ -1028,20 +1196,14 @@ export function liveLineForIntent(
   return null;
 }
 
-function useDeckLiveLines(): Partial<Record<CompassIntentId, string>> {
-  const [lines, setLines] = useState<Partial<Record<CompassIntentId, string>>>({});
+function useDeckLiveKeys(): readonly DeckLiveKey[] {
+  const [keys, setKeys] = useState<readonly DeckLiveKey[]>([]);
   useEffect(() => {
     const ctrl = new AbortController();
     fetch("/api/deck", { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { keys?: DeckLiveKey[] }) => {
-        const keys = Array.isArray(data.keys) ? data.keys : [];
-        const next: Partial<Record<CompassIntentId, string>> = {};
-        for (const intent of COMPASS_INTENT_DEFINITIONS) {
-          const line = liveLineForIntent(intent.id, keys);
-          if (line) next[intent.id] = line;
-        }
-        setLines(next);
+        setKeys(Array.isArray(data.keys) ? data.keys : []);
       })
       .catch(() => {
         // The rows keep their registry sentences. A degraded deck costs the
@@ -1049,7 +1211,7 @@ function useDeckLiveLines(): Partial<Record<CompassIntentId, string>> {
       });
     return () => ctrl.abort();
   }, []);
-  return lines;
+  return keys;
 }
 
 function CompassIntentBoard({
@@ -1059,6 +1221,8 @@ function CompassIntentBoard({
   onActiveIntentChange,
   onOpen,
   intentProps,
+  liveKeys,
+  toolCount,
 }: {
   intents: typeof COMPASS_INTENT_DEFINITIONS;
   itemById: ReadonlyMap<string, DirectoryItem>;
@@ -1066,8 +1230,15 @@ function CompassIntentBoard({
   onActiveIntentChange: (value: CompassIntentId | null) => void;
   onOpen: (view: CompassDeckView, managePins?: boolean) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
+  liveKeys: readonly DeckLiveKey[];
+  toolCount: number;
 }) {
-  const liveLines = useDeckLiveLines();
+  const liveLines = Object.fromEntries(
+    COMPASS_INTENT_DEFINITIONS.flatMap((intent) => {
+      const line = liveLineForIntent(intent.id, liveKeys);
+      return line ? [[intent.id, line]] : [];
+    }),
+  ) as Partial<Record<CompassIntentId, string>>;
   return (
     <section aria-labelledby="compass-browse-heading" className="space-y-2.5">
       <h2
@@ -1212,7 +1383,15 @@ function CompassIntentBoard({
         >
           <List className="h-4 w-4" strokeWidth={2.1} />
         </span>
-        <span className="min-w-0 flex-1">All tools</span>
+        <span className="min-w-0 flex-1">
+          All {toolCount} tools
+          <span
+            className="mt-0.5 block text-[11px] font-normal"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Browse every tool by category
+          </span>
+        </span>
         <ChevronRight
           className="h-4 w-4 shrink-0"
           strokeWidth={2.1}
@@ -1220,56 +1399,6 @@ function CompassIntentBoard({
         />
       </button>
     </section>
-  );
-}
-
-function DeckGroupDirectory({
-  groups,
-  onOpen,
-}: {
-  groups: ToolDeckGroup[];
-  onOpen: (view: ToolDeckGroupId | "all") => void;
-}) {
-  return (
-    <div
-      className="divide-y divide-[var(--app-border)] border-y"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      {groups.map((group) => {
-        const Icon = GROUP_META[group.id].icon;
-        return (
-          <button
-            key={group.id}
-            type="button"
-            onClick={() => onOpen(group.id)}
-            className="tactile-interactive flex min-h-[60px] w-full items-center gap-3 px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-          >
-              <Icon
-                className="h-[18px] w-[18px] shrink-0"
-                style={{ color: GROUP_META[group.id].color }}
-                strokeWidth={2.05}
-                aria-hidden
-              />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[14px] font-semibold">{group.label}</span>
-              <span
-                className="mt-0.5 block truncate text-[12px]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {group.description}
-              </span>
-            </span>
-            <span
-              className="font-mono text-[11px] tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {group.items.length}
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.1} aria-hidden />
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1428,12 +1557,14 @@ function DeckToolBrowser({
   onTogglePin,
   intentProps,
   showPinControls = false,
+  showCategoryNav = false,
 }: {
   groups: ToolDeckGroup[];
   pinnedIds: string[];
   onTogglePin: (item: DirectoryItem) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
   showPinControls?: boolean;
+  showCategoryNav?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const visibleGroups = searchToolDeckGroups(groups, filter);
@@ -1442,6 +1573,58 @@ function DeckToolBrowser({
 
   return (
     <div className="space-y-4">
+      {showCategoryNav && !filter ? (
+        <nav
+          aria-label="Tool categories"
+          className="sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="flex snap-x gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {groups.map((group) => {
+              const Icon = GROUP_META[group.id].icon;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => {
+                    document
+                      .getElementById(`compass-tools-${group.id}`)
+                      ?.scrollIntoView({
+                        behavior: window.matchMedia(
+                          "(prefers-reduced-motion: reduce)",
+                        ).matches
+                          ? "auto"
+                          : "smooth",
+                        block: "start",
+                      });
+                  }}
+                  className="tactile-interactive inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    color: "var(--app-ink-2)",
+                    background: "var(--app-bg)",
+                  }}
+                >
+                  <Icon
+                    className="h-3.5 w-3.5"
+                    style={{ color: GROUP_META[group.id].color }}
+                    strokeWidth={2.1}
+                    aria-hidden
+                  />
+                  {group.label}
+                  <span
+                    className="font-mono text-[10px] tabular-nums"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {group.items.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      ) : null}
+
       {total > 7 ? (
         <label className="block">
           <span className="sr-only">Search tools in this section</span>
@@ -1481,7 +1664,11 @@ function DeckToolBrowser({
 
       {visibleGroups.length > 0 ? (
         visibleGroups.map((group) => (
-          <section key={group.id} className="space-y-2.5">
+          <section
+            key={group.id}
+            id={`compass-tools-${group.id}`}
+            className="scroll-mt-14 space-y-2.5"
+          >
             {showGroupHeadings ? (
               <div>
                 <h3 className="text-[14px] font-semibold">{group.label}</h3>

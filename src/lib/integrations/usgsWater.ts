@@ -64,6 +64,13 @@ export type WaterSite = {
   lat: number;
 };
 
+export type WaterSitesResult = {
+  data: WaterSite[];
+  /** True only when USGS answered successfully. An empty successful payload
+   * remains distinct from a timeout, network failure, or non-2xx response. */
+  available: boolean;
+};
+
 type IvValue = { value?: unknown; dateTime?: unknown };
 type IvTimeSeries = {
   sourceInfo?: {
@@ -203,6 +210,13 @@ export async function getFrederickWaterSites(): Promise<WaterSite[]> {
 export async function getFrederickWaterSitesWithHistory(
   period: "PT6H" | "P1D" | "P7D" = "P1D",
 ): Promise<WaterSite[]> {
+  return (await getFrederickWaterSitesWithHistoryResult(period)).data;
+}
+
+/** Health-aware history read for trust-sensitive surfaces such as Pulse. */
+export async function getFrederickWaterSitesWithHistoryResult(
+  period: "PT6H" | "P1D" | "P7D" = "P1D",
+): Promise<WaterSitesResult> {
   const endpoint = `${ENDPOINT}&period=${period}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -212,10 +226,13 @@ export async function getFrederickWaterSitesWithHistory(
       headers: { Accept: "application/json" },
       next: { revalidate: 900 },
     });
-    if (!res.ok) return [];
-    return normalizeWaterSitesWithHistory(await res.json());
+    if (!res.ok) return { data: [], available: false };
+    return {
+      data: normalizeWaterSitesWithHistory(await res.json()),
+      available: true,
+    };
   } catch {
-    return [];
+    return { data: [], available: false };
   } finally {
     clearTimeout(timer);
   }

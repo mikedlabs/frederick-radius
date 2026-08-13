@@ -106,6 +106,24 @@ describe("Pulse status language", () => {
     })).toBe("Advisory");
   });
 
+  it("calls a non-emergency service change a live update instead of all quiet", () => {
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: false,
+      hasLead: false,
+      operational: true,
+      tone: "cool",
+    })).toBe("Live update");
+
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: true,
+      hasLead: false,
+      operational: true,
+      tone: "cool",
+    })).toBe("Live update");
+  });
+
   it("does not report an unavailable feed as cleared since the last look", () => {
     const tile = (
       key: string,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isStandalone } from "@/lib/pwa-display";
+import { isIosDevice, isStandalone } from "@/lib/pwa-display";
 import {
   RETURN_BRIDGE_OPEN_EVENT,
   RETURN_BRIDGE_VALUE_CANCEL_EVENT,
@@ -40,7 +40,8 @@ type InstallWindow = Window & {
 
 const VALUE_REVEAL_DELAY_MS = 6_500;
 const RETURN_REVEAL_DELAY_MS = 6_000;
-const SOCIAL_REVEAL_DELAY_MS = 12_000;
+const SOCIAL_REVEAL_DELAY_MS = 10_000;
+export const FIRST_VISIT_INSTALL_DELAY_MS = 10_000;
 const PWA_LAUNCH_SESSION_KEY = "fr:pwa-launch:v1";
 
 function capturedInstallEvent(): BeforeInstallPromptEvent | null {
@@ -65,7 +66,19 @@ export async function requestBrowserInstall(
 function delayFor(reason: ReturnBridgeOfferReason): number {
   if (reason === "value") return VALUE_REVEAL_DELAY_MS;
   if (reason === "social") return SOCIAL_REVEAL_DELAY_MS;
-  return RETURN_REVEAL_DELAY_MS;
+  if (reason === "return") return RETURN_REVEAL_DELAY_MS;
+  return FIRST_VISIT_INSTALL_DELAY_MS;
+}
+
+/** Keep the timed first-visit invitation on phones; desktop retains a manual door. */
+export function shouldAutoOfferInstall(
+  reason: ReturnBridgeOfferReason | null,
+  userAgent: string,
+  maxTouchPoints = 0,
+): boolean {
+  if (!reason) return false;
+  if (reason !== "visit") return true;
+  return isIosDevice(userAgent, maxTouchPoints) || /Android|Mobile/i.test(userAgent);
 }
 
 /**
@@ -182,7 +195,13 @@ export function useInstallPrompt(): {
       referrer: document.referrer,
       currentUrl: window.location.href,
     });
-    const firstReason = returnBridgeOfferReason(initial, { socialEntry });
+    let firstReason = returnBridgeOfferReason(initial, { socialEntry });
+    // The automatic first-visit invitation is a mobile retention tool. A
+    // desktop QR card after ten seconds interrupts reading and is better left
+    // behind the deliberate Saved/Compass/Settings door.
+    if (!shouldAutoOfferInstall(firstReason, userAgent, maxTouchPoints)) {
+      firstReason = null;
+    }
     if (firstReason) schedule(firstReason);
 
     const assignDeferredEvent = (event: Event) => {

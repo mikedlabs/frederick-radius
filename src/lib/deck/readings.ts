@@ -11,7 +11,7 @@ import {
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { getLiveVehiclesWithNextStopResult } from "@/lib/integrations/transitRealtime";
 import { getMarcVehiclesResult } from "@/lib/integrations/marcVehicles";
-import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import { getFixItIssuesResult } from "@/lib/integrations/seeclickfix";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
@@ -148,7 +148,14 @@ export type DeckInputs = {
     history?: Array<{ value: number; at: string }>;
   }> | null;
   schools: { available: boolean; alerts: string[] } | null;
-  reports: DeckDetailRow[] | null;
+  reports: {
+    status: "current" | "partial" | "unavailable";
+    openCount: number;
+    acknowledgedCount: number;
+    openAvailable: boolean;
+    acknowledgedAvailable: boolean;
+    rows: DeckDetailRow[];
+  } | null;
   events: { today: number; week: number; rows: DeckDetailRow[] } | null;
   news: DeckDetailRow[] | null;
 };
@@ -534,15 +541,35 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
         href: "/pulse?open=fixit",
         hrefLabel: "Open reported issues",
         icon: "wrench",
-        accent: COOL,
+        accent: input.reports?.status === "partial" ? AMBER : COOL,
         live: false,
         source: "SeeClickFix",
       },
-      input.reports && input.reports.length > 0
-        ? {
-            faces: [{ value: String(input.reports.length), label: "open reports" }],
-            detail: input.reports,
-          }
+      input.reports?.status !== "unavailable" && input.reports
+        ? (() => {
+            const faces: DeckFace[] = [];
+            if (input.reports.openAvailable) {
+              faces.push({
+                value: String(input.reports.openCount),
+                label: input.reports.openCount === 1 ? "open report" : "open reports",
+              });
+            }
+            if (input.reports.acknowledgedAvailable) {
+              faces.push({
+                value: String(input.reports.acknowledgedCount),
+                label: "acknowledged",
+              });
+            }
+            return {
+              faces,
+              detail: input.reports.rows,
+              note: input.reports.status === "partial"
+                ? "One FCG FixIT status check did not answer. The visible count is incomplete."
+                : input.reports.openCount + input.reports.acknowledgedCount === 0
+                  ? "FCG FixIT lists no open or acknowledged requests in the checked Frederick County records."
+                  : undefined,
+            };
+          })()
         : null,
     ),
     key(
@@ -739,12 +766,17 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
         null,
       ),
       withTimeout(
-        getFixItIssues(20).then((issues) =>
-          issues.map((issue) => ({
+        getFixItIssuesResult(20).then((result) => ({
+          status: result.status,
+          openCount: result.openCount,
+          acknowledgedCount: result.acknowledgedCount,
+          openAvailable: result.openAvailable,
+          acknowledgedAvailable: result.acknowledgedAvailable,
+          rows: result.data.map((issue) => ({
             lead: clamp(issue.summary || issue.category),
             trail: ageLabel(issue.reported_at, now),
           })),
-        ),
+        })),
         T,
         null,
       ),

@@ -45,6 +45,18 @@ const keyed = (input: Partial<DeckInputs>, now: Date = NOW) => {
   return Object.fromEntries(keys.map((key) => [key.id, key]));
 };
 
+const reports = (
+  overrides: Partial<NonNullable<DeckInputs["reports"]>> = {},
+): NonNullable<DeckInputs["reports"]> => ({
+  status: "current",
+  openCount: 0,
+  acknowledgedCount: 0,
+  openAvailable: true,
+  acknowledgedAvailable: true,
+  rows: [],
+  ...overrides,
+});
+
 describe("buildDeckKeys", () => {
   it("keeps every key on the board when nothing answers", () => {
     const keys = buildDeckKeys(NOTHING, NOW);
@@ -86,7 +98,55 @@ describe("buildDeckKeys", () => {
 
   it("caps the reveal so one busy feed cannot run down the board", () => {
     const rows = Array.from({ length: 20 }, (_, i) => ({ lead: `Report ${i}` }));
-    expect(keyed({ reports: rows }).reports.detail).toHaveLength(5);
+    expect(keyed({ reports: reports({ rows }) }).reports.detail).toHaveLength(5);
+  });
+
+  it("uses the source's real open and acknowledged totals for 311", () => {
+    const key = keyed({
+      reports: reports({
+        openCount: 23,
+        acknowledgedCount: 376,
+        rows: [{ lead: "Pothole" }],
+      }),
+    }).reports;
+
+    expect(key.status).toBe("ok");
+    expect(key.faces).toEqual([
+      { value: "23", label: "open reports" },
+      { value: "376", label: "acknowledged" },
+    ]);
+    expect(key.detail).toEqual([{ lead: "Pothole" }]);
+  });
+
+  it("keeps a measured 311 zero distinct from an unavailable source", () => {
+    const current = keyed({ reports: reports() }).reports;
+    expect(current.status).toBe("ok");
+    expect(current.faces[0]).toEqual({ value: "0", label: "open reports" });
+    expect(current.note).toMatch(/no open or acknowledged requests/i);
+
+    const unavailable = keyed({
+      reports: reports({
+        status: "unavailable",
+        openAvailable: false,
+        acknowledgedAvailable: false,
+      }),
+    }).reports;
+    expect(unavailable.status).toBe("unavailable");
+    expect(unavailable.faces[0].value).toBe("—");
+  });
+
+  it("labels a partial 311 count as incomplete instead of a full total", () => {
+    const key = keyed({
+      reports: reports({
+        status: "partial",
+        openCount: 4,
+        openAvailable: true,
+        acknowledgedAvailable: false,
+      }),
+    }).reports;
+    expect(key.faces).toEqual([{ value: "4", label: "open reports" }]);
+    expect(key.note).toMatch(/incomplete/i);
+    expect(key.accent).toBe("var(--app-amber)");
   });
 
   it("lights amber only on a caution reading", () => {
