@@ -225,3 +225,30 @@ test("a mobile event detail keeps one reachable save action and a usable image c
     await expect(creditLink.first()).toHaveClass(/\btap-44\b/);
   }
 });
+
+test("a source-checked event keeps its official page reachable beside transactional actions", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010");
+  await context.addCookies([
+    {
+      name: "fr_onboarded",
+      value: "1",
+      domain: appOrigin.hostname,
+      path: "/",
+    },
+  ]);
+
+  const response = await page.goto("/events/snallyfest-2026-kickoff", {
+    waitUntil: "domcontentloaded",
+  });
+  expect(response?.status()).toBe(200);
+
+  const source = page.locator("[data-event-source-link]");
+  await expect(source).toBeVisible();
+  await expect(source).toHaveAttribute("href", "https://snallyfest.com/");
+  await expect(source).toHaveAttribute("target", "_blank");
+  await expect(source).toContainText("Official event page");
+});

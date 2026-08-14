@@ -29,6 +29,11 @@ const EASTERN_DAY_KEY = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
+// Timed events that simply run past midnight should still read like one
+// outing. Longer spans keep the calmer date-range treatment used by festivals,
+// exhibitions, and conferences whose individual daily hours are not encoded.
+const SHORT_OVERNIGHT_MAX_MS = 18 * 60 * 60 * 1000;
+
 export function formatEventWhen(e: Event): string {
   const start = new Date(e.starts_at);
   const end = new Date(e.ends_at);
@@ -75,6 +80,10 @@ export function formatEventWhen(e: Event): string {
   }
   if (sameDay) {
     return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
+  }
+  const durationMs = end.getTime() - start.getTime();
+  if (durationMs > 0 && durationMs <= SHORT_OVERNIGHT_MAX_MS) {
+    return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${dateFmt.format(end)} · ${timeFmt.format(end)}`;
   }
   return `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
 }

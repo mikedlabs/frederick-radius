@@ -366,3 +366,27 @@ describe("recurring event series deduplication", () => {
     });
   });
 });
+
+describe("time-sensitive curated events", () => {
+  it("keeps both published Snallyfest dates searchable with their real venue anchors", () => {
+    expect(EVENT_BY_SLUG["snallyfest-2026-kickoff"]).toMatchObject({
+      title: "Snallyfest 2026: Kickoff Party",
+      starts_at: "2026-08-14T23:00:00.000Z",
+      ends_at: "2026-08-15T02:00:00.000Z",
+      venue_place_slug: "sandbox-brewhouse-frederick",
+      organizer: "Brain Dead Live",
+      source_url: "https://snallyfest.com/",
+      is_verified: true,
+    });
+    expect(EVENT_BY_SLUG["snallyfest-2026-festival-day"]).toMatchObject({
+      title: "Snallyfest 2026: Festival Day",
+      starts_at: "2026-08-15T17:00:00.000Z",
+      ends_at: "2026-08-16T05:30:00.000Z",
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
+      venue_name: "Creek Stage + three downtown venues",
+      organizer: "Brain Dead Live",
+      source_url: "https://braindead.live/calendar/snallyfest2026",
+      is_verified: true,
+    });
+  });
+});

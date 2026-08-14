@@ -47,6 +47,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
+import EventSourceLink from "@/components/event/EventSourceLink";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import GettingThere from "@/components/event/GettingThere";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
@@ -625,6 +626,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               iso={event.last_verified_at ?? undefined}
               subject="Event"
             />
+            {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>
           {communicationAccess.length > 0 && (
             <div
