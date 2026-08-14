@@ -4,6 +4,8 @@ import {
   pulseAttentionChips,
   pulseClearedKeys,
   pulseDisplayGroups,
+  pulseChangeLabel,
+  pulseSnapshotIsComparable,
   pulseWideReadingKeys,
   secondarySignalsHeadline,
   secondarySignalsSummary,
@@ -33,6 +35,25 @@ function tile(
 }
 
 describe("Pulse status language", () => {
+  it("uses complete, natural labels for condition changes", () => {
+    expect(pulseChangeLabel({ key: "power", label: "Power out" })).toBe(
+      "Power outages",
+    );
+    expect(pulseChangeLabel({ key: "traffic", label: "Traffic" })).toBe(
+      "Traffic conditions",
+    );
+    expect(pulseChangeLabel({ key: "custom", label: "Trail access" })).toBe(
+      "Trail access",
+    );
+  });
+
+  it("does not compare a current visit with stale or future snapshots", () => {
+    const now = Date.UTC(2026, 7, 14, 12);
+    expect(pulseSnapshotIsComparable(now - 60_000, now)).toBe(true);
+    expect(pulseSnapshotIsComparable(now - 8 * 24 * 60 * 60 * 1_000, now)).toBe(false);
+    expect(pulseSnapshotIsComparable(now + 60_000, now)).toBe(false);
+  });
+
   it("keeps calm readings out of Needs attention", () => {
     const calmAir = { tone: "cool", label: "Air good", key: "air" } as const;
     expect(

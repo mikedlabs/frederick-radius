@@ -2,8 +2,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { buildFoodTruckSchedule } from "@/lib/food-trucks/schedule";
 import {
-  readStoredFoodTruckSchedule,
+  reconcileFoodTruckSchedule,
+  readStoredFoodTruckScheduleArtifact,
   writeFoodTruckSchedule,
+  type FoodTruckScheduleWriteResult,
 } from "@/lib/food-trucks/schedule-store";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { monitorCronResponse } from "@/lib/observability/cron-monitor";
@@ -29,15 +31,39 @@ export async function GET(request: Request) {
 }
 
 async function runFoodTruckScheduleRefresh() {
-  const previous = await readStoredFoodTruckSchedule();
-  const schedule = await buildFoodTruckSchedule(new Date());
-  const allSourcesFailed = schedule.sources.every((source) => !source.ok);
-  const write = await writeFoodTruckSchedule(schedule, previous).catch(() => ({
+  const previousRead = await readStoredFoodTruckScheduleArtifact();
+  const previous = previousRead.status === "found"
+    ? previousRead.snapshot
+    : null;
+  const collected = await buildFoodTruckSchedule(new Date());
+  // Use the reconciled artifact for response counts as well as storage so the
+  // operator sees retained last-known-good stops from failed or suspicious
+  // sources.
+  const initialView = reconcileFoodTruckSchedule(collected, previous);
+  // The writer reconciles the raw collection against a fresh origin read at
+  // the atomic boundary. Passing the earlier retained view could resurrect a
+  // stop that a concurrent newer run legitimately removed.
+  const write: FoodTruckScheduleWriteResult = await writeFoodTruckSchedule(
+    collected,
+    previousRead,
+  ).catch(() => ({
     stored: false,
-    preservedPrevious: Boolean(previous),
+    preservedPrevious: previousRead.status !== "absent",
+    superseded: false,
     reason: "The schedule could not be written to durable storage",
   }));
-  const persistenceFailed = !write.stored;
+  const { publishedSnapshot, ...storage } = write;
+  // Health and response counts must describe the artifact that actually won
+  // the atomic boundary, not the earlier view assembled before a racing run.
+  const schedule = publishedSnapshot ?? initialView;
+  const failedSources = schedule.sources.filter((source) => !source.ok);
+  const suspiciousSources = schedule.sources.filter(
+    (source) => source.suspiciousZero || source.suspiciousDrop,
+  );
+  const invalidSourceSet = schedule.sources.length === 0;
+  const allSourcesFailed = invalidSourceSet
+    || failedSources.length === schedule.sources.length;
+  const persistenceFailed = !write.stored && !write.superseded;
 
   if (write.stored) {
     revalidatePath("/food-trucks");
@@ -45,12 +71,28 @@ async function runFoodTruckScheduleRefresh() {
     revalidateTag("food-truck-source", "max");
   }
 
+  const completed = !allSourcesFailed && !persistenceFailed;
+  const healthy =
+    completed && failedSources.length === 0 && suspiciousSources.length === 0;
+
   return NextResponse.json(
     {
-      ok: !allSourcesFailed && !persistenceFailed,
+      // A partial refresh may be safe to preserve without asking Vercel to
+      // retry the write. It is still not healthy. monitorCronResponse reads
+      // this semantic result and records the Sentry check-in as red.
+      ok: healthy,
+      completed,
+      healthy,
+      degraded:
+        invalidSourceSet
+        || failedSources.length > 0
+        || suspiciousSources.length > 0,
+      retryable: !completed,
       stops: schedule.stops.length,
+      source_anomalies: suspiciousSources.length,
+      prior_artifact: previousRead.status,
       sources: schedule.sources,
-      storage: write,
+      storage,
     },
     {
       status: allSourcesFailed ? 502 : persistenceFailed ? 503 : 200,

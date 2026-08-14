@@ -1056,7 +1056,12 @@ export function deriveTags(category: string, tags?: string[]): string[] {
   return [...out];
 }
 
-export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
+function decoratePlaceWithHoursMode(
+  p: Place,
+  origin: LngLat | undefined,
+  now: Date,
+  preserveStoredHours: boolean,
+): PlaceCardData {
   const enriched = applyEnrichment(p);
   const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
   // Shared-photo de-twin: a suppressed record shares its Google photo with
@@ -1116,9 +1121,21 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const hours = refreshedHours ?? enriched.hours;
   const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
   const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
+  const hasVerifiedStoredHours = Boolean(hoursVerified && hours);
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
     mayPublishVisitabilityHours(p.slug, hours, now);
+  // Generated client artifacts are durable records of the last accepted
+  // ordinary schedule, not a snapshot of whether that schedule is fresh at the
+  // instant a developer runs `predev`. Keep an accepted schedule and its
+  // verification timestamp after freshness expires, but never package an
+  // unreviewed near-24-hour schedule. Client loaders still reapply freshness
+  // and visitability at read time as defense in depth. Every ordinary server
+  // render stays on the strict branch below and never receives stale hours.
+  const includeHours = preserveStoredHours
+    ? hasVerifiedStoredHours &&
+      mayPublishVisitabilityHours(p.slug, hours, now)
+    : mayAssertHours;
   const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
@@ -1137,11 +1154,13 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // run, so this is a no-op today and lights up the amenity facets once the
     // data lands. All three feed the category-page facet filters.
     tags: [...new Set([...deriveTags(enriched.category, enriched.tags), ...amenityTags(p.slug)])],
-    // Stale schedules are not merely marked unverified: hide them from every
-    // downstream consumer so no direct hours renderer can accidentally turn an
-    // old schedule into a current promise.
-    hours: mayAssertHours ? hours : undefined,
-    hours_verified: mayAssertHours,
+    // Current server responses hide stale schedules entirely. The dedicated
+    // client-artifact mode keeps a stale ordinary schedule as inert source
+    // data; its loaders must pass the same freshness and visitability gates
+    // before any renderer receives it. Review-required near-24-hour schedules
+    // never enter the artifact in the first place.
+    hours: includeHours ? hours : undefined,
+    hours_verified: includeHours,
     // The detail page historically fell back to Google's display strings when
     // structured hours were suppressed. Clear both representations at this
     // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
@@ -1171,6 +1190,32 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     field_note_tip: ((tip) => (tip ? cleanFeedText(tip) : tip))(fieldNoteTip(p.slug)),
     ...marketFields(enriched.category, enriched.name),
   };
+}
+
+/**
+ * Decorate a place for a current server response. Hours are exposed only while
+ * their verification and public-visitability review are current.
+ */
+export function decoratePlace(
+  p: Place,
+  origin?: LngLat,
+  now: Date = new Date(),
+): PlaceCardData {
+  return decoratePlaceWithHoursMode(p, origin, now, false);
+}
+
+/**
+ * Decorate a place for the checked-in client catalog. This preserves the last
+ * accepted ordinary structured schedule and its verification metadata even
+ * after its live freshness window expires. Review-required near-24-hour
+ * schedules are withheld. It must only feed artifacts whose runtime loaders
+ * reapply the current freshness and visitability policies.
+ */
+export function decoratePlaceForClientArtifact(
+  p: Place,
+  now: Date = new Date(),
+): PlaceCardData {
+  return decoratePlaceWithHoursMode(p, undefined, now, true);
 }
 
 /** The single best verified local tip for a lead card: the first insider

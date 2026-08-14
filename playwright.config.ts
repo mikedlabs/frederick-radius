@@ -11,6 +11,11 @@ import { defineConfig, devices } from "@playwright/test";
  * with `npx playwright install chromium` (CI installs them in the runner).
  */
 const PORT = Number(process.env.PW_PORT) || 3010;
+// Use the loopback address directly. Some local security/proxy stacks reserve
+// or intercept `localhost`, which can turn a healthy Next response into an
+// empty 401 before the request reaches Radius. CI and developers can still
+// override the host explicitly when their runner requires it.
+const HOST = process.env.PW_HOST || "127.0.0.1";
 const PRODUCTION_SERVER = process.env.PW_PRODUCTION === "1";
 
 export default defineConfig({
@@ -20,7 +25,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: `http://${HOST}:${PORT}`,
     // Production sends `upgrade-insecure-requests`, which is correct on the
     // HTTPS deployment but makes a local HTTP production server upgrade its
     // own CSS/JS requests to unavailable HTTPS. Browser tests bypass CSP so
@@ -61,7 +66,7 @@ export default defineConfig({
     command: PRODUCTION_SERVER
       ? `npm run start -- -p ${PORT}`
       : `npm run dev -- -p ${PORT}`,
-    url: `http://localhost:${PORT}`,
+    url: `http://${HOST}:${PORT}`,
     reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER,
     timeout: 120_000,
   },

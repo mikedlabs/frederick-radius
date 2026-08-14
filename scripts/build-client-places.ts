@@ -18,7 +18,11 @@
  * regenerate with: `npm run build:client-places`.
  */
 import { writeFileSync } from "node:fs";
-import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+import {
+  publicPlaces,
+  decoratePlaceForClientArtifact,
+  type PlaceCardData,
+} from "@/lib/loaders/places";
 import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
@@ -95,7 +99,7 @@ function compactPhotoCredit(value: unknown): CompactPhotoCredit | null {
 const eventVenuePhotoCredits: Record<string, CompactPhotoCredit> = {};
 
 const slim = publicPlaces().map((p) => {
-  const d = decoratePlace(p) as PlaceCardData & {
+  const d = decoratePlaceForClientArtifact(p) as PlaceCardData & {
     google_photos?: unknown;
     google_photo_attribution?: unknown;
     google_photo_attributions?: unknown;
@@ -226,9 +230,11 @@ console.log(
 // AppMap's time scrubber needs only schedules. Keep those records in a
 // separate generated artifact so the first scrub does not download the full
 // browse catalog (including every hero-photo URL) just to dim closed pins.
-// Rows without a publishable verified schedule are intentionally omitted:
-// the scrubber already treats a missing schedule as unknown and leaves that
-// pin visible.
+// Preserve every accepted stored schedule here, including one that has aged
+// past the live freshness window. The artifact is a durable data record, not a
+// wall-clock snapshot produced by whichever developer happened to run predev.
+// `clientPlaceHours()` reapplies freshness and visitability when the scrubber
+// reads it, so a stale row remains unknown and leaves that pin visible.
 const hoursSlim = slim.flatMap((place) =>
   place.hours && place.hours_verified
     ? [{

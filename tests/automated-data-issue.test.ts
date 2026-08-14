@@ -62,6 +62,35 @@ test("creates one stable issue with a run link when none is open", async () => {
   assert.match(String(calls[0]?.payload.body), /actions\/runs\/1234/);
 });
 
+test("keeps public-data acceptance separate from deploy integrity", async () => {
+  const { github, calls } = githubMock([]);
+  await upsertFailure({
+    github,
+    context,
+    family: "data",
+    body: "Event inventory is below its public coverage floor.",
+  });
+
+  assert.equal(calls[0]?.payload.title, "Public data acceptance failed · active");
+  assert.match(String(calls[0]?.payload.body), /automated-data-issue:data/);
+});
+
+test("keeps workflow availability separate from collector and data failures", async () => {
+  const { github, calls } = githubMock([]);
+  await upsertFailure({
+    github,
+    context,
+    family: "automation",
+    body: "GitHub stopped the workflow before any repository job began.",
+  });
+
+  assert.equal(calls[0]?.payload.title, "Data automation unavailable · active");
+  assert.match(
+    String(calls[0]?.payload.body),
+    /automated-data-issue:automation/,
+  );
+});
+
 test("updates the newest issue and closes older duplicates", async () => {
   const { github, calls } = githubMock([
     { id: 100, number: 10, title: "Data refresh failure 2026-07-30", body: "", user: { type: "Bot" } },

@@ -84,6 +84,11 @@ if (selected.error === "expected-deployment-missing") {
     `The promoted SHA ${EXPECTED_SHA.slice(0, 12)} was not found in READY production history; refusing to guess.`,
   );
 }
+if (selected.error === "newer-main-deployment-present") {
+  fail(
+    "A newer READY main deployment already exists; refusing to let an older canary change production.",
+  );
+}
 const candidate = selected.candidate;
 if (!candidate) fail("No earlier main-branch production deployment is eligible.");
 
@@ -100,6 +105,7 @@ const candidateCheck = run(
       BASE_URL: candidateUrl,
       EXPECTED_SHA: candidateSha,
       REQUIRE_EXPECTED_SHA: "1",
+      SKIP_DATA_HEALTH: "1",
     },
   },
 );
@@ -128,6 +134,7 @@ const apexCheck = run(process.execPath, ["scripts/prod-audit.mjs"], {
     BASE_URL: process.env.BASE_URL || "https://frederickradius.app",
     EXPECTED_SHA: candidateSha,
     REQUIRE_EXPECTED_SHA: "1",
+    SKIP_DATA_HEALTH: "1",
   },
 });
 if (apexCheck.status !== 0) {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ASK_CLIENT_DEADLINE_MS,
+  askProgressMessageForElapsed,
   askCorrectionResultRef,
   askEvidenceLabels,
   askFailureForAbortReason,
@@ -34,6 +35,26 @@ describe("Ask Radius question links", () => {
       ),
     ).toBe("closer");
     expect(askQuestionPath("x".repeat(400))).toBe(`/ask?q=${"x".repeat(300)}`);
+  });
+});
+
+describe("Ask Radius staged progress", () => {
+  it("explains a slow grounded lookup at the 2, 6, and 12 second marks", () => {
+    expect(askProgressMessageForElapsed(0)).toBe(
+      "Radius is checking current local data and sources.",
+    );
+    expect(askProgressMessageForElapsed(1_999)).toBe(
+      "Radius is checking current local data and sources.",
+    );
+    expect(askProgressMessageForElapsed(2_000)).toBe(
+      "Radius is matching your question to local listings.",
+    );
+    expect(askProgressMessageForElapsed(6_000)).toBe(
+      "Radius is checking the leading matches against current source details.",
+    );
+    expect(askProgressMessageForElapsed(12_000)).toBe(
+      "This is taking longer than usual. Radius is still checking before it answers.",
+    );
   });
 });
 

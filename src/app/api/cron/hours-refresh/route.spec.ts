@@ -87,6 +87,20 @@ describe("GET /api/cron/hours-refresh", () => {
     delete process.env.HOURS_REFRESH_CRON;
   });
 
+  it("reports an intentionally disabled run as explicitly healthy", async () => {
+    delete process.env.HOURS_REFRESH_CRON;
+
+    const response = await GET(request());
+
+    await expect(response.json()).resolves.toMatchObject({
+      enabled: false,
+      healthy: true,
+      status: "disabled",
+    });
+    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
   it("checks migration 0024 before making a paid Google call", async () => {
     mocks.getDb.mockReturnValue(
       db({ preflightError: new Error("relation does not exist") }),

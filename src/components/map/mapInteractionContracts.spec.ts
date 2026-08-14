@@ -96,6 +96,32 @@ describe("map interaction state contracts", () => {
     );
   });
 
+  it("hands a broad map search to the client router with exact return state", () => {
+    const source = readFileSync("src/components/map/MapDock.tsx", "utf8");
+
+    expect(source).toContain("const openFullSearch = () => {");
+    expect(source).toContain("normalizeMapReturnTo(");
+    expect(source).toContain("router.push(");
+    expect(source).not.toContain("window.location.assign(");
+  });
+
+  it("keeps the first map sheet task-first and exposes urgent amenities directly", () => {
+    const source = readFileSync("src/components/map/MapDock.tsx", "utf8");
+    const contentsStart = source.indexOf('{pane === "contents"');
+    const amenitiesStart = source.indexOf('{pane === "amenities"', contentsStart);
+    const contents = source.slice(contentsStart, amenitiesStart);
+
+    expect(contents).toContain("<strong>Places nearby</strong>");
+    expect(contents).toContain("<strong>Happening</strong>");
+    expect(contents).toContain("<strong>Get around</strong>");
+    expect(contents).toContain("<strong>Conditions</strong>");
+    expect(contents).toContain('aria-label="Nearby essentials"');
+    expect(source).toContain("pendingAmenityFocusRef.current = key");
+    expect(source).toContain("if (!props.amenityGroups.has(amenityKey))");
+    expect(source).toContain("if (!userLoc) return;");
+    expect(contents).not.toContain("<strong>What changed</strong>");
+  });
+
   it("uses category artwork instead of unattributed remote event photos on pins", () => {
     const mapSource = readFileSync("src/components/map/AppMap.tsx", "utf8");
     const pageSource = readFileSync("src/app/(app)/map/page.tsx", "utf8");

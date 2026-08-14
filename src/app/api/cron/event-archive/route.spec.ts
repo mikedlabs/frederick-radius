@@ -14,9 +14,11 @@ const mocks = vi.hoisted(() => ({
   withLiveEventFetchSession: vi.fn(),
   syncEventArchiveBatch: vi.fn(),
   preflightEventArchive: vi.fn(),
+  prepareEventArchiveRows: vi.fn(),
   startIngestRunStrict: vi.fn(),
   finishIngestRunStrict: vi.fn(),
   captureMessage: vi.fn(),
+  getSql: vi.fn(),
 }));
 
 vi.mock("../../ingest/_auth", () => ({
@@ -32,6 +34,7 @@ vi.mock("@/lib/integrations/ical-live", () => ({
 vi.mock("@/lib/events/event-archive-batch", () => ({
   syncEventArchiveBatch: mocks.syncEventArchiveBatch,
   preflightEventArchive: mocks.preflightEventArchive,
+  prepareEventArchiveRows: mocks.prepareEventArchiveRows,
 }));
 vi.mock("@/lib/ingest/run-log", () => ({
   startIngestRunStrict: mocks.startIngestRunStrict,
@@ -40,11 +43,15 @@ vi.mock("@/lib/ingest/run-log", () => ({
 vi.mock("@sentry/nextjs", () => ({
   captureMessage: mocks.captureMessage,
 }));
+vi.mock("@/lib/db/client", () => ({
+  getSql: mocks.getSql,
+}));
 
 import { GET, maxDuration } from "./route";
 import {
   EVENT_ARCHIVE_DB_DEADLINE_MS,
   EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS,
+  EVENT_ARCHIVE_PUBLICATION_BUDGET_MS,
   EVENT_ARCHIVE_SOURCE_BUDGET_MS,
   EVENT_ARCHIVE_WRITE_BUDGET_MS,
 } from "./config";
@@ -71,10 +78,23 @@ describe("GET /api/cron/event-archive", () => {
     );
     mocks.startIngestRunStrict.mockResolvedValue("archive-run-1");
     mocks.finishIngestRunStrict.mockResolvedValue(undefined);
+    mocks.getSql.mockReturnValue(vi.fn(async (
+      _parts: TemplateStringsArray,
+      ...parameters: unknown[]
+    ) => [{
+      available_count: 42,
+      visible_canaries: parameters[0],
+    }]));
     mocks.preflightEventArchive.mockResolvedValue({
       ready: true,
       missing: [],
     });
+    mocks.prepareEventArchiveRows.mockImplementation(
+      (events: Array<{ slug: string }>) => ({
+        rows: events.map((event) => ({ slug: event.slug })),
+        truncated: false,
+      }),
+    );
     mocks.assembleUnifiedEvents.mockResolvedValue({
       unified: [publicCard],
       publicEvents: [publicCard],
@@ -109,7 +129,8 @@ describe("GET /api/cron/event-archive", () => {
     expect(
       EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS * 2
         + EVENT_ARCHIVE_SOURCE_BUDGET_MS
-        + EVENT_ARCHIVE_WRITE_BUDGET_MS,
+        + EVENT_ARCHIVE_WRITE_BUDGET_MS
+        + EVENT_ARCHIVE_PUBLICATION_BUDGET_MS,
     ).toBeLessThanOrEqual(maxDuration * 1_000 - 10_000);
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
@@ -132,6 +153,14 @@ describe("GET /api/cron/event-archive", () => {
         ignored_lifecycle_only: 0,
         complete: true,
         tombstones_enabled: true,
+      },
+      publication: {
+        ok: true,
+        available_count: 42,
+        expected_canaries: [publicCard.slug],
+        visible_canaries: [publicCard.slug],
+        missing_canaries: [],
+        reason: null,
       },
     });
     expect(mocks.withLiveEventFetchSession).toHaveBeenCalledTimes(1);
@@ -477,6 +506,66 @@ describe("GET /api/cron/event-archive", () => {
         accepted: 1,
         upserted: 1,
         records_complete: true,
+      },
+    });
+  });
+
+  it("fails visibly when a completed write is absent from the public archive", async () => {
+    mocks.getSql.mockReturnValue(vi.fn(async () => [{
+      available_count: 41,
+      visible_canaries: [],
+    }]));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      ok: false,
+      completed: false,
+      retryable: true,
+      status: "partial",
+      failures: ["archive-publication"],
+      publication: {
+        ok: false,
+        available_count: 41,
+        expected_canaries: [publicCard.slug],
+        visible_canaries: [],
+        missing_canaries: [publicCard.slug],
+        reason: "missing_canary",
+      },
+    });
+    expect(mocks.finishIngestRunStrict).toHaveBeenCalledWith(
+      "archive-run-1",
+      expect.objectContaining({
+        status: "partial",
+        records_upserted: 1,
+        records_failed: 1,
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it("cancels a publication proof query that misses its deadline", async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const never = Object.assign(new Promise<never>(() => undefined), {
+      cancel,
+    });
+    mocks.getSql.mockReturnValue(vi.fn(() => never));
+
+    const pending = GET(request());
+    await vi.advanceTimersByTimeAsync(EVENT_ARCHIVE_PUBLICATION_BUDGET_MS + 1);
+    const response = await pending;
+    const body = await response.json();
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      failures: ["archive-publication"],
+      publication: {
+        ok: false,
+        reason: "unavailable",
       },
     });
   });

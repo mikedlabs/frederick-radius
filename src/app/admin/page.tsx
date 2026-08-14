@@ -6,6 +6,7 @@ import {
   BarChart3, LayoutDashboard, KeyRound, Mail, Megaphone,
   Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX, Nfc, Radar, Link2,
   MousePointerClick,
+  ListChecks,
 } from "lucide-react";
 import Link from "next/link";
 import { easternDayKey } from "@/lib/tz";
@@ -56,6 +57,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
       { href: "/admin/dedup-review", title: "Dedup", icon: CopyIcon },
       { href: "/admin/drift-review", title: "Drift", icon: GitCompare },
       { href: "/admin/discovered-review", title: "Discovered", icon: Sparkles },
+      { href: "/admin/source-candidates", title: "Source inbox", icon: ListChecks },
     ],
   },
   {

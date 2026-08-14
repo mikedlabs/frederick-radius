@@ -62,6 +62,20 @@ test("never guesses when the failed release is absent", () => {
   assert.equal(result.candidate, null);
 });
 
+test("refuses to cross a newer ready main deployment", () => {
+  const expected = deployment({ sha: "expectedbad12", createdAt: 200 });
+  const newer = deployment({ sha: "newergood123", createdAt: 300 });
+  const previous = deployment({ sha: "previousgood", createdAt: 100 });
+
+  const result = selectPreviousMainDeployment(
+    { deployments: [previous, expected, newer] },
+    "expectedbad12",
+  );
+
+  assert.equal(result.error, "newer-main-deployment-present");
+  assert.equal(result.candidate, null);
+});
+
 test("ignores non-ready and non-production candidates", () => {
   const failed = deployment({ sha: "badbadbadbad", createdAt: 300 });
   const result = selectPreviousMainDeployment(

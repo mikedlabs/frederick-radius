@@ -37,22 +37,24 @@ describe("buildDaypartRows", () => {
     // location-aware answer opened by saying the same two words four times.
     // isOpenNow had already run on those exact objects to select them.
     //
-    // Asserted as an invariant over every hour rather than against a fixture
-    // date. Whether any given hour yields confirmed or likely picks depends on
-    // the committed hours snapshot, but "every pick states something" must
-    // hold at 3am and at noon alike, and it is the condition that makes the
-    // component's fallback unreachable.
+    // Asserted as an invariant over several hours rather than against one
+    // fixture. Whether any given hour yields confirmed or likely picks depends
+    // on the committed hours snapshot. An empty 4 a.m. shelf is honest and the
+    // component hides it; whenever a pick exists, however, it must state the
+    // evidence instead of falling back to the unsupported words "Open now."
+    let sawPick = false;
     for (const hour of [8, 12, 17, 21]) {
       const rows = buildDaypartRows(
         new Date(`2026-08-10T${String(hour).padStart(2, "0")}:00:00.000Z`),
       );
       const picks = rows.flatMap((row) => row.picks);
-      expect(picks.length).toBeGreaterThan(0);
+      sawPick ||= picks.length > 0;
       for (const pick of picks) {
         expect(pick.fact).toBeTruthy();
         expect(pick.fact).not.toBe("Open now");
       }
     }
+    expect(sawPick).toBe(true);
   });
 
   it("uses formatHoursLine's own vocabulary for a confirmed pick", () => {

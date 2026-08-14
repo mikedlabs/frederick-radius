@@ -4,11 +4,11 @@ name: Production apex canary
 # deployment_status event. Only production promotions reach this job. The
 # canary then checks the public apex alias, not the deployment preview URL.
 #
-# The public check retries before recovery so a brief alias/CDN propagation
-# delay cannot roll back a healthy release. If all attempts fail after a real
-# production promotion, the workflow validates the immediately preceding
-# production deployment and asks Vercel to restore it. That recovery step needs
-# the repository secret VERCEL_TOKEN; read-only canary runs do not.
+# The deploy-integrity check retries before recovery so a brief alias/CDN
+# propagation delay cannot roll back a healthy release. Public-data acceptance
+# runs in a separate job: provider/feed failures stay red and visible, but can
+# never initiate a code rollback. Recovery needs VERCEL_TOKEN; read-only checks
+# do not.
 on:
   deployment_status:
   # Event providers can degrade after a clean deployment. Six small checks a
@@ -27,8 +27,12 @@ on:
 
 concurrency:
   # Keep routine observations away from the rollback-capable deployment gate.
-  # Runs from the same trigger still supersede older copies of themselves.
-  group: production-apex-canary-${{ github.event_name }}
+  # Vercel reports preview and production deployments through the same event.
+  # Serialize Production promotions so an older canary cannot mistake a newer
+  # apex promotion for drift and roll it back. Preview events remain keyed by
+  # deployment id, so they can never cancel the Production lane. Scheduled and
+  # manual observations remain separate singletons through the event-name key.
+  group: production-apex-canary-${{ github.event_name }}-${{ github.event_name == 'deployment_status' && github.event.deployment.environment == 'Production' && 'production' || github.event.deployment.id || 'singleton' }}
   cancel-in-progress: true
 
 permissions:
@@ -71,7 +75,7 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
-      - name: Verify the real production alias
+      - name: Verify deploy integrity on the real production alias
         shell: bash
         run: |
           set +e
@@ -92,6 +96,7 @@ jobs:
           BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
           EXPECTED_SHA: ${{ inputs.expected_sha || github.event.deployment.sha || github.sha }}
           REQUIRE_EXPECTED_SHA: "1"
+          SKIP_DATA_HEALTH: "1"
           CANARY_TIMEOUT_MS: "25000"
 
       - name: Install Vercel recovery client
@@ -123,12 +128,37 @@ jobs:
         run: >-
           echo "::error title=Automatic recovery is not configured::The production canary failed, but this repository has no VERCEL_TOKEN secret. Restore the last healthy deployment in Vercel and add a scoped token before relying on automatic recovery."
 
+  data:
+    name: Public data acceptance
+    needs: apex
+    # A broken deployment is diagnosed first. Do not overwrite that signal
+    # with downstream reads against the previous or partially promoted alias.
+    if: always() && needs.apex.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+      - name: Verify public data contracts without rollback authority
+        run: node scripts/prod-data-audit.mjs
+        env:
+          BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+          CANARY_TIMEOUT_MS: "25000"
+
   # A red workflow run is a log entry. This turns it into a message, using the
   # same open-one-issue / close-on-recovery lifecycle the data pipelines use.
   alert:
-    name: Tell someone the apex drifted
-    needs: apex
-    if: always() && needs.apex.result != 'skipped' && needs.apex.result != 'cancelled'
+    name: Tell someone production acceptance failed
+    needs: [apex, data]
+    if: >-
+      always() &&
+      needs.apex.result != 'cancelled' &&
+      needs.apex.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -139,6 +169,7 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           APEX_RESULT: ${{ needs.apex.result }}
+          DATA_RESULT: ${{ needs.data.result }}
           EXPECTED_SHA: ${{ inputs.expected_sha || github.event.deployment.sha || github.sha }}
           BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
         with:
@@ -152,36 +183,57 @@ jobs:
                 github,
                 context,
                 family: 'deploy',
-                recoveryMessage: `The apex is serving ${expected} again.`,
+                recoveryMessage: `Production acceptance passes for ${expected} again.`,
               });
-              return;
+            } else if (process.env.APEX_RESULT !== 'skipped') {
+              // Read what the apex actually serves, so the issue names both
+              // sides of the drift instead of only the expectation.
+              let serving = 'unknown (the apex did not answer)';
+              try {
+                const res = await fetch(`${baseUrl}/sw.js?canary=${Date.now()}`);
+                const text = await res.text();
+                const match = text.match(/CACHE_VERSION\s*=\s*["']fr-([a-f0-9]{6,40})/i);
+                if (match) serving = match[1].slice(0, 12);
+              } catch (error) {
+                serving = `unreadable (${error.message})`;
+              }
+
+              await lifecycle.upsertFailure({
+                github,
+                context,
+                family: 'deploy',
+                body: [
+                  'The deploy-integrity canary failed.',
+                  '',
+                  `- Expected commit: \`${expected}\``,
+                  `- Apex is serving: \`${serving}\``,
+                  '',
+                  'This check covers the deployed commit, primary routes, app',
+                  'manifest, and public deep links. It does not use external',
+                  'event or food-truck data to decide whether code is healthy.',
+                ].join('\n'),
+              });
             }
 
-            // Read what the apex actually serves, so the issue names both
-            // sides of the drift instead of only the expectation.
-            let serving = 'unknown (the apex did not answer)';
-            try {
-              const res = await fetch(`${baseUrl}/sw.js?canary=${Date.now()}`);
-              const text = await res.text();
-              const match = text.match(/CACHE_VERSION\s*=\s*["']fr-([a-f0-9]{6,40})/i);
-              if (match) serving = match[1].slice(0, 12);
-            } catch (error) {
-              serving = `unreadable (${error.message})`;
+            if (process.env.DATA_RESULT === 'success') {
+              await lifecycle.closeRecovered({
+                github,
+                context,
+                family: 'data',
+                recoveryMessage: 'Public event and food-truck acceptance passes again.',
+              });
+            } else if (process.env.DATA_RESULT === 'failure') {
+              await lifecycle.upsertFailure({
+                github,
+                context,
+                family: 'data',
+                body: [
+                  'The public data acceptance check failed.',
+                  '',
+                  'The deployed application passed its independent integrity check,',
+                  'so no code rollback was attempted. Review event inventory,',
+                  'food-truck schedule freshness, beacon readability, and the',
+                  'public health contract in the linked run.',
+                ].join('\n'),
+              });
             }
-
-            await lifecycle.upsertFailure({
-              github,
-              context,
-              family: 'deploy',
-              body: [
-                'The public site is not serving the current default branch.',
-                '',
-                `- Expected commit: \`${expected}\``,
-                `- Apex is serving: \`${serving}\``,
-                '',
-                'Every merge after this point ships nothing until it is resolved.',
-                'Check the most recent production deployment in Vercel: a build',
-                'that fails leaves the previous one live, and the merge still',
-                'reports success on GitHub.',
-              ].join('\n'),
-            });

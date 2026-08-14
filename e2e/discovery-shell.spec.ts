@@ -132,12 +132,12 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane).toBeVisible();
     await expect(contentsPane).toBeFocused();
     await expect(
-      contentsPane.getByRole("button", { name: /^Near me/ }),
+      contentsPane.getByRole("button", { name: /^Places nearby/ }),
     ).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Happening/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Get around/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Conditions/ })).toBeVisible();
-    await expect(contentsPane.getByRole("button", { name: /^What changed/ })).toBeVisible();
+    await expect(contentsPane.getByRole("button", { name: /^What changed/ })).toHaveCount(0);
     await expect(contentsPane.getByRole("button", { name: /^More/ })).toBeVisible();
     await expect(contentsPane.getByText("Ready-made views", { exact: true })).toHaveCount(0);
     await contentsPane.getByRole("button", { name: /^Get around/ }).click();
@@ -172,6 +172,9 @@ test.describe("mobile discovery shell", () => {
     const localLayersPane = page.getByRole("region", { name: "More map details" });
     await expect(localLayersPane).toBeVisible();
     await expect(localLayersPane.getByRole("button", { name: /Trails/ })).toBeVisible();
+    await expect(
+      localLayersPane.getByRole("button", { name: /^Changes and projects/ }),
+    ).toBeVisible();
     await localLayersPane.getByRole("button", { name: "Back" }).click();
     await contentsPane.getByRole("button", { name: /^Get around/ }).click();
     const transit = layersPane.getByRole("button", { name: /Transit/ });
@@ -257,7 +260,7 @@ test.describe("mobile discovery shell", () => {
       name: "Choose what to see",
     });
     await finalContentsPane
-      .getByRole("button", { name: /^Near me/ })
+      .getByRole("button", { name: /^Places nearby/ })
       .click();
     const placesPane = page.getByRole("region", { name: "Find nearby" });
     await expect(placesPane).toBeVisible();

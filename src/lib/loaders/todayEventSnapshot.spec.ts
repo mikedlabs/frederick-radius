@@ -11,6 +11,8 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import {
+  EVENT_ARCHIVE_CARD_DESCRIPTION_LIMIT,
+  EVENT_ARCHIVE_PUBLIC_READ_TIMEOUT_MS,
   EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
@@ -62,8 +64,31 @@ function envelope(overrides: Record<string, unknown> = {}) {
     archive_status: "ok",
     archive_finished_at: "2026-07-31T15:00:00.000Z",
     archive_records_failed: 0,
+    archive_error: null,
     ...overrides,
   };
+}
+
+function archiveReadRows(overrides: Record<string, unknown> = {}) {
+  const value = envelope(overrides);
+  const candidates = Array.isArray(value.candidates) ? value.candidates : [];
+  if (candidates.length === 0) {
+    return [{
+      canonical_slug: null,
+      snapshot: null,
+      archive_status: value.archive_status,
+      archive_finished_at: value.archive_finished_at,
+      archive_records_failed: value.archive_records_failed,
+      archive_error: value.archive_error,
+    }];
+  }
+  return candidates.map((candidate) => ({
+    ...(candidate as Record<string, unknown>),
+    archive_status: value.archive_status,
+    archive_finished_at: value.archive_finished_at,
+    archive_records_failed: value.archive_records_failed,
+    archive_error: value.archive_error,
+  }));
 }
 
 describe("Today durable event snapshot", () => {
@@ -87,12 +112,24 @@ describe("Today durable event snapshot", () => {
     expect(result.sourceHealth).toEqual({
       degraded: false,
       unavailable: [],
+      archive: {
+        state: "current",
+        status: "ok",
+        finishedAt: "2026-07-31T15:00:00.000Z",
+        recordsFailed: 0,
+        invalidSnapshots: 0,
+      },
     });
   });
 
   it("keeps stale-good rows but marks a partial or aging archive degraded", () => {
     const partial = hydrateTodayEventSnapshot(
-      envelope({ archive_status: "partial", archive_records_failed: 3 }),
+      envelope({
+        archive_status: "partial",
+        archive_records_failed: 2,
+        archive_error:
+          "Archive checks failed: unified-partial, live-partial.",
+      }),
       NOW,
     );
     const stale = hydrateTodayEventSnapshot(
@@ -107,9 +144,31 @@ describe("Today durable event snapshot", () => {
     expect(partial.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
     expect(partial.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive"],
+      unavailable: ["event archive providers"],
+      archive: {
+        state: "provider_partial",
+        status: "partial",
+        finishedAt: "2026-07-31T15:00:00.000Z",
+        recordsFailed: 2,
+        invalidSnapshots: 0,
+      },
     });
     expect(stale.sourceHealth.degraded).toBe(true);
+    expect(stale.sourceHealth.archive?.state).toBe("stale");
+  });
+
+  it("classifies a failed archive separately from a provider-only partial read", () => {
+    const result = hydrateTodayEventSnapshot(
+      envelope({
+        archive_status: "partial",
+        archive_records_failed: 1,
+        archive_error: "Archive checks failed: archive-publication.",
+      }),
+      NOW,
+    );
+
+    expect(result.sourceHealth.archive?.state).toBe("failed");
+    expect(result.sourceHealth.unavailable).toContain("event archive");
   });
 
   it("withholds malformed snapshots and reports validation degradation", () => {
@@ -127,10 +186,12 @@ describe("Today durable event snapshot", () => {
 
     expect(result.publicEvents.some((row) => row.slug === "bad-event")).toBe(false);
     expect(result.sourceHealth.unavailable).toContain("event archive validation");
+    expect(result.sourceHealth.archive?.state).toBe("invalid");
   });
 
   it("cancels a slow database read and returns curated fail-soft data", async () => {
     vi.useFakeTimers();
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const cancel = vi.fn();
     const never = Object.assign(new Promise<never>(() => undefined), {
       cancel,
@@ -142,10 +203,43 @@ describe("Today durable event snapshot", () => {
     const result = await pending;
 
     expect(cancel).toHaveBeenCalledOnce();
+    expect(warning).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "event_archive_public_read_failed",
+      outcome: "timeout",
+      timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+    }));
     expect(result.sourceHealth).toEqual({
       degraded: true,
       unavailable: ["event archive"],
+      archive: {
+        state: "unavailable",
+        status: null,
+        finishedAt: null,
+        recordsFailed: null,
+        invalidSnapshots: 0,
+      },
     });
+  });
+
+  it("lets a cold Today archive connection finish inside the bounded public-read budget", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve(archiveReadRows()), 1_800);
+    })));
+
+    const pending = loadTodayEventSnapshot(NOW);
+    await vi.advanceTimersByTimeAsync(1_800);
+    const result = await pending;
+
+    expect(TODAY_EVENT_SNAPSHOT_TIMEOUT_MS).toBe(
+      EVENT_ARCHIVE_PUBLIC_READ_TIMEOUT_MS,
+    );
+    expect(TODAY_EVENT_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(1_800);
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({ slug: "archive-event-2026-07-31" }),
+    );
+    expect(result.sourceHealth.archive?.state).toBe("current");
   });
 
   it("does not let the Today route start the live provider fan-out", () => {
@@ -189,7 +283,7 @@ describe("Today durable event snapshot", () => {
     ) => {
       strings = [...parts];
       values = parameters;
-      return Promise.resolve([envelope()]);
+      return Promise.resolve(archiveReadRows());
     });
 
     const result = await loadEventArchiveSnapshot(NOW);
@@ -197,12 +291,69 @@ describe("Today durable event snapshot", () => {
     expect(result.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
     expect(strings.join(" ")).toContain("limit");
     expect(values).toContain(1_500);
+    expect(strings.join(" ")).not.toContain("jsonb_agg");
+    expect(values).toContain(EVENT_ARCHIVE_CARD_DESCRIPTION_LIMIT);
+    expect(strings.join(" ")).toContain(
+      "jsonb_typeof(canonical.snapshot) = 'object'",
+    );
+    expect(strings.join(" ")).toContain("ended_at is not null");
+    expect(strings.join(" ")).toContain(
+      "status in ('ok', 'partial', 'error')",
+    );
+    expect(values.some((value) => value instanceof Date)).toBe(false);
+    expect(values).toContain("2026-07-31T04:00:00.000Z");
+    expect(values).toContain("2026-10-29T04:00:00.000Z");
+  });
+
+  it("records a safe error code when the archive query is rejected", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const rejected = Object.assign(new TypeError("private driver detail"), {
+      code: "ERR_INVALID_ARG_TYPE",
+    });
+    mocks.getSql.mockReturnValue(vi.fn(() => Promise.reject(rejected)));
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.sourceHealth.archive?.state).toBe("unavailable");
+    expect(warning).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "event_archive_public_read_failed",
+      outcome: "rejected",
+      code: "ERR_INVALID_ARG_TYPE",
+    }));
+    expect(warning.mock.calls.flat().join(" ")).not.toContain(
+      "private driver detail",
+    );
+  });
+
+  it("keeps valid archive rows when another stored snapshot is scalar", async () => {
+    mocks.getSql.mockReturnValue(vi.fn(() => Promise.resolve([
+      ...archiveReadRows(),
+      {
+        canonical_slug: "malformed-scalar-event",
+        snapshot: "not-an-object",
+        archive_status: "ok",
+        archive_finished_at: "2026-07-31T15:00:00.000Z",
+        archive_records_failed: 0,
+        archive_error: null,
+      },
+    ])));
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({ slug: "archive-event-2026-07-31" }),
+    );
+    expect(result.publicEvents.some(
+      (row) => row.slug === "malformed-scalar-event",
+    )).toBe(false);
+    expect(result.sourceHealth.archive?.state).toBe("invalid");
   });
 
   it("lets a cold archive connection finish without collapsing discovery to curated rows", async () => {
     vi.useFakeTimers();
     mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
-      setTimeout(() => resolve([envelope()]), 900);
+      setTimeout(() => resolve(archiveReadRows()), 900);
     })));
 
     const pending = loadEventArchiveSnapshot(NOW);
@@ -219,6 +370,57 @@ describe("Today durable event snapshot", () => {
     expect(result.sourceHealth).toEqual({
       degraded: false,
       unavailable: [],
+      archive: {
+        state: "current",
+        status: "ok",
+        finishedAt: "2026-07-31T15:00:00.000Z",
+        recordsFailed: 0,
+        invalidSnapshots: 0,
+      },
+    });
+  });
+
+  it("serves every readable last-known-good row when one source made the archive partial", async () => {
+    const rows = Array.from({ length: 40 }, (_, index) => ({
+      canonical_slug: `archive-event-${index}-2026-08-01`,
+      snapshot: event({
+        slug: `archive-event-${index}-2026-08-01`,
+        source_id: `archive-event-${index}`,
+        title: `Archive event ${index}`,
+      }),
+      archive_status: "partial",
+      archive_finished_at: "2026-07-31T15:00:00.000Z",
+      archive_records_failed: 1,
+      archive_error: "Archive checks failed: live-partial.",
+    }));
+    mocks.getSql.mockReturnValue(vi.fn(() => Promise.resolve(rows)));
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(
+      result.publicEvents.filter((row) => row.slug.startsWith("archive-event-")),
+    ).toHaveLength(40);
+    expect(result.sourceHealth.degraded).toBe(true);
+    expect(result.sourceHealth.archive?.state).toBe("provider_partial");
+  });
+
+  it("distinguishes a healthy empty archive window from a failed read", async () => {
+    mocks.getSql.mockReturnValue(vi.fn(() => Promise.resolve(
+      archiveReadRows({ candidates: [] }),
+    )));
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.sourceHealth).toEqual({
+      degraded: false,
+      unavailable: [],
+      archive: {
+        state: "current",
+        status: "ok",
+        finishedAt: "2026-07-31T15:00:00.000Z",
+        recordsFailed: 0,
+        invalidSnapshots: 0,
+      },
     });
   });
 });

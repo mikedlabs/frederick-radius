@@ -24,6 +24,7 @@ import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { isGooglePlaceId } from "@/lib/provenance";
 import {
   COVERAGE_TARGETS,
@@ -81,7 +82,8 @@ function hasPublishedFreshHours(place: Place): boolean {
     place.hours &&
       Object.keys(place.hours).length > 0 &&
       place.hours_verified &&
-      isHoursFresh(place.hours_updated_at),
+      isHoursFresh(place.hours_updated_at) &&
+      mayPublishVisitabilityHours(place.slug, place.hours),
   );
 }
 

@@ -18,6 +18,10 @@ import { getSql } from "@/lib/db/client";
 export type PaidUpstream =
   | "google_photo"
   | "anthropic_ask"
+  | "ask_model_step"
+  | "openai_embedding"
+  | "google_places_details"
+  | "google_places_text_search"
   | "mapbox_geocode"
   | "mapbox_directions"
   | "mapbox_matrix"

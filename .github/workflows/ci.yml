@@ -1,16 +1,18 @@
 name: CI
 
 # The mechanical quality gate the repo was missing: typecheck, lint,
-# unit tests, and a production build on every PR and every push to main.
+# unit tests, and a production build on every PR. The protected main branch
+# already requires these checks against an up-to-date merge revision, so
+# rebuilding the identical tree after merge would spend runner time without
+# adding another release decision. Vercel's production canary owns the
+# post-merge check.
 # Until now CI only ran editorial-style + data-freshness checks, so a
 # type error or failing test could land on main unnoticed — especially
 # risky with autonomous agents committing. A green check here is the
 # enforceable version of "tests must pass before committing."
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  pull_request: {}
   # Bot-created pull requests use the repository token. GitHub holds their
   # pull_request runs for manual approval, so the creating workflow explicitly
   # dispatches these same secret-free gates on the allowlisted bot branch.
@@ -62,6 +64,8 @@ jobs:
           scripts/lib/basemap-platform.test.mjs
           scripts/lib/basemap-release.test.mjs
           scripts/lib/data-release.test.mjs
+          scripts/lib/prod-audit-deploy-only.test.mjs
+          scripts/lib/prod-audit-data.test.mjs
           scripts/lib/promoted-build-network-guard.test.mjs
       - name: Build
         run: npm run build
@@ -80,45 +84,7 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-browser-failure-traces
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 7
-
-  browser-chaos:
-    # Keep this job name stable and mark it required in the main branch rule.
-    # The broad UX sweep still runs nightly; this small PR gate attacks the
-    # higher-risk failure mode: several dependencies failing in different ways
-    # while the four primary decision surfaces remain useful and honest.
-    name: Required browser chaos
-    runs-on: ubuntu-latest
-    # A cold 2,740-page production build takes about 24 minutes on GitHub's
-    # shared runner before Chromium and the actual chaos cases begin. Keep a
-    # bounded ceiling, but leave enough time to exercise the thing this job is
-    # required to prove instead of cancelling it immediately after the build.
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: ".nvmrc"
-          cache: "npm"
-      - name: Install dependencies
-        run: npm ci
-      - name: Build the production app
-        run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-          NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Exercise combined dependency failures and app upgrades
+      - name: Required browser chaos
         run: >-
           npx playwright test
           e2e/critical-dependency-chaos.spec.ts
@@ -129,11 +95,32 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep chaos failure traces
+      - name: Keep browser failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: chaos-browser-failure-traces
+          name: release-browser-failure-traces
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  browser-chaos:
+    # Keep this job name stable: the main-branch ruleset requires this exact
+    # context. The real chaos tests now run inside `verify`, reusing its one
+    # production build and Chromium install. This lightweight mirror cannot
+    # pass unless that complete job, including the chaos tests, passed.
+    name: Required browser chaos
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm the verified build and chaos suite passed
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: |
+          if [ "$VERIFY_RESULT" != "success" ]; then
+            echo "::error title=Required browser gate failed::The verify job, including the real browser chaos suite, concluded $VERIFY_RESULT."
+            exit 1
+          fi
+          echo "The verified production build and browser chaos suite passed."

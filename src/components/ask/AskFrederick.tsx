@@ -114,6 +114,28 @@ const WORKSPACE_ASKS = [
 
 const LOADING_MESSAGE = "Radius is checking current local data and sources.";
 
+export const ASK_PROGRESS_STAGES = [
+  { afterMs: 0, message: LOADING_MESSAGE },
+  {
+    afterMs: 2_000,
+    message: "Radius is matching your question to local listings.",
+  },
+  {
+    afterMs: 6_000,
+    message: "Radius is checking the leading matches against current source details.",
+  },
+  {
+    afterMs: 12_000,
+    message: "This is taking longer than usual. Radius is still checking before it answers.",
+  },
+] as const;
+
+export function askProgressMessageForElapsed(elapsedMs: number): string {
+  return [...ASK_PROGRESS_STAGES]
+    .reverse()
+    .find((stage) => elapsedMs >= stage.afterMs)?.message ?? LOADING_MESSAGE;
+}
+
 type AskCacheEntry = { at: number; result: AskResult };
 type AskMode = "compact" | "workspace";
 export type AskRequestFailure =
@@ -647,6 +669,78 @@ function AskSourceCard({
           </a>
         ) : null}
       </div>
+    </article>
+  );
+}
+
+function AskAlternativeRow({
+  source,
+  index,
+  onInternalOpen,
+}: {
+  source: AskSource;
+  index: number;
+  onInternalOpen?: (index: number) => void;
+}) {
+  const external = source.href.startsWith("http");
+  const saveTarget = sourceSaveTarget(source);
+  const decisionEntity = saveTarget?.type ?? "source";
+  const decisionId = saveTarget?.id ?? source.slug;
+  const meta = [source.distance, source.status, source.city].filter(Boolean);
+
+  return (
+    <article
+      data-ask-source-index={index}
+      data-ask-alternative
+      data-decision-impression="true"
+      data-decision-surface="ask"
+      data-decision-entity={decisionEntity}
+      data-decision-id={decisionId}
+      data-decision-position="alternative"
+      className="border-b last:border-b-0"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      <Link
+        href={source.href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+        data-decision-action={external ? "website" : "open"}
+        onClick={() => {
+          haptic("light");
+          if (!external) onInternalOpen?.(index);
+        }}
+        className="group flex min-h-14 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
+      >
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px]"
+          style={{
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-brand-press)",
+          }}
+          aria-hidden
+        >
+          <MapPin className="h-4 w-4" strokeWidth={1.8} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate text-[13px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {source.name}
+          </span>
+          <span
+            className="mt-0.5 block truncate text-[10.5px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {meta.length > 0 ? meta.join(" · ") : source.reason}
+          </span>
+        </span>
+        {external ? (
+          <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        ) : (
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        )}
+      </Link>
     </article>
   );
 }
@@ -1185,6 +1279,7 @@ export default function AskFrederick({
 }: AskFrederickProps = {}) {
   const [q, setQ] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
   const [res, setRes] = useState<AskResult | null>(null);
   const [requestFailure, setRequestFailure] =
     useState<AskRequestFailure | null>(null);
@@ -1263,6 +1358,21 @@ export default function AskFrederick({
       abortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStage(0);
+      return;
+    }
+
+    setLoadingStage(0);
+    const timers = ASK_PROGRESS_STAGES.slice(1).map((stage, index) =>
+      globalThis.setTimeout(() => setLoadingStage(index + 1), stage.afterMs),
+    );
+    return () => {
+      for (const timer of timers) globalThis.clearTimeout(timer);
+    };
+  }, [loading]);
 
   useEffect(() => {
     if (approvedLocationCheckRef.current || readCachedPosition()) return;
@@ -1834,6 +1944,7 @@ export default function AskFrederick({
   const responsePresentation = res
     ? res.presentation ?? askResponsePresentation(res)
     : null;
+  const loadingMessage = ASK_PROGRESS_STAGES[loadingStage]?.message ?? LOADING_MESSAGE;
   const responseSections: AskResponseSection[] = responsePresentation
     ? askResponseSectionOrder(responsePresentation)
     : [];
@@ -1843,12 +1954,26 @@ export default function AskFrederick({
     : null;
   const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
   const supportingSources = res?.sources.slice(1) ?? [];
-  const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
-  const collapsedSupportingCount = Math.max(
-    0,
-    collapsedSourceCount - (leadSource ? 1 : 0),
+  const compactAlternatives = responsePresentation?.layout === "place"
+    ? supportingSources
+        .filter((source) =>
+          source.href.startsWith("/places/") || source.href.startsWith("/events/"),
+        )
+        .slice(0, 2)
+    : [];
+  const compactAlternativeKeys = new Set(
+    compactAlternatives.map(
+      (source) => `${source.category}:${source.slug}:${source.href}`,
+    ),
   );
-  const visibleSources = supportingSources.slice(
+  const evidenceSources = supportingSources.filter(
+    (source) =>
+      !compactAlternativeKeys.has(
+        `${source.category}:${source.slug}:${source.href}`,
+      ),
+  );
+  const collapsedSupportingCount = responsePresentation?.layout === "place" ? 2 : 1;
+  const visibleSources = evidenceSources.slice(
     0,
     showAllSources ? undefined : collapsedSupportingCount,
   );
@@ -2107,11 +2232,12 @@ export default function AskFrederick({
       ) : null}
 
       <div>
-        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {loading ? "Radius is working on your question." : ""}
-        </span>
         {loading ? (
           <div
+            data-ask-progress-stage={loadingStage}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className={
               workspace
                 ? "mt-5 border-y px-1 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
@@ -2129,16 +2255,24 @@ export default function AskFrederick({
                 style={{ background: "var(--app-brand)" }}
                 aria-hidden
               />
-              <span>{LOADING_MESSAGE}</span>
+              <span>{loadingMessage}</span>
             </div>
+            {res ? (
+              <p
+                className="mt-1.5 text-[10.5px] leading-relaxed"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                The grounded answer below stays available while Radius checks your follow-up.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>
 
       {res && responsePresentation ? (
         <div
-          inert={loading ? true : undefined}
-          className={`${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-55" : ""}`}
+          aria-busy={loading || undefined}
+          className={workspace ? "mt-4" : "mt-3 border-t pt-3"}
           style={!workspace ? { borderColor: "var(--app-border)" } : undefined}
         >
           <section
@@ -2414,114 +2548,165 @@ export default function AskFrederick({
               }
 
               if (section === "supporting-sources") {
-                return supportingSources.length > 0 ? (
-                  <details
-                    key={section}
-                    data-ask-section={section}
-                    open={
-                      responsePresentation.layout === "place"
-                        ? true
-                        : undefined
-                    }
-                    className="group mt-5 overflow-hidden rounded-[var(--app-radius-md)] border"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated)",
-                    }}
-                  >
-                    <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
-                      <span
-                        className="text-[13px] font-semibold"
-                        style={{ color: "var(--app-ink)" }}
-                      >
-                        {responsePresentation.layout === "place"
-                          ? "Other options and sources"
-                          : responsePresentation.layout === "civic"
-                            ? "More official sources"
-                            : "Sources behind this answer"}
-                      </span>
-                      <span
-                        className="inline-flex items-center gap-2 font-mono text-[10px]"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {supportingSources.length}{" "}
-                        {supportingSources.length === 1 ? "source" : "sources"}
-                        <ChevronDown
-                          className="h-4 w-4 transition-transform group-open:rotate-180"
-                          strokeWidth={2.2}
-                          aria-hidden
-                        />
-                      </span>
-                    </summary>
-                    <div
-                      className="grid gap-2.5 border-t p-3"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <div className="grid gap-2.5">
-                        {visibleSources.map((source, index) => (
-                          <AskSourceCard
-                            key={`${source.category}-${source.slug}-${source.href}`}
-                            source={source}
-                            index={index + 1}
-                            onInternalOpen={rememberAskReturn}
-                          />
-                        ))}
-                      </div>
-                      {supportingSources.length > collapsedSupportingCount ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllSources((value) => !value)}
-                          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
-                          style={{
-                            borderColor: "var(--app-border)",
-                            color: "var(--app-brand-press)",
-                          }}
-                        >
-                          {showAllSources
-                            ? "Show fewer sources"
-                            : `Show all ${supportingSources.length} sources`}
-                        </button>
-                      ) : null}
-                    </div>
-                  </details>
-                ) : null;
-              }
-
-              if (section === "secondary-actions") {
+                if (supportingSources.length === 0) return null;
                 return (
                   <div key={section} data-ask-section={section}>
-                    <AskActionList
-                      actions={secondaryActions}
-                      label="Other next steps"
-                      emphasizeFirst={false}
-                      onRefine={runAction}
-                      onInternalOpen={() => rememberAskReturn(null)}
-                    />
+                    {compactAlternatives.length > 0 ? (
+                      <section
+                        aria-labelledby="ask-alternatives-heading"
+                        className="mt-4 overflow-hidden rounded-[var(--app-radius-md)] border"
+                        style={{
+                          borderColor: "var(--app-border)",
+                          background: "var(--app-bg-elevated)",
+                        }}
+                      >
+                        <h3
+                          id="ask-alternatives-heading"
+                          className="border-b px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em]"
+                          style={{
+                            borderColor: "var(--app-border)",
+                            color: "var(--app-ink-3)",
+                          }}
+                        >
+                          Other good options
+                        </h3>
+                        {compactAlternatives.map((source) => {
+                          const index = supportingSources.indexOf(source) + 1;
+                          return (
+                            <AskAlternativeRow
+                              key={`${source.category}-${source.slug}-${source.href}`}
+                              source={source}
+                              index={index}
+                              onInternalOpen={rememberAskReturn}
+                            />
+                          );
+                        })}
+                      </section>
+                    ) : null}
+
+                    {evidenceSources.length > 0 ? (
+                      <details
+                        className="group mt-3 overflow-hidden rounded-[var(--app-radius-md)] border"
+                        style={{
+                          borderColor: "var(--app-border)",
+                          background: "var(--app-bg-elevated)",
+                        }}
+                      >
+                        <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
+                          <span
+                            className="text-[13px] font-semibold"
+                            style={{ color: "var(--app-ink)" }}
+                          >
+                            {responsePresentation.layout === "civic"
+                              ? "More official sources"
+                              : "Sources behind this answer"}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-2 font-mono text-[10px]"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {evidenceSources.length}{" "}
+                            {evidenceSources.length === 1 ? "source" : "sources"}
+                            <ChevronDown
+                              className="h-4 w-4 transition-transform group-open:rotate-180"
+                              strokeWidth={2.2}
+                              aria-hidden
+                            />
+                          </span>
+                        </summary>
+                        <div
+                          className="grid gap-2.5 border-t p-3"
+                          style={{ borderColor: "var(--app-border)" }}
+                        >
+                          <div className="grid gap-2.5">
+                            {visibleSources.map((source) => {
+                              const index = supportingSources.indexOf(source) + 1;
+                              return (
+                                <AskSourceCard
+                                  key={`${source.category}-${source.slug}-${source.href}`}
+                                  source={source}
+                                  index={index}
+                                  onInternalOpen={rememberAskReturn}
+                                />
+                              );
+                            })}
+                          </div>
+                          {evidenceSources.length > collapsedSupportingCount ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllSources((value) => !value)}
+                              className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
+                              style={{
+                                borderColor: "var(--app-border)",
+                                color: "var(--app-brand-press)",
+                              }}
+                            >
+                              {showAllSources
+                                ? "Show fewer sources"
+                                : `Show all ${evidenceSources.length} sources`}
+                            </button>
+                          ) : null}
+                        </div>
+                      </details>
+                    ) : null}
                   </div>
                 );
               }
 
-              if (section === "detail") {
-                return responsePresentation.detail ? (
-                  <div
+              if (section === "secondary-actions") {
+                return secondaryActions.length > 0 ? (
+                  <details
                     key={section}
                     data-ask-section={section}
-                    className="mt-4 border-t px-1 pt-3"
+                    className="group mt-3 border-t"
                     style={{ borderColor: "var(--app-border)" }}
                   >
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-ink-3)" }}
+                    <summary
+                      className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-3 text-[12px] font-semibold"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
+                      More ways to continue
+                      <ChevronDown
+                        className="h-4 w-4 transition-transform group-open:rotate-180"
+                        aria-hidden
+                      />
+                    </summary>
+                    <AskActionList
+                      actions={secondaryActions}
+                      label="Other actions"
+                      emphasizeFirst={false}
+                      onRefine={runAction}
+                      onInternalOpen={() => rememberAskReturn(null)}
+                    />
+                  </details>
+                ) : null;
+              }
+
+              if (section === "detail") {
+                return responsePresentation.detail ? (
+                  <details
+                    key={section}
+                    data-ask-section={section}
+                    className="group mt-3 border-t"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <summary
+                      className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-3 text-[12px] font-semibold"
+                      style={{ color: "var(--app-ink-2)" }}
                     >
                       More context
-                    </p>
+                      <ChevronDown
+                        className="h-4 w-4 transition-transform group-open:rotate-180"
+                        aria-hidden
+                      />
+                    </summary>
                     <p
-                      className="mt-1 whitespace-pre-wrap text-[13px] leading-[1.58]"
+                      className="px-1 pb-3 whitespace-pre-wrap text-[13px] leading-[1.58]"
                       style={{ color: "var(--app-ink-2)" }}
                     >
                       {responsePresentation.detail}
                     </p>
-                  </div>
+                  </details>
                 ) : null;
               }
 
@@ -2536,16 +2721,6 @@ export default function AskFrederick({
             ) : null}
           </section>
 
-          <div className="mt-3 flex justify-end">
-            <Link
-              href="/compass"
-              className="tap-44 inline-flex items-center gap-1 px-1 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Browse tools
-              <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
-          </div>
         </div>
       ) : null}
 

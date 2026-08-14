@@ -41,7 +41,10 @@ describe("TopBar search ownership", () => {
     const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
 
-    expect(topBar).toContain('className="hidden text-[15px] min-[390px]:inline"');
+    expect(topBar).toContain('data-topbar-layout="stable-mobile-icons"');
+    expect(topBar).toContain('className="hidden text-[15px] sm:inline"');
+    expect(topBar).toContain("max-sm:[&_[data-location-chip]]:max-w-11");
+    expect(topBar).toContain("max-sm:[&_[data-location-chip]>span]:hidden");
     expect(location).toContain('data-location-scope-label="compact"');
     expect(location).toContain('data-location-scope-label="full"');
     expect(location).toContain(': "County";');
@@ -66,7 +69,7 @@ describe("TopBar search ownership", () => {
 
     expect(topBar).toContain('aria-label="Open Compass tools"');
     expect(topBar).toContain(">Compass</span>");
-    expect(topBar).toContain(">Tools</span>");
+    expect(topBar).not.toContain(">Tools</span>");
     expect(topBar).not.toContain('pathname !== "/compass"');
     expect(pulse).toContain("Pulse: checking county status");
     expect(pulse).toMatch(/>\s*Pulse\s*</);

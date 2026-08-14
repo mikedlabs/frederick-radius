@@ -141,23 +141,54 @@ export function TodayFoodTruckGuide({
 
   useEffect(() => {
     let active = true;
+    let timer: number | null = null;
+    let controller: AbortController | null = null;
+    let lastAttemptAt = 0;
+    const refreshIntervalMs = 5 * 60_000;
+
+    const schedule = (delayMs: number) => {
+      if (timer !== null) window.clearTimeout(timer);
+      if (!active || document.visibilityState !== "visible") return;
+      timer = window.setTimeout(() => void refresh(), delayMs);
+    };
 
     const refresh = async () => {
+      if (!active || document.visibilityState !== "visible") return;
+      lastAttemptAt = Date.now();
+      controller?.abort();
+      controller = new AbortController();
       try {
-        const response = await fetch("/api/food-trucks/live", { cache: "no-store" });
+        const response = await fetch("/api/food-trucks/live", {
+          signal: controller.signal,
+        });
         if (!response.ok) return;
         const body = (await response.json()) as { pins?: unknown[] };
         if (active) setLiveTruckCount(Array.isArray(body.pins) ? body.pins.length : 0);
       } catch {
         // The published schedule and local roster remain available.
+      } finally {
+        schedule(refreshIntervalMs);
       }
     };
 
     void refresh();
-    const timer = window.setInterval(refresh, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") {
+        if (timer !== null) window.clearTimeout(timer);
+        timer = null;
+        controller?.abort();
+        return;
+      }
+      const remaining = refreshIntervalMs - (Date.now() - lastAttemptAt);
+      if (remaining <= 0) void refresh();
+      else schedule(remaining);
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      if (timer !== null) window.clearTimeout(timer);
+      controller?.abort();
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

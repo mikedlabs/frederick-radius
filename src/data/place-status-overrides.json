@@ -6,12 +6,19 @@
     "source": "https://concettasmainstreet.com/",
     "note": "The official Concetta's Main Street Bistro website presents the Mount Airy restaurant as active and offers current menu and ordering links. This corrects a conflicting provider closure signal without publishing provider hours until they are verified again."
   },
+  "emmitsburg-farmers-market-emmitsburg": {
+    "status": "closed_temporarily",
+    "effective_at": "2026-08-13",
+    "review_after": "2026-10-18",
+    "source": "https://homegrownfrederick.com/farmers-markets/",
+    "note": "The current Homegrown Frederick market directory lists Emmitsburg Fun, Farm and Family Days as dated market events on July 18 and October 17 rather than a continuously open weekly place. This corroborates the provider's temporary-closure status between event dates; review after the October event before carrying the status forward."
+  },
   "green-health-docs": {
     "status": "operational",
     "effective_at": "2026-07-31",
-    "review_after": "2026-08-15",
+    "review_after": "2026-09-14",
     "source": "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
-    "note": "The official Maryland locations page lists the Frederick clinic at 304 Delaware Road and offers appointment scheduling."
+    "note": "Rechecked August 14, 2026. The official Maryland locations page still lists the Frederick clinic at 304 Delaware Road and offers appointment scheduling."
   },
   "mazako": {
     "status": "closed_permanently",
@@ -23,16 +30,16 @@
   "quince-orchard-psychotherapy": {
     "status": "operational",
     "effective_at": "2026-08-01",
-    "review_after": "2026-08-15",
+    "review_after": "2026-09-14",
     "source": "https://orchardmentalhealth.com/contact/",
-    "note": "The official contact page lists the Frederick office at 10 North Jefferson Street, regular weekday hours, and active appointment and referral options."
+    "note": "Rechecked August 14, 2026. The official contact page still lists the Frederick office at 10 North Jefferson Street, regular weekday hours, and active appointment options."
   },
   "saxbys-at-mount-st-marys-university-emmitsburg": {
     "status": "operational",
     "effective_at": "2026-07-31",
-    "review_after": "2026-08-15",
+    "review_after": "2026-09-14",
     "source": "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
-    "note": "Mount St. Mary's official campus dining page lists Saxbys Cafe with current daily hours and mobile ordering."
+    "note": "Rechecked August 14, 2026. Mount St. Mary's official campus dining page still lists Saxbys Cafe with daily hours and mobile ordering, while noting that break hours can differ."
   },
   "sabor-casero-bakery-frederick-frederick": {
     "status": "closed_permanently",

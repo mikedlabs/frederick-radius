@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import HOURS_RAW from "@/data/places-client-hours.json" with { type: "json" };
 import PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import type { Hours } from "@/data/places";
+import { clientPlaceHours } from "@/lib/loaders/places-client-hours";
 
 type HoursRow = {
   slug: string;
@@ -64,6 +65,20 @@ describe("map time-scrubber hours payload", () => {
     const serialized = JSON.stringify(hoursRows);
     expect(serialized).not.toContain("google_photo_url");
     expect(serialized.length).toBeLessThan(JSON.stringify(places).length / 2);
+  });
+
+  it("withholds a stored schedule at runtime after its freshness window expires", () => {
+    const stored = (HOURS_RAW as HoursRow[]).find(
+      (row) => row.hours_policy_strict && row.hours_updated_at,
+    );
+    expect(stored).toBeDefined();
+    const expiredAt = new Date(
+      Date.parse(stored!.hours_updated_at!) + 8 * 24 * 60 * 60 * 1000,
+    );
+
+    expect(
+      clientPlaceHours(expiredAt).some((row) => row.slug === stored!.slug),
+    ).toBe(false);
   });
 
   it("keeps AppMap off the photo-rich client catalog", () => {

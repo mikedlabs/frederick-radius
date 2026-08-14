@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sentry = vi.hoisted(() => ({
   captureCheckIn: vi.fn(),
@@ -9,7 +9,7 @@ const sentry = vi.hoisted(() => ({
 
 vi.mock("@sentry/nextjs", () => sentry);
 
-import { monitorCronResponse } from "./cron-monitor";
+import { assessCronResponse, monitorCronResponse } from "./cron-monitor";
 
 const schedule = {
   schedule: "*/15 * * * *",
@@ -23,6 +23,11 @@ describe("monitorCronResponse", () => {
     sentry.isInitialized.mockReturnValue(true);
     sentry.captureCheckIn.mockReturnValue("check-in-id");
     sentry.flush.mockResolvedValue(true);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("records an ok completion for a successful response", async () => {
@@ -64,6 +69,69 @@ describe("monitorCronResponse", () => {
     expect(sentry.captureCheckIn).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "error" }),
     );
+  });
+
+  it.each([
+    [{ ok: false }, "ok_false"],
+    [{ healthy: false }, "healthy_false"],
+    [{ degraded: true }, "degraded_true"],
+    [{ status: "partial" }, "status_partial"],
+    [{ summary: { status: "degraded" } }, "summary_status_degraded"],
+  ])("records a completed 2xx response as red when its JSON is unhealthy", async (
+    payload,
+    reason,
+  ) => {
+    const response = await monitorCronResponse(
+      "event-archive",
+      schedule,
+      async () => Response.json(payload),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sentry.captureCheckIn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "error" }),
+    );
+    expect(JSON.parse(vi.mocked(console.warn).mock.calls.at(-1)?.[0] ?? "{}"))
+      .toMatchObject({
+        event: "cron_semantic_failure",
+        monitorSlug: "event-archive",
+        reason,
+      });
+  });
+
+  it("rejects invalid JSON on a JSON cron response", async () => {
+    await expect(assessCronResponse(new Response("not-json", {
+      headers: { "content-type": "application/json" },
+    }))).resolves.toEqual({
+      healthy: false,
+      reason: "invalid_json",
+    });
+  });
+
+  it.each([
+    [new Response("done"), "non_json_response"],
+    [Response.json({}), "missing_healthy_semantic"],
+    [Response.json({ enabled: false }), "missing_healthy_semantic"],
+  ])("does not infer cron health without an explicit healthy semantic", async (
+    response,
+    reason,
+  ) => {
+    await expect(assessCronResponse(response)).resolves.toEqual({
+      healthy: false,
+      reason,
+    });
+  });
+
+  it.each([
+    { ok: true },
+    { healthy: true },
+    { status: "ok" },
+    { summary: { status: "healthy" } },
+  ])("accepts a recognized explicit healthy semantic", async (payload) => {
+    await expect(assessCronResponse(Response.json(payload))).resolves.toEqual({
+      healthy: true,
+      reason: null,
+    });
   });
 
   it("captures and rethrows an unhandled task exception", async () => {

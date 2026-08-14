@@ -260,7 +260,13 @@ export default async function OpenNowPage() {
         </p>
       )}
 
-      {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} />}
+      {likely.length > 0 && (
+        <PlaceIndex
+          sections={likelySections}
+          showSort={false}
+          prioritizeFirstPhoto={verified.length === 0}
+        />
+      )}
 
       {/* Optional map fallback — the review's rule: list answer first,
           map second. This is the ONE door into the heavy surface. */}

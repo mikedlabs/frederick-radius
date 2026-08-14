@@ -1,10 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({ meterUsage: vi.fn() }));
+
+vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
+
 import {
   decisionFeatures,
+  getPlaceDetails,
   normalizeGooglePhotoAttributions,
   normalizeGooglePlaceSummary,
   pickReview,
+  resolveAndEnrich,
 } from "./google-places";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-google-key");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("pickReview", () => {
   it("preserves the selected review's author and Google Maps links", () => {
@@ -92,5 +109,46 @@ describe("decisionFeatures", () => {
       servesBreakfast: true,
       restroom: undefined,
     })).toEqual(["outdoor_seating", "reservable", "serves_breakfast"]);
+  });
+});
+
+describe("paid Google Places metering", () => {
+  it("counts a Place Details attempt without retaining its id", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "ChIJexample", businessStatus: "OPERATIONAL" }),
+    } as Response));
+
+    await getPlaceDetails("ChIJexample", "status");
+
+    expect(mocks.meterUsage).toHaveBeenCalledWith("google_places_details");
+    expect(mocks.meterUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a Text Search attempt separately", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        places: [{
+          id: "ChIJcafe",
+          displayName: { text: "Cafe Nola" },
+          formattedAddress: "4 East Patrick Street, Frederick, MD",
+          businessStatus: "OPERATIONAL",
+          location: { latitude: 39.4143, longitude: -77.4105 },
+        }],
+      }),
+    } as Response));
+
+    await resolveAndEnrich({
+      name: "Cafe Nola",
+      address: "4 East Patrick Street, Frederick, MD",
+      lat: 39.4143,
+      lng: -77.4105,
+    }, "basic");
+
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_places_text_search",
+    );
+    expect(mocks.meterUsage).toHaveBeenCalledTimes(1);
   });
 });

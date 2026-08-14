@@ -31,7 +31,7 @@ describe("coverage quality metrics", () => {
     expect(
       hasPublishedFreshHours(
         place({
-          hours: { mon: [{}] },
+          hours: { mon: [{ open: "09:00", close: "17:00" }] },
           hours_verified: true,
           hours_updated_at: "2026-07-23T12:00:00-04:00",
         }),
@@ -41,9 +41,19 @@ describe("coverage quality metrics", () => {
     expect(
       hasPublishedFreshHours(
         place({
-          hours: { mon: [{}] },
+          hours: { mon: [{ open: "09:00", close: "17:00" }] },
           hours_verified: true,
           hours_updated_at: "2026-07-01T12:00:00-04:00",
+        }),
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      hasPublishedFreshHours(
+        place({
+          hours: { mon: [{ open: "00:00", close: "24:00" }] },
+          hours_verified: true,
+          hours_updated_at: "2026-07-23T12:00:00-04:00",
         }),
         now,
       ),
@@ -154,7 +164,7 @@ describe("coverage quality metrics", () => {
   it("keeps empty towns visible and ranks only dimensions below target", () => {
     const places = [
       place({
-        hours: { mon: [{}] },
+        hours: { mon: [{ open: "09:00", close: "17:00" }] },
         hours_verified: true,
         hours_updated_at: new Date().toISOString(),
         website: "https://example.com",

@@ -21,6 +21,7 @@
 
 import type { OperationalStatus } from "@/data/places";
 import { hasIdentitySubfacilityConflict } from "@/lib/quality/enrichmentBinding";
+import { meterUsage } from "@/lib/usage-meter";
 
 const BASE = "https://places.googleapis.com/v1";
 
@@ -449,6 +450,9 @@ export async function getPlaceDetails(
   if (!k) return null;
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
   try {
+    // Count the attempt beside the paid call. The field set stays out of the
+    // meter key so no place id, query text, or other request data is stored.
+    meterUsage("google_places_details");
     const res = await fetch(`${BASE}/${id}`, {
       headers: {
         "X-Goog-Api-Key": k,
@@ -539,6 +543,7 @@ export async function resolveAndEnrich(opts: {
         },
       };
     }
+    meterUsage("google_places_text_search");
     const res = await fetch(`${BASE}/places:searchText`, {
       method: "POST",
       headers: {

@@ -90,6 +90,24 @@ export type UnifiedEvents = {
 export type EventSourceHealth = {
   degraded: boolean;
   unavailable: string[];
+  /**
+   * Durable archive evidence is present only on archive-backed reads. It lets
+   * production checks distinguish a fresh provider gap from a stale or broken
+   * archive without exposing database error text.
+   */
+  archive?: {
+    state:
+      | "current"
+      | "provider_partial"
+      | "stale"
+      | "failed"
+      | "invalid"
+      | "unavailable";
+    status: "ok" | "partial" | "error" | null;
+    finishedAt: string | null;
+    recordsFailed: number | null;
+    invalidSnapshots: number;
+  };
 };
 
 /**

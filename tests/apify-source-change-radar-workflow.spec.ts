@@ -148,6 +148,11 @@ describe("Apify source change radar workflow", () => {
     expect(summary?.env?.RADAR_LIVE).toContain("confirm_live");
     expect(summary?.run).toContain("Plan-only run completed");
     expect(summary?.run).toContain("No provider request was made");
+    expect(summary?.env?.PERSIST_OUTCOME).toBe(
+      "${{ steps.persist-candidates.outcome }}",
+    );
+    expect(summary?.run).toContain("Private source inbox persistence succeeded");
+    expect(summary?.run).toContain("Fingerprints were not advanced");
   });
 
   it("fails closed without restored state and persists only private fingerprints", () => {
@@ -177,6 +182,7 @@ describe("Apify source change radar workflow", () => {
     action(save, "actions/cache/save");
     expect(save?.if).toContain("hashFiles");
     expect(save?.if).toContain("steps.review-queue.outcome == 'success'");
+    expect(save?.if).toContain("steps.persist-candidates.outcome == 'success'");
     expect(save?.with?.path).toBe(
       "scripts/reports/apify-source-change-radar/state.json",
     );
@@ -184,6 +190,18 @@ describe("Apify source change radar workflow", () => {
     action(artifact, "actions/upload-artifact");
     expect(artifact?.with?.["retention-days"]).toBe(14);
     expect(String(artifact?.with?.path)).not.toContain("state.json");
+    expect(String(artifact?.with?.path)).toContain(
+      "source-candidate-persistence.log",
+    );
+
+    const preflight = allSteps.find(
+      (step) => step.name === "Verify durable candidate inbox",
+    );
+    expect(preflight?.run).toContain("npm run source:candidates:check");
+    const persist = allSteps.find(
+      (step) => step.name === "Persist structured candidates",
+    );
+    expect(persist?.id).toBe("persist-candidates");
   });
 
   it("derives a fail-closed monthly reservation floor from durable live-run history", () => {

@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Bookmark,
   CalendarDays,
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   History,
@@ -89,48 +88,38 @@ const GROUP_META: Record<
 const COMPASS_INTENT_DEFINITIONS = [
   {
     id: "go-out",
-    label: "Eat, drink & go out",
-    description: "Find restaurants, drinks, food trucks, events, and live music.",
-    moreLabel: "More food, drinks & events",
+    label: "Find something to do",
+    description: "Ask Radius or find food, drinks, events, and plans.",
     icon: UtensilsCrossed,
-    groupIds: ["food", "events"],
-    featuredIds: ["reserve", "food-trucks", "live-music"],
+    groupIds: ["decide", "food", "events"],
   },
   {
     id: "get-around",
     label: "Get around",
-    description: "Use the map, parking, transit, or road cameras.",
-    moreLabel: "More ways to get around",
+    description: "Use the map, parking, transit, and current road information.",
     icon: Route,
     groupIds: ["getting-around"],
-    featuredIds: ["parking", "transit", "road-cameras"],
   },
   {
     id: "local-help",
-    label: "Essentials & local help",
-    description: "Find restrooms, water, public alerts, contacts, and emergency help.",
-    moreLabel: "More essentials & local help",
+    label: "Find local help",
+    description: "Find public essentials, current alerts, contacts, and emergency help.",
     icon: MapPinned,
     groupIds: ["amenities", "live", "community"],
-    featuredIds: ["restrooms", "emergency", "contacts"],
   },
   {
     id: "explore-yours",
-    label: "Explore & save",
-    description: "Browse towns, history, local data, saved places, and settings.",
-    moreLabel: "More to explore & save",
+    label: "Explore Frederick",
+    description: "Browse towns, history, local data, and the places you saved.",
     icon: Landmark,
     groupIds: ["stories", "yours"],
-    featuredIds: ["history", "from-above-preview", "numbers"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;
   description: string;
-  moreLabel: string;
   icon: LucideIcon;
   groupIds: readonly ToolDeckGroupId[];
-  featuredIds: readonly string[];
 }>;
 
 type CompassIntentId = (typeof COMPASS_INTENT_DEFINITIONS)[number]["id"];
@@ -165,6 +154,25 @@ export type ToolDeckDirectory = {
   total: number;
   groups: ToolDeckGroup[];
 };
+
+/**
+ * A destination appears once in the directory even if two registry records
+ * temporarily point at it. Keep the first, deliberately placed item so a
+ * registry alias cannot produce repeated rows across different chapters.
+ */
+export function dedupeToolDeckGroupsByHref(
+  groups: ToolDeckGroup[],
+): ToolDeckGroup[] {
+  const seen = new Set<string>();
+  return groups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      if (seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    }),
+  }));
+}
 
 type LinkIntentProps = Pick<
   ComponentProps<typeof Link>,
@@ -265,13 +273,15 @@ export function buildToolDeckGroups(homeSlug: string | null): ToolDeckGroup[] {
     const item = itemById.get(tool.id);
     return item ? [item] : [];
   });
-  if (unassigned.length === 0) return groups;
+  const completeGroups = unassigned.length === 0
+    ? groups
+    : groups.map((group) =>
+        group.id === "community"
+          ? { ...group, items: [...group.items, ...unassigned] }
+          : group,
+      );
 
-  return groups.map((group) =>
-    group.id === "community"
-      ? { ...group, items: [...group.items, ...unassigned] }
-      : group,
-  );
+  return dedupeToolDeckGroupsByHref(completeGroups);
 }
 
 export function buildToolDeckDirectory(
@@ -526,8 +536,6 @@ export default function CompassHub() {
 
   const [query, setQuery] = useState("");
   const [deckView, setDeckView] = useState<CompassDeckView | null>(null);
-  const [activeIntent, setActiveIntent] =
-    useState<CompassIntentId | null>(null);
   const [editingPins, setEditingPins] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([
     ...DEFAULT_TOOL_DECK_PIN_IDS,
@@ -678,15 +686,14 @@ export default function CompassHub() {
         href: contextualSuggestion.href ?? contextualBaseItem.href,
       }
     : null;
-  const activeIntentDefinition = COMPASS_INTENT_DEFINITIONS.find(
-    (intent) => intent.id === activeIntent,
-  );
+  // A live suggestion can point at a default shortcut. Let the evidence-rich
+  // suggestion own that destination instead of drawing the same href twice.
+  const displayedPinnedItems = contextualItem
+    ? pinnedItems.filter((item) => item.href !== contextualItem.href)
+    : pinnedItems;
   const visibleDestinationHrefs = new Set([
-    ...pinnedItems.map((item) => item.href),
-    ...(activeIntentDefinition?.featuredIds.flatMap((id) => {
-      const item = itemById.get(id);
-      return item ? [item.href] : [];
-    }) ?? []),
+    ...displayedPinnedItems.map((item) => item.href),
+    ...(contextualItem ? [contextualItem.href] : []),
     "/today",
     "/map",
     "/events",
@@ -739,7 +746,7 @@ export default function CompassHub() {
             className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Compass · {directory.total} tools
+            Compass
           </p>
           <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
             What do you need?
@@ -803,7 +810,7 @@ export default function CompassHub() {
           ) : null}
 
           <PinnedTools
-            items={pinnedItems}
+            items={displayedPinnedItems}
             intentProps={intentProps}
             onManage={() => openDeck("all", true)}
           />
@@ -814,13 +821,8 @@ export default function CompassHub() {
 
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
-            itemById={itemById}
-            activeIntent={activeIntent}
-            onActiveIntentChange={setActiveIntent}
             onOpen={openDeck}
-            intentProps={intentProps}
             liveKeys={deckLiveKeys}
-            toolCount={directory.total}
           />
         </>
       )}
@@ -837,7 +839,7 @@ export default function CompassHub() {
             ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
             : selectedIntent?.description ??
               selectedGroup?.description ??
-              `${directory.total} tools, organized by category. Search or jump to a category.`
+              "Browse the complete directory by category or search for a specific tool."
         }
         onClose={closeDeck}
       >
@@ -926,7 +928,7 @@ function PinnedTools({
         <button
           type="button"
           onClick={onManage}
-          className="inline-flex min-h-11 items-center rounded-full px-2.5 text-[12px] font-semibold"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--app-radius-sm)] px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
           Edit
@@ -1082,7 +1084,7 @@ function RecentTools({
                 prefetch={false}
                 {...externalLinkProps(item)}
                 {...intentProps(item)}
-                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 style={{
                   borderColor: "var(--app-border)",
                   color: "var(--app-ink)",
@@ -1216,22 +1218,12 @@ function useDeckLiveKeys(): readonly DeckLiveKey[] {
 
 function CompassIntentBoard({
   intents,
-  itemById,
-  activeIntent,
-  onActiveIntentChange,
   onOpen,
-  intentProps,
   liveKeys,
-  toolCount,
 }: {
   intents: typeof COMPASS_INTENT_DEFINITIONS;
-  itemById: ReadonlyMap<string, DirectoryItem>;
-  activeIntent: CompassIntentId | null;
-  onActiveIntentChange: (value: CompassIntentId | null) => void;
   onOpen: (view: CompassDeckView, managePins?: boolean) => void;
-  intentProps: (item: DirectoryItem) => LinkIntentProps;
   liveKeys: readonly DeckLiveKey[];
-  toolCount: number;
 }) {
   const liveLines = Object.fromEntries(
     COMPASS_INTENT_DEFINITIONS.flatMap((intent) => {
@@ -1248,125 +1240,50 @@ function CompassIntentBoard({
         Choose a direction
       </h2>
 
-      {/* Rows separated by hairline rules on Cream, not a filled panel inside
-          a strong border. Cream is the product canvas; the old elevated slab
-          made this the one page where it never appeared. */}
-      <div className="overflow-hidden">
-        {intents.map((intent) => {
-          const expanded = activeIntent === intent.id;
-          const featured = intent.featuredIds.flatMap((id) => {
-            const item = itemById.get(id);
-            return item ? [item] : [];
-          });
-          const regionId = `compass-intent-${intent.id}`;
-
-          return (
-            <section
-              key={intent.id}
-              className="border-b last:border-b-0"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <button
-                type="button"
-                aria-expanded={expanded}
-                aria-controls={regionId}
-                onClick={() => {
-                  haptic("light");
-                  onActiveIntentChange(expanded ? null : intent.id);
-                }}
-                className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-                style={{
-                  background: expanded
-                    ? "color-mix(in srgb, var(--app-brand) 6%, transparent)"
-                    : "transparent",
-                }}
+      {/* The four rows route intent. They do not preview another grid of tools;
+          the directory appears only after a person deliberately chooses a
+          direction or asks for All tools. */}
+      <div className="overflow-hidden border-y" style={{ borderColor: "var(--app-border)" }}>
+        {intents.map((intent) => (
+          <button
+            key={intent.id}
+            type="button"
+            onClick={() => onOpen(intent.id)}
+            className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 border-b px-1 py-2.5 text-left outline-none last:border-b-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <intent.icon
+              className="h-5 w-5 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
+                {intent.label}
+              </span>
+              <span
+                className="mt-1 block text-[12px] leading-snug"
+                style={{ color: "var(--app-ink-3)" }}
               >
-                {/* The intent's own icon, in the slot the decorative 01-05
-                    ordinals used to occupy. The numbers implied a sequence
-                    that never existed; the icon says what the row is. */}
-                <intent.icon
-                  className="h-5 w-5 shrink-0"
-                  strokeWidth={2}
-                  style={{ color: expanded ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
-                    {intent.label}
-                  </span>
-                  <span
-                    className="mt-1 block text-[12px] leading-snug"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {intent.description}
-                  </span>
-                  {liveLines[intent.id] && (
-                    // The one live fact this intent can currently state, from
-                    // the county's own feeds. Creek, because it is data.
-                    <span
-                      className="mt-1 block text-[12px] font-medium tabular-nums leading-snug"
-                      style={{ color: "var(--app-cool)" }}
-                    >
-                      {liveLines[intent.id]}
-                    </span>
-                  )}
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${
-                    expanded ? "rotate-180" : ""
-                  }`}
-                  style={{ color: expanded ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
-                  strokeWidth={2.1}
-                  aria-hidden
-                />
-              </button>
-
-              {expanded ? (
-                <div
-                  id={regionId}
-                  className="border-t"
-                  style={{ borderColor: "var(--app-border)" }}
+                {intent.description}
+              </span>
+              {liveLines[intent.id] ? (
+                <span
+                  className="mt-1 block text-[12px] font-medium tabular-nums leading-snug"
+                  style={{ color: "var(--app-cool)" }}
                 >
-                  <ul className="grid grid-cols-3 divide-x" style={{ borderColor: "var(--app-border)" }}>
-                    {featured.map((item) => (
-                      <li key={item.id} className="min-w-0">
-                        <Link
-                          href={item.href}
-                          prefetch={false}
-                          {...externalLinkProps(item)}
-                          {...intentProps(item)}
-                          className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 px-1.5 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-                        >
-                          <item.icon
-                            className="h-[17px] w-[17px] shrink-0"
-                            style={{ color: "var(--app-brand-press)" }}
-                            strokeWidth={2}
-                            aria-hidden
-                          />
-                          <span className="line-clamp-2 text-[12px] font-semibold leading-[1.2]">
-                            {item.label}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() => onOpen(intent.id)}
-                    className="tactile-interactive flex min-h-11 w-full items-center justify-between border-t px-3 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-brand-press)",
-                    }}
-                  >
-                    {intent.moreLabel}
-                    <ChevronRight className="h-4 w-4" strokeWidth={2.1} aria-hidden />
-                  </button>
-                </div>
+                  {liveLines[intent.id]}
+                </span>
               ) : null}
-            </section>
-          );
-        })}
+            </span>
+            <ChevronRight
+              className="h-4 w-4 shrink-0 opacity-45"
+              strokeWidth={2.1}
+              aria-hidden
+            />
+          </button>
+        ))}
       </div>
       <button
         type="button"
@@ -1384,12 +1301,12 @@ function CompassIntentBoard({
           <List className="h-4 w-4" strokeWidth={2.1} />
         </span>
         <span className="min-w-0 flex-1">
-          All {toolCount} tools
+          All tools
           <span
             className="mt-0.5 block text-[11px] font-normal"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Browse every tool by category
+            Browse the complete directory by category.
           </span>
         </span>
         <ChevronRight

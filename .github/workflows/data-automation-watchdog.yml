@@ -1,0 +1,192 @@
+name: Data automation watchdog
+
+# Reports the difference between a Radius workflow failure and a GitHub run
+# that never started a repository job. The latter is commonly an Actions
+# billing/spending hold, an account or organization policy, or invalid workflow
+# configuration; it is not evidence that a provider key or collector failed.
+#
+# The workflow_run trigger gives normal failures an immediate, durable issue.
+# The daily sweep reconciles the latest scheduled runs and closes that issue
+# only when every monitored family is current and green. If GitHub blocks all
+# Actions at the account level, no in-repository workflow can run; the sweep
+# reports the missed runs after Actions becomes available again.
+
+on:
+  workflow_run:
+    workflows:
+      - Data steward
+      - Ingest venue events
+      - Ingest business deep-info
+      - Ingest municipal civic data
+      - Source intelligence
+      - Apify source change radar
+    types: [completed]
+  schedule:
+    - cron: "43 13 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: data-automation-watchdog
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout trusted watchdog code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Classify workflow availability
+        id: availability
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const lifecycle = require('./scripts/lib/automated-data-issue.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const now = Date.now();
+            const monitored = [
+              { file: 'data-steward.yml', name: 'Data steward', maxAgeHours: 48 },
+              { file: 'ingest-venues.yml', name: 'Ingest venue events', maxAgeHours: 48 },
+              { file: 'ingest-business-info.yml', name: 'Ingest business deep-info', maxAgeHours: 48 },
+              { file: 'ingest-civic.yml', name: 'Ingest municipal civic data', maxAgeHours: 48 },
+              { file: 'source-intelligence.yml', name: 'Source intelligence', maxAgeHours: 240 },
+              { file: 'apify-source-change-radar.yml', name: 'Apify source change radar', maxAgeHours: 336 },
+            ];
+
+            async function jobsFor(runId) {
+              return github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                owner,
+                repo,
+                run_id: runId,
+                filter: 'latest',
+                per_page: 100,
+              });
+            }
+
+            function runLink(run) {
+              return run.html_url || `https://github.com/${owner}/${repo}/actions/runs/${run.id}`;
+            }
+
+            function failureEvidence(run, jobs) {
+              if (jobs.length === 0) {
+                return [
+                  `- **${run.name || run.display_title || 'Data workflow'}:** GitHub recorded \`${run.conclusion || 'failure'}\` with **0 jobs**. [Open run](${runLink(run)})`,
+                  '  - No checkout, Radius script, provider request, or secret check ran.',
+                  '  - Inspect the run banner first. Common causes are an Actions billing or spending-limit hold, Actions disabled by account or organization policy, or invalid workflow configuration.',
+                  '  - After the account or workflow is corrected, rerun the failed run from the current `main` branch.',
+                ].join('\n');
+              }
+
+              const failed = jobs
+                .filter((job) => !['success', 'skipped'].includes(job.conclusion || ''))
+                .map((job) => `${job.name} (${job.conclusion || 'unknown'})`);
+              return [
+                `- **${run.name || run.display_title || 'Data workflow'}:** repository jobs ran and the workflow concluded \`${run.conclusion || 'failure'}\`. [Open run](${runLink(run)})`,
+                `  - Failed jobs: ${failed.join(', ') || 'see the run log'}.`,
+                '  - This is a workflow, configuration, source, or test failure. Read the named job log before changing billing or provider settings.',
+              ].join('\n');
+            }
+
+            async function reportFailure(run) {
+              const jobs = await jobsFor(run.id);
+              const zeroJob = jobs.length === 0;
+              const body = [
+                zeroJob
+                  ? 'GitHub stopped a data workflow before any Radius repository job began.'
+                  : 'A Radius data workflow started and failed inside its repository job.',
+                '',
+                failureEvidence(run, jobs),
+                '',
+                zeroJob
+                  ? 'Do not rotate API keys or change collector code based on this run: neither was reached.'
+                  : 'The job log is the source of truth for this failure; account billing is not inferred when jobs ran.',
+              ].join('\n');
+              await lifecycle.upsertFailure({ github, context, family: 'automation', body });
+              core.setOutput('healthy', 'false');
+              await core.summary
+                .addHeading('Data automation unavailable')
+                .addRaw(body)
+                .write();
+            }
+
+            if (context.eventName === 'workflow_run') {
+              const run = context.payload.workflow_run;
+              if (run.conclusion !== 'success') {
+                await reportFailure(run);
+                return;
+              }
+            }
+
+            const failures = [];
+            for (const workflow of monitored) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner,
+                repo,
+                workflow_id: workflow.file,
+                branch: 'main',
+                event: 'schedule',
+                per_page: 100,
+              });
+              const latest = runs
+                .filter((run) => run.status === 'completed')
+                .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0];
+              if (!latest) {
+                failures.push(`- **${workflow.name}:** no completed scheduled run was found.`);
+                continue;
+              }
+              const ageHours = (now - Date.parse(latest.updated_at)) / 3_600_000;
+              if (!Number.isFinite(ageHours) || ageHours > workflow.maxAgeHours) {
+                failures.push(
+                  `- **${workflow.name}:** latest completed schedule is ${Number.isFinite(ageHours) ? ageHours.toFixed(1) : 'an unknown number of'} hours old; expected within ${workflow.maxAgeHours}. [Open run](${runLink(latest)})`,
+                );
+                continue;
+              }
+              if (latest.conclusion !== 'success') {
+                failures.push(failureEvidence(latest, await jobsFor(latest.id)));
+              }
+            }
+
+            if (failures.length > 0) {
+              const body = [
+                'One or more scheduled data workflows are failed or overdue.',
+                '',
+                ...failures,
+                '',
+                'A 0-job failure occurred outside Radius code. A failure with jobs must be diagnosed from the named job log.',
+              ].join('\n');
+              await lifecycle.upsertFailure({ github, context, family: 'automation', body });
+              core.setOutput('healthy', 'false');
+              await core.summary
+                .addHeading('Data automation degraded')
+                .addRaw(body)
+                .write();
+              return;
+            }
+
+            const closed = await lifecycle.closeRecovered({
+              github,
+              context,
+              family: 'automation',
+              recoveryMessage: 'Every monitored scheduled data workflow is current and successful.',
+            });
+            core.setOutput('healthy', 'true');
+            await core.summary
+              .addHeading('Data automation healthy')
+              .addRaw(`All ${monitored.length} monitored workflow families are current and green. Closed ${closed} active incident issue(s).`)
+              .write();
+
+      - name: Keep degraded automation visible in Actions
+        if: ${{ steps.availability.outputs.healthy != 'true' }}
+        run: exit 1

@@ -7,24 +7,24 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-08-10 — 1569 places._
+_Generated 2026-08-14 — 1568 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 852 | 678 (80%) | 630 (74%) | 709 (83%) | 709 (83%) | 50 | 295 |
+| Frederick | 852 | 678 (80%) | 631 (74%) | 709 (83%) | 709 (83%) | 50 | 295 |
 | Thurmont | 110 | 75 (68%) | 66 (60%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 57 (59%) | 85 (88%) | 78 (80%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 64 (74%) | 81 (94%) | 78 (91%) | 2 | 29 |
 | Middletown | 85 | 52 (61%) | 50 (59%) | 72 (85%) | 74 (87%) | 4 | 27 |
 | New Market | 75 | 51 (68%) | 47 (63%) | 62 (83%) | 59 (79%) | 4 | 13 |
 | Mount Airy | 63 | 48 (76%) | 45 (71%) | 58 (92%) | 58 (92%) | 5 | 27 |
-| Emmitsburg | 58 | 40 (69%) | 38 (66%) | 53 (91%) | 52 (90%) | 2 | 18 |
+| Emmitsburg | 57 | 39 (68%) | 37 (65%) | 52 (91%) | 51 (89%) | 2 | 18 |
 | Myersville | 46 | 33 (72%) | 31 (67%) | 40 (87%) | 40 (87%) | 2 | 9 |
 | Woodsboro | 36 | 20 (56%) | 19 (53%) | 30 (83%) | 26 (72%) | 1 | 10 |
 | Burkittsville | 30 | 15 (50%) | 14 (47%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Urbana | 29 | 20 (69%) | 22 (76%) | 23 (79%) | 25 (86%) | 2 | 9 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1569** | 1163 (74%) | 1083 (69%) | 1342 (86%) | 1329 (85%) | **79** | **500** |
+| **Total** | **1568** | 1162 (74%) | 1083 (69%) | 1341 (86%) | 1328 (85%) | **79** | **500** |
 
 ## Coverage by category
 
@@ -36,7 +36,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Shopping | 191 | 159 (83.2%) | 161 (84.3%) | 0 (0%) | 180 (94.2%) |
 | Churches & worship | 161 | 81 (50.3%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
-| Services | 52 | 38 (73.1%) | 38 (73.1%) | 0 (0%) | 48 (92.3%) |
+| Services | 52 | 39 (75%) | 38 (73.1%) | 0 (0%) | 48 (92.3%) |
 | Yoga & fitness | 41 | 27 (65.9%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
 | Salon & barber | 27 | 22 (81.5%) | 22 (81.5%) | 0 (0%) | 26 (96.3%) |
 | Massage | 18 | 17 (94.4%) | 15 (83.3%) | 0 (0%) | 18 (100%) |
@@ -70,7 +70,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Pizza | 18 | 17 (94.4%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
 | Restaurants | 175 | 163 (93.1%) | 160 (91.4%) | 34 (19.4%) | 168 (96%) |
 | Museums | 18 | 8 (44.4%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
-| Markets | 58 | 54 (93.1%) | 54 (93.1%) | 20 (34.5%) | 57 (98.3%) |
+| Markets | 57 | 53 (93%) | 53 (93%) | 20 (35.1%) | 56 (98.2%) |
 | Breweries | 16 | 13 (81.3%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
 | Tours & rides | 2 | 1 (50%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Auto care | 16 | 9 (56.3%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
@@ -84,25 +84,25 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1483 |
+| Public Google-backed places expected in the 6-day cycle | 1482 |
 | Snapshot rows | 1522 |
-| Rows matched to the public set | 1482 |
+| Rows matched to the public set | 1481 |
 | Rows carrying a schedule | 1158 |
-| Rows refreshed within policy, including status-only results | 1482 (99.9%) |
+| Rows refreshed within policy, including status-only results | 1481 (99.9%) |
 | Rows fresh within policy | 1158 (78.1%) |
 | 6-day cycle state | healthy |
 | Cycle buckets meeting the minimum write ratio | 6 / 6 |
 | Stale rows | 0 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 40 |
+| Unmatched rows | 41 |
 
-Oldest refresh: 2026-08-05T08:01:39.259Z. Newest refresh: 2026-08-10T08:00:25.290Z.
+Oldest refresh: 2026-08-09T08:01:14.197Z. Newest refresh: 2026-08-14T08:01:19.941Z.
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
 | 0 | 273 | 273 | 221 | yes |
-| 1 | 208 | 208 | 168 | yes |
-| 2 | 274 | 273 | 204 | yes |
+| 1 | 208 | 208 | 169 | yes |
+| 2 | 273 | 272 | 203 | yes |
 | 3 | 259 | 259 | 210 | yes |
 | 4 | 243 | 243 | 183 | yes |
 | 5 | 226 | 226 | 172 | yes |
@@ -135,7 +135,7 @@ after deployment.
 | Zero duration | 0 | Often signals a lost end time. |
 | End before start | 0 | The schedule is internally contradictory. |
 
-Category distribution (37 rows): arts: 5, family: 5, music: 25, outdoors: 1, theater: 1.
+Category distribution (39 rows): arts: 5, family: 5, music: 27, outdoors: 1, theater: 1.
 
 ## Core amenity coverage by town
 

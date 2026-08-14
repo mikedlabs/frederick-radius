@@ -187,8 +187,18 @@ describe("GET /api/cron/data-health", () => {
       generatedAt: "2026-07-28T08:00:00.000Z",
       ageHours: 1,
       stopCount: 2,
+      trackedSources: 3,
+      successfulSources: 2,
+      productiveSources: 1,
       sourceCount: 1,
+      retainedStopCount: 1,
+      vendorMentions: 4,
+      canonicalVendorLinks: 3,
+      canonicalLinkRatePct: 75,
+      lastSuccessAt: "2026-07-28T08:00:00.000Z",
       failedSources: [],
+      suspiciousZeroSources: [],
+      suspiciousDropSources: [],
       anomalies: [],
     });
   });
@@ -256,6 +266,24 @@ describe("GET /api/cron/data-health", () => {
     const body = await response.json();
 
     expect(body.summary.github_delivery).toBe("auth_failed");
+  });
+
+  it("publishes semantic food-truck coverage rather than only a cron color", async () => {
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(body.food_truck_schedules).toMatchObject({
+      tracked_sources: 3,
+      successful_sources: 2,
+      productive_sources: 1,
+      retained_stop_count: 1,
+      vendor_mentions: 4,
+      canonical_vendor_links: 3,
+      canonical_link_rate_pct: 75,
+      last_success_at: "2026-07-28T08:00:00.000Z",
+      suspicious_zero_sources: [],
+      suspicious_drop_sources: [],
+    });
   });
 
   it("keeps the headline red when current fresh hours are zero", async () => {

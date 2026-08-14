@@ -484,7 +484,7 @@ describe("Source Intelligence workflow", () => {
     );
   });
 
-  it("derives separate daily and monthly reservations from exhaustive GitHub history before secrets", () => {
+  it("derives separate daily and monthly reservations from exhaustive GitHub history before provider secrets", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
     const budget = durableBudgetStep();
@@ -492,8 +492,13 @@ describe("Source Intelligence workflow", () => {
     const budgetIndex = steps.findIndex(
       (step) => step.name === "Enforce durable provider spend ceilings",
     );
-    const firstSecretIndex = steps.findIndex((step) =>
-      JSON.stringify(step.env ?? {}).includes("secrets."),
+    const inboxGuardIndex = steps.findIndex(
+      (step) => step.name === "Verify durable candidate inbox",
+    );
+    const firstProviderSecretIndex = steps.findIndex((step) =>
+      /secrets\.(?:TAVILY_API_KEY|FIRECRAWL_API_KEY)/.test(
+        JSON.stringify(step.env ?? {}),
+      ),
     );
 
     expectImmutableAction(budget, "actions/github-script");
@@ -526,8 +531,10 @@ describe("Source Intelligence workflow", () => {
     expect(script).toContain("monthlyCeiling: 30");
     expect(script).not.toContain("run.conclusion");
     expect(script).not.toContain("run.status");
+    expect(inboxGuardIndex).toBeGreaterThan(-1);
     expect(budgetIndex).toBeGreaterThan(-1);
-    expect(firstSecretIndex).toBeGreaterThan(budgetIndex);
+    expect(inboxGuardIndex).toBeLessThan(budgetIndex);
+    expect(firstProviderSecretIndex).toBeGreaterThan(budgetIndex);
   });
 
   it("counts exact rerun attempts while keeping provider reservations independent", async () => {
@@ -720,7 +727,7 @@ describe("Source Intelligence workflow", () => {
     ).rejects.toThrow("history unavailable");
   });
 
-  it("uploads review evidence briefly and has no publishing path", () => {
+  it("uploads review evidence briefly and has no canonical publishing path", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
     const artifact = steps.find((step) =>
@@ -744,6 +751,44 @@ describe("Source Intelligence workflow", () => {
     expectImmutableAction(checkout, "actions/checkout");
     expect(checkout?.with?.["persist-credentials"]).toBe(false);
 
+    const databaseSteps = steps.filter(
+      (step) => step.env?.DATABASE_URL === "${{ secrets.DATABASE_URL }}",
+    );
+    expect(databaseSteps.map((step) => step.name)).toEqual([
+      "Verify durable candidate inbox",
+      "Persist structured candidates",
+    ]);
+    expect(runText(databaseSteps[0])).toContain(
+      "npm run source:candidates:check",
+    );
+    const inboxPreflight = readFileSync(
+      resolve(ROOT, "scripts/check-source-candidate-inbox.ts"),
+      "utf8",
+    );
+    expect(inboxPreflight).toContain("rolbypassrls");
+    expect(inboxPreflight).toContain("relowner");
+    expect(inboxPreflight).toContain("owns_private_tables");
+    const persist = databaseSteps[1];
+    expect(persist?.if).toContain("steps.selection.outputs.live == 'true'");
+    expect(persist?.if).toContain("steps.tavily-live.outcome == 'success'");
+    expect(persist?.if).toContain("steps.firecrawl-live.outcome == 'success'");
+    expect(runText(persist!)).toContain("npm run source:candidates:persist");
+    expect(persist?.id).toBe("persist-candidates");
+    expect(persist?.env?.TAVILY_API_KEY).toBeUndefined();
+    expect(persist?.env?.FIRECRAWL_API_KEY).toBeUndefined();
+    const summary = steps.find(
+      (step) => step.name === "Add operator result to job summary",
+    );
+    expect(summary?.env?.PERSIST_OUTCOME).toBe(
+      "${{ steps.persist-candidates.outcome }}",
+    );
+    expect(runText(summary!)).toContain(
+      "Private source inbox persistence succeeded",
+    );
+    expect(runText(summary!)).toContain(
+      "Comparison fingerprints were not advanced",
+    );
+
     const serialized = JSON.stringify(workflow).toLowerCase();
     for (const forbidden of [
       "peter-evans/create-pull-request",
@@ -754,7 +799,6 @@ describe("Source Intelligence workflow", () => {
       "vercel deploy",
       "src/data",
       "supabase",
-      "database_url",
     ]) {
       expect(serialized).not.toContain(forbidden);
     }
@@ -763,27 +807,44 @@ describe("Source Intelligence workflow", () => {
   it("persists the review cache and usage ledgers across ephemeral runners", () => {
     const workflow = loadWorkflow();
     const steps = allSteps(workflow);
-    const restore = steps.find((step) =>
+    const restores = steps.filter((step) =>
       usesAction(step, "actions/cache/restore"),
     );
-    const save = steps.find((step) => usesAction(step, "actions/cache/save"));
+    const saves = steps.filter((step) => usesAction(step, "actions/cache/save"));
+    const usageRestore = restores.find((step) => step.id === "source-usage");
+    const stateRestore = restores.find((step) => step.id === "source-state");
+    const usageSave = saves.find(
+      (step) => step.name === "Save source intelligence spend ledger",
+    );
+    const stateSave = saves.find(
+      (step) => step.name === "Save source intelligence comparison state",
+    );
 
-    expect(restore).toBeDefined();
-    expectImmutableAction(restore, "actions/cache/restore");
-    expect(restore?.id).toBe("source-state");
-    expect(restore?.with?.path).toContain("scripts/reports");
-    expect(restore?.with?.["restore-keys"]).toContain("source-intelligence-");
-    expect(restore?.with?.key).toContain("github.run_attempt");
+    expect(restores).toHaveLength(2);
+    expectImmutableAction(usageRestore, "actions/cache/restore");
+    expect(usageRestore?.with?.path).toBe(
+      "scripts/reports/source-scout-usage.json",
+    );
+    expect(usageRestore?.with?.["restore-keys"]).toContain(
+      "source-intelligence-state-",
+    );
+    expectImmutableAction(stateRestore, "actions/cache/restore");
+    expect(stateRestore?.with?.path).not.toContain("source-scout-usage.json");
 
-    expect(save).toBeDefined();
-    expectImmutableAction(save, "actions/cache/save");
-    expect(save?.if).toContain("always()");
-    expect(save?.if).toContain("steps.source-watch-review-queue.outcome");
-    expect(save?.if).toContain("'success'");
-    expect(save?.with?.path).toContain("scripts/reports");
-    expect(save?.with?.key).toContain("source-intelligence-");
-    expect(save?.with?.key).toContain("github.run_id");
-    expect(save?.with?.key).toContain("github.run_attempt");
+    expect(saves).toHaveLength(2);
+    expectImmutableAction(usageSave, "actions/cache/save");
+    expect(usageSave?.if).toContain("always()");
+    expect(usageSave?.if).not.toContain("persist-candidates");
+    expect(usageSave?.with?.path).toBe(
+      "scripts/reports/source-scout-usage.json",
+    );
+    expectImmutableAction(stateSave, "actions/cache/save");
+    expect(stateSave?.if).toContain(
+      "steps.persist-candidates.outcome == 'success'",
+    );
+    expect(stateSave?.with?.path).not.toContain("source-scout-usage.json");
+    expect(stateSave?.with?.key).toContain("github.run_id");
+    expect(stateSave?.with?.key).toContain("github.run_attempt");
 
     const initializeGuard = steps.find((step) => {
       const text = JSON.stringify(step);
@@ -796,6 +857,7 @@ describe("Source Intelligence workflow", () => {
     expect(initializeGuard).toBeDefined();
     expect(initializeGuard?.env).toMatchObject({
       RESTORED_STATE_KEY: "${{ steps.source-state.outputs.cache-matched-key }}",
+      RESTORED_USAGE_KEY: "${{ steps.source-usage.outputs.cache-matched-key }}",
       SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
     });
     expect(runText(initializeGuard!)).not.toContain(
@@ -813,7 +875,7 @@ describe("Source Intelligence workflow", () => {
       (step) => step.name === "Open or update the per-source review queue",
     );
     const saveIndex = steps.findIndex(
-      (step) => step.name === "Save source intelligence state",
+      (step) => step.name === "Save source intelligence comparison state",
     );
     const issue = steps[issueIndex];
 
@@ -833,8 +895,8 @@ describe("Source Intelligence workflow", () => {
     expect(issue?.with?.script).toContain("updateSourceWatchIssues");
 
     const save = steps[saveIndex];
-    expect(save?.if).toContain("source-watch-review-queue.outcome");
-    expect(save?.if).toContain("success");
+    expect(save?.if).toContain("persist-candidates.outcome");
+    expect(save?.if).toContain("'success'");
     expect(save?.with?.path).toContain(
       "scripts/reports/source-watch/state.json",
     );
@@ -856,7 +918,7 @@ describe("Source Intelligence workflow", () => {
       (step) => step.name === "Open or update the Source Scout review queue",
     );
     const saveIndex = steps.findIndex(
-      (step) => step.name === "Save source intelligence state",
+      (step) => step.name === "Save source intelligence comparison state",
     );
     const issue = steps[issueIndex];
 
@@ -875,15 +937,20 @@ describe("Source Intelligence workflow", () => {
     expect(issue?.with?.script).toContain("scripts/lib/source-scout-issue.cjs");
     expect(issue?.with?.script).toContain("updateSourceScoutIssues");
 
-    // Tavily's attempted-credit ledger must survive even when issue delivery
-    // fails. The next run can replay the cached evidence without another call.
-    const save = steps[saveIndex];
-    expect(save?.if).not.toContain("source-scout-review-queue.outcome");
-    expect(save?.with?.path).toContain(
+    const comparisonSave = steps[saveIndex];
+    expect(comparisonSave?.if).toContain("persist-candidates.outcome");
+    expect(comparisonSave?.with?.path).toContain(
+      "scripts/reports/source-scout-cache.json",
+    );
+    expect(comparisonSave?.with?.path).not.toContain(
       "scripts/reports/source-scout-usage.json",
     );
-    expect(save?.with?.path).toContain(
-      "scripts/reports/source-scout-cache.json",
+    const usageSave = steps.find(
+      (step) => step.name === "Save source intelligence spend ledger",
+    );
+    expect(usageSave?.if).not.toContain("persist-candidates.outcome");
+    expect(usageSave?.with?.path).toBe(
+      "scripts/reports/source-scout-usage.json",
     );
 
     const live = steps[liveIndex];

@@ -4,6 +4,7 @@ import {
   MessageSquare, Inbox, Store, Flag, MapPin, CalendarClock, RadioTower,
   Activity, Receipt, Database, MapPinned, ChevronRight, CircleCheck,
   TrendingUp, TrendingDown,
+  ListChecks,
 } from "lucide-react";
 import { getSql } from "@/lib/db/client";
 import { plausibleKeys, fetchAggregate } from "@/lib/integrations/plausible-stats";
@@ -131,6 +132,7 @@ type Core = {
   new24h: { signups: number; feedback: number; claims: number; subs: number };
   fieldPoints: number;
   fieldPoints7d: number;
+  sourceCandidatesPending: number;
 };
 
 type Health = {
@@ -173,7 +175,8 @@ async function loadDesk(): Promise<{
           (select count(*)::int from submissions where kind = 'business_claim' and created_at > now() - interval '24 hours') as new_claims_24h,
           (select count(*)::int from submissions where kind in ('place', 'event') and created_at > now() - interval '24 hours') as new_subs_24h,
           (select count(*)::int from field_amenities where status = 'approved') as field_points,
-          (select count(*)::int from field_amenities where status = 'approved' and created_at > now() - interval '7 days') as field_points_7d
+          (select count(*)::int from field_amenities where status = 'approved' and created_at > now() - interval '7 days') as field_points_7d,
+          0::int as source_candidates_pending
       `
     )[0] as Record<string, number>;
     core = {
@@ -195,9 +198,41 @@ async function loadDesk(): Promise<{
       },
       fieldPoints: r.field_points ?? 0,
       fieldPoints7d: r.field_points_7d ?? 0,
+      sourceCandidatesPending: r.source_candidates_pending ?? 0,
     };
   } catch (e) {
     return { core: null, health: null, costs: null, dbReason: e instanceof Error ? e.message.slice(0, 80) : "query failed" };
+  }
+
+  // The evidence tables are newer and optional to the rest of the admin desk.
+  // A missing migration or permission must not erase submissions, reports,
+  // codes, signups, and every other core queue.
+  try {
+    const row = (await raw`
+      select count(*)::int as pending
+      from (
+        select distinct on (fo.entity_key)
+          fo.observation_key,
+          coalesce(
+            nullif(fo.observed_value ->> 'decisionKey', ''),
+            fo.observation_key
+          ) as decision_key,
+          fo.valid_until
+        from field_observations fo
+        where fo.entity_kind = 'source-candidate'
+          and fo.field_name = 'discovery'
+        order by fo.entity_key, fo.observed_at desc, fo.id desc
+      ) latest
+      left join curation_decisions cd
+        on cd.tool = 'source-candidate'
+       and cd.target_id = latest.decision_key
+       and cd.field = ''
+      where latest.valid_until > now()
+        and cd.decision is null
+    `)[0] as { pending?: number } | undefined;
+    core.sourceCandidatesPending = row?.pending ?? 0;
+  } catch {
+    core.sourceCandidatesPending = 0;
   }
 
   // Statement 2 — feed/ingest health. These tables ship in a later migration,
@@ -323,6 +358,7 @@ export async function DeskSections() {
         { label: "Community reports", n: desk.core.reportsPending, href: "/admin/reports", icon: Flag },
         { label: "Places need coordinate review", n: reviewPlaces, href: "/admin/data-health", icon: MapPin },
         { label: "Events need review", n: reviewEvents, href: "/admin/data-health", icon: CalendarClock },
+        { label: "Source candidates", n: desk.core.sourceCandidatesPending, href: "/admin/source-candidates", icon: ListChecks },
         // Real feed health from feed_snapshots: feeds that usually carry events
         // but parsed 0 today (NOT the key-missing count, which is intentional).
         { label: "Feeds went quiet today", n: desk.health?.quietFeeds ?? 0, href: "/admin/data-health", icon: RadioTower },

@@ -28,6 +28,7 @@ import {
   type AskFitContext,
 } from "@/lib/ask/fit";
 import type { AskAction, AskResult, AskSource } from "@/lib/ask/contracts";
+import { meterUsage } from "@/lib/usage-meter";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
@@ -1730,6 +1731,7 @@ async function callModel(userContent: string): Promise<string | null> {
   if (!forceDirectAnthropic() && (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)) {
     try {
       const { generateText } = await import("ai");
+      meterUsage("ask_model_step");
       const { text } = await generateText({
         model: "anthropic/claude-haiku-4.5",
         system: SYSTEM,
@@ -1751,6 +1753,7 @@ async function callModel(userContent: string): Promise<string | null> {
   const anthropic = process.env.ANTHROPIC_API_KEY;
   if (anthropic) {
     try {
+      meterUsage("ask_model_step");
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -1779,6 +1782,7 @@ async function callModel(userContent: string): Promise<string | null> {
     try {
       const { generateText } = await import("ai");
       const { openai } = await import("@ai-sdk/openai");
+      meterUsage("ask_model_step");
       const { text } = await generateText({
         model: openai("gpt-4o-mini"),
         system: SYSTEM,

@@ -13,7 +13,8 @@ run-name: >-
   }})
 
 # Review-only scheduled and manual checks of first-party sources.
-# This workflow never writes canonical app data, commits changes, or publishes
+# Findings are stored in the private evidence-backed source inbox, but this
+# workflow never writes canonical app data, commits changes, or publishes
 # provider output. Every schedule maps to one tracked Tavily profile; Firecrawl
 # Source Watch remains manually dispatched until its unchanged-repeat proof.
 on:
@@ -136,15 +137,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The provider cache and attempted-credit ledgers must survive ephemeral
-      # runners or daily/monthly caps would reset on every manual run.
+      # Save the attempted-credit ledger independently from comparison state.
+      # A failed inbox write must replay candidates, while spend history must
+      # still survive so a retry cannot spend the same allowance again.
+      - name: Restore source intelligence spend ledger
+        id: source-usage
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: scripts/reports/source-scout-usage.json
+          key: source-intelligence-usage-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            source-intelligence-usage-
+            source-intelligence-state-
+
       - name: Restore source intelligence state
         id: source-state
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             scripts/reports/source-scout-cache.json
-            scripts/reports/source-scout-usage.json
             scripts/reports/source-watch/state.json
           key: source-intelligence-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
@@ -177,6 +188,17 @@ jobs:
         run: |
           echo "::error title=Live pilots run from main only::Choose the main branch so provider budgets and comparison state cannot split across branch-scoped caches."
           exit 1
+
+      - name: Verify durable candidate inbox
+        if: ${{ steps.selection.outputs.live == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error title=Missing DATABASE_URL::A paid discovery run needs a durable review destination. Add DATABASE_URL to the GitHub Production environment before spending provider credits."
+            exit 1
+          fi
+          npm run source:candidates:check
 
       - name: Enforce durable provider spend ceilings
         id: durable-budget
@@ -363,6 +385,7 @@ jobs:
         if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
         env:
           RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
+          RESTORED_USAGE_KEY: ${{ steps.source-usage.outputs.cache-matched-key }}
           SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
         run: |
           if [ -z "$RESTORED_STATE_KEY" ]; then
@@ -371,8 +394,12 @@ jobs:
           fi
           case "$SELECTED_TOOL" in
             tavily-scout)
-              test -f scripts/reports/source-scout-usage.json || {
-                echo "::error title=Tavily usage ledger is missing::Check initialize_state only for the first intentional run."
+              test -n "$RESTORED_USAGE_KEY" && test -f scripts/reports/source-scout-usage.json || {
+                echo "::error title=Tavily usage ledger is missing::Recover the attempted-credit ledger, or check initialize_state only for the first intentional run."
+                exit 1
+              }
+              test -f scripts/reports/source-scout-cache.json || {
+                echo "::error title=Tavily comparison state is missing::Recover it so unpersisted candidates replay without another provider call."
                 exit 1
               }
               ;;
@@ -432,16 +459,39 @@ jobs:
             const { updateSourceWatchIssues } = require("./scripts/lib/source-watch-issue.cjs");
             await updateSourceWatchIssues({ github, context, core });
 
+      - name: Persist structured candidates
+        id: persist-candidates
+        if: ${{ always() && steps.selection.outputs.live == 'true' && (steps.tavily-live.outcome == 'success' || steps.firecrawl-live.outcome == 'success') }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -o pipefail
+          npm run source:candidates:persist 2>&1 | tee source-candidate-persistence.log
+
       - name: Add operator result to job summary
         if: always()
+        env:
+          PERSIST_OUTCOME: ${{ steps.persist-candidates.outcome }}
         run: |
           {
             echo "## Source intelligence"
             echo
-            echo "Review evidence only. No Radius data was published."
+            case "$PERSIST_OUTCOME" in
+              success)
+                echo "Private source inbox persistence succeeded."
+                ;;
+              failure)
+                echo "Private source inbox persistence failed. Comparison fingerprints were not advanced, so the candidates will replay."
+                ;;
+              *)
+                echo "No private source inbox persistence was attempted."
+                ;;
+            esac
+            echo "No Radius data was published."
             echo
             echo '```text'
             cat source-intelligence.log 2>/dev/null || echo "No provider run was completed."
+            cat source-candidate-persistence.log 2>/dev/null || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -452,6 +502,7 @@ jobs:
           name: source-intelligence-${{ steps.selection.outputs.tool }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             source-intelligence.log
+            source-candidate-persistence.log
             scripts/reports/source-scout-latest.json
             scripts/reports/source-scout-github-issue.json
             scripts/reports/source-watch/source-watch-*.json
@@ -459,12 +510,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Save source intelligence state
-        if: ${{ always() && steps.selection.outputs.live == 'true' && (steps.selection.outputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
+      - name: Save source intelligence spend ledger
+        if: ${{ always() && steps.selection.outputs.live == 'true' && hashFiles('scripts/reports/source-scout-usage.json') != '' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: scripts/reports/source-scout-usage.json
+          key: source-intelligence-usage-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save source intelligence comparison state
+        if: ${{ always() && steps.selection.outputs.live == 'true' && steps.persist-candidates.outcome == 'success' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             scripts/reports/source-scout-cache.json
-            scripts/reports/source-scout-usage.json
             scripts/reports/source-watch/state.json
           key: source-intelligence-state-${{ github.run_id }}-${{ github.run_attempt }}

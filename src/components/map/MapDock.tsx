@@ -405,9 +405,17 @@ function formatLayerUpdate(timestamp: string | null): string | null {
 }
 
 export default function MapDock(props: MapDockProps) {
-  const { browse, onPaneOpenChange } = props;
+  const {
+    browse,
+    focusNearestAmenity,
+    onPaneOpenChange,
+    userLoc,
+  } = props;
   const publicAmenityGroups = PUBLIC_AMENITY_GROUPS.filter(
     (group) => (props.amenityGroupCounts[group.key] ?? 0) > 0,
+  );
+  const quickAmenityGroups = publicAmenityGroups.filter((group) =>
+    ["restroom", "water", "trash", "dog"].includes(group.key),
   );
   const router = useRouter();
   const sp = useSearchParams();
@@ -439,6 +447,7 @@ export default function MapDock(props: MapDockProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const pendingAmenityFocusRef = useRef<string | null>(null);
   const searchUrlTimerRef = useRef<number | null>(null);
   const pendingSearchUrlValueRef = useRef(props.q);
   const scopeActionsRef = useRef({
@@ -522,6 +531,21 @@ export default function MapDock(props: MapDockProps) {
       window.removeEventListener("orientationchange", updateLimit);
     };
   }, []);
+
+  useEffect(() => {
+    const amenityKey = pendingAmenityFocusRef.current;
+    if (!amenityKey) return;
+    if (!props.amenityGroups.has(amenityKey)) {
+      pendingAmenityFocusRef.current = null;
+      return;
+    }
+    if (!userLoc) return;
+    pendingAmenityFocusRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      focusNearestAmenity?.(amenityKey);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusNearestAmenity, props.amenityGroups, userLoc]);
 
   // Keep later scope changes in sync with the camera and readout. The explicit
   // URL scope already seeds local state above; this subscription handles
@@ -1176,14 +1200,24 @@ export default function MapDock(props: MapDockProps) {
     });
   };
 
-  const pickSingleAmenity = (key: string) => {
+  const pickSingleAmenity = (
+    key: string,
+    options: { requestLocation?: boolean } = {},
+  ) => {
     haptic("light");
     props.onExitRadiusScene();
     const isOnlyActive =
       props.amenityGroups.size === 1 && props.amenityGroups.has(key);
+    pendingAmenityFocusRef.current = null;
     props.setAmenityGroups(isOnlyActive ? new Set() : new Set([key]));
     closePane();
-    if (!isOnlyActive) props.focusNearestAmenity?.(key);
+    if (isOnlyActive) return;
+    if (options.requestLocation && !props.userLoc) {
+      pendingAmenityFocusRef.current = key;
+      pickNearMe();
+      return;
+    }
+    props.focusNearestAmenity?.(key);
   };
 
   const shareCurrentView = async () => {
@@ -1323,6 +1357,23 @@ export default function MapDock(props: MapDockProps) {
     // the map's active-state readout is visible and the mobile dock returns to
     // its thumb position. Result cards manage their own focus after mounting.
     if (!result.temporary) searchInputRef.current?.blur();
+  };
+
+  const openFullSearch = () => {
+    const query = props.q.trim();
+    if (!query) return;
+    flushMapSearchUrl();
+    const current = new URL(window.location.href);
+    current.searchParams.set("q", query);
+    const returnTo =
+      normalizeMapReturnTo(
+        `${current.pathname}${current.search}${current.hash}`,
+      ) ?? "/map";
+    closeSearchPanel();
+    searchInputRef.current?.blur();
+    router.push(
+      `/search?q=${encodeURIComponent(query)}&returnTo=${encodeURIComponent(returnTo)}`,
+    );
   };
 
   const moveSearchSelection = (direction: 1 | -1) => {
@@ -1615,20 +1666,7 @@ export default function MapDock(props: MapDockProps) {
                       className="dock-search-more"
                       onClick={(event) => {
                         event.stopPropagation();
-                        flushMapSearchUrl();
-                        const current = new URL(window.location.href);
-                        current.searchParams.set("q", props.q.trim());
-                        const returnTo =
-                          normalizeMapReturnTo(
-                            `${current.pathname}${current.search}${current.hash}`,
-                          ) ?? "/map";
-                        // This leaves the map with one exact return URL. A
-                        // document navigation avoids an App Router race where
-                        // the panel could close while the search transition was
-                        // cancelled, making the tap appear to do nothing.
-                        window.location.assign(
-                          `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
-                        );
+                        openFullSearch();
                       }}
                     >
                       See all results
@@ -1717,18 +1755,7 @@ export default function MapDock(props: MapDockProps) {
                 <div className="dock-search-empty-actions">
                   <button
                     type="button"
-                    onClick={() => {
-                      flushMapSearchUrl();
-                      const current = new URL(window.location.href);
-                      current.searchParams.set("q", props.q.trim());
-                      const returnTo =
-                        normalizeMapReturnTo(
-                          `${current.pathname}${current.search}${current.hash}`,
-                        ) ?? "/map";
-                      window.location.assign(
-                        `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
-                      );
-                    }}
+                    onClick={openFullSearch}
                   >
                     Search all Radius
                   </button>
@@ -1894,11 +1921,63 @@ export default function MapDock(props: MapDockProps) {
                     <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Near me</strong>
-                    <small>Food, coffee, parks, and public essentials</small>
+                    <strong>Places nearby</strong>
+                    <small>Food, coffee, shops, and parks</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
+                {quickAmenityGroups.length > 0 && (
+                  <div
+                    className="dock-essentials"
+                    data-quick
+                    style={{
+                      padding: "8px",
+                      borderBottom: "1px solid var(--app-border)",
+                    }}
+                  >
+                    <div
+                      className="dock-essential-grid"
+                      role="group"
+                      aria-label="Nearby essentials"
+                      style={{
+                        gridTemplateColumns: `repeat(${quickAmenityGroups.length}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {quickAmenityGroups.map((group) => {
+                        const Icon = ESSENTIAL_ICONS[group.key] ?? MapPin;
+                        const on = props.amenityGroups.has(group.key);
+                        return (
+                          <button
+                            key={group.key}
+                            type="button"
+                            className="dock-essential-choice"
+                            style={{ minHeight: 54 }}
+                            data-on={on || undefined}
+                            aria-pressed={on}
+                            aria-label={
+                              props.userLoc
+                                ? `Find nearest ${group.label.toLowerCase()}`
+                                : activeWhereSel.kind === "county"
+                                  ? `Use my location to find nearest ${group.label.toLowerCase()}`
+                                  : `Show ${group.label.toLowerCase()} in ${whereText}`
+                            }
+                            onClick={() => {
+                              pickSingleAmenity(group.key, {
+                                requestLocation:
+                                  !props.userLoc && activeWhereSel.kind === "county",
+                              });
+                            }}
+                          >
+                            <span className="dock-essential-choice-icon" aria-hidden>
+                              <Icon className="h-[18px] w-[18px]" strokeWidth={2.05} />
+                            </span>
+                            <span>{group.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
@@ -1943,31 +2022,6 @@ export default function MapDock(props: MapDockProps) {
                   <span className="dock-content-copy">
                     <strong>Conditions</strong>
                     <small>Weather, radar, roads, and outdoor context</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="dock-content-row dock-content-row-primary"
-                  data-on={props.activeRadiusSceneId === "what-changed" || undefined}
-                  disabled={whatChangedUnavailable}
-                  onClick={() => {
-                    if (!whatChangedScene || whatChangedUnavailable) return;
-                    if (props.activeRadiusSceneId === "what-changed") props.onExitRadiusScene();
-                    else props.onRadiusScene("what-changed");
-                    closePane();
-                  }}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <History className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>What changed</strong>
-                    <small>
-                      {whatChangedScene
-                        ? radiusSceneStatusLabel(whatChangedScene)
-                        : "Projects, civic records, and recent changes"}
-                    </small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -2664,6 +2718,32 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   ))}
                 </div>
+                {whatChangedScene && (
+                  <button
+                    type="button"
+                    className="dock-reveal"
+                    data-on={props.activeRadiusSceneId === "what-changed" || undefined}
+                    disabled={whatChangedUnavailable}
+                    onClick={() => {
+                      if (whatChangedUnavailable) return;
+                      if (props.activeRadiusSceneId === "what-changed") {
+                        props.onExitRadiusScene();
+                      } else {
+                        props.onRadiusScene("what-changed");
+                      }
+                      closePane();
+                    }}
+                  >
+                    <span className="dock-content-icon" aria-hidden>
+                      <History className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-reveal-copy">
+                      <strong>Changes and projects</strong>
+                      <small>{radiusSceneStatusLabel(whatChangedScene)}</small>
+                    </span>
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
+                )}
                 {props.activeOverlays.includes("mobility") && (
                   <p className="dock-hint" role="status">
                     Zoom in on Frederick City for sidewalk detail. Existing

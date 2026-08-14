@@ -82,6 +82,8 @@
     "closures:detect": "tsx --tsconfig tsconfig.json scripts/detect-closures.ts",
     "source:watch": "tsx --tsconfig tsconfig.json scripts/source-watch.ts",
     "source:scout": "tsx --tsconfig tsconfig.json scripts/source-scout.ts",
+    "source:candidates:check": "tsx --tsconfig tsconfig.json scripts/check-source-candidate-inbox.ts",
+    "source:candidates:persist": "tsx --tsconfig tsconfig.json scripts/persist-source-candidates.ts",
     "pilot:apify-venues": "tsx --tsconfig tsconfig.json scripts/apify-venue-pilot.ts",
     "radar:apify-sources": "tsx --tsconfig tsconfig.json scripts/apify-source-change-radar.ts",
     "coord:audit": "tsx --tsconfig tsconfig.json scripts/coord-audit.ts",

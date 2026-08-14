@@ -49,17 +49,25 @@ test.describe("Home Screen installation", () => {
       });
     });
 
-    test("offers Home Screen access once after ten seconds of a first visit", async ({
+    test("waits for demonstrated value before making one compact Home Screen offer", async ({
       page,
     }) => {
       await page.goto("/today", { waitUntil: "domcontentloaded" });
       const panel = page.locator("[data-return-bridge]");
 
       await expect(panel).toBeHidden();
-      await page.waitForTimeout(9_000);
+      await page.waitForTimeout(10_500);
       await expect(panel).toBeHidden();
-      await expect(panel).toBeVisible({ timeout: 3_000 });
-      await expect(panel).toContainText("Add Radius to your Home Screen");
+      await page.evaluate(() => {
+        window.dispatchEvent(
+          new CustomEvent("fr:return-bridge:value", { detail: "place" }),
+        );
+      });
+      await expect(panel).toBeVisible({ timeout: 8_000 });
+      await expect(panel).toHaveAttribute("data-offer-mode", "compact");
+      await expect(panel).toContainText("Keep Radius close");
+      await expect(panel.getByRole("button", { name: "Not now" })).toHaveCount(1);
+      await expect(panel.getByRole("button", { name: "Copy link" })).toHaveCount(0);
 
       await panel.getByRole("button", { name: "Not now" }).click();
       await expect(panel).toBeHidden();

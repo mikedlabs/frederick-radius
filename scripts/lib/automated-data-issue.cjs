@@ -13,8 +13,8 @@ const FAMILIES = {
     activeTitle: "Stale data sources · active",
     labels: ["data-pipeline", "automated", "stale-source"],
   },
-  // The apex is serving a commit that is not main, or is failing its health
-  // checks. This family exists because a red canary run is invisible: on
+  // The apex is serving a commit that is not main, or a public route contract
+  // is failing. This family exists because a red canary run is invisible: on
   // 2026-08-05 a /trust build error froze production, the scheduled canary
   // correctly went red every four hours for two days, ten merges reported
   // success, and nobody was told. A workflow failure is a log; an issue is a
@@ -22,8 +22,25 @@ const FAMILIES = {
   deploy: {
     marker: "<!-- automated-data-issue:deploy -->",
     legacyTitlePattern: /^Production deploy drift \d{4}-\d{2}-\d{2}$/,
-    activeTitle: "Production is not serving main · active",
+    activeTitle: "Production deploy integrity failed · active",
     labels: ["data-pipeline", "automated", "production"],
+  },
+  data: {
+    marker: "<!-- automated-data-issue:data -->",
+    legacyTitlePattern: /^Public data acceptance failed \d{4}-\d{2}-\d{2}$/,
+    activeTitle: "Public data acceptance failed · active",
+    labels: ["data-pipeline", "automated", "production"],
+  },
+  // This family is deliberately separate from source/data failures. A run
+  // with zero jobs means no repository step executed, so blaming a collector,
+  // API key, or dataset would send the operator in the wrong direction. The
+  // watchdog uses this issue for Actions account/policy blocks and for normal
+  // workflow failures, with the distinction spelled out in its evidence.
+  automation: {
+    marker: "<!-- automated-data-issue:automation -->",
+    legacyTitlePattern: /^Data automation unavailable \d{4}-\d{2}-\d{2}$/,
+    activeTitle: "Data automation unavailable · active",
+    labels: ["data-pipeline", "automated"],
   },
 };
 

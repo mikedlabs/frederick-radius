@@ -1,4 +1,6 @@
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import type { Hours } from "@/data/places";
 
 export const COVERAGE_TARGETS = {
   hours: 60,
@@ -14,7 +16,7 @@ export type CoveragePlace = {
   name: string;
   category?: string;
   municipality?: string;
-  hours?: Record<string, unknown>;
+  hours?: Hours;
   hours_verified?: boolean;
   hours_updated_at?: string;
   hero_image?: string;
@@ -99,7 +101,8 @@ export function hasPublishedFreshHours(
     place.hours_verified &&
       place.hours &&
       Object.keys(place.hours).length > 0 &&
-      isHoursFresh(place.hours_updated_at, now),
+      isHoursFresh(place.hours_updated_at, now) &&
+      mayPublishVisitabilityHours(place.slug, place.hours, now),
   );
 }
 

@@ -2,8 +2,8 @@ name: Apify source change radar
 run-name: "Apify source radar (${{ github.event_name == 'schedule' && 'live' || inputs.confirm_live && 'live' || 'plan' }})"
 
 # The three-run monthly schedule leaves half of the six-attempt durable budget
-# available for a proof, rerun, or recovery. This workflow can open a review
-# issue, but it cannot edit or publish Radius data.
+# available for a proof, rerun, or recovery. This workflow stores findings in
+# the private source inbox, but it cannot edit or publish Radius data.
 on:
   schedule:
     - cron: "17 15 5,15,25 * *"
@@ -68,6 +68,17 @@ jobs:
             echo "::error title=Live radar runs from main only::Choose main so the private budget and fingerprint ledger cannot split across branches."
             exit 1
           fi
+
+      - name: Verify durable candidate inbox
+        if: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error title=Missing DATABASE_URL::A paid radar run needs a durable review destination. Add DATABASE_URL before spending Apify credits."
+            exit 1
+          fi
+          npm run source:candidates:check
 
       - name: Enforce durable monthly live-run ceiling
         id: monthly-budget
@@ -180,10 +191,29 @@ jobs:
             npm run radar:apify-sources -- --live --confirm 2>&1 | tee apify-source-change-radar.log
           fi
 
+      - name: Open or update the review queue issue
+        id: review-queue
+        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && hashFiles('scripts/reports/apify-source-change-radar/github-issue.json') != '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { updateApifySourceChangeRadarIssue } = require("./scripts/lib/apify-source-change-radar-issue.cjs");
+            await updateApifySourceChangeRadarIssue({ github, context, core });
+
+      - name: Persist structured candidates
+        id: persist-candidates
+        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && hashFiles('scripts/reports/apify-source-change-radar/apify-source-change-radar-*.json') != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -o pipefail
+          npm run source:candidates:persist 2>&1 | tee source-candidate-persistence.log
+
       - name: Add safe result to job summary
         if: always()
         env:
           RADAR_LIVE: ${{ inputs.confirm_live || github.event_name == 'schedule' }}
+          PERSIST_OUTCOME: ${{ steps.persist-candidates.outcome }}
         run: |
           if [ "$RADAR_LIVE" != "true" ]; then
             {
@@ -200,15 +230,27 @@ jobs:
               echo "No live radar report was produced. Review the failed step above."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Open or update the review queue issue
-        id: review-queue
-        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && hashFiles('scripts/reports/apify-source-change-radar/github-issue.json') != '' }}
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { updateApifySourceChangeRadarIssue } = require("./scripts/lib/apify-source-change-radar-issue.cjs");
-            await updateApifySourceChangeRadarIssue({ github, context, core });
+          {
+            echo
+            case "$PERSIST_OUTCOME" in
+              success)
+                echo "Private source inbox persistence succeeded."
+                ;;
+              failure)
+                echo "Private source inbox persistence failed. Fingerprints were not advanced, so the candidates will replay."
+                ;;
+              *)
+                echo "No private source inbox persistence was attempted."
+                ;;
+            esac
+            echo "No Radius data was published."
+            if [ -f source-candidate-persistence.log ]; then
+              echo
+              echo '```text'
+              cat source-candidate-persistence.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload private fingerprint evidence
         if: always()
@@ -217,6 +259,7 @@ jobs:
           name: apify-source-change-radar-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             apify-source-change-radar.log
+            source-candidate-persistence.log
             scripts/reports/apify-source-change-radar/apify-source-change-radar-*.json
             scripts/reports/apify-source-change-radar/github-summary.md
             scripts/reports/apify-source-change-radar/github-issue.json
@@ -224,7 +267,7 @@ jobs:
           retention-days: 14
 
       - name: Save private radar state
-        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && steps.review-queue.outcome == 'success' && hashFiles('scripts/reports/apify-source-change-radar/state.json') != '' }}
+        if: ${{ always() && (inputs.confirm_live || github.event_name == 'schedule') && steps.review-queue.outcome == 'success' && steps.persist-candidates.outcome == 'success' && hashFiles('scripts/reports/apify-source-change-radar/state.json') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: scripts/reports/apify-source-change-radar/state.json

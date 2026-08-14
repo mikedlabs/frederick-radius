@@ -226,8 +226,8 @@ export function askResponseSectionOrder(
         "primary-source",
         "summary",
         "context-controls",
-        "supporting-sources",
         "primary-action",
+        "supporting-sources",
         "secondary-actions",
         "detail",
       ];

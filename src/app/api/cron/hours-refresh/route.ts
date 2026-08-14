@@ -66,6 +66,8 @@ async function runHoursRefresh(request: Request) {
   if (process.env.HOURS_REFRESH_CRON !== "1") {
     return NextResponse.json({
       enabled: false,
+      healthy: true,
+      status: "disabled",
       note: "Set HOURS_REFRESH_CRON=1 to enable. Off by default to avoid Google Places spend.",
     });
   }

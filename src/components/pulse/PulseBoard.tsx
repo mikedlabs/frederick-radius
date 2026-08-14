@@ -58,6 +58,16 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
+const SNAPSHOT_COMPARISON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+
+const PULSE_CHANGE_LABELS: Readonly<Record<string, string>> = {
+  power: "Power outages",
+  traffic: "Traffic conditions",
+  schools: "School status",
+  fixit: "311 reports",
+  alerts: "Public alerts",
+  scanner: "Active incidents",
+};
 
 const PULSE_BANK_DEFINITIONS = [
   {
@@ -357,12 +367,16 @@ function updateOpenParam(key: string | null, mode: "push" | "replace") {
   window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", url);
 }
 
-function timeSince(at: number): string {
-  const mins = Math.max(1, Math.floor((Date.now() - at) / 60_000));
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+export function pulseSnapshotIsComparable(
+  at: number,
+  now = Date.now(),
+): boolean {
+  const age = now - at;
+  return Number.isFinite(at) && age >= 0 && age <= SNAPSHOT_COMPARISON_MAX_AGE_MS;
+}
+
+export function pulseChangeLabel(tile: Pick<PulseTile, "key" | "label">): string {
+  return PULSE_CHANGE_LABELS[tile.key] ?? tile.label;
 }
 
 function GroupHeading({
@@ -465,22 +479,26 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
         previous = null;
       }
 
-      if (previous?.at) {
+      if (previous?.at && pulseSnapshotIsComparable(previous.at)) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
         const cleared = pulseClearedKeys(previous.active, tiles);
         if (added.length > 0) {
           const labels = added
-            .map((key) => tiles.find((tile) => tile.key === key)?.label)
-            .filter(Boolean)
+            .map((key) => tiles.find((tile) => tile.key === key))
+            .filter((tile): tile is PulseTile => Boolean(tile))
+            .map((tile) => pulseChangeLabel(tile))
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`);
+          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since your last visit.`);
         } else if (cleared.length > 0) {
           const labels = cleared
-            .map((key) => tiles.find((tile) => tile.key === key)?.label ?? key)
+            .map((key) => {
+              const tile = tiles.find((entry) => entry.key === key);
+              return tile ? pulseChangeLabel(tile) : key;
+            })
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
+          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since your last visit.`);
         }
       }
 
@@ -499,7 +517,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
     <div role="status" className="flex min-w-0 items-start gap-2.5 border-y px-1 py-3" style={{ borderColor: "var(--app-border-strong)" }}>
       <Clock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>What changed</p>
         <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{message}</p>
       </div>
     </div>

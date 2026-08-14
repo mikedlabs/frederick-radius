@@ -1171,6 +1171,11 @@ export default function AppMap({
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
   const nearbyRouteCameraAppliedRef = useRef(false);
+  const sceneCameraPendingRef = useRef<{
+    id: RadiusSceneId;
+    expiresAt: number;
+    fallbackApplied: boolean;
+  } | null>(null);
   const {
     userLoc,
     userAccuracyM,
@@ -1190,18 +1195,31 @@ export default function AppMap({
       fitNearbyCamera: (loc) => {
         const map = mapRef.current?.getMap();
         if (map) {
-          fitNearbyRadius(map, loc);
-          // A camera command issued before Mapbox finishes loading can be
-          // superseded by its initial view. The post-load effect below retries
-          // unless the loaded map accepted this move.
-          if (mapLoaded) nearbyRouteCameraAppliedRef.current = true;
+          // A granted location is an explicit camera destination. Stop any
+          // scene fit that was already animating before this fix arrived. The
+          // replacement starts on the next frame; Mapbox can otherwise let
+          // the moveend cleanup from stop() cancel a fit started in the same
+          // call stack.
+          map.stop();
+          window.requestAnimationFrame(() => {
+            if (mapRef.current?.getMap() !== map) return;
+            fitNearbyRadius(map, loc);
+            // A camera command issued before Mapbox finishes loading can be
+            // superseded by its initial view. The post-load effect below retries
+            // unless the loaded map accepted this move.
+            if (mapLoaded) nearbyRouteCameraAppliedRef.current = true;
+          });
         }
       },
       fitNearbyWithIntent: (loc) => {
         const map = mapRef.current?.getMap();
         if (map) {
           cameraIntentRef.current = true;
-          fitNearbyRadius(map, loc);
+          map.stop();
+          window.requestAnimationFrame(() => {
+            if (mapRef.current?.getMap() !== map) return;
+            fitNearbyRadius(map, loc);
+          });
         }
       },
       fitCountyCamera: () => {
@@ -1213,6 +1231,10 @@ export default function AppMap({
         });
       },
       onBeforeNearMe: () => {
+        // An explicit Locate/Recenter tap outranks a delayed scene-data fit.
+        // Cancel the pending frame before the location hook starts its one-mile
+        // camera move, so a late parks/transit response cannot pull away.
+        sceneCameraPendingRef.current = null;
         setShowResultsHere(false);
         manualViewportGestureRef.current = false;
         cameraControlGestureRef.current = false;
@@ -1927,11 +1949,6 @@ export default function AppMap({
     [radiusSceneSignals],
   );
   const sceneHydratedRef = useRef(false);
-  const sceneCameraPendingRef = useRef<{
-    id: RadiusSceneId;
-    expiresAt: number;
-    fallbackApplied: boolean;
-  } | null>(null);
   const [sceneCameraRequest, setSceneCameraRequest] = useState(0);
   const requestSceneCamera = useCallback((id: RadiusSceneId) => {
     sceneCameraPendingRef.current = {

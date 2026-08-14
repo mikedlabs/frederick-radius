@@ -140,7 +140,33 @@ export function normalizeVenueEventDateTime(value: string): string | null {
     const normalized =
       `${year}-${month}-${day}T${hour}:${minute}` +
       `${second ? `:${second}${fraction ?? ""}` : ""}${zone}`;
-    return Number.isFinite(Date.parse(normalized)) ? normalized : null;
+    if (!Number.isFinite(Date.parse(normalized))) return null;
+
+    // A literal UTC instant can come from a deterministic calendar/API and
+    // must keep its instant semantics. Numeric offsets in this artifact are
+    // different: the extraction prompt asks a model to attach Frederick's
+    // America/New_York offset to a published local wall clock. Models
+    // occasionally emit EST (-05:00) throughout the summer. Accepting that
+    // plausible-looking timestamp moves every event by an hour and lets it
+    // survive all ordinary ISO validation. Verify numeric offsets against the
+    // actual Eastern wall clock. When the wall time is unambiguous, correct a
+    // bad offset deterministically; at a DST overlap/gap, reject instead of
+    // guessing.
+    if (zone === "Z") return normalized;
+    const expectedWall = {
+      year: Number(year),
+      month: Number(month),
+      day: Number(day),
+      hour: Number(hour),
+      minute: Number(minute),
+      second: Number(second ?? 0),
+    };
+    if (matchesEasternWall(normalized, expectedWall)) return normalized;
+
+    const localWall =
+      `${year}-${month}-${day}T${hour}:${minute}` +
+      `${second ? `:${second}${fraction ?? ""}` : ""}`;
+    return normalizeVenueEventDateTime(localWall);
   }
 
   const local = LOCAL_DATE_TIME.exec(input);

@@ -457,12 +457,11 @@ describe("askFrederick structured answers", () => {
     }
   });
 
-  it("keeps a stale-hours exact match only as an unconfirmed alternative", async () => {
-    // Data-coupled premise: the named place must carry a verified schedule
-    // in the current snapshot, and the target date must sit beyond the
-    // 7-day freshness window so the schedule reads as unconfirmed. Monocacy
-    // filled this role until the 2026-08-05 refresh, when Google stopped
-    // returning hours for it; Dutch's Daughter is a stable schedule-carrier.
+  it("keeps an exact match with unavailable hours only as an unconfirmed alternative", async () => {
+    // The rolling provider snapshot may add or withdraw this place's schedule.
+    // Both states have the same public trust contract: an exact named match can
+    // remain useful, but Radius must not turn missing or unverifiable hours
+    // into an open claim for the requested time.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
     try {
@@ -474,7 +473,9 @@ describe("askFrederick structured answers", () => {
       expect(result.sources).toContainEqual(
         expect.objectContaining({
           slug: "dutchs-daughter-frederick",
-          status: "At 10:00 PM · Hours not confirmed",
+          status: expect.stringMatching(
+            /^At 10:00 PM · Hours (?:not confirmed|not posted)$/,
+          ),
         }),
       );
       expect(result.answer).toContain("couldn’t verify");

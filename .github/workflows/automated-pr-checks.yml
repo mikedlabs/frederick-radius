@@ -38,7 +38,7 @@ jobs:
           script: |
             const branch = process.env.AUTOMATED_PR_BRANCH;
             const expectedHead = process.env.AUTOMATED_PR_HEAD_SHA;
-            const allowedByBranch = {
+            const allowedByFamily = {
               'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',
@@ -96,7 +96,12 @@ jobs:
                 'src/data/places-client.json',
               ],
             };
-            const allowlist = allowedByBranch[branch];
+            const family = Object.keys(allowedByFamily).find((candidate) => {
+              if (branch === candidate) return true;
+              if (!branch.startsWith(`${candidate}/`)) return false;
+              return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 1));
+            });
+            const allowlist = family ? allowedByFamily[family] : null;
             if (!allowlist || !/^[0-9a-f]{40}$/.test(expectedHead || '')) {
               core.setFailed(`Refusing to dispatch checks for an unexpected branch or head: ${String(branch)}`);
               return;
