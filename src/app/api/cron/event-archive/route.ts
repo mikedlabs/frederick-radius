@@ -91,6 +91,19 @@ function failureSummary(failures: readonly ArchiveFailure[]): string | null {
     : null;
 }
 
+function boundedProviderLanes(values: readonly string[]): string[] {
+  return [...new Set(
+    values
+      .map((value) => value.trim())
+      .filter(
+        (value) =>
+          value.length > 0
+          && value.length <= 80
+          && /^[A-Za-z0-9][A-Za-z0-9 .&'()/-]*$/.test(value),
+      ),
+  )].slice(0, 32);
+}
+
 type PublicationProof = {
   ok: boolean;
   availableCount: number;
@@ -388,6 +401,11 @@ async function runEventArchive(request: Request) {
 
   const publicEvents =
     unified?.status === "fulfilled" ? unified.value.publicEvents : [];
+  const unifiedProviderFailures = boundedProviderLanes(
+    unified?.status === "fulfilled"
+      ? unified.value.sourceHealth.unavailable
+      : [],
+  );
   // Civic meetings and town reminders have first-party detail links on the
   // Events page even though they are intentionally excluded from public
   // discovery. Archive every route-bearing lane so a transient calendar
@@ -430,6 +448,11 @@ async function runEventArchive(request: Request) {
           (source) => source !== "ticketmaster",
         )
       : [];
+  const liveProviderFailures = boundedProviderLanes(
+    live90?.status === "fulfilled"
+      ? live90.value.sources_failed
+      : [],
+  );
   if (live90?.status === "fulfilled") {
     if (live90.value.sources_failed.length > 0) {
       failures.add("live-partial");
@@ -513,6 +536,21 @@ async function runEventArchive(request: Request) {
   }
 
   const failureList = [...failures];
+  if (
+    failureList.includes("unified-partial")
+    || failureList.includes("live-partial")
+  ) {
+    // The ingest heartbeat intentionally keeps a small controlled error
+    // vocabulary. Preserve exact, bounded provider lanes in searchable runtime
+    // logs and the protected cron response so an operator can tell an expected
+    // single-source outage from an archive defect without exposing raw errors.
+    console.warn(JSON.stringify({
+      level: "warn",
+      event: "event_archive_provider_partial",
+      unified: unifiedProviderFailures,
+      live: liveProviderFailures,
+    }));
+  }
   const recordsUpserted = archive?.upserted ?? 0;
   const archiveRecordsProcessed = archive
     ? archive.upserted + archive.ignoredLifecycleOnly
@@ -593,6 +631,7 @@ async function runEventArchive(request: Request) {
     archive_attempted: Boolean(archiveOutcome),
     failures: failureList,
     sources: {
+      unified_failed: unifiedProviderFailures,
       succeeded:
         live90?.status === "fulfilled"
           ? live90.value.sources_succeeded.length

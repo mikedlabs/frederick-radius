@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import DESCRIPTIONS_RAW from "@/data/descriptions.json" with { type: "json" };
-import { publicPlaces } from "@/lib/loaders/places";
-import { classifyDescription } from "@/lib/copy-quality";
+import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceDescriptionEntry } from "@/lib/loaders/placeDescriptions";
+import {
+  comparePlaceDataPriority,
+  placeDataPriorityLabel,
+  prioritizePlaceDataGaps,
+} from "@/lib/quality/place-data-priority";
 import {
   AdminShell,
   StatStrip,
@@ -31,14 +35,22 @@ function host(value?: string): string {
 }
 
 export default function CopyReview() {
-  const places = publicPlaces();
+  const places = clientPlaces();
   const bySlug = new Map(places.map((place) => [place.slug, place]));
   const approved = Object.entries(DESCRIPTIONS).filter(([, entry]) => entry.status === "approved");
-  const candidates = Object.entries(DESCRIPTIONS).filter(([, entry]) => entry.status === "candidate");
-  const weak = places
-    .filter((place) => classifyDescription(place.name, place.description ?? place.short_blurb) !== "auto_clean")
-    .filter((place) => DESCRIPTIONS[place.slug]?.status !== "approved")
-    .slice(0, 200);
+  const candidates = Object.entries(DESCRIPTIONS)
+    .filter(([, entry]) => entry.status === "candidate")
+    .sort(([slugA], [slugB]) => {
+      const placeA = bySlug.get(slugA);
+      const placeB = bySlug.get(slugB);
+      if (!placeA) return placeB ? 1 : slugA.localeCompare(slugB);
+      if (!placeB) return -1;
+      return comparePlaceDataPriority(placeA, placeB);
+    });
+  const weakRows = prioritizePlaceDataGaps(places).filter(({ gaps }) =>
+    gaps.includes("copy"),
+  );
+  const weak = weakRows.slice(0, 200);
 
   return (
     <AdminShell
@@ -51,7 +63,7 @@ export default function CopyReview() {
           items={[
             { value: candidates.length, label: "waiting for review", tone: candidates.length > 0 ? "warning" : "positive" },
             { value: approved.length, label: "source-backed approvals", tone: "positive" },
-            { value: weak.length, label: "weak listings shown", tone: weak.length > 0 ? "warning" : "positive" },
+            { value: weakRows.length, label: "missing useful copy", tone: weakRows.length > 0 ? "warning" : "positive" },
           ]}
         />
       </div>
@@ -91,6 +103,11 @@ export default function CopyReview() {
                 <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                   {entry.blurb}
                 </p>
+                {bySlug.get(slug) ? (
+                  <p className="mt-1 font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                    {placeDataPriorityLabel(bySlug.get(slug)!)}
+                  </p>
+                ) : null}
               </li>
             ))}
           </HairlineList>
@@ -99,7 +116,7 @@ export default function CopyReview() {
 
       <section className="mt-8">
         <SectionLabel
-          aside={<span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{weak.length} shown</span>}
+          aside={<span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{weak.length} of {weakRows.length} shown</span>}
         >
           Needs first-party evidence
         </SectionLabel>
@@ -107,7 +124,7 @@ export default function CopyReview() {
           <AllClear>Every public listing has useful reviewed copy.</AllClear>
         ) : (
           <HairlineList>
-            {weak.map((place, index) => (
+            {weak.map(({ place, priorityLabel }, index) => (
               <li
                 key={place.slug}
                 className="bg-[var(--app-bg-elevated)] px-3 py-2.5"
@@ -118,7 +135,7 @@ export default function CopyReview() {
                     {place.name}
                   </Link>
                   <span className="shrink-0 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                    {place.category} · {place.source}
+                    {priorityLabel} · {place.category} · {place.source}
                   </span>
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

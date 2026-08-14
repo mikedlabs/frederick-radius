@@ -111,10 +111,6 @@
     {
       "path": "/api/cron/food-truck-schedules",
       "schedule": "15 */4 * * *"
-    },
-    {
-      "path": "/api/cron/visit-frederick",
-      "schedule": "40 9 * * *"
     }
   ],
   "headers": [

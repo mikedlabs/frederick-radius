@@ -143,6 +143,7 @@ describe("GET /api/cron/event-archive", () => {
       archive_attempted: true,
       failures: [],
       sources: {
+        unified_failed: [],
         succeeded: 2,
         failed: [],
         tombstone_eligible: 1,
@@ -446,6 +447,7 @@ describe("GET /api/cron/event-archive", () => {
   });
 
   it("keeps partial source evidence conservative without failing the completed worker", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mocks.getCachedLiveEvents.mockResolvedValue({
       events: [
         { id: "publisher-uid-44", source: "celebrate" },
@@ -468,6 +470,8 @@ describe("GET /api/cron/event-archive", () => {
       status: "partial",
       failures: ["live-partial"],
       sources: {
+        unified_failed: [],
+        failed: ["county"],
         tombstone_eligible: 1,
       },
     });
@@ -480,9 +484,17 @@ describe("GET /api/cron/event-archive", () => {
         ],
       }),
     );
+    expect(warning).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "event_archive_provider_partial",
+      unified: [],
+      live: ["county"],
+    }));
+    warning.mockRestore();
   });
 
   it("archives available rows when the unified board reports a degraded source", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mocks.assembleUnifiedEvents.mockResolvedValue({
       unified: [publicCard],
       publicEvents: [publicCard],
@@ -502,12 +514,22 @@ describe("GET /api/cron/event-archive", () => {
       degraded: true,
       retryable: false,
       failures: ["unified-partial"],
+      sources: {
+        unified_failed: ["one publisher"],
+      },
       archive: {
         accepted: 1,
         upserted: 1,
         records_complete: true,
       },
     });
+    expect(warning).toHaveBeenCalledWith(JSON.stringify({
+      level: "warn",
+      event: "event_archive_provider_partial",
+      unified: ["one publisher"],
+      live: [],
+    }));
+    warning.mockRestore();
   });
 
   it("fails visibly when a completed write is absent from the public archive", async () => {
