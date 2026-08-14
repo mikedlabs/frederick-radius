@@ -254,6 +254,64 @@ function aliveAtFiveSeason(): Event[] {
 
 export const EVENTS: Event[] = [
   {
+    slug: "snallyfest-2026-kickoff",
+    title: "Snallyfest 2026: Kickoff Party",
+    description:
+      "Snallyfest opens Friday night at Sandbox Brewhouse. The fifth annual festival brings more than 30 bands to five downtown Frederick venues over two days.",
+    starts_at: iso(at(92, 19, 0)),
+    ends_at: iso(at(92, 22, 0)),
+    timezone: "America/New_York",
+    venue_place_slug: "sandbox-brewhouse-frederick",
+    venue_name: "Sandbox Brewhouse",
+    address: "880 N East St, Frederick, MD 21701",
+    geom: { lng: -77.4028201, lat: 39.4248729 },
+    municipality: "frederick",
+    category: "music",
+    audience: ["adults", "kids-6-12", "groups"],
+    is_free: false,
+    price_text: "$25 weekend wristband · $10 Friday venue ticket",
+    ticket_url: "https://buytickets.at/braindeadlive/2322599",
+    organizer: "Brain Dead Live",
+    info: {
+      admission:
+        "$25 weekend wristband, $10 Friday venue ticket, or $40 wristband and T-shirt bundle. The festival is rain or shine, and tickets are nonrefundable.",
+    },
+    source_url: "https://snallyfest.com/",
+    source: "manual",
+    is_verified: true,
+    last_verified_at: "2026-08-14T01:39:25.000Z",
+  },
+  {
+    slug: "snallyfest-2026-festival-day",
+    title: "Snallyfest 2026: Festival Day",
+    description:
+      "Saturday's Snallyfest lineup runs across Creek Stage, Sky Stage, the Eagles Club, and Cafe Nola. Creek Stage runs from 1 to 10pm, Sky Stage and the Eagles Club run from 4 to 10pm, and Cafe Nola runs from 9pm to 1:30am.",
+    starts_at: iso(at(93, 13, 0)),
+    ends_at: iso(at(94, 1, 30)),
+    timezone: "America/New_York",
+    venue_place_slug: "carroll-creek-outdoor-amphitheater",
+    venue_name: "Creek Stage + three downtown venues",
+    address: "Creek Stage at Carroll Creek Amphitheater, Frederick, MD 21701",
+    geom: { lng: -77.4087681, lat: 39.4126271 },
+    municipality: "frederick",
+    category: "music",
+    audience: ["adults", "kids-6-12", "groups"],
+    is_free: false,
+    price_text: "$25 weekend wristband · $10–$15 per venue",
+    ticket_url: "https://buytickets.at/braindeadlive/2322599",
+    organizer: "Brain Dead Live",
+    info: {
+      admission:
+        "$25 weekend wristband or $10–$15 per venue. The event is all ages except at Cafe Nola, which is 21 and over. The festival is rain or shine, and tickets are nonrefundable.",
+      drinks: "Sandbox Brewhouse provides beer at Creek Stage.",
+      food: "Grilled Cheese Please serves food at Creek Stage.",
+    },
+    source_url: "https://braindead.live/calendar/snallyfest2026",
+    source: "manual",
+    is_verified: true,
+    last_verified_at: "2026-08-14T01:39:25.000Z",
+  },
+  {
     slug: "great-frederick-fair-2026",
     title: "The Great Frederick Fair",
     description:

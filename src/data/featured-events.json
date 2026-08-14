@@ -5,5 +5,14 @@
     "expires: the last Eastern day (YYYY-MM-DD) the feature holds; the day after, the entry retires itself. Usually the event's own date.",
     "From a phone: github.com > this file > pencil icon > edit > commit to main. The deploy (~3 min) does the rest."
   ],
-  "featured": []
+  "featured": [
+    {
+      "slug": "snallyfest-2026-kickoff",
+      "expires": "2026-08-14"
+    },
+    {
+      "slug": "snallyfest-2026-festival-day",
+      "expires": "2026-08-15"
+    }
+  ]
 }

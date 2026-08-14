@@ -38,7 +38,15 @@ describe("resolveFeatured", () => {
 });
 
 describe("featuredEventSlugs", () => {
-  it("reads the shipped file (starts empty — editorial is opt-in)", () => {
-    expect(featuredEventSlugs(NOW).size).toBe(0);
+  it("reads the current editorial features and retires them after the festival", () => {
+    expect(
+      [...featuredEventSlugs(new Date("2026-08-13T12:00:00-04:00"))].sort(),
+    ).toEqual([
+      "snallyfest-2026-festival-day",
+      "snallyfest-2026-kickoff",
+    ]);
+    expect(
+      featuredEventSlugs(new Date("2026-08-16T12:00:00-04:00")).size,
+    ).toBe(0);
   });
 });
