@@ -97,6 +97,17 @@ test("the same command model fits the narrowest supported phone", async ({ page 
   await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
+  const scope = page.locator("[data-location-chip]");
+  await expect(scope).toBeVisible();
+  const compactScope = scope.locator('[data-location-scope-label="compact"]');
+  await expect(compactScope).toBeVisible();
+  await expect(compactScope).toHaveText("County");
+  await expect(scope.locator('[data-location-scope-label="full"]')).toBeHidden();
+  const headerGeometry = await page.locator('header[data-map-header="true"]').evaluate((header) => ({
+    clientWidth: header.clientWidth,
+    scrollWidth: header.scrollWidth,
+  }));
+  expect(headerGeometry.scrollWidth).toBeLessThanOrEqual(headerGeometry.clientWidth);
   const search = page.getByRole("combobox", { name: "Search this map" });
   await search.focus();
   await expect(page.getByRole("group", { name: "Map shortcuts" })).toHaveCount(0);
@@ -111,6 +122,118 @@ test("the same command model fits the narrowest supported phone", async ({ page 
   await page.screenshot({
     path: "output/playwright/map-polish-search-ready-320x568.png",
     fullPage: true,
+  });
+});
+
+test("revealed map choices clear the fixed navigation and the area picker keeps the map visible", async ({
+  page,
+}) => {
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {
+    timeout: 20_000,
+  });
+
+  const nav = page.locator("[data-bottom-nav-shell]");
+  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
+  const chooser = page.getByRole("region", { name: "Choose what to see" });
+  await expect(chooser).toBeVisible();
+
+  const chooserGeometry = await chooser.evaluate((pane) => {
+    const nav = document.querySelector<HTMLElement>("[data-bottom-nav-shell]");
+    const scroll = pane.querySelector<HTMLElement>(".dock-pane-scroll");
+    const actions = [...pane.querySelectorAll<HTMLElement>(".dock-content-secondary button")];
+    if (!nav || !scroll || actions.length === 0) return null;
+    const paneBox = pane.getBoundingClientRect();
+    const navBox = nav.getBoundingClientRect();
+    return {
+      paneBottom: paneBox.bottom,
+      navTop: navBox.top,
+      actionHeights: actions.map((action) => action.getBoundingClientRect().height),
+      scrollPaddingBottom: Number.parseFloat(getComputedStyle(scroll).paddingBottom),
+    };
+  });
+  expect(chooserGeometry).not.toBeNull();
+  expect(chooserGeometry?.paneBottom ?? 999).toBeLessThanOrEqual(chooserGeometry?.navTop ?? 0);
+  expect(Math.min(...(chooserGeometry?.actionHeights ?? [0]))).toBeGreaterThanOrEqual(44);
+  expect(chooserGeometry?.scrollPaddingBottom ?? 0).toBeGreaterThanOrEqual(20);
+
+  const lastMapAction = chooser.getByRole("button", { name: /^Share/ });
+  await lastMapAction.scrollIntoViewIfNeeded();
+  const lastMapActionBox = await lastMapAction.boundingBox();
+  const navBox = await nav.boundingBox();
+  expect(lastMapActionBox).not.toBeNull();
+  expect(navBox).not.toBeNull();
+  if (!lastMapActionBox || !navBox) throw new Error("Expected visible map action and navigation boxes");
+  expect(lastMapActionBox.y + lastMapActionBox.height).toBeLessThanOrEqual(navBox.y);
+  await page.screenshot({
+    path: "output/playwright/map-mobile-revealed-actions-clear-nav-390x844.png",
+    fullPage: false,
+  });
+
+  await chooser.getByRole("button", { name: "Done" }).click();
+  const scopeTrigger = page.getByRole("button", { name: /Change town or location scope/i });
+  await scopeTrigger.click();
+  const scopeMenu = page.locator("[data-location-scope-menu]");
+  const done = scopeMenu.getByRole("button", { name: "Done choosing an area" });
+  await expect(scopeMenu).toBeVisible();
+  await expect(done).toBeVisible();
+
+  const scopeGeometry = await page.evaluate(() => {
+    const menu = document.querySelector<HTMLElement>("[data-location-scope-menu]");
+    const map = document.querySelector<HTMLElement>(".dock-host");
+    if (!menu || !map) return null;
+    const menuBox = menu.getBoundingClientRect();
+    const mapBox = map.getBoundingClientRect();
+    return {
+      closeHeight: document.querySelector<HTMLElement>('[aria-label="Done choosing an area"]')?.getBoundingClientRect().height ?? 0,
+      menuHeight: menuBox.height,
+      mapHeight: mapBox.height,
+      visibleMapBelow: Math.max(0, mapBox.bottom - menuBox.bottom),
+    };
+  });
+  expect(scopeGeometry).not.toBeNull();
+  expect(scopeGeometry?.closeHeight ?? 0).toBeGreaterThanOrEqual(44);
+  expect(scopeGeometry?.menuHeight ?? 999).toBeLessThanOrEqual((scopeGeometry?.mapHeight ?? 0) * 0.72);
+  expect(scopeGeometry?.visibleMapBelow ?? 0).toBeGreaterThan(80);
+  await expect(nav).toBeVisible();
+  await page.screenshot({
+    path: "output/playwright/map-mobile-bounded-scope-picker-390x844.png",
+    fullPage: false,
+  });
+  await done.focus();
+  await page.keyboard.press("Escape");
+  await expect(scopeMenu).toBeHidden();
+  await expect(scopeTrigger).toBeFocused();
+
+  await scopeTrigger.click();
+  await expect(scopeMenu).toBeVisible();
+  await done.click();
+  await expect(scopeMenu).toBeHidden();
+  await expect(scopeTrigger).toBeFocused();
+});
+
+test("expanded Compass actions remain above the fixed mobile navigation", async ({ page }) => {
+  await page.goto("/compass", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+
+  await page.getByRole("button", { name: /^Essentials & local help/i }).click();
+  const region = page.locator("#compass-intent-local-help");
+  await expect(region).toBeVisible();
+  const finalAction = region.getByRole("button", { name: /More essentials & local help/i });
+  await finalAction.evaluate((action) => {
+    action.scrollIntoView({ block: "center", behavior: "instant" });
+  });
+  await expect(finalAction).toBeVisible();
+  const actionBox = await finalAction.boundingBox();
+  const navBox = await page.locator("[data-bottom-nav-shell]").boundingBox();
+  expect(actionBox).not.toBeNull();
+  expect(navBox).not.toBeNull();
+  if (!actionBox || !navBox) throw new Error("Expected visible Compass action and navigation boxes");
+  expect(actionBox.height).toBeGreaterThanOrEqual(44);
+  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(navBox.y);
+  await page.screenshot({
+    path: "output/playwright/compass-mobile-revealed-actions-clear-nav-390x844.png",
+    fullPage: false,
   });
 });
 

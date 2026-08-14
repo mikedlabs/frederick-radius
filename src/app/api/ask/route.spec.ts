@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   isRateLimited: vi.fn(),
   readJsonBodyWithLimit: vi.fn(),
   meterUsage: vi.fn(),
+  getNwsForecast: vi.fn(),
   getNwsAlertsResult: vi.fn(),
   getAirQuality: vi.fn(),
   getFrederickOutagesResult: vi.fn(),
@@ -25,6 +26,10 @@ vi.mock("@/lib/origin-check", () => ({
   readJsonBodyWithLimit: mocks.readJsonBodyWithLimit,
 }));
 vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
+vi.mock("@/lib/integrations/nws", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/nws")>();
+  return { ...actual, getNwsForecast: mocks.getNwsForecast };
+});
 vi.mock("@/lib/integrations/nws-alerts", () => ({ getNwsAlertsResult: mocks.getNwsAlertsResult }));
 vi.mock("@/lib/integrations/firstenergy", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/integrations/firstenergy")>();
@@ -91,7 +96,12 @@ describe("/api/ask location policy", () => {
       origin: { lng: -77.6278, lat: 39.3143 },
       status: "available",
     });
-    mocks.getNwsAlertsResult.mockResolvedValue({ available: true, alerts: [] });
+    mocks.getNwsAlertsResult.mockResolvedValue({
+      available: true,
+      alerts: [],
+      checkedAt: new Date().toISOString(),
+    });
+    mocks.getNwsForecast.mockResolvedValue(null);
     mocks.getAirQuality.mockResolvedValue(null);
     mocks.getFrederickOutagesResult.mockResolvedValue({
       available: true,
@@ -405,6 +415,283 @@ describe("/api/ask location policy", () => {
       name: "Boil Water Advisory for East Street",
       category: "water",
     });
+  });
+
+  it("answers a direct outdoor-conditions question without retrieving event inventory", async () => {
+    const now = new Date();
+    const easternParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+      easternParts.find((item) => item.type === type)?.value ?? "";
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Is it safe and comfortable to spend time outside downtown right now?",
+        // The question names downtown, so this deliberately supplies a
+        // different device position to prove the weather lookup follows the
+        // requested place rather than the phone.
+        lat: 39.3267,
+        lng: -77.3519,
+      },
+    });
+    mocks.getNwsForecast.mockResolvedValue({
+      asOf: new Date(now.getTime() - 15 * 60_000).toISOString(),
+      hourly: [{
+        startTime: new Date(now.getTime() - 30 * 60_000).toISOString(),
+        endTime: new Date(now.getTime() + 30 * 60_000).toISOString(),
+        temperature: 76,
+        temperatureUnit: "F",
+        shortForecast: "Partly Sunny",
+        windSpeed: "6 mph",
+        windDirection: "S",
+        probabilityOfPrecipitation: 10,
+        icon: "https://api.weather.gov/icons/land/day/few",
+      }],
+      daily: [],
+    });
+    mocks.getAirQuality.mockResolvedValue([{
+      parameter: "O3",
+      aqi: 42,
+      category: { id: 1, name: "Good", color: "#315A43" },
+      reportingArea: "Frederick",
+      dateObserved: `${part("year")}-${part("month")}-${part("day")}`,
+      hourObserved: Number(part("hour")) % 24,
+    }]);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.getNwsForecast).toHaveBeenCalledWith({
+      lat: 39.4143,
+      lng: -77.4105,
+    });
+    expect(mocks.getNwsAlertsResult).toHaveBeenCalledOnce();
+    expect(mocks.getAirQuality).toHaveBeenCalledOnce();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(body.answer).toContain("76°F");
+    expect(body.answer).toContain("AQI 42 (Good)");
+    expect(body.answer).toContain("no active Frederick County alert");
+    expect(body.answer).toContain("not a personal safety guarantee");
+    expect(body.sources).toHaveLength(3);
+    expect(body.sources.every((source: { category: string }) => source.category === "weather")).toBe(true);
+    expect(body.sources.every((source: { href: string }) =>
+      !source.href.startsWith("/events/") && !source.href.startsWith("/places/")
+    )).toBe(true);
+    expect(body.presentation.layout).toBe("civic");
+  });
+
+  it("does not treat unavailable outdoor-condition feeds as no active alerts", async () => {
+    const now = new Date();
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "Is it comfortable to be outside right now?" },
+    });
+    mocks.getNwsForecast.mockResolvedValue({
+      asOf: new Date(now.getTime() - 15 * 60_000).toISOString(),
+      hourly: [{
+        startTime: new Date(now.getTime() - 30 * 60_000).toISOString(),
+        endTime: new Date(now.getTime() + 30 * 60_000).toISOString(),
+        temperature: 76,
+        temperatureUnit: "F",
+        shortForecast: "Partly Sunny",
+        windSpeed: "6 mph",
+        windDirection: "S",
+        probabilityOfPrecipitation: 10,
+        icon: "https://api.weather.gov/icons/land/day/few",
+      }],
+      daily: [],
+    });
+    mocks.getNwsAlertsResult.mockResolvedValue({ available: false, alerts: [] });
+    mocks.getAirQuality.mockResolvedValue(null);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(body.answer).toContain("can’t give an all-clear");
+    expect(body.answer).toContain("outdoors in Frederick County");
+    expect(body.answer).not.toContain("in in Frederick County");
+    expect(body.answer).toContain("official alert feed");
+    expect(body.answer).toContain("fresh AirNow reading");
+    expect(body.answer).not.toContain("no active Frederick County alert");
+    expect(body.sources.map((source: { name: string }) => source.name)).toContain(
+      "Weather alerts not verified",
+    );
+    expect(body.sources.map((source: { name: string }) => source.name)).toContain(
+      "Air quality not verified",
+    );
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Frederick County conditions for an out-of-county device point", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Is it safe and comfortable outside right now?",
+        lat: 38.9072,
+        lng: -77.0369,
+      },
+    });
+    mocks.getNwsForecast.mockResolvedValue(null);
+    mocks.getAirQuality.mockResolvedValue(null);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.getNwsForecast).toHaveBeenCalledWith({
+      lat: 39.4143,
+      lng: -77.4105,
+    });
+    expect(mocks.getAirQuality).toHaveBeenCalledWith(
+      { lat: 39.4143, lng: -77.4105 },
+      { deadlineMs: 2_000 },
+    );
+    expect(body.answer).toContain("outdoors in Frederick County");
+    expect(body.answer).not.toContain("outdoors near you");
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("keeps an in-county device point for a near-you conditions question", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Is it safe and comfortable outside right now?",
+        lat: 39.3267,
+        lng: -77.3519,
+      },
+    });
+    mocks.getNwsForecast.mockResolvedValue(null);
+    mocks.getAirQuality.mockResolvedValue(null);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.getNwsForecast).toHaveBeenCalledWith({
+      lat: 39.327,
+      lng: -77.352,
+    });
+    expect(mocks.getAirQuality).toHaveBeenCalledWith(
+      { lat: 39.327, lng: -77.352 },
+      { deadlineMs: 2_000 },
+    );
+    expect(body.answer).toContain("outdoors near you");
+    expect(body.answer).not.toContain("outdoors in Frederick County");
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("uses a named town instead of the phone for downtown conditions", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Should I go for a walk in downtown Brunswick right now?",
+        lat: 39.4143,
+        lng: -77.4105,
+      },
+    });
+    mocks.getNwsForecast.mockResolvedValue(null);
+    mocks.getAirQuality.mockResolvedValue(null);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.getNwsForecast).toHaveBeenCalledWith({
+      lat: 39.3134,
+      lng: -77.628,
+    });
+    expect(mocks.getAirQuality).toHaveBeenCalledWith(
+      { lat: 39.3134, lng: -77.628 },
+      { deadlineMs: 2_000 },
+    );
+    expect(body.answer).toContain("outdoors in downtown Brunswick");
+    expect(body.answer).not.toContain("downtown Frederick");
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("honors an explicit Frederick County conditions request over the phone", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Is it safe outside in Frederick County right now?",
+        lat: 39.3267,
+        lng: -77.3519,
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.getNwsForecast).toHaveBeenCalledWith({
+      lat: 39.4143,
+      lng: -77.4105,
+    });
+    expect(mocks.getAirQuality).toHaveBeenCalledWith(
+      { lat: 39.4143, lng: -77.4105 },
+      { deadlineMs: 2_000 },
+    );
+    expect(body.answer).toContain("outdoors in Frederick County");
+    expect(body.answer).not.toContain("outdoors near you");
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "Is it safe outside in Point of Rocks right now?",
+      "Point of Rocks",
+    ],
+    [
+      "Is it safe outside in downtown Westminster right now?",
+      "Westminster",
+    ],
+  ])("clarifies an unsupported named weather area instead of substituting the phone: %s", async (query, label) => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query,
+        lat: 39.4143,
+        lng: -77.4105,
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.answer).toContain(`“${label}”`);
+    expect(body.presentation.layout).toBe("recovery");
+    expect(mocks.getNwsForecast).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("asks whether bare Frederick means the city or county", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Is it nice outside in Frederick right now?",
+        lat: 39.3267,
+        lng: -77.3519,
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(body.answer).toBe(
+      "Do you mean Frederick City or Frederick County? Name one so I check the right conditions.",
+    );
+    expect(mocks.getNwsForecast).not.toHaveBeenCalled();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
   });
 
   it("removes an outdoor recommendation during an active severe-weather alert", async () => {

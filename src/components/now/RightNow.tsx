@@ -556,8 +556,12 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const availabilityLeads = !openOnly && rankingAvailability === "required";
-  const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLeads);
+  const availabilityLead = openOnly || craving?.alwaysOpen
+    ? null
+    : rankingAvailability === "required"
+      ? "open" as const
+      : "available" as const;
+  const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLead);
   const areaLabel = townName
     ? `in ${townName}`
     : hasFix

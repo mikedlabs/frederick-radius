@@ -79,6 +79,8 @@ import {
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
+import { compareNearbyPlaceCandidates } from "@/lib/decision/nearby-place-ranking";
+import type { DecisionOriginSource } from "@/lib/scope";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -1322,6 +1324,10 @@ function nearbyContextScore(
 
 export type RankingContext = {
   origin?: LngLat;
+  /** Why the origin is trustworthy. Device, chosen-town, and saved-home
+   * origins may drive distance order; a coarse IP centroid may not. Existing
+   * server callers that pass a deliberate origin retain device-like behavior. */
+  originSource?: DecisionOriginSource;
   now?: Date;
   preferOpen?: boolean;
   category?: string;
@@ -1720,13 +1726,28 @@ export function radiusPlaces(): Place[] {
  * not verified anything, so the panel never shows a defeating empty
  * state. Closed places are still excluded.
  */
-export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): PlaceCardData[] {
-  return publicPlaces()
+export type OpenNowRankingContext = Pick<
+  RankingContext,
+  "municipality" | "originSource"
+>;
+
+export function likelyOpenPlaces(
+  origin?: LngLat,
+  now: Date = new Date(),
+  ranking: OpenNowRankingContext = {},
+): PlaceCardData[] {
+  // Start from the same ranked population as the confirmed-open snapshot so
+  // town boundaries, county-wide ordering, and origin trust cannot diverge
+  // between the two sections on /open-now.
+  return rankPlaces({
+    origin,
+    now,
+    municipality: ranking.municipality,
+    originSource: ranking.originSource,
+  })
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
-    .map((p) => decoratePlace(p, origin, now))
     .filter((p) => mayUseLikelyOpenFallback(p.open_status))
-    .map((p) => ({ ...p, open_confidence: "likely" as const }))
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+    .map((p) => ({ ...p, open_confidence: "likely" as const }));
 }
 
 /** Leading honorific on a personal-practice listing ("Dr Atul Purohit"). */
@@ -2011,8 +2032,14 @@ export function getOpenNowSnapshot(
   now: Date = new Date(),
   origin?: LngLat,
   proofLimit = 3,
+  ranking: OpenNowRankingContext = {},
 ): OpenNowSnapshot {
-  const places = rankPlaces({ origin, now })
+  const places = rankPlaces({
+    origin,
+    now,
+    municipality: ranking.municipality,
+    originSource: ranking.originSource,
+  })
     .filter(isRecommendable)
     .filter((place) => isOpenNow(place.open_status));
   return buildOpenNowSnapshot(places, now, proofLimit);
@@ -2115,20 +2142,35 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   if (ctx.profile === "visitor") {
     results.sort((a, b) => visitorScore(b, now) - visitorScore(a, now));
   } else {
-    results.sort((a, b) => {
-      // Every axis must live on the same 0–1 scale. The old expression used
-      // feature_score (0–10) beside 0–1 proximity/open signals, so curation
-      // overwhelmed location and hours even when the user shared a precise
-      // origin. curationScore normalizes it and preserves the small,
-      // source-backed local-favorite lift.
-      const sa = curationScore(a.feature_score, a.local_favorite) * 0.4 +
-        proximityScore(a.distance_m) * 0.3 +
-        openScore(a.open_status) * 0.3;
-      const sb = curationScore(b.feature_score, b.local_favorite) * 0.4 +
-        proximityScore(b.distance_m) * 0.3 +
-        openScore(b.open_status) * 0.3;
-      return sb - sa;
-    });
+    // Every axis lives on 0–1 for the no-origin fallback. When a deliberate
+    // origin exists, the shared nearby contract adds an evidence gate and
+    // makes distance monotonic inside that band. This prevents photos,
+    // popularity, or missing playground hours from moving a farther town
+    // above a credible place around the corner.
+    const score = (place: PlaceCardData) =>
+      curationScore(place.feature_score, place.local_favorite) * 0.4 +
+      proximityScore(place.distance_m) * 0.3 +
+      openScore(place.open_status) * 0.3;
+
+    if (ctx.origin) {
+      results = results
+        .map((place, ordinal) => ({
+          place,
+          distance: place.distance_m ?? Infinity,
+          quality: score(place),
+          ordinal,
+        }))
+        .sort((a, b) =>
+          compareNearbyPlaceCandidates(
+            a,
+            b,
+            ctx.originSource ?? "device",
+          ),
+        )
+        .map(({ place }) => place);
+    } else {
+      results.sort((a, b) => score(b) - score(a));
+    }
   }
 
   return ctx.limit ? results.slice(0, ctx.limit) : results;

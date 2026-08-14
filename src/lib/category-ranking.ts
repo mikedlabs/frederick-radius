@@ -16,6 +16,8 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow, type OpenStatus } from "@/lib/hours";
 import { evaluateDecision, type DecisionReason } from "@/lib/decision/core";
+import { compareNearbyPlaceCandidates } from "@/lib/decision/nearby-place-ranking";
+import type { DecisionOriginSource } from "@/lib/scope";
 
 /** Brand chains we soft-demote in Best matches so local shops lead (kept,
  *  never hidden). */
@@ -164,6 +166,9 @@ export type CategoryRankContext = {
    * into unrelated guides (for example, a tea room is only a loose match on
    * the Coffee page, not on Restaurants or Bakeries). */
   category?: string | null;
+  /** Explicit when the caller knows whether the distance came from a device,
+   * chosen town, saved home, or coarse network approximation. */
+  originSource?: DecisionOriginSource;
 };
 
 function categoryDecisionFactors(
@@ -257,6 +262,32 @@ export function categoryDecisionReasons(
   return evaluateDecision(p, categoryDecisionFactors(p, ctx)).reasons;
 }
 
+/** Shared evidence + proximity order for category shelves. With no distance,
+ * the balanced category score remains the primary countywide order. */
+export function compareCategoryPlaces(
+  a: PlaceCardData,
+  b: PlaceCardData,
+  ctx: CategoryRankContext = {},
+): number {
+  const hasDistance =
+    Number.isFinite(a.distance_m) || Number.isFinite(b.distance_m);
+  if (!hasDistance) return categoryScore(b, ctx) - categoryScore(a, ctx);
+
+  return compareNearbyPlaceCandidates(
+    {
+      place: a,
+      distance: a.distance_m ?? Infinity,
+      quality: categoryScore(a, ctx),
+    },
+    {
+      place: b,
+      distance: b.distance_m ?? Infinity,
+      quality: categoryScore(b, ctx),
+    },
+    ctx.originSource ?? (ctx.town ? "town" : "device"),
+  );
+}
+
 /** Top-N by the balanced score (Best matches). */
 export function bestMatches(
   places: PlaceCardData[],
@@ -264,15 +295,24 @@ export function bestMatches(
   limit = 6,
 ): PlaceCardData[] {
   return [...places]
-    .sort((a, b) => categoryScore(b, ctx) - categoryScore(a, ctx))
+    .sort((a, b) => compareCategoryPlaces(a, b, ctx))
     .slice(0, limit);
 }
 
-/** Open-now subset, nearest first. */
-export function openNowOf(places: PlaceCardData[]): PlaceCardData[] {
+/** Open-now subset, evidence-aware and nearest inside each evidence band. */
+export function openNowOf(
+  places: PlaceCardData[],
+  ctx: CategoryRankContext = {},
+): PlaceCardData[] {
   return [...places]
     .filter((p) => isOpenNow(p.open_status))
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+    .sort((a, b) =>
+      compareNearbyPlaceCandidates(
+        { place: a, distance: a.distance_m ?? Infinity },
+        { place: b, distance: b.distance_m ?? Infinity },
+        ctx.originSource ?? (ctx.town ? "town" : "device"),
+      ),
+    );
 }
 
 /** Local-favorite subset, by balanced score. */
@@ -282,13 +322,22 @@ export function localFavoritesOf(
 ): PlaceCardData[] {
   return [...places]
     .filter((p) => p.local_favorite)
-    .sort((a, b) => categoryScore(b, ctx) - categoryScore(a, ctx));
+    .sort((a, b) => compareCategoryPlaces(a, b, ctx));
 }
 
-/** Nearest first. Places are already distance-decorated from the page
- *  origin, so this sorts by that. */
-export function nearestFrom(places: PlaceCardData[]): PlaceCardData[] {
-  return [...places].sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+/** Nearest credible places first. Unreviewed rows remain visible after the
+ * confirmed inventory instead of becoming a lead solely from coordinates. */
+export function nearestFrom(
+  places: PlaceCardData[],
+  ctx: CategoryRankContext = {},
+): PlaceCardData[] {
+  return [...places].sort((a, b) =>
+    compareNearbyPlaceCandidates(
+      { place: a, distance: a.distance_m ?? Infinity },
+      { place: b, distance: b.distance_m ?? Infinity },
+      ctx.originSource ?? (ctx.town ? "town" : "device"),
+    ),
+  );
 }
 
 export type CuratedStack = {
@@ -330,9 +379,9 @@ export function selectCuratedStack(
   };
   // Order is the priority order — each take() consumes from the same
   // `shown` set the earlier ones grew.
-  const openNow = take(openNowOf(rec));
+  const openNow = take(openNowOf(rec, ctx));
   const favs = take(localFavoritesOf(rec, ctx));
-  const nearby = take(nearestFrom(rec));
+  const nearby = take(nearestFrom(rec, ctx));
   return { best, openNow, favs, nearby };
 }
 
@@ -355,7 +404,7 @@ export function groupByMunicipality(
   }
   const groups = [...m.entries()].map(([municipality, list]) => ({
     municipality,
-    places: list.sort((a, b) => categoryScore(b, ctx) - categoryScore(a, ctx)),
+    places: list.sort((a, b) => compareCategoryPlaces(a, b, ctx)),
   }));
   groups.sort((a, b) => categoryScore(b.places[0], ctx) - categoryScore(a.places[0], ctx));
   return groups;

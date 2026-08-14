@@ -31,7 +31,12 @@ export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 650;
 export const TODAY_EVENT_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 60 * 1_000;
 const TODAY_EVENT_HORIZON_DAYS = 9;
 const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
-export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 700;
+// Discovery can tolerate a slightly longer first read than Today's briefing.
+// The archive query itself is fast, but a cold serverless connection can take
+// more than 700 ms to reach Supabase. Giving the connection the full bounded
+// read budget prevents the Events board from collapsing to the small curated
+// build fallback even while the archive and its heartbeat are healthy.
+export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 1_500;
 export const EVENT_BROWSE_HORIZON_DAYS = 90;
 export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 

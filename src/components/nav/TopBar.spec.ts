@@ -36,14 +36,28 @@ describe("TopBar search ownership", () => {
     },
   );
 
-  it("keeps the narrow mobile header to brand, location, and route-appropriate search", () => {
+  it("keeps the narrow mobile header to brand, visible location, and route-appropriate search", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
     const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
 
     expect(topBar).toContain('className="hidden text-[15px] min-[390px]:inline"');
-    expect(location).toContain("min-[390px]:block sm:max-w-[160px]");
+    expect(location).toContain('data-location-scope-label="compact"');
+    expect(location).toContain('data-location-scope-label="full"');
+    expect(location).toContain(': "County";');
+    expect(styles).toContain('[data-location-scope-label="compact"]');
+    expect(styles).toContain('[data-location-scope-label="full"]');
     expect(topBar).toContain('className="contents"');
     expect(topBar).toContain("{showMobileSearch && (");
+  });
+
+  it("keeps the mobile scope picker bounded with an explicit close action", () => {
+    const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
+
+    expect(location).toContain("data-location-scope-menu");
+    expect(location).toContain("max-h-[min(62dvh,31rem)]");
+    expect(location).toContain('aria-label="Done choosing an area"');
+    expect(location).toContain("min-h-0 overflow-y-auto overscroll-contain");
   });
 
   it("keeps Compass branded while clarifying the tool destination on mobile", () => {

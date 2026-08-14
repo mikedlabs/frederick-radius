@@ -232,7 +232,7 @@ function temporalRetrievalQuery(
  * "midnight." Build that candidate set directly and keep only fresh,
  * verified-open hours at the requested instant.
  */
-function temporalOpenPlaceHits(
+export function temporalOpenPlaceHits(
   context: QualifiedSearchContext,
   at: Date,
   limit: number,
@@ -242,6 +242,7 @@ function temporalOpenPlaceHits(
     queryMunicipality: Municipality | null;
     preciseNearMe: boolean;
   },
+  places: readonly PlaceCardData[] = clientPlaces(),
 ): SearchHit[] {
   const scopedMunicipality = options.regions.length > 0
     ? null
@@ -251,7 +252,7 @@ function temporalOpenPlaceHits(
   const rankingOrigin = options.downtown
     ? FREDERICK_CENTER
     : options.queryMunicipality?.centroid ?? context.origin ?? null;
-  return clientPlaces()
+  return places
     .filter(
       (place) =>
         (!scopedMunicipality || place.municipality === scopedMunicipality) &&

@@ -106,11 +106,66 @@ export function effectiveOriginSlug(
   scopeRaw: string | null | undefined,
   homeMuniRaw: string | null | undefined,
 ): string | null {
+  return resolveServerTownRankingContext(scopeRaw, homeMuniRaw)
+    .originMunicipality;
+}
+
+export type ServerTownRankingContext = {
+  /** Town centroid used as a ranking origin. A saved home may provide this. */
+  originMunicipality: string | null;
+  /** Hard boundary supplied only by an explicit `town:<slug>` scope. */
+  filterMunicipality: string | null;
+  source: "town" | "home" | "county" | "none";
+};
+
+/**
+ * Preserve the distinction that a nullable town slug cannot carry:
+ *
+ * - A deliberately selected town is both the ranking origin and a hard
+ *   municipality boundary.
+ * - A saved home is only a useful ranking origin; it must not erase the rest
+ *   of the county from a category page.
+ * - Whole county explicitly suppresses the home fallback.
+ * - Near me has no server-side device coordinate, so it may use home as the
+ *   same honest fallback the previous `effectiveOriginSlug` contract used.
+ *
+ * Server-rendered category/list pages consume this shape directly. Client and
+ * API surfaces that hold a device or approximate origin continue to use
+ * `resolveDecisionContext` below.
+ */
+export function resolveServerTownRankingContext(
+  scopeRaw: string | null | undefined,
+  homeMuniRaw: string | null | undefined,
+): ServerTownRankingContext {
   const scope = parseScope(scopeRaw);
   const town = scopeTownSlug(scope);
-  if (town) return town;
-  if (scope === "county") return null;
-  return isMunicipalitySlug(homeMuniRaw) ? homeMuniRaw : null;
+  if (town) {
+    return {
+      originMunicipality: town,
+      filterMunicipality: town,
+      source: "town",
+    };
+  }
+  if (scope === "county") {
+    return {
+      originMunicipality: null,
+      filterMunicipality: null,
+      source: "county",
+    };
+  }
+  const home = isMunicipalitySlug(homeMuniRaw) ? homeMuniRaw : null;
+  if (home) {
+    return {
+      originMunicipality: home,
+      filterMunicipality: null,
+      source: "home",
+    };
+  }
+  return {
+    originMunicipality: null,
+    filterMunicipality: null,
+    source: "none",
+  };
 }
 
 export type DecisionOriginSource =
@@ -123,7 +178,7 @@ export type DecisionOriginSource =
 
 /** The canonical answer to "where should this recommendation rank from?".
  * Town scope is both an origin AND a hard municipality filter; a device fix
- * is precise enough for distances; home/IP/town are ranking-only. */
+ * is precise enough for distances; home and IP origins are ranking-only. */
 export type DecisionContext = {
   origin: LngLat | null;
   filterMunicipality: string | null;

@@ -132,6 +132,9 @@ describe("map interaction state contracts", () => {
 
     expect(mapSource).toContain("data-map-selection-lock");
     expect(mapSource).toContain("data-map-location-lock");
+    expect(mapSource).toContain('className="map-marker-pass-through"');
+    expect(css).toContain(".dock-host .map-marker-pass-through");
+    expect(css).toContain("pointer-events: none !important;");
     expect(css).toContain("animation: map-lock-on 520ms");
     expect(css).not.toContain("animation: map-lock-on 520ms var(--app-ease-out) infinite");
   });

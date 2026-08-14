@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ArrowUpRight, Globe } from "lucide-react";
+import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ArrowUpRight, Globe, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -35,6 +35,17 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   const [open, setOpen] = useState(false);
   const [scope, setScopeState] = useState<Scope | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const closePicker = useCallback((restoreFocus = true) => {
+    setOpen(false);
+    if (restoreFocus) {
+      // Wait for React to remove the picker before returning focus to the
+      // control that opened it. Otherwise a focused Done/town button vanishes
+      // and browsers fall back to <body>.
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
 
   // Hydrate post-mount, then follow changes made by Map, Events, or another
   // tab. The label is the global scope readout, not menu-local state.
@@ -48,7 +59,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     haptic("light");
     setScope(next);
     setScopeState(next);
-    setOpen(false);
+    closePicker();
     // Server components re-render with the new fr_scope cookie.
     router.refresh();
   };
@@ -78,10 +89,12 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      // Preserve the user's intended outside-click target instead of stealing
+      // focus back after that target receives the click.
+      if (!wrapRef.current?.contains(e.target as Node)) closePicker(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePicker();
     }
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
@@ -89,7 +102,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [closePicker, open]);
 
   const scopeTown = scopeTownSlug(scope);
 
@@ -119,16 +132,24 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   } else if (scope === "county") {
     LabelIcon = Globe;
   }
+  const compactLabel =
+    scope === "nearme"
+      ? "Near me"
+      : scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]
+        ? MUNICIPALITY_BY_SLUG[scopeTown].name
+        : "County";
 
   return (
     <div ref={wrapRef} className="relative min-w-0 shrink-0">
       <button
+        ref={triggerRef}
         data-location-chip
         data-compact={compact || undefined}
         type="button"
         onClick={() => {
           haptic("light");
-          setOpen((v) => !v);
+          if (open) closePicker();
+          else setOpen(true);
         }}
         aria-expanded={open}
         aria-controls="location-scope-choices"
@@ -142,15 +163,23 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           strokeWidth={2}
           aria-hidden
         />
-        {/* Deliberately hidden below 390px: TopBar drops its own wordmark at
-            the same breakpoint so the narrowest header carries brand mark,
-            location, and search and nothing else (TopBar.spec.ts pins both
-            halves of that budget). The distances now in the menu below make
-            this less costly than it was, since the scope is one tap away
-            rather than unavailable. */}
-        <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
-          {label}
-        </span>
+        {compact ? (
+          <>
+            {/* A complete short scope beats a clipped full name at the 320px
+                support floor. The map header swaps to the full label as soon
+                as 360px is available. */}
+            <span data-location-scope-label="compact" className="min-w-0 truncate">
+              {compactLabel}
+            </span>
+            <span data-location-scope-label="full" className="min-w-0 truncate sm:max-w-[160px]">
+              {label}
+            </span>
+          </>
+        ) : (
+          <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
+            {label}
+          </span>
+        )}
         <ChevronDown className="hidden h-3 w-3 opacity-60 min-[390px]:block" strokeWidth={2} aria-hidden />
       </button>
 
@@ -159,9 +188,30 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           id="location-scope-choices"
           role="group"
           aria-label="Set what you're browsing"
-          className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)_+_var(--app-topbar-h)_+_0.375rem)] z-[var(--z-dropdown)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1.5 sm:w-[230px]"
+          data-location-scope-menu
+          className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)_+_var(--app-topbar-h)_+_0.375rem)] z-[var(--z-dropdown)] flex max-h-[min(62dvh,31rem)] flex-col overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1.5 sm:w-[230px] sm:max-h-[min(70dvh,34rem)]"
           style={{ borderColor: "var(--app-border)" }}
         >
+          <div
+            className="flex min-h-11 shrink-0 items-center justify-between border-b px-3 sm:hidden"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <strong className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Choose an area
+            </strong>
+            <button
+              type="button"
+              onClick={() => closePicker()}
+              aria-label="Done choosing an area"
+              className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[12px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Done
+              <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+            </button>
+          </div>
+
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
           {/* Near me — sets scope AND requests the fix (the two go together;
               a nearme scope with no device fix falls back to home server-side
               but the granted position sharpens client surfaces). */}
@@ -200,7 +250,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
               menu answers "which of these am I near" instead of making a person
               read thirteen names in file order. Without a location it keeps
               file order and says nothing it cannot support. */}
-          <ul className="max-h-[46vh] overflow-y-auto py-1">
+          <ul className="py-1">
             {(townsByDistance ?? MUNICIPALITIES).map((m) => {
               const isActive = scopeTown === m.slug;
               const distance =
@@ -256,6 +306,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
               </Link>
             </>
           )}
+          </div>
         </div>
       )}
     </div>

@@ -11,6 +11,7 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import {
+  EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
@@ -196,5 +197,28 @@ describe("Today durable event snapshot", () => {
     expect(result.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
     expect(strings.join(" ")).toContain("limit");
     expect(values).toContain(1_500);
+  });
+
+  it("lets a cold archive connection finish without collapsing discovery to curated rows", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve([envelope()]), 900);
+    })));
+
+    const pending = loadEventArchiveSnapshot(NOW);
+    await vi.advanceTimersByTimeAsync(900);
+    const result = await pending;
+
+    expect(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(900);
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({
+        slug: "archive-event-2026-07-31",
+        title: "Archive event",
+      }),
+    );
+    expect(result.sourceHealth).toEqual({
+      degraded: false,
+      unavailable: [],
+    });
   });
 });

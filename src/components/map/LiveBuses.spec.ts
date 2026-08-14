@@ -11,10 +11,12 @@ vi.mock("react-map-gl/mapbox", () => ({
     children,
     longitude,
     latitude,
+    offset,
   }: {
     children?: ReactNode;
     longitude: number;
     latitude: number;
+    offset?: [number, number];
   }) =>
     createElement(
       "div",
@@ -22,6 +24,7 @@ vi.mock("react-map-gl/mapbox", () => ({
         "data-testid": "marker",
         "data-longitude": String(longitude),
         "data-latitude": String(latitude),
+        "data-offset": offset?.join(","),
       },
       children,
     ),
@@ -61,6 +64,7 @@ vi.mock("./markerA11y", () => ({
 }));
 
 import LiveBuses, {
+  AMBIENT_BUS_AGGREGATE_OFFSET,
   LIVE_BUS_GLIDE_VISUAL_UPDATE_MS,
   shouldCommitLiveBusGlideFrame,
 } from "./LiveBuses";
@@ -258,6 +262,8 @@ describe("LiveBuses feed sessions", () => {
       '[aria-label="2 live buses. Open the transit map for routes and stops."]',
     );
     expect(aggregate).not.toBeNull();
+    expect(aggregate?.closest('[data-testid="marker"]')?.getAttribute("data-offset"))
+      .toBe(AMBIENT_BUS_AGGREGATE_OFFSET.join(","));
     act(() => aggregate?.click());
     expect(onEnterTransitMode).toHaveBeenCalledOnce();
   });

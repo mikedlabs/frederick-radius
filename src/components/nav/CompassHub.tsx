@@ -313,43 +313,12 @@ export function commonCompassTasks(
   });
 }
 
-export function compassSuggestionForHour(hour: number): {
-  itemId: "events" | "open-now";
-  reason: string;
-  eyebrow?: string;
-  label?: string;
-  href?: string;
-} {
-  if (hour >= 5 && hour < 10) {
-    return {
-      itemId: "open-now",
-      reason: "Start with places that have current morning hours.",
-    };
-  }
-  if (hour >= 10 && hour < 17) {
-    return {
-      itemId: "events",
-      reason: "See what is happening around Frederick County today.",
-    };
-  }
-  if (hour >= 17 && hour < 22) {
-    return {
-      itemId: "events",
-      reason: "See what is on around Frederick County tonight.",
-    };
-  }
-  return {
-    itemId: "open-now",
-    reason: "Find somewhere with posted hours for right now.",
-  };
-}
-
 export type CompassLiveSuggestion = {
-  itemId: "county-pulse" | "transit";
+  itemId: "county-pulse" | "transit" | "events";
   label: string;
   href: string;
   reason: string;
-  eyebrow: "Needs attention" | "Moving now";
+  eyebrow: "Needs attention" | "Moving now" | "On today";
 };
 
 type DeckLiveFace = { value: string; label: string };
@@ -451,6 +420,34 @@ export function liveSuggestionForDeck(
   }
 
   return candidates.sort((a, b) => b.priority - a.priority)[0] ?? null;
+}
+
+/**
+ * Compass gives its one recommendation slot only to something the live deck
+ * can prove. Serious conditions still interrupt first. An ordinary Events
+ * card appears only after the event key confirms inventory for today; an
+ * empty or unavailable feed leaves the slot out instead of dressing a
+ * daypart guess up as local intelligence.
+ */
+export function groundedCompassSuggestion(
+  keys: readonly DeckLiveKey[],
+  hour: number,
+): CompassLiveSuggestion | null {
+  const interruption = liveSuggestionForDeck(keys, hour);
+  if (interruption) return interruption;
+
+  const eventsToday = activeCount(
+    keys.find((key) => key.id === "events"),
+    /on today/i,
+  );
+  if (eventsToday <= 0) return null;
+  return {
+    itemId: "events",
+    label: "Events",
+    href: "/events?when=today",
+    reason: `${eventsToday} ${eventsToday === 1 ? "event is" : "events are"} still on today.`,
+    eyebrow: "On today",
+  };
 }
 
 function subscribeHomeTown(onChange: () => void) {
@@ -667,11 +664,14 @@ export default function CompassHub() {
   // Noon is the stable server/first-client snapshot. Once local settings are
   // hydrated, the row quietly changes to the device's current daypart.
   const localHour = hydrated ? new Date().getHours() : 12;
-  const contextualSuggestion =
-    liveSuggestionForDeck(deckLiveKeys, localHour) ??
-    compassSuggestionForHour(localHour);
-  const contextualBaseItem = itemById.get(contextualSuggestion.itemId) ?? null;
-  const contextualItem = contextualBaseItem
+  const contextualSuggestion = groundedCompassSuggestion(
+    deckLiveKeys,
+    localHour,
+  );
+  const contextualBaseItem = contextualSuggestion
+    ? itemById.get(contextualSuggestion.itemId) ?? null
+    : null;
+  const contextualItem = contextualBaseItem && contextualSuggestion
     ? {
         ...contextualBaseItem,
         label: contextualSuggestion.label ?? contextualBaseItem.label,

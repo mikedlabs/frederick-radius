@@ -5,7 +5,10 @@ import {
 } from "@/lib/search/index";
 import { isEventSearchIntent } from "@/lib/search";
 import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
-import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import {
+  loadEventArchiveSnapshot,
+  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+} from "@/lib/loaders/todayEventSnapshot";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
 import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
@@ -139,7 +142,9 @@ export async function GET(request: NextRequest) {
       // Both Map and global Find use the same durable archive contract. A
       // resolved snapshot may still be degraded because the archive is stale,
       // missing, or timed out; that state is not a healthy empty calendar.
-      const snapshot = await loadEventArchiveSnapshot(new Date());
+      const snapshot = await loadEventArchiveSnapshot(new Date(), {
+        timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+      });
       liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
       searchResult = qualifiedSearchIndex(
         q,

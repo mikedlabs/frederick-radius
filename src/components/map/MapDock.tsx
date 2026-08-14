@@ -45,9 +45,10 @@ import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { mapSearchResultLimit } from "./mapSearchVisibility";
-import type {
-  RadiusSceneId,
-  ResolvedRadiusScene,
+import {
+  radiusSceneStatusLabel,
+  type RadiusSceneId,
+  type ResolvedRadiusScene,
 } from "./radiusScenes";
 import type { LiveBusLayerSnapshot } from "./LiveBuses";
 
@@ -389,30 +390,6 @@ const SCENE_ICONS: Record<RadiusSceneId, LucideIcon> = {
   "what-changed": History,
   "within-15-minutes": TimerReset,
 };
-
-function radiusSceneStatus(scene: ResolvedRadiusScene): string {
-  const { id } = scene.definition;
-  const { status, reason } = scene.availability;
-  if (status === "needs-location") return "Use location";
-  if (status === "loading") return "Loading";
-  if (status === "caution") return "Check first";
-  if (status === "unavailable") return "Unavailable";
-  if (status === "limited") {
-    if (id === "buses-now") return "Ready to check";
-    if (id === "what-changed") {
-      return reason.startsWith("Open this view") ? "Check now" : "Archive";
-    }
-    if (id === "outside-now" && reason.startsWith("Open this view")) {
-      return "Check now";
-    }
-    return "Available";
-  }
-  const count = reason.match(/^(\d+)\s/)?.[1];
-  if (id === "buses-now" && count) return `${count} live`;
-  if (id === "roads-now" && count) return `${count} current`;
-  if (id === "what-changed" && count) return `${count} records`;
-  return "Ready";
-}
 
 function formatLayerUpdate(timestamp: string | null): string | null {
   if (!timestamp) return null;
@@ -1279,7 +1256,7 @@ export default function MapDock(props: MapDockProps) {
         </span>
         <span className="dock-scene-copy">
           <strong>{scene.definition.label}</strong>
-          <small>{radiusSceneStatus(scene)}</small>
+          <small>{radiusSceneStatusLabel(scene)}</small>
         </span>
       </button>
     );
@@ -1988,7 +1965,7 @@ export default function MapDock(props: MapDockProps) {
                     <strong>What changed</strong>
                     <small>
                       {whatChangedScene
-                        ? radiusSceneStatus(whatChangedScene)
+                        ? radiusSceneStatusLabel(whatChangedScene)
                         : "Projects, civic records, and recent changes"}
                     </small>
                   </span>

@@ -4,6 +4,7 @@ import {
   RADIUS_SCENES,
   emptyRadiusSceneSignals,
   parseRadiusSceneId,
+  radiusSceneStatusLabel,
   resolveRadiusScene,
   type RadiusSceneSignals,
 } from "./radiusScenes";
@@ -170,6 +171,27 @@ describe("buses-now", () => {
     expect(scene.availability.reason).toBe(
       "5 live buses are reporting now. Open this view for routes and stops.",
     );
+    expect(radiusSceneStatusLabel(scene)).toBe("5 live");
+  });
+
+  it("does not imply a live count when current positions are unknown", () => {
+    const limited = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.routeCount = 12;
+        value.transit.vehicles = { status: "unavailable", count: 0 };
+      }),
+    );
+    expect(radiusSceneStatusLabel(limited)).toBe("Ready to check");
+
+    const unavailable = resolveRadiusScene(
+      "buses-now",
+      signals((value) => {
+        value.transit.routeCount = 0;
+        value.transit.vehicles = { status: "unavailable", count: 0 };
+      }),
+    );
+    expect(radiusSceneStatusLabel(unavailable)).toBe("Unavailable");
   });
 });
 
