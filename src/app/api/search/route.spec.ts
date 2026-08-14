@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
   loadEventArchiveSnapshot: mocks.loadEventArchiveSnapshot,
+  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 650,
 }));
 
 vi.mock("@/lib/ip-geo", () => ({
@@ -91,7 +92,10 @@ describe("GET /api/search map fast path", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
+      expect.any(Date),
+      { timeoutMs: 650 },
+    );
     expect(body.results).toContainEqual(
       expect.objectContaining({
         id: "event:radius-investor-showcase",

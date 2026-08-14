@@ -15,6 +15,7 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
 import ScopeBar from "@/components/nav/ScopeBar";
 import CategorySection from "./CategorySection";
+import type { DecisionOriginSource } from "@/lib/scope";
 
 /**
  * CategoryView — the context-aware category pattern currently used by Coffee.
@@ -28,23 +29,39 @@ import CategorySection from "./CategorySection";
  */
 export default function CategoryView({
   category,
-  homeMuni,
+  rankingMuni,
+  filterMuni,
+  originSource,
 }: {
   category: { slug: string; name: string; color: string; blurb: string };
-  /** Resolved from the `fr_home_muni` cookie by the page; null = unknown. */
-  homeMuni: string | null;
+  /** Effective town used as the ranking origin; may come from saved home. */
+  rankingMuni: string | null;
+  /** Hard boundary from a deliberately selected town scope only. */
+  filterMuni: string | null;
+  originSource: DecisionOriginSource;
 }) {
-  const town = homeMuni ? (MUNICIPALITY_BY_SLUG[homeMuni] ?? null) : null;
+  const town = rankingMuni
+    ? (MUNICIPALITY_BY_SLUG[rankingMuni] ?? null)
+    : null;
   // No location means no distance origin. Quietly substituting Downtown made
   // the page's countywide language false and promoted Frederick-city results
   // for every new visitor. rankPlaces already has a quality-first countywide
   // path when origin is undefined.
   const origin = town?.centroid;
-  const ctx = { town: town?.slug ?? null, category: category.slug };
+  const ctx = {
+    town: town?.slug ?? null,
+    category: category.slug,
+    originSource,
+  };
 
   // One ranked, distance-decorated set from the resolved origin; every
   // section is a pure slice of it (no second loader pass).
-  const all = rankPlaces({ category: category.slug, origin }).map(slimForList);
+  const all = rankPlaces({
+    category: category.slug,
+    origin,
+    originSource,
+    municipality: filterMuni ?? undefined,
+  }).map(slimForList);
   // Recommendation eligibility: the promoted sections lead with `rec`,
   // which drops institutions (schools/daycares/admissions offices). Full
   // browse below keeps `all` — they stay findable, just not recommended.
@@ -101,7 +118,11 @@ export default function CategoryView({
           the shared scope (same control as the legacy category page + /open-now;
           2026-07-12 beta feedback). Replaces CategoryBriefing's old inline
           set-town, which vanished once a town was set. */}
-      <ScopeBar current={homeMuni} municipalities={municipalities} />
+      <ScopeBar
+        current={rankingMuni}
+        selectedTown={filterMuni}
+        municipalities={municipalities}
+      />
 
       <CategoryBriefing
         categoryName={category.name}

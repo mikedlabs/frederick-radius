@@ -27,15 +27,20 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
  */
 export default function ScopeBar({
   current,
+  selectedTown,
   municipalities,
 }: {
   /** The effective origin town slug the page ranked from, or null = county. */
   current: string | null;
+  /** A town selected as the explicit browsing boundary. A saved-home ranking
+   * origin stays null so choosing that same town still creates the boundary. */
+  selectedTown: string | null;
   municipalities: { slug: string; name: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const currentName = current ? (MUNICIPALITY_BY_SLUG[current]?.name ?? null) : null;
+  const selectValue = selectedTown ?? (currentName ? "ranking-origin" : "county");
 
   return (
     <div
@@ -61,7 +66,7 @@ export default function ScopeBar({
         <select
           aria-describedby="scope-status"
           disabled={isPending}
-          value={current ?? "county"}
+          value={selectValue}
           onChange={(e) => {
             const v = e.target.value;
             setScope(v === "county" ? "county" : (`town:${v}` as const));
@@ -70,6 +75,11 @@ export default function ScopeBar({
           }}
           className="absolute -inset-y-[13px] inset-x-0 cursor-pointer opacity-0 disabled:cursor-wait"
         >
+          {currentName && !selectedTown ? (
+            <option value="ranking-origin" disabled>
+              Ranked from {currentName}
+            </option>
+          ) : null}
           <option value="county">Whole county</option>
           {municipalities.map((m) => (
             <option key={m.slug} value={m.slug}>

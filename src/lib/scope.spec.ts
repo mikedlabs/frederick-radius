@@ -7,6 +7,7 @@ import {
   scopeLabel,
   scopeInSentence,
   effectiveOriginSlug,
+  resolveServerTownRankingContext,
   resolveDecisionContext,
 } from "./scope";
 
@@ -91,6 +92,43 @@ describe("effectiveOriginSlug (server rank resolution)", () => {
     expect(effectiveOriginSlug(null, null)).toBeNull();
     expect(effectiveOriginSlug(null, "constructor")).toBeNull();
     expect(effectiveOriginSlug(null, "__proto__")).toBeNull();
+  });
+});
+
+describe("resolveServerTownRankingContext", () => {
+  it("turns an explicitly selected town into an origin and hard boundary", () => {
+    expect(
+      resolveServerTownRankingContext("town:walkersville", "frederick"),
+    ).toEqual({
+      originMunicipality: "walkersville",
+      filterMunicipality: "walkersville",
+      source: "town",
+    });
+  });
+
+  it("uses a saved home only as a ranking origin", () => {
+    expect(resolveServerTownRankingContext(null, "walkersville")).toEqual({
+      originMunicipality: "walkersville",
+      filterMunicipality: null,
+      source: "home",
+    });
+    expect(
+      resolveServerTownRankingContext("nearme", "walkersville"),
+    ).toEqual({
+      originMunicipality: "walkersville",
+      filterMunicipality: null,
+      source: "home",
+    });
+  });
+
+  it("lets an explicit county scope suppress the home fallback", () => {
+    expect(
+      resolveServerTownRankingContext("county", "walkersville"),
+    ).toEqual({
+      originMunicipality: null,
+      filterMunicipality: null,
+      source: "county",
+    });
   });
 });
 

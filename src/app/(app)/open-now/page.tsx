@@ -13,8 +13,8 @@ import { isRecommendable } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG, MUNICIPALITIES } from "@/data/municipalities";
 import ScopeBar from "@/components/nav/ScopeBar";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
-import { effectiveOriginSlug } from "@/lib/scope";
+import type { LngLat } from "@/lib/geo";
+import { resolveServerTownRankingContext } from "@/lib/scope";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
 import PageBloom from "@/components/ui/PageBloom";
@@ -53,18 +53,24 @@ export const metadata: Metadata = {
 
 export default async function OpenNowPage() {
   const store = await cookies();
-  // Rank from the browsing SCOPE first (UX-02), the long-term home town
-  // second, downtown last. A "Whole county" scope resolves to no town, so
-  // the list ranks county-wide from center — even when a home town is set.
-  const homeMuni = effectiveOriginSlug(
+  // Rank from the browsing SCOPE first (UX-02), then the long-term home town.
+  // A selected town is also a hard boundary. Whole county has no artificial
+  // downtown origin, so it uses the same quality-first county order as the
+  // category pages even when a home town is saved.
+  const rankingContext = resolveServerTownRankingContext(
     store.get("fr_scope")?.value ?? null,
     store.get("fr_home_muni")?.value ?? null,
   );
+  const homeMuni = rankingContext.originMunicipality;
   const homeCentroid: LngLat | null = homeMuni
     ? (MUNICIPALITY_BY_SLUG[homeMuni]?.centroid ?? null)
     : null;
-  const origin = homeCentroid ?? FREDERICK_CENTER;
+  const origin = homeCentroid ?? undefined;
   const now = new Date();
+  const openNowRanking = {
+    municipality: rankingContext.filterMunicipality ?? undefined,
+    originSource: rankingContext.source,
+  };
 
   // Destinations (food/arts/outdoors/shops) sort above personal-service
   // and civic categories — same rule as the town "worth your time" rail
@@ -75,10 +81,10 @@ export default async function OpenNowPage() {
   // page's headline and /today's briefing read the same number from
   // the same rule. A place closing in 40 minutes IS open right now;
   // its card already says "closing soon" (2026-06 audit, offender 2).
-  const snapshot = getOpenNowSnapshot(now, origin, 0);
+  const snapshot = getOpenNowSnapshot(now, origin, 0, openNowRanking);
   const verified = snapshot.places;
   const verifiedSlugs = new Set(verified.map((p) => p.slug));
-  const likely = likelyOpenPlaces(origin, now).filter(
+  const likely = likelyOpenPlaces(origin, now, openNowRanking).filter(
     (p) =>
       isRecommendable(p) &&
       openNowProofModule(p) !== null &&
@@ -236,6 +242,7 @@ export default async function OpenNowPage() {
           line, now interactive. */}
       <ScopeBar
         current={homeMuni}
+        selectedTown={rankingContext.filterMunicipality}
         municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
       />
 

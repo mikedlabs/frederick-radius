@@ -11,9 +11,9 @@ import {
   ALL_COMPASS_TOOLS_ID,
   buildToolDeckDirectory,
   buildToolDeckGroups,
-  compassSuggestionForHour,
   compassShortcutGridClass,
   commonCompassTasks,
+  groundedCompassSuggestion,
   liveLineForIntent,
   liveSuggestionForDeck,
   searchToolDeckGroups,
@@ -376,14 +376,50 @@ describe("Compass live suggestion", () => {
   });
 });
 
-describe("Compass contextual suggestion", () => {
-  it("uses events during the day and evening without opening a duplicate intent", () => {
-    expect(compassSuggestionForHour(14)).toMatchObject({ itemId: "events" });
-    expect(compassSuggestionForHour(19)).toMatchObject({ itemId: "events" });
+describe("Compass grounded suggestion", () => {
+  const key = (id: string, value: string, label: string, status = "ok") => ({
+    id,
+    status,
+    faces: [{ value, label }],
   });
 
-  it("uses verified-hours discovery in the morning and late at night", () => {
-    expect(compassSuggestionForHour(8)).toMatchObject({ itemId: "open-now" });
-    expect(compassSuggestionForHour(23)).toMatchObject({ itemId: "open-now" });
+  it("uses a verified live event count instead of a daypart guess", () => {
+    expect(
+      groundedCompassSuggestion([key("events", "4", "on today")], 14),
+    ).toMatchObject({
+      itemId: "events",
+      href: "/events?when=today",
+      reason: "4 events are still on today.",
+      eyebrow: "On today",
+    });
+  });
+
+  it("stays silent when current event inventory is empty or unavailable", () => {
+    expect(
+      groundedCompassSuggestion([key("events", "None", "left today")], 14),
+    ).toBeNull();
+    expect(
+      groundedCompassSuggestion(
+        [key("events", "4", "on today", "unavailable")],
+        19,
+      ),
+    ).toBeNull();
+    expect(groundedCompassSuggestion([], 8)).toBeNull();
+  });
+
+  it("still lets a serious live condition outrank events", () => {
+    expect(
+      groundedCompassSuggestion(
+        [
+          key("events", "4", "on today"),
+          key("weather", "1", "active alert"),
+        ],
+        14,
+      ),
+    ).toMatchObject({
+      itemId: "county-pulse",
+      label: "Weather alert",
+      eyebrow: "Needs attention",
+    });
   });
 });

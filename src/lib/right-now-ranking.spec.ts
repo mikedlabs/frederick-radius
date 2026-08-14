@@ -153,6 +153,32 @@ describe("right-now no-origin ranking", () => {
     expect(ranked[0]?.p.name).toBe("Hours unknown");
   });
 
+  it("keeps the manual Nearest sort literal inside a close-call quality window", () => {
+    const closest = place("Closest", {
+      slug: "closest",
+      feature_score: 0,
+      google_rating: 3.5,
+      google_rating_count: 1,
+      open_status: { state: "unknown" },
+    });
+    const richer = place("Richer", {
+      slug: "richer",
+      feature_score: 10,
+      google_rating: 5,
+      google_rating_count: 1_000,
+      local_favorite: true,
+      open_status: { state: "unknown" },
+    });
+    const ranked = [
+      { p: richer, dist: 149, open: false },
+      { p: closest, dist: 1, open: false },
+    ].sort((a, b) =>
+      compareRightNowCandidates(a, b, "nearest", true, {}, "bonus"),
+    );
+
+    expect(ranked.map(({ p }) => p.slug)).toEqual(["closest", "richer"]);
+  });
+
   it("keeps the explicit required-hours tier for food and open-now decisions", () => {
     const nearbyUnknown = place("Nearby unknown", {
       open_status: { state: "unknown" },
@@ -183,9 +209,15 @@ describe("right-now no-origin ranking", () => {
   });
 
   it("labels the availability tier instead of promising a false nearest-first list", () => {
-    expect(rightNowSortLabel("smart", true, true)).toBe("open first, then best fit");
-    expect(rightNowSortLabel("nearest", true, true)).toBe("open first, then nearest");
-    expect(rightNowSortLabel("nearest", true, false)).toBe("nearest first");
-    expect(rightNowSortLabel("rated", false, true)).toBe("open first, then top rated");
+    expect(rightNowSortLabel("smart", true, "open")).toBe("open first, then best fit");
+    expect(rightNowSortLabel("nearest", true, "open")).toBe("open first, then nearest");
+    expect(rightNowSortLabel("nearest", true, "available")).toBe(
+      "available first, then nearest",
+    );
+    expect(rightNowSortLabel("nearest", true, null)).toBe("nearest first");
+    expect(rightNowSortLabel("rated", false, "open")).toBe("open first, then top rated");
+    expect(rightNowSortLabel("rated", false, "available")).toBe(
+      "available first, then top rated",
+    );
   });
 });

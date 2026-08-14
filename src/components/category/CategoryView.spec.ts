@@ -11,4 +11,10 @@ describe("CategoryView location contract", () => {
       ".filter((g) => !town || g.municipality !== town.slug)",
     );
   });
+
+  it("passes an explicit town boundary and origin source into the shared ranker", () => {
+    expect(source).toContain("municipality: filterMuni ?? undefined");
+    expect(source).toContain("originSource,");
+    expect(source).toContain("selectedTown={filterMuni}");
+  });
 });

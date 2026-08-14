@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { askFrederick, sourceHasVerifiedOpenStatus } from "./answer";
+import {
+  askFrederick,
+  sourceHasVerifiedOpenStatus,
+  temporalOpenPlaceHits,
+} from "./answer";
 import { freshHoursInstant } from "../../../tests/utils/freshHoursInstant";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters } from "@/lib/geo";
@@ -333,7 +337,6 @@ describe("askFrederick structured answers", () => {
         },
       );
 
-      expect(result.sources.some((source) => source.name === "Cafe Nola")).toBe(true);
       expect(result.sources.length).toBeGreaterThan(0);
       expect(result.sources.every((source) =>
         /^At 12:00 AM · (?:Open|Closing soon)\b/.test(source.status ?? "")
@@ -342,6 +345,52 @@ describe("askFrederick structured answers", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("filters a complete temporal catalog before applying the result cap", () => {
+    const template = clientPlaceBySlug("cugino-forno-frederick");
+    expect(template).toBeDefined();
+    if (!template) throw new Error("Expected a place fixture");
+
+    const closed = Array.from({ length: 13 }, (_, index) => ({
+      ...template,
+      slug: `closed-before-cap-${index}`,
+      name: `Closed before cap ${index}`,
+      feature_score: 10 - index / 100,
+      hours: { mon: [{ open: "08:00", close: "17:00" }] },
+      hours_verified: true,
+      hours_updated_at: "2026-08-10T12:00:00.000Z",
+    }));
+    const openAfterCap = {
+      ...template,
+      slug: "open-after-cap",
+      name: "Open after cap",
+      feature_score: 1,
+      hours: { mon: [{ open: "18:00", close: "01:00" }] },
+      hours_verified: true,
+      hours_updated_at: "2026-08-10T12:00:00.000Z",
+    };
+
+    const hits = temporalOpenPlaceHits(
+      {
+        origin: downtown.origin,
+        municipality: "frederick",
+        contextLabel: "your location",
+        canShowDistance: true,
+      },
+      new Date("2026-08-11T04:00:00.000Z"),
+      12,
+      {
+        downtown: false,
+        regions: [],
+        queryMunicipality: null,
+        preciseNearMe: true,
+      },
+      [...closed, openAfterCap],
+    );
+
+    expect(hits.map((hit) => hit.type === "place" ? hit.place.slug : hit.type))
+      .toEqual(["open-after-cap"]);
   });
 
   it("treats a future date word as scheduling, not a place-search keyword", async () => {

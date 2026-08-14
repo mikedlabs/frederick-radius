@@ -9,6 +9,10 @@ import {
   type DecisionAvailabilityMode,
   type DecisionReason,
 } from "@/lib/decision/core";
+import {
+  compareNearbyPlaceCandidates,
+  nearbyPlaceEvidenceBand,
+} from "@/lib/decision/nearby-place-ranking";
 
 export type RightNowCandidate = {
   p: PlaceCardData;
@@ -174,21 +178,30 @@ export function compareRightNowCandidates(
     const bClosed = !b.open && b.p.open_status?.state === "closed";
     if (aClosed !== bClosed) return aClosed ? 1 : -1;
 
-    // With a deliberate origin, a large distance difference is decisive. This
-    // is the guardrail that prevents a confirmed-open place eleven miles away
-    // from beating an otherwise suitable place around the corner just because
-    // the local listing has not had its hours verified.
-    if (
-      hasOrigin &&
-      Number.isFinite(a.dist) &&
-      Number.isFinite(b.dist) &&
-      Math.abs(a.dist - b.dist) >= 2_500
-    ) {
-      return a.dist - b.dist;
-    }
+  }
+
+  // “Nearest” is an explicit user-selected sort, so it must mean literal
+  // distance inside the availability tier. The shared nearby comparator lets
+  // quality settle a block-scale close call; using it here made a richer place
+  // 149 m away appear before one 1 m away while the UI still said “nearest
+  // first.” Trust remains visible on the cards and governs Smart ranking, but
+  // it must not silently redefine this manual control.
+  if (sort === "nearest" && hasOrigin) {
+    const aFinite = Number.isFinite(a.dist);
+    const bFinite = Number.isFinite(b.dist);
+    if (aFinite !== bFinite) return aFinite ? -1 : 1;
+    const distance = a.dist - b.dist;
+    if (distance) return distance;
+    return a.p.name.localeCompare(b.p.name, "en-US") ||
+      a.p.slug.localeCompare(b.p.slug, "en-US");
   }
 
   if (sort === "rated") {
+    // Trust is still a prerequisite for a promoted result. A high star value
+    // on an unreviewed row cannot make it the lead over confirmed places.
+    const evidence =
+      nearbyPlaceEvidenceBand(b.p) - nearbyPlaceEvidenceBand(a.p);
+    if (evidence) return evidence;
     const aHasReviews = Number.isFinite(a.p.google_rating) && (a.p.google_rating_count ?? 0) > 0;
     const bHasReviews = Number.isFinite(b.p.google_rating) && (b.p.google_rating_count ?? 0) > 0;
     if (aHasReviews !== bHasReviews) return aHasReviews ? -1 : 1;
@@ -199,36 +212,31 @@ export function compareRightNowCandidates(
     if (count) return count;
   }
 
-  if (sort === "smart") {
-    const context = { hasOrigin, ...personal };
-    // In flexible mode, verified-open is a quiet nudge, not a gate. The bonus
-    // is deliberately smaller than the proximity guardrail above.
-    const openBonus = availabilityMode === "bonus" ? 0.07 : 0;
-    const aScore = smartNearbyScore(a, context) + (a.open ? openBonus : 0);
-    const bScore = smartNearbyScore(b, context) + (b.open ? openBonus : 0);
-    const smart = bScore - aScore;
-    if (smart) return smart;
-  }
+  const context = { hasOrigin, ...personal };
+  // Flexible-hours evidence and Smart Nearby's richer signals remain useful
+  // after the trust/distance contract. They cannot make a farther credible
+  // place leapfrog a closer credible one; without a trustworthy origin they
+  // remain the primary quality order.
+  const openBonus = availabilityMode === "bonus" ? 0.07 : 0;
+  const quality = (candidate: RightNowCandidate) =>
+    (sort === "smart"
+      ? smartNearbyScore(candidate, context)
+      : rightNowQualityScore(candidate.p)) +
+    (candidate.open ? openBonus : 0);
 
-  if (sort === "nearest" && hasOrigin) {
-    const distance = a.dist - b.dist;
-    if (distance) return distance;
-  }
-
-  const quality = rightNowQualityScore(b.p) - rightNowQualityScore(a.p);
-  if (quality) return quality;
-
-  if (hasOrigin) {
-    const distance = a.dist - b.dist;
-    if (distance) return distance;
-  }
-  if (
-    availabilityMode === "bonus" &&
-    a.open !== b.open
-  ) {
-    return a.open ? -1 : 1;
-  }
-  return a.p.name.localeCompare(b.p.name);
+  return compareNearbyPlaceCandidates(
+    {
+      place: a.p,
+      distance: a.dist,
+      quality: quality(a),
+    },
+    {
+      place: b.p,
+      distance: b.dist,
+      quality: quality(b),
+    },
+    hasOrigin ? "device" : "none",
+  );
 }
 
 /** Describe the actual ordering shown in Nearby. The caller says whether this
@@ -236,16 +244,22 @@ export function compareRightNowCandidates(
 export function rightNowSortLabel(
   sort: RightNowSort,
   hasOrigin: boolean,
-  availabilityLeads: boolean,
+  availabilityLead: "open" | "available" | null,
 ): string {
+  const label = (orderedBy: string) =>
+    availabilityLead
+      ? `${availabilityLead} first, then ${orderedBy}`
+      : `${orderedBy} first`;
   if (sort === "smart") {
-    return availabilityLeads ? "open first, then best fit" : "best fit first";
+    return label("best fit");
   }
   if (sort === "rated") {
-    return availabilityLeads ? "open first, then top rated" : "top rated first";
+    return label("top rated");
   }
   if (hasOrigin) {
-    return availabilityLeads ? "open first, then nearest" : "nearest first";
+    return label("nearest");
   }
-  return availabilityLeads ? "open first, then best matches" : "best matches";
+  return availabilityLead
+    ? `${availabilityLead} first, then best matches`
+    : "best matches";
 }

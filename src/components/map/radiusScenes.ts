@@ -320,6 +320,41 @@ function count(...values: number[]): number {
   );
 }
 
+/**
+ * Short status for a scene button. A scene can remain `limited` while its
+ * deferred route context loads even though the independent vehicle feed is
+ * already current. In that state, keep the known live count visible instead
+ * of replacing truthful evidence with the vague "Ready to check" fallback.
+ */
+export function radiusSceneStatusLabel(scene: ResolvedRadiusScene): string {
+  const { id } = scene.definition;
+  const { status, reason } = scene.availability;
+  if (status === "needs-location") return "Use location";
+  if (status === "loading") return "Loading";
+  if (status === "caution") return "Check first";
+  if (status === "unavailable") return "Unavailable";
+
+  const countMatch = reason.match(/^(\d+)\s/);
+  const knownCount = countMatch?.[1];
+  if (id === "buses-now" && /^\d+ live buses?\b/.test(reason) && knownCount) {
+    return `${knownCount} live`;
+  }
+
+  if (status === "limited") {
+    if (id === "buses-now") return "Ready to check";
+    if (id === "what-changed") {
+      return reason.startsWith("Open this view") ? "Check now" : "Archive";
+    }
+    if (id === "outside-now" && reason.startsWith("Open this view")) {
+      return "Check now";
+    }
+    return "Available";
+  }
+  if (id === "roads-now" && knownCount) return `${knownCount} current`;
+  if (id === "what-changed" && knownCount) return `${knownCount} records`;
+  return "Ready";
+}
+
 function resolveBuses(signals: RadiusSceneSignals): RadiusSceneAvailability {
   const routes = count(signals.transit.routeCount);
   const vehicles = signals.transit.vehicles;

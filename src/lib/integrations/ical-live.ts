@@ -139,6 +139,8 @@ export type LiveEvent = {
    * time; for curated rows it is the editorial verification date.
    */
   last_verified_at: string;
+  /** Publisher-owned record modification time when the source exposes one. */
+  publisher_updated_at?: string;
 };
 
 type Feed = {
@@ -2016,6 +2018,8 @@ async function fetchJsonArrayFeed(
 /** One row of a Vibemap-for-WordPress wp/v2/vibemap_event payload. Only the
  *  fields we read are typed; `meta` carries ~80 vibemap_* keys. */
 export type VibemapRow = {
+  /** WordPress exposes this as a UTC wall-clock value without a suffix. */
+  modified_gmt?: string;
   title?: { rendered?: string };
   link?: string;
   excerpt?: { rendered?: string };
@@ -2069,6 +2073,32 @@ function vibemapEventImage(row: VibemapRow): string | undefined {
     approvedVibemapImage(meta["vibemap_event_original_images"]) ??
     approvedVibemapImage(row.yoast_head_json?.twitter_image)
   );
+}
+
+function samePublisherHttpsUrl(
+  candidate: string | undefined,
+  feedUrl: string,
+): string | undefined {
+  if (!candidate) return undefined;
+  try {
+    const value = new URL(candidate);
+    const feed = new URL(feedUrl);
+    return value.protocol === "https:" && value.hostname === feed.hostname
+      ? value.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function wordpressGmtIso(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const trimmed = value.trim();
+  const candidate = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed)
+    ? trimmed
+    : `${trimmed}Z`;
+  const timestamp = Date.parse(candidate);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
 }
 
 /**
@@ -2137,7 +2167,11 @@ export function parseVibemapEvents(
     const hasGeo =
       Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0);
     const metaUrl = str("vibemap_event_url");
+    const publisherRecordUrl = samePublisherHttpsUrl(row.link, feed.url);
     const candidate = {
+      // Preserve the existing source identity during this rollout. Switching
+      // every archived DFP row to WordPress IDs without an alias migration can
+      // create duplicate canonical records when a title changes.
       id: `${feed.source}:${dedupeKey(title, effectiveStart, venue)}`,
       title,
       status,
@@ -2154,10 +2188,14 @@ export function parseVibemapEvents(
       organizer: str("vibemap_event_organizer").trim() || feed.source_label,
       source: feed.source,
       source_label: feed.source_label,
-      url: /^https?:\/\//i.test(metaUrl) ? metaUrl : row.link || feed.url,
+      // The WordPress record is the first-party source of this exact row and
+      // remains stable when its title changes. A downstream/meta action URL is
+      // useful content, but it is not the evidence identity.
+      url: publisherRecordUrl ?? (/^https?:\/\//i.test(metaUrl) ? metaUrl : feed.url),
       is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
       hero_image: vibemapEventImage(row),
       last_verified_at: fetchedAt,
+      publisher_updated_at: wordpressGmtIso(row.modified_gmt),
     };
     const validated = validateLiveEvent(candidate, feed.source);
     if (validated) events.push(validated);
@@ -2171,7 +2209,7 @@ export function parseVibemapEvents(
 // is logged so it never truncates silently.
 const VIBEMAP_MAX_PAGES = 4;
 const VIBEMAP_FIELDS = [
-  "id", "title", "link", "excerpt",
+  "modified_gmt", "title", "link", "excerpt",
   "meta.vibemap_event_start_date", "meta.vibemap_event_end_date",
   "meta.vibemap_event_is_all_day", "meta.vibemap_event_is_canceled",
   "meta.vibemap_event_is_online", "meta.vibemap_event_organizer",
@@ -2774,7 +2812,9 @@ function getCachedEventSourcePage(
       );
     },
     [
-      "live-event-source-page-v2",
+      // v3 adds the publisher-owned modification timestamp used to settle
+      // first-party event changes. Keep old cache tuples out of this shape.
+      "live-event-source-page-v3",
       source,
       String(windowDays),
       afterCursor ?? "first",

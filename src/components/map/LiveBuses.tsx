@@ -99,6 +99,10 @@ const SELECTABLE_STOP_BY_ID = new Map(
 const POLL_MS = 15_000;
 const PROVIDER_STALE_MS = 40_000;
 const CLIENT_TIMEOUT_MS = 8_000;
+// The county-level bus summary and the device-location action can share almost
+// the same coordinate at Frederick's center. Lift the ambient summary above
+// that point so both 44px controls remain visible and independently tappable.
+export const AMBIENT_BUS_AGGREGATE_OFFSET: [number, number] = [0, -52];
 // Glide paced to the poll: with a 1.4s glide against a 15s poll, buses
 // sprinted for a moment and then sat frozen for ~13s - burst-and-freeze
 // (owner report, 2026-07-19: the motion could look better). Easing across
@@ -689,6 +693,7 @@ function VisibleLiveBuses({
           longitude={aggregateCenter.lng}
           latitude={aggregateCenter.lat}
           anchor="center"
+          offset={preview ? AMBIENT_BUS_AGGREGATE_OFFSET : undefined}
         >
           <button
             type="button"

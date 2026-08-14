@@ -5869,6 +5869,7 @@ export default function AppMap({
               longitude={userLoc.lng}
               latitude={userLoc.lat}
               anchor="center"
+              className="map-marker-pass-through"
               style={{ pointerEvents: "none" }}
             >
               <span className="map-location-lock" data-map-location-lock aria-hidden />

@@ -9,7 +9,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { applyAskOutdoorSafety } from "@/lib/ask/outdoor-safety";
 import { isOutdoorRecommendation } from "@/lib/weather-safety";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { FREDERICK_CENTER, isInFrederickCountyArea } from "@/lib/geo";
 import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
 import {
   powerOutageAskResult,
@@ -52,6 +52,21 @@ import {
   getCountyPlanningApplications,
   type CountyPlanningApplication,
 } from "@/lib/integrations/fcPlanningProjects";
+import { getNwsForecast, type NwsForecast } from "@/lib/integrations/nws";
+import {
+  getNwsAlertsResult,
+  type NwsAlertsResult,
+} from "@/lib/integrations/nws-alerts";
+import {
+  getAirQuality,
+  type AqiObservation,
+} from "@/lib/integrations/airnow";
+import {
+  currentOutdoorAreaReference,
+  currentOutdoorConditionsAskResult,
+  currentOutdoorLocationClarification,
+  wantsCurrentOutdoorConditions,
+} from "@/lib/ask/current-outdoor-conditions";
 
 const ASK_SAFETY_DEADLINE_MS = 1_500;
 const ASK_CIVIC_DEADLINE_MS = 2_000;
@@ -275,6 +290,93 @@ export async function POST(req: NextRequest) {
         waterAdvisoryAskResult(notices, {
           label: context.label,
         }),
+        query,
+        { kind: "civic" },
+      ),
+    );
+  }
+  // “Is it safe and comfortable outside right now?” is a live conditions
+  // question, not an invitation to retrieve events. Answer it directly from
+  // the three official condition inputs and preserve failed-feed state so an
+  // unavailable alert or AQI service can never become a false all-clear.
+  if (wantsCurrentOutdoorConditions(query)) {
+    const now = new Date();
+    const areaReference = currentOutdoorAreaReference(query);
+    if (areaReference?.kind === "unresolved") {
+      return NextResponse.json(
+        withAskResponsePresentation(
+          currentOutdoorLocationClarification(areaReference),
+          query,
+          { kind: "civic" },
+        ),
+      );
+    }
+    const namedMunicipality = areaReference?.kind === "municipality"
+      ? areaReference.municipality
+      : null;
+    const asksAboutCounty = areaReference?.kind === "county";
+    const asksAboutDowntown = /\bdowntown\b/i.test(query);
+    const defaultsToDowntownFrederick =
+      asksAboutDowntown && namedMunicipality === null && !asksAboutCounty;
+    // Honor the location named in the question. Someone can ask about
+    // downtown conditions before leaving Urbana; using their device position
+    // in that case would produce a precise answer for the wrong place. A phone
+    // outside Frederick County also falls back to the county center because
+    // this answer's official alert feed is Frederick-specific. Mixing a remote
+    // forecast with Frederick alerts would create a precise-looking false read.
+    const deviceOutsideCounty =
+      context.source === "device" &&
+      context.origin !== null &&
+      !isInFrederickCountyArea(context.origin.lng, context.origin.lat);
+    const point = namedMunicipality?.centroid ?? (
+      asksAboutCounty || defaultsToDowntownFrederick || deviceOutsideCounty
+        ? FREDERICK_CENTER
+        : context.origin ?? FREDERICK_CENTER
+    );
+    const [forecast, alerts, airObservations] = await Promise.all([
+      failSoftWithin<NwsForecast | null>(
+        getNwsForecast(point),
+        null,
+        ASK_CIVIC_DEADLINE_MS,
+      ),
+      failSoftWithin<NwsAlertsResult>(
+        getNwsAlertsResult(),
+        { alerts: [], available: false },
+        ASK_CIVIC_DEADLINE_MS,
+      ),
+      failSoftWithin<AqiObservation[] | null>(
+        getAirQuality(point, { deadlineMs: ASK_CIVIC_DEADLINE_MS }),
+        null,
+        ASK_CIVIC_DEADLINE_MS,
+      ),
+    ]);
+    const namedAreaLabel = namedMunicipality
+      ? namedMunicipality.slug === "frederick"
+        ? asksAboutDowntown ? "downtown Frederick" : "Frederick City"
+        : asksAboutDowntown
+          ? `downtown ${namedMunicipality.name}`
+          : namedMunicipality.name
+      : null;
+    const areaLabel = namedAreaLabel
+      ?? (asksAboutCounty
+        ? "Frederick County"
+        : defaultsToDowntownFrederick
+        ? "downtown Frederick"
+        : deviceOutsideCounty
+        ? "Frederick County"
+        : context.label === "Near you"
+          ? "near you"
+          : context.label === "Whole county"
+            ? "Frederick County"
+            : context.label
+                .replace(/^Ranked from\s+/i, "")
+                .replace(/^Approximately near\s+/i, ""));
+    return NextResponse.json(
+      withAskResponsePresentation(
+        currentOutdoorConditionsAskResult(
+          { forecast, alerts, airObservations },
+          { areaLabel, now, point },
+        ),
         query,
         { kind: "civic" },
       ),

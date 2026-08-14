@@ -60,9 +60,21 @@ type AlertsResp = {
 export type NwsAlertsResult = {
   alerts: NwsAlert[];
   /** False means the official feed failed; an empty successful response is
-   *  available=true. Safety copy must be able to tell those states apart. */
+   * available=true. Availability alone is not a freshness claim; safety copy
+   * must also validate checkedAt before saying that no alerts are active. */
   available: boolean;
+  /** Timestamp carried by the successful upstream HTTP response. This is
+   * intentionally not `new Date()` at the call site: Next may serve a cached
+   * response, and safety surfaces need to know when NWS actually answered. */
+  checkedAt?: string;
 };
+
+function responseCheckedAt(response: Response): string | undefined {
+  const raw = response.headers.get("date");
+  if (!raw) return undefined;
+  const value = new Date(raw);
+  return Number.isFinite(value.getTime()) ? value.toISOString() : undefined;
+}
 
 /** NWS can keep several revisions of one still-active product in the active
  * feed. Keep the newest revision per event/area/expiry so Today never shows an
@@ -144,7 +156,11 @@ async function loadNwsAlertsResult(): Promise<NwsAlertsResult> {
         area: f.properties.areaDesc,
         url: f.properties["@id"],
       }));
-    return { alerts: dedupeRevisions(alerts), available: true };
+    return {
+      alerts: dedupeRevisions(alerts),
+      available: true,
+      checkedAt: responseCheckedAt(res),
+    };
   } catch {
     return { alerts: [], available: false };
   } finally {

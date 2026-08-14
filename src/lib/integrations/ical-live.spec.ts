@@ -139,12 +139,14 @@ describe("official-feed classification and venue corrections", () => {
 });
 
 function vmRow(over: {
+  modifiedGmt?: string;
   title?: string;
   meta?: Record<string, unknown>;
   excerpt?: string;
   yoastImage?: string;
 }): VibemapRow {
   return {
+    modified_gmt: over.modifiedGmt,
     title: { rendered: over.title ?? "Open Mic Night" },
     link: "https://downtownfrederick.org/vm-event/open-mic/",
     excerpt: { rendered: over.excerpt ?? "" },
@@ -176,8 +178,26 @@ describe("parseVibemapEvents", () => {
     expect(e.venue_name).toBe("Dancing Bear Toys and Games");
     expect(e.placement).toBe("geocoded");
     expect(e.geom).toEqual({ lat: 39.4141, lng: -77.4105 });
-    expect(e.url).toBe("https://www.visitfrederick.org/event/open-mic/1/");
+    expect(e.url).toBe("https://downtownfrederick.org/vm-event/open-mic/");
     expect(e.source).toBe("dfp");
+  });
+
+  it("keeps the publisher's real modification time separate from fetch time", () => {
+    const [event] = parseVibemapEvents(
+      [
+        vmRow({
+          modifiedGmt: "2026-08-12T16:33:21",
+          title: "Alive @ Five &#8211; Freddie Long",
+        }),
+      ],
+      DFP_FEED,
+      NOW,
+      HORIZON,
+      FETCHED,
+    );
+
+    expect(event.publisher_updated_at).toBe("2026-08-12T16:33:21.000Z");
+    expect(event.last_verified_at).toBe(FETCHED);
   });
 
   it("retains an in-progress event until its published end", () => {

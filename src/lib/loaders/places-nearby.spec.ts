@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isRecommendable } from "@/lib/relevance";
-import { getPlaceBySlug } from "./places";
+import { getPlaceBySlug, rankPlaces } from "./places";
 
 describe("place detail nearby recommendations", () => {
   it("does not promote institutions that remain available in search and map", () => {
@@ -24,5 +24,21 @@ describe("place detail nearby recommendations", () => {
     expect(
       place?.nearby_places.some((nearby) => nearby.category === "salon"),
     ).toBe(false);
+  });
+});
+
+describe("location-aware place ranking", () => {
+  it("puts Gravel & Grind first when the reader is standing beside it", () => {
+    const coffee = rankPlaces({
+      category: "coffee",
+      origin: { lng: -77.40955, lat: 39.42165 },
+      originSource: "device",
+    });
+
+    expect(coffee[0]?.slug).toBe("gravel-and-grind-frederick");
+    expect(coffee[0]?.distance_m).toBeLessThan(50);
+    expect(
+      coffee.findIndex((place) => /^starbucks\b/i.test(place.name)),
+    ).toBeGreaterThan(0);
   });
 });

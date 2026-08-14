@@ -126,6 +126,8 @@ const NEAR_TOWN_RADIUS_M = 16_000;
 
 export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
   EventProvenance & {
+  /** Publisher record edit time; unlike a fetch time, this can settle copy. */
+  publisher_updated_at?: string | null;
   distance_m?: number;
   /** How well we know the position. A distance is only ever stamped for
    *  "venue_match"/"exact_address"; "area"/"unknown" list without one. */
@@ -206,11 +208,15 @@ function venuesMatch(a: string, b: string): boolean {
  * narrow: the prefix must name a recognizable series, not a generic word such
  * as "music" or "trivia".
  */
-function recurringSeriesTitle(title: string): string | null {
+function recurringSeriesLabel(title: string): string | null {
   const prefix =
-    title.split(/(?:\s+[·|:–—]\s*|\s+-\s+)/u, 1)[0]?.trim() ?? "";
-  const normalized = normLoose(prefix);
-  return normalized.length >= 8 ? normalized : null;
+    title.split(/(?:\s+[·|–—]\s*|\s*:\s*|\s+-\s+)/u, 1)[0]?.trim() ?? "";
+  return normLoose(prefix).length >= 8 ? prefix : null;
+}
+
+function recurringSeriesTitle(title: string): string | null {
+  const prefix = recurringSeriesLabel(title);
+  return prefix ? normLoose(prefix) : null;
 }
 
 function sameRecurringSeries(a: EventWithMeta, b: EventWithMeta): boolean {
@@ -260,6 +266,168 @@ function editorialVerificationTime(event: EventWithMeta): number {
   if (!event.is_verified || !event.last_verified_at) return 0;
   const value = +new Date(event.last_verified_at);
   return Number.isFinite(value) ? value : 0;
+}
+
+function publisherUpdateTime(event: EventWithMeta): number {
+  if (!event.publisher_updated_at) return 0;
+  const value = +new Date(event.publisher_updated_at);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isDirectDfpEventUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "downtownfrederick.org" &&
+      url.pathname.startsWith("/vm-event/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function recurringSeriesDetail(title: string): string | null {
+  // The last strong separator names the changing occurrence detail. This
+  // keeps "Opening Night" as series copy while extracting the actual act
+  // from "Alive @ Five: Opening Night · Old Act".
+  const strong = title.match(/.*(?:\s+[·|–—]\s*|\s+-\s+)(.+)$/u);
+  if (strong?.[1]?.trim()) return strong[1].trim();
+  const colon = title.match(/.*:\s*(.+)$/u);
+  return colon?.[1]?.trim() || null;
+}
+
+const normPerformer = (value: string) =>
+  normLoose(value.replaceAll("&", " and "));
+
+function correctRecurringDescription(
+  current: EventWithMeta,
+  correction: EventWithMeta,
+): string {
+  const oldDetail = recurringSeriesDetail(current.title);
+  const newDetail = recurringSeriesDetail(correction.title);
+  if (
+    oldDetail &&
+    newDetail &&
+    normPerformer(oldDetail) !== normPerformer(newDetail) &&
+    normPerformer(current.description).includes(normPerformer(oldDetail))
+  ) {
+    const escaped = oldDetail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const exact = new RegExp(escaped, "gi");
+    if (exact.test(current.description)) {
+      return current.description.replace(exact, newDetail);
+    }
+
+    // The description may spell "&" as "and" or vary punctuation. Remove
+    // only the sentence that names the stale performer, then rebuild that one
+    // factual sentence from the current structured title.
+    const remaining = current.description
+      .split(/(?<=[.!?])\s+/u)
+      .filter(
+        (sentence) =>
+          !normPerformer(sentence).includes(normPerformer(oldDetail)),
+      )
+      .join(" ")
+      .trim();
+    const series = recurringSeriesLabel(current.title) ?? "this event";
+    const lead = `${newDetail} headlines ${series}.`;
+    return remaining ? `${lead} ${remaining}` : lead;
+  }
+  // A publisher excerpt can still contain stale prose even when its title is
+  // current. Only use it when Radius has no description of its own.
+  return current.description || correction.description;
+}
+
+/**
+ * Apply a newer first-party structured correction to the matching curated
+ * occurrence without throwing away the richer Radius record around it.
+ *
+ * This is deliberately narrow. Today the only qualifying source is DFP's
+ * WordPress/Vibemap registry because it supplies a real publisher modification
+ * time. A fresh fetch timestamp is never enough. We require an exact occurrence
+ * match or one unambiguous series occurrence on the same local day.
+ */
+export function applyOfficialPublisherUpdates(
+  curated: EventWithMeta[],
+  live: EventWithMeta[],
+): EventWithMeta[] {
+  return curated.map((current) => {
+    const currentEvidence = editorialVerificationTime(current);
+    const eligible = live.filter(
+      (candidate) =>
+        candidate.source === "dfp" &&
+        current.source === "dfp" &&
+        !candidate.is_verified &&
+        publisherUpdateTime(candidate) > currentEvidence,
+    );
+    const exact = eligible.filter(
+      (candidate) =>
+        (Boolean(current.source_url) &&
+          isDirectDfpEventUrl(current.source_url) &&
+          current.source_url === candidate.source_url &&
+          sameRecurringSeries(current, candidate)) ||
+        (sameEventVenue(current, candidate) &&
+          sameRecurringSeriesOccurrence(current, candidate)),
+    );
+    const sameSeriesDay = eligible.filter(
+      (candidate) =>
+        sameRecurringSeries(current, candidate) &&
+        easternDayKey(new Date(current.starts_at)) ===
+          easternDayKey(new Date(candidate.starts_at)),
+    );
+    const curatedSeriesDay = curated.filter(
+      (candidate) =>
+        candidate.source === "dfp" &&
+        sameRecurringSeries(current, candidate) &&
+        easternDayKey(new Date(current.starts_at)) ===
+          easternDayKey(new Date(candidate.starts_at)),
+    );
+    // A single structured occurrence on the same local day can safely carry
+    // a last-minute time or venue move. Multiple sessions are ambiguous and
+    // require an exact URL/venue/time match or human review.
+    const correction = (exact.length > 0
+      ? exact
+      : sameSeriesDay.length === 1 && curatedSeriesDay.length === 1
+        ? sameSeriesDay
+        : [])
+      .sort((a, b) => publisherUpdateTime(b) - publisherUpdateTime(a))[0];
+
+    if (!correction) return current;
+    const venueMoved = !venuesMatch(current.venue_name, correction.venue_name);
+    const canApplyVenue =
+      !venueMoved || correction.geo_confidence === "exact_address";
+
+    return {
+      ...current,
+      // These are factual fields owned by the organizer. Keep Radius-only
+      // admission notes, recurrence copy, venue relationship, and imagery.
+      title: correction.title,
+      description: correctRecurringDescription(current, correction),
+      starts_at: correction.starts_at,
+      ends_at: correction.ends_at,
+      status: correction.status,
+      venue_name: canApplyVenue ? correction.venue_name : current.venue_name,
+      address:
+        canApplyVenue && correction.address
+          ? correction.address
+          : current.address,
+      venue_place_slug:
+        canApplyVenue && venueMoved ? undefined : current.venue_place_slug,
+      geom:
+        canApplyVenue && correction.geo_confidence === "exact_address"
+          ? correction.geom
+          : current.geom,
+      organizer: correction.organizer || current.organizer,
+      source_url: current.source_url ?? correction.source_url,
+      publisher_updated_at: correction.publisher_updated_at,
+      last_verified_at: correction.publisher_updated_at ?? current.last_verified_at,
+      geo_confidence:
+        canApplyVenue && correction.geo_confidence === "exact_address"
+          ? correction.geo_confidence
+          : current.geo_confidence,
+    };
+  });
 }
 
 /**

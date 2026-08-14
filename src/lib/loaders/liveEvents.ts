@@ -227,6 +227,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     hero_image: e.hero_image,
     organizer: e.organizer,
     status: e.status,
+    publisher_updated_at: e.publisher_updated_at,
     // The feed's real source, not "manual": the hardcode let every live
     // row (Ticketmaster, county, venue feeds) claim first party curated
     // trust. eventTrust still labels county rows Official and the rest

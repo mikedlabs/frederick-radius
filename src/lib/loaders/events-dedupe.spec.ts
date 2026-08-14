@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { EVENT_BY_SLUG } from "@/data/events";
 import type { EventWithMeta } from "./events";
-import { dedupeCuratedClusters, dedupeLiveAgainstCurated } from "./events";
+import {
+  applyOfficialPublisherUpdates,
+  dedupeCuratedClusters,
+  dedupeLiveAgainstCurated,
+} from "./events";
 
 function event(
   slug: string,
@@ -169,5 +173,196 @@ describe("recurring event series deduplication", () => {
     expect(
       dedupeCuratedClusters([corrected, staleButFetchedLater]),
     ).toEqual([corrected]);
+  });
+
+  it("applies a newer DFP structured lineup edit without losing Radius details", () => {
+    const curated = event(
+      "alive-at-five-2026-08-13",
+      "Alive @ Five · Conor & the Wild Hunt",
+      {
+        description:
+          "Conor & the Wild Hunt headlines Alive @ Five. Season announcement copy.",
+        info: { admission: "$5 cash at the gate." },
+        source_url:
+          "https://downtownfrederick.org/vm-event/alive-five-conor-the-wild-hunt-americana-folk/",
+        last_verified_at: "2026-07-01T12:00:00.000Z",
+      },
+    );
+    const publisher = event(
+      "alive-five-freddie-long-2026-08-13",
+      "Alive @ Five – Freddie Long",
+      {
+        description: "Music: Freddie Long. Food: Sabor de Cuba and In10se BBQ.",
+        is_recurring: false,
+        is_verified: false,
+        venue_name: "Carroll Creek Outdoor Amphitheater",
+        venue_place_slug: undefined,
+        source_url: "https://downtownfrederick.org/aliveatfive/",
+        last_verified_at: "2026-08-13T20:00:00.000Z",
+        publisher_updated_at: "2026-08-12T16:33:21.000Z",
+      },
+    );
+
+    const [updated] = applyOfficialPublisherUpdates([curated], [publisher]);
+    expect(updated).toMatchObject({
+      slug: curated.slug,
+      title: "Alive @ Five – Freddie Long",
+      description:
+        "Freddie Long headlines Alive @ Five. Season announcement copy.",
+      info: curated.info,
+      source_url: curated.source_url,
+      last_verified_at: "2026-08-12T16:33:21.000Z",
+      publisher_updated_at: "2026-08-12T16:33:21.000Z",
+    });
+  });
+
+  it("keeps a newer human correction over an older publisher edit", () => {
+    const curated = event(
+      "alive-at-five-2026-08-13",
+      "Alive @ Five · Freddie Long",
+      { last_verified_at: "2026-08-13T20:38:00.000Z" },
+    );
+    const stalePublisher = event(
+      "alive-five-conor-wild-hunt-2026-08-13",
+      "Alive @ Five – Conor & the Wild Hunt",
+      {
+        is_recurring: false,
+        is_verified: false,
+        venue_name: "Carroll Creek Outdoor Amphitheater",
+        venue_place_slug: undefined,
+        publisher_updated_at: "2026-08-12T16:33:21.000Z",
+      },
+    );
+
+    expect(
+      applyOfficialPublisherUpdates([curated], [stalePublisher]),
+    ).toEqual([curated]);
+  });
+
+  it("applies a unique same-day time and venue move but preserves Radius classification", () => {
+    const curated = event("summer-series", "Summer Series · Old Act", {
+      last_verified_at: "2026-08-01T12:00:00.000Z",
+      category: "music",
+      municipality: "frederick",
+    });
+    const moved = event("summer-series-new", "Summer Series · New Act", {
+      starts_at: "2026-08-13T22:00:00.000Z",
+      ends_at: "2026-08-14T01:00:00.000Z",
+      venue_name: "Baker Park Bandshell",
+      venue_place_slug: undefined,
+      address: "121 N Bentz St, Frederick, MD 21701",
+      is_recurring: false,
+      is_verified: false,
+      category: "community",
+      category_name: "Community",
+      municipality: "walkersville",
+      municipality_name: "Walkersville",
+      publisher_updated_at: "2026-08-13T16:00:00.000Z",
+    });
+
+    const [updated] = applyOfficialPublisherUpdates([curated], [moved]);
+    expect(updated).toMatchObject({
+      title: moved.title,
+      starts_at: moved.starts_at,
+      venue_name: moved.venue_name,
+      category: "music",
+      category_name: curated.category_name,
+      municipality: "frederick",
+      municipality_name: curated.municipality_name,
+    });
+    expect(updated.venue_place_slug).toBeUndefined();
+  });
+
+  it("removes a stale performer sentence when punctuation differs", () => {
+    const curated = event(
+      "alive-at-five-2026-08-13",
+      "Alive @ Five · Conor & the Wild Hunt",
+      {
+        description:
+          "CONOR AND THE WILD HUNT headlines Alive @ Five. Admission is $5 cash.",
+        last_verified_at: "2026-07-01T12:00:00.000Z",
+      },
+    );
+    const publisher = event("alive-five-freddie", "Alive @ Five – Freddie Long", {
+      is_recurring: false,
+      is_verified: false,
+      publisher_updated_at: "2026-08-12T16:33:21.000Z",
+    });
+
+    const [updated] = applyOfficialPublisherUpdates([curated], [publisher]);
+    expect(updated.description).toBe(
+      "Freddie Long headlines Alive @ Five. Admission is $5 cash.",
+    );
+    expect(updated.description).not.toMatch(/conor/i);
+  });
+
+  it("does not guess between multiple same-series sessions on one day", () => {
+    const curated = event("storytime", "Storytime Series · Babies", {
+      starts_at: "2026-08-13T14:00:00.000Z",
+      last_verified_at: "2026-08-01T12:00:00.000Z",
+    });
+    const candidate = (slug: string, title: string, starts_at: string) =>
+      event(slug, title, {
+        starts_at,
+        venue_name: "Another Venue",
+        venue_place_slug: undefined,
+        is_recurring: false,
+        is_verified: false,
+        publisher_updated_at: "2026-08-12T16:33:21.000Z",
+      });
+
+    expect(
+      applyOfficialPublisherUpdates(
+        [curated],
+        [
+          candidate("storytime-a", "Storytime Series · Toddlers", "2026-08-13T15:00:00.000Z"),
+          candidate("storytime-b", "Storytime Series · Preschool", "2026-08-13T16:00:00.000Z"),
+        ],
+      ),
+    ).toEqual([curated]);
+  });
+
+  it("does not apply one live session to two curated sessions", () => {
+    const first = event("storytime-babies", "Storytime Series · Babies", {
+      starts_at: "2026-08-13T14:00:00.000Z",
+      last_verified_at: "2026-08-01T12:00:00.000Z",
+    });
+    const second = event("storytime-preschool", "Storytime Series · Preschool", {
+      starts_at: "2026-08-13T16:00:00.000Z",
+      last_verified_at: "2026-08-01T12:00:00.000Z",
+    });
+    const publisher = event("storytime-current", "Storytime Series · Updated", {
+      starts_at: "2026-08-13T15:00:00.000Z",
+      venue_name: "Another Venue",
+      venue_place_slug: undefined,
+      is_recurring: false,
+      is_verified: false,
+      publisher_updated_at: "2026-08-12T16:33:21.000Z",
+    });
+
+    expect(
+      applyOfficialPublisherUpdates([first, second], [publisher]),
+    ).toEqual([first, second]);
+  });
+
+  it("matches an opening-night title to the base publisher series", () => {
+    const curated = event(
+      "alive-opening",
+      "Alive @ Five: Opening Night · Old Act",
+      {
+        description: "Old Act headlines Alive @ Five. Admission is $5 cash.",
+        last_verified_at: "2026-08-01T12:00:00.000Z",
+      },
+    );
+    const publisher = event("alive-current", "Alive @ Five – New Act", {
+      is_recurring: false,
+      is_verified: false,
+      publisher_updated_at: "2026-08-12T16:33:21.000Z",
+    });
+
+    expect(applyOfficialPublisherUpdates([curated], [publisher])[0]).toMatchObject({
+      title: "Alive @ Five – New Act",
+      description: "New Act headlines Alive @ Five. Admission is $5 cash.",
+    });
   });
 });

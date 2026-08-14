@@ -21,7 +21,7 @@ import CategoryView from "@/components/category/CategoryView";
 import ScopeBar from "@/components/nav/ScopeBar";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { LngLat } from "@/lib/geo";
-import { effectiveOriginSlug } from "@/lib/scope";
+import { resolveServerTownRankingContext } from "@/lib/scope";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
@@ -88,13 +88,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // cached device fix when the visitor has shared one.
   // The browsing scope (fr_scope, UX-02) is the session lens set from the
   // nav chip; fr_home_muni is the long-term home written by PreferencesPanel
-  // via setHomeMuni. effectiveOriginSlug resolves the precedence, so a
-  // "Whole county" scope ranks county-wide even with a home town set.
+  // via setHomeMuni. Preserve the SOURCE as well as the origin town: only a
+  // deliberate town scope is allowed to hard-filter the inventory. A saved
+  // home ranks nearby places first while keeping the rest of the county.
   const store = await cookies();
-  const homeMuni = effectiveOriginSlug(
+  const rankingContext = resolveServerTownRankingContext(
     store.get("fr_scope")?.value ?? null,
     store.get("fr_home_muni")?.value ?? null,
   );
+  const homeMuni = rankingContext.originMunicipality;
 
   // Coffee uses the context-aware answer spine. Other category hubs retain
   // their subcategory navigation, facets, and collection metadata while
@@ -103,7 +105,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     return (
       <CategoryView
         category={{ slug: c.slug, name: c.name, color: c.color, blurb: c.blurb }}
-        homeMuni={homeMuni}
+        rankingMuni={homeMuni}
+        filterMuni={rankingContext.filterMunicipality}
+        originSource={rankingContext.source}
       />
     );
   }
@@ -115,7 +119,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   // slimForList drops google_photos[]/google_hours[] (no card renders them)
   // before the set crosses to the client PlaceList — ~1.4MB off big categories.
-  const places = rankPlaces({ category: slug, origin }).map(slimForList);
+  const places = rankPlaces({
+    category: slug,
+    origin,
+    originSource: rankingContext.source,
+    municipality: rankingContext.filterMunicipality ?? undefined,
+  }).map(slimForList);
   // Children plus cross-tree see_also doorways (Family → Playgrounds, which
   // lives under outdoors): a category has one parent, but hub pages whose
   // audience overlaps another branch still get the chip.
@@ -222,6 +231,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           chip and re-ranks everywhere. */}
       <ScopeBar
         current={homeMuni}
+        selectedTown={rankingContext.filterMunicipality}
         municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
       />
 

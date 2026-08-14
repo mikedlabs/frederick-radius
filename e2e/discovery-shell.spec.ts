@@ -141,10 +141,11 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane.getByRole("button", { name: /^More/ })).toBeVisible();
     await expect(contentsPane.getByText("Ready-made views", { exact: true })).toHaveCount(0);
     await contentsPane.getByRole("button", { name: /^Get around/ }).click();
-    await page
+    const busesNow = page
       .getByRole("region", { name: "Get around" })
-      .getByRole("button", { name: /^Buses now\./ })
-      .click();
+      .getByRole("button", { name: /^Buses now\./ });
+    await expect(busesNow).toContainText("2 live");
+    await busesNow.click();
     await expect(page).toHaveURL(/show=transit/);
     await expect(page).toHaveURL(/scene=buses-now/);
     await expect(page.getByRole("group", { name: "Current map view" })).toContainText(

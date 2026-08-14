@@ -45,6 +45,7 @@ describe("live event cache pages", () => {
       online_url: "https://example.com/watch",
       hero_image: "https://s1.ticketm.net/image.jpg",
       status: "postponed",
+      publisher_updated_at: "2026-07-28T11:45:00.000Z",
     });
     const page = buildLiveEventCachePage([original], "ok");
     const inflated = inflateCachedLiveEvent(

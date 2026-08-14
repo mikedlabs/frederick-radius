@@ -44,6 +44,7 @@ export type CachedLiveEventRecord = [
   heroImage: string | null,
   status: StatusCode,
   lastVerifiedAt: string,
+  publisherUpdatedAt: string | null,
 ];
 
 export type CachedLiveEventPage = {
@@ -200,6 +201,9 @@ export function compactLiveEvent(event: LiveEvent): CachedLiveEventRecord {
     fitOptionalUrl(event.hero_image),
     statusCode(event.status),
     fitUtf8(event.last_verified_at, TEXT_LIMIT_BYTES.timestamp),
+    event.publisher_updated_at
+      ? fitUtf8(event.publisher_updated_at, TEXT_LIMIT_BYTES.timestamp)
+      : null,
   ];
 }
 
@@ -242,6 +246,7 @@ export function inflateCachedLiveEvent(
   else if (record[17] === 3) event.attendance_mode = "mixed";
   if (record[18]) event.online_url = record[18];
   if (record[19]) event.hero_image = record[19];
+  if (record[22]) event.publisher_updated_at = record[22];
 
   return event;
 }

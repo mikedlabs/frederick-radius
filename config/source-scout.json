@@ -116,7 +116,7 @@
       "queries": [
         {
           "id": "city-county-destination-events",
-          "text": "Frederick Maryland new event schedule cancellation postponement venue change {month} {year}",
+          "text": "Frederick Maryland new event schedule cancellation postponement venue lineup performer band replacement change {month} {year}",
           "allowedDomains": [
             "cityoffrederickmd.gov",
             "frederickcountymd.gov",
@@ -126,7 +126,8 @@
           "reviewFor": [
             "newly published events",
             "cancellations or postponements",
-            "time or location changes"
+            "time or location changes",
+            "last-minute lineup or performer changes"
           ]
         },
         {
