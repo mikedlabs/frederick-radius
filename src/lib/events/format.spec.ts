@@ -85,6 +85,18 @@ describe("formatEventWhen", () => {
     expect(when).toBe("Thu, Jul 30 · 9:15 AM–11:00 AM");
   });
 
+  it("keeps both clocks for a short event that runs past midnight", () => {
+    const when = formatEventWhen(
+      base({
+        starts_at: "2026-08-15T13:00:00-04:00",
+        ends_at: "2026-08-16T01:30:00-04:00",
+      }),
+    );
+    expect(when).toBe(
+      "Sat, Aug 15 · 1:00 PM–Sun, Aug 16 · 1:30 AM",
+    );
+  });
+
   it("keeps a real multi-day range as a date range", () => {
     const when = formatEventWhen(
       base({

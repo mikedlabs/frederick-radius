@@ -22,6 +22,7 @@ describe("resolveFeatured", () => {
         { slug: "", expires: "2026-08-01" },
         { slug: "no-expiry" },
         { slug: "bad-date", expires: "August 1" },
+        { slug: "bad-instant", expires_at: "after the show" },
         42,
         null,
         { slug: "good", expires: "2026-08-01" },
@@ -35,6 +36,22 @@ describe("resolveFeatured", () => {
     expect(resolveFeatured(undefined, NOW).size).toBe(0);
     expect(resolveFeatured({ oops: true }, NOW).size).toBe(0);
   });
+
+  it("uses an exact cutoff for an overnight event", () => {
+    const entry = [
+      {
+        slug: "overnight-show",
+        expires_at: "2026-08-16T05:30:00.000Z",
+      },
+    ];
+
+    expect(
+      resolveFeatured(entry, new Date("2026-08-16T01:00:00-04:00")),
+    ).toEqual(new Set(["overnight-show"]));
+    expect(
+      resolveFeatured(entry, new Date("2026-08-16T01:31:00-04:00")),
+    ).toEqual(new Set());
+  });
 });
 
 describe("featuredEventSlugs", () => {
@@ -46,7 +63,10 @@ describe("featuredEventSlugs", () => {
       "snallyfest-2026-kickoff",
     ]);
     expect(
-      featuredEventSlugs(new Date("2026-08-16T12:00:00-04:00")).size,
+      [...featuredEventSlugs(new Date("2026-08-16T01:00:00-04:00"))],
+    ).toEqual(["snallyfest-2026-festival-day"]);
+    expect(
+      featuredEventSlugs(new Date("2026-08-16T01:31:00-04:00")).size,
     ).toBe(0);
   });
 });
