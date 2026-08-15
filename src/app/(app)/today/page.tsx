@@ -345,7 +345,12 @@ export default async function HomePage() {
           <MessageCircleQuestion className="h-4 w-4" strokeWidth={2.1} aria-hidden />
           Ask
         </Link>
-        <details className="group contents">
+        {/* today-browse: current engines wrap a details' content in a
+            ::details-content block box, so the box — not the panel div — is
+            this grid's item and the panel's col-span-3 alone is inert. The
+            globals.css rule spans the wrapper across the row; the col-span-3
+            below still covers engines without the wrapper. */}
+        <details className="group contents today-browse">
           <summary
             role="button"
             className="tactile-interactive inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[13px] font-semibold outline-none marker:content-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] [&::-webkit-details-marker]:hidden"
