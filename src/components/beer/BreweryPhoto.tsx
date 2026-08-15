@@ -95,6 +95,10 @@ export function BreweryPhoto({
             breweryName={breweryName}
             decorative
             sizes={compactFallback ? "112px" : "180px"}
+            // The mark only mounts after the primary venue image has failed.
+            // Load the replacement immediately instead of leaving an empty
+            // fallback plate until the next lazy-loading intersection.
+            loading="eager"
             className={`bg-white/75 p-2 mix-blend-multiply ${
               compactFallback
                 ? "h-[68%] w-[74%]"

@@ -54,20 +54,20 @@ describe("manual place status overrides", () => {
         source:
           "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
         activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
+        expiredAt: "2026-09-15T12:00:00Z",
       },
       {
         slug: "quince-orchard-psychotherapy",
         source: "https://orchardmentalhealth.com/contact/",
         activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
+        expiredAt: "2026-09-15T12:00:00Z",
       },
       {
         slug: "saxbys-at-mount-st-marys-university-emmitsburg",
         source:
           "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
         activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
+        expiredAt: "2026-09-15T12:00:00Z",
       },
     ];
 

@@ -18,6 +18,7 @@
 import PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import ENRICH_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DESCRIPTIONS_RAW from "@/data/descriptions.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import { PLACES as SOURCE_PLACES } from "@/data/places";
 import {
   CATEGORIES,
@@ -48,6 +49,7 @@ import {
   decisionCopyCounts,
   hasUsefulDecisionCopy,
 } from "@/lib/quality/coverage";
+import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
 
 const PLACES = PLACES_RAW as unknown as PlaceCardData[];
 const ENRICH = ENRICH_RAW as Record<
@@ -102,6 +104,7 @@ const pct = (n: number, d: number) => (d === 0 ? 0 : n / d);
 const fmtPct = (r: number) => `${(r * 100).toFixed(1)}%`;
 const normalizedCopy = (value: string | undefined) =>
   (value ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
+const HOURS_RELEASE_MAX_AGE_HOURS = 36;
 
 /** Stored schedule coverage is deliberately distinct from published freshness.
  * Strict builds withhold stale schedules from places-client.json, so counting
@@ -167,6 +170,43 @@ const GATES: Gate[] = [
         pass: r >= 0.6,
         observed: `${fmtPct(r)} (${refreshable} of ${PLACES.length}) can enter the ${HOURS_REFRESH_CYCLE_DAYS}-day Google refresh cycle`,
         expect: ">= 60% so the refresh pipeline can satisfy the strict hours gate",
+      };
+    },
+  },
+  {
+    id: "place_hours_refresh_cycle_current",
+    // This is an operational freshness alarm, not a static-data safety
+    // invariant. Keep it on the nightly/data-steward `--fail-high` path so a
+    // stalled refresh blocks the data PR and pages an operator without making
+    // an unrelated UI/reliability deploy circularly depend on a cron that can
+    // only recover after production is healthy again.
+    severity: "high",
+    audit: "DQ-001/DQ-003 refresh-cycle freshness",
+    run: () => {
+      const expected = new Set(
+        PLACES.filter((place) => isGooglePlaceId(place.google_place_id))
+          .map((place) => place.slug),
+      );
+      const summary = summarizeHoursRefreshArtifact(
+        HOURS_REFRESH_RAW as Record<string, unknown>,
+        expected,
+      );
+      const newestMs = Date.parse(summary.newestRefresh ?? "");
+      const ageHours = Number.isFinite(newestMs)
+        ? Math.max(0, (Date.now() - newestMs) / 3_600_000)
+        : Number.POSITIVE_INFINITY;
+      const current =
+        Number.isFinite(ageHours) && ageHours <= HOURS_RELEASE_MAX_AGE_HOURS;
+      const cycleRunning =
+        summary.cycle.state === "healthy" || summary.cycle.state === "warming";
+      return {
+        pass: current && cycleRunning,
+        observed:
+          `cycle ${summary.cycle.state}; newest refresh ` +
+          `${Number.isFinite(ageHours) ? `${ageHours.toFixed(1)}h old` : "missing"}; ` +
+          `${summary.cycle.completedDays}/${summary.cycle.days} cycle buckets complete`,
+        expect:
+          `healthy or warming cycle with a refresh no more than ${HOURS_RELEASE_MAX_AGE_HOURS}h old`,
       };
     },
   },

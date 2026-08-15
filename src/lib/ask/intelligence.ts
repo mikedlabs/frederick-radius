@@ -55,6 +55,7 @@ import {
   communicationAccessLabels,
   hasDeafCommunityOrCommunicationAccess,
 } from "@/lib/events/communication-access";
+import { meterUsage } from "@/lib/usage-meter";
 
 const AGENT_MODEL = process.env.ASK_RADIUS_AGENT_MODEL || "openai/gpt-5.4-mini";
 // This is an enhancement path, never the only path to an answer. Keep one
@@ -687,6 +688,10 @@ export async function runRadiusAgent(
     output: Output.object({ schema: outputSchema }),
     stopWhen: stepCountIs(5),
     prepareStep: ({ stepNumber }) => ({ toolChoice: stepNumber === 0 ? "required" : "auto" }),
+    // A complex Ask answer can use several paid model generations. Count each
+    // completed model step, not merely the final HTTP answer, and never attach
+    // the user's query or tool payload to the counter.
+    onStepFinish: () => meterUsage("ask_model_step"),
     maxRetries: 1,
   });
 

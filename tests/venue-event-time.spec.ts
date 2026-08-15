@@ -27,6 +27,15 @@ describe("venue event time normalization", () => {
     );
   });
 
+  it("corrects model-supplied numeric offsets that do not match Frederick", () => {
+    expect(normalizeVenueEventDateTime("2026-08-08T19:30:00-05:00")).toBe(
+      "2026-08-08T19:30:00-04:00",
+    );
+    expect(normalizeVenueEventDateTime("2026-12-08T19:30:00-04:00")).toBe(
+      "2026-12-08T19:30:00-05:00",
+    );
+  });
+
   it("rejects date-only starts, rolled dates, and impossible DST wall times", () => {
     expect(normalizeVenueEventDateTime("2026-08-08")).toBeNull();
     expect(normalizeVenueEventDateTime("2026-02-30T19:30")).toBeNull();
@@ -74,6 +83,7 @@ describe("venue event time normalization", () => {
     expect(normalizeVenueEventDateTime("2026-11-01T01:30-05:00")).toBe(
       "2026-11-01T01:30-05:00",
     );
+    expect(normalizeVenueEventDateTime("2026-11-01T01:30-06:00")).toBeNull();
   });
 
   it("accepts the first valid clocks after both DST transitions", () => {

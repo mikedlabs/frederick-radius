@@ -103,7 +103,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     ).toBeVisible();
     await expect(page.getByText("Source 1", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Browse tools" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse tools" })).toHaveCount(0);
 
     await submit(page, "three sources");
     await expect(page.getByText("3 source answer.")).toBeVisible();
@@ -116,6 +116,71 @@ test.describe("Ask Radius deterministic workspace", () => {
     await submit(page, "zero sources");
     await expect(page.getByText("0 source answer.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sources behind this answer" })).toHaveCount(0);
+  });
+
+  test("keeps a place answer to one lead, two compact alternatives, and one visible action", async ({
+    page,
+  }) => {
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer: "Gravel & Grind is the strongest match. The source notes explain the ranking.",
+          presentation: {
+            layout: "place",
+            summary: "Gravel & Grind is the strongest match.",
+            detail: "The source notes explain the ranking.",
+          },
+          sources: [
+            {
+              slug: "gravel-and-grind",
+              name: "Gravel & Grind",
+              category: "coffee",
+              href: "/places/gravel-and-grind",
+              reason: "Coffee and bikes in one place.",
+              isPrimaryRankedResult: true,
+            },
+            {
+              slug: "beans-and-bagels",
+              name: "Beans & Bagels",
+              category: "coffee",
+              href: "/places/beans-and-bagels",
+              distance: "0.4 mi",
+            },
+            {
+              slug: "cafe-nola",
+              name: "Cafe Nola",
+              category: "coffee",
+              href: "/places/cafe-nola",
+              status: "Open until 9 PM",
+            },
+            {
+              slug: "source-note",
+              name: "Source note",
+              category: "guide",
+              href: "https://example.com/source-note",
+            },
+          ],
+          actions: [
+            { label: "Open Gravel & Grind", kind: "open", href: "/places/gravel-and-grind" },
+            { label: "Find something closer", kind: "refine", query: "Find something closer" },
+          ],
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, "coffee and bikes in Frederick County");
+
+    await expect(page.getByText("Gravel & Grind", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-ask-alternative]")).toHaveCount(2);
+    await expect(page.getByText("Beans & Bagels", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cafe Nola", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Gravel & Grind" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Find something closer" })).toBeHidden();
+    await expect(page.getByText("Source note", { exact: true })).toBeHidden();
+    await expect(page.getByText("The source notes explain the ranking.")).toBeHidden();
+    await expect(page.getByRole("link", { name: "Browse tools" })).toHaveCount(0);
   });
 
   test("flags a bad answer without sending the question or answer text", async ({
@@ -464,7 +529,9 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "What is happening tonight?");
-    await expect(page.getByText("More context", { exact: true })).toBeVisible();
+    const moreContext = page.locator("summary").filter({ hasText: "More context" });
+    await expect(moreContext).toBeVisible();
+    await moreContext.click();
     await page.evaluate(() => document.fonts.ready);
     const dock = page.locator('[data-ask-composer-dock="sticky"]');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -669,8 +736,8 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("Downtown-first answer.")).toBeVisible();
     expect(requestBody).toMatchObject({
       scope: "nearme",
-      lat: 39.4143,
-      lng: -77.4105,
+      lat: 39.414,
+      lng: -77.41,
     });
   });
 
@@ -683,6 +750,8 @@ test.describe("Ask Radius deterministic workspace", () => {
         },
       });
     });
+    const contextual = "Find dinner downtown. Follow-up: closer";
+    const contextualAnswer = "Closer follow-up answer.";
     const queries: string[] = [];
     await page.route("**/api/ask", async (route) => {
       const { query } = route.request().postDataJSON() as { query: string };
@@ -690,7 +759,7 @@ test.describe("Ask Radius deterministic workspace", () => {
       await fulfill(
         route,
         answer({
-          answer: `Answer for ${query}`,
+          answer: query === contextual ? contextualAnswer : `Answer for ${query}`,
           sources: [source(1)],
         }),
       );
@@ -699,8 +768,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.goto("/ask?q=Find%20dinner%20downtown");
     await expect(page.getByText("Answer for Find dinner downtown")).toBeVisible();
     await submit(page, "closer");
-    const contextual = "Find dinner downtown. Follow-up: closer";
-    await expect(page.getByText("Follow-up: closer")).toBeVisible();
+    await expect(page.getByText(contextualAnswer)).toBeVisible();
     await expect.poll(() => queries.at(-1)).toBe(contextual);
     expect(new URL(page.url()).searchParams.get("q")).toBe(contextual);
 
@@ -716,12 +784,12 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.getByRole("link", { name: "Source 1", exact: true }).click();
     await page.waitForURL("**/about");
     await page.goBack();
-    await expect(page.getByText("Follow-up: closer")).toBeVisible();
+    await expect(page.getByText(contextualAnswer)).toBeVisible();
     expect(queries).toHaveLength(callsBeforeBack);
 
     await page.reload();
-    await expect(page.getByText("Follow-up: closer")).toBeVisible();
-    expect(queries.at(-1)).toBe(contextual);
+    await expect.poll(() => queries.at(-1)).toBe(contextual);
+    await expect(page.getByText(contextualAnswer)).toBeVisible();
   });
 
   test("keeps the full tool directory one tap away in Compass", async ({ page }) => {

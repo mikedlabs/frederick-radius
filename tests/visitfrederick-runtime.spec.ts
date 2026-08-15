@@ -92,7 +92,7 @@ describe("Visit Frederick visitor-request runtime", () => {
     );
 
     await expect(fetchVisitFrederickResult()).resolves.toEqual({
-      state: "failed",
+      state: "disabled",
       items: [],
     });
     expect(

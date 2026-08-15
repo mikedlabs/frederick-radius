@@ -54,13 +54,24 @@ type PlanCreditUpstream = MeteredUpstreamBase & {
   dailyCap: number;
 };
 
-type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
+type CountOnlyUpstream = MeteredUpstreamBase & {
+  billing: "count-only";
+};
+
+type MeteredUpstream =
+  | UnitEstimateUpstream
+  | PlanCreditUpstream
+  | CountOnlyUpstream;
 
 /** Unit prices are estimates, not bills. Capped-attempt services deliberately do
  * not receive a made-up dollar conversion. */
 const UPSTREAMS: MeteredUpstream[] = [
   { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
-  { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
+  { key: "ask_model_step", label: "Ask Radius model steps", billing: "count-only", note: "Counts each model attempt, including a fallback-provider attempt. Model and token mix determine the price, so AI Gateway and provider dashboards remain the billing source of truth." },
+  { key: "openai_embedding", label: "Search embeddings", billing: "count-only", note: "Counts direct OpenAI embedding requests used by hybrid search. Token volume, not request count, determines the bill." },
+  { key: "google_places_details", label: "Google Place Details", billing: "count-only", note: "Counts each Place Details request. The requested field set determines the Google Places SKU, so this is intentionally not converted into one misleading unit price." },
+  { key: "google_places_text_search", label: "Google Text Search", billing: "count-only", note: "Counts each Text Search request used to resolve a place. The field mask determines the billable SKU." },
+  { key: "anthropic_ask", label: "Ask answers (legacy meter)", billing: "count-only", note: "Historical answer-level counter retained so older usage remains visible. New traffic is counted by model step above." },
   { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Place-sheet travel time runs only after an explicit tap. Each estimate uses two 1×1 matrices (walk and traffic-aware drive); device origins are rounded and never stored in Radius's persistent cache." },
   { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
@@ -94,7 +105,7 @@ function estimatedMonthlyCost(
   upstream: MeteredUpstream,
   calls: number,
 ): number | null {
-  if (upstream.billing === "plan-credit") return null;
+  if (upstream.billing !== "unit-estimate") return null;
   return (
     (Math.max(0, calls - (upstream.freeMonthly ?? 0)) / 1000) *
     upstream.per1000
@@ -129,6 +140,22 @@ function PlanCreditFigure({ used, limit }: { used: number; limit: number }) {
       </p>
       <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
         recovery attempts today
+      </p>
+    </div>
+  );
+}
+
+function CountFigure({ count }: { count: number }) {
+  return (
+    <div className="shrink-0 text-right">
+      <p
+        className="font-mono text-[14px] font-semibold leading-none tabular-nums"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {count.toLocaleString()}
+      </p>
+      <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+        attempts / 30d
       </p>
     </div>
   );
@@ -282,8 +309,10 @@ export default async function CostsAdmin() {
                       today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
                       {u.billing === "unit-estimate" ? (
                         <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
-                      ) : (
+                      ) : u.billing === "plan-credit" ? (
                         <span style={{ color: "var(--app-ink-3)" }}> · recovery attempts · hard cap {u.dailyCap}/day</span>
+                      ) : (
+                        <span style={{ color: "var(--app-ink-3)" }}> · count only</span>
                       )}
                     </p>
                     {u.billing === "unit-estimate" && (
@@ -298,11 +327,13 @@ export default async function CostsAdmin() {
                   </div>
                   {u.billing === "unit-estimate" && est30 !== null ? (
                     <EstimateFigure est={est30} />
-                  ) : (
+                  ) : u.billing === "plan-credit" ? (
                     <PlanCreditFigure
                       used={d1}
-                      limit={u.billing === "plan-credit" ? u.dailyCap : 0}
+                      limit={u.dailyCap}
                     />
+                  ) : (
+                    <CountFigure count={d30} />
                   )}
                 </div>
               </li>
@@ -349,7 +380,9 @@ export default async function CostsAdmin() {
         Counts record validated paid fetch attempts. Cache-aware paths exclude
         cache hits; a few older fetch-cache counters remain an upper bound.
         Providers can still reject or fail an attempted call, so their consoles
-        remain the billing source of truth. Unit prices are estimates pinned in
+        remain the billing source of truth. Token-priced and field-mask-priced
+        services stay count-only because one request does not have one honest
+        unit price. Other unit prices are estimates pinned in
         code (src/app/admin/costs/page.tsx); update them when provider pricing
         changes. Firecrawl recovery is shown as app-side attempts and is
         excluded from dollar totals because an attempt is not the same as a

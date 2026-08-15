@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
-  FIRST_VISIT_INSTALL_DELAY_MS,
   requestBrowserInstall,
   shouldAutoOfferInstall,
 } from "./useInstallPrompt";
@@ -29,29 +29,24 @@ describe("requestBrowserInstall", () => {
 });
 
 describe("automatic Home Screen invitation", () => {
-  const iphone =
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1";
-  const android =
-    "Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36";
-
-  it("waits ten seconds before the first mobile invitation", () => {
-    expect(FIRST_VISIT_INSTALL_DELAY_MS).toBe(10_000);
+  it("does not interrupt a first visit or shared-link session on any device", () => {
+    expect(shouldAutoOfferInstall("visit")).toBe(false);
+    expect(shouldAutoOfferInstall("social")).toBe(false);
   });
 
-  it("automatically invites phones but leaves desktop behind the manual door", () => {
-    expect(shouldAutoOfferInstall("visit", iphone)).toBe(true);
-    expect(shouldAutoOfferInstall("visit", android)).toBe(true);
-    expect(
-      shouldAutoOfferInstall(
-        "visit",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)",
-      ),
-    ).toBe(false);
+  it("automatically offers only after demonstrated value or a return visit", () => {
+    expect(shouldAutoOfferInstall("value")).toBe(true);
+    expect(shouldAutoOfferInstall("return")).toBe(true);
+    expect(shouldAutoOfferInstall(null)).toBe(false);
   });
 
-  it("keeps higher-intent value and return invitations available", () => {
-    expect(shouldAutoOfferInstall("value", "desktop")).toBe(true);
-    expect(shouldAutoOfferInstall("return", "desktop")).toBe(true);
-    expect(shouldAutoOfferInstall(null, iphone)).toBe(false);
+  it("keeps an earned automatic offer compact until instructions are requested", () => {
+    const source = readFileSync("src/components/pwa/InstallPrompt.tsx", "utf8");
+
+    expect(source).toContain('data-offer-mode={compactAutomatic ? "compact" : "instructions"}');
+    expect(source).toContain("const compactAutomatic = !manual && !instructionsOpen");
+    expect(source).toContain("How to add it");
+    expect(source).toContain("{!compactAutomatic ? (");
+    expect(source).toContain("data-install-prompt-footer");
   });
 });

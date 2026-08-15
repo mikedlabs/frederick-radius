@@ -33,6 +33,15 @@ describe("place photo proxy rendering", () => {
     // reject that valid fallback with INVALID_IMAGE_OPTIMIZE_REQUEST.
     expect(source).toMatch(/unoptimized=\{[^}]*startsWith\("\/api\/place-photo"\)[^}]*\}/);
   });
+
+  it("narrows field-index thumbnails before rendering them", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/place/PlaceIndex.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("proxyPhotoAtWidth(row.photo, 44)");
+  });
 });
 
 /**

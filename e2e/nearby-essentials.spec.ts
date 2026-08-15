@@ -67,7 +67,7 @@ test("Today playgrounds opens the complete layer around the current location", a
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Browse by category" }).click();
+  await page.getByRole("button", { name: "Browse nearby places by category" }).click();
   await page.getByRole("button", { name: "Get outside" }).click();
 
   const playgrounds = page.getByRole("link", { name: "Playgrounds" });
@@ -121,7 +121,7 @@ test("Today playgrounds preserves a deliberately selected town", async ({
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Browse by category" }).click();
+  await page.getByRole("button", { name: "Browse nearby places by category" }).click();
   await page.getByRole("button", { name: "Get outside" }).click();
 
   const playgrounds = page.getByRole("link", { name: "Playgrounds" });

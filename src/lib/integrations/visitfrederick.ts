@@ -48,6 +48,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { createSingleFlight } from "@/lib/single-flight";
 import { unstable_cache } from "next/cache";
 import {
+  eventAdapterDisabled,
   eventAdapterFailed,
   eventAdapterOk,
   type EventAdapterResult,
@@ -562,7 +563,10 @@ async function fetchVisitFrederickResultUncached(): Promise<
   EventAdapterResult<LiveEvent>
 > {
   if (!visitFrederickFactsReuseApproved()) {
-    return eventAdapterFailed();
+    // This lane is deliberately dormant until written factual-reuse approval
+    // exists. Treat that expected policy gate like every other disabled event
+    // adapter so it cannot make an otherwise complete archive permanently red.
+    return eventAdapterDisabled();
   }
   const snapshot = await readStoredVisitFrederickSnapshot({
     cacheMode: "cache-first",

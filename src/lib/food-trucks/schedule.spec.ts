@@ -29,6 +29,7 @@ describe("food-truck schedule sources", () => {
     const stops = parseCelebrateFrederickSchedule(html);
     expect(stops).toHaveLength(1);
     expect(stops[0]).toMatchObject({
+      sourceId: "celebrate-frederick",
       startsAt: "2026-07-26T23:00:00.000Z",
       endsAt: "2026-07-27T00:30:00.000Z",
       venueName: "Baker Park Bandshell",
@@ -69,6 +70,7 @@ describe("food-truck schedule sources", () => {
     const stops = parseSpringfieldManorSchedule(ics);
     expect(stops).toHaveLength(2);
     expect(stops[0]).toMatchObject({
+      sourceId: "springfield-manor",
       startsAt: "2026-07-24T21:00:00.000Z",
       endsAt: "2026-07-25T01:00:00.000Z",
       municipality: "Thurmont",
@@ -101,6 +103,7 @@ describe("food-truck schedule sources", () => {
     const stops = parseGrilledCheesePleaseSchedule(ics);
     expect(stops).toHaveLength(1);
     expect(stops[0].vendors[0].slug).toBe("grilled-cheese-please");
+    expect(stops[0].sourceId).toBe("grilled-cheese-please");
     expect(stops[0].venueName).toContain("123 Market St");
   });
 
@@ -129,6 +132,7 @@ describe("food-truck schedule sources", () => {
     const stops = parseSteinhardtSchedule(payload);
     expect(stops).toHaveLength(1);
     expect(stops[0]).toMatchObject({
+      sourceId: "steinhardt-brewing",
       title: "DF 26 Mexican Food at Steinhardt Brewing",
       startsAt: "2026-07-29T18:00:00.000Z",
       endsAt: "2026-07-29T22:00:00.000Z",
@@ -175,6 +179,7 @@ describe("food-truck schedule sources", () => {
     const stops = parseMonocacyBrewingSchedule(ics);
     expect(stops).toHaveLength(1);
     expect(stops[0]).toMatchObject({
+      sourceId: "monocacy-brewing",
       title: "The Alley Wagon at Monocacy Brewing",
       startsAt: "2026-07-27T20:00:00.000Z",
       endsAt: "2026-07-28T00:00:00.000Z",
@@ -282,5 +287,8 @@ describe("food-truck schedule sources", () => {
     expect(matchFoodTruckSlug("Blues Pizza Food Truck")).toBeUndefined();
     expect(matchFoodTruckSlug("Blues BBQ")).toBe("blues-bbq");
     expect(matchFoodTruckSlug("Three Daughters Truck")).toBe("three-daughters");
+    expect(matchFoodTruckSlug("D's Delights Food Truck")).toBe("ds-delights");
+    expect(matchFoodTruckSlug("Gravel & Grind")).toBe("gravel-and-grind");
+    expect(matchFoodTruckSlug("Bub-B-Que")).toBe("bub-b-que");
   });
 });

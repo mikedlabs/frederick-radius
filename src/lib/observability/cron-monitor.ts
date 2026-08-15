@@ -6,6 +6,94 @@ export type CronMonitorSchedule = {
   maxRuntimeMinutes?: number;
 };
 
+type CronResponseAssessment = {
+  healthy: boolean;
+  reason: string | null;
+};
+
+const UNHEALTHY_STATUS_VALUES = new Set([
+  "degraded",
+  "error",
+  "failed",
+  "partial",
+  "unavailable",
+]);
+
+const HEALTHY_STATUS_VALUES = new Set([
+  "healthy",
+  "ok",
+  "success",
+]);
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+/**
+ * HTTP describes whether a scheduled route answered. Its JSON describes
+ * whether the data work succeeded. Several bounded workers deliberately use a
+ * 2xx response for a completed partial pass so Vercel will not retry unsafe
+ * writes. Sentry must still record that pass as red.
+ */
+export async function assessCronResponse(
+  response: Response,
+): Promise<CronResponseAssessment> {
+  if (!response.ok) {
+    return { healthy: false, reason: `http_${response.status}` };
+  }
+
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("json")) {
+    return { healthy: false, reason: "non_json_response" };
+  }
+
+  let payload: Record<string, unknown> | null = null;
+  try {
+    payload = record(await response.clone().json());
+  } catch {
+    return { healthy: false, reason: "invalid_json" };
+  }
+  if (!payload) return { healthy: false, reason: "invalid_json_shape" };
+
+  if (payload.ok === false) return { healthy: false, reason: "ok_false" };
+  if (payload.healthy === false) {
+    return { healthy: false, reason: "healthy_false" };
+  }
+  if (payload.degraded === true) {
+    return { healthy: false, reason: "degraded_true" };
+  }
+
+  const status = typeof payload.status === "string"
+    ? payload.status.toLowerCase()
+    : null;
+  if (status && UNHEALTHY_STATUS_VALUES.has(status)) {
+    return { healthy: false, reason: `status_${status}` };
+  }
+
+  const summary = record(payload.summary);
+  if (summary?.degraded === true) {
+    return { healthy: false, reason: "summary_degraded" };
+  }
+  const summaryStatus = typeof summary?.status === "string"
+    ? summary.status.toLowerCase()
+    : null;
+  if (summaryStatus && UNHEALTHY_STATUS_VALUES.has(summaryStatus)) {
+    return { healthy: false, reason: `summary_status_${summaryStatus}` };
+  }
+
+  const hasExplicitHealthySemantic =
+    payload.ok === true ||
+    payload.healthy === true ||
+    Boolean(status && HEALTHY_STATUS_VALUES.has(status)) ||
+    Boolean(summaryStatus && HEALTHY_STATUS_VALUES.has(summaryStatus));
+
+  return hasExplicitHealthySemantic
+    ? { healthy: true, reason: null }
+    : { healthy: false, reason: "missing_healthy_semantic" };
+}
+
 /**
  * Report a complete scheduled-route lifecycle to Sentry Cron Monitors.
  *
@@ -42,10 +130,22 @@ export async function monitorCronResponse<T extends Response>(
 
   try {
     const response = await run();
+    const assessment = await assessCronResponse(response);
+    if (!assessment.healthy) {
+      // Keep logs searchable without serializing payloads, URLs, credentials,
+      // or upstream error text.
+      console.warn(JSON.stringify({
+        level: "warn",
+        event: "cron_semantic_failure",
+        monitorSlug,
+        httpStatus: response.status,
+        reason: assessment.reason,
+      }));
+    }
     await finishCheckIn(
       monitorSlug,
       checkInId,
-      response.ok ? "ok" : "error",
+      assessment.healthy ? "ok" : "error",
       startedAt,
     );
     return response;

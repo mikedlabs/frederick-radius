@@ -1,6 +1,6 @@
 # Hours refresh review
 
-Generated from the committed baseline and the refreshed artifacts at 2026-08-10T10:38:30.852Z.
+Generated from the committed baseline and the refreshed artifacts at 2026-08-14T20:57:48.593Z.
 This report is a review aid. It does not approve, reject, or change a place status.
 
 **No unreviewed public catalog or public closure transition requires manual review.**
@@ -9,17 +9,19 @@ This report is a review aid. It does not approve, reject, or change a place stat
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1569 | 1569 | 0 |
-| Public places with publishable verified hours | 895 | 1083 | +188 |
+| Public places | 1569 | 1568 | -1 |
+| Public places with publishable verified hours | 875 | 1098 | +223 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
-| Fresh schedule rows in snapshot | 1160 | 1159 | -1 |
+| Fresh schedule rows in snapshot | 1159 | 1159 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
 
 ## Public catalog changes
 
 ### Removed from public discovery
 
-No public listings were removed.
+| Slug | Place | Category | Town | New status | Checked at | Status evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| `emmitsburg-farmers-market-emmitsburg` | Emmitsburg Farmers Market | market | emmitsburg | CLOSED_TEMPORARILY | 2026-08-13T08:01:03.490Z | [Recorded](https://homegrownfrederick.com/farmers-markets/) |
 
 An unreviewed removal must be checked before merge. Confirm a closure against the business or another current official source; inspect any removal without a new closed status as a loader or catalog regression.
 
@@ -33,7 +35,8 @@ No public listings were added.
 
 | Slug | Place | Public before | From | To | Checked at | Review evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `concettas-main-street-bistro-mount-airy` | Concetta's Main Street Bistro | yes | OPERATIONAL | CLOSED_PERMANENTLY | 2026-08-08T08:00:24.870Z | [Operational correction](https://concettasmainstreet.com/) |
+| `brainstorm-comics` | brainstorm-comics | no | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY | 2026-08-14T08:01:19.941Z | Not public |
+| `emmitsburg-farmers-market-emmitsburg` | Emmitsburg Farmers Market | yes | OPERATIONAL | CLOSED_TEMPORARILY | 2026-08-13T08:01:03.490Z | [Recorded](https://homegrownfrederick.com/farmers-markets/) |
 
 ### Reopened
 

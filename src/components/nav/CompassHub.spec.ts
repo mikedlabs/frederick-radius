@@ -13,6 +13,7 @@ import {
   buildToolDeckGroups,
   compassShortcutGridClass,
   commonCompassTasks,
+  dedupeToolDeckGroupsByHref,
   groundedCompassSuggestion,
   liveLineForIntent,
   liveSuggestionForDeck,
@@ -122,6 +123,34 @@ describe("Compass Tool Deck model", () => {
     expect(flattenTools(withHome.groups)).toHaveLength(
       flattenTools(withoutHome.groups).length,
     );
+  });
+
+  it("keeps the first deliberately placed item when registry aliases share a destination", () => {
+    const groups = buildToolDeckGroups(null);
+    const first = groups[0].items[0];
+    const secondGroup = groups[1];
+    const duplicate = { ...secondGroup.items[0], href: first.href };
+    const deduped = dedupeToolDeckGroupsByHref([
+      groups[0],
+      { ...secondGroup, items: [duplicate, ...secondGroup.items.slice(1)] },
+      ...groups.slice(2),
+    ]);
+    const hrefs = flattenTools(deduped).map((item) => item.href);
+
+    expect(hrefs.filter((href) => href === first.href)).toHaveLength(1);
+    expect(deduped[0].items[0].id).toBe(first.id);
+  });
+
+  it("keeps the inventory count out of the public Compass surface", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    const publicSurface = source.slice(
+      source.indexOf("export default function CompassHub"),
+      source.indexOf("function ToolSearchResults"),
+    );
+
+    expect(publicSurface).not.toContain("directory.total");
+    expect(publicSurface).not.toContain("toolCount");
+    expect(publicSurface).toContain("Browse the complete directory by category");
   });
 
   it("builds the complete directory and default tool belt from one model", () => {

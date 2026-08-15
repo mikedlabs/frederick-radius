@@ -55,6 +55,7 @@ export default function InstallPrompt() {
   const panelRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [blockingModalOpen, setBlockingModalOpen] = useState(false);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
   const {
     show,
     surface,
@@ -146,6 +147,11 @@ export default function InstallPrompt() {
     || surface === "ios-chrome"
     || surface === "ios-browser"
     || surface === "mobile-browser";
+  const compactAutomatic = !manual && !instructionsOpen;
+  const closePrompt = () => {
+    setInstructionsOpen(false);
+    dismiss();
+  };
 
   return (
     <aside
@@ -154,7 +160,8 @@ export default function InstallPrompt() {
       aria-live="polite"
       data-return-bridge
       data-surface={surface}
-      className="pop-in fixed z-[var(--z-prompt)] mx-auto max-w-sm overflow-y-auto overscroll-contain rounded-[var(--app-radius-xl)] border backdrop-blur-md"
+      data-offer-mode={compactAutomatic ? "compact" : "instructions"}
+      className="pop-in fixed z-[var(--z-prompt)] mx-auto max-w-sm overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border backdrop-blur-md"
       style={{
         left: "max(0.75rem, env(safe-area-inset-left, 0px))",
         right: "max(0.75rem, env(safe-area-inset-right, 0px))",
@@ -168,7 +175,7 @@ export default function InstallPrompt() {
       <button
         ref={closeButtonRef}
         type="button"
-        onClick={dismiss}
+        onClick={closePrompt}
         aria-label={manual ? "Close Keep Radius" : "Dismiss Keep Radius"}
         className="tactile-interactive absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
@@ -184,14 +191,52 @@ export default function InstallPrompt() {
             className="min-w-0 font-sans text-[17px] font-semibold leading-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            {surface === "desktop"
-              ? "Put Radius on your phone"
-              : "Add Radius to your Home Screen"}
+            {compactAutomatic
+              ? "Keep Radius close"
+              : surface === "desktop"
+                ? "Put Radius on your phone"
+                : "Add Radius to your Home Screen"}
           </p>
         </div>
 
         <div className="mt-3 min-w-0">
-          {surface === "native" ? (
+          {compactAutomatic ? (
+            <>
+              <p className="text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Add Radius to your Home Screen when you want a faster way back.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {surface === "native" ? (
+                  <Button
+                    onClick={promptInstall}
+                    loading={prompting}
+                    size="md"
+                    iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+                  >
+                    {prompting ? "Opening…" : "Add to Home Screen"}
+                  </Button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setInstructionsOpen(true)}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3 text-[12px] font-semibold"
+                    style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+                  >
+                    How to add it
+                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={closePrompt}
+                  className="inline-flex min-h-11 items-center px-2 text-[12px] font-semibold"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Not now
+                </button>
+              </div>
+            </>
+          ) : surface === "native" ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 Add Radius to your Home Screen for one-tap access to your saved
@@ -282,38 +327,43 @@ export default function InstallPrompt() {
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {manualInstall ? (
+          {!compactAutomatic ? (
+            <div
+              data-install-prompt-footer
+              className="mt-3 flex flex-wrap items-center gap-2"
+            >
+              {manualInstall ? (
               <button
                 type="button"
                 onClick={acknowledgeInstalled}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3 text-[12px] font-semibold"
                 style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
                 I added Radius
               </button>
-            ) : null}
-            {showCopyFallback ? (
+              ) : null}
+              {showCopyFallback ? (
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3 text-[12px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
                 <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                 Copy link
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={dismiss}
-              className="inline-flex min-h-11 items-center px-2 text-[12px] font-semibold"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {manual ? "Close" : "Not now"}
-            </button>
-          </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={closePrompt}
+                className="inline-flex min-h-11 items-center px-2 text-[12px] font-semibold"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {manual ? "Close" : "Not now"}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </aside>

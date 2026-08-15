@@ -11,7 +11,13 @@ import { defineConfig, devices } from "@playwright/test";
  * with `npx playwright install chromium` (CI installs them in the runner).
  */
 const PORT = Number(process.env.PW_PORT) || 3010;
+// Use the loopback address directly. Some local security/proxy stacks reserve
+// or intercept `localhost`, which can turn a healthy Next response into an
+// empty 401 before the request reaches Radius. CI and developers can still
+// override the host explicitly when their runner requires it.
+const HOST = process.env.PW_HOST || "127.0.0.1";
 const PRODUCTION_SERVER = process.env.PW_PRODUCTION === "1";
+const WEBPACK_DEV_SERVER = process.env.PW_WEBPACK === "1";
 
 export default defineConfig({
   testDir: "e2e",
@@ -20,7 +26,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: `http://${HOST}:${PORT}`,
     // Production sends `upgrade-insecure-requests`, which is correct on the
     // HTTPS deployment but makes a local HTTP production server upgrade its
     // own CSS/JS requests to unavailable HTTPS. Browser tests bypass CSP so
@@ -43,6 +49,19 @@ export default defineConfig({
           : {}),
       },
     },
+    // Opt-in Android journey pass. Keeping this behind PW_ANDROID prevents the
+    // entire suite from being duplicated in ordinary CI while still providing
+    // a Chromium mobile/touch project for the focused journey command.
+    ...(process.env.PW_ANDROID === "1"
+      ? [
+          {
+            name: "android-mobile",
+            use: {
+              ...devices["Pixel 7"],
+            },
+          },
+        ]
+      : []),
     // Opt in so normal CI does not suddenly run the whole suite twice.
     // This project exercises the map with Safari's engine, touch input, and
     // an iPhone viewport whenever its gesture model changes.
@@ -60,8 +79,8 @@ export default defineConfig({
   webServer: {
     command: PRODUCTION_SERVER
       ? `npm run start -- -p ${PORT}`
-      : `npm run dev -- -p ${PORT}`,
-    url: `http://localhost:${PORT}`,
+      : `npm run dev -- ${WEBPACK_DEV_SERVER ? "--webpack " : ""}-p ${PORT}`,
+    url: `http://${HOST}:${PORT}`,
     reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER,
     timeout: 120_000,
   },

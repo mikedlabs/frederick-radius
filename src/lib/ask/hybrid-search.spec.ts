@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   embed: vi.fn(),
   embeddingModel: vi.fn(),
   getSql: vi.fn(),
+  meterUsage: vi.fn(),
 }));
 
 vi.mock("ai", () => ({
@@ -24,6 +25,7 @@ vi.mock("@ai-sdk/openai", () => ({
 vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
 }));
+vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
 
 import {
   fuseRankedIds,
@@ -111,6 +113,7 @@ describe("hybrid Radius retrieval", () => {
       { sourceId: "exact" },
     ]);
     expect(sql).toHaveBeenCalledTimes(1);
+    expect(mocks.meterUsage).toHaveBeenCalledWith("openai_embedding");
   });
 
   it("keeps FTS results when the semantic database query fails", async () => {

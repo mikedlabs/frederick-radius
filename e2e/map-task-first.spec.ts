@@ -52,7 +52,12 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await conditions.getByRole("button", { name: "Done" }).click();
 
   await browse.click();
-  await expect(chooser.getByRole("button", { name: /^Near me/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Places nearby/ })).toBeVisible();
+  for (const essential of ["restrooms", "water", "trash", "dog needs"]) {
+    await expect(
+      chooser.getByRole("button", { name: new RegExp(essential, "i") }),
+    ).toBeVisible();
+  }
   await expect(
     chooser.getByRole("button", { name: /^Happening/ }),
   ).toBeVisible();
@@ -70,7 +75,7 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  await chooser.getByRole("button", { name: /^Near me/ }).click();
+  await chooser.getByRole("button", { name: /^Places nearby/ }).click();
   const find = page.getByRole("region", { name: "Find nearby" });
   await expect(find.getByRole("button", { name: /^Compare travel reach/ })).toBeVisible();
   await expect(find.getByRole("button", { name: /^Nearby essentials/ })).toBeVisible();
@@ -212,25 +217,28 @@ test("revealed map choices clear the fixed navigation and the area picker keeps 
   await expect(scopeTrigger).toBeFocused();
 });
 
-test("expanded Compass actions remain above the fixed mobile navigation", async ({ page }) => {
+test("Compass intent sheets remain operable in the mobile viewport", async ({ page }) => {
   await page.goto("/compass", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
 
-  await page.getByRole("button", { name: /^Essentials & local help/i }).click();
-  const region = page.locator("#compass-intent-local-help");
-  await expect(region).toBeVisible();
-  const finalAction = region.getByRole("button", { name: /More essentials & local help/i });
+  await page.getByRole("button", { name: /^Find local help/i }).click();
+  const dialog = page.getByRole("dialog", { name: "Find local help" });
+  await expect(dialog).toBeVisible();
+  const finalAction = dialog.getByRole("button", { name: "All tools" });
   await finalAction.evaluate((action) => {
     action.scrollIntoView({ block: "center", behavior: "instant" });
   });
   await expect(finalAction).toBeVisible();
   const actionBox = await finalAction.boundingBox();
-  const navBox = await page.locator("[data-bottom-nav-shell]").boundingBox();
+  const dialogBox = await dialog.boundingBox();
   expect(actionBox).not.toBeNull();
-  expect(navBox).not.toBeNull();
-  if (!actionBox || !navBox) throw new Error("Expected visible Compass action and navigation boxes");
+  expect(dialogBox).not.toBeNull();
+  if (!actionBox || !dialogBox) throw new Error("Expected a visible Compass action and sheet");
   expect(actionBox.height).toBeGreaterThanOrEqual(44);
-  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(navBox.y);
+  expect(actionBox.y).toBeGreaterThanOrEqual(dialogBox.y);
+  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(
+    dialogBox.y + dialogBox.height,
+  );
   await page.screenshot({
     path: "output/playwright/compass-mobile-revealed-actions-clear-nav-390x844.png",
     fullPage: false,
@@ -412,14 +420,7 @@ test("a nearby-essential choice opens one named nearest result with directions",
 
   await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByRole("button", { name: /^Near me/ }).click();
-  await page
-    .getByRole("region", { name: "Find nearby" })
-    .getByRole("button", { name: /^Nearby essentials/ })
-    .click();
-  const essentials = page.getByRole("region", { name: "Nearby essentials" });
-  await expect(essentials.getByText("Using your location")).toBeVisible();
-  await essentials.getByRole("button", { name: /Restrooms/ }).click();
+  await chooser.getByRole("button", { name: /nearest restrooms/i }).click();
 
   await expect(page.getByText("Nearest mapped restrooms")).toBeVisible();
   await expect(page.getByText(/from you/)).toBeVisible();

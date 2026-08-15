@@ -2,6 +2,7 @@ import "server-only";
 import { embed } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getSql } from "@/lib/db/client";
+import { meterUsage } from "@/lib/usage-meter";
 
 export type HybridSearchRow = {
   sourceId: string;
@@ -138,6 +139,7 @@ export async function hybridPlaceSearch(query: string, limit = 12): Promise<Hybr
   }
 
   try {
+    meterUsage("openai_embedding");
     const { embedding } = await embed({
       model: openai.embedding(embeddingModelName()),
       value: clean,

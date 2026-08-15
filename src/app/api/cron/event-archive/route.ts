@@ -23,6 +23,7 @@ import {
 } from "@/lib/integrations/ical-live";
 import {
   preflightEventArchive,
+  prepareEventArchiveRows,
   syncEventArchiveBatch,
 } from "@/lib/events/event-archive-batch";
 import {
@@ -38,11 +39,13 @@ import { EVENT_ARCHIVE_RUN } from "@/lib/quality/data-health-phases";
 import {
   EVENT_ARCHIVE_DB_DEADLINE_MS,
   EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS,
+  EVENT_ARCHIVE_PUBLICATION_BUDGET_MS,
   EVENT_ARCHIVE_SOURCE_BUDGET_MS,
   EVENT_ARCHIVE_WRITE_BUDGET_MS,
 } from "./config";
 import { classifyEvent } from "@/lib/events/classify";
 import { monitorCronResponse } from "@/lib/observability/cron-monitor";
+import { getSql } from "@/lib/db/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +72,7 @@ type ArchiveFailure =
   | "archive-write"
   | "archive-cleanup"
   | "archive-incomplete"
+  | "archive-publication"
   | "archive-truncated";
 
 // A provider-level partial result is still a completed archive pass: the
@@ -85,6 +89,57 @@ function failureSummary(failures: readonly ArchiveFailure[]): string | null {
   return failures.length > 0
     ? `Archive checks failed: ${failures.join(", ")}.`
     : null;
+}
+
+function boundedProviderLanes(values: readonly string[]): string[] {
+  return [...new Set(
+    values
+      .map((value) => value.trim())
+      .filter(
+        (value) =>
+          value.length > 0
+          && value.length <= 80
+          && /^[A-Za-z0-9][A-Za-z0-9 .&'()/-]*$/.test(value),
+      ),
+  )].slice(0, 32);
+}
+
+type PublicationProof = {
+  ok: boolean;
+  availableCount: number;
+  expectedCanaries: string[];
+  visibleCanaries: string[];
+  missingCanaries: string[];
+  reason: "unavailable" | "empty" | "missing_canary" | null;
+};
+
+type PublicationRow = {
+  available_count: number | string;
+  visible_canaries: unknown;
+};
+
+type CancellablePublicationQuery = Promise<PublicationRow[]> & {
+  cancel?: () => void;
+};
+
+function boundedCanarySlugs(slugs: readonly string[]): string[] {
+  return [...new Set(slugs)]
+    .filter((slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+    .slice(0, 3);
+}
+
+function publicationFailure(
+  expectedCanaries: string[],
+  reason: PublicationProof["reason"] = "unavailable",
+): PublicationProof {
+  return {
+    ok: false,
+    availableCount: 0,
+    expectedCanaries,
+    visibleCanaries: [],
+    missingCanaries: expectedCanaries,
+    reason,
+  };
 }
 
 function safeSchemaErrorCode(error: unknown): string | null {
@@ -127,6 +182,97 @@ function preflightBeforeDeadline(
   return Promise.race([guarded, deadline]).finally(() => {
     if (timer) clearTimeout(timer);
   });
+}
+
+/**
+ * Prove that the completed write reached the durable collection read by the
+ * public event surfaces. This is a count plus three indexed canaries, not a
+ * second full archive download inside the worker.
+ */
+async function verifyArchivePublication(
+  expectedSlugs: readonly string[],
+  now = new Date(),
+): Promise<PublicationProof> {
+  const expectedCanaries = boundedCanarySlugs(expectedSlugs);
+  const sql = getSql();
+  if (!sql) return publicationFailure(expectedCanaries);
+  const start = now.toISOString();
+  const end = new Date(now.getTime() + 90 * 86_400_000).toISOString();
+  // Two different questions share this round trip, and they need two
+  // different time rules. The COUNT asks "does the archive hold upcoming
+  // events" and keeps the 90-day upcoming window. The CANARIES ask "did the
+  // rows this run just wrote reach the durable collection", which is pure
+  // existence: the canaries are the three soonest-starting rows of the
+  // written set, the set deliberately retains in-progress events, and the
+  // assembly clock behind it can trail this query by ~19 minutes (840s cache
+  // + 5-minute bucket anchor). Windowing the canary match made a correct
+  // write report missing_canary whenever the soonest event had just ended or
+  // was zero-duration — a recurring false fatal on healthy evening runs.
+  const query = sql<PublicationRow[]>`
+      select count(*) filter (
+               where canonical.starts_at < ${end}::timestamptz
+                 and coalesce(canonical.ends_at, canonical.starts_at)
+                   >= ${start}::timestamptz
+             )::int as available_count,
+             coalesce(
+               array_agg(canonical.canonical_slug order by canonical.canonical_slug)
+                 filter (
+                   where canonical.canonical_slug = any(${expectedCanaries}::text[])
+                 ),
+               array[]::text[]
+             ) as visible_canaries
+      from public.event_canonical_records as canonical
+      left join public.event_tombstones as tombstone
+        on tombstone.canonical_event_id = canonical.id
+      where canonical.event_status = 'scheduled'
+        and tombstone.canonical_event_id is null
+        and (
+          canonical.canonical_slug = any(${expectedCanaries}::text[])
+          or (
+            canonical.starts_at < ${end}::timestamptz
+            and coalesce(canonical.ends_at, canonical.starts_at)
+              >= ${start}::timestamptz
+          )
+        )
+    ` as unknown as CancellablePublicationQuery;
+  const outcome = await withDeadlineOutcome(
+    query,
+    EVENT_ARCHIVE_PUBLICATION_BUDGET_MS,
+  );
+  if (outcome.status === "timed_out") {
+    try {
+      query.cancel?.();
+    } catch {
+      // Cancellation is best-effort; withDeadlineOutcome consumes a late rejection.
+    }
+  }
+  if (outcome.status !== "fulfilled") {
+    return publicationFailure(expectedCanaries);
+  }
+  const row = outcome.value[0];
+  if (!row) return publicationFailure(expectedCanaries);
+  const availableCount = Number(row.available_count ?? 0);
+  const visibleCanaries = Array.isArray(row.visible_canaries)
+    ? row.visible_canaries.filter(
+        (slug): slug is string => typeof slug === "string",
+      )
+    : [];
+  const visible = new Set(visibleCanaries);
+  const missingCanaries = expectedCanaries.filter((slug) => !visible.has(slug));
+  const reason: PublicationProof["reason"] =
+    !Number.isFinite(availableCount) || availableCount <= 0
+      ? "empty"
+      : missingCanaries.length > 0
+        ? "missing_canary"
+        : null;
+  return {
+    ok: reason === null,
+    availableCount: Number.isFinite(availableCount) ? availableCount : 0,
+    expectedCanaries,
+    visibleCanaries,
+    missingCanaries,
+    reason,
+  };
 }
 
 async function runHeartbeat<T>(
@@ -274,6 +420,11 @@ async function runEventArchive(request: Request) {
 
   const publicEvents =
     unified?.status === "fulfilled" ? unified.value.publicEvents : [];
+  const unifiedProviderFailures = boundedProviderLanes(
+    unified?.status === "fulfilled"
+      ? unified.value.sourceHealth.unavailable
+      : [],
+  );
   // Civic meetings and town reminders have first-party detail links on the
   // Events page even though they are intentionally excluded from public
   // discovery. Archive every route-bearing lane so a transient calendar
@@ -316,6 +467,11 @@ async function runEventArchive(request: Request) {
           (source) => source !== "ticketmaster",
         )
       : [];
+  const liveProviderFailures = boundedProviderLanes(
+    live90?.status === "fulfilled"
+      ? live90.value.sources_failed
+      : [],
+  );
   if (live90?.status === "fulfilled") {
     if (live90.value.sources_failed.length > 0) {
       failures.add("live-partial");
@@ -361,6 +517,7 @@ async function runEventArchive(request: Request) {
   if (archiveOutcome && archiveOutcome.status !== "fulfilled") {
     failures.add("archive-write");
   }
+  let archiveRecordsComplete = false;
   if (archive) {
     const recordsComplete =
       archive.recordsComplete
@@ -368,6 +525,7 @@ async function runEventArchive(request: Request) {
         && !archive.timedOut
         && archive.upserted + archive.ignoredLifecycleOnly
           === archive.accepted);
+    archiveRecordsComplete = recordsComplete;
     if (archive.accepted === 0) failures.add("no-archivable-events");
     if (archive.failure?.stage === "tombstone") {
       failures.add("archive-cleanup");
@@ -387,7 +545,31 @@ async function runEventArchive(request: Request) {
     }
   }
 
+  const publication = archive && archiveRecordsComplete
+    ? await verifyArchivePublication(
+        prepareEventArchiveRows(publicEvents).rows.map((row) => row.slug),
+      )
+    : null;
+  if (publication && !publication.ok) {
+    failures.add("archive-publication");
+  }
+
   const failureList = [...failures];
+  if (
+    failureList.includes("unified-partial")
+    || failureList.includes("live-partial")
+  ) {
+    // The ingest heartbeat intentionally keeps a small controlled error
+    // vocabulary. Preserve exact, bounded provider lanes in searchable runtime
+    // logs and the protected cron response so an operator can tell an expected
+    // single-source outage from an archive defect without exposing raw errors.
+    console.warn(JSON.stringify({
+      level: "warn",
+      event: "event_archive_provider_partial",
+      unified: unifiedProviderFailures,
+      live: liveProviderFailures,
+    }));
+  }
   const recordsUpserted = archive?.upserted ?? 0;
   const archiveRecordsProcessed = archive
     ? archive.upserted + archive.ignoredLifecycleOnly
@@ -468,6 +650,7 @@ async function runEventArchive(request: Request) {
     archive_attempted: Boolean(archiveOutcome),
     failures: failureList,
     sources: {
+      unified_failed: unifiedProviderFailures,
       succeeded:
         live90?.status === "fulfilled"
           ? live90.value.sources_succeeded.length
@@ -500,11 +683,22 @@ async function runEventArchive(request: Request) {
           failure: archive.failure ?? null,
         }
       : null,
+    publication: publication
+      ? {
+          ok: publication.ok,
+          available_count: publication.availableCount,
+          expected_canaries: publication.expectedCanaries,
+          visible_canaries: publication.visibleCanaries,
+          missing_canaries: publication.missingCanaries,
+          reason: publication.reason,
+        }
+      : null,
     timing_ms: {
       total: Date.now() - startedAt,
       budgets: {
         source_read: EVENT_ARCHIVE_SOURCE_BUDGET_MS,
         archive_write: EVENT_ARCHIVE_WRITE_BUDGET_MS,
+        publication: EVENT_ARCHIVE_PUBLICATION_BUDGET_MS,
         database_deadline: EVENT_ARCHIVE_DB_DEADLINE_MS,
         heartbeat: EVENT_ARCHIVE_HEARTBEAT_BUDGET_MS,
       },

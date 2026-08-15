@@ -12,7 +12,6 @@ import { easternDayKey } from "@/lib/tz";
 import { LENS_WORDS } from "@/lib/timeLens";
 import {
   List as ListIcon,
-  Rows3,
   CalendarDays,
   Map as MapIcon,
   CalendarRange,
@@ -44,7 +43,6 @@ export type EventSortKey = "recommended" | "time" | "az" | "venue";
 
 const VIEW_ITEMS: ReadonlyArray<{ key: ViewKey; label: string; Icon: typeof ListIcon }> = [
   { key: "list", label: "List", Icon: ListIcon },
-  { key: "compact", label: "Compact", Icon: Rows3 },
   { key: "calendar", label: "Agenda", Icon: CalendarDays },
   { key: "map", label: "Map", Icon: MapIcon },
 ];
@@ -590,8 +588,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         </div>
 
         {/* The sub bar keeps the result count visible. Sorting and alternate
-            layouts are secondary decisions, so mobile gets one "Display"
-            disclosure instead of five more controls before the first event.
+            layouts are secondary decisions, so mobile gets one "View"
+            disclosure instead of more controls before the first event.
             Desktop keeps the same controls inline inside the disclosure. */}
         <div className="eb-subbar">
           <span className="eb-countline" aria-live="polite">
@@ -599,7 +597,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           </span>
           <details className="eb-display-options">
             <summary className="tap-44" style={{ minHeight: 44 }}>
-              <span>Display</span>
+              <span>View</span>
               <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </summary>
             <div className="eb-display-panel">
@@ -694,12 +692,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                     {subLabel ?? (civicOn ? "Government & notices" : intentDef?.label) ?? "Selected interest"}
                     <X className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
                   </button>
-                  <p
-                    className="mt-1.5 px-1 text-[11px] leading-relaxed"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    Change the main interest from the visual rail below.
-                  </p>
                 </>
               ) : null}
 

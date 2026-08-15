@@ -9,6 +9,8 @@ export type FoodTruckScheduleVendor = {
 };
 export type FoodTruckScheduleStop = {
   id: string;
+  /** Stable collector identity. Older stored snapshots may omit this field. */
+  sourceId?: string;
   title: string;
   startsAt: string;
   endsAt?: string;
@@ -32,8 +34,19 @@ export type FoodTruckScheduleSourceHealth = {
   id: string;
   label: string;
   ok: boolean;
+  /** Stops returned by this source during the latest collection attempt. */
   count: number;
   checkedAt: string;
+  /** Latest successful collection, retained across later source failures. */
+  lastSuccessAt?: string;
+  /** Comparable stops from the preceding snapshot's overlapping window. */
+  previousCount?: number;
+  /** Last-known-good stops retained after a source failure or suspicious drop. */
+  retainedCount?: number;
+  /** A valid source unexpectedly removed every still-future prior stop. */
+  suspiciousZero?: boolean;
+  /** A valid source lost at least 40% of three or more prior future stops. */
+  suspiciousDrop?: boolean;
   error?: string;
 };
 

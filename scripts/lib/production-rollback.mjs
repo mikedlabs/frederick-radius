@@ -30,6 +30,23 @@ export function selectPreviousMainDeployment(payload, expectedSha) {
     return { error: "expected-deployment-missing", candidate: null };
   }
 
+  // A newer READY main deployment means this canary is stale. Never let an
+  // older run roll the apex back across a later healthy promotion, even if a
+  // workflow cancellation arrives after the recovery process has started.
+  const newerMainExists = deployments
+    .slice(0, failedIndex)
+    .some(
+      (deployment) =>
+        deployment.meta.githubCommitRef === "main" &&
+        !sameSha(
+          String(deployment.meta.githubCommitSha).toLowerCase(),
+          expectedSha,
+        ),
+    );
+  if (newerMainExists) {
+    return { error: "newer-main-deployment-present", candidate: null };
+  }
+
   const candidate =
     deployments
       .slice(failedIndex + 1)

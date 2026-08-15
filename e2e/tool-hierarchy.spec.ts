@@ -36,18 +36,17 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
     'section[aria-labelledby="compass-browse-heading"]',
   );
   const intentLabels = [
-    "Eat, drink & go out",
+    "Find something to do",
     "Get around",
-    "Essentials & local help",
-    "Explore & save",
+    "Find local help",
+    "Explore Frederick",
   ] as const;
   for (const label of intentLabels) {
     const chapter = browse.getByRole("button", { name: new RegExp(`^${label}\\b`) });
     await expect(chapter).toBeVisible();
   }
-  await expect(browse.locator("section")).toHaveCount(4);
   await expect(
-    browse.getByRole("button", { name: /^All (?:64|65) tools\b/ }),
+    browse.getByRole("button", { name: /^All tools\b/ }),
   ).toBeVisible();
   await expect(browse.getByRole("link")).toHaveCount(0);
   const visibleHrefs = await compass.locator("a:visible").evaluateAll((links) =>
@@ -56,16 +55,10 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   expect(new Set(visibleHrefs).size).toBe(visibleHrefs.length);
 
   await browse
-    .getByRole("button", { name: /^Eat, drink & go out\b/ })
-    .click();
-  await expect(
-    browse.getByRole("link", { name: "Book a table" }),
-  ).toBeVisible();
-  await browse
-    .getByRole("button", { name: "More food, drinks & events" })
+    .getByRole("button", { name: /^Find something to do\b/ })
     .click();
   await expect(page).toHaveURL(/[?&]deck=go-out(?:&|$)/);
-  let dialog = page.getByRole("dialog", { name: "Eat, drink & go out" });
+  let dialog = page.getByRole("dialog", { name: "Find something to do" });
   await expect(dialog).toBeVisible();
   const dialogBox = await dialog.boundingBox();
   expect(dialogBox).not.toBeNull();
@@ -73,6 +66,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
     .toBeLessThanOrEqual(2);
   expect(dialogBox?.width ?? 0).toBeGreaterThanOrEqual(388);
   await expect(dialog.getByRole("button", { name: "All tools" })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: /^Ask Radius\b/ })).toBeVisible();
   await expect(dialog.getByRole("link", { name: /^Brunch guide\b/ })).toBeVisible();
   await expect(dialog.getByRole("searchbox")).toHaveCount(1);
   await expect(dialog.getByRole("button", { name: /^Pin / })).toHaveCount(0);
@@ -81,7 +75,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   await expect(page).toHaveURL(/[?&]deck=all(?:&|$)/);
   dialog = page.getByRole("dialog", { name: "All tools" });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText(/6[45] tools, organized by category/);
+  await expect(dialog).toContainText(/Browse the complete directory by category/);
   await expect(dialog.getByRole("button")).toHaveCount(10);
   await expect(dialog.getByRole("searchbox")).toHaveCount(1);
   await expect(

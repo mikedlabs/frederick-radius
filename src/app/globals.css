@@ -2571,6 +2571,18 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* A display:contents <details> inside a grid does NOT contribute its panel
+   div as the grid item: every current engine (Chromium 131+, Firefox 138+,
+   Safari 18.4+) wraps a details' non-summary content in a ::details-content
+   block box, so THAT box is what the grid places — auto-flowed into a single
+   column — and any col-span utility on the inner panel is inert. Span the
+   wrapper itself across the row. Engines without the wrapper place the panel
+   directly, where its own col-span utility still applies, so both paths get
+   the full-width panel. Today's Browse disclosure is the shipping case. */
+.today-browse::details-content {
+  grid-column: 1 / -1;
+}
+
 /* Vertical-only 44px hit-extender. For a small control packed in a HORIZONTAL
    row (filter chips, radio pairs) where the symmetric .tap-44 overlay would
    extend sideways into a neighbor and steal its taps. Same idea as the Pill's

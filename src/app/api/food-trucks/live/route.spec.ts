@@ -25,8 +25,16 @@ describe("public live food-truck read", () => {
   it("returns an honest empty live layer", async () => {
     const response = await GET(request());
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toMatchObject({ ok: true, pins: [] });
+    expect(response.headers.get("cache-control")).toContain("max-age=10");
+    expect(response.headers.get("vercel-cdn-cache-control")).toContain(
+      "s-maxage=30",
+    );
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      status: "idle",
+      nextPollAfterMs: 300_000,
+      pins: [],
+    });
   });
 
   it("publishes only roster identity plus the opted-in beacon fields", async () => {
@@ -44,6 +52,10 @@ describe("public live food-truck read", () => {
     ]]));
 
     const body = await (await GET(request())).json();
+    expect(body).toMatchObject({
+      status: "active",
+      nextPollAfterMs: 60_000,
+    });
     expect(body.pins).toEqual([expect.objectContaining({
       slug: "in10se-bbq",
       name: "In10se BBQ",

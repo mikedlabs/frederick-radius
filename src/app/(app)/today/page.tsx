@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, LayoutGrid, MessageCircleQuestion } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
@@ -47,12 +47,10 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
-import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
-import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
@@ -71,8 +69,8 @@ import { eventDecisionVerification } from "@/lib/events/decision-verification";
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
  *   2. Decision lead  → the location-aware open-place shelf, which is the
  *                       first Today answer that follows the shared town lens
- *   3. Ask / Browse   → secondary routes for a more specific need
- *   4. What's on      → a qualified event feature + today's public program
+ *   3. What's on      → a qualified event feature + today's public program
+ *   4. Ask / Browse   → one quiet escape row after the ranked day content
  *   5. Available      → scheduled local utilities and tomorrow's next move
  *   6. More           → secondary local guides and saved places, collapsed
  *
@@ -315,31 +313,61 @@ export default async function HomePage() {
           immediately re-ranks this answer instead of only changing the chip. */}
       {decisionLead}
 
-      {/* One decision index: ask a specific question or open the category
-          browse. The rows share a surface so they read as two routes through
-          the same job, not two unrelated cards competing below the weather. */}
-      <div
-        role="group"
-        aria-label="Find what you need"
-        className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <TodayAsk embedded />
-        <BrowsePlacesDisclosure embedded>
-          <CravingStrip />
-        </BrowsePlacesDisclosure>
-      </div>
-
       {/* The day's chronological program belongs before sports and specials.
-          This is the first substantive briefing after the one decision lead
-          and the two direct find routes. WhatsOn already owns its visible
-          heading, so an extra chapter label would spend another row on a
-          phone. */}
+          It follows the ranked first move, so Today answers the day before it
+          offers two broader ways to search. WhatsOn already owns its visible
+          heading, so an extra chapter label would spend another row on a phone. */}
       {whatsOn}
+
+      {/* One quiet escape row. Ask and Browse used to be two full interactive
+          systems above the day's events, which made Today feel like a menu
+          before it felt like a briefing. Keep both capabilities one tap away
+          after the ranked lead and public program, without another card. */}
+      <section
+        aria-labelledby="today-more-help-heading"
+        className="mt-4 grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 border-y py-1.5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <h2
+          id="today-more-help-heading"
+          className="min-w-0 flex-1 text-[13px] font-semibold leading-tight"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Need something else?
+        </h2>
+        <Link
+          href="/ask"
+          prefetch={false}
+          className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          style={{ color: "var(--app-brand-press)" }}
+          aria-label="Open Ask Radius"
+        >
+          <MessageCircleQuestion className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+          Ask
+        </Link>
+        {/* today-browse: current engines wrap a details' content in a
+            ::details-content block box, so the box — not the panel div — is
+            this grid's item and the panel's col-span-3 alone is inert. The
+            globals.css rule spans the wrapper across the row; the col-span-3
+            below still covers engines without the wrapper. */}
+        <details className="group contents today-browse">
+          <summary
+            role="button"
+            className="tactile-interactive inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2.5 text-[13px] font-semibold outline-none marker:content-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] [&::-webkit-details-marker]:hidden"
+            style={{ color: "var(--app-ink-2)" }}
+            aria-label="Browse nearby places by category"
+          >
+            <LayoutGrid className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+            Browse
+          </summary>
+          <div
+            className="col-span-3 mt-1 border-t px-1 pb-2 pt-3"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <CravingStrip />
+          </div>
+        </details>
+      </section>
 
       {/* Scheduled utilities keep their own precise headings. The former
           "Available today" chapter register sat directly above OnNowBand's

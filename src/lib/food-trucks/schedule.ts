@@ -80,14 +80,50 @@ function normalizeVendor(value: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
-const ROSTER_NAMES = new Map(
-  FOOD_TRUCKS.map((truck) => [normalizeVendor(truck.name), truck.slug]),
-);
+function vendorIdentityVariants(value: string): string[] {
+  const normalized = normalizeVendor(value);
+  const variants = new Set([normalized]);
+  const suffixes = [
+    /\s+food\s+truck$/,
+    /\s+truck$/,
+    /\s+coffee\s+cart$/,
+    /\s+bbq\s+and\s+catering$/,
+    /\s+and\s+catering$/,
+    /\s+food$/,
+  ];
+  for (const suffix of suffixes) {
+    const stripped = normalized.replace(suffix, "").trim();
+    if (stripped) variants.add(stripped);
+  }
+  return [...variants];
+}
+
+/**
+ * Collision-aware exact aliases derived from the curated roster. Descriptive
+ * suffixes are removable only when the resulting identity names one roster
+ * entry, so this expands coverage without fuzzy matching similar businesses.
+ */
+const ROSTER_NAMES = new Map<string, string | null>();
+for (const truck of FOOD_TRUCKS) {
+  for (const identity of vendorIdentityVariants(truck.name)) {
+    const existing = ROSTER_NAMES.get(identity);
+    ROSTER_NAMES.set(
+      identity,
+      existing === undefined || existing === truck.slug ? truck.slug : null,
+    );
+  }
+}
 
 /** Conservative identity matching. It never guesses between similar vendors. */
 export function matchFoodTruckSlug(name: string): string | undefined {
   const normalized = normalizeVendor(name);
-  return ROSTER_NAMES.get(normalized) ?? TRUCK_ALIASES[normalized];
+  const explicit = TRUCK_ALIASES[normalized];
+  if (explicit) return explicit;
+  for (const identity of vendorIdentityVariants(normalized)) {
+    const slug = ROSTER_NAMES.get(identity);
+    if (slug) return slug;
+  }
+  return undefined;
 }
 
 function decodeHtml(value: string): string {
@@ -187,6 +223,7 @@ export function parseCelebrateFrederickSchedule(html: string): FoodTruckSchedule
     const startsAt = easternWallToUtcISO(date.year, date.month, date.day, 19, 0);
     stops.push({
       id: stopId("celebrate", startsAt, ...vendors.map((item) => item.name)),
+      sourceId: FOOD_TRUCK_SOURCES.celebrate.id,
       title: "Food trucks at the Summer Concert Series",
       startsAt,
       endsAt: easternWallToUtcISO(date.year, date.month, date.day, 20, 30),
@@ -245,6 +282,7 @@ export function parseSpringfieldManorSchedule(ics: string): FoodTruckScheduleSto
       : easternWallToUtcISO(date.year, date.month, date.day, clock.endHour, clock.endMinute ?? 0);
     return [{
       id: stopId("springfield", startsAt, name),
+      sourceId: FOOD_TRUCK_SOURCES.springfield.id,
       title: `${name} at Springfield Manor`,
       startsAt,
       endsAt,
@@ -266,6 +304,7 @@ export function parseSpringfieldManorSchedule(ics: string): FoodTruckScheduleSto
 export function parseGrilledCheesePleaseSchedule(ics: string): FoodTruckScheduleStop[] {
   return parseICal(ics).map((event) => ({
     id: stopId("grilled-cheese-please", event.uid, event.startsAtUtc),
+    sourceId: FOOD_TRUCK_SOURCES.grilledCheese.id,
     title: event.summary,
     startsAt: event.startsAtUtc,
     endsAt: event.endsAtUtc,
@@ -325,6 +364,7 @@ export function parseSteinhardtSchedule(json: string): FoodTruckScheduleStop[] {
 
     return [{
       id: stopId("steinhardt", publishedId, start.toISOString()),
+      sourceId: FOOD_TRUCK_SOURCES.steinhardt.id,
       title: `${name} at Steinhardt Brewing`,
       startsAt: start.toISOString(),
       endsAt: end?.toISOString(),
@@ -362,6 +402,7 @@ export function parseMonocacyBrewingSchedule(ics: string): FoodTruckScheduleStop
     if (!name) return [];
     return [{
       id: stopId("monocacy", event.uid, event.startsAtUtc),
+      sourceId: FOOD_TRUCK_SOURCES.monocacy.id,
       title: `${name} at Monocacy Brewing`,
       startsAt: event.startsAtUtc,
       endsAt: event.endsAtUtc,
@@ -504,6 +545,8 @@ export async function buildFoodTruckSchedule(now = new Date()): Promise<FoodTruc
             ok: true,
             count: stops.length,
             checkedAt: generatedAt,
+            lastSuccessAt: generatedAt,
+            retainedCount: 0,
           },
         };
       } catch (error) {

@@ -7,7 +7,19 @@ import type { FoodTruckMapPin } from "@/components/map/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const noStore = () => ({ "Cache-Control": "no-store" });
+const ACTIVE_POLL_MS = 60_000;
+const IDLE_POLL_MS = 5 * 60_000;
+const CACHE_HEADERS = {
+  // A live beacon lasts far longer than one request. Let browsers reuse the
+  // answer briefly and let Vercel coalesce simultaneous visitors so an empty
+  // layer does not buy one database read per phone per minute.
+  "Cache-Control": "public, max-age=10, stale-while-revalidate=30",
+  "Vercel-CDN-Cache-Control":
+    "public, s-maxage=30, stale-while-revalidate=60",
+  "X-Content-Type-Options": "nosniff",
+};
+
+const noStore = () => ({ "Cache-Control": "private, no-store" });
 
 /** Public read of locations that operators deliberately published as live. */
 export async function GET(request: NextRequest) {
@@ -35,8 +47,11 @@ export async function GET(request: NextRequest) {
     }];
   });
 
-  return NextResponse.json(
-    { ok: true, checkedAt: new Date().toISOString(), pins },
-    { headers: noStore() },
-  );
+  return NextResponse.json({
+    ok: true,
+    status: pins.length > 0 ? "active" : "idle",
+    checkedAt: new Date().toISOString(),
+    nextPollAfterMs: pins.length > 0 ? ACTIVE_POLL_MS : IDLE_POLL_MS,
+    pins,
+  }, { headers: CACHE_HEADERS });
 }

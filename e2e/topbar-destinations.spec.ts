@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 for (const viewport of [
-  { label: "narrow phone", width: 320, height: 720 },
-  { label: "tablet", width: 768, height: 900 },
+  { label: "narrow phone", width: 320, height: 720, active: false },
+  { label: "alerting phone", width: 390, height: 844, active: true },
+  { label: "tablet", width: 768, height: 900, active: false },
 ]) {
   test(`TopBar keeps secondary destinations calm without overflow on a ${viewport.label}`, async ({
     page,
@@ -13,7 +14,12 @@ for (const viewport of [
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: false, count: 0, tone: "quiet", ok: true }),
+        body: JSON.stringify({
+          active: viewport.active,
+          count: viewport.active ? 1 : 0,
+          tone: viewport.active ? "alert" : "quiet",
+          ok: true,
+        }),
       });
     });
     await page.goto("/compass", {
@@ -40,10 +46,12 @@ for (const viewport of [
       await expect(pulse.getByText("Pulse", { exact: true })).toBeVisible();
       await expect(compass.getByText("Compass", { exact: true })).toBeVisible();
     } else {
-      await expect(pulse).toBeHidden();
+      if (viewport.active) await expect(pulse).toBeVisible();
+      else await expect(pulse).toBeHidden();
       await expect(compass).toBeVisible();
       await expect(compass).toHaveAttribute("aria-current", "page");
       await expect(compass.getByText("Compass", { exact: true })).toBeHidden();
+      await expect(header.getByText("Tools", { exact: true })).toHaveCount(0);
     }
   });
 }

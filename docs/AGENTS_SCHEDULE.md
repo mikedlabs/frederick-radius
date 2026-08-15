@@ -158,5 +158,19 @@ tries the publisher RSS first and has a code-level ceiling of 12 app-side
 recovery attempts per Eastern day. Those attempts are not a promise about how
 many provider credits Firecrawl will charge.
 
+Setting `VISIT_FREDERICK_FACTS_REUSE_APPROVED=1` alone does not schedule
+collection. After written permission is recorded, re-enable the source by:
+
+1. Setting the approval flag and the required worker values above in Vercel
+   Production.
+2. Restoring `{ "path": "/api/cron/visit-frederick", "schedule": "40 9 * * *" }`
+   in `vercel.json`, then deploying that change.
+3. Verifying the deployed cron and a successful, newly timestamped
+   `visit-frederick-snapshot` ingest run after the next scheduled or
+   authenticated manual invocation.
+
+Until both the environment flag and deployed cron are present, the source
+remains dormant.
+
 > Treat every key as production: scope it to the minimum needed, never
 > echo it in logs, and rotate it if a workflow run ever exposes it.

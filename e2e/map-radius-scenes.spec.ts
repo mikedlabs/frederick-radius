@@ -39,13 +39,13 @@ test("Radius task views compose an honest, shareable mobile map", async ({
   await browse.click();
   const chooser = page.locator("#dock-pane");
   await expect(chooser).toHaveAccessibleName("Choose what to see");
-  await expect(chooser.getByRole("button", { name: /^Near me/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Places nearby/ })).toBeVisible();
   await expect(chooser.getByRole("button", { name: /^Get around/ })).toBeVisible();
   await expect(chooser.getByText("Ready-made views", { exact: true })).toHaveCount(0);
 
   // WebGL pins have a real HTML path: collapsed by default, then named,
   // keyboard-operable results with phone-sized targets when requested.
-  await chooser.getByRole("button", { name: /^Near me/ }).click();
+  await chooser.getByRole("button", { name: /^Places nearby/ }).click();
   const placesInView = chooser.locator("[data-map-in-view-places]");
   await expect(placesInView).toBeVisible();
   await expect(placesInView.locator("details")).not.toHaveAttribute("open", "");
@@ -143,8 +143,22 @@ test("task views remain usable on a narrow phone", async ({ page }) => {
     320,
   );
 
-  const taskButtons = chooser.locator(".dock-content-primary").getByRole("button");
-  await expect(taskButtons).toHaveCount(5);
+  const primaryTasks = chooser.locator(
+    ".dock-content-primary > .dock-content-row-primary",
+  );
+  await expect(primaryTasks).toHaveCount(4);
+
+  const nearbyEssentials = chooser
+    .getByRole("group", { name: "Nearby essentials" })
+    .getByRole("button");
+  await expect(nearbyEssentials).toHaveCount(4);
+
+  // The four urgent utility shortcuts are intentionally nested under Places
+  // nearby instead of becoming four more top-level map modes. Every visible
+  // control still needs to remain thumb-sized and inside the narrow viewport.
+  const taskButtons = chooser
+    .locator(".dock-content-primary")
+    .getByRole("button");
   for (const control of await taskButtons.all()) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -229,7 +243,8 @@ test("What changed keeps City project lifecycle and source context visible", asy
   });
   await page.getByRole("button", { name: "Choose what to see on this map" }).click();
   const chooser = page.locator("#dock-pane");
-  await chooser.getByRole("button", { name: /^What changed/ }).click();
+  await chooser.getByRole("button", { name: /^More/ }).click();
+  await chooser.getByRole("button", { name: /^Changes and projects/ }).click();
 
   await expect(host).toHaveAttribute("data-map-scene", "what-changed");
   await expect

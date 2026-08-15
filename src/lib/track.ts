@@ -58,26 +58,95 @@ export const PLAUSIBLE_GOAL_EVENTS = new Set([
   "decision_wrong",
 ]);
 
+/**
+ * Plausible Starter does not expose custom-property breakdowns, so a generic
+ * `decision_open` cannot answer which core surface helped. Translate only the
+ * three product journeys Radius is actively judging into stable goal names.
+ * The categorical props are used locally for routing and are never passed to
+ * Plausible.
+ *
+ * Install completion needs the same distinction. Copying or sharing a return
+ * link is a successful Return Bridge action, but it is not an app install.
+ * Native browser acceptance is counted separately from the iPhone's explicit
+ * self-report because Safari provides no install-complete browser event.
+ */
+export function plausibleGoalName(
+  event: string,
+  props?: Record<string, string | number | boolean>,
+  pathname?: string,
+): string | null {
+  if (!shouldSendToPlausible(event, props)) return null;
+
+  if (
+    event === "decision_impression" &&
+    pathname === "/today" &&
+    props?.surface === "today" &&
+    props.position === "lead"
+  ) {
+    return "today_answer_view";
+  }
+  if (
+    event === "decision_impression" &&
+    pathname === "/map" &&
+    props?.surface === "map" &&
+    props.position === "result"
+  ) {
+    return "map_result_view";
+  }
+  if (
+    event === "decision_open" &&
+    pathname === "/events" &&
+    props?.surface === "events"
+  ) {
+    return "events_detail_open";
+  }
+  if (event === "keep_radius_success") {
+    if (props?.method === "native" || props?.method === "appinstalled") {
+      return "install_complete";
+    }
+    if (props?.method === "manual_confirm") {
+      return "install_reported_complete";
+    }
+  }
+  return event;
+}
+
 export function shouldSendToPlausible(
   event: string,
   props?: Record<string, string | number | boolean>,
 ): boolean {
   if (!PLAUSIBLE_GOAL_EVENTS.has(event)) return false;
-  if (event === "decision_impression" && props?.position !== "lead") return false;
+  if (
+    event === "decision_impression" &&
+    props?.position !== "lead" &&
+    !(props?.surface === "map" && props.position === "result")
+  ) {
+    return false;
+  }
   // A save goal means activation, not undoing a save later.
   if ((event === "save_place" || event === "save_event") && props?.on === false) return false;
   return true;
 }
 
-type PlausibleFn = ((name: string) => void) & {
-  q?: string[][];
+type PlausibleFn = ((
+  name: string,
+  options?: { interactive?: boolean },
+) => void) & {
+  q?: Array<[string, { interactive?: boolean }?]>;
 };
+
+const NON_INTERACTIVE_PLAUSIBLE_GOALS = new Set([
+  // These are exposures, not deliberate interactions. They remain useful goal
+  // counts but must not turn an otherwise bounced visit into an engaged visit.
+  "today_answer_view",
+  "map_result_view",
+]);
 
 function plausibleQueue(): PlausibleFn | null {
   if (typeof window === "undefined") return null;
   const target = window as unknown as { plausible?: PlausibleFn };
   if (target.plausible) return target.plausible;
-  const queued = ((...args: [string]) => {
+  const queued = ((...args: [string, { interactive?: boolean }?]) => {
     (queued.q = queued.q || []).push(args);
   }) as PlausibleFn;
   target.plausible = queued;
@@ -139,12 +208,19 @@ export function track(
   props?: Record<string, string | number | boolean>,
 ): void {
   if (typeof window === "undefined") return;
-  if (shouldSendToPlausible(event, props)) {
+  const pathname = typeof location === "undefined" ? undefined : location.pathname;
+  const goal = plausibleGoalName(event, props, pathname);
+  if (goal) {
     try {
       // Starter cannot analyze custom properties. Sending only the stable goal
       // name also guarantees raw Search/Ask text can never leave through this
       // path. Anonymous misses already have their own first-party data-gap log.
-      plausibleQueue()?.(event);
+      plausibleQueue()?.(
+        goal,
+        NON_INTERACTIVE_PLAUSIBLE_GOALS.has(goal)
+          ? { interactive: false }
+          : undefined,
+      );
     } catch {
       /* ignore — analytics is best-effort */
     }

@@ -25,6 +25,7 @@ import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 
 export type IndexRow = {
   slug: string;
@@ -223,6 +224,7 @@ function PlaceCell({
   eagerPhoto?: boolean;
 }) {
   const { openSheet } = usePlaceSheet();
+  const photoSrc = row.photo ? proxyPhotoAtWidth(row.photo, 44) : null;
 
   async function open() {
     haptic("light");
@@ -253,14 +255,15 @@ function PlaceCell({
     >
       {/* 44px anchor: photo with a pressed ring, else the category glyph
           on its tinted paper square. An anchor for recognition, not a hero. */}
-      {row.photo ? (
+      {photoSrc ? (
         <Image
-          src={row.photo}
+          src={photoSrc}
           alt=""
-          unoptimized={row.photo.startsWith("/api/place-photo")}
+          unoptimized={photoSrc.startsWith("/api/place-photo")}
           width={88}
           height={88}
           sizes="44px"
+          priority={eagerPhoto}
           loading={eagerPhoto ? "eager" : "lazy"}
           fetchPriority={eagerPhoto ? "high" : "auto"}
           className="h-11 w-11 shrink-0 rounded-[9px] object-cover"

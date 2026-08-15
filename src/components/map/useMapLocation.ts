@@ -236,7 +236,9 @@ export function useMapLocation({
     // A fresh cached/shared fix makes Near me instant. Still ask the shared
     // geolocation hook to refresh it in the background; a newer fix will
     // simply refit the same honest one-mile area when it arrives.
-    if (userLoc) fitNearbyWithIntent(userLoc);
+    if (userLoc) {
+      fitNearbyWithIntent(userLoc);
+    }
     locateRequestedRef.current = true;
     setLocating(true);
     setGeoMsg(null);

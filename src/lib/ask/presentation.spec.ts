@@ -179,8 +179,8 @@ describe("Ask response hierarchy", () => {
       "primary-source",
       "summary",
       "context-controls",
-      "supporting-sources",
       "primary-action",
+      "supporting-sources",
       "secondary-actions",
       "detail",
     ]);

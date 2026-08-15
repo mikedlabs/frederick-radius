@@ -5,14 +5,21 @@ import {
   mapWithConcurrency,
 } from "./lib/prod-audit-events.mjs";
 import { publicReadinessGate } from "./lib/prod-audit-readiness.mjs";
+import {
+  publicEventReadGate,
+  publicFoodTruckBeaconGate,
+  publicFoodTruckScheduleGate,
+} from "./lib/prod-audit-data.mjs";
 
 /**
  * Production acceptance canary — tests the apex URL after promotion.
  *
  * A green Vercel build is not proof that the public alias moved or that the
  * installed-app contract still points at the current product. This script
- * checks the real front door, primary routes, manifest, stable deep links,
- * every rendered event deep link, and the deploy SHA embedded in /sw.js.
+ * checks the real front door, primary routes, manifest, stable deep links, and
+ * the deploy SHA embedded in /sw.js. Public-data checks can run here for a
+ * manual audit, but the rollback-capable workflow disables them and executes
+ * the independent data canary instead.
  *
  * Manual:
  *   BASE_URL=https://frederickradius.app \
@@ -40,6 +47,15 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CORE_ROUTES = ["/today", "/events", "/map", "/ask"];
 const STABLE_PLACE_PATH = "/places/brewers-alley-frederick";
 const EVENT_LINK_CONCURRENCY = 4;
+const MIN_PUBLIC_EVENT_COUNT = Number(process.env.MIN_PUBLIC_EVENT_COUNT) || 20;
+const MIN_PUBLIC_EVENT_SOURCE_COUNT =
+  Number(process.env.MIN_PUBLIC_EVENT_SOURCE_COUNT) || 8;
+const MIN_FOOD_TRUCK_SOURCE_COUNT =
+  Number(process.env.MIN_FOOD_TRUCK_SOURCE_COUNT) || 5;
+// Automatic rollback is a deploy-integrity response, never a remedy for an
+// upstream provider outage. The production workflow sets this flag for its
+// rollback-capable job and runs the public-data acceptance checks separately.
+const CHECK_DATA_HEALTH = process.env.SKIP_DATA_HEALTH !== "1";
 
 let failures = 0;
 const checkedPages = new Map();
@@ -218,6 +234,7 @@ async function run() {
     }
   }
 
+  if (CHECK_DATA_HEALTH) {
   // `/api/health` is a liveness endpoint and deliberately stays HTTP 200 when
   // optional data sources degrade. Promotion safety therefore lives in its
   // JSON contract: every critical schema group and worker heartbeat must be
@@ -255,6 +272,110 @@ async function run() {
     }
   } catch (error) {
     bad(`/api/health readiness check failed: ${error.message}`);
+  }
+
+  // Cron completion is not publication proof. Read the same public event and
+  // food-truck contracts used by client surfaces, then assert a small coverage
+  // floor and the source/freshness evidence that makes those counts honest.
+  try {
+    const browse = await request("/api/events/browse", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/events/browse", browse);
+    check(
+      browse.status === 200,
+      "/api/events/browse is publicly readable",
+      `/api/events/browse returned ${browse.status}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(browse.body);
+    } catch {
+      bad("/api/events/browse did not return valid JSON");
+    }
+    if (payload) {
+      const gate = publicEventReadGate(payload, {
+        minimumEvents: MIN_PUBLIC_EVENT_COUNT,
+        minimumSources: MIN_PUBLIC_EVENT_SOURCE_COUNT,
+      });
+      if (gate.passes) {
+        ok(
+          `public event read exposes ${gate.count} upcoming occurrence(s) from ${gate.sourceCount} source(s)`,
+        );
+      } else {
+        for (const failure of gate.failures) {
+          bad(`/api/events/browse coverage: ${failure}`);
+        }
+      }
+      for (const warning of gate.warnings) {
+        note(`/api/events/browse: ${warning}`);
+      }
+    }
+  } catch (error) {
+    bad(`/api/events/browse publication canary failed: ${error.message}`);
+  }
+
+  try {
+    const schedule = await request("/api/food-trucks/status", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/food-trucks/status", schedule);
+    let payload = null;
+    try {
+      payload = JSON.parse(schedule.body);
+    } catch {
+      bad("/api/food-trucks/status did not return valid JSON");
+    }
+    if (payload) {
+      const gate = publicFoodTruckScheduleGate(payload, {
+        minimumSources: MIN_FOOD_TRUCK_SOURCE_COUNT,
+      });
+      if (gate.passes) {
+        ok(
+          `public food-truck schedule exposes ${gate.stopCount} stop(s) from ${gate.sourceCount} source(s)`,
+        );
+      } else {
+        for (const failure of gate.failures) {
+          bad(`/api/food-trucks/status coverage: ${failure}`);
+        }
+      }
+      for (const warning of gate.warnings) {
+        note(`/api/food-trucks/status: ${warning}`);
+      }
+    }
+  } catch (error) {
+    bad(`/api/food-trucks/status publication canary failed: ${error.message}`);
+  }
+
+  try {
+    const live = await request("/api/food-trucks/live", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/food-trucks/live", live);
+    check(
+      live.status === 200,
+      "/api/food-trucks/live is publicly readable",
+      `/api/food-trucks/live returned ${live.status}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(live.body);
+    } catch {
+      bad("/api/food-trucks/live did not return valid JSON");
+    }
+    if (payload) {
+      const gate = publicFoodTruckBeaconGate(payload);
+      if (gate.passes) {
+        note(`public food-truck beacon read contains ${gate.count} active check-in(s)`);
+      } else {
+        for (const failure of gate.failures) {
+          bad(`/api/food-trucks/live coverage: ${failure}`);
+        }
+      }
+    }
+  } catch (error) {
+    bad(`/api/food-trucks/live publication canary failed: ${error.message}`);
+  }
   }
 
   // Installed-app contract: discover the linked manifest, verify its launch
@@ -296,69 +417,67 @@ async function run() {
     }
   }
 
-  // Follow every actual event anchor published by Today and Events. Extracting
-  // href attributes (rather than searching the full Next document for slug-like
-  // text) avoids crawling the serialized client payload or tucked inventory.
-  // A source outage may render the event-specific Radius recovery screen only
-  // if the route still fulfills its successful HTML response contract. Every
-  // 5xx is a deployment failure, even when its body contains branded recovery
-  // copy. Stale 404s and foreign responses fail as well.
-  const eventPaths = new Set();
-  for (const surface of ["/today", "/events"]) {
-    const html = checkedPages.get(surface)?.body || "";
-    for (const path of eventDetailPathsFromHtml(html, BASE)) {
-      eventPaths.add(path);
-    }
-  }
-  check(
-    eventPaths.size > 0,
-    `found ${eventPaths.size} rendered event deep link(s)`,
-    "Today and Events did not expose a rendered event deep link",
-  );
-  const eventResults = await mapWithConcurrency(
-    [...eventPaths],
-    EVENT_LINK_CONCURRENCY,
-    async (path) => {
-      try {
-        return {
-          path,
-          result: await request(path, { accept: "text/html" }),
-          error: null,
-        };
-      } catch (error) {
-        return { path, result: null, error };
+  if (CHECK_DATA_HEALTH) {
+    // Follow every actual event anchor published by Today and Events. This is
+    // data acceptance, not deploy integrity: a provider/archive outage must
+    // stay visible without gaining authority to roll back healthy code.
+    const eventPaths = new Set();
+    for (const surface of ["/today", "/events"]) {
+      const html = checkedPages.get(surface)?.body || "";
+      for (const path of eventDetailPathsFromHtml(html, BASE)) {
+        eventPaths.add(path);
       }
-    },
-  );
-  const eventStates = [];
-  for (const { path, result, error } of eventResults) {
-    if (error || !result) {
-      bad(`${path} event deep-link fetch failed: ${error?.message || "unknown error"}`);
-      continue;
     }
-    assertNoBetaRedirect(path, result);
-    const state = classifyEventDetailResult(result, BASE);
-    eventStates.push(state);
-    if (state.kind === "healthy") {
-      ok(`${path} is a healthy event detail`);
-    } else if (state.kind === "recovery") {
-      note(`${path} returned the Radius event recovery state`);
-    } else {
-      bad(`${path} event detail failed: ${state.reason}`);
+    check(
+      eventPaths.size > 0,
+      `found ${eventPaths.size} rendered event deep link(s)`,
+      "Today and Events did not expose a rendered event deep link",
+    );
+    const eventResults = await mapWithConcurrency(
+      [...eventPaths],
+      EVENT_LINK_CONCURRENCY,
+      async (path) => {
+        try {
+          return {
+            path,
+            result: await request(path, { accept: "text/html" }),
+            error: null,
+          };
+        } catch (error) {
+          return { path, result: null, error };
+        }
+      },
+    );
+    const eventStates = [];
+    for (const { path, result, error } of eventResults) {
+      if (error || !result) {
+        bad(`${path} event deep-link fetch failed: ${error?.message || "unknown error"}`);
+        continue;
+      }
+      assertNoBetaRedirect(path, result);
+      const state = classifyEventDetailResult(result, BASE);
+      eventStates.push(state);
+      if (state.kind === "healthy") {
+        ok(`${path} is a healthy event detail`);
+      } else if (state.kind === "recovery") {
+        note(`${path} returned the Radius event recovery state`);
+      } else {
+        bad(`${path} event detail failed: ${state.reason}`);
+      }
     }
-  }
-  if (eventStates.length > 0) {
-    const gate = eventDetailGateSummary(eventStates);
-    check(
-      gate.healthy > 0,
-      `${gate.healthy} event detail(s) rendered real event content`,
-      "all rendered event links fell back to recovery or failure",
-    );
-    check(
-      gate.recovery <= gate.allowedRecoveries,
-      `event recovery stayed within budget (${gate.recovery}/${gate.total})`,
-      `event recovery exceeded budget (${gate.recovery}/${gate.total}; allowed ${gate.allowedRecoveries})`,
-    );
+    if (eventStates.length > 0) {
+      const gate = eventDetailGateSummary(eventStates);
+      check(
+        gate.healthy > 0,
+        `${gate.healthy} event detail(s) rendered real event content`,
+        "all rendered event links fell back to recovery or failure",
+      );
+      check(
+        gate.recovery <= gate.allowedRecoveries,
+        `event recovery stayed within budget (${gate.recovery}/${gate.total})`,
+        `event recovery exceeded budget (${gate.recovery}/${gate.total}; allowed ${gate.allowedRecoveries})`,
+      );
+    }
   }
 
   // /sw.js is intentionally versioned by VERCEL_GIT_COMMIT_SHA. Cache-bust
@@ -395,44 +514,47 @@ async function run() {
     bad(`/sw.js deploy-identity check failed: ${error.message}`);
   }
 
-  // Preserve the focused trust checks from the original audit.
-  const eventsHtml = checkedPages.get("/events")?.body || "";
-  for (const term of ["Private Corp", "CANCELLED"]) {
-    const count = (
-      eventsHtml.match(new RegExp(term.replace(/ /g, "\\s+"), "gi")) || []
+  if (CHECK_DATA_HEALTH) {
+    // Editorial/content checks can fail because upstream data changed. Keep
+    // them visible in the data canary, but never let them authorize rollback.
+    const eventsHtml = checkedPages.get("/events")?.body || "";
+    for (const term of ["Private Corp", "CANCELLED"]) {
+      const count = (
+        eventsHtml.match(new RegExp(term.replace(/ /g, "\\s+"), "gi")) || []
+      ).length;
+      check(
+        count === 0,
+        `/events has no "${term}" listing`,
+        `/events still shows "${term}" (${count}×)`,
+      );
+    }
+
+    const mapHtml = checkedPages.get("/map")?.body || "";
+    const mapText = mapHtml
+      .replace(/<!--.*?-->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+    const municipality =
+      "Frederick|Brunswick|Thurmont|Middletown|Walkersville|Urbana|Emmitsburg|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Rosemont";
+    const vague = (
+      mapText.match(
+        new RegExp(`\\b(?:${municipality})\\s*·\\s*\\d{1,4}\\s?ft\\b`, "g"),
+      ) || []
     ).length;
     check(
-      count === 0,
-      `/events has no "${term}" listing`,
-      `/events still shows "${term}" (${count}×)`,
+      vague === 0,
+      "/map has no vague municipality-distance claims",
+      `/map shows ${vague} vague municipality-distance claim(s)`,
     );
-  }
 
-  const mapHtml = checkedPages.get("/map")?.body || "";
-  const mapText = mapHtml
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ");
-  const municipality =
-    "Frederick|Brunswick|Thurmont|Middletown|Walkersville|Urbana|Emmitsburg|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Rosemont";
-  const vague = (
-    mapText.match(
-      new RegExp(`\\b(?:${municipality})\\s*·\\s*\\d{1,4}\\s?ft\\b`, "g"),
-    ) || []
-  ).length;
-  check(
-    vague === 0,
-    "/map has no vague municipality-distance claims",
-    `/map shows ${vague} vague municipality-distance claim(s)`,
-  );
-
-  for (const [path, result] of checkedPages) {
-    const count = uncontrolledImgs(result.body);
-    check(
-      count === 0,
-      `${path} renders no uncontrolled images`,
-      `${path} renders ${count} uncontrolled image(s)`,
-    );
+    for (const [path, result] of checkedPages) {
+      const count = uncontrolledImgs(result.body);
+      check(
+        count === 0,
+        `${path} renders no uncontrolled images`,
+        `${path} renders ${count} uncontrolled image(s)`,
+      );
+    }
   }
 
   console.log(

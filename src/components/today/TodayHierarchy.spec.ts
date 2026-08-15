@@ -6,18 +6,23 @@ const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
 
-  it("puts the town-aware place lead below weather, before Ask, Browse, and the event program", () => {
+  it("puts the ranked place and event content before the compact Ask and Browse escape row", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");
-    const ask = renderedPage.indexOf("<TodayAsk embedded");
-    const browse = renderedPage.indexOf("<BrowsePlacesDisclosure embedded");
     const events = renderedPage.indexOf("{whatsOn}");
+    const escape = renderedPage.indexOf('id="today-more-help-heading"');
+    const ask = renderedPage.indexOf('href="/ask"', escape);
+    const browse = renderedPage.indexOf(
+      'aria-label="Browse nearby places by category"',
+      escape,
+    );
 
     expect(weather).toBeGreaterThan(-1);
     expect(lead).toBeGreaterThan(weather);
-    expect(ask).toBeGreaterThan(lead);
+    expect(events).toBeGreaterThan(lead);
+    expect(escape).toBeGreaterThan(events);
+    expect(ask).toBeGreaterThan(escape);
     expect(browse).toBeGreaterThan(ask);
-    expect(events).toBeGreaterThan(browse);
   });
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
@@ -107,9 +112,12 @@ describe("Today decision hierarchy", () => {
     );
   });
 
-  it("uses the upper decision surface instead of repeating the Toolbox teaser", () => {
-    expect(todayPage).toContain("<TodayAsk embedded");
-    expect(todayPage).toContain("<BrowsePlacesDisclosure embedded");
+  it("uses one compact Ask and Browse row instead of stacked discovery systems", () => {
+    expect(todayPage).toContain("Need something else?");
+    expect(todayPage).toContain('href="/ask"');
+    expect(todayPage).toContain('aria-label="Browse nearby places by category"');
+    expect(todayPage).not.toContain("<TodayAsk");
+    expect(todayPage).not.toContain("<BrowsePlacesDisclosure");
     expect(todayPage).toContain("<CravingStrip");
     expect(todayPage).not.toContain("ToolboxTeaser");
   });

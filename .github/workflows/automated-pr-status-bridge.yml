@@ -18,7 +18,7 @@ on:
 permissions:
   actions: read
   contents: read
-  pull-requests: read
+  pull-requests: write
   statuses: write
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
             const mainRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
             const mainSha = mainRef.data.object.sha;
 
-            const allowedByBranch = {
+            const allowedByFamily = {
               'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',
@@ -101,7 +101,12 @@ jobs:
               ],
             };
 
-            const allowlist = allowedByBranch[branch];
+            const family = Object.keys(allowedByFamily).find((candidate) => {
+              if (branch === candidate) return true;
+              if (!branch.startsWith(`${candidate}--`)) return false;
+              return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 2));
+            });
+            const allowlist = family ? allowedByFamily[family] : null;
             if (!allowlist || !/^[0-9a-f]{40}$/.test(headSha || '')) {
               core.setFailed(`Refusing an unexpected automated branch or head: ${String(branch)}`);
               return;
@@ -248,4 +253,77 @@ jobs:
                 target_url: job.html_url,
               });
               core.info(`${contextName}: ${state} -> ${mergeSha}`);
+            }
+
+            // A fresh branch per attempt prevents a stale PR from blocking a
+            // new candidate, but old candidates should not accumulate forever.
+            // Keep them available until the replacement has passed every
+            // required gate; then close only older, same-family, same-repo bot
+            // PRs. An older bridge run can never supersede a newer candidate.
+            const requiredContexts = ['verify', 'Required browser chaos', 'style-lint'];
+            const combined = await github.rest.repos.getCombinedStatusForRef({
+              owner,
+              repo,
+              ref: mergeSha,
+              per_page: 100,
+            });
+            const latestByContext = new Map();
+            for (const status of combined.data.statuses || []) {
+              if (!latestByContext.has(status.context)) {
+                latestByContext.set(status.context, status.state);
+              }
+            }
+            const incomplete = requiredContexts.filter(
+              (contextName) => latestByContext.get(contextName) !== 'success',
+            );
+            if (incomplete.length > 0) {
+              core.info(`Older ${family} candidates remain open until these gates pass: ${incomplete.join(', ')}`);
+              return;
+            }
+
+            const escapedFamily = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const runBranch = new RegExp(`^${escapedFamily}--run-[0-9]+-[0-9]+$`);
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+            const familyPulls = openPulls.filter((candidate) => {
+              const labels = new Set(candidate.labels.map((label) => label.name));
+              return (
+                candidate.head.repo?.full_name === `${owner}/${repo}` &&
+                (candidate.head.ref === family || runBranch.test(candidate.head.ref)) &&
+                labels.has('automated') &&
+                labels.has('data-pipeline')
+              );
+            });
+            const newerCandidate = familyPulls.find(
+              (candidate) => candidate.number > pull.number,
+            );
+            if (newerCandidate) {
+              core.info(`PR #${pull.number} is not the latest ${family} candidate; #${newerCandidate.number} remains authoritative.`);
+              return;
+            }
+
+            for (const candidate of familyPulls) {
+              if (candidate.number >= pull.number) continue;
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: candidate.number,
+                body: [
+                  `Superseded by #${pull.number} after the newer candidate passed every required CI and style gate.`,
+                  '',
+                  'The older generated diff is closed so it cannot be merged accidentally or keep conflicting with current data.',
+                ].join('\n'),
+              });
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: candidate.number,
+                state: 'closed',
+              });
+              core.info(`Closed superseded ${family} PR #${candidate.number} after #${pull.number} passed all required gates.`);
             }

@@ -232,7 +232,8 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24"
+          data-topbar-layout="stable-mobile-icons"
+          className="mx-auto flex h-[var(--app-topbar-h)] w-full min-w-0 max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24"
           // Horizontal padding is max(1rem base, side-inset): a notched
           // phone in landscape puts the notch on a side edge, which could
           // clip the search field / back button. max() keeps the 1rem base
@@ -248,11 +249,11 @@ export default function TopBar() {
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
+              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] sm:justify-start sm:pl-1 sm:pr-2.5"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-              <span className="hidden text-[15px] min-[390px]:inline">Back</span>
+              <span className="hidden text-[15px] sm:inline">Back</span>
             </button>
           ) : (
             <Link
@@ -390,7 +391,13 @@ export default function TopBar() {
               destinations retain full touch targets and accessible names on
               narrow phones. */}
           {shouldShowGlobalLocation(pathname) ? (
-            <LocationChip compact={pathname === "/map"} />
+            // Phone chrome keeps every action at a stable 44px contract. The
+            // accessible name still states the current scope; the visible
+            // town name returns at sm where it cannot collide with an active
+            // Pulse alert or the Compass destination.
+            <div className="contents max-sm:[&_[data-location-chip]]:max-w-11 max-sm:[&_[data-location-chip]]:px-0 max-sm:[&_[data-location-chip]>span]:hidden max-sm:[&_[data-location-chip]>svg:last-child]:hidden">
+              <LocationChip compact={pathname === "/map"} />
+            </div>
           ) : null}
 
           {/* Pulse stays named on larger screens. On a phone it appears only
@@ -418,7 +425,6 @@ export default function TopBar() {
               }}
             >
               <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-              <span className="hidden text-[12px] font-semibold leading-none min-[390px]:inline sm:hidden">Tools</span>
               <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
             </Link>
           </div>

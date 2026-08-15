@@ -147,6 +147,18 @@
     },
     "generated_at": "2026-08-01T09:50:59.144Z"
   },
+  "crystal-forests-llc": {
+    "blurb": "Crystal Forests offers psychic readings, mediumship sessions, and past-life regression hypnosis.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://crystal-forests-llc.square.site/",
+      "fetched_at": "2026-08-01T09:50:44.856Z"
+    },
+    "generated_at": "2026-08-01T09:50:44.856Z",
+    "reviewed_at": "2026-08-14T22:30:05Z",
+    "reviewer_note": "Official business website checked; the listed reading and hypnosis services were paraphrased without adding claims."
+  },
   "dublin-roasters-frederick": {
     "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
     "status": "approved",
@@ -188,6 +200,18 @@
       "fetched_at": "2026-08-01T09:51:40.617Z"
     },
     "generated_at": "2026-08-01T09:51:40.617Z"
+  },
+  "emporium-antiques": {
+    "blurb": "Emporium Antiques brings multiple dealers together in a historic downtown Frederick building, with antiques, vintage goods, and mid-century pieces.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://emporiumantiques.com/",
+      "fetched_at": "2026-08-01T09:51:05.588Z"
+    },
+    "generated_at": "2026-08-01T09:51:05.588Z",
+    "reviewed_at": "2026-08-14T22:30:05Z",
+    "reviewer_note": "Official business website checked; conflicting exact size and dealer counts were deliberately omitted."
   },
   "escape-this-frederick": {
     "blurb": "Escape This Frederick operates six private escape rooms with puzzles and themed scenarios, and also offers virtual reality games.",
@@ -928,5 +952,17 @@
       "fetched_at": "2026-08-01T09:48:01.377Z"
     },
     "generated_at": "2026-08-01T09:48:01.377Z"
+  },
+  "zoes-chocolate-company": {
+    "blurb": "Zoe's Chocolate Company makes chocolates and traces its family business across three generations to relatives who sold hand-rolled chocolates in the early 1900s.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://zoeschocolate.com/",
+      "fetched_at": "2026-08-01T09:51:43.737Z"
+    },
+    "generated_at": "2026-08-01T09:51:43.737Z",
+    "reviewed_at": "2026-08-14T22:30:05Z",
+    "reviewer_note": "Official company story checked; the three-generation family history was paraphrased conservatively."
   }
 }

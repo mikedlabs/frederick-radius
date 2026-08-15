@@ -19,9 +19,9 @@ describe("admin cost visibility", () => {
     expect(source).toContain("attempt is not the same as a");
   });
 
-  it("excludes capped attempts from estimated dollar totals", () => {
+  it("estimates only services with an honest per-unit price", () => {
     expect(source).toContain(
-      'if (upstream.billing === "plan-credit") return null;',
+      'if (upstream.billing !== "unit-estimate") return null;',
     );
     expect(source).toContain(
       "Firecrawl recovery is shown as app-side attempts and is",

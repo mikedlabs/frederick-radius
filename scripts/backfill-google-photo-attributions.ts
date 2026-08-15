@@ -35,6 +35,7 @@ import {
 } from "@/lib/google-photo-backfill";
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
 import { isGooglePlaceId } from "@/lib/provenance";
+import { comparePlaceDataPriority } from "@/lib/quality/place-data-priority";
 
 const OUT = new URL(
   "../src/data/places-enrichment.json",
@@ -43,8 +44,12 @@ const OUT = new URL(
 
 type ClientPriority = {
   slug: string;
-  feature_score?: number;
+  category: string;
+  source: "seed" | "manual" | "dfp" | "google" | "discovered";
+  primary_type?: string;
+  feature_score: number;
   local_favorite?: boolean;
+  google_rating?: number;
   google_rating_count?: number;
   google_place_id?: string;
   google_photo_url?: string;
@@ -71,15 +76,6 @@ async function main() {
     readFileSync(OUT, "utf8"),
   ) as Record<string, PhotoBackfillRow>;
   const brewerySlugs = new Set(BREWERIES.map((brewery) => brewery.slug));
-  const publicPriority = new Map(
-    (CLIENT_PLACES as ClientPriority[]).map((place) => [
-      place.slug,
-      (brewerySlugs.has(place.slug) ? 1_000_000 : 0) +
-      (place.local_favorite ? 10_000 : 0) +
-        (place.feature_score ?? 0) * 100 +
-        Math.log10((place.google_rating_count ?? 0) + 1),
-    ]),
-  );
   const candidates = (CLIENT_PLACES as ClientPriority[])
     .map((place) => [
       place.slug,
@@ -98,11 +94,10 @@ async function main() {
           Boolean(place.geom)
         : needsGooglePhotoMetadata(row),
     )
-    .sort(
-      ([slugA], [slugB]) =>
-        (publicPriority.get(slugB) ?? -1) -
-          (publicPriority.get(slugA) ?? -1) ||
-        slugA.localeCompare(slugB),
+    .sort(([, , placeA], [, , placeB]) =>
+      comparePlaceDataPriority(placeA, placeB, {
+        preferredSlugs: brewerySlugs,
+      }),
     );
   const batch = candidates.slice(0, limit);
 

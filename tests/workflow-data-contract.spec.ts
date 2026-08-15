@@ -433,14 +433,37 @@ describe("scheduled data workflow contracts", () => {
   });
 
   it("isolates rollback-capable production canaries by trigger type", () => {
+    const text = workflowText("production-canary.yml");
     const workflow = parse(
-      workflowText("production-canary.yml"),
+      text,
     ) as WorkflowDocument;
 
     expect(workflow.concurrency).toEqual({
-      group: "production-apex-canary-${{ github.event_name }}",
+      group:
+        "production-apex-canary-${{ github.event_name }}-${{ github.event_name == 'deployment_status' && github.event.deployment.environment == 'Production' && 'production' || github.event.deployment.id || 'singleton' }}",
       "cancel-in-progress": true,
     });
+    expect(workflow.concurrency?.group).toContain(
+      "github.event.deployment.environment == 'Production' && 'production'",
+    );
+    expect(workflow.concurrency?.group).toContain(
+      "github.event.deployment.id || 'singleton'",
+    );
+    expect(text).toContain("needs.apex.result != 'skipped'");
+    expect(text).toContain("SKIP_DATA_HEALTH: \"1\"");
+    expect(text).toContain("node scripts/prod-data-audit.mjs");
+    expect(text).toContain("without rollback authority");
+    expect(text).toContain("family: 'data'");
+    expect(text).toContain("needs: [apex, data]");
+    expect(text.indexOf("Restore the last healthy production deployment")).toBeLessThan(
+      text.indexOf("data:\n    name: Public data acceptance"),
+    );
+    const rollback = readFileSync(
+      resolve(process.cwd(), "scripts/rollback-production.mjs"),
+      "utf8",
+    );
+    expect(rollback.match(/SKIP_DATA_HEALTH: "1"/g)).toHaveLength(2);
+    expect(rollback).toContain("newer-main-deployment-present");
   });
 
   it("runs the normal required checks for every automated review PR", () => {
@@ -520,6 +543,14 @@ describe("scheduled data workflow contracts", () => {
       "pull-requests": "write",
     });
     expect(publisherText).toContain(`uses: ${PINNED_CREATE_PR}`);
+    // The per-attempt branch separator must never go back to '/': git's ref
+    // namespace forbids refs/heads/bot/<family>/run-... while a legacy
+    // refs/heads/bot/<family> branch exists, and several still do on origin.
+    // A '/' here makes every publish push fail with "cannot lock ref".
+    expect(publisherText).toContain(
+      "branch: ${{ format('{0}--run-{1}-{2}', inputs.branch, github.run_id, github.run_attempt) }}",
+    );
+    expect(publisherText).not.toContain("format('{0}/run-");
     expect(
       publisherText.match(/peter-evans\/create-pull-request@/g),
     ).toHaveLength(1);
@@ -538,6 +569,11 @@ describe("scheduled data workflow contracts", () => {
     expect(publisherText).toContain(
       "Artifact files do not exactly match the reviewed allowlist.",
     );
+    expect(publisherText).toContain(
+      "This PR remains open until the newer candidate passes every required check",
+    );
+    expect(publisherText).not.toContain("state: 'closed'");
+    expect(publisherText).not.toContain("Closed superseded");
     expect(publisherText).not.toContain("npm ci");
 
     expect(workflowText("ci.yml")).toContain("workflow_dispatch: {}");
@@ -551,8 +587,68 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("ref.data.object.sha !== expectedHead");
     expect(dispatcher).toContain("compareCommitsWithBasehead");
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
-    expect(dispatcher).toContain("allowedByBranch");
+    expect(dispatcher).toContain("allowedByFamily");
+    expect(dispatcher).toContain(
+      "return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 2));",
+    );
     expect(dispatcher).not.toContain("actions/checkout");
+
+    const bridgeText = workflowText("automated-pr-status-bridge.yml");
+    const bridge = parse(bridgeText) as WorkflowDocument;
+    expect(bridge.permissions?.["pull-requests"]).toBe("write");
+    expect(bridgeText).toContain(
+      "const requiredContexts = ['verify', 'Required browser chaos', 'style-lint'];",
+    );
+    expect(bridgeText).toContain("candidate.number > pull.number");
+    expect(bridgeText).toContain("state: 'closed'");
+    expect(bridgeText).toContain("Closed superseded");
+    expect(bridgeText).toContain(
+      "after the newer candidate passed every required CI and style gate",
+    );
+    const bridgeScript = (
+      parse(bridgeText) as {
+        jobs?: { attach?: { steps?: Array<{ with?: { script?: string } }> } };
+      }
+    ).jobs?.attach?.steps?.find((step) => step.with?.script)?.with?.script;
+    expect(bridgeScript).toBeTruthy();
+    expect(
+      () =>
+        new Function(
+          `return async function (github, context, core) { ${bridgeScript} }`,
+        ),
+    ).not.toThrow();
+  });
+
+  it("distinguishes zero-job GitHub blocks from repository data failures", () => {
+    const text = workflowText("data-automation-watchdog.yml");
+    const workflow = parse(text) as WorkflowDocument;
+
+    expect(workflow.permissions).toEqual({});
+    expect(workflow.jobs?.inspect?.permissions).toEqual({
+      actions: "read",
+      contents: "read",
+      issues: "write",
+    });
+    expect(text).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(text).toContain("listJobsForWorkflowRun");
+    expect(text).toContain("jobs.length === 0");
+    expect(text).toContain("No checkout, Radius script, provider request, or secret check ran.");
+    expect(text).toContain("billing or spending-limit hold");
+    expect(text).toContain("family: 'automation'");
+    expect(text).toContain("Every monitored scheduled data workflow is current and successful.");
+    expect(text).not.toContain("secrets.");
+    const watchdogScript = (
+      parse(text) as {
+        jobs?: { inspect?: { steps?: Array<{ with?: { script?: string } }> } };
+      }
+    ).jobs?.inspect?.steps?.find((step) => step.with?.script)?.with?.script;
+    expect(watchdogScript).toBeTruthy();
+    expect(
+      () =>
+        new Function(
+          `return async function (github, context, core) { ${watchdogScript} }`,
+        ),
+    ).not.toThrow();
   });
 
   it("keeps source fetching separate from snapshot publication and issue writes", () => {

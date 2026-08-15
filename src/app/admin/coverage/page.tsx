@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { PLACES as SOURCE_PLACES } from "@/data/places";
+import DESCRIPTIONS_RAW from "@/data/descriptions.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import PLACE_ENRICHMENT_RAW from "@/data/places-enrichment.json";
+import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
+import PLACE_OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import {
   COVERAGE_TARGETS,
   coveragePriorities,
@@ -15,6 +20,11 @@ import {
   type CoveragePriority,
 } from "@/lib/quality/coverage";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import {
+  prioritizePlaceDataGaps,
+  type PlaceDataGapEvidence,
+  type PlaceDataGapReason,
+} from "@/lib/quality/place-data-priority";
 import {
   AdminShell,
   Section,
@@ -43,6 +53,28 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const REVIEW_COUNT = 20;
+
+const GAP_REASON_LABELS: Record<PlaceDataGapReason, string> = {
+  approve_source_backed_copy: "Review the source-backed candidate",
+  collect_first_party_copy: "Find first-party description evidence",
+  replace_rejected_copy: "Find new first-party description evidence",
+  investigate_copy_publication: "Repair the approved-copy publication path",
+  refresh_hours: "Refresh the provider schedule",
+  collect_official_hours: "Record reviewed official hours",
+  repair_hours_identity: "Repair the hours identity match",
+  provider_has_no_schedule: "The provider returned no schedule",
+  review_hours_format: "Review an unreadable provider schedule",
+  verify_public_visitability: "Verify public visitability with a first-party source",
+  review_manual_hours_override: "Recheck the source-backed manual hours correction",
+  investigate_hours_publication: "Repair the hours publication path",
+  respect_photo_suppression: "A shared or wrong photo is intentionally withheld",
+  respect_manual_photo_clear: "A reviewed photo correction is intentionally active",
+  resolve_photo_identity: "Resolve a provider identity or add an owned image",
+  repair_photo_identity: "Repair the photo identity match",
+  refresh_photo_metadata: "Fetch narrow photo metadata within a reviewed cap",
+  backfill_photo_attribution: "Backfill exact photo attribution within a reviewed cap",
+  investigate_photo_publication: "Repair the photo publication path",
+};
 
 const DIMENSIONS: Record<
   CoverageDimension,
@@ -156,14 +188,51 @@ export default function CoverageAdmin() {
   const total = places.length;
   const summary = summarizeCoverage(places);
   const priorities = coveragePriorities(summary);
+  const enrichment = PLACE_ENRICHMENT_RAW as Record<
+    string,
+    {
+      google_place_id?: string;
+      has_hours?: boolean;
+      weekday_hours?: string[];
+      photo_names?: string[];
+      photo_attributions?: GooglePhotoAttribution[];
+    }
+  >;
+  const photoClearedSlugs = new Set(
+    Object.entries(
+      (PLACE_OVERRIDES_RAW as {
+        patch?: Record<string, { clearPhoto?: boolean }>;
+      }).patch ?? {},
+    ).flatMap(([slug, patch]) => (patch.clearPhoto ? [slug] : [])),
+  );
+  const manualHoursSlugs = new Set(
+    Object.entries(
+      (PLACE_OVERRIDES_RAW as {
+        patch?: Record<string, { hours?: unknown }>;
+      }).patch ?? {},
+    ).flatMap(([slug, patch]) => (patch.hours ? [slug] : [])),
+  );
+  const placeDataQueue = prioritizePlaceDataGaps(places, {
+    limit: 20,
+    evidence: {
+      descriptions:
+        DESCRIPTIONS_RAW as unknown as NonNullable<
+          PlaceDataGapEvidence["descriptions"]
+        >,
+      hoursRefresh:
+        HOURS_REFRESH_RAW as unknown as NonNullable<
+          PlaceDataGapEvidence["hoursRefresh"]
+        >,
+      photoEnrichment: enrichment,
+      photoSuppressedSlugs: new Set(PHOTO_SUPPRESS_RAW.slugs),
+      photoClearedSlugs,
+      manualHoursSlugs,
+    },
+  });
   const publishedSlugs = new Set(places.map((place) => place.slug));
   const sourceBySlug = new Map(
     SOURCE_PLACES.map((place) => [place.slug, place]),
   );
-  const enrichment = PLACE_ENRICHMENT_RAW as Record<
-    string,
-    { has_hours?: boolean; weekday_hours?: string[] }
-  >;
   const storedHours = [...publishedSlugs].filter((slug) => {
     const source = sourceBySlug.get(slug);
     const entry = enrichment[slug];
@@ -368,6 +437,80 @@ export default function CoverageAdmin() {
                       </p>
                     </div>
                   </div>
+                </li>
+              ))}
+            </HairlineList>
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="Priority place queue"
+        aside={
+          <StatusPill tone={placeDataQueue.length > 0 ? "warning" : "positive"}>
+            {placeDataQueue.length} shown
+          </StatusPill>
+        }
+        description="This queue starts with records most likely to lead discovery: recommendation-eligible destinations, local favorites, stronger curation, and stronger rating evidence. It is a catalog-ranking proxy, not measured traffic."
+      >
+        <div className="mt-3">
+          <Callout tone="cool" title="Publication boundaries">
+            Copy needs a first-party source and editorial approval. Hours stay
+            unknown until a current schedule passes the visitability checks. A
+            photo needs owned rights or exact source attribution. A missing
+            field is never filled by inference.
+          </Callout>
+        </div>
+        {placeDataQueue.length === 0 ? (
+          <AllClear>No public place is missing copy, current hours, or a publishable photo.</AllClear>
+        ) : (
+          <div className="mt-3">
+            <HairlineList>
+              {placeDataQueue.map(({ place, gaps, reasons, priorityLabel }, index) => (
+                <li
+                  key={place.slug}
+                  className="bg-[var(--app-bg-elevated)] px-3 py-3"
+                  style={
+                    index > 0
+                      ? { borderTop: "1px solid var(--app-border)" }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/places/${place.slug}`}
+                        className="text-[14px] font-semibold leading-tight hover:underline"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {place.name}
+                      </Link>
+                      <p
+                        className="mt-1 text-[11px] leading-relaxed"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {priorityLabel} · {place.category} · {place.source}
+                      </p>
+                    </div>
+                    <div className="flex max-w-[48%] flex-wrap justify-end gap-1.5">
+                      {gaps.map((gap) => (
+                        <StatusPill key={gap} tone="warning">
+                          {DIMENSIONS[gap].short}
+                        </StatusPill>
+                      ))}
+                    </div>
+                  </div>
+                  <p
+                    className="mt-1.5 text-[11px] leading-relaxed"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {gaps
+                      .map(
+                        (gap) =>
+                          `${DIMENSIONS[gap].short}: ${GAP_REASON_LABELS[reasons[gap]!]}`,
+                      )
+                      .join(" · ")}
+                  </p>
                 </li>
               ))}
             </HairlineList>
