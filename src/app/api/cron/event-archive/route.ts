@@ -198,8 +198,22 @@ async function verifyArchivePublication(
   if (!sql) return publicationFailure(expectedCanaries);
   const start = now.toISOString();
   const end = new Date(now.getTime() + 90 * 86_400_000).toISOString();
+  // Two different questions share this round trip, and they need two
+  // different time rules. The COUNT asks "does the archive hold upcoming
+  // events" and keeps the 90-day upcoming window. The CANARIES ask "did the
+  // rows this run just wrote reach the durable collection", which is pure
+  // existence: the canaries are the three soonest-starting rows of the
+  // written set, the set deliberately retains in-progress events, and the
+  // assembly clock behind it can trail this query by ~19 minutes (840s cache
+  // + 5-minute bucket anchor). Windowing the canary match made a correct
+  // write report missing_canary whenever the soonest event had just ended or
+  // was zero-duration — a recurring false fatal on healthy evening runs.
   const query = sql<PublicationRow[]>`
-      select count(*)::int as available_count,
+      select count(*) filter (
+               where canonical.starts_at < ${end}::timestamptz
+                 and coalesce(canonical.ends_at, canonical.starts_at)
+                   >= ${start}::timestamptz
+             )::int as available_count,
              coalesce(
                array_agg(canonical.canonical_slug order by canonical.canonical_slug)
                  filter (
@@ -212,9 +226,14 @@ async function verifyArchivePublication(
         on tombstone.canonical_event_id = canonical.id
       where canonical.event_status = 'scheduled'
         and tombstone.canonical_event_id is null
-        and canonical.starts_at < ${end}::timestamptz
-        and coalesce(canonical.ends_at, canonical.starts_at)
-          >= ${start}::timestamptz
+        and (
+          canonical.canonical_slug = any(${expectedCanaries}::text[])
+          or (
+            canonical.starts_at < ${end}::timestamptz
+            and coalesce(canonical.ends_at, canonical.starts_at)
+              >= ${start}::timestamptz
+          )
+        )
     ` as unknown as CancellablePublicationQuery;
   const outcome = await withDeadlineOutcome(
     query,

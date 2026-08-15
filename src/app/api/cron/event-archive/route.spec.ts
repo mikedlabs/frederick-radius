@@ -83,7 +83,9 @@ describe("GET /api/cron/event-archive", () => {
       ...parameters: unknown[]
     ) => [{
       available_count: 42,
-      visible_canaries: parameters[0],
+      // Echo whichever parameter is the canary slug array; its position
+      // among the timestamp parameters is not part of the contract.
+      visible_canaries: parameters.find((value) => Array.isArray(value)) ?? [],
     }]));
     mocks.preflightEventArchive.mockResolvedValue({
       ready: true,
@@ -566,6 +568,36 @@ describe("GET /api/cron/event-archive", () => {
       }),
       { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("proves canary publication by existence, not by the upcoming window", async () => {
+    let sqlText = "";
+    mocks.getSql.mockReturnValue(vi.fn(async (
+      parts: TemplateStringsArray,
+      ...parameters: unknown[]
+    ) => {
+      sqlText = parts.join("<param>");
+      return [{
+        available_count: 42,
+        visible_canaries: parameters.find((value) => Array.isArray(value)) ?? [],
+      }];
+    }));
+
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+
+    // The canaries are the soonest-starting rows of the written set, which
+    // retains in-progress events judged on a clock up to ~19 minutes stale.
+    // The count keeps the upcoming window; a canary must qualify by slug
+    // alone — the window may only appear OR-ed beside the slug match, never
+    // as a top-level condition every row has to pass. Reverting to one
+    // shared window re-creates a recurring false archive-publication fatal
+    // whenever the soonest event just ended or is zero-duration.
+    expect(sqlText).toContain("count(*) filter");
+    expect(sqlText).toMatch(
+      /where canonical\.event_status = 'scheduled'\s+and tombstone\.canonical_event_id is null\s+and \(\s+canonical\.canonical_slug = any\(/,
+    );
+    expect(sqlText).toMatch(/any\(<param>::text\[\]\)\s+or \(/);
   });
 
   it("cancels a publication proof query that misses its deadline", async () => {
