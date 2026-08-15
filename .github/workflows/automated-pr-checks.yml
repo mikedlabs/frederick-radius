@@ -98,8 +98,8 @@ jobs:
             };
             const family = Object.keys(allowedByFamily).find((candidate) => {
               if (branch === candidate) return true;
-              if (!branch.startsWith(`${candidate}/`)) return false;
-              return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 1));
+              if (!branch.startsWith(`${candidate}--`)) return false;
+              return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 2));
             });
             const allowlist = family ? allowedByFamily[family] : null;
             if (!allowlist || !/^[0-9a-f]{40}$/.test(expectedHead || '')) {

@@ -166,7 +166,10 @@ jobs:
         with:
           # A fresh branch per generator attempt prevents an old, conflicting
           # review PR from becoming the permanent destination for new data.
-          branch: ${{ format('{0}/run-{1}-{2}', inputs.branch, github.run_id, github.run_attempt) }}
+          # The separator is '--', NOT '/': git's ref namespace forbids
+          # refs/heads/bot/<family>/run-... while refs/heads/bot/<family>
+          # exists, and every legacy fixed-name family branch still does.
+          branch: ${{ format('{0}--run-{1}-{2}', inputs.branch, github.run_id, github.run_attempt) }}
           base: main
           add-paths: ${{ inputs.allowed_paths }}
           commit-message: ${{ inputs.commit_message }}
@@ -197,7 +200,7 @@ jobs:
             }
 
             const escaped = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const runBranch = new RegExp(`^${escaped}/run-[0-9]+-[0-9]+$`);
+            const runBranch = new RegExp(`^${escaped}--run-[0-9]+-[0-9]+$`);
             const pulls = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
               repo: context.repo.repo,

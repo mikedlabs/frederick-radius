@@ -543,6 +543,14 @@ describe("scheduled data workflow contracts", () => {
       "pull-requests": "write",
     });
     expect(publisherText).toContain(`uses: ${PINNED_CREATE_PR}`);
+    // The per-attempt branch separator must never go back to '/': git's ref
+    // namespace forbids refs/heads/bot/<family>/run-... while a legacy
+    // refs/heads/bot/<family> branch exists, and several still do on origin.
+    // A '/' here makes every publish push fail with "cannot lock ref".
+    expect(publisherText).toContain(
+      "branch: ${{ format('{0}--run-{1}-{2}', inputs.branch, github.run_id, github.run_attempt) }}",
+    );
+    expect(publisherText).not.toContain("format('{0}/run-");
     expect(
       publisherText.match(/peter-evans\/create-pull-request@/g),
     ).toHaveLength(1);
@@ -581,7 +589,7 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
     expect(dispatcher).toContain("allowedByFamily");
     expect(dispatcher).toContain(
-      "return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 1));",
+      "return /^run-[0-9]+-[0-9]+$/.test(branch.slice(candidate.length + 2));",
     );
     expect(dispatcher).not.toContain("actions/checkout");
 
