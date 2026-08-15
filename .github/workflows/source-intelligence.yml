@@ -148,7 +148,6 @@ jobs:
           key: source-intelligence-usage-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             source-intelligence-usage-
-            source-intelligence-state-
 
       - name: Restore source intelligence state
         id: source-state
@@ -158,6 +157,29 @@ jobs:
             scripts/reports/source-scout-cache.json
             scripts/reports/source-watch/state.json
           key: source-intelligence-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            source-intelligence-state-
+
+      # One-time migration across the ledger/state split. Entries saved before
+      # the split carried all three files in ONE cache, and actions/cache
+      # matches an entry only when the requested path set hashes identically —
+      # a restore-keys prefix cannot bridge that — so neither split restore
+      # above can ever see a pre-split entry. Without this step, the first
+      # live run after the split fails its own state guard and the only
+      # recovery (initialize_state) wipes the spend ledger. Restoring the
+      # legacy three-path shape when both split restores miss carries the
+      # ledger and comparison state across; the save steps below re-save them
+      # in the split shape, after which this step never matches again.
+      - name: Restore pre-split combined state (migration)
+        id: source-legacy
+        if: ${{ steps.source-usage.outputs.cache-matched-key == '' && steps.source-state.outputs.cache-matched-key == '' }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            scripts/reports/source-scout-cache.json
+            scripts/reports/source-scout-usage.json
+            scripts/reports/source-watch/state.json
+          key: source-intelligence-legacy-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             source-intelligence-state-
 
@@ -384,8 +406,10 @@ jobs:
       - name: Protect persistent budgets and comparison state
         if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
         env:
-          RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
-          RESTORED_USAGE_KEY: ${{ steps.source-usage.outputs.cache-matched-key }}
+          # Either split restore or the pre-split migration restore satisfies
+          # the guard: the legacy entry carried both the ledger and the state.
+          RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key || steps.source-legacy.outputs.cache-matched-key }}
+          RESTORED_USAGE_KEY: ${{ steps.source-usage.outputs.cache-matched-key || steps.source-legacy.outputs.cache-matched-key }}
           SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
         run: |
           if [ -z "$RESTORED_STATE_KEY" ]; then

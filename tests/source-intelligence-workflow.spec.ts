@@ -820,16 +820,39 @@ describe("Source Intelligence workflow", () => {
       (step) => step.name === "Save source intelligence comparison state",
     );
 
-    expect(restores).toHaveLength(2);
+    const legacyRestore = restores.find((step) => step.id === "source-legacy");
+
+    expect(restores).toHaveLength(3);
     expectImmutableAction(usageRestore, "actions/cache/restore");
     expect(usageRestore?.with?.path).toBe(
       "scripts/reports/source-scout-usage.json",
     );
-    expect(usageRestore?.with?.["restore-keys"]).toContain(
+    // The state- prefix is useless here: actions/cache matches an entry only
+    // when the path set hashes identically, and every state entry (legacy or
+    // split) has a different path set than this single-file restore.
+    expect(usageRestore?.with?.["restore-keys"]).not.toContain(
       "source-intelligence-state-",
     );
     expectImmutableAction(stateRestore, "actions/cache/restore");
     expect(stateRestore?.with?.path).not.toContain("source-scout-usage.json");
+
+    // Pre-split entries carried all three files in one cache. The migration
+    // restore must request exactly that legacy path set (the version hash is
+    // computed from it) or no pre-split entry can ever match, which strands
+    // the spend ledger and forces an initialize_state reset that erases it.
+    expectImmutableAction(legacyRestore, "actions/cache/restore");
+    expect(legacyRestore?.if).toContain(
+      "steps.source-usage.outputs.cache-matched-key == ''",
+    );
+    expect(legacyRestore?.if).toContain(
+      "steps.source-state.outputs.cache-matched-key == ''",
+    );
+    expect(legacyRestore?.with?.path).toContain("source-scout-cache.json");
+    expect(legacyRestore?.with?.path).toContain("source-scout-usage.json");
+    expect(legacyRestore?.with?.path).toContain("source-watch/state.json");
+    expect(legacyRestore?.with?.["restore-keys"]).toContain(
+      "source-intelligence-state-",
+    );
 
     expect(saves).toHaveLength(2);
     expectImmutableAction(usageSave, "actions/cache/save");
@@ -856,8 +879,10 @@ describe("Source Intelligence workflow", () => {
     });
     expect(initializeGuard).toBeDefined();
     expect(initializeGuard?.env).toMatchObject({
-      RESTORED_STATE_KEY: "${{ steps.source-state.outputs.cache-matched-key }}",
-      RESTORED_USAGE_KEY: "${{ steps.source-usage.outputs.cache-matched-key }}",
+      RESTORED_STATE_KEY:
+        "${{ steps.source-state.outputs.cache-matched-key || steps.source-legacy.outputs.cache-matched-key }}",
+      RESTORED_USAGE_KEY:
+        "${{ steps.source-usage.outputs.cache-matched-key || steps.source-legacy.outputs.cache-matched-key }}",
       SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
     });
     expect(runText(initializeGuard!)).not.toContain(
