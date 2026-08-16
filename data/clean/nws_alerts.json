@@ -1,32 +1,5 @@
 {
   "source": "nws_alerts",
-  "count": 2,
-  "alerts": [
-    {
-      "external_id": "urn:oid:2.49.0.1.840.0.d30333a3446971482bbb91b7a2182d3cb4af3209.001.1",
-      "event": "Dense Fog Advisory",
-      "severity": "moderate",
-      "certainty": "likely",
-      "urgency": "expected",
-      "headline": "Dense Fog Advisory issued August 15 at 4:11AM EDT until August 15 at 9:00AM EDT by NWS Baltimore MD/Washington DC",
-      "description": "* WHAT...Visibility one quarter mile or less in dense fog.\n\n* WHERE...Portions of north central Maryland, northwest Virginia,\nand eastern West Virginia.\n\n* WHEN...Until 9 AM EDT this morning.\n\n* IMPACTS...Low visibility could make driving conditions hazardous.",
-      "area": "Washington; Shenandoah; Frederick; Page; Warren; Clarke; Morgan; Berkeley; Jefferson; Hardy; Eastern Grant",
-      "effective_at": "2026-08-15T08:11:00.000Z",
-      "expires_at": "2026-08-15T13:00:00.000Z",
-      "source": "nws_alerts"
-    },
-    {
-      "external_id": "urn:oid:2.49.0.1.840.0.c0c6b48d08699c6bd4563a534cb3bad486b61846.001.1",
-      "event": "Special Weather Statement",
-      "severity": "moderate",
-      "certainty": "observed",
-      "urgency": "expected",
-      "headline": "Special Weather Statement issued August 15 at 3:35AM EDT by NWS Baltimore MD/Washington DC",
-      "description": "Patchy dense fog is developing in the river valleys, and will\npersist through early this morning. Motorists should exercise\nextra caution, reduce speed, allow extra travel time and following\ndistance, and use low beam headlights.",
-      "area": "Washington; Shenandoah; Frederick; Page; Warren; Clarke; Morgan; Berkeley; Jefferson; Hardy; Eastern Grant",
-      "effective_at": "2026-08-15T07:35:00.000Z",
-      "expires_at": "2026-08-15T13:00:00.000Z",
-      "source": "nws_alerts"
-    }
-  ]
+  "count": 0,
+  "alerts": []
 }

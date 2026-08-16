@@ -6,6 +6,50 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.4009,
+          39.5517
+        ]
+      },
+      "properties": {
+        "external_id": "22521595",
+        "summary": "Illegal Debris Removal",
+        "description": "couch and chair dumped between Bottomly and Wilhyde Rd",
+        "address": "11572-11692 Angleberger Rd Thurmont, Maryland, 21788",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Illegal Debris Removal",
+        "reported_at": "2026-08-16T00:59:12.000Z",
+        "url": "https://seeclickfix.com/issues/22521595",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3424,
+          39.31346333333333
+        ]
+      },
+      "properties": {
+        "external_id": "22518052",
+        "summary": "Roadway Pavement Maintenance",
+        "description": "A section of the public area walk between our property and are neighbor’s driveway dropped or lifted. It continues to deteriorate further. Yesterday, the loose cement came out of the smaller section c",
+        "address": "2731 Camomile Dr W Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Pavement Maintenance",
+        "reported_at": "2026-08-15T12:50:26.000Z",
+        "url": "https://seeclickfix.com/issues/22518052",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.39715932277517,
           39.313979088512845
         ]
@@ -350,50 +394,6 @@
         "category": "Animal Carcass in Public Ways",
         "reported_at": "2026-08-13T15:10:52.000Z",
         "url": "https://seeclickfix.com/issues/22500809",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.59192523891845,
-          39.466001743559275
-        ]
-      },
-      "properties": {
-        "external_id": "22500625",
-        "summary": "Roadway General Request",
-        "description": "The constituent owner of this bldg near the stone wall is trying to determine if the county can replace or remove this crumbling wall so that it doesn't continue to wash onto Mt. Tabor Rd. His neighbo",
-        "address": "2202 Bolivar Ct Middletown, MD, 21769, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-13T14:58:26.000Z",
-        "url": "https://seeclickfix.com/issues/22500625",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.5058627489524,
-          39.397973826090286
-        ]
-      },
-      "properties": {
-        "external_id": "22500488",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Dead tree in neighbor's yard near road. Resident fears will fall down in road and hit a car, (which happened in the past-same yard-different tree).",
-        "address": "6001 Larsen Dr Frederick, MD, 21703, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-13T14:51:09.000Z",
-        "url": "https://seeclickfix.com/issues/22500488",
         "source": "seeclickfix"
       }
     }

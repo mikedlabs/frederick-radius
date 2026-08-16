@@ -1,6 +1,114 @@
 {
   "issues": [
     {
+      "id": 22521595,
+      "status": "Acknowledged",
+      "summary": "Illegal Debris Removal",
+      "description": "couch and chair dumped between Bottomly and Wilhyde Rd",
+      "rating": 2,
+      "lat": 39.5517,
+      "lng": -77.4009,
+      "address": "11572-11692 Angleberger Rd Thurmont, Maryland, 21788",
+      "created_at": "2026-08-15T20:59:12-04:00",
+      "acknowledged_at": "2026-08-15T20:59:23-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-15T20:59:23-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22521595",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.4009,
+          39.5517
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22521595",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40759,
+        "title": "Illegal Debris Removal",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40759",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.5517&lng=-77.4009&request_types=40759&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22521595/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22521595/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2NDI5ODcsInB1ciI6ImJsb2JfaWQifX0=--6b943c5d6482a642962abc0b0279f411a60afb33/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/1ca4f261-e969-4f7e-9f68-58cb36d6ea8b_2026-08-15T20-44-14-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2NDI5ODcsInB1ciI6ImJsb2JfaWQifX0=--6b943c5d6482a642962abc0b0279f411a60afb33/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/1ca4f261-e969-4f7e-9f68-58cb36d6ea8b_2026-08-15T20-44-14-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2NDI5ODcsInB1ciI6ImJsb2JfaWQifX0=--6b943c5d6482a642962abc0b0279f411a60afb33/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/1ca4f261-e969-4f7e-9f68-58cb36d6ea8b_2026-08-15T20-44-14-04-00.jpg"
+      }
+    },
+    {
+      "id": 22518052,
+      "status": "Acknowledged",
+      "summary": "Roadway Pavement Maintenance",
+      "description": "A section of the public area walk between our property and are neighbor’s driveway dropped or lifted. It continues to deteriorate further. Yesterday, the loose cement came out of the smaller section causing a much greater drop off. I put the 3 larger pieces back in place but they will not stay with any permanence. Someone may catch a toe or heel and fall. This is a 55+ neighborhood and needs to be ADA compliant. Please resolve this dangerous situation. Thank you for your prompt attention to this matter.",
+      "rating": 3,
+      "lat": 39.31346333333333,
+      "lng": -77.3424,
+      "address": "2731 Camomile Dr W Frederick, Maryland, 21704",
+      "created_at": "2026-08-15T08:50:26-04:00",
+      "acknowledged_at": "2026-08-15T08:50:40-04:00",
+      "closed_at": null,
+      "reopened_at": null,
+      "updated_at": "2026-08-15T08:50:40-04:00",
+      "url": "https://seeclickfix.com/api/v2/issues/22518052",
+      "point": {
+        "type": "Point",
+        "coordinates": [
+          -77.3424,
+          39.31346333333333
+        ]
+      },
+      "private_visibility": false,
+      "html_url": "https://seeclickfix.com/issues/22518052",
+      "show_blocked_issue_text": false,
+      "request_type": {
+        "id": 40762,
+        "title": "Roadway Pavement Maintenance",
+        "organization": "County Roadway and Roadside",
+        "url": "https://seeclickfix.com/api/v2/request_types/40762",
+        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.31346333333333&lng=-77.3424&request_types=40762&sort=distance"
+      },
+      "comment_url": "https://seeclickfix.com/api/v2/issues/22518052/comments",
+      "flag_url": "https://seeclickfix.com/api/v2/issues/22518052/flag",
+      "transitions": {},
+      "reporter": {
+        "id": 0,
+        "name": "An anonymous SeeClickFix user",
+        "role": "Registered User",
+        "avatar": {
+          "full": "https://seeclickfix.com/images/no-avatar-100.png",
+          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
+        },
+        "html_url": "https://seeclickfix.com/users/anonymous",
+        "witty_title": "",
+        "civic_points": 0
+      },
+      "media": {
+        "video_url": null,
+        "image_full": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2MzA4OTcsInB1ciI6ImJsb2JfaWQifX0=--0d6c67a414782ab7c57bc2efee61f7fea26f9a5f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjgwMHg2MDAifSwicHVyIjoidmFyaWF0aW9uIn19--242b3e94addeeae50b5fd8df8a0a8fbcf02bf33c/e3c75568-5ba8-41d4-b948-1c1d72be68b7_2026-08-15T08-37-09-04-00.jpg",
+        "image_square_100x100": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2MzA4OTcsInB1ciI6ImJsb2JfaWQifX0=--0d6c67a414782ab7c57bc2efee61f7fea26f9a5f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/e3c75568-5ba8-41d4-b948-1c1d72be68b7_2026-08-15T08-37-09-04-00.jpg",
+        "representative_image_url": "https://seeclickfix.com/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDM2MzA4OTcsInB1ciI6ImJsb2JfaWQifX0=--0d6c67a414782ab7c57bc2efee61f7fea26f9a5f/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGciLCJhdXRvX29yaWVudCI6dHJ1ZSwic3RyaXAiOnRydWUsInJlc2l6ZSI6IjEwMHgxMDBeIiwiZ3Jhdml0eSI6ImNlbnRlciIsImV4dGVudCI6IjEwMHgxMDAifSwicHVyIjoidmFyaWF0aW9uIn19--65761edc0e4051a20b5d81cec2bec201d6c43dee/e3c75568-5ba8-41d4-b948-1c1d72be68b7_2026-08-15T08-37-09-04-00.jpg"
+      }
+    },
+    {
       "id": 22515502,
       "status": "Acknowledged",
       "summary": "Roadway Tree Maintenance",
@@ -975,119 +1083,11 @@
         "image_square_100x100": null,
         "representative_image_url": "https://seeclickfix.com/assets/categories/sidewalk-6203d49b483e58c5e66b5247c0fba1fd4838706d989075179b1d4920694e4f57.png"
       }
-    },
-    {
-      "id": 22500625,
-      "status": "Acknowledged",
-      "summary": "Roadway General Request",
-      "description": "The constituent owner of this bldg near the stone wall is trying to determine if the county can replace or remove this crumbling wall so that it doesn't continue to wash onto Mt. Tabor Rd. His neighbors are looking to him to solve this issue. ",
-      "rating": 2,
-      "lat": 39.466001743559275,
-      "lng": -77.59192523891845,
-      "address": "2202 Bolivar Ct Middletown, MD, 21769, USA",
-      "created_at": "2026-08-13T10:58:26-04:00",
-      "acknowledged_at": "2026-08-13T10:58:29-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-13T10:58:29-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22500625",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.59192523891845,
-          39.466001743559275
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22500625",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 41878,
-        "title": "Roadway General Request",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/41878",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.466001743559275&lng=-77.59192523891845&request_types=41878&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22500625/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22500625/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 2002133,
-        "name": "Frederick County, MD Neighbor",
-        "role": "Guest",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/2002133",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
-    },
-    {
-      "id": 22500488,
-      "status": "Acknowledged",
-      "summary": "Roadway Tree Maintenance",
-      "description": "Dead tree in neighbor's yard near road. Resident fears will fall down in road and hit a car, (which happened in the past-same yard-different tree).",
-      "rating": 2,
-      "lat": 39.397973826090286,
-      "lng": -77.5058627489524,
-      "address": "6001 Larsen Dr Frederick, MD, 21703, USA",
-      "created_at": "2026-08-13T10:51:09-04:00",
-      "acknowledged_at": "2026-08-13T10:51:12-04:00",
-      "closed_at": null,
-      "reopened_at": null,
-      "updated_at": "2026-08-13T10:51:13-04:00",
-      "url": "https://seeclickfix.com/api/v2/issues/22500488",
-      "point": {
-        "type": "Point",
-        "coordinates": [
-          -77.5058627489524,
-          39.397973826090286
-        ]
-      },
-      "private_visibility": false,
-      "html_url": "https://seeclickfix.com/issues/22500488",
-      "show_blocked_issue_text": false,
-      "request_type": {
-        "id": 40763,
-        "title": "Roadway Tree Maintenance",
-        "organization": "County Roadway and Roadside",
-        "url": "https://seeclickfix.com/api/v2/request_types/40763",
-        "related_issues_url": "https://seeclickfix.com/api/v2/issues?lat=39.397973826090286&lng=-77.5058627489524&request_types=40763&sort=distance"
-      },
-      "comment_url": "https://seeclickfix.com/api/v2/issues/22500488/comments",
-      "flag_url": "https://seeclickfix.com/api/v2/issues/22500488/flag",
-      "transitions": {},
-      "reporter": {
-        "id": 4009885,
-        "name": "Christopher Krogh",
-        "role": "Verified Official",
-        "avatar": {
-          "full": "https://seeclickfix.com/images/no-avatar-100.png",
-          "square_100x100": "https://seeclickfix.com/images/no-avatar-100.png"
-        },
-        "html_url": "https://seeclickfix.com/users/4009885",
-        "witty_title": "",
-        "civic_points": 0
-      },
-      "media": {
-        "video_url": null,
-        "image_full": null,
-        "image_square_100x100": null,
-        "representative_image_url": "https://seeclickfix.com/assets/categories/pothole-b9770831f94f1525be41a29550ce30ea51289d8421bea4a8a29d370d1666af46.png"
-      }
     }
   ],
   "metadata": {
     "pagination": {
-      "entries": 466,
+      "entries": 468,
       "page": 1,
       "per_page": 20,
       "pages": 24,
