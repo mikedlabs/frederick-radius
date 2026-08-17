@@ -112,6 +112,34 @@ export function isUnattributedRequest(req: Request): boolean {
 }
 
 /**
+ * The rate-limit check for a route that spends money upstream.
+ *
+ * Two buckets, because the traffic is two different things. The normal
+ * budget bounds a real visitor, who is generous by design: a page of cards
+ * is a dozen photos and a browsing session is many pages. The unattributed
+ * budget bounds a caller who sent no Referer and no Origin, which
+ * `isSameOriginRequest` admits so Next's image optimizer and genuine
+ * server-to-server renders keep working, and which is therefore also the
+ * cheapest way for anyone to reach a paid upstream on our bill.
+ *
+ * A page in a real browser always sends a Referer for its own subresource
+ * requests, so the tight bucket never touches a visitor. Keeping both in one
+ * call means a new paid route cannot pick up the permissive half and silently
+ * miss the other.
+ */
+export async function isOverPaidRequestBudget(
+  req: Request,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+  unattributedLimit: number,
+): Promise<boolean> {
+  if (await isRateLimited(req, key, limit, windowSeconds)) return true;
+  if (!isUnattributedRequest(req)) return false;
+  return isRateLimited(req, `${key}-unattributed`, unattributedLimit, windowSeconds);
+}
+
+/**
  * Strict CSRF-style guard for browser POST endpoints that mutate public data.
  *
  * Unlike `isSameOriginRequest`, this rejects production requests when both

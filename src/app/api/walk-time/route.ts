@@ -38,7 +38,7 @@ import {
   roundCoord,
   type WalkTimeSuccess,
 } from "@/lib/walkTime";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { isOverPaidRequestBudget, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 // Cache each routed leg for a day. The street network doesn't change
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
   // Paid upstream — Directions is one of Mapbox's metered APIs. One
   // fetch per place selection within walking range; 60/min/IP is far
   // more than a person tapping pins, and a scraper blows past it.
-  if (await isRateLimited(req, "walk-time", 60, 60)) {
+  if (await isOverPaidRequestBudget(req, "walk-time", 60, 60, 8)) {
     return new Response("Too Many Requests", { status: 429 });
   }
 

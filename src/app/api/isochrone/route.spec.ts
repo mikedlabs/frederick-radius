@@ -10,6 +10,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/origin-check", () => ({
   isSameOriginRequest: mocks.isSameOriginRequest,
   isRateLimited: mocks.isRateLimited,
+  // The routes call the two-bucket helper now. Delegate to the mocked
+  // isRateLimited so tests that force a limit still see one, and assertions
+  // on the (key, limit, window) triple keep working.
+  isOverPaidRequestBudget: (
+    req: Request,
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ) => mocks.isRateLimited(req, key, limit, windowSeconds),
 }));
 vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
 vi.mock("@/lib/mapbox-server", () => ({

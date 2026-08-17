@@ -26,7 +26,11 @@ import {
   type GooglePlaceFeature,
   type GooglePlaceSummary,
 } from "@/lib/integrations/google-places";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import {
+  isOverPaidRequestBudget,
+  isRateLimited,
+  isSameOriginRequest,
+} from "@/lib/origin-check";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import {
@@ -180,7 +184,7 @@ export async function GET(
   // Keep the paid Google path deliberately tighter than image/map browsing.
   // Rich context gets a second fence because it requests higher-cost fields
   // and is never required to render the place.
-  if (await isRateLimited(req, "place-enrich", 30, 60)) {
+  if (await isOverPaidRequestBudget(req, "place-enrich", 30, 60, 5)) {
     return new Response("Too Many Requests", {
       status: 429,
       headers: { "Retry-After": "60", "Cache-Control": "private, no-store" },
