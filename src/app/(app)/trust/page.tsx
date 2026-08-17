@@ -333,11 +333,28 @@ export default async function TrustPage() {
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Hours.</strong>{" "}
-            {coverage.hours.toLocaleString("en-US")} of{" "}
-            {coverage.total.toLocaleString("en-US")} places (
-            {pct(coverage.hours, coverage.total)}) carry posted hours fresh
-            enough for an open-now answer. Everywhere else the app says it does
-            not know instead of guessing.
+            {coverage.hours > 0 ? (
+              <>
+                {coverage.hours.toLocaleString("en-US")} of{" "}
+                {coverage.total.toLocaleString("en-US")} places (
+                {pct(coverage.hours, coverage.total)}) carry posted hours fresh
+                enough for an open-now answer. Everywhere else the app says it
+                does not know instead of guessing.
+              </>
+            ) : (
+              // Counted at the moment you load this page, not when the data was
+              // promoted. A posted schedule stops backing an open-now answer
+              // seven days after it was last checked, so this figure reaches
+              // zero if a refresh is not published for a week. Saying that
+              // plainly is the point of this page.
+              <>
+                No place currently carries hours checked recently enough to
+                back an open-now answer, so the app is saying it does not know
+                everywhere instead of guessing. A posted schedule stops
+                counting seven days after it was last verified, and the
+                published snapshot is now older than that.
+              </>
+            )}
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Decision copy.</strong>{" "}
