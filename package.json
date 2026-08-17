@@ -102,6 +102,7 @@
     "refresh:public-amenities": "tsx --tsconfig tsconfig.json scripts/refresh-public-amenities.ts && npm run build:amenities",
     "build:shipping": "tsx --tsconfig tsconfig.json scripts/build-shipping.ts",
     "gates": "tsx --tsconfig tsconfig.json scripts/data-quality-gates.ts",
+    "verify:credentials": "node scripts/verify-credentials.mjs",
     "build:place-refresh-identities": "tsx --tsconfig tsconfig.json scripts/build-place-refresh-identities.ts",
     "build:client-places": "npm run build:place-refresh-identities && tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
     "build:radius-search": "tsx --tsconfig tsconfig.json scripts/build-radius-search.ts",
