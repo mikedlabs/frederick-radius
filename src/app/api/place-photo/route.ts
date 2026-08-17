@@ -15,7 +15,11 @@
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import {
+  isRateLimited,
+  isSameOriginRequest,
+  isUnattributedRequest,
+} from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND, RIPPLE_GEOMETRY } from "@/lib/brand";
@@ -188,6 +192,23 @@ export async function GET(req: NextRequest) {
   // session or a shared NAT must never turn valid <img> elements into broken
   // icons. No-op when KV is not configured (see isRateLimited docs).
   if (await isRateLimited(req, "place-photo", 120, 60)) {
+    return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
+  }
+
+  // Second, much tighter budget for requests carrying neither Referer nor
+  // Origin. Those are admitted at all only so Next's image optimizer and
+  // genuine server-to-server renders keep working, but "send no headers" is
+  // also the cheapest way for anyone to turn this route into a free Google
+  // Places Photo proxy billed to us: the origin guard above cannot tell the
+  // difference, and a cache-busted name is a guaranteed paid miss every time.
+  // A page in a real browser always sends a Referer for its own images, so
+  // this budget never touches a visitor; it only caps what an anonymous
+  // caller can spend. Same soft failure as above so a legitimate render
+  // burst degrades to artwork rather than a broken image.
+  if (
+    isUnattributedRequest(req) &&
+    (await isRateLimited(req, "place-photo-unattributed", 15, 60))
+  ) {
     return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
   }
 

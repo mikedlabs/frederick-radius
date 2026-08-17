@@ -92,6 +92,26 @@ export function isSameOriginRequest(req: Request): boolean {
 }
 
 /**
+ * True when a request carries NEITHER a Referer nor an Origin.
+ *
+ * `isSameOriginRequest` deliberately admits these, because Next's image
+ * optimizer and some server-to-server fetches genuinely arrive bare, and
+ * rejecting them would break real rendering. The cost of that kindness is
+ * that "send no headers" is also the easiest way for anyone on the internet
+ * to reach a route that spends money on a cache miss: strip two headers and
+ * the origin guard waves you through.
+ *
+ * So separate the two questions. Callers keep using isSameOriginRequest to
+ * decide whether to serve at all, and use this to decide how much
+ * unattributed traffic they are willing to pay for. A browser loading an
+ * image from one of our own pages always sends a Referer, so a tight
+ * unattributed budget costs real users nothing.
+ */
+export function isUnattributedRequest(req: Request): boolean {
+  return !req.headers.get("referer") && !req.headers.get("origin");
+}
+
+/**
  * Strict CSRF-style guard for browser POST endpoints that mutate public data.
  *
  * Unlike `isSameOriginRequest`, this rejects production requests when both
