@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:870728faa5400fcdd8eddd7edc3c3a9a5798b6eafee0ce32b677623115f914e4",
+  "data_version": "sha256:514e4ac692b21c2d667718aa656034675cf386832c9f517f30b5c44595d52e4e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-08-14T01:57:38.007Z",
+      "promoted_at": "2026-08-17T10:05:55.223Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -168,9 +168,9 @@
         },
         {
           "path": "src/data/business-info.json",
-          "sha256": "7bed3f72db3ea79bc7e316d6a6f8b9174eaab9bde79e0fecee27188013bcccde",
-          "records": 143,
-          "bytes": 116467
+          "sha256": "cac4a4e88fe654bfb9f0b6fd83f913e9be3697b7aab3f82163a3e6c016c51e4b",
+          "records": 206,
+          "bytes": 158797
         },
         {
           "path": "src/data/field-notes.json",
@@ -210,21 +210,21 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "60361f313e22fdf91a1f2869c509255ee40a7891aa8d08a1aa54924d1e759939",
-          "records": 1569,
-          "bytes": 2465565
+          "sha256": "c9c11e47bdf14f4807493284ddbf682bcdc97922bbb1273195533227ecc91902",
+          "records": 1566,
+          "bytes": 2267524
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "de1dddc7359ca034f8549000f25679f872458b3e7b37e3536bef38775b6b54b5",
-          "records": 875,
-          "bytes": 333174
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "records": 0,
+          "bytes": 2
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
-          "sha256": "91566083c46ceb7b95c0ff8967011fe7b64c2add78767ffc25b3288d253274cc",
-          "records": 1329,
-          "bytes": 779249
+          "sha256": "7380d3e4e33d8ee70d29d031904cb24ca83f8670f010a048e084c7ce926a12e2",
+          "records": 1327,
+          "bytes": 778059
         }
       ]
     },
