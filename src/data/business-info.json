@@ -506,12 +506,6 @@
         "url": "https://www.clover.com/online-ordering/the-station-frederick-2",
         "anchor_text": "get my food now",
         "source_url": "https://thestationmarketandcafe.com/"
-      },
-      {
-        "type": "reservation",
-        "url": "https://www.clover.com/online-ordering/the-station-frederick-2",
-        "anchor_text": "reserve my soup!",
-        "source_url": "https://thestationmarketandcafe.com/"
       }
     ]
   },
@@ -881,9 +875,9 @@
     },
     "commerce_links": [
       {
-        "type": "menu",
+        "type": "order",
         "url": "https://saffrongrillandbarmd.com/menu",
-        "anchor_text": "Menu",
+        "anchor_text": "Order Now",
         "source_url": "https://saffrongrillandbarmd.com/"
       },
       {
@@ -902,12 +896,6 @@
         "type": "order",
         "url": "https://saffrongrillandbarmd.com/menu?dialogState=orderDetails",
         "anchor_text": "Order online",
-        "source_url": "https://saffrongrillandbarmd.com/"
-      },
-      {
-        "type": "order",
-        "url": "https://saffrongrillandbarmd.com/menu",
-        "anchor_text": "Order Now",
         "source_url": "https://saffrongrillandbarmd.com/"
       }
     ]
@@ -999,12 +987,6 @@
         "type": "menu",
         "url": "https://manaluitalianrestaurant.com/menu/",
         "anchor_text": "Menu",
-        "source_url": "https://manaluitalianrestaurant.com/"
-      },
-      {
-        "type": "menu",
-        "url": "http://manaluitalianrestaurant.com/menu/",
-        "anchor_text": "VIEW FULL MENU",
         "source_url": "https://manaluitalianrestaurant.com/"
       }
     ]
@@ -1448,12 +1430,6 @@
         "source_url": "https://www.frederick-social.com/"
       },
       {
-        "type": "gift_card",
-        "url": "https://www.toasttab.com/frederick-social-50-citizens-way-suite-100/giftcards?utm_source=undefined&utm_content=online--frederick-social-50-citizens-way-suite-100&utm_medium=toast_sites&utm_campaign=giftcards",
-        "anchor_text": "GIFT CERTIFICATE",
-        "source_url": "https://www.frederick-social.com/"
-      },
-      {
         "type": "order",
         "url": "https://order.toasttab.com/online/frederick-social-50-citizens-way-suite-100",
         "anchor_text": "ORDER TAKE-OUT",
@@ -1890,9 +1866,9 @@
     },
     "commerce_links": [
       {
-        "type": "menu",
+        "type": "order",
         "url": "https://hinzis.com/menu",
-        "anchor_text": "Menu",
+        "anchor_text": "Order Online",
         "source_url": "https://hinzis.com/"
       },
       {
@@ -1911,12 +1887,6 @@
         "type": "order",
         "url": "https://hinzis.com/menu?dialogState=orderDetails",
         "anchor_text": "Order online",
-        "source_url": "https://hinzis.com/"
-      },
-      {
-        "type": "order",
-        "url": "https://hinzis.com/menu",
-        "anchor_text": "Order Online",
         "source_url": "https://hinzis.com/"
       }
     ]
@@ -2898,5 +2868,1313 @@
       "contentHash": "a9efff1a9ce3d64d5aba13d764bd3e231307385df1d9302b3e2b97589b49c832",
       "extractorVersion": "business-deep-info-v2-plain-copy"
     }
+  },
+  "beans-in-the-belfry-brunswick": {
+    "name": "Beans in the Belfry",
+    "commerce_source": {
+      "url": "https://beansinthebelfry.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/ML4E4YSP8R2SZ/order",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://beansinthebelfry.com/"
+      }
+    ]
+  },
+  "maple-rye-bakery-brunswick": {
+    "name": "Maple & Rye Bakery",
+    "commerce_source": {
+      "url": "http://www.mapleandryebakery.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/ML58PNY18Q1Q6/order",
+        "anchor_text": "Gift card",
+        "source_url": "http://www.mapleandryebakery.com/"
+      }
+    ]
+  },
+  "maison-brunswick": {
+    "name": "Maison",
+    "commerce_source": {
+      "url": "https://www.maisonbrunswick.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.maisonbrunswick.com/menu",
+        "anchor_text": "IN-STORE MENU",
+        "source_url": "https://www.maisonbrunswick.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.maisonbrunswick.com/specialtymenus",
+        "anchor_text": "SPECIAL MENU PRE-ORDER",
+        "source_url": "https://www.maisonbrunswick.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.maisonbrunswick.com/copy-of-custom-cake-orders",
+        "anchor_text": "Catering Orders",
+        "source_url": "https://www.maisonbrunswick.com/"
+      }
+    ]
+  },
+  "whistle-punk-farm-delicatessen-brunswick": {
+    "name": "Whistle Punk Farm Delicatessen",
+    "commerce_source": {
+      "url": "https://whistlepunkfarm.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://whistlepunkfarm.com/home/",
+        "anchor_text": "Permalink to Whistle Punk Farm Food Truck & Catering",
+        "source_url": "https://whistlepunkfarm.com/"
+      }
+    ]
+  },
+  "boxcar-burgers-brunswick": {
+    "name": "Boxcar Burgers",
+    "commerce_source": {
+      "url": "https://boxcarburgers.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "potomac-street-grill-brunswick": {
+    "name": "Potomac Street Grill",
+    "commerce_source": {
+      "url": "https://www.potomacstreetgrill.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.potomacstreetgrill.com/menu",
+        "anchor_text": "Our Menu",
+        "source_url": "https://www.potomacstreetgrill.com/"
+      }
+    ]
+  },
+  "dunkin-brunswick": {
+    "name": "Dunkin'",
+    "commerce_source": {
+      "url": "https://locations.dunkindonuts.com/en/md/brunswick/1194-dutchmans-creek-dr/357109?utm_source=google&utm_medium=local&utm_campaign=localmaps&utm_content=357109&y_source=1_MjM0NDA3MTEtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "the-farmhouse-exchange-thurmont": {
+    "name": "The Farmhouse Exchange",
+    "commerce_source": {
+      "url": "https://www.farmhouseexchange.net/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://www.farmhouseexchange.net/catering-inquiry",
+        "anchor_text": "Catering",
+        "source_url": "https://www.farmhouseexchange.net/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.farmhouseexchange.net/order-online",
+        "anchor_text": "Online Sandwich & Deli Ordering",
+        "source_url": "https://www.farmhouseexchange.net/"
+      }
+    ]
+  },
+  "gateway-candyland-thurmont": {
+    "name": "Gateway Candyland",
+    "commerce_source": {
+      "url": "https://www.gatewaycandy.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "bollingers-restaurant-and-uncle-dirtys-brew-works-thurmont": {
+    "name": "Bollinger's Restaurant and Uncle Dirtys Brew Works",
+    "commerce_source": {
+      "url": "https://bollingersrestaurant.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://bollingersrestaurant.com/our-menu",
+        "anchor_text": "Explore Menu",
+        "source_url": "https://bollingersrestaurant.com/"
+      }
+    ]
+  },
+  "thurmont-kountry-kitchen-thurmont": {
+    "name": "Thurmont Kountry Kitchen",
+    "commerce_source": {
+      "url": "https://thurmontkountrykitchen.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://thurmontkountrykitchen.com/lunch-dinner/",
+        "anchor_text": "View Our Menu",
+        "source_url": "https://thurmontkountrykitchen.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://thurmontkountrykitchen.com/breakfast",
+        "anchor_text": "Breakfast See Menu",
+        "source_url": "https://thurmontkountrykitchen.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://thurmontkountrykitchen.com/boogs-baked-goods/",
+        "anchor_text": "Bakery See Menu",
+        "source_url": "https://thurmontkountrykitchen.com/"
+      }
+    ]
+  },
+  "mountain-gate-family-restaurant-thurmont": {
+    "name": "Mountain Gate Family Restaurant",
+    "commerce_source": {
+      "url": "https://mountaingatefamilyrestaurant.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://mountaingatefamilyrestaurant.com/menu/breakfast",
+        "anchor_text": "Menu & Buffet",
+        "source_url": "https://mountaingatefamilyrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://mountaingatefamilyrestaurant.com/menu/dinner/",
+        "anchor_text": "Dinner",
+        "source_url": "https://mountaingatefamilyrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://mountaingatefamilyrestaurant.com/menu/sandwiches/",
+        "anchor_text": "Sandwiches",
+        "source_url": "https://mountaingatefamilyrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://mountaingatefamilyrestaurant.com/menu/desserts/",
+        "anchor_text": "Desserts",
+        "source_url": "https://mountaingatefamilyrestaurant.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://mountaingatefamilyrestaurant.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://mountaingatefamilyrestaurant.com/"
+      }
+    ]
+  },
+  "mcdonalds-thurmont": {
+    "name": "McDonald's",
+    "commerce_source": {
+      "url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.mcdonalds.com/us/en-us/full-menu.html",
+        "anchor_text": "View Full Menu",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.mcdonalds.com/us/en-us/full-menu/chicken-caesar-specials.html",
+        "anchor_text": "Caesar Sauce",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.mcdonalds.com/us/en-us/full-menu/extra-value-meals-menu.html",
+        "anchor_text": "Extra Value Meals",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.mcdonalds.com/us/en-us/full-menu/mcvalue-menu.html",
+        "anchor_text": "McValue®",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.mcdonalds.com/us/en-us/arch-card.html",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.mcdonalds.com/us/en-us/faq/arch-card.html",
+        "anchor_text": "Gift Card FAQs",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      },
+      {
+        "type": "order",
+        "url": "https://www.mcdonalds.com/us/en-us/mobile-order-and-pay.html",
+        "anchor_text": "Mobile Order & Pay",
+        "source_url": "https://www.mcdonalds.com/us/en-us/location/MD/THURMONT/200-FREDERICK-ROAD/5787.html?cid=RF:YXT:GMB::Clicks"
+      }
+    ]
+  },
+  "beans-dreams-nektarios-place-middletown": {
+    "name": "Beans & Dreams - Nektario's Place",
+    "commerce_source": {
+      "url": "https://www.beansanddreamscafe.com/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=15712113322608058200",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "crybaby-cafe-middletown": {
+    "name": "Crybaby Café",
+    "commerce_source": {
+      "url": "https://crybabycafefrederick.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "druidcraft-coffee-roasting-office-only-middletown": {
+    "name": "Druidcraft Coffee Roasting (Office Only)",
+    "commerce_source": {
+      "url": "https://www.druidcraftcoffee.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.druidcraftcoffee.com/s/order",
+        "anchor_text": "Order Now",
+        "source_url": "https://www.druidcraftcoffee.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.druidcraftcoffee.com/s/order?location=LFR07S0Z8D60M",
+        "anchor_text": "Coffee",
+        "source_url": "https://www.druidcraftcoffee.com/"
+      }
+    ]
+  },
+  "debs-artisan-bakehouse-middletown": {
+    "name": "Deb's Artisan Bakehouse",
+    "commerce_source": {
+      "url": "http://www.debsartisanbakehouse.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "el-rancho-restaurant-walkersville": {
+    "name": "El Rancho Restaurant",
+    "commerce_source": {
+      "url": "https://elrancho-restaurant.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://elrancho-restaurant.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://elrancho-restaurant.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://elrancho-restaurant.com/order-online/",
+        "anchor_text": "Order Online",
+        "source_url": "https://elrancho-restaurant.com/"
+      }
+    ]
+  },
+  "italia-new-york-pizza-walkersville": {
+    "name": "Italia New York Pizza",
+    "commerce_source": {
+      "url": "https://italianewyorkpizza.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://italianewyorkpizza.com/menu-1",
+        "anchor_text": "MENU",
+        "source_url": "https://italianewyorkpizza.com/"
+      },
+      {
+        "type": "order",
+        "url": "http://www.clover.com/online-ordering/italia-new-york-pizza-walkersville",
+        "anchor_text": "Clover",
+        "source_url": "https://italianewyorkpizza.com/"
+      }
+    ]
+  },
+  "azteca-bar-and-grill-walkersville": {
+    "name": "Azteca Bar and Grill",
+    "commerce_source": {
+      "url": "https://www.aztecasbarandgrill.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.aztecasbarandgrill.com/online-ordering",
+        "anchor_text": "Online Ordering",
+        "source_url": "https://www.aztecasbarandgrill.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.aztecasbarandgrill.com/menu-1",
+        "anchor_text": "Menu",
+        "source_url": "https://www.aztecasbarandgrill.com/"
+      }
+    ]
+  },
+  "village-tavern-walkersville": {
+    "name": "Village Tavern",
+    "commerce_source": {
+      "url": "http://villagetavern-walkersville.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "stage-line-coffee-roasters-new-market": {
+    "name": "Stage Line Coffee Roasters",
+    "commerce_source": {
+      "url": "https://www.stageline.coffee/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.stageline.coffee/gift-card",
+        "anchor_text": "GIFT CARD",
+        "source_url": "https://www.stageline.coffee/"
+      }
+    ]
+  },
+  "prospect-pantry-new-market": {
+    "name": "Prospect Pantry",
+    "commerce_source": {
+      "url": "https://www.prospectpantry.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/prospect-pantry/giftcards",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.prospectpantry.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/prospect-pantry",
+        "anchor_text": "Order now",
+        "source_url": "https://www.prospectpantry.com/"
+      }
+    ]
+  },
+  "vintage-restaurant-new-market": {
+    "name": "Vintage Restaurant",
+    "commerce_source": {
+      "url": "http://www.vintage-eats.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "http://www.vintage-eats.com/order",
+        "anchor_text": "Order",
+        "source_url": "http://www.vintage-eats.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/vintage-eats/giftcards?utm_campaign=giftcards&utm_content=online--vintage-eats&utm_medium=toast_sites&utm_source=undefined",
+        "anchor_text": "Gift Cards",
+        "source_url": "http://www.vintage-eats.com/"
+      }
+    ]
+  },
+  "nana-b-sweets-new-market": {
+    "name": "Nana B. Sweets",
+    "commerce_source": {
+      "url": "http://www.nanabsweets.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "http://www.nanabsweets.com/s/gift-cards",
+        "anchor_text": "Gift cards",
+        "source_url": "http://www.nanabsweets.com/"
+      },
+      {
+        "type": "menu",
+        "url": "http://www.nanabsweets.com/menu",
+        "anchor_text": "View Menu",
+        "source_url": "http://www.nanabsweets.com/"
+      },
+      {
+        "type": "order",
+        "url": "http://www.nanabsweets.com/s/order",
+        "anchor_text": "Order for Same Day Pickup/Delivery",
+        "source_url": "http://www.nanabsweets.com/"
+      }
+    ]
+  },
+  "superfoods-cafe-market-mount-airy": {
+    "name": "Superfoods Cafe & Market",
+    "commerce_source": {
+      "url": "https://www.superfoodscafeandmarket.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.superfoodscafeandmarket.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.superfoodscafeandmarket.com/"
+      }
+    ]
+  },
+  "concettas-main-street-bistro-mount-airy": {
+    "name": "Concetta's Main Street Bistro",
+    "commerce_source": {
+      "url": "https://concettasmainstreet.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.clover.com/online-ordering/concettas-mainst-bistro-mount-airy?fbclid=IwZXh0bgNhZW0CMTAAYnJpZBExU1o0UzZUMHFuTXNmOXFsVAEeZa2H6E6SpSm8inO848jfZBMthSdNeE6DqgOv6qVGglgK9Y9M9aQ2opIa4M4_aem_kQlmbFsNm_byj56MkHbvDQ",
+        "anchor_text": "https://www.clover.com/online-ordering/concettas-mainst-bistro-mount-airy",
+        "source_url": "https://concettasmainstreet.com/"
+      }
+    ]
+  },
+  "ggs-pastry-shop-mount-airy": {
+    "name": "GG's Pastry Shop",
+    "commerce_source": {
+      "url": "https://ggspastryshop.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://ggspastryshop.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://ggspastryshop.com/"
+      }
+    ]
+  },
+  "jimmie-cone-mount-airy": {
+    "name": "Jimmie Cone",
+    "commerce_source": {
+      "url": "https://www.jimmiecone.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.jimmiecone.com/menu",
+        "anchor_text": "MENU",
+        "source_url": "https://www.jimmiecone.com/"
+      }
+    ]
+  },
+  "tropical-smoothie-cafe-mount-airy": {
+    "name": "Tropical Smoothie Cafe",
+    "commerce_source": {
+      "url": "https://locations.tropicalsmoothiecafe.com/md/mount-airy/307-e.-ridgeville-blvd?y_source=1_MzYyMTAxMzAtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.tropicalsmoothiecafe.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://locations.tropicalsmoothiecafe.com/md/mount-airy/307-e.-ridgeville-blvd?y_source=1_MzYyMTAxMzAtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.tropicalsmoothiecafe.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://locations.tropicalsmoothiecafe.com/md/mount-airy/307-e.-ridgeville-blvd?y_source=1_MzYyMTAxMzAtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.tropicalsmoothiecafe.com/gift-cards/",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://locations.tropicalsmoothiecafe.com/md/mount-airy/307-e.-ridgeville-blvd?y_source=1_MzYyMTAxMzAtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D"
+      }
+    ]
+  },
+  "olde-town-restaurant-mount-airy": {
+    "name": "Olde Town Restaurant",
+    "commerce_source": {
+      "url": "https://oldetownrestaurant.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://oldetownrestaurant.com/menu",
+        "anchor_text": "OUR TASTY MENU",
+        "source_url": "https://oldetownrestaurant.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/olde-town-restaurant-206-south-main-street/v3/?mode=fulfillment",
+        "anchor_text": "ORDER ONLINE",
+        "source_url": "https://oldetownrestaurant.com/"
+      }
+    ]
+  },
+  "fireoak-culinary-tavern-frederick": {
+    "name": "Fire&Oak Culinary Tavern",
+    "commerce_source": {
+      "url": "https://fireandoakrestaurant.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://fireandoakrestaurant.com/food-menu/",
+        "anchor_text": "Food Menu",
+        "source_url": "https://fireandoakrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://fireandoakrestaurant.com/bar-menu/",
+        "anchor_text": "Bar Menu",
+        "source_url": "https://fireandoakrestaurant.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://fireandoakrestaurant.com/brunch-menu/",
+        "anchor_text": "Brunch Menu",
+        "source_url": "https://fireandoakrestaurant.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/fire-oak-105-north-market-street",
+        "anchor_text": "order online",
+        "source_url": "https://fireandoakrestaurant.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://order.toasttab.com/egiftcards/fire-oak-105-north-market-street",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://fireandoakrestaurant.com/"
+      }
+    ]
+  },
+  "pennys-diner-brunswick": {
+    "name": "Penny’s Diner",
+    "commerce_source": {
+      "url": "https://pennysdiner.com/",
+      "checkedAt": "2026-08-17T10:05:45.972Z"
+    }
+  },
+  "kings-pizza-brunswick": {
+    "name": "King's Pizza",
+    "commerce_source": {
+      "url": "https://ilovekings.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://ilovekings.com/menu",
+        "anchor_text": "Pizza",
+        "source_url": "https://ilovekings.com/"
+      }
+    ]
+  },
+  "wing-n-pizza-shack-brunswick": {
+    "name": "Wing N Pizza Shack",
+    "commerce_source": {
+      "url": "https://wingnpizzashack.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/wingnpizzashack",
+        "anchor_text": "ORDER NOW BRUNSWICK",
+        "source_url": "https://wingnpizzashack.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://order.toasttab.com/online/wing-n-pizza-shack-delivery-kitchen-",
+        "anchor_text": "ORDER NOW FREDERICK",
+        "source_url": "https://wingnpizzashack.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://wingnpizzashack.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://wingnpizzashack.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://wingnpizzashack.com/wp-catering-events/",
+        "anchor_text": "WP Catering & Events",
+        "source_url": "https://wingnpizzashack.com/"
+      }
+    ]
+  },
+  "roy-rogers-brunswick": {
+    "name": "Roy Rogers",
+    "commerce_source": {
+      "url": "https://www.royrogersrestaurants.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.royrogersrestaurants.com/menu/lunch-dinner",
+        "anchor_text": "Menu",
+        "source_url": "https://www.royrogersrestaurants.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.royrogersrestaurants.com/menu/breakfast",
+        "anchor_text": "Breakfast",
+        "source_url": "https://www.royrogersrestaurants.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.royrogersrestaurants.com/menu/sides",
+        "anchor_text": "Sides",
+        "source_url": "https://www.royrogersrestaurants.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.royrogersrestaurants.com/menu/desserts",
+        "anchor_text": "Desserts",
+        "source_url": "https://www.royrogersrestaurants.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.royrogersrestaurants.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.royrogersrestaurants.com/"
+      }
+    ]
+  },
+  "snowfox-sushi-brunswick": {
+    "name": "SNOWFOX Sushi",
+    "commerce_source": {
+      "url": "https://www.snowfox.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.snowfox.com/order-now",
+        "anchor_text": "SnowFox To Go",
+        "source_url": "https://www.snowfox.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.snowfox.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.snowfox.com/"
+      }
+    ]
+  },
+  "dominos-pizza-thurmont": {
+    "name": "Domino's Pizza",
+    "commerce_source": {
+      "url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.dominos.com/en/menu",
+        "anchor_text": "MENU",
+        "source_url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.dominos.com/en/menu/build-your-own",
+        "anchor_text": "BUILD YOUR OWN",
+        "source_url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.dominos.com/en/menu/specialty",
+        "anchor_text": "SPECIALTY PIZZAS",
+        "source_url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.dominos.com/en/menu/bread",
+        "anchor_text": "BREADS",
+        "source_url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.dominos.com/en/content/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.dominos.com/en?utm_source=google&utm_medium=loclist&utm_campaign=localmaps"
+      }
+    ]
+  },
+  "the-sauced-savage-bbq-thurmont": {
+    "name": "The Sauced Savage BBQ",
+    "commerce_source": {
+      "url": "http://www.thesaucedsavage.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "http://www.thesaucedsavage.com/full-menu.html",
+        "anchor_text": "Our Menu",
+        "source_url": "http://www.thesaucedsavage.com/"
+      },
+      {
+        "type": "catering",
+        "url": "http://www.thesaucedsavage.com/catering-packages.html",
+        "anchor_text": "Catering",
+        "source_url": "http://www.thesaucedsavage.com/"
+      },
+      {
+        "type": "catering",
+        "url": "http://www.thesaucedsavage.com/contact-us.html",
+        "anchor_text": "The Sauced Savage BBQ & Catering",
+        "source_url": "http://www.thesaucedsavage.com/"
+      }
+    ]
+  },
+  "los-amigos-mexican-restaurant-thurmont": {
+    "name": "Los Amigos Mexican Restaurant",
+    "commerce_source": {
+      "url": "https://dinelosamigos.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    }
+  },
+  "sara-keps-kitchen-thurmont": {
+    "name": "Sara Kep's Kitchen",
+    "commerce_source": {
+      "url": "https://sarakepskitchen.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "catering",
+        "url": "https://sarakepskitchen.com/catering-private-events/",
+        "anchor_text": "Catering & Private Events",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://sarakepskitchen.com/balance/",
+        "anchor_text": "Gift Card Balance",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://sarakepskitchen.com/shop/gift-cards/",
+        "source_url": "https://sarakepskitchen.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://sarakepskitchen.com/family-style-dinners/",
+        "anchor_text": "View Menus",
+        "source_url": "https://sarakepskitchen.com/"
+      }
+    ]
+  },
+  "tapias-on-main-middletown": {
+    "name": "Tapia's on Main",
+    "commerce_source": {
+      "url": "http://tapiasonmain.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "http://tapiasonmain.com/index.php/menu/",
+        "anchor_text": "Menu",
+        "source_url": "http://tapiasonmain.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/tapias-on-main/giftcards",
+        "anchor_text": "Buy an e-Gift Card",
+        "source_url": "http://tapiasonmain.com/"
+      }
+    ]
+  },
+  "middletown-valley-pizzeria-middletown": {
+    "name": "Middletown Valley Pizzeria",
+    "commerce_source": {
+      "url": "https://www.middletownvalleypizza.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.middletownvalleypizza.com/s/order",
+        "anchor_text": "Order Now",
+        "source_url": "https://www.middletownvalleypizza.com/"
+      }
+    ]
+  },
+  "dempseys-grille-middletown": {
+    "name": "Dempseys Grille",
+    "commerce_source": {
+      "url": "https://dempseysgrille.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://dempseysgrille.com/menus/",
+        "anchor_text": "Our Menu",
+        "source_url": "https://dempseysgrille.com/"
+      }
+    ]
+  },
+  "jimmy-johns-middletown": {
+    "name": "Jimmy John's",
+    "commerce_source": {
+      "url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.jimmyjohns.com/menu",
+        "anchor_text": "MENU",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.jimmyjohns.com/documents/print-menu",
+        "anchor_text": "Print Menu (PDF)",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.jimmyjohns.com/menu/5.99-sandwich-deal",
+        "anchor_text": "CHECK IT OUT",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.jimmyjohns.com/menu/whats-new",
+        "anchor_text": "What’s New Fresh additions and limited-time favorites. Check out the latest sandwiches, wraps, sides, and more",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.jimmyjohns.com/catering",
+        "anchor_text": "CATERING",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.jimmyjohns.com/documents/print-catering-menu",
+        "anchor_text": "Print Catering Menu (PDF)",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.jimmyjohns.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.jimmyjohns.com/?utm_source=google-my-business&utm_medium=organic&utm_campaign=website-link&y_source=1_MjA0MTg0ODkzNi03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D"
+      }
+    ]
+  },
+  "alekos-middletown": {
+    "name": "Aleko's",
+    "commerce_source": {
+      "url": "https://www.alekosvillagecafe.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "reservation",
+        "url": "https://resy.com/cities/middletown-md-md/venues/alekos",
+        "anchor_text": "RESERVATIONS",
+        "source_url": "https://www.alekosvillagecafe.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.alekosvillagecafe.com/catering",
+        "anchor_text": "CATERING",
+        "source_url": "https://www.alekosvillagecafe.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.alekosvillagecafe.com/general-8",
+        "anchor_text": "GIFT CARDS",
+        "source_url": "https://www.alekosvillagecafe.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.alekosvillagecafe.com/menu",
+        "anchor_text": "VIEW MENU",
+        "source_url": "https://www.alekosvillagecafe.com/"
+      }
+    ]
+  },
+  "black-hog-bbq-bar-middletown": {
+    "name": "Black Hog BBQ & Bar",
+    "commerce_source": {
+      "url": "https://blackhogbbq.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://blackhogbbq.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://blackhogbbq.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://blackhogbbq.com/wp-content/uploads/2024/11/BH_Catering_Menu_111124.pdf",
+        "anchor_text": "Download Catering Menu",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://blackhogbbq.com/order-online/",
+        "anchor_text": "Order Online",
+        "source_url": "https://blackhogbbq.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/black-hog-bbq-middletown/giftcards",
+        "anchor_text": "Purchase a Gift Card",
+        "source_url": "https://blackhogbbq.com/"
+      }
+    ]
+  },
+  "fratellis-italian-seafood-middletown": {
+    "name": "Fratelli's Italian & Seafood",
+    "commerce_source": {
+      "url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.fratellispasta.com/menu/drinks/",
+        "anchor_text": "Drinks",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.fratellispasta.com/reservations",
+        "anchor_text": "Reservations",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/"
+      }
+    ]
+  },
+  "cinco-de-mayo-middletown-middletown": {
+    "name": "Cinco de Mayo - Middletown",
+    "commerce_source": {
+      "url": "https://cincodemayorest.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    }
+  },
+  "schroyers-tavern-at-maryland-national-golf-club-middletown": {
+    "name": "Schroyer's Tavern at Maryland National Golf Club",
+    "commerce_source": {
+      "url": "https://www.marylandnational.com/clubhouse-info/schroyers-tavern/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    }
+  },
+  "motherland-kitchen-walkersville": {
+    "name": "Motherland Kitchen",
+    "commerce_source": {
+      "url": "https://www.motherlandkitchen.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.motherlandkitchen.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.motherlandkitchen.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.motherlandkitchen.com/contact",
+        "anchor_text": "Book a table",
+        "source_url": "https://www.motherlandkitchen.com/"
+      }
+    ]
+  },
+  "carriage-house-inn-restaurant-catering-emmitsburg": {
+    "name": "Carriage House Inn Restaurant & Catering",
+    "commerce_source": {
+      "url": "https://chouseinn.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://chouseinn.com/menu-2/",
+        "anchor_text": "Restaurant Menu",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/v3/?mode=fulfillment",
+        "anchor_text": "Order Online",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/v3/",
+        "anchor_text": "Order Takeout",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://chouseinn.com/on-site-catering/",
+        "anchor_text": "On Site Catering",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://chouseinn.com/catering_off_site/",
+        "anchor_text": "Off Site Catering",
+        "source_url": "https://chouseinn.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/carriage-house-inn-200-s-seton-ave/giftcards?utmCampaign=onlineOrdering",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://chouseinn.com/"
+      }
+    ]
+  },
+  "ripleighs-creamery-emmitsburg": {
+    "name": "Ripleigh's Creamery",
+    "commerce_source": {
+      "url": "https://ripleighs.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://ripleighs-creamery.square.site/shop/Same-Day-Pickup/12?page=1&limit=60&sort_by=category_order&sort_order=asc",
+        "anchor_text": "Pick Up In Store",
+        "source_url": "https://ripleighs.com/"
+      }
+    ]
+  },
+  "rubes-crab-shack-llc-emmitsburg": {
+    "name": "Rube's Crab Shack LLC",
+    "commerce_source": {
+      "url": "https://rubescrabshack.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://rubescrabshack.com/our-menu",
+        "anchor_text": "Our Menu",
+        "source_url": "https://rubescrabshack.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://rubescrabshack.com/a/menus/476/print",
+        "anchor_text": "Print",
+        "source_url": "https://rubescrabshack.com/all-you-can-eat-specials"
+      }
+    ]
+  },
+  "kings-pasquale-new-market": {
+    "name": "King’s Pasquale",
+    "commerce_source": {
+      "url": "https://kingspasqualesmd.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://kingspasqualesmd.com/menus/",
+        "anchor_text": "Menus",
+        "source_url": "https://kingspasqualesmd.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://kingspasqualesmd.com/catering/",
+        "anchor_text": "Catering",
+        "source_url": "https://kingspasqualesmd.com/"
+      }
+    ]
+  },
+  "morgans-american-grill-new-market": {
+    "name": "Morgan's American Grill",
+    "commerce_source": {
+      "url": "https://morgansmd.square.site/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://morgansmd.square.site/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://morgansmd.square.site/"
+      },
+      {
+        "type": "menu",
+        "url": "https://morgansmd.square.site/uploads/b/9b001310-07d3-11ee-85e1-bbfe446e6fe7/kidsmenunew2.doc",
+        "anchor_text": "View Children’s Menu",
+        "source_url": "https://morgansmd.square.site/"
+      }
+    ]
+  },
+  "asian-bistro-new-market": {
+    "name": "Asian Bistro",
+    "commerce_source": {
+      "url": "https://www.goasianbistromd.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    }
+  },
+  "walkers-on-main-mount-airy": {
+    "name": "Walker’s on Main",
+    "commerce_source": {
+      "url": "https://walkersonmain.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/walkers-on-main?diningOption=pickup",
+        "anchor_text": "Order Pickup",
+        "source_url": "https://walkersonmain.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.toasttab.com/walkers-on-main?diningOption=delivery",
+        "anchor_text": "Order Delivery",
+        "source_url": "https://walkersonmain.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://order.toasttab.com/egiftcards/walkers-on-main",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://walkersonmain.com/"
+      }
+    ]
+  },
+  "carterque-bbq-grilling-co-mount-airy": {
+    "name": "CarterQue BBQ & Grilling Co.",
+    "commerce_source": {
+      "url": "https://www.carterque.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.carterque.com/menu/",
+        "anchor_text": "Menu",
+        "source_url": "https://www.carterque.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.carterque.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.carterque.com/"
+      }
+    ]
+  },
+  "mamma-angela-mount-airy": {
+    "name": "Mamma Angela",
+    "commerce_source": {
+      "url": "https://www.mammaangelamtairymd.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    }
+  },
+  "tony-pazzo-italian-ristorante-and-bar-mount-airy": {
+    "name": "Tony Pazzo Italian Ristorante and Bar",
+    "commerce_source": {
+      "url": "https://www.tonypazzo.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.tonypazzo.com/our-menu",
+        "anchor_text": "Our Menu",
+        "source_url": "https://www.tonypazzo.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.tonypazzo.com/order-online",
+        "anchor_text": "Order Online",
+        "source_url": "https://www.tonypazzo.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.tonypazzo.com/catering",
+        "anchor_text": "Catering",
+        "source_url": "https://www.tonypazzo.com/"
+      }
+    ]
+  },
+  "jb-seafood-myersville": {
+    "name": "JB Seafood",
+    "commerce_source": {
+      "url": "https://www.jbseafood.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.jbseafood.com/menus",
+        "anchor_text": "Menus",
+        "source_url": "https://www.jbseafood.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.jbseafood.com/menu",
+        "anchor_text": "Menus (New)",
+        "source_url": "https://www.jbseafood.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.jbseafood.com/catering",
+        "anchor_text": "Catering & Events",
+        "source_url": "https://www.jbseafood.com/"
+      }
+    ]
+  },
+  "little-red-barn-ice-cream-cafe-burkittsville": {
+    "name": "Little Red Barn Ice Cream Cafe",
+    "commerce_source": {
+      "url": "https://www.littleredbarnicecream.com/",
+      "checkedAt": "2026-08-17T10:05:45.973Z"
+    },
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.littleredbarnicecream.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.littleredbarnicecream.com/"
+      }
+    ]
   }
 }
