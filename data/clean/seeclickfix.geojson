@@ -6,6 +6,72 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.20336271319695,
+          39.349124336016715
+        ]
+      },
+      "properties": {
+        "external_id": "22527789",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "I apologize but I’m not sure who to contact.  There is an issue in on my street in front of 4114 Larson Lane, Mt. Airy, MD.  The roadside drainage swale has eroded so much, due to heavy storm flows, t",
+        "address": "4114 Larson Ln Mount Airy, Maryland, 21771",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-17T10:25:30.000Z",
+        "url": "https://seeclickfix.com/issues/22527789",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.341434786721,
+          39.332488975177
+        ]
+      },
+      "properties": {
+        "external_id": "22525669",
+        "summary": "Water Issue",
+        "description": "",
+        "address": "3642 Singleton Ter Frederick, MD, 21704, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Water Issue",
+        "reported_at": "2026-08-16T21:46:13.000Z",
+        "url": "https://seeclickfix.com/issues/22525669",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4570438626488,
+          39.464949162161936
+        ]
+      },
+      "properties": {
+        "external_id": "22524952",
+        "summary": "Roadway Tree Maintenance",
+        "description": "I am contacting you for my friend Mr. Stull that lives at this address. This tree is dead and in the county right of way. He is afraid a storm is going to take it down and block the road. Can you remo",
+        "address": "8531 Rocky Springs Rd Frederick, Maryland, 21702",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-16T19:32:43.000Z",
+        "url": "https://seeclickfix.com/issues/22524952",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.4009,
           39.5517
         ]
@@ -328,72 +394,6 @@
         "category": "Roadway Drainage Maintenance",
         "reported_at": "2026-08-13T18:01:23.000Z",
         "url": "https://seeclickfix.com/issues/22503150",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.38188194340273,
-          39.39210331337576
-        ]
-      },
-      "properties": {
-        "external_id": "22501911",
-        "summary": "Roadway Tree Maintenance",
-        "description": "PARTIAL TREE, LIMBS, AND BRUSH BLOCKING ONE LANE",
-        "address": "Ray Smith Rd Ballenger Creek, MD, 21704, USA",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-13T16:30:19.000Z",
-        "url": "https://seeclickfix.com/issues/22501911",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.38056762953315,
-          39.31189095818306
-        ]
-      },
-      "properties": {
-        "external_id": "22501654",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Resident requesting tree in ROW to be removed. He says that it is possibly dead.",
-        "address": "2833 Roderick Rd Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-13T16:10:58.000Z",
-        "url": "https://seeclickfix.com/issues/22501654",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.37687552691293,
-          39.4346070079352
-        ]
-      },
-      "properties": {
-        "external_id": "22500809",
-        "summary": "Animal Carcass in Public Ways",
-        "description": "deceased deer on side of road\\sidewalk across the street from Clustered Spires Golf Course",
-        "address": "Gas House Pike Frederick, Maryland, 21701",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Animal Carcass in Public Ways",
-        "reported_at": "2026-08-13T15:10:52.000Z",
-        "url": "https://seeclickfix.com/issues/22500809",
         "source": "seeclickfix"
       }
     }

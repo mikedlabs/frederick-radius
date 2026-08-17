@@ -1,0 +1,160 @@
+{
+  "@context": [
+    "https://geojson.org/geojson-ld/geojson-context.jsonld",
+    {
+      "@version": "1.1",
+      "wx": "https://api.weather.gov/ontology#",
+      "@vocab": "https://api.weather.gov/ontology#"
+    }
+  ],
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-45358",
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-45358",
+        "@type": "wx:Alert",
+        "id": "urn:oid:2.49.0.1.840.0-KEEPALIVE-45358",
+        "areaDesc": "Montgomery",
+        "geocode": {
+          "SAME": [
+            "024031"
+          ],
+          "UGC": [
+            "MDC031"
+          ]
+        },
+        "affectedZones": [
+          "https://api.weather.gov/zones/county/MDC031"
+        ],
+        "references": [],
+        "sent": "2026-08-17T10:27:16+00:00",
+        "effective": "2026-08-17T10:27:16+00:00",
+        "onset": null,
+        "expires": "2026-08-17T10:37:16+00:00",
+        "ends": null,
+        "status": "Test",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Unknown",
+        "certainty": "Unknown",
+        "urgency": "Unknown",
+        "event": "Test Message",
+        "sender": "w-nws.webmaster@noaa.gov",
+        "senderName": "NWS",
+        "headline": null,
+        "description": "Monitoring message only. Please disregard.",
+        "instruction": "Monitoring message only. Please disregard.",
+        "response": "None",
+        "note": "This is only a test for monitoring of vital dissemination systems.",
+        "parameters": {
+          "AWIPSidentifier": [
+            "KEPWBC"
+          ],
+          "WMOidentifier": [
+            "NZUS91 KWBC 171027"
+          ],
+          "BLOCKCHANNEL": [
+            "CMAS",
+            "EAS",
+            "NWEM"
+          ]
+        },
+        "scope": "Public",
+        "code": "IPAWSv1.0",
+        "language": "en-US",
+        "web": "http://www.weather.gov",
+        "eventCode": {
+          "SAME": [
+            "NWS"
+          ],
+          "NationalWeatherService": [
+            "TST"
+          ]
+        }
+      }
+    },
+    {
+      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.5e7c132e97ec8a804b3fee359d4ffe50f4a79949.001.1",
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.5e7c132e97ec8a804b3fee359d4ffe50f4a79949.001.1",
+        "@type": "wx:Alert",
+        "id": "urn:oid:2.49.0.1.840.0.5e7c132e97ec8a804b3fee359d4ffe50f4a79949.001.1",
+        "areaDesc": "Extreme Western Allegany; Western Garrett; Eastern Garrett",
+        "geocode": {
+          "SAME": [
+            "024001",
+            "024023"
+          ],
+          "UGC": [
+            "MDZ501",
+            "MDZ509",
+            "MDZ510"
+          ]
+        },
+        "affectedZones": [
+          "https://api.weather.gov/zones/forecast/MDZ501",
+          "https://api.weather.gov/zones/forecast/MDZ509",
+          "https://api.weather.gov/zones/forecast/MDZ510"
+        ],
+        "references": [],
+        "sent": "2026-08-17T03:13:00-04:00",
+        "effective": "2026-08-17T03:13:00-04:00",
+        "onset": "2026-08-17T03:13:00-04:00",
+        "expires": "2026-08-17T09:00:00-04:00",
+        "ends": null,
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Observed",
+        "urgency": "Expected",
+        "event": "Special Weather Statement",
+        "sender": "w-nws.webmaster@noaa.gov",
+        "senderName": "NWS Baltimore MD/Washington DC",
+        "headline": "Special Weather Statement issued August 17 at 3:13AM EDT by NWS Baltimore MD/Washington DC",
+        "description": "Patches of dense fog are possible this morning, with the lowest\nvisibility over the ridgelines. This includes Interstate 68 and\nHighway 40 between Big Savage Mountain and Keysers Ridge.\n\nMotorists should exercise extra caution when encountering reduced\nvisibility. Reduce speed, leave extra time and following distance,\nand use low beam headlights.",
+        "instruction": null,
+        "response": "Execute",
+        "note": null,
+        "parameters": {
+          "AWIPSidentifier": [
+            "SPSLWX"
+          ],
+          "WMOidentifier": [
+            "WWUS81 KLWX 170713"
+          ],
+          "NWSheadline": [
+            "PATCHY DENSE FOG THIS MORNING"
+          ],
+          "BLOCKCHANNEL": [
+            "EAS",
+            "NWEM",
+            "CMAS"
+          ],
+          "EAS-ORG": [
+            "WXR"
+          ]
+        },
+        "scope": "Public",
+        "code": "IPAWSv1.0",
+        "language": "en-US",
+        "web": "http://www.weather.gov",
+        "eventCode": {
+          "SAME": [
+            "SPS"
+          ],
+          "NationalWeatherService": [
+            "SPS"
+          ]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for Maryland",
+  "updated": "2026-08-17T10:32:18+00:00"
+}
