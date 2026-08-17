@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -159,17 +160,25 @@ function Thumb({
   size: number;
 }) {
   if (place.google_photo_url) {
+    // Narrow the proxy URL to the size actually painted. places-client.json
+    // stores one URL per place at w=800, the size a hero needs, and proxy
+    // responses render `unoptimized` because Next cannot resize an opaque
+    // route — which also makes the `sizes` hint below inert for them. So a
+    // 40px thumbnail was downloading the full 800px asset, dozens of times
+    // per scroll across every list surface. PlaceMedallion has done this for
+    // a while; the card thumbs were simply missed.
+    const src = proxyPhotoAtWidth(place.google_photo_url, size);
     return (
       <div
         className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
         style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
       >
         <Image
-          src={place.google_photo_url}
+          src={src}
           alt=""
           fill
-          unoptimized={place.google_photo_url.startsWith("/api/place-photo")}
-          sizes="72px"
+          unoptimized={src.startsWith("/api/place-photo")}
+          sizes={`${size}px`}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
