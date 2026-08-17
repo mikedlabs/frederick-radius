@@ -10,7 +10,7 @@
     "build": "node scripts/build-application.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "audit:pages": "tsx --tsconfig tsconfig.json scripts/page-quality-audit.ts",
     "audit:repo-size": "tsx --tsconfig tsconfig.json scripts/check-repository-size-budget.ts",
