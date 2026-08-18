@@ -628,12 +628,21 @@ describe("askFrederick structured answers", () => {
       municipality: "brunswick",
       contextLabel: "Brunswick",
     });
+    // Brunswick publishes no dedicated refuse contact, so the trash intent
+    // resolves to the office that handles it. Asserting Public Works rather
+    // than the town hall keeps this pinned to the answer we want: before the
+    // fallback existed this passed only because the hall carried no website
+    // and fell back to the source URL, which happened to be /publicworks.
     expect(result.sources[0]).toMatchObject({
-      name: "Brunswick · Town Hall",
+      name: "Brunswick · Public Works",
       href: "https://brunswickmd.gov/publicworks",
       phone: "301-834-7500",
     });
-    expect(result.answer).toContain("instead of guessing");
+    // Resolving to Public Works is a department-specific match, so the answer
+    // no longer carries the "instead of guessing" hedge. That disclaimer is for
+    // the case where only the town's front door is known; keeping it here would
+    // apologize for an answer that is now exact.
+    expect(result.answer).toContain("official Brunswick resource for public works");
   });
 
   it("answers the countywide dining question with balanced north and west picks", async () => {
