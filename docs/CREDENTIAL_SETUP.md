@@ -41,8 +41,13 @@ isochrone, and static images.
    This is the control that matters. A `pk.` token is always visible; the
    restriction is what makes it useless to anyone else.
 4. Paste the `pk.…` value into Vercel as `NEXT_PUBLIC_MAPBOX_TOKEN`.
-5. **Delete the old token** in the Mapbox dashboard. It is in git history, so
-   it can never be considered private again — rotation is not optional.
+5. Redeploy, then confirm the bundle actually serves the new value:
+   `npm run verify:credentials -- --probe`. `NEXT_PUBLIC_*` is inlined at
+   build time, so until a build runs, production is still on the fallback.
+6. **Only after that check passes**, delete the old token in the Mapbox
+   dashboard. It is in git history, so it can never be considered private
+   again — rotation is not optional. Revoking it any earlier blacks out every
+   map, because the running deployment is still authenticating with it.
 
 ## 2. `MAPBOX_SERVER_TOKEN` — Production only
 
