@@ -252,8 +252,18 @@ jobs:
       - name: Validate transit data contracts
         run: npm run validate:transit-data -- --frederick
 
+      # Invoked through npx, NOT `npm test`. The `pretest` hook is
+      # `data:release:check`, which asserts the committed manifest still
+      # describes the working tree — and the step above has just rebuilt
+      # transit from upstream GTFS, so at this point it cannot pass by
+      # construction. Promotion is the next step, and it is what makes the
+      # manifest agree again. Using `npm test` here failed the job every
+      # night before that promotion could run, taking `transit-publish` with
+      # it (it `needs: transit`) and quietly freezing Frederick TransIT data.
+      # Every other data workflow that rebuilds before promoting already
+      # calls `npx vitest run` for exactly this reason.
       - name: Validate transit snapshot
-        run: npm test -- tests/transit-static-snapshot.spec.ts
+        run: npx vitest run tests/transit-static-snapshot.spec.ts
 
       - name: Promote reviewed transit artifacts
         run: npm run data:release:write -- --stream transit
