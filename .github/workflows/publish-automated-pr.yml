@@ -29,6 +29,15 @@ on:
       body:
         required: true
         type: string
+      auto_merge:
+        description: >
+          Queue the PR for auto-merge. This does NOT bypass anything: GitHub
+          holds the merge until every required check on main passes, so a
+          failing verify still blocks it. Callers should pass true only when
+          the refresh carries no change a human must sign off on.
+        required: false
+        default: false
+        type: boolean
     outputs:
       pr_branch:
         value: ${{ jobs.publish.outputs.pr_branch }}
@@ -168,3 +177,21 @@ jobs:
             data-pipeline
             automated
           delete-branch: true
+
+      # A daily artifact is only useful if it actually reaches main. The hours
+      # snapshot loses about a sixth of its coverage per day and every claim
+      # expires on day 7, so a refresh that waits a fortnight for a click is
+      # the same as no refresh: on 2026-08-18 this PR had been open 14 days
+      # and every open/closed claim in the app had gone dark.
+      #
+      # Auto-merge is a queue, not a bypass. GitHub still holds the PR until
+      # verify, style-lint and Required browser chaos all pass, and the caller
+      # only sets auto_merge when the change carries nothing a human must
+      # judge (no public removals, no new closures).
+      - name: Queue an unflagged refresh for auto-merge
+        if: ${{ inputs.auto_merge && steps.review_pr.outputs.pull-request-number != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.review_pr.outputs.pull-request-number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --auto --squash --repo "$GITHUB_REPOSITORY"
