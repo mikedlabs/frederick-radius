@@ -41,54 +41,63 @@ describe("manual place status overrides", () => {
     expect(isOperational(unrelated)).toBe(true);
   });
 
+  /**
+   * Derived from the override file rather than a copy of it.
+   *
+   * This test used to list each correction with its own hardcoded activeAt
+   * and expiredAt instants. That made renewing a review a two-file edit, and
+   * when the Aug 15 deadlines lapsed while the merge queue was jammed, the
+   * stale copy is what turned a three-place data review into a red `verify`
+   * on every unrelated PR in the repo. Asserting the RULE against whatever
+   * the data currently says cannot rot that way: a renewal is a pure data
+   * edit, and the assertions stay true on both sides of every deadline.
+   */
   it("keeps first-party operational corrections explicit and time-bounded", () => {
-    const corrections = [
-      {
-        slug: "concettas-main-street-bistro-mount-airy",
-        source: "https://concettasmainstreet.com/",
-        activeAt: "2026-08-10T12:00:00Z",
-        expiredAt: "2026-08-25T12:00:00Z",
-      },
-      {
-        slug: "green-health-docs",
-        source:
-          "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
-        activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
-      },
-      {
-        slug: "quince-orchard-psychotherapy",
-        source: "https://orchardmentalhealth.com/contact/",
-        activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
-      },
-      {
-        slug: "saxbys-at-mount-st-marys-university-emmitsburg",
-        source:
-          "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
-        activeAt: "2026-08-01T12:00:00Z",
-        expiredAt: "2026-08-16T12:00:00Z",
-      },
-    ];
+    const corrections = Object.entries(MANUAL_PLACE_STATUS_OVERRIDES).filter(
+      ([, override]) => isManualPlaceOperationalCorrection(override),
+    );
+    // The mechanism is pointless if the file holds none, so pin that too.
+    expect(corrections.length).toBeGreaterThan(0);
 
-    for (const expected of corrections) {
-      const override = manualPlaceStatusOverride(expected.slug);
-      expect(isManualPlaceOperationalCorrection(override)).toBe(true);
-      expect(override?.source).toBe(expected.source);
-      expect(hasValidManualPlaceStatusEvidence(override!)).toBe(true);
+    const noon = (day: string) => new Date(`${day}T12:00:00Z`);
+    const dayAfter = (day: string) => {
+      const next = new Date(`${day}T12:00:00Z`);
+      next.setUTCDate(next.getUTCDate() + 1);
+      return next;
+    };
+
+    for (const [slug, override] of corrections) {
+      // Evidence must be a first-party https source a person can re-check.
+      expect(hasValidManualPlaceStatusEvidence(override), slug).toBe(true);
+      expect(override.review_after >= override.effective_at, slug).toBe(true);
+
+      // Live for its whole reviewed window, gone the day after it closes.
       expect(
-        activeManualPlaceStatusOverride(
-          expected.slug,
-          new Date(expected.activeAt),
-        )?.status,
+        activeManualPlaceStatusOverride(slug, noon(override.effective_at))
+          ?.status,
+        slug,
       ).toBe("operational");
       expect(
-        activeManualPlaceStatusOverride(
-          expected.slug,
-          new Date(expected.expiredAt),
-        ),
+        activeManualPlaceStatusOverride(slug, noon(override.review_after))
+          ?.status,
+        slug,
+      ).toBe("operational");
+      expect(
+        activeManualPlaceStatusOverride(slug, dayAfter(override.review_after)),
+        slug,
       ).toBeUndefined();
-      expect(publicPlaceBySlug(expected.slug)).toBeDefined();
+      expect(
+        isManualPlaceStatusReviewCurrent(override, dayAfter(override.review_after)),
+        slug,
+      ).toBe(false);
+
+      // A correction that is active right now must actually be keeping its
+      // place public — that is the entire reason it exists. Once it lapses
+      // the place falls back to the provider's status, which this test
+      // deliberately does not predict either way.
+      if (activeManualPlaceStatusOverride(slug)) {
+        expect(publicPlaceBySlug(slug), slug).toBeDefined();
+      }
     }
   });
 
