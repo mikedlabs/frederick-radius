@@ -273,6 +273,24 @@
  * .dark { … } block (and re-add the .aurora-grain / .shimmer
  * dark-mode overrides further down). */
 
+/* Vaul ships its own physics at runtime (a 0.5s cubic-bezier(0.32,0.72,0,1)
+   transform plus 0.5s slide keyframes), so a bottom drawer opens slower and
+   on a different curve than every sibling overlay in the app. Pin it to the
+   house tokens. Declared BEFORE the reduced-motion block on purpose, so that
+   block's `animation: none !important` still wins on source order. */
+[data-vaul-drawer] {
+  transition-duration: var(--app-dur-slow) !important;
+  transition-timing-function: var(--app-ease-out) !important;
+  animation-duration: var(--app-dur-slow) !important;
+  animation-timing-function: var(--app-ease-out) !important;
+}
+[data-vaul-overlay] {
+  transition-duration: var(--app-dur-med) !important;
+  transition-timing-function: var(--app-ease-out) !important;
+  animation-duration: var(--app-dur-med) !important;
+  animation-timing-function: var(--app-ease-out) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --app-dur-fast: 0ms;
