@@ -264,7 +264,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       {townScopeIsEmpty && (
         <section className="space-y-2.5">
           <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
-            No {c.name.toLowerCase()} listed in {scopedTownName} yet.
+            Nothing is listed under {c.name.toLowerCase()} in {scopedTownName} yet.
           </p>
           {countyFallback.length > 0 && (
             <>
