@@ -369,7 +369,10 @@ describe("scheduled data workflow contracts", () => {
 
   it.each([
     ["data-steward.yml", "steward", "steward-publish"],
-    ["data-steward.yml", "transit", "transit-publish"],
+    // Transit moved to its own workflow on 2026-08-18: sharing a run made a
+    // failing transit snapshot paint the hours pipeline red for six days.
+    // Same generator -> publisher contract, different file.
+    ["transit-steward.yml", "transit", "transit-publish"],
     ["ingest-business-info.yml", "ingest", "publish"],
     ["ingest-civic.yml", "ingest", "publish"],
     ["ingest-venues.yml", "ingest", "publish"],
@@ -453,7 +456,10 @@ describe("scheduled data workflow contracts", () => {
       ),
     );
 
-    expect(producerWorkflows.length).toBe(8);
+    // 9 since transit-steward.yml split out of data-steward.yml (2026-08-18).
+    // Every producer still routes through the same credentialed publisher, so
+    // the guarantees below apply unchanged to the new file.
+    expect(producerWorkflows.length).toBe(9);
     for (const name of producerWorkflows) {
       const workflow = parse(workflowText(name)) as WorkflowDocument;
       expect(
