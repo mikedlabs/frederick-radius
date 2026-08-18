@@ -12,7 +12,7 @@ import { EVENTS } from "@/data/events";
  * green — a drop here means the app got worse at answering, which is the one
  * regression this repo cares most about.
  */
-const FLOOR = 0.9;
+const FLOOR = 0.93;
 
 describe("answer coverage", () => {
   const report = runCoverage(COVERAGE_CORPUS, EVENTS);
