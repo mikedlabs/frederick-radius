@@ -18,7 +18,7 @@ import {
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
 import { CATEGORIES } from "@/data/categories";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { isOverPaidRequestBudget, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 // A locator image of a fixed pin never changes; cache hard.
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   if (!isSameOriginRequest(req)) {
     return new Response("Forbidden", { status: 403 });
   }
-  if (await isRateLimited(req, "static-map", 120, 60)) {
+  if (await isOverPaidRequestBudget(req, "static-map", 120, 60, 15)) {
     return new Response("Too Many Requests", {
       status: 429,
       headers: { "Retry-After": "60" },
