@@ -823,6 +823,8 @@ export function search(
     // unrelated fragments cannot manufacture a "match."
     const fuzzyQuery = terms.join(" ");
     const fuzzyThreshold = fuzzyThresholdForQuery(fuzzyQuery);
+    let bestFuzzyPlaceScore = 0;
+    let bestFuzzyPlaceSimilarity = 0;
     if (!hits.some((h) => h.type === "place")) {
       const close: { p: PlaceCardData; f: number }[] = [];
       for (const p of clientPlaces()) {
@@ -831,13 +833,36 @@ export function search(
       }
       close.sort((a, b) => b.f - a.f);
       for (const { p, f } of close.slice(0, 3)) {
-        hits.push({ type: "place", place: p, score: f * 10 + p.feature_score });
+        const score = f * 10 + p.feature_score;
+        bestFuzzyPlaceScore = Math.max(bestFuzzyPlaceScore, score);
+        bestFuzzyPlaceSimilarity = Math.max(bestFuzzyPlaceSimilarity, f);
+        hits.push({ type: "place", place: p, score });
       }
     }
     if (!hits.some((h) => h.type === "municipality")) {
       for (const m of MUNICIPALITIES) {
         const f = fuzzyNameScore(fuzzyQuery, m.name);
-        if (f >= fuzzyThreshold) hits.push({ type: "municipality", municipality: m, score: f * 12 });
+        if (f < fuzzyThreshold) continue;
+        // A one-word query that fuzzy-matches a town name is a misspelled
+        // TOWN, not a business search. Similarity alone cannot separate the
+        // two — "thurmount" scores identically against "Thurmont" and
+        // "Thurmont Trolley Trail", because both carry the same token — so
+        // the place branch's `+ feature_score` decided it, and every town in
+        // the county lost to a business that merely shares its name:
+        // "emmitsburgh" led with Emmitsburg Liquors, "frederik" with
+        // Frederick Auto Repair. When the town matches at least as closely as
+        // the best fuzzy business, the town leads. Derived from the scores
+        // actually in play rather than a tuned constant, and reachable only
+        // through the typo net, so correctly-spelled queries never touch it.
+        const townIsTheWholeQuery =
+          terms.length === 1 && f >= bestFuzzyPlaceSimilarity;
+        hits.push({
+          type: "municipality",
+          municipality: m,
+          score: townIsTheWholeQuery
+            ? Math.max(f * 12, bestFuzzyPlaceScore + 1)
+            : f * 12,
+        });
       }
     }
   }
