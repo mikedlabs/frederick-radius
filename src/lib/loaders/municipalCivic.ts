@@ -106,16 +106,22 @@ export function findMunicipalCivic(
   if (!rec) return null;
 
   const pick = (k: keyof MunicipalCivic) => rec[k] as CivicContact | undefined;
-  const intentMap: { terms: string[]; field: keyof MunicipalCivic }[] = [
-    { terms: ["trash", "garbage", "recycl", "refuse", "yard"], field: "trashRecycling" },
-    { terms: ["permit", "zoning", "building"], field: "permits" },
-    { terms: ["water", "sewer", "utility", "bill"], field: "utilities" },
-    { terms: ["public works", "pothole", "road", "snow"], field: "publicWorks" },
-    { terms: ["police", "crime"], field: "police" },
-    { terms: ["hall", "mayor", "clerk", "council", "hours"], field: "townHall" },
+  // Fields are tried in order, so an intent can name the office that actually
+  // does the work when a town has no dedicated contact for it. Refuse is the
+  // case that matters: several towns publish no trashRecycling record, and
+  // falling straight through to the town hall answered "who handles trash in
+  // Brunswick?" with the town's front door. Public works is the right office.
+  const intentMap: { terms: string[]; fields: (keyof MunicipalCivic)[] }[] = [
+    { terms: ["trash", "garbage", "recycl", "refuse", "yard"], fields: ["trashRecycling", "publicWorks"] },
+    { terms: ["permit", "zoning", "building"], fields: ["permits"] },
+    { terms: ["water", "sewer", "utility", "bill"], fields: ["utilities", "publicWorks"] },
+    { terms: ["public works", "pothole", "road", "snow"], fields: ["publicWorks"] },
+    { terms: ["police", "crime"], fields: ["police"] },
+    { terms: ["hall", "mayor", "clerk", "council", "hours"], fields: ["townHall"] },
   ];
-  for (const { terms, field } of intentMap) {
-    if (terms.some((t) => lq.includes(t))) {
+  for (const { terms, fields } of intentMap) {
+    if (!terms.some((t) => lq.includes(t))) continue;
+    for (const field of fields) {
       const c = pick(field);
       if (c) return { town: rec.name, rec, contacts: [c], matchedIntent: true };
     }
