@@ -1,4 +1,52 @@
 {
   "type": "FeatureCollection",
-  "features": []
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1703,
+          39.354004
+        ]
+      },
+      "properties": {
+        "external_id": "a9ff57b1d38b0883006ad32ec4235c0a",
+        "incident_type": "special",
+        "description": "MD 27 (RIDGE RD) @ MD 144 (OLD NATIONAL PIKE) [Opticom Fire Pre-Emption Signal]",
+        "county": "Frederick",
+        "road": "MD 27",
+        "direction": "North",
+        "location": "MD 27 (RIDGE RD) @ MD 144 (OLD NATIONAL PIKE) [Opticom Fire Pre-Emption Signal]",
+        "severity": "low",
+        "started_at": "2026-08-17T22:31:13.000Z",
+        "expected_end": null,
+        "source": "mdot_chart"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.474655,
+          39.412888
+        ]
+      },
+      "properties": {
+        "external_id": "4a00eb62e8d20883006ad32ec4235c0a",
+        "incident_type": "incident",
+        "description": "I-70 EAST AT MM 50.0",
+        "county": "Frederick",
+        "road": "I-70",
+        "direction": "East",
+        "location": "I-70 EAST AT MM 50.0",
+        "severity": "high",
+        "lanes_affected": "1/2 Eastbound-right Traffic Lane, right Shoulder closed",
+        "started_at": "2026-08-18T03:32:50.000Z",
+        "expected_end": null,
+        "source": "mdot_chart"
+      }
+    }
+  ]
 }
