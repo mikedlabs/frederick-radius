@@ -500,7 +500,10 @@ export default function SearchOverlay({
             // focusable link nested inside role=option while retaining the
             // fast Arrow/Enter shortcut for sighted keyboard users.
             aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
-            className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-[var(--app-ink-3)]"
+            // self-stretch fills the pill's full 56px, so a thumb landing
+            // anywhere in it focuses the input instead of hitting a dead
+            // 20px band. Same fix .dock-search-input already carries.
+            className="min-w-0 flex-1 self-stretch bg-transparent text-[16px] outline-none placeholder:text-[var(--app-ink-3)]"
             style={{ color: "var(--app-ink)" }}
             autoComplete="off"
             spellCheck={false}

@@ -145,7 +145,9 @@ export default function SortDropdown<K extends string = string>({
                 }}
                 className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  color: active ? "var(--app-brand)" : "var(--app-ink)",
+                  // Brick on its own 10% tint is 3.83:1 at 13px. The pressed
+                  // token is the text-on-light signal (5.80:1 on that ground).
+                  color: active ? "var(--app-brand-press)" : "var(--app-ink)",
                   background: active
                     ? "color-mix(in srgb, var(--app-brand) 10%, transparent)"
                     : "transparent",

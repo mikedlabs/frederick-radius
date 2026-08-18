@@ -122,7 +122,8 @@
     "refresh:county-boundary": "tsx --tsconfig tsconfig.json scripts/refresh-census-county-boundary.ts",
     "audit:county-data": "tsx --tsconfig tsconfig.json scripts/audit-county-derived-data.ts",
     "test:ux": "playwright test e2e/ux-audit.spec.ts e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
-    "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1"
+    "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
+    "eval:coverage": "tsx --tsconfig tsconfig.json scripts/eval-answer-coverage.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",

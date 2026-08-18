@@ -24,6 +24,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { track } from "@/lib/track";
 
 export type IndexRow = {
@@ -255,7 +256,9 @@ function PlaceCell({
           on its tinted paper square. An anchor for recognition, not a hero. */}
       {row.photo ? (
         <Image
-          src={row.photo}
+          // The row paints a 44px square, so ask the proxy for 88px rather than
+          // the 800px hero it defaults to. Non-proxy URLs pass through.
+          src={proxyPhotoAtWidth(row.photo, 44)}
           alt=""
           unoptimized={row.photo.startsWith("/api/place-photo")}
           width={88}
