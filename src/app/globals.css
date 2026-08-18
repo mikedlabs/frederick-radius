@@ -273,6 +273,24 @@
  * .dark { … } block (and re-add the .aurora-grain / .shimmer
  * dark-mode overrides further down). */
 
+/* Vaul ships its own physics at runtime (a 0.5s cubic-bezier(0.32,0.72,0,1)
+   transform plus 0.5s slide keyframes), so a bottom drawer opens slower and
+   on a different curve than every sibling overlay in the app. Pin it to the
+   house tokens. Declared BEFORE the reduced-motion block on purpose, so that
+   block's `animation: none !important` still wins on source order. */
+[data-vaul-drawer] {
+  transition-duration: var(--app-dur-slow) !important;
+  transition-timing-function: var(--app-ease-out) !important;
+  animation-duration: var(--app-dur-slow) !important;
+  animation-timing-function: var(--app-ease-out) !important;
+}
+[data-vaul-overlay] {
+  transition-duration: var(--app-dur-med) !important;
+  transition-timing-function: var(--app-ease-out) !important;
+  animation-duration: var(--app-dur-med) !important;
+  animation-timing-function: var(--app-ease-out) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --app-dur-fast: 0ms;
@@ -5988,10 +6006,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-color: var(--app-brand);
   color: #fff;
 }
+/* The primary Go/Directions CTA on every map peek card. Cream on plain Brick
+   is 4.69:1 before the gloss overlay lightens the fill under the label, which
+   spends the remaining margin; on the pressed token it is 7.11:1, so the
+   material treatment can stay. Removing only background-image would leave a
+   0.19 margin that the next tonal tweak eats again. */
 .map-peek-act-go {
-  background: var(--app-brand);
+  background: var(--app-brand-press);
   background-image: var(--app-gloss);
-  border-color: var(--app-brand);
+  border-color: var(--app-brand-press);
   color: var(--app-on-brand, #fff);
   box-shadow: var(--app-brand-glow), var(--app-lip);
 }
@@ -7030,10 +7053,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 99px;
   background: var(--c, var(--app-ink-3));
 }
+/* 68%, not 82%, and the cream token rather than pure white. Measured across
+   all 15 category colors against #F4EEE2: 82% bottoms out at 3.56:1 and 76%
+   at 3.94:1 (both fail on ice-cream #D6739B), while 68% clears every stop
+   (min 4.53 ice-cream, max 11.84). Same contract EventCard's tab ships. */
 .eb-chip[data-on] {
-  background: color-mix(in srgb, var(--c, var(--app-brand)) 82%, var(--app-ink));
-  border-color: color-mix(in srgb, var(--c, var(--app-brand)) 82%, var(--app-ink));
-  color: #fff;
+  background: color-mix(in srgb, var(--c, var(--app-brand)) 68%, var(--app-ink));
+  border-color: color-mix(in srgb, var(--c, var(--app-brand)) 68%, var(--app-ink));
+  color: var(--app-on-brand);
 }
 .eb-chip[data-on] .eb-chip-dot {
   background: rgba(255, 255, 255, 0.85);
@@ -7044,8 +7071,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 500;
   opacity: 0.62;
 }
+/* Full opacity on purpose. Alpha-blending cream at 0.85 over the fill is a
+   real contrast loss, not a stylistic one: it drops the 10.5px count to
+   3.75:1 on ice-cream even after the 68% fix, where opaque reads 4.53:1. A
+   count that needs to recede does it in weight or tracking, never alpha. */
 .eb-chip[data-on] .eb-chip-n {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 /* The q-search field at the top of the What pane. */

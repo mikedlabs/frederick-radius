@@ -56,6 +56,23 @@ export default function TimeScrubber({
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
+  // How many places actually carry a fresh, publishable schedule. When the
+  // rolling hours refresh stalls past the 7-day window, this hits ZERO and the
+  // open/closed dimming silently becomes a no-op: scrubbing to 3am looked
+  // identical to noon (data audit 2026-08-18). A control that cannot answer
+  // must say so, not shrug. Lazy-loaded on activation, matching AppMap's own
+  // deferred import of the same artifact, so the dock's initial chunk stays
+  // light. Event markers keep working either way; only place marks pause.
+  const [hoursCoverage, setHoursCoverage] = useState<number | null>(null);
+  useEffect(() => {
+    if (!active || hoursCoverage != null) return;
+    let cancelled = false;
+    import("@/lib/loaders/places-client-hours").then((mod) => {
+      if (!cancelled) setHoursCoverage(mod.clientPlaceHours().length);
+    });
+    return () => { cancelled = true; };
+  }, [active, hoursCoverage]);
+
   // Autoplay: quarter-hour steps are enough to communicate openings and event
   // starts. They also prevent the map from recomputing 1,000+ place states for
   // visually indistinguishable eight-minute increments. ~18 hours in 18s.
@@ -182,6 +199,12 @@ export default function TimeScrubber({
       <div className="mt-0.5 flex justify-between font-mono text-[9px]" style={{ color: "var(--app-ink-3)" }}>
         <span>6a</span><span>noon</span><span>6p</span><span>12a</span>
       </div>
+      {hoursCoverage === 0 && (
+        <p className="mt-1.5 text-[11px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          Confirmed hours are refreshing, so open and closed marks are paused.
+          Events still move with the day.
+        </p>
+      )}
     </div>
   );
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Layer, Marker, Popup, Source } from "react-map-gl/mapbox";
+import { exposeMarkerChild } from "./markerA11y";
 import { Cross, Helicopter } from "lucide-react";
 import {
   FMH_HELIPORT,
@@ -293,6 +294,7 @@ export default function LiveRotorcraft({
       </style>
 
       <Marker
+        ref={exposeMarkerChild}
         longitude={FMH_HELIPORT.lng}
         latitude={FMH_HELIPORT.lat}
         anchor="center"
@@ -361,6 +363,7 @@ export default function LiveRotorcraft({
       {signals.map((signal) => (
         <Marker
           key={signal.id}
+          ref={exposeMarkerChild}
           longitude={signal.lng}
           latitude={signal.lat}
           anchor="center"
