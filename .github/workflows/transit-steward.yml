@@ -1,0 +1,125 @@
+name: Transit steward
+
+# Nightly transit GTFS refresh, split out of the Data steward workflow on
+# 2026-08-18.
+#
+# It lived alongside the hours refresh, and because a workflow run is red when
+# ANY job fails, six straight days of a failing transit snapshot made the whole
+# run look broken while the hours job underneath it succeeded every night. The
+# badge said the hours pipeline was down when it was not, which is worse than
+# no badge. The two chains never shared a step, an artifact, or a branch, so
+# separating them costs nothing and makes each red mean exactly one thing.
+
+on:
+  schedule:
+    # Same nightly window as the data steward, offset a few minutes so the two
+    # runs do not contend for runners.
+    - cron: "23 9 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: transit-steward
+  cancel-in-progress: false
+
+jobs:
+  transit:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild transit GTFS
+        run: npm run build:transit
+
+      - name: Validate transit data contracts
+        run: npm run validate:transit-data -- --frederick
+
+      - name: Validate transit snapshot
+        run: npm test -- tests/transit-static-snapshot.spec.ts
+
+      - name: Promote reviewed transit artifacts
+        run: npm run data:release:write -- --stream transit
+
+      - name: Stage exact transit outputs
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/data-steward-transit-output
+        run: |
+          set -euo pipefail
+          for path in \
+            src/data/transit.json \
+            src/data/transit-network.json \
+            src/data/transit-trips.json \
+            src/data/data-release.json
+          do
+            install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
+          done
+
+      - name: Pin transit artifact name to this generator attempt
+        id: artifact-name
+        env:
+          ARTIFACT_NAME: data-steward-transit-output-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact transit outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: ${{ runner.temp }}/data-steward-transit-output
+          if-no-files-found: error
+          retention-days: 1
+
+
+  transit-publish:
+    needs: transit
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: ${{ needs.transit.outputs.artifact_name }}
+      base_sha: ${{ github.sha }}
+      branch: bot/transit-steward
+      allowed_paths: |
+        src/data/transit.json
+        src/data/transit-network.json
+        src/data/transit-trips.json
+        src/data/data-release.json
+      commit_message: "data: refresh Frederick TransIT GTFS"
+      title: "data: refresh Frederick TransIT GTFS"
+      body: |
+        Automated refresh from Frederick County TransIT's public Passio
+        static GTFS feed. The committed snapshot freshness and network
+        consistency tests passed. Review the diff before merging.
+
+
+  transit-checks:
+    needs: transit-publish
+    if: ${{ needs.transit-publish.outputs.pr_operation == 'created' || needs.transit-publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.transit-publish.outputs.pr_branch }}
+      head_sha: ${{ needs.transit-publish.outputs.pr_head_sha }}
