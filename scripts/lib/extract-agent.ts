@@ -990,6 +990,40 @@ function failPreflight(msg: string, options: { failInCi: boolean }): boolean {
   return false;
 }
 
+/**
+ * The API's own explanation of a failure, which the generic branch below
+ * used to discard.
+ *
+ * `responseBody` was already captured on every AnthropicProviderError, but
+ * only the status reached the log, so a nightly failure read "preflight
+ * failed (HTTP 400)" and nothing else. That is the one status where the
+ * cause is genuinely ambiguous — a well-formed request with a valid key can
+ * 400 for an exhausted credit balance, a model the workspace cannot reach,
+ * or a request the account is not permitted to make — and Anthropic names
+ * which one in the body every time.
+ *
+ * The body is the API's error JSON. The key travels in a request header and
+ * is never echoed back, so this cannot leak it; the raw fallback is bounded
+ * anyway so a surprise HTML error page cannot flood the log.
+ */
+function anthropicFailureDetail(error: AnthropicProviderError): string {
+  const raw = error.responseBody?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: { type?: string; message?: string };
+    };
+    const message = parsed.error?.message?.trim();
+    if (message) {
+      const kind = parsed.error?.type?.trim();
+      return kind ? `${kind}: ${message}` : message;
+    }
+  } catch {
+    // Not JSON. Fall through to a bounded excerpt of whatever arrived.
+  }
+  return raw.length > 300 ? `${raw.slice(0, 300)}…` : raw;
+}
+
 export async function preflightKey(
   options: {
     failInCi?: boolean;
@@ -1065,10 +1099,12 @@ export async function preflightKey(
           resolved,
         );
       }
+      const detail = anthropicFailureDetail(error);
       return failPreflight(
         `\n✗ Anthropic API preflight failed (HTTP ${
           error.status ?? "unknown"
-        }) after ${error.attempts} attempt(s). Model-assisted sources were not refreshed.\n`,
+        }) after ${error.attempts} attempt(s). Model-assisted sources were not refreshed.\n` +
+          (detail ? `  Anthropic said: ${detail}\n` : ""),
         resolved,
       );
     }
