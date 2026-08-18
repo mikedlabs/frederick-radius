@@ -125,6 +125,23 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     originSource: rankingContext.source,
     municipality: rankingContext.filterMunicipality ?? undefined,
   }).map(slimForList);
+  // A deliberate town scope hard-filters by design, but 43% of category-by-town
+  // views resolve to ZERO places, and the page still drew its full furniture
+  // around "0 places" (data audit 2026-08-18). When the town has nothing, say
+  // so first, then surface the nearest county-wide answers below the honest
+  // line: the town answer stays "none", and the reader still leaves with the
+  // thing they came for. Ranked from the same town centroid, so "nearest"
+  // means nearest to them. Only computed in the empty case.
+  const scopedTownName = rankingContext.filterMunicipality
+    ? MUNICIPALITY_BY_SLUG[rankingContext.filterMunicipality]?.name ?? null
+    : null;
+  const countyFallback =
+    places.length === 0 && scopedTownName
+      ? rankPlaces({ category: slug, origin, originSource: rankingContext.source })
+          .map(slimForList)
+          .filter(isRecommendable)
+      : [];
+  const townScopeIsEmpty = places.length === 0 && scopedTownName != null;
   // Children plus cross-tree see_also doorways (Family → Playgrounds, which
   // lives under outdoors): a category has one parent, but hub pages whose
   // audience overlaps another branch still get the chip.
@@ -220,9 +237,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
           {c.blurb}
         </p>
-        <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {places.length} place{places.length === 1 ? "" : "s"}
-        </p>
+        {/* "0 places" as page furniture reads like a broken app, not an
+            answer. The town-empty state below carries the honest sentence
+            instead. */}
+        {!townScopeIsEmpty && (
+          <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {places.length} place{places.length === 1 ? "" : "s"}
+          </p>
+        )}
       </header>
       {/* The location control is ALWAYS shown and always changeable (beta
           feedback 2026-07-12: once a town was set, the old control vanished
@@ -234,6 +256,30 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         selectedTown={rankingContext.filterMunicipality}
         municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
       />
+
+      {/* The honest town-empty state. The town's answer is "none", said
+          plainly and first; the nearest county-wide places follow so the
+          reader still gets what they came for. The ScopeBar above remains
+          the way to widen or change the town. */}
+      {townScopeIsEmpty && (
+        <section className="space-y-2.5">
+          <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
+            No {c.name.toLowerCase()} listed in {scopedTownName} yet.
+          </p>
+          {countyFallback.length > 0 && (
+            <>
+              <SectionHeading title="Nearest across the county" accent={c.color} />
+              <ul className="space-y-2">
+                {countyFallback.slice(0, 3).map((p) => (
+                  <li key={p.slug}>
+                    <PlaceCard place={p} variant="row" />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
 
       {/* C3: editorial top picks lead the page instead of a stat block.
           Each card is a PlaceCard at default density. On mobile this
@@ -292,21 +338,27 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           picks + refine + photo wall) instead of running on like a
           directory. The full list is preserved, one tap away — a user
           is never forced to scroll the whole category to leave. */}
-      <CollapsibleSection
-        title={`All ${c.name.toLowerCase()}`}
-        headingLevel={2}
-        count={places.length}
-        countLabel="places"
-        storageKey={`fr.category.${slug}.browse`}
-        defaultOpen={false}
-      >
-        <PlaceList
-          places={places}
-          initialLayout="list"
-          facetTags={facetTags}
-          emptyMessage="No places are listed in this category yet. You can suggest one through the place submission form."
-        />
-      </CollapsibleSection>
+      {/* A collapsed "All pharmacies (0)" under an already-stated empty town
+          is furniture with nothing behind the door; skip it there. The
+          county-empty case (no town scope, genuinely nothing) keeps the
+          section so its suggest-a-place message stays reachable. */}
+      {!townScopeIsEmpty && (
+        <CollapsibleSection
+          title={`All ${c.name.toLowerCase()}`}
+          headingLevel={2}
+          count={places.length}
+          countLabel="places"
+          storageKey={`fr.category.${slug}.browse`}
+          defaultOpen={false}
+        >
+          <PlaceList
+            places={places}
+            initialLayout="list"
+            facetTags={facetTags}
+            emptyMessage="No places are listed in this category yet. You can suggest one through the place submission form."
+          />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }
