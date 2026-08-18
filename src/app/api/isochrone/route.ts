@@ -33,7 +33,7 @@ import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { isOverPaidRequestBudget, isSameOriginRequest } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
 
 export const runtime = "nodejs";
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   // Paid upstream — Isochrone is one of Mapbox's metered APIs.
   // 60/min/IP is comfortable: a normal user re-fetches a few times
   // as they fiddle with mode/minutes; a scraper would blow past it.
-  if (await isRateLimited(req, "isochrone", 60, 60)) {
+  if (await isOverPaidRequestBudget(req, "isochrone", 60, 60, 8)) {
     return new Response("Too Many Requests", { status: 429 });
   }
 

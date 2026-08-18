@@ -43,6 +43,18 @@ jobs:
         run: npm run audit:repo-size
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+      # The heap limit lives in the npm script, not here, so every caller
+      # gets it.
+      #
+      # tsc infers a literal type per entry of the committed JSON catalogs, so
+      # its memory tracks the DATA, not the code. A routine hours refresh that
+      # restores ~209 places' schedules is enough to push a COLD check past
+      # Node's ~2 GB default heap and abort with exit 134. Cold is the only
+      # mode that matters here: tsconfig sets incremental, but
+      # tsconfig.tsbuildinfo is gitignored, so a fresh CI checkout never has
+      # it while a developer's working copy almost always does. That gap is
+      # why this failed on every nightly data PR and passed for everyone
+      # locally, including on the very data that was failing.
       - name: Typecheck
         run: npm run typecheck
       - name: Lint

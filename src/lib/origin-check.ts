@@ -92,6 +92,54 @@ export function isSameOriginRequest(req: Request): boolean {
 }
 
 /**
+ * True when a request carries NEITHER a Referer nor an Origin.
+ *
+ * `isSameOriginRequest` deliberately admits these, because Next's image
+ * optimizer and some server-to-server fetches genuinely arrive bare, and
+ * rejecting them would break real rendering. The cost of that kindness is
+ * that "send no headers" is also the easiest way for anyone on the internet
+ * to reach a route that spends money on a cache miss: strip two headers and
+ * the origin guard waves you through.
+ *
+ * So separate the two questions. Callers keep using isSameOriginRequest to
+ * decide whether to serve at all, and use this to decide how much
+ * unattributed traffic they are willing to pay for. A browser loading an
+ * image from one of our own pages always sends a Referer, so a tight
+ * unattributed budget costs real users nothing.
+ */
+export function isUnattributedRequest(req: Request): boolean {
+  return !req.headers.get("referer") && !req.headers.get("origin");
+}
+
+/**
+ * The rate-limit check for a route that spends money upstream.
+ *
+ * Two buckets, because the traffic is two different things. The normal
+ * budget bounds a real visitor, who is generous by design: a page of cards
+ * is a dozen photos and a browsing session is many pages. The unattributed
+ * budget bounds a caller who sent no Referer and no Origin, which
+ * `isSameOriginRequest` admits so Next's image optimizer and genuine
+ * server-to-server renders keep working, and which is therefore also the
+ * cheapest way for anyone to reach a paid upstream on our bill.
+ *
+ * A page in a real browser always sends a Referer for its own subresource
+ * requests, so the tight bucket never touches a visitor. Keeping both in one
+ * call means a new paid route cannot pick up the permissive half and silently
+ * miss the other.
+ */
+export async function isOverPaidRequestBudget(
+  req: Request,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+  unattributedLimit: number,
+): Promise<boolean> {
+  if (await isRateLimited(req, key, limit, windowSeconds)) return true;
+  if (!isUnattributedRequest(req)) return false;
+  return isRateLimited(req, `${key}-unattributed`, unattributedLimit, windowSeconds);
+}
+
+/**
  * Strict CSRF-style guard for browser POST endpoints that mutate public data.
  *
  * Unlike `isSameOriginRequest`, this rejects production requests when both
