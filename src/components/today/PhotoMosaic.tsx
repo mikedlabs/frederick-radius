@@ -3,6 +3,7 @@ import Image from "next/image";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
 
 /**
@@ -70,7 +71,12 @@ export default function PhotoMosaic({
         >
           {p.google_photo_url && (
             <Image
-              src={p.google_photo_url}
+              // A mosaic tile paints at most ~240px, and `unoptimized` (the
+              // proxy is an opaque route Next cannot resize) makes the sizes
+              // hint inert — so each of the six tiles was fetching the full
+              // w=800 hero on every visit against a no-store route. Same
+              // missed-adopter narrowing as DaypartNeeds and PlaceCard.
+              src={proxyPhotoAtWidth(p.google_photo_url, 240)}
               alt=""
               unoptimized={p.google_photo_url.startsWith("/api/place-photo")}
               fill
