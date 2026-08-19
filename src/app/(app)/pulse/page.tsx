@@ -30,7 +30,7 @@ import {
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
-import { getCivicPressReleases, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
+import { getCivicPressReleasesResult, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
@@ -298,7 +298,7 @@ export default async function PulsePage() {
     officialSignals,
     fixitResult,
     news,
-    press,
+    pressResult,
     riversResult,
     airports,
     forecast,
@@ -327,7 +327,23 @@ export default async function PulsePage() {
     withTimeout(getLocalHeadlines(), FEED_MS, []),
     // Official City + County press releases (CivicPlus News Flash RSS). The
     // police-lane items get the breaking strip up top + the blotter below.
-    withTimeout(getCivicPressReleases(), FEED_MS, []),
+    //
+    // Read the HEALTH-AWARE result, not the compatibility facade. The facade
+    // returns `.items` and drops the loader's own per-feed sourceHealth, so a
+    // refused connection arrived here as a plain empty array and the police
+    // tile rendered the word "Current" over nothing — a page announcing calm
+    // while blind, for the full 900s the failure stays cached. Verified
+    // flapping on production 2026-08-19 while both newsrooms were answering
+    // 200 in under a second.
+    //
+    // withTimeoutStatus keeps OUR timeout distinct from a successful empty
+    // read; sourceHealth.degraded then covers the case where the fetch
+    // returned but a feed inside it failed.
+    withTimeoutStatus(
+      getCivicPressReleasesResult(),
+      FEED_MS,
+      { items: [], sourceHealth: { degraded: true, unavailable: ["City of Frederick", "Frederick County"] } },
+    ),
     // USGS live gage height + streamflow for county rivers, WITH 24h history
     // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
     // Six hours is ~24 readings per gauge: ample for the eight-reading trend
@@ -505,6 +521,11 @@ export default async function PulsePage() {
 
   // Only a fresh, urgent police release earns the safety strip. Routine and
   // older releases remain in the standing blotter without alert styling.
+  // One place decides what the civic feed could actually tell us, so the
+  // police strip, the blotter, and the road-work tile cannot disagree.
+  const press = pressResult.data.items;
+  const civicAvailable =
+    pressResult.available && !pressResult.data.sourceHealth.degraded;
   const policeItems = policeReleases(press);
   const breakingPolice = featuredPoliceRelease(policeItems, nowMs);
   const latestPolice = policeItems[0] ?? null;
@@ -917,6 +938,13 @@ export default async function PulsePage() {
 
   const policeBody = (
     <div className="space-y-3">
+      {!civicAvailable && (
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          The City and County newsrooms could not be reached, so recent releases
+          are unknown right now. The official calls-for-service map below is
+          unaffected.
+        </p>
+      )}
       {breakingPolice && (
         <div className="space-y-1.5">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
@@ -962,9 +990,16 @@ export default async function PulsePage() {
     </div>
   );
 
+  // The empty branch here was unreachable while the tile was gated on
+  // advisories.length, and it says "reported right now" — a claim only worth
+  // making when the newsrooms actually answered.
   const roadworkBody = advisories.length > 0
     ? <PoliceBlotter items={advisories} now={nowMs} />
-    : emptyNote("No road work or closures are reported right now.");
+    : civicAvailable
+      ? emptyNote("No road work or closures are reported right now.")
+      : emptyNote(
+          "The City and County newsrooms could not be reached, so road work is unknown right now.",
+        );
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -2041,34 +2076,59 @@ export default async function PulsePage() {
       key: "police",
       label: "Police & safety",
       iconName: "Shield",
+      // "CFS map" used to be the fallback for BOTH "the newsrooms published
+      // nothing" and "we never reached the newsrooms", so an outage wore the
+      // calm accent under the word "Current". Those are different sentences
+      // now, and only the first is a quiet day.
       countLabel: breakingPolice
         ? "Breaking release"
         : blotter.length > 0
           ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}`
-          : "CFS map",
+          : civicAvailable
+            ? "CFS map"
+            : "Feed unavailable",
       accent: "var(--app-cool)",
       active: Boolean(breakingPolice),
+      degraded: !civicAvailable,
+      keepVisibleWhenUnavailable: true,
       // The dedicated breaking strip already keeps this release prominent.
       // Do not duplicate it in the board's "Happening now" row when another
       // higher-priority signal owns the masthead.
       attention: false,
       kind: "status",
       sourceLabel: "Frederick PD · City + County",
-      peek: breakingPolice?.title ?? latestPolice?.title,
+      peek:
+        breakingPolice?.title ??
+        latestPolice?.title ??
+        (civicAvailable
+          ? undefined
+          : "The City and County newsrooms could not be reached."),
       body: policeBody,
     },
-    ...(advisories.length > 0
+    // Road work is carried by the same feed, so it must not silently VANISH
+    // when that feed fails — a missing tile reads as "no road work", which is
+    // the same false all-clear one tile over. Absent because we asked and
+    // there is none: still hide it. Absent because we could not ask: say so.
+    ...(advisories.length > 0 || !civicAvailable
       ? [{
           key: "roadwork",
           label: "Road work",
           iconName: "TrafficCone",
-          countLabel: `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
+          countLabel: civicAvailable
+            ? `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`
+            : "Feed unavailable",
           accent: "var(--app-cool)",
           active: false,
           attention: false,
+          degraded: !civicAvailable,
+          keepVisibleWhenUnavailable: true,
           kind: "status",
           sourceLabel: "City + County advisories",
-          peek: advisories[0]?.title,
+          peek:
+            advisories[0]?.title ??
+            (civicAvailable
+              ? undefined
+              : "The City and County newsrooms could not be reached."),
           body: roadworkBody,
         } as PulseTile]
       : []),
