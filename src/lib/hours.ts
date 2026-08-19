@@ -5,22 +5,37 @@ export const DAY_LABEL: Record<DayOfWeek, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
+// One formatter for the module's lifetime. Constructing Intl.DateTimeFormat
+// is the expensive part (ICU locale + zone lookup), and getOpenStatus runs
+// once per place in hot loops — the map's time scrubber calls it for every
+// scoped place on every tick, which measured 24-68ms per tick (hardware
+// dependent) with ~99% of it this redundant construction. Cached, the same
+// tick is ~1ms. Formatters are stateless after creation, so reuse is safe.
+const FREDERICK_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// A same-instant memo on top: the scrubber loop asks about the SAME instant
+// for every place in the pass, so day/minutes resolve once per distinct time.
+let lastClockMs = Number.NaN;
+let lastClockValue: { day: DayOfWeek; minutes: number } | null = null;
+
 function nowInFrederick(d: Date = new Date()): { day: DayOfWeek; minutes: number } {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value]));
+  if (d.getTime() === lastClockMs && lastClockValue) return lastClockValue;
+  const parts = Object.fromEntries(FREDERICK_CLOCK.formatToParts(d).map((p) => [p.type, p.value]));
   const dayMap: Record<string, DayOfWeek> = {
     Sun: "sun", Mon: "mon", Tue: "tue", Wed: "wed", Thu: "thu", Fri: "fri", Sat: "sat",
   };
   const day = dayMap[parts.weekday] ?? "mon";
   const hh = parseInt(parts.hour ?? "0", 10);
   const mm = parseInt(parts.minute ?? "0", 10);
-  return { day, minutes: hh * 60 + mm };
+  lastClockMs = d.getTime();
+  lastClockValue = { day, minutes: hh * 60 + mm };
+  return lastClockValue;
 }
 
 function parseHHMM(s: string): number {

@@ -1887,7 +1887,11 @@ export default function MapDock(props: MapDockProps) {
                     // the person deliberately chose, but use the map's normal
                     // location permission flow from the county default.
                     if (activeWhereSel.kind === "county") pickNearMe();
-                    openContentsPane("what");
+                    // Arrive with the category grid OPEN. "Near me" promises
+                    // food/coffee/parks; hiding them behind a collapsed
+                    // "All place categories" disclosure made the app's top
+                    // map job a 4-tap trip (mobile audit 2026-08-18).
+                    openContentsPane("what", "categories");
                   }}
                 >
                   <span className="dock-content-icon" aria-hidden>
@@ -2104,28 +2108,6 @@ export default function MapDock(props: MapDockProps) {
                 selection closes the panel so the map becomes the answer. */}
             {pane === "what" && (
               <div>
-                <button
-                  type="button"
-                  className="dock-reveal"
-                  onClick={() => {
-                    haptic("light");
-                    track("map_dock", { pane: "what", pick: "within-reach" });
-                    closePane();
-                    // The destination owns its own state and intentionally
-                    // drops the browse query. This is a same-route client mode
-                    // switch: update History, then notify the URL subscriber
-                    // so MapModeGate swaps the UI without a document reload.
-                    window.history.pushState(null, "", "/map?mode=radius");
-                    window.dispatchEvent(new PopStateEvent("popstate"));
-                  }}
-                >
-                  <span className="dock-reveal-copy">
-                    <strong>Compare travel reach</strong>
-                    <small>Compare what you can reach by walking, biking, or driving.</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-
                 {props.amenityCount > 0 && publicAmenityGroups.length > 0 && (
                   <button
                     type="button"
@@ -2233,6 +2215,32 @@ export default function MapDock(props: MapDockProps) {
                     closePane();
                   }}
                 />
+
+                {/* A whole-surface mode switch does not belong as the FIRST
+                    row of a pane a hungry person opened via "Near me". Last,
+                    after the catalog answers, is where a mode change earns a
+                    look (mobile audit 2026-08-18). */}
+                <button
+                  type="button"
+                  className="dock-reveal"
+                  onClick={() => {
+                    haptic("light");
+                    track("map_dock", { pane: "what", pick: "within-reach" });
+                    closePane();
+                    // The destination owns its own state and intentionally
+                    // drops the browse query. This is a same-route client mode
+                    // switch: update History, then notify the URL subscriber
+                    // so MapModeGate swaps the UI without a document reload.
+                    window.history.pushState(null, "", "/map?mode=radius");
+                    window.dispatchEvent(new PopStateEvent("popstate"));
+                  }}
+                >
+                  <span className="dock-reveal-copy">
+                    <strong>Compare travel reach</strong>
+                    <small>Compare what you can reach by walking, biking, or driving.</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
 
               </div>
             )}
