@@ -921,7 +921,7 @@ export default function RightNow({
               {/* Business decision card — the place's photo leads (category
                   glyph fallback), then name, open status, walk time, one tap
                   to details + directions. */}
-              <PlaceCard place={p} />
+              <PlaceCard place={p} lazyPhoto />
               {p.distance_m !== undefined && (
                 <span className="sr-only">{walkLabel(p.distance_m)}</span>
               )}
