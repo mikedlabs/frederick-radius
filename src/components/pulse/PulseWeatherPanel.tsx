@@ -253,7 +253,7 @@ export default async function PulseWeatherPanel({
               <span className="font-serif text-[28px] font-light leading-none">&deg;</span>
             </div>
             <p className="mt-1 text-[15px] font-semibold leading-tight">{condition}</p>
-            <p className="text-[12px] leading-tight" style={{ opacity: 0.82 }}>
+            <p className="text-[12px] leading-tight">
               Feels {feels}&deg;
               {high != null && <> · H {high}&deg;</>}
               {low != null && <> · L {low}&deg;</>}
