@@ -87,6 +87,54 @@ describe("bundled source artifact evidence", () => {
     });
   });
 
+  it("dates a first-time commerce record so it cannot fail the evidence gate", async () => {
+    // The gate below requires EVERY published row to be datable, so one fresh
+    // row cannot make a stale batch look current. A place seen for the first
+    // time whose extraction failed but whose home page yielded links used to
+    // be written with commerce_links and no timestamp of any kind, which took
+    // the whole business-info artifact out of evidence. Five such rows blocked
+    // bot/business-info-refresh from 2026-08-04.
+    const { mergeBusinessInfoCommerceEvidence } = await import(
+      "../../../scripts/lib/business-info-refresh"
+    );
+    const link = {
+      type: "menu",
+      url: "https://example.com/menu",
+      anchor_text: "Menu",
+      source_url: "https://example.com/",
+    };
+
+    const firstTime = mergeBusinessInfoCommerceEvidence(undefined, {
+      name: "Up on Market",
+      commerceLinks: [link] as never,
+      observed: { url: "https://example.com/", checkedAt: "2026-08-19T18:00:00.000Z" },
+    });
+    expect(firstTime.commerce_links).toHaveLength(1);
+    expect(firstTime.commerce_source?.checkedAt).toBe("2026-08-19T18:00:00.000Z");
+
+    // A dedicated commerce crawl's own timestamp always wins.
+    const alreadyCrawled = mergeBusinessInfoCommerceEvidence(
+      { name: "x", commerce_source: { url: "https://a", checkedAt: "2026-07-01T00:00:00.000Z" } },
+      {
+        name: "x",
+        commerceLinks: [link] as never,
+        observed: { url: "https://b", checkedAt: "2026-08-19T18:00:00.000Z" },
+      },
+    );
+    expect(alreadyCrawled.commerce_source?.checkedAt).toBe("2026-07-01T00:00:00.000Z");
+
+    // So does an existing extraction stamp; nothing incidental is added.
+    const alreadyExtracted = mergeBusinessInfoCommerceEvidence(
+      { name: "x", source: { url: "https://a", fetchedAt: "2026-07-01T00:00:00.000Z" } },
+      {
+        name: "x",
+        commerceLinks: [link] as never,
+        observed: { url: "https://b", checkedAt: "2026-08-19T18:00:00.000Z" },
+      },
+    );
+    expect(alreadyExtracted.commerce_source).toBeUndefined();
+  });
+
   it("recognizes every workflow artifact currently bundled for monitoring", () => {
     const evidence = bundledSourceArtifactEvidence();
 
