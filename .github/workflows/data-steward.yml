@@ -114,6 +114,26 @@ jobs:
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 
+      # Hold unreviewed status changes back INSIDE the artifact, so a decision
+      # that needs a human stops one slug instead of the county. The review
+      # gate below used to withhold auto-merge from the whole nightly PR on
+      # any unreviewed flag; one flagged market then stalled ~1,500 rows of
+      # fresh hours for days, and the artifact's oldest rows sit ~14 hours
+      # from the 7-day publishing cliff at steady state — that arithmetic is
+      # the August blackout. Held slugs keep yesterday's reviewed values and
+      # are listed at the top of docs/hours-refresh-review.md every night
+      # until evidence in place-status-overrides.json releases them.
+      - name: Hold unreviewed status changes at their reviewed values
+        id: holdback
+        run: npm run steward:holdback -- --report "$RUNNER_TEMP/hours-holdback.json"
+
+      # A splice changed the source artifact, so the derived snapshot must be
+      # rebuilt from the spliced base or the review would still see the held
+      # changes in the client data.
+      - name: Rebuild the snapshot from the spliced base
+        if: ${{ steps.holdback.outputs.held == 'true' }}
+        run: npm run build:client-places
+
       # Keep the checked-in scorecard on the same snapshot as the generated
       # client data. Without this step the review document can describe an old
       # catalog and an obsolete refresh cycle even while the bot PR is current.
@@ -125,6 +145,8 @@ jobs:
       # writes a manifest into the PR, and exposes compact counts below.
       - name: Build hours refresh review manifest
         id: hours-review
+        env:
+          HOURS_HOLDBACK_MANIFEST: ${{ runner.temp }}/hours-holdback.json
         run: npm run review:hours-refresh
 
       - name: Flag status changes for manual review

@@ -156,8 +156,11 @@ draft must read like a person typing in a thread, not composed copy:
 - `npm run test:ux` (Playwright: render health + axe WCAG A/AA on every
   key surface, pinned at ZERO violations) before any commit that touches
   UI. Sandboxes with a preinstalled Chromium: set `PW_CHROMIUM_PATH`.
-- CI `verify` / `style-lint` are pre-existing infra reds (account-level
-  Actions limits) — local runs are the gate.
+- CI `verify` and `style-lint` RUN and are REQUIRED on main's ruleset — a
+  red one blocks the merge, including the nightly data PRs. (An older note
+  here claimed they were permanently red from account-level Actions limits;
+  that was true once and stale by 2026-08-19, and believing it means
+  shrugging at real failures.) Local runs remain the fast pre-commit gate.
 - After a merge, prod deploys automatically (~3–4 min). Verify the change
   ON PROD (`scripts/prod-audit.mjs` with `EXPECTED_SHA`, plus a check
   specific to the change). Stale ISR entries persist briefly
