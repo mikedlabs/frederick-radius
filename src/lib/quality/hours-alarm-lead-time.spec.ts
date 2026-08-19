@@ -5,14 +5,27 @@ import {
 } from "@/lib/quality/curated-freshness";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
 import HOURS_REFRESH from "@/data/places-hours-refresh.json";
+import {
+  HOURS_PUBLISHABLE_MIN_SHARE,
+  ingestFreshnessTripwire,
+} from "@/lib/quality/tripwires";
 
 /**
  * The hours alarm has to ring BEFORE the hours go dark.
  *
- * Verified-hours coverage does not decay gently. Every row expires exactly
- * HOURS_MAX_AGE_DAYS after its own stamp, so when the newest row crosses that
- * line the whole catalog loses its open/closed state in one step and the app
- * goes back to being unable to say anything about whether a place is open.
+ * Every row expires exactly HOURS_MAX_AGE_DAYS after its own stamp. The
+ * original reasoning here went one step further and said the catalog therefore
+ * loses its open/closed state "in one step" when the newest row crosses that
+ * line. That is wrong, and the wrongness cost the app a county-wide blackout
+ * in August 2026. The refresh rotates a SIXTH of the catalog per day, so the
+ * stamps are staggered across six days and coverage decays as a ramp. Measured
+ * on the committed artifact, publishable rows go 1160, 1160, 950, 765, 593,
+ * 372, 203, 0 across seven days without delivery.
+ *
+ * A newest-row alarm therefore watches the LAST thing to break. It stayed
+ * green through five days of decay, with 68% of the county's hours already
+ * gone, and first rang with 203 rows left. Both alarms are asserted below: the
+ * newest-row one for the cliff, and the publishable-share one for the ramp.
  *
  * The shipped threshold was 8 against a 7-day window, which put the warning a
  * full day after the outage it was supposed to warn about. That is the exact
@@ -62,6 +75,44 @@ describe("hours staleness alarm lead time", () => {
     expect(
       isHoursFresh(new Date(NEWEST).toISOString(), new Date(NEWEST + (cliff + 0.1) * DAY)),
     ).toBe(false);
+  });
+
+  it("rings on the decay ramp, while most of the county still publishes", () => {
+    // The alarm that actually matters. It must be red at a point where a large
+    // majority of rows are still publishable, i.e. while there is something
+    // left to save, not once the ramp has already run out.
+    const rampRedAt = (ageDays: number) =>
+      ingestFreshnessTripwire(new Date(NEWEST + ageDays * DAY)).some(
+        (anomaly) =>
+          anomaly.source === "places-hours-refresh" &&
+          anomaly.detail.includes("publishing window"),
+      );
+
+    // The writer lands its slice at a fixed 08:00 UTC, so the ramp steps at day
+    // boundaries rather than sloping: measured on this artifact the share holds
+    // at 100% through +2d and drops to 66% by +3d. Assert either side of a step
+    // rather than a round number that sits on one.
+    expect(rampRedAt(0)).toBe(false); // a delivered artifact is quiet
+    expect(rampRedAt(3)).toBe(true); // three days of missed delivery is loud
+
+    // And it rings with real lead time: at least three days before the last row
+    // expires, which is what the newest-row alarm could never offer.
+    let firstRed: number | null = null;
+    for (let tenths = 0; tenths <= 12 * 10; tenths++) {
+      if (rampRedAt(tenths / 10)) {
+        firstRed = tenths / 10;
+        break;
+      }
+    }
+    expect(firstRed).not.toBeNull();
+    expect(firstRed!).toBeLessThanOrEqual(HOURS_MAX_AGE_DAYS - 3);
+  });
+
+  it("keeps the ramp threshold high enough to matter", () => {
+    // Below ~0.6 the alarm would not fire until the ramp is half gone, which
+    // is the failure this pair of alarms exists to prevent.
+    expect(HOURS_PUBLISHABLE_MIN_SHARE).toBeGreaterThanOrEqual(0.6);
+    expect(HOURS_PUBLISHABLE_MIN_SHARE).toBeLessThan(1);
   });
 
   it("keeps the alarm strictly tighter than the publication window", () => {

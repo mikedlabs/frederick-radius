@@ -8,6 +8,7 @@ import DaypartNeeds, {
   daypartLeadReason,
   daypartPhotoSrc,
   daypartPickScopeLabel,
+  daypartShelfTier,
   initialDaypartCategory,
   isPhotoFailureSignal,
   isDaypartCountywideContext,
@@ -384,8 +385,87 @@ describe("DaypartNeeds", () => {
       null,
     );
 
-    expect(shelf.picks.map((pick) => pick.slug)).toEqual(["confirmed-open"]);
+    // The unknown-hours row is kept — it is a real place, and dropping it is
+    // what left Today printing "Current hours do not confirm an open match"
+    // over an empty shelf — but it may never lead or wear an open-now label.
+    expect(shelf.picks.map((pick) => pick.slug)).toEqual([
+      "confirmed-open",
+      "unknown-hours",
+    ]);
     expect(shelf.picks[0].confidence).toBe("confirmed");
+    expect(shelf.picks[1].confidence).toBe("unconfirmed");
+  });
+
+  it("keeps real places when the county cannot confirm anyone's hours", () => {
+    // The regression this guards: when the rolling hours refresh ages out, the
+    // ranker returns its notable lane (real places, no open claim) and Today
+    // used to discard every one of them, leaving a lone sentence — "Current
+    // hours do not confirm an open match for breakfast & bakeries across
+    // Frederick County" — above an empty shelf.
+    const shelf = liveShelfFromWantAnswer(
+      {
+        hero: {
+          slug: "bakehouse",
+          name: "Bakehouse",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Hours not posted",
+        },
+        also: [
+          {
+            slug: "second-bakery",
+            name: "Second Bakery",
+            photo: null,
+            where: "Brunswick",
+            distance: null,
+            fact: "Hours not confirmed",
+          },
+        ],
+        browseHref: "/category/bakery",
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+        mayAssertNoneOpen: false,
+      },
+      {
+        category: "bakery",
+        label: "Breakfast & bakeries",
+        href: "/category/bakery",
+        picks: [],
+      },
+      null,
+    );
+
+    expect(shelf.picks.map((pick) => pick.slug)).toEqual([
+      "bakehouse",
+      "second-bakery",
+    ]);
+    expect(shelf.picks.every((pick) => pick.confidence === "unconfirmed")).toBe(
+      true,
+    );
+  });
+
+  it("never claims open on a shelf whose hours are all unconfirmed", () => {
+    expect(
+      daypartShelfTier([
+        { slug: "a", name: "A", rating: null, confidence: "unconfirmed" },
+        { slug: "b", name: "B", rating: null, confidence: "unconfirmed" },
+      ]),
+    ).toBe("unconfirmed");
+    // A mixed shelf keeps the lead card's tier, matching the pre-existing
+    // confirmed/likely convention; each row still states its own hours.
+    expect(
+      daypartShelfTier([
+        { slug: "a", name: "A", rating: null, confidence: "confirmed" },
+        { slug: "b", name: "B", rating: null, confidence: "unconfirmed" },
+      ]),
+    ).toBe("confirmed");
+    expect(
+      daypartShelfTier([
+        { slug: "a", name: "A", rating: null, confidence: "likely" },
+        { slug: "b", name: "B", rating: null, confidence: "unconfirmed" },
+      ]),
+    ).toBe("likely");
   });
 
   it("labels curated fallback cards as likely instead of confirmed open", () => {

@@ -15,6 +15,26 @@ const downtown = {
   contextLabel: "your location",
 } as const;
 
+/** The Eastern calendar date (YYYY-MM-DD) an instant falls on. */
+function easternCalendarDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/** The Eastern wall clock (HH:MM) an instant falls on. */
+function easternWallClock(d: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
 describe("askFrederick structured answers", () => {
   it("preserves a fresh verified-open state after adding a requested-time label", () => {
     expect(sourceHasVerifiedOpenStatus({
@@ -325,7 +345,9 @@ describe("askFrederick structured answers", () => {
     // Clock must postdate the newest hours_updated_at in the snapshot:
     // a fake time set BEFORE the data's own timestamps reads every
     // schedule as unverifiable and empties the open-past-midnight set.
-    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
+    // Derived from the snapshot rather than hard-coded, so an hours refresh
+    // moving the data forward cannot silently empty this test.
+    vi.setSystemTime(freshHoursInstant(1, 16)); // Monday, noon Eastern.
     try {
       const result = await askFrederick(
         "what is open past midnight near me",
@@ -398,17 +420,23 @@ describe("askFrederick structured answers", () => {
     // Keep the clock at or after the current reviewed-hours snapshot. A fake
     // clock before its verification timestamps correctly makes every schedule
     // unconfirmed and cannot prove a midnight opening.
-    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
+    const now = freshHoursInstant(1, 16); // Monday, noon Eastern.
+    vi.setSystemTime(now);
     try {
       const result = await askFrederick(
         "what is open past midnight tomorrow",
         downtown,
       );
 
-      expect(result.intent).toMatchObject({
-        kind: "place",
-        requestedDateTime: "2026-08-12T04:00:00.000Z",
-      });
+      // "Past midnight tomorrow" is the midnight that ENDS tomorrow, i.e. two
+      // Eastern calendar days on at 00:00. Assert that meaning rather than a
+      // literal instant, which was only correct for one snapshot's clock.
+      expect(result.intent?.kind).toBe("place");
+      const requested = new Date(result.intent?.requestedDateTime ?? "");
+      expect(easternCalendarDate(requested)).toBe(
+        easternCalendarDate(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000)),
+      );
+      expect(easternWallClock(requested)).toBe("00:00");
       expect(result.sources.length).toBeGreaterThan(0);
       expect(result.sources.every((source) =>
         /^At 12:00 AM · (?:Open|Closing soon)\b/.test(source.status ?? "")
@@ -420,7 +448,7 @@ describe("askFrederick structured answers", () => {
 
   it("uses downtown as a ranking scope without exposing center-point distances", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
+    vi.setSystemTime(freshHoursInstant(1, 16)); // Monday, noon Eastern.
     try {
       const result = await askFrederick(
         "what is open past midnight downtown Frederick",
@@ -463,11 +491,29 @@ describe("askFrederick structured answers", () => {
     // 7-day freshness window so the schedule reads as unconfirmed. Monocacy
     // filled this role until the 2026-08-05 refresh, when Google stopped
     // returning hours for it; Dutch's Daughter is a stable schedule-carrier.
+    // BOTH halves are derived from the SUBJECT's own verification stamp: a
+    // hard-coded clock plus a hard-coded target date meant every hours refresh
+    // moved the data past the clock and broke this test on data that was
+    // working correctly. The clock sits one day after this place was verified
+    // (so its schedule is present and fresh) and the question asks about a
+    // date nine days on (so that schedule cannot vouch for the answer).
+    const carrier = clientPlaceBySlug("dutchs-daughter-frederick");
+    expect(carrier?.hours_updated_at).toBeTruthy();
+    const verifiedAt = Date.parse(carrier?.hours_updated_at ?? "");
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-10T16:00:00.000Z"));
+    const now = new Date(verifiedAt + 24 * 60 * 60 * 1000);
+    vi.setSystemTime(now);
+    const beyondWindow = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+      .format(new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000))
+      .replace(",", "");
     try {
       const result = await askFrederick(
-        "Dutch's Daughter nearby after 10pm August 19 2026",
+        `Dutch's Daughter nearby after 10pm ${beyondWindow}`,
         downtown,
       );
 
