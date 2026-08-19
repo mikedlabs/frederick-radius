@@ -86,7 +86,12 @@ function paletteForHour(h: number): Sky {
   // Golden hour (18–19)
   if (h >= 18 && h < 20) return { top: "#D88860", mid: "#E8A878", bottom: "#F5C898", tone: "light" };
   // Twilight (20–21)
-  if (h >= 20 && h < 22) return { top: "#3D3460", mid: "#7A5680", bottom: "#C97B7B", tone: "dark" };
+  // Twilight's bottom rose is deepened from #C97B7B. That stop failed AA under
+  // BOTH dark-tone foregrounds even at full opacity (3.07:1 on #FCFBF8, 2.75:1
+  // on cream) — the only stop in the whole palette that did, and the copy sits
+  // lowest in the gradient where it is worst. #8F575F reads 5.49:1 and 4.92:1.
+  // Every other dark stop already clears comfortably (5.85:1 and up).
+  if (h >= 20 && h < 22) return { top: "#3D3460", mid: "#7A5680", bottom: "#8F575F", tone: "dark" };
   // Night (22–2)
   return { top: "#0F1428", mid: "#1F2444", bottom: "#3A3458", tone: "dark" };
 }
