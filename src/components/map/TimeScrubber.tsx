@@ -120,7 +120,11 @@ export default function TimeScrubber({
     if (!el) return;
     const r = el.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (cx - r.left) / r.width));
-    onChange(START + p * (END - START));
+    // Quarter-hour steps, the same grain autoplay uses. Per-pixel values made
+    // one finger-drag emit hundreds of distinct hours, and every one re-ran
+    // the open/closed pass over every scoped place. ~72 possible positions
+    // are visually identical and an order of magnitude cheaper.
+    onChange(START + Math.round(p * (END - START) * 4) / 4);
   }
 
   const card = (
@@ -174,10 +178,21 @@ export default function TimeScrubber({
       <div
         ref={trackRef}
         className="relative h-6"
+        // The track IS a slider: claim the gesture here, not only on the
+        // 20px thumb, or a scrub that starts on the band scrolls the dock
+        // pane instead of moving time (mobile audit 2026-08-18).
+        style={{ touchAction: "none" }}
         onPointerDown={(e) => { setPlaying(false); draggingRef.current = true; (e.target as Element).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX); }}
         onPointerMove={(e) => { if (draggingRef.current) setFromClientX(e.clientX); }}
         onPointerUp={() => { draggingRef.current = false; }}
+        // The OS can revoke a captured pointer mid-drag (notification pull,
+        // app switch). Without this the scrubber stayed "dragging" forever.
+        onPointerCancel={() => { draggingRef.current = false; }}
       >
+        {/* Invisible band growing the 24px track to a 44px effective target.
+            Downward only: the header row sits 4px above, while the tick
+            labels below are non-interactive, so this steals nothing. */}
+        <div aria-hidden className="absolute inset-x-0 top-0 -bottom-5" />
         <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ background: "var(--app-border)" }} />
         <div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ width: `${pct}%`, background: "color-mix(in srgb, var(--app-brand) 55%, transparent)" }} />
         <div

@@ -5624,8 +5624,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .fr-camera-marker {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  /* 44px: the one DOM marker that sat under the tap-target floor. */
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: transparent;
   border: none;
