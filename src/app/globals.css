@@ -613,6 +613,23 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (prefers-reduced-motion: reduce) {
   .shelf-rail { scroll-behavior: auto; }
 }
+/* The Today answer shelf is a rail only where there is room to see it. On
+   phones the rail hid most of the answer at every width (1.59 of 4 cards at
+   375px; cards 3-4 fully off-screen even at 430px), so below sm it becomes a
+   lead-plus-two-column grid. Scoped to its own class: .shelf-rail is shared
+   by eight other surfaces whose rails are fine. */
+@media (max-width: 639px) {
+  .today-answer-shelf {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .today-answer-shelf > [data-shelf-lead] {
+    grid-column: 1 / -1;
+  }
+}
 
 /* ── Field-guide chapters ───────────────────────────────────────────────
  * Long, linear pages use a restrained register and paper tint to mark a real
@@ -885,14 +902,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 @media (max-width: 639px) {
-  .app-main-reading:has([data-today-section-heading]) .shelf-rail {
+  /* :not(.today-answer-shelf): on phones the answer shelf is a GRID (see
+     the today-answer-shelf block above), so the rail's snap and end-padding
+     treatment must not leak onto it. */
+  .app-main-reading:has([data-today-section-heading]) .shelf-rail:not(.today-answer-shelf) {
     overscroll-behavior-inline: contain;
     padding-inline-end: 1rem;
     scroll-padding-inline: 0.25rem 1rem;
     scroll-snap-type: x proximity;
   }
 
-  .app-main-reading:has([data-today-section-heading]) .shelf-rail > * {
+  .app-main-reading:has([data-today-section-heading]) .shelf-rail:not(.today-answer-shelf) > * {
     scroll-snap-align: start;
   }
 
@@ -8660,3 +8680,4 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     transition: none;
   }
 }
+
