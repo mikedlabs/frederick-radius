@@ -12,24 +12,39 @@ name: Enrich places (Google)
 #
 # That projection is the remaining catch. The default scope is every curated
 # place (1,090 targets, $31.54), so it aborts against any sane cap and the
-# handful of records that actually need enrichment cannot be reached. Pass
-# `slugs` to enrich exactly the records you mean: the 27 never-enriched ones
-# cost $1.54, and the first 5,000 calls a month are free. Restore the schedule
-# only after a live run lands.
+# handful of records that actually need enrichment cannot be reached. The
+# default scope is now `needs-enrichment` (189 places, $6.26, inside the 5,000
+# free calls a month), and `slugs` reaches exact records by name.
 #
 # The script only writes with --live --confirm, and the cap ABORTS before
 # spending rather than truncating mid-run. DFP's long tail is enriched on
 # demand elsewhere.
 
 on:
+  # Monthly, scoped to places that have never been resolved against Google at
+  # all. That scope is what makes a schedule safe: it is exactly the hole a
+  # newly curated record falls into, it drains, and once drained the run exits
+  # early having spent nothing. "Every curated place" could never be scheduled,
+  # because it re-pays for ~1,000 healthy rows and aborts against any cap.
+  schedule:
+    - cron: "0 7 1 * *" # 1st of the month, 07:00 UTC
   workflow_dispatch:
     inputs:
+      scope:
+        description: "Which places to enrich."
+        required: false
+        type: choice
+        default: "needs-enrichment"
+        options:
+          - needs-enrichment
+          - slugs
+          - all-curated
       slugs:
-        description: "Comma-separated slugs to enrich. Empty = every curated place (projects $31.54 and will abort under the default cap)."
+        description: "Comma-separated slugs. Only used when scope=slugs."
         required: false
         default: ""
       max_cost:
-        description: "Hard cap in dollars. The run aborts before calling Google if the projection exceeds it."
+        description: "Hard cap in dollars. The run aborts BEFORE calling Google if the projection exceeds it."
         required: false
         default: "10"
 
@@ -66,14 +81,27 @@ jobs:
       - name: Enrich curated places (cost-capped)
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          SCOPE: ${{ inputs.scope }}
           SLUGS: ${{ inputs.slugs }}
           MAX_COST: ${{ inputs.max_cost }}
         run: |
-          if [ -n "$SLUGS" ]; then
-            npm run enrich -- --slug "$SLUGS" --live --confirm --max-cost "${MAX_COST:-10}"
-          else
-            npm run enrich -- --live --confirm --max-cost "${MAX_COST:-10}"
-          fi
+          # A scheduled run carries no inputs, so both default here.
+          CAP="${MAX_COST:-10}"
+          case "${SCOPE:-needs-enrichment}" in
+            slugs)
+              if [ -z "$SLUGS" ]; then
+                echo "::error title=No slugs given::scope=slugs requires the slugs input."
+                exit 1
+              fi
+              npm run enrich -- --slug "$SLUGS" --live --confirm --max-cost "$CAP"
+              ;;
+            all-curated)
+              npm run enrich -- --live --confirm --max-cost "$CAP"
+              ;;
+            *)
+              npm run enrich -- --needs-enrichment --live --confirm --max-cost "$CAP"
+              ;;
+          esac
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 

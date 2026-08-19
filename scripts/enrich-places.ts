@@ -44,6 +44,12 @@ async function main() {
   // been Google-enriched could not be reached at all: the only way to cover
   // them was to re-pay for ~1,000 already-healthy rows. --limit does not help
   // because it slices the head of the catalog, not the places that need work.
+  // --needs-enrichment — the places that have never been resolved against
+  // Google at all. This is the scope a SCHEDULED run wants: it is exactly the
+  // hole new curated records fall into, it costs nothing once drained, and it
+  // shrinks to zero on its own. "Every curated place" could never be scheduled
+  // because it re-pays for ~1,000 healthy rows and aborts against any cap.
+  const needsEnrichment = args.includes("--needs-enrichment");
   const si = args.indexOf("--slug");
   const slugs = si >= 0
     ? new Set(
@@ -72,6 +78,10 @@ async function main() {
     // the source-based filters below so a curated, DFP, or discovered record
     // can each be reached by name.
     if (slugs) return slugs.has(p.slug);
+    if (needsEnrichment) {
+      const e = existing[p.slug];
+      return !e || !e.google_place_id;
+    }
     if (all) return true;
     if (dfpThin) {
       if (p.source !== "dfp") return false;
@@ -103,7 +113,9 @@ async function main() {
   const listCost = (withId * 25 + noId * (32 + 25)) / 1000;
   const scope = slugs
     ? `${slugs.size} named slug(s)`
-    : all
+    : needsEnrichment
+      ? "never-enriched only"
+      : all
       ? "ALL incl. DFP"
       : dfpThin
         ? "DFP thin"
@@ -118,6 +130,12 @@ async function main() {
     console.log(
       `  placement rejects     ${rejectedPlacement.length} (retained in source data; no paid call)`,
     );
+  }
+  // A drained backlog is success, not a no-op to be puzzled over. Say so and
+  // leave cleanly so a scheduled run stays green.
+  if (targets.length === 0) {
+    console.log(`  nothing to enrich — every targeted place already has a Google identity.\n`);
+    process.exit(0);
   }
   if (listCost > maxCost) {
     console.log(`  ABORT: projected list cost exceeds the cap.\n`);
