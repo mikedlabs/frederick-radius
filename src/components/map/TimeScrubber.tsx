@@ -85,6 +85,30 @@ export default function TimeScrubber({
   }, [playing, active, hour, onChange]);
 
   if (!active) {
+    // Activating seeds an hour, which scopes the caption and the event counts
+    // to that hour — a real filter, so it stays opt-in rather than arming
+    // itself when the pane opens. What changes here is legibility: inside the
+    // dock this was a small pill adrift in a pane the person had already
+    // deliberately opened, so it read as decoration. As a full-width row with
+    // its own subtitle it reads as the instrument it is. The floating
+    // placement (dock-less full-bleed maps) keeps the compact pill.
+    if (!floating) {
+      return (
+        <button
+          type="button"
+          onClick={() => onChange(currentFrederickHour())}
+          className="dock-reveal w-full"
+        >
+          <span className="dock-content-icon" aria-hidden>
+            <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
+          </span>
+          <span className="dock-reveal-copy">
+            <strong>Play the day</strong>
+            <small>Scrub through the hours to see what is open and on.</small>
+          </span>
+        </button>
+      );
+    }
     const pill = (
       <button
         type="button"
@@ -100,7 +124,6 @@ export default function TimeScrubber({
         See the day
       </button>
     );
-    if (!floating) return pill;
     return (
       <div
         className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
