@@ -926,7 +926,10 @@ function PinnedTools({
         <button
           type="button"
           onClick={onManage}
-          className="inline-flex min-h-11 items-center rounded-full px-2.5 text-[12px] font-semibold"
+          // tap-44 widens the hit area to 44px: the label is short enough
+          // that the painted box measures ~43px ACROSS, and the rule is 44
+          // effective in both dimensions, not just height.
+          className="tap-44 inline-flex min-h-11 items-center rounded-full px-2.5 text-[12px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
           Edit
@@ -1130,11 +1133,18 @@ function RecentTools({
  * feed answered (status "ok") and it has a face value. Otherwise the row
  * keeps its plain sentence — an honest absence, not a placeholder.
  */
+// A card's live line may only advertise a key whose DESTINATION the card
+// actually contains. "Explore & save" used to pull from the news and water
+// keys, so it promised "24 local headlines" while its groups (stories, yours)
+// hold towns, history, saved and settings — a tap yielded no headlines,
+// because news opens /pulse and river gauges open /rivers, both of which live
+// elsewhere. Compass's design principle, stated at deckKeyImportance below,
+// is to make no claim rather than a false one; a card with no live tools now
+// simply shows none.
 const INTENT_LIVE_KEYS: Partial<Record<CompassIntentId, readonly string[]>> = {
   "go-out": ["events"],
   "get-around": ["buses", "traffic", "trains"],
   "local-help": ["weather", "power", "schools", "reports"],
-  "explore-yours": ["news", "water"],
 };
 
 function deckKeyImportance(key: DeckLiveKey): number {
@@ -1598,7 +1608,11 @@ function DeckToolBrowser({
                         block: "start",
                       });
                   }}
-                  className="tactile-interactive inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
+                  // density for a nine-chip rail) but must HIT 44, per the
+                  // repo's own tap-target rule. The invisible extender adds
+                  // the missing 4px of touch without changing the paint.
+                  className="tactile-interactive tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                   style={{
                     borderColor: "var(--app-border)",
                     color: "var(--app-ink-2)",
