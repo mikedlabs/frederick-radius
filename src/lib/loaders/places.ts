@@ -1238,6 +1238,14 @@ export function slimForList(p: PlaceCardData): PlaceCardData {
 export function slimForNearby(p: PlaceCardData): PlaceCardData {
   const listPlace = slimForList(p);
   const {
+    // The hero photo URL goes too, unlike slimForList. Each Google photo
+    // token is ~700B of incompressible base64, and serializing one for every
+    // craving-eligible place made the tokens ~64% of /nearby's compressed
+    // transfer (~354KB of 549KB, measured 2026-08-19) while the bare page
+    // paints zero of them. Cards hydrate photos on scroll through
+    // usePlacePhoto -> /api/places/by-slugs, which re-applies the
+    // photo-suppression verdicts server-side.
+    google_photo_url: _googlePhotoUrl,
     description: _description,
     review_snippet: _reviewSnippet,
     review_author: _reviewAuthor,
@@ -1248,6 +1256,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     amenities: _amenities,
     ...rest
   } = listPlace;
+  void _googlePhotoUrl;
   void _description;
   void _reviewSnippet;
   void _reviewAuthor;
