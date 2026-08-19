@@ -27,7 +27,7 @@ type WantRow = {
   distance: string | null;
   fact: string;
   decisionReasons?: DaypartPick["decisionReasons"];
-  confidence?: "confirmed" | "likely";
+  confidence?: "confirmed" | "likely" | "unconfirmed";
 };
 
 type WantAnswer = {
@@ -128,15 +128,33 @@ export function daypartBrowseHref(
 /** Turn the live decision response into the shelf verbatim, including an empty
  * answer. A successful scoped zero is information; only a rejected request may
  * retain the countywide server fallback. */
+const WANT_CONFIDENCE_RANK: Record<
+  NonNullable<WantRow["confidence"]>,
+  number
+> = { confirmed: 0, likely: 1, unconfirmed: 2 };
+
 export function liveShelfFromWantAnswer(
   answer: WantAnswer,
   row: DaypartRow,
   scope: Scope | null,
 ): LiveShelf {
+  // Rows WITHOUT a confidence value are the ranker's notable lane: real,
+  // quality-ranked places whose hours the county cannot currently vouch for.
+  // Dropping them (the filter here used to require a confidence value) is what
+  // turned a dark hours refresh into an empty shelf under the sentence
+  // "Current hours do not confirm an open match" — five bakeries in hand, none
+  // shown. Keep them and mark them unconfirmed; the tile prints their real
+  // hours line and the heading stops claiming anything about open.
   const picks = [answer.hero, ...answer.also]
-    .filter(
-      (candidate): candidate is WantRow =>
-        Boolean(candidate?.confidence),
+    .filter((candidate): candidate is WantRow => Boolean(candidate))
+    // Confidence outranks the ranker's order for the LEAD card specifically: a
+    // place whose hours confirm it is open now must never sit behind one whose
+    // hours are unknown. Sort is stable, so within a tier the ranker's order
+    // survives, and it runs before the slice so a confirmed row deeper in the
+    // also-list is not cut in favor of an unconfirmed hero.
+    .sort(
+      (a, b) => WANT_CONFIDENCE_RANK[a.confidence ?? "unconfirmed"]
+        - WANT_CONFIDENCE_RANK[b.confidence ?? "unconfirmed"],
     )
     .slice(0, 4)
     .map((candidate) => ({
@@ -149,7 +167,7 @@ export function liveShelfFromWantAnswer(
       distance: candidate.distance,
       fact: candidate.fact,
       decisionReasons: candidate.decisionReasons,
-      confidence: candidate.confidence as "confirmed" | "likely",
+      confidence: candidate.confidence ?? "unconfirmed",
     }));
 
   return {
@@ -183,6 +201,41 @@ export function daypartEmptyCopy(
     ? `No open match for ${group} ${scope} right now.`
     : `Current hours do not confirm an open match for ${group} ${scope}.`;
 }
+
+/**
+ * What the shelf may honestly claim about its picks as a group. The weakest
+ * pick sets the ceiling: one unconfirmed row means the heading cannot say
+ * "open now" about the shelf, and a shelf of only unconfirmed rows must not
+ * promise open at all. "Places to try" is the honest heading for that case —
+ * these are real, quality-ranked places; what is missing is the hours signal,
+ * which each tile states for itself.
+ */
+export function daypartShelfTier(
+  picks: readonly DaypartPick[],
+): "confirmed" | "likely" | "unconfirmed" {
+  if (picks.length === 0) return "confirmed";
+  if (picks.every((place) => place.confidence === "unconfirmed")) return "unconfirmed";
+  if (picks.every((place) => place.confidence !== "confirmed")) return "likely";
+  return "confirmed";
+}
+
+export const DAYPART_SHELF_TITLE: Record<
+  ReturnType<typeof daypartShelfTier>,
+  string
+> = {
+  confirmed: "Places open now",
+  likely: "Places likely open",
+  unconfirmed: "Places to try",
+};
+
+export const DAYPART_SHELF_ARIA: Record<
+  ReturnType<typeof daypartShelfTier>,
+  string
+> = {
+  confirmed: "Open places right now",
+  likely: "Places likely open right now",
+  unconfirmed: "Places to try, hours not confirmed",
+};
 
 /**
  * Only an explicit town scope filters the candidate set geographically.
@@ -348,7 +401,11 @@ function DaypartPickCard({
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
   const detail =
     place.fact ||
-    (place.confidence === "likely" ? "Likely open" : "Open now");
+    (place.confidence === "confirmed"
+      ? "Open now"
+      : place.confidence === "likely"
+        ? "Likely open"
+        : "Hours not confirmed");
   const placeContext = place.distance
     ? ` · ${place.distance}`
     : place.where
@@ -414,9 +471,11 @@ function DaypartPickCard({
               className="h-1.5 w-1.5 rounded-full"
               style={{
                 background:
-                  place.confidence === "likely"
-                    ? "var(--app-warning)"
-                    : "var(--app-positive)",
+                  place.confidence === "confirmed"
+                    ? "var(--app-positive)"
+                    : place.confidence === "likely"
+                      ? "var(--app-warning)"
+                      : "var(--app-ink-3)",
               }}
             />
             {detail}
@@ -632,18 +691,14 @@ export default function DaypartNeeds({
     );
   }
 
-  const likely = active.picks.length > 0 &&
-    active.picks.every((place) => place.confidence === "likely");
+  const shelfTier = daypartShelfTier(active.picks);
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
   const leadReason = daypartLeadReason(active.picks);
 
   return (
-    <section
-      aria-label={likely ? "Places likely open right now" : "Open places right now"}
-      className="mt-6"
-    >
+    <section aria-label={DAYPART_SHELF_ARIA[shelfTier]} className="mt-6">
       <TodaySectionHeading
-        title={likely ? "Places likely open" : "Places open now"}
+        title={DAYPART_SHELF_TITLE[shelfTier]}
         meta={contextLabel}
         href={active.href}
         cta="See all"
@@ -720,11 +775,13 @@ export default function DaypartNeeds({
         aria-labelledby={rows.length > 1 ? `daypart-tab-${active.category}` : undefined}
         className={rows.length > 1 ? "mt-2" : "mt-1"}
       >
-        {awaitingLive || likely ? <div className="px-0.5">
+        {awaitingLive || shelfTier !== "confirmed" ? <div className="px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {awaitingLive
               ? "Checking nearby"
-              : `${pickScopeLabel} · Posted hours; check before going`}
+              : shelfTier === "likely"
+                ? `${pickScopeLabel} · Posted hours; check before going`
+                : `${pickScopeLabel} · Hours not confirmed; call ahead`}
           </p>
         </div> : null}
 
