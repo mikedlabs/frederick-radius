@@ -122,6 +122,7 @@ async function Board() {
     ingestRuns,
     sourceLedger,
     snapshotStorage,
+    unavailable,
   } = await loadDataHealthPageRuntime();
   const feedMetrics = consumeFeedMetrics();
   const anomalies = getAnomalies();
@@ -251,6 +252,19 @@ async function Board() {
     actions.push({
       label: `${badRuns.length} ingest source${badRuns.length === 1 ? " is" : "s are"} red or stale`,
       fix: "See Ingest runs. A dead cron means that source's events go quietly stale.",
+    });
+  }
+  // FIRST, before any judgement built on those reads. When a telemetry read
+  // does not answer, its fallback is an empty list, and every check below
+  // reads an empty list as "nothing wrong". That is how this board came to
+  // print an explicit all-clear over three stale and seven attention-needing
+  // sources it had never actually read. Name the blind spot at the top, and
+  // rank it above the findings, because a finding computed from an unread
+  // table is not a finding.
+  if (unavailable.length > 0) {
+    actions.push({
+      label: `${unavailable.length} health read${unavailable.length === 1 ? "" : "s"} did not answer: ${unavailable.join(", ")}`,
+      fix: "Everything below is computed from what DID load, so treat any green in those sections as unknown rather than clear. Reload first; if it persists, check the production database connection.",
     });
   }
   if (sourceLedgerProblems.length > 0) {
