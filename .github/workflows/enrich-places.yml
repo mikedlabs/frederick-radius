@@ -1,14 +1,37 @@
 name: Enrich places (Google)
 
 # Manual refresh of the curated editorial places against Google Places.
-# The former monthly schedule is paused because the configured GitHub secret
-# currently resolves empty (tracked in #1468). Restore the schedule only after
-# a cost-capped main-branch run proves the credential path. The script defaults
-# to curated-only, only writes with --live --confirm, and enforces a $10 cap.
-# DFP's long tail is enriched on demand elsewhere.
+#
+# History: the monthly schedule was paused because the GitHub secret resolved
+# EMPTY (#1468). The secret existed the whole time — its stored value was an
+# empty string, which is why the run logs printed a bare "GOOGLE_PLACES_API_KEY:"
+# instead of the "***" GitHub substitutes for a real value. Re-set on
+# 2026-08-19, and a dispatch that same day proved the credential path: the run
+# cleared the gate, reached the enrich step, and stopped on the cost projection
+# rather than on the credential.
+#
+# That projection is the remaining catch. The default scope is every curated
+# place (1,090 targets, $31.54), so it aborts against any sane cap and the
+# handful of records that actually need enrichment cannot be reached. Pass
+# `slugs` to enrich exactly the records you mean: the 27 never-enriched ones
+# cost $1.54, and the first 5,000 calls a month are free. Restore the schedule
+# only after a live run lands.
+#
+# The script only writes with --live --confirm, and the cap ABORTS before
+# spending rather than truncating mid-run. DFP's long tail is enriched on
+# demand elsewhere.
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      slugs:
+        description: "Comma-separated slugs to enrich. Empty = every curated place (projects $31.54 and will abort under the default cap)."
+        required: false
+        default: ""
+      max_cost:
+        description: "Hard cap in dollars. The run aborts before calling Google if the projection exceeds it."
+        required: false
+        default: "10"
 
 permissions: {}
 
@@ -43,7 +66,14 @@ jobs:
       - name: Enrich curated places (cost-capped)
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-        run: npm run enrich -- --live --confirm --max-cost 10
+          SLUGS: ${{ inputs.slugs }}
+          MAX_COST: ${{ inputs.max_cost }}
+        run: |
+          if [ -n "$SLUGS" ]; then
+            npm run enrich -- --slug "$SLUGS" --live --confirm --max-cost "${MAX_COST:-10}"
+          else
+            npm run enrich -- --live --confirm --max-cost "${MAX_COST:-10}"
+          fi
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 

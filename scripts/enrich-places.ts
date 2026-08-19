@@ -37,6 +37,26 @@ async function main() {
   const maxCost = mi >= 0 ? parseFloat(args[mi + 1]) : 60;
   const li = args.indexOf("--limit");
   const limit = li >= 0 ? parseInt(args[li + 1], 10) : Infinity;
+  // --slug a,b,c — enrich exactly these records and nothing else.
+  //
+  // Without this the smallest possible run was "every curated place", which
+  // projects past any sane cap and aborts, so the 27 records that have never
+  // been Google-enriched could not be reached at all: the only way to cover
+  // them was to re-pay for ~1,000 already-healthy rows. --limit does not help
+  // because it slices the head of the catalog, not the places that need work.
+  const si = args.indexOf("--slug");
+  const slugs = si >= 0
+    ? new Set(
+        (args[si + 1] ?? "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      )
+    : null;
+  if (slugs && slugs.size === 0) {
+    console.error("--slug was given with no slugs.");
+    process.exit(1);
+  }
 
   // MERGE, never overwrite: seed from the existing enrichment so a
   // scoped run can never destroy discovered/other rows (the original
@@ -48,6 +68,10 @@ async function main() {
   let targets = PLACES.filter((p) => {
     // County membership is a prerequisite for any paid detail call.
     if (!isValidCoord(p.geom)) return false;
+    // An explicit slug list is the whole selection: it deliberately ignores
+    // the source-based filters below so a curated, DFP, or discovered record
+    // can each be reached by name.
+    if (slugs) return slugs.has(p.slug);
     if (all) return true;
     if (dfpThin) {
       if (p.source !== "dfp") return false;
@@ -58,6 +82,18 @@ async function main() {
   });
   if (Number.isFinite(limit)) targets = targets.slice(0, limit);
 
+  // A mistyped or already-removed slug would otherwise shrink a paid run in
+  // silence and read as "done". Name what could not be matched.
+  if (slugs) {
+    const matched = new Set(targets.map((p) => p.slug));
+    const missing = [...slugs].filter((slug) => !matched.has(slug));
+    if (missing.length > 0) {
+      console.log(
+        `\n  WARNING: ${missing.length} requested slug(s) matched no in-county place: ${missing.join(", ")}`,
+      );
+    }
+  }
+
   // Cost projection. place_id present -> Place Details ($25/1k);
   // otherwise resolveAndEnrich = Text Search ($32/1k) + Details.
   const withId = targets.filter(
@@ -65,7 +101,13 @@ async function main() {
   ).length;
   const noId = targets.length - withId;
   const listCost = (withId * 25 + noId * (32 + 25)) / 1000;
-  const scope = all ? "ALL incl. DFP" : dfpThin ? "DFP thin" : "curated only";
+  const scope = slugs
+    ? `${slugs.size} named slug(s)`
+    : all
+      ? "ALL incl. DFP"
+      : dfpThin
+        ? "DFP thin"
+        : "curated only";
   console.log(`\n  Enrich — ${scope}`);
   console.log(`  ----------------------------------------`);
   console.log(`  targets               ${targets.length}  (place_id ${withId} · text-search ${noId})`);
