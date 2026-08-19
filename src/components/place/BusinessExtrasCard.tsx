@@ -44,13 +44,13 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
       className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <h3
+      <h2
         id="extras-heading"
         className="text-[11px] font-bold uppercase tracking-[0.12em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Good to know
-      </h3>
+      </h2>
 
       <dl className="mt-3 space-y-2.5">
         {/* What they're known for, straight from their own site — the most

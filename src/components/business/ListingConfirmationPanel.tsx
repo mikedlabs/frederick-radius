@@ -582,7 +582,7 @@ function TextAreaField({
     <label className="block">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
         {label}
-        {required ? <span style={{ color: "var(--app-brand)" }}> *</span> : null}
+        {required ? <span aria-hidden style={{ color: "var(--app-brand)" }}> *</span> : null}
       </span>
       <textarea
         name={name}
@@ -611,7 +611,7 @@ function SelectField({
     <label className="block">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
         {label}
-        {required ? <span style={{ color: "var(--app-brand)" }}> *</span> : null}
+        {required ? <span aria-hidden style={{ color: "var(--app-brand)" }}> *</span> : null}
       </span>
       <select
         name={name}

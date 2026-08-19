@@ -90,6 +90,29 @@ export function useMapLayerToggles({
           (!hasExplicitLayerView && (layerPrefs.transit ?? transitDefaultOn)),
       ),
   );
+  // True when transit is on ONLY because a past session remembered it — no
+  // deep link, no mode default, no toggle yet this session. The layer still
+  // draws; what it must not do is claim the map. A remembered choice used to
+  // set operationalLayerActive, which forces every place cluster, pin, and
+  // label to opacity 0 — so one Transit tap, ever, turned every later cold
+  // open into a bus map with the whole catalog invisible (mobile audit
+  // 2026-08-18). The flag clears on the first deliberate toggle below, so
+  // re-asserting transit in-session restores the full single-purpose view.
+  // State, not a ref: this value is read during render to decide what the
+  // reader sees, and a ref read at render time is both lint-flagged and
+  // fragile (it would silently go stale if the clearing setter ever stopped
+  // coinciding with a re-render).
+  const [transitFromRememberedPref, setTransitFromRememberedPref] = useState(
+    () =>
+      !deepLinkLayers.has("transit") &&
+      !hasExplicitLayerView &&
+      layerPrefs.transit === true &&
+      !transitDefaultOn,
+  );
+  const setShowTransitDeliberate: Dispatch<SetStateAction<boolean>> = (value) => {
+    setTransitFromRememberedPref(false);
+    setShowTransit(value);
+  };
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
   // one opens a Popup with the photo thumbnail + season + date.
@@ -361,7 +384,10 @@ export function useMapLayerToggles({
   return {
     showCivic, setShowCivic: touch(setShowCivic),
     showTrails, setShowTrails: touch(setShowTrails),
-    showTransit, setShowTransit: touch(setShowTransit),
+    showTransit, setShowTransit: touch(setShowTransitDeliberate),
+    // Consumers gate catalog suppression on this: a remembered layer shows,
+    // a chosen one owns the map.
+    transitFromRememberedPref,
     showAerial, setShowAerial: touch(setShowAerial),
     showCemeteries, setShowCemeteries: touch(setShowCemeteries),
     showParking, setShowParking: touch(setShowParking),

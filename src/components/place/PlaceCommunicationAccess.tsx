@@ -63,13 +63,13 @@ export default function PlaceCommunicationAccess({
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <h3
+          <h2
             id="place-communication-access"
             className="text-[12.5px] font-semibold"
             style={{ color: "var(--app-ink)" }}
           >
             Communication access
-          </h3>
+          </h2>
           <p
             className="mt-0.5 text-[12px] leading-snug"
             style={{ color: "var(--app-ink-2)" }}
