@@ -32,6 +32,13 @@ type Phase = "idle" | "sending" | "ok" | "error";
 export const FEEDBACK_TRIGGER_BOTTOM =
   `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px)`;
 
+/** On /map the dock's command bar sits at the same bottom offset, so the
+ * standard position parks this pill exactly on the search field's left end
+ * (mobile audit 2026-08-18: both boxes top out ~124px from the viewport
+ * bottom). Lift the trigger clear of the 48px bar plus its 8px inset. */
+export const FEEDBACK_TRIGGER_BOTTOM_MAP =
+  `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px + 56px)`;
+
 function hasBetaCookie(): boolean {
   if (typeof document === "undefined") return false;
   return new RegExp(`(?:^|;\\s*)${BETA_ID_COOKIE}=`).test(document.cookie);
@@ -152,8 +159,9 @@ export default function FeedbackWidget() {
             left: "max(0.75rem, env(safe-area-inset-left, 0px))",
             // BottomNav and MobileActionBar are mutually exclusive and share
             // one shell reserve. One offset therefore clears either bottom
-            // control without double-counting both of them.
-            bottom: FEEDBACK_TRIGGER_BOTTOM,
+            // control without double-counting both of them. The map carries
+            // its own bottom command bar, so the pill steps above it there.
+            bottom: pathname === "/map" ? FEEDBACK_TRIGGER_BOTTOM_MAP : FEEDBACK_TRIGGER_BOTTOM,
             background: "var(--app-bg-elevated-solid)",
             borderColor: "var(--app-border)",
             color: "var(--app-ink-2)",
