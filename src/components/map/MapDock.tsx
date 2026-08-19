@@ -474,7 +474,12 @@ export default function MapDock(props: MapDockProps) {
       const mapHeight = host.getBoundingClientRect().height;
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
-      const cap = Math.min(available, Math.max(minimum, Math.floor(mapHeight * 0.62)));
+      // 0.62 left only ~196px of clean map at 375x812 — configuring the map
+      // hid the map, which is the thing being configured (mobile audit
+      // 2026-08-18). At 0.52 the canvas keeps its majority and every pane
+      // still scrolls to its full content; short panes are unaffected either
+      // way, since this is a max-height and they already fit to content.
+      const cap = Math.min(available, Math.max(minimum, Math.floor(mapHeight * 0.52)));
       dockElement.style.setProperty("--map-pane-cap", `${cap}px`);
     };
     sizePane();
@@ -1842,8 +1847,13 @@ export default function MapDock(props: MapDockProps) {
             {/* The contents index already explains its rows. Keep the count
                 bar out of that clean first sheet unless there is state to
                 reset; deeper panes retain the live, viewport-honest count. */}
-            {((pane === "contents" && dirty) ||
-              (pane !== "contents" && pane !== "amenities")) && (
+            {/* Amenities was the one pane that never showed the bar, so a
+                person who switched on restrooms and water had no Reset
+                anywhere in it — the escape hatch went missing exactly where
+                state had been added (mobile audit 2026-08-18). It now follows
+                the contents rule: silent when at rest, present once dirty. */}
+            {((pane === "contents" || pane === "amenities") && dirty) ||
+            (pane !== "contents" && pane !== "amenities") ? (
               <div className="dock-countbar">
                 <div className="dock-countline" aria-live="polite">
                   {pane === "discover"
@@ -1871,7 +1881,7 @@ export default function MapDock(props: MapDockProps) {
                   </button>
                 )}
               </div>
-            )}
+            ) : null}
 
             {pane === "contents" && (
               <div className="dock-content-list" role="group" aria-label="Choose what you need from the map">
@@ -1900,6 +1910,33 @@ export default function MapDock(props: MapDockProps) {
                   <span className="dock-content-copy">
                     <strong>Near me</strong>
                     <small>Food, coffee, parks, and public essentials</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                {/* The 2-tap route to a restroom existed only as an unlabeled
+                    tap on the user-location dot — invisible, and present only
+                    once location was already granted. The discoverable route
+                    cost four taps. This is that shortcut, said out loud, on
+                    the hub where someone who needs a restroom is looking
+                    (mobile audit 2026-08-18). */}
+                <button
+                  type="button"
+                  className="dock-content-row dock-content-row-primary"
+                  data-on={publicAmenityCount > 0 || undefined}
+                  onClick={() => {
+                    haptic("light");
+                    setPlaceReveal(null);
+                    setEssentialsQuick(true);
+                    setPane("amenities");
+                    track("map_dock", { pane: "amenities", pick: "contents-row" });
+                  }}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Droplets className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Public essentials</strong>
+                    <small>Restrooms, water, trash, and dog needs</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -2248,6 +2285,16 @@ export default function MapDock(props: MapDockProps) {
             {/* ── WHEN ── */}
             {pane === "when" && (
               <div>
+                {/* The hour scrubber leads the pane it names. It was dead last
+                    under "Another time", three taps and a scroll deep, behind
+                    a reveal inside a pane that is itself a disclosure — so the
+                    map's one unique living-map instrument was its least
+                    reachable control (mobile audit 2026-08-18). Open now,
+                    Deals, and the event windows below are all reachable as URL
+                    modes elsewhere; this is not. */}
+                <Sect>The day</Sect>
+                <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
+
                 <Sect>Places right now</Sect>
                 <button
                   type="button"
@@ -2313,8 +2360,6 @@ export default function MapDock(props: MapDockProps) {
                   </>
                 )}
 
-                <Sect>Another time</Sect>
-                <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
               </div>
             )}
 
