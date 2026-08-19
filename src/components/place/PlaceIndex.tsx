@@ -26,6 +26,10 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
+import {
+  daypartPhotoSrc,
+  isPhotoFailureSignal,
+} from "@/components/today/DaypartNeeds";
 import { track } from "@/lib/track";
 
 export type IndexRow = {
@@ -342,10 +346,18 @@ function CellVisual({
   lazyPhoto: boolean;
 }) {
   const { photoUrl, anchorRef } = usePlacePhoto(row.slug, row.photo, lazyPhoto);
-  const src = photoUrl ? proxyPhotoAtWidth(photoUrl, 44) : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // fallback=signal: the proxy answers a dead photo with a 1x1 instead of
+  // Google's grey "PHOTO NOT AVAILABLE" plate, and the onLoad check swaps to
+  // the category glyph. Four components already did this; the canonical list
+  // card was the missed adopter (craft audit, 2026-08-19), so a rotted photo
+  // rendered a third party's error plate as if it were the place's picture.
+  // "No photo > wrong photo" is this repo's own rule.
+  const src = photoUrl ? daypartPhotoSrc(proxyPhotoAtWidth(photoUrl, 44)) : null;
+  const showPhoto = Boolean(src && failedSrc !== src);
   return (
     <div ref={anchorRef} className="h-11 w-11 shrink-0">
-      {src ? (
+      {src && showPhoto ? (
         <Image
           // The row paints a 44px square, so ask the proxy for 88px rather than
           // the 800px hero it defaults to. Non-proxy URLs pass through.
@@ -359,6 +371,9 @@ function CellVisual({
           fetchPriority={eagerPhoto ? "high" : "auto"}
           className="h-11 w-11 rounded-[9px] object-cover"
           style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
+          onLoad={(event) => {
+            if (isPhotoFailureSignal(event.currentTarget)) setFailedSrc(src);
+          }}
         />
       ) : (
         <span
