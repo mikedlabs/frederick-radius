@@ -93,7 +93,7 @@
   --app-on-brand: #F4EEE2;        /* Cream text/icon on Brick, Catoctin Forest, or Ink */
   --app-brand-2: #315A43;         /* Catoctin Forest — terrain/outdoor accent; never a page wash */
   --app-amber: #C58A32;           /* Ochre Amber — live/caution/sunlight or Beer selection/flagship fill */
-  --app-amber-text: #925E16;      /* text-safe Ochre Amber on Cream and Beer controls */
+  --app-amber-text: #925E16;      /* text-safe on Cream (4.74:1) and Beer controls ONLY. On --app-bg-sunken / --app-paper-2 it is 4.22:1 and FAILS: mix toward --app-ink there (85% = 5.04:1). */
   --app-accent: #7E2C6F;          /* Plum — limited arts/culture and editorial accent */
   --app-accent-press: #682153;    /* text-safe Plum counterpart */
   --app-cool: #285D73;            /* Creek — supporting data/civic accent */
