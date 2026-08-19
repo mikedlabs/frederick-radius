@@ -248,7 +248,7 @@ export default async function TodayCard() {
         </h2>
       )}
       {weatherRead.safetyNote && (
-        <p className="mt-1 text-[11.5px] font-medium opacity-80">
+        <p className="mt-1 text-[11.5px] font-medium">
           {weatherRead.safetyNote}
         </p>
       )}
@@ -266,7 +266,7 @@ export default async function TodayCard() {
             </span>
           )}
           {stats.length > 0 && (
-            <span className="text-[12.5px] font-medium leading-snug tabular-nums opacity-90">
+            <span className="text-[12.5px] font-medium leading-snug tabular-nums">
               {stats.join("  ·  ")}
               {/* Live daylight-left, moved here from TodayContext (client-side
                   so it stays accurate; the server card would freeze it). */}
