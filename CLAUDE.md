@@ -142,7 +142,18 @@ draft must read like a person typing in a thread, not composed copy:
   `/api/cron/radius-search` job and can be bootstrapped immediately with
   `npm run build:radius-search` (both need `DATABASE_URL`; `OPENAI_API_KEY`
   optionally adds semantic vectors). Full-text search is the required
-  baseline; Vercel OIDC and AI Gateway do not provide embedding support.
+  baseline. The old claim here, that AI Gateway does not support embeddings,
+  was WRONG when written and is corrected as of 2026-08-19: the live gateway
+  advertises 26 embedding models including `openai/text-embedding-3-small`,
+  and it authenticates with the same `AI_GATEWAY_API_KEY || VERCEL_OIDC_TOKEN`
+  expression already used in `src/lib/ask/intelligence.ts`. So semantic search
+  needs no separate OpenAI account. The reason not to rush it is the CORPUS,
+  not the credential: the indexed documents average 89 characters and 1,302 of
+  1,568 are under 100, so embedding them yields ~1,400 near-identical
+  "restaurant in Frederick" vectors and cosine ranking among those is close to
+  arbitrary. Enrich the documents first (`search_aliases` is scored by the
+  lexical engine but missing from the indexed document entirely); vectors are
+  worth buying only once there is something in them to embed.
   `hybridPlaceSearch()` fails soft to `[]`, so an EMPTY index is
   indistinguishable from a healthy one at the call site — it shipped empty
   and Ask ran keyword-only for months before anyone noticed. Keep

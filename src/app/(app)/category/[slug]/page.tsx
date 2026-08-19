@@ -9,7 +9,7 @@ import {
   categoryRouteOverride,
   isAmenityCategory,
 } from "@/data/categories";
-import { TAG_BY_SLUG } from "@/data/tags";
+import { humanizeSlug, tagName } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
@@ -180,7 +180,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     .filter(([, n]) => n >= 3)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
-    .map(([slug]) => ({ slug, name: TAG_BY_SLUG[slug]?.name ?? slug }));
+    // Unlike the place page, these chips are working FILTERS, so an unnamed
+    // one must not vanish and take its filter with it. "family" is in
+    // FACET_CANDIDATES with no TAGS entry at all, so it relies on this
+    // fallback. Humanize the slug rather than printing it raw.
+    .map(([slug]) => ({ slug, name: tagName(slug) ?? humanizeSlug(slug) }));
 
   // The hero is a recommendation, not a photo gallery. Preserve the real
   // relevance order even when the nearest useful place has no image; media
