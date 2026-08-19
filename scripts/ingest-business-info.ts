@@ -432,6 +432,10 @@ async function main() {
         const preserved: Record_ = mergeBusinessInfoCommerceEvidence(prior, {
           name: candidate.displayName,
           commerceLinks,
+          // We really did fetch this page just now, so a first-time record
+          // gets a date even though the failed extraction deliberately leaves
+          // source.fetchedAt alone for the retry.
+          observed: { url: snapshot.finalUrl, checkedAt: nowISO() },
         });
         existing[slug] = preserved;
         existingByCanonical.set(slug, preserved);
