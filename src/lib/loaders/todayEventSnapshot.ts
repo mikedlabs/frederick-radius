@@ -27,7 +27,13 @@ type ArchiveEnvelope = {
   archive_records_failed: number | string | null;
 };
 
-export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 650;
+// 650ms lost the race on every cold start: a fresh Supavisor connection takes
+// 300-800ms of TLS + auth before the query even runs, so the first request an
+// instance served always fell back to the ~10 curated seeds while 900+ real
+// events sat readable in the archive (events-outage diagnosis, 2026-08-18).
+// One second keeps the briefing budget honest while letting a cold connection
+// finish; warm reads still answer in tens of milliseconds.
+export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 1_000;
 export const TODAY_EVENT_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 60 * 1_000;
 const TODAY_EVENT_HORIZON_DAYS = 9;
 const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
@@ -36,7 +42,7 @@ const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
 // more than 700 ms to reach Supabase. Giving the connection the full bounded
 // read budget prevents the Events board from collapsing to the small curated
 // build fallback even while the archive and its heartbeat are healthy.
-export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 1_500;
+export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 2_500;
 export const EVENT_BROWSE_HORIZON_DAYS = 90;
 export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 
@@ -108,14 +114,19 @@ async function beforeDeadline<T>(
   }
 }
 
-function curatedFallback(now: Date): UnifiedEvents {
+function curatedFallback(now: Date, reason: string): UnifiedEvents {
   const unified = applyEventNotices(allUpcoming(now), now);
   return {
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: {
       degraded: true,
-      unavailable: ["event archive"],
+      // Name WHICH failure produced the fallback. All three paths (no
+      // database, read timeout, unusable archive) used to emit the same
+      // "event archive" string, which made the production outage — cold
+      // reads timing out while the archive itself was healthy — invisible
+      // in every health surface (events-outage diagnosis, 2026-08-18).
+      unavailable: [`event archive (${reason})`],
     },
   };
 }
@@ -155,17 +166,25 @@ export function hydrateTodayEventSnapshot(
   const finishedAt = envelope.archive_finished_at
     ? new Date(envelope.archive_finished_at).getTime()
     : Number.NaN;
-  const recordsFailed = Number(envelope.archive_records_failed ?? 0);
   const unavailable: string[] = [];
-  if (
-    envelope.archive_status !== "ok" ||
+  // The old gate rejected the archive whenever the last run was not "ok" or
+  // ANY record failed — but the collector aggregates ~28 upstream sources and
+  // marks itself "partial" if one of them hiccuped, which is the steady
+  // state: 830 consecutive runs, never once "ok". So a fresh archive holding
+  // 900+ real events was flagged unusable over 1 failed record, and readers
+  // treated ten curated seeds as the better answer. The reader's question is
+  // narrower than the collector's: was the archive WRITTEN successfully, and
+  // recently? Collection gaps are upstream news, already carried per-source
+  // by feed health; the rows that made it into the archive are real either
+  // way (events-outage diagnosis, 2026-08-18).
+  if (envelope.archive_status == null || envelope.archive_status === "error") {
+    unavailable.push("event archive (last run failed)");
+  } else if (
     !Number.isFinite(finishedAt) ||
     now.getTime() - finishedAt > TODAY_EVENT_SNAPSHOT_MAX_AGE_MS ||
-    now.getTime() < finishedAt - 5 * 60_000 ||
-    !Number.isFinite(recordsFailed) ||
-    recordsFailed > 0
+    now.getTime() < finishedAt - 5 * 60_000
   ) {
-    unavailable.push("event archive");
+    unavailable.push("event archive (stale)");
   }
   if (invalidSnapshots > 0) unavailable.push("event archive validation");
 
@@ -228,7 +247,7 @@ export async function loadEventArchiveSnapshot(
     Math.min(1_500, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
   );
   const sql = getSql();
-  if (!sql) return curatedFallback(now);
+  if (!sql) return curatedFallback(now, "no database");
   const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
@@ -279,5 +298,7 @@ export async function loadEventArchiveSnapshot(
     timeoutMs,
   );
   const envelope = rows?.[0];
-  return envelope ? hydrateTodayEventSnapshot(envelope, now) : curatedFallback(now);
+  // A null row set here means beforeDeadline gave up, not that the archive
+  // is empty: the query always returns one anchor row when it completes.
+  return envelope ? hydrateTodayEventSnapshot(envelope, now) : curatedFallback(now, "read timeout");
 }
