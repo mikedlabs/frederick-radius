@@ -46,8 +46,8 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-18T10:28:46.436Z
-    last_success: 2026-08-18T10:28:46.436Z
+    last_validated: 2026-08-19T10:29:18.535Z
+    last_success: 2026-08-19T10:29:18.535Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -69,8 +69,8 @@ sources:
     contact: https://chart.maryland.gov
     status: active
     collection: pipeline
-    last_validated: 2026-08-18T10:28:47.112Z
-    last_success: 2026-08-18T10:28:47.112Z
+    last_validated: 2026-08-19T10:29:19.152Z
+    last_success: 2026-08-19T10:29:19.152Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
@@ -78,8 +78,8 @@ sources:
       chart.maryland.gov/Incidents/GetIncidents URL became an HTML page;
       this is CHART's current JSON export endpoint. The transform filters
       to Frederick County and removes signal/camera maintenance noise.
-    last_changed: 2026-08-18T10:28:47.112Z
-    last_payload_sha256: e87a430ebdd13e37915d0f1ee1555840bfc310b36fa59ec5fa0bc67f1dca73b7
+    last_changed: 2026-08-19T10:29:19.152Z
+    last_payload_sha256: 878097bba1cba9d517b910ff78255b840a01c4111b95c714f34b509ea8bfeb92
 
   - id: seeclickfix
     name: SeeClickFix Frederick County 311
@@ -93,8 +93,8 @@ sources:
     contact: https://seeclickfix.com
     status: active
     collection: pipeline
-    last_validated: 2026-08-18T10:28:47.399Z
-    last_success: 2026-08-18T10:28:47.399Z
+    last_validated: 2026-08-19T10:29:19.330Z
+    last_success: 2026-08-19T10:29:19.330Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -103,8 +103,8 @@ sources:
       silently ignored by the SeeClickFix v2 API and returns the
       global feed; the integration also applies a hard in-county bbox
       post-filter as defense in depth.
-    last_changed: 2026-08-18T10:28:47.399Z
-    last_payload_sha256: bcc934aeebf3f8aefbef1af46fd09d16c7e65f125bf6cff288e53b2dea264c12
+    last_changed: 2026-08-19T10:29:19.330Z
+    last_payload_sha256: 8bd46c38145ecc14f97df2959157b10835eea445b0b523a8f1496a77c35c28ef
 
   - id: nws_forecast
     name: National Weather Service Forecast, Frederick
@@ -121,15 +121,15 @@ sources:
     status: active
     collection: pipeline
     rows_required: true
-    last_validated: 2026-08-18T10:28:49.008Z
-    last_success: 2026-08-18T10:28:49.008Z
+    last_validated: 2026-08-19T10:29:20.760Z
+    last_success: 2026-08-19T10:29:20.760Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
       Two step API. The worker reads the points response, follows
       properties.forecast, then stores the forecast periods.
-    last_changed: 2026-08-18T10:28:49.008Z
-    last_payload_sha256: 0ef00ec64682928cca003212e7bd73986fa8049b014b62175c8c9d9bedcb00cb
+    last_changed: 2026-08-19T10:29:20.760Z
+    last_payload_sha256: bc0e7b2ba0417abaaa752283b1b3e7931ca6ea762d1c5f36dacba82791a10231
 
   - id: nws_alerts
     name: National Weather Service Active Alerts, Frederick County
@@ -143,8 +143,8 @@ sources:
     contact: https://www.weather.gov/disclaimer
     status: active
     collection: pipeline
-    last_validated: 2026-08-18T10:28:49.370Z
-    last_success: 2026-08-18T10:28:49.370Z
+    last_validated: 2026-08-19T10:29:21.222Z
+    last_success: 2026-08-19T10:29:21.222Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
