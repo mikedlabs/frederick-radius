@@ -25,6 +25,7 @@ import BUSINESS_INFO from "@/data/business-info.json" with { type: "json" };
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import HOURS_REFRESH from "@/data/places-hours-refresh.json" with { type: "json" };
 import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
+import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -315,8 +316,47 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
     HOURS_SNAPSHOT_MAX_AGE_DAYS,
     "The Vercel hours cron has stopped landing rows. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL and CRON_SECRET in Production, then run the data-steward workflow.",
   );
+  // The newest-stamp check above answers "did the WRITER stop". It cannot
+  // answer "did DELIVERY stop", and delivery is what actually failed: the
+  // refresh rotates a sixth of the catalog per day, so when the committed
+  // artifact stops being updated, coverage does not fall off a cliff, it
+  // decays as a ramp. Measured on the real artifact, publishable rows go
+  // 1160, 1160, 950, 765, 593, 372, 203, 0 across seven days of staleness.
+  // The newest-stamp alarm is still green at day five, when 68% of the
+  // county's hours are already gone, and first turns red at day six with 203
+  // rows left. It sat green through the August blackout for that reason.
+  //
+  // Measure what the reader actually loses. Below 85% publishable fires on
+  // day two and leaves five days to act.
+  const hoursRows = Object.entries(HOURS_REFRESH as Record<string, unknown>)
+    .filter(([key]) => !key.startsWith("_"))
+    .map(([, value]) => value as { refreshed_at?: string; weekday_hours?: unknown });
+  const withSchedule = hoursRows.filter((row) => Array.isArray(row.weekday_hours));
+  if (withSchedule.length > 0) {
+    const publishable = withSchedule.filter((row) =>
+      isHoursFresh(row.refreshed_at, now),
+    ).length;
+    const share = publishable / withSchedule.length;
+    if (share < HOURS_PUBLISHABLE_MIN_SHARE) {
+      out.push({
+        source: "places-hours-refresh",
+        kind: "ingest_stale",
+        detail:
+          `Only ${Math.round(share * 100)}% of the ${withSchedule.length} committed hour schedules are still inside the ${HOURS_MAX_AGE_DAYS}-day publishing window ` +
+          `(${publishable} rows). Open and closed states are already going dark across the county. The refresh itself may be healthy — check whether the data-steward PR is merging, not just whether the cron ran.`,
+      });
+    }
+  }
   return out;
 }
+
+/**
+ * The share of committed hour schedules that must still be publishable before
+ * the artifact counts as delivered. Set from the real decay ramp: a healthy
+ * artifact sits at 100%, one day of missed delivery holds at 100%, and two
+ * days drops to 82%.
+ */
+export const HOURS_PUBLISHABLE_MIN_SHARE = 0.85;
 
 export type AvailabilityCheck = {
   source: string;
