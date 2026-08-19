@@ -1050,9 +1050,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--background);
   color: var(--foreground);
   background-image:
-    radial-gradient(circle at 50% 0%, rgba(112, 0, 255, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 0% 50%, rgba(0, 198, 255, 0.1) 0%, transparent 40%),
-    radial-gradient(circle at 100% 50%, rgba(255, 0, 85, 0.1) 0%, transparent 40%);
+    radial-gradient(circle at 50% 0%, rgba(112, 0, 255, 0.15) 0%, transparent 50%), /* palette-exempt: marketing shell */
+    radial-gradient(circle at 0% 50%, rgba(0, 198, 255, 0.1) 0%, transparent 40%), /* palette-exempt: marketing shell */
+    radial-gradient(circle at 100% 50%, rgba(255, 0, 85, 0.1) 0%, transparent 40%); /* palette-exempt: the marketing shell is a deliberately separate world, same rule as src/components/marketing/ */
   background-attachment: fixed;
 }
 
@@ -1521,8 +1521,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: fab-breath 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 @keyframes fab-breath {
-  0%, 100% { box-shadow: 0 8px 24px rgba(225, 67, 40, 0.35), 0 0 0 0 rgba(225, 67, 40, 0.4); }
-  50%      { box-shadow: 0 8px 24px rgba(225, 67, 40, 0.35), 0 0 0 14px rgba(225, 67, 40, 0); }
+  0%, 100% { box-shadow: 0 8px 24px color-mix(in srgb, var(--app-brand) 35%, transparent), 0 0 0 0 color-mix(in srgb, var(--app-brand) 40%, transparent); }
+  50%      { box-shadow: 0 8px 24px color-mix(in srgb, var(--app-brand) 35%, transparent), 0 0 0 14px transparent; }
 }
 
 /* Event-pin pulse on /map. Slower + softer than the food-truck demo so a
@@ -2812,7 +2812,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-name.is-struck { text-decoration: line-through; opacity: .78; }
 .sw-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand);
-  flex: none; box-shadow: 0 0 0 0 rgba(225,67,40,.5);
+  flex: none; box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-brand) 50%, transparent);
   animation: sw-beacon 2.2s ease-out infinite; /* breathing "live" pulse */
 }
 .sw-tier {
@@ -2847,8 +2847,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   letter-spacing: .06em; text-transform: uppercase; color: #2a1d05;
   background: radial-gradient(130% 170% at 28% 12%, #F7E3A4 0%, #EACB6F 30%, #D3A748 58%, #B8862B 100%);
   border-radius: 5px; padding: 3px 8px;
-  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 -1px 0 rgba(122,84,20,.5) inset,
-    0 0 0 1px rgba(133,92,22,.4) inset, 0 1px 2px rgba(0,0,0,.32);
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 -1px 0 rgba(122,84,20,.5) inset, /* palette-exempt: warm inset shadow pair, tracked with the /beer palette debt */
+    0 0 0 1px rgba(133,92,22,.4) inset, 0 1px 2px rgba(0,0,0,.32); /* palette-exempt: warm inset shadow, tracked with the /beer palette debt */
   text-shadow: 0 1px 0 rgba(255,255,255,.3);
 }
 .sw-dealtag { margin-top: 11px; }
@@ -2921,7 +2921,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 @keyframes sw-deal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes sw-sweep { to { transform: translateX(125%); } }
-@keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 rgba(225,67,40,.5); } 70%, 100% { box-shadow: 0 0 0 6px rgba(225,67,40,0); } }
+@keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-brand) 50%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
 @keyframes sw-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -8270,7 +8270,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   opacity: 0.28;
   pointer-events: none;
   background-image:
-    radial-gradient(circle at 82% 24%, transparent 0 54px, rgba(248, 222, 8, 0.55) 55px 56px, transparent 57px 104px, rgba(248, 222, 8, 0.2) 105px 106px, transparent 107px),
+    radial-gradient(circle at 82% 24%, transparent 0 54px, rgba(248, 222, 8, 0.55) 55px 56px, transparent 57px 104px, rgba(248, 222, 8, 0.2) 105px 106px, transparent 107px), /* palette-exempt: WLR partner identity, same rule as src/components/wlr/ */
     linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: auto, 42px 42px, 42px 42px;
@@ -8288,9 +8288,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   background: #f8de08;
   box-shadow:
-    -72px 86px 0 rgba(248, 222, 8, 0.82),
-    42px 132px 0 rgba(248, 222, 8, 0.56),
-    -164px 158px 0 rgba(248, 222, 8, 0.42);
+    -72px 86px 0 rgba(248, 222, 8, 0.82), /* palette-exempt: WLR partner identity, same rule as src/components/wlr/ */
+    42px 132px 0 rgba(248, 222, 8, 0.56), /* palette-exempt: WLR partner identity, same rule as src/components/wlr/ */
+    -164px 158px 0 rgba(248, 222, 8, 0.42); /* palette-exempt: WLR partner identity, same rule as src/components/wlr/ */
   animation: wlr-pulse 2.8s ease-in-out infinite;
 }
 
