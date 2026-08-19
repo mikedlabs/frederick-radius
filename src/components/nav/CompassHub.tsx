@@ -87,6 +87,22 @@ const GROUP_META: Record<
 };
 
 const COMPASS_INTENT_DEFINITIONS = [
+  // "Find something" leads. The hub exists to be a door, and this is the
+  // group people come for — yet it was the ONE group with no direction tile:
+  // ask-radius, search, nearby, open-now, plan and collections all lived
+  // behind "All 64 tools" plus a scroll while every other group had a door on
+  // the landing view (craft audit, 2026-08-19). Its live line stays empty on
+  // purpose: these are instruments, not feeds, and a card with nothing live
+  // to say makes no claim.
+  {
+    id: "find",
+    label: "Find something",
+    description: "Search, ask, see what is open, or browse what is near you.",
+    moreLabel: "More ways to find",
+    icon: Search,
+    groupIds: ["decide"],
+    featuredIds: ["search", "open-now", "ask-radius"],
+  },
   {
     id: "go-out",
     label: "Eat, drink & go out",
