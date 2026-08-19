@@ -668,6 +668,29 @@ export default function SearchOverlay({
                 >
                   Try again
                 </button>
+                {/* A retry button was the ONLY control here, so a person whose
+                    search failed had exactly one move and no way out of the
+                    overlay toward an answer. Give the same two exits the
+                    healthy empty state offers. */}
+                {query.trim() && (
+                  <p className="mt-3 text-xs">
+                    <a
+                      href={`/search?q=${encodeURIComponent(query.trim())}`}
+                      className="font-semibold underline"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Open the full search page
+                    </a>
+                    <span aria-hidden> · </span>
+                    <a
+                      href={`/ask?q=${encodeURIComponent(query.trim())}`}
+                      className="font-semibold underline"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Ask Radius instead
+                    </a>
+                  </p>
+                )}
               </div>
             ) : status === "loading" ? (
               <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>

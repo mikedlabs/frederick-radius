@@ -6914,6 +6914,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13px;
   color: var(--app-ink);
 }
+/* iOS zooms any focused field under 16px, and this one beat the coarse-pointer
+   guard above on specificity and order, so filtering events on a phone cost an
+   unwanted zoom plus a pinch back out. The 13px is deliberate on desktop (see
+   the small-field rule near the top of this file), so override only for
+   thumbs. Measured layout-safe: the input grows 19.5px to 24px, the label
+   stays 44px, and nothing overflows. */
+@media (pointer: coarse) {
+  .eb-filterfield input {
+    font-size: 16px;
+  }
+}
 .eb-filterfield input::placeholder {
   color: var(--app-ink-3);
 }
