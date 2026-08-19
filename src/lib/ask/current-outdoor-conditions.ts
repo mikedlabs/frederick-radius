@@ -241,7 +241,8 @@ function formatEasternTime(value: Date): string {
   }).format(value);
 }
 
-function validDate(value: string): Date | null {
+function validDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date : null;
 }
