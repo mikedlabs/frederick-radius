@@ -49,6 +49,74 @@ describe("Anthropic extractor preflight", () => {
     },
   );
 
+  /**
+   * A 400 is the one preflight status whose cause is genuinely ambiguous: a
+   * valid key and a well-formed body can still fail for an exhausted credit
+   * balance, an unreachable model, or a request the account is not permitted
+   * to make. Anthropic names which one in the response body, and the log used
+   * to print only "HTTP 400" — so the nightly civic and business-info ingests
+   * failed every day with no way to tell why without re-running by hand.
+   */
+  it("prints Anthropic's own explanation of an ambiguous failure", async () => {
+    const errors: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((msg) => {
+      errors.push(String(msg));
+    });
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            type: "error",
+            error: {
+              type: "invalid_request_error",
+              message: "Your credit balance is too low to access the API.",
+            },
+          }),
+          { status: 400 },
+        ),
+    );
+
+    await expect(
+      preflightKey({
+        apiKey: "test-key",
+        failInCi: false,
+        fetchImpl,
+        maxRetries: 0,
+      }),
+    ).resolves.toBe(false);
+
+    const logged = errors.join("\n");
+    expect(logged).toContain("HTTP 400");
+    expect(logged).toContain("invalid_request_error");
+    expect(logged).toContain("credit balance is too low");
+  });
+
+  it("stays readable when the failure body is not JSON", async () => {
+    const errors: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((msg) => {
+      errors.push(String(msg));
+    });
+    // A proxy or gateway can answer with HTML. It must be bounded rather than
+    // flooding the workflow log, and must not swallow the status line.
+    const fetchImpl = vi.fn(
+      async () => new Response("<html>" + "x".repeat(5000), { status: 400 }),
+    );
+
+    await expect(
+      preflightKey({
+        apiKey: "test-key",
+        failInCi: false,
+        fetchImpl,
+        maxRetries: 0,
+      }),
+    ).resolves.toBe(false);
+
+    const logged = errors.join("\n");
+    expect(logged).toContain("HTTP 400");
+    expect(logged).toContain("…");
+    expect(logged.length).toBeLessThan(1000);
+  });
+
   it("honors Retry-After for a retryable preflight failure", async () => {
     const fetchImpl = vi
       .fn()
