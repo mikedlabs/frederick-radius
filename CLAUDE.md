@@ -164,6 +164,12 @@ draft must read like a person typing in a thread, not composed copy:
 
 - `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
   must pass before any commit.
+- **Lockfile edits: regenerate with `npx -y npm@10 install`, never bare
+  `npm install`.** CI pins node 22, whose npm 10 rejects locks written by
+  npm 11+ ("Missing: <pkg> from lock file" in `npm ci`). A lock written by a
+  newer local npm poisons every CI job including main's, and it reads like a
+  branch conflict when it is a version skew. Learned 2026-08-20 after it
+  broke four PRs and then main itself.
 - `npm run test:ux` (Playwright: render health + axe WCAG A/AA on every
   key surface, pinned at ZERO violations) before any commit that touches
   UI. Sandboxes with a preinstalled Chromium: set `PW_CHROMIUM_PATH`.
