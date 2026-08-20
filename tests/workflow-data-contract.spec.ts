@@ -533,14 +533,31 @@ describe("scheduled data workflow contracts", () => {
       "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
     );
     expect(publisherText).toContain("persist-credentials: false");
+    // The stale-main guard is SURFACE-AWARE, not SHA-exact. The old exact-SHA
+    // rule aborted the whole nightly delivery whenever ANY merge landed during
+    // the generation hour, which starved the bot PRs (Aug 4-19) and let the
+    // hours artifact expire county-wide. The rule now aborts only when main's
+    // movement touched a file this publish would overwrite, and it must FAIL
+    // CLOSED when it cannot prove the movement safe.
     expect(publisherText).toContain(
-      "Refuse output generated from a stale main revision",
+      "Resolve a main revision this output may publish onto",
     );
     expect(publisherText).toContain(
       "Recheck main immediately before publication",
     );
-    expect(publisherText).toContain("branch.data.commit.sha !== expected");
-    expect(publisherText).toContain("ref: ${{ inputs.base_sha }}");
+    // The conflict test and each of its fail-closed exits.
+    expect(publisherText).toContain("touched the publish surface");
+    expect(publisherText).toContain("could not be read to prove the movement safe");
+    expect(publisherText).toContain("too much to prove the movement safe");
+    // The manifest widens the surface beyond allowed_paths when it is itself
+    // being published, so a digest-tracked file cannot be silently clobbered.
+    expect(publisherText).toContain("src/data/data-release.json");
+    // The worktree is the RESOLVED revision, so a benign merge no longer
+    // births a branch that is already behind main.
+    expect(publisherText).toContain(
+      "ref: ${{ steps.resolve_ref.outputs.publish_ref }}",
+    );
+    expect(publisherText).not.toContain("ref: ${{ inputs.base_sha }}");
     expect(publisherText).toContain(
       "Artifact files do not exactly match the reviewed allowlist.",
     );
