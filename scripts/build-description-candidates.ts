@@ -147,4 +147,8 @@ function main(): void {
   console.log(`skipped: ${JSON.stringify(skipped)}`);
 }
 
-main();
+// Guarded so the module can be imported for its helpers without writing the
+// registry as a side effect. review-description-candidates.ts imports
+// namesMatch, and a bare main() call turned that read-only pre-flight into a
+// generator run that added three candidates to descriptions.json.
+if (process.argv[1]?.endsWith("build-description-candidates.ts")) main();

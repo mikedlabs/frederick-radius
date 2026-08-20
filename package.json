@@ -54,6 +54,7 @@
     "fetch:town-photos": "tsx --tsconfig tsconfig.json scripts/fetch-town-photo-candidates.ts",
     "extract:descriptions": "npm run descriptions:candidates",
     "descriptions:candidates": "tsx --tsconfig tsconfig.json scripts/build-description-candidates.ts",
+    "descriptions:review": "tsx --tsconfig tsconfig.json scripts/review-description-candidates.ts",
     "ingest:civic": "tsx --tsconfig tsconfig.json scripts/ingest-municipal-civic.ts",
     "ingest:venues": "tsx --tsconfig tsconfig.json scripts/ingest-venue-events.ts",
     "ingest:business": "tsx --tsconfig tsconfig.json scripts/ingest-business-info.ts",
