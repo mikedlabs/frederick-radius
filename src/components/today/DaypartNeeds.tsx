@@ -9,12 +9,8 @@ import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
-import {
-  getScope,
-  scopeToParam,
-  SCOPE_CHANGE_EVENT,
-  type Scope,
-} from "@/lib/scope";
+import { daypartBrowseHref } from "@/lib/today/daypart-needs";
+import { getScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
@@ -80,50 +76,11 @@ export function nextUnresolvedDaypartCategory(
   );
 }
 
-/**
- * Keep Today's location-aware shelf and its expanded list on the same ranking
- * path. Exact device coordinates stay in session storage; the URL carries only
- * the noun/facet and the coarse browsing scope.
- */
-export function daypartBrowseHref(
-  category: string,
-  label: string,
-  scope: Scope | null = null,
-): string | null {
-  const normalizedLabel = label.toLowerCase();
-  const target =
-    category === "coffee"
-      ? { craving: "coffee" }
-      : category === "bakery"
-        ? { craving: "breakfast" }
-        : category === "restaurant"
-          ? {
-              craving: normalizedLabel.includes("lunch")
-                ? "lunch"
-                : normalizedLabel.includes("dinner")
-                  ? "dinner"
-                  : normalizedLabel.includes("still")
-                    ? "late"
-                    : "food",
-            }
-          : category === "brewery"
-            ? { craving: "breweries" }
-            : category === "bar"
-              ? { craving: "drinks", facet: "bar" }
-              : category === "ice-cream"
-                ? { craving: "ice-cream" }
-                : category === "museum"
-                  ? { craving: "art", facet: "museum" }
-                  : category === "book-store"
-                    ? { craving: "shops", facet: "book-store" }
-                    : null;
-  if (!target) return null;
-
-  const params = new URLSearchParams({ c: target.craving });
-  if ("facet" in target && target.facet) params.set("facet", target.facet);
-  if (scope) params.set("in", scopeToParam(scope));
-  return `/nearby?${params.toString()}`;
-}
+/** The href mapping lives in lib/today/daypart-needs so the server HTML
+ * emits the same availability-ordered destination this client refines.
+ * Re-exported here because the client spec and callers reach it through this
+ * component's surface. */
+export { daypartBrowseHref };
 
 /** Turn the live decision response into the shelf verbatim, including an empty
  * answer. A successful scoped zero is information; only a rejected request may
