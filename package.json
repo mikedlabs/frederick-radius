@@ -123,7 +123,8 @@
     "audit:county-data": "tsx --tsconfig tsconfig.json scripts/audit-county-derived-data.ts",
     "test:ux": "playwright test e2e/ux-audit.spec.ts e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
     "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
-    "eval:coverage": "tsx --tsconfig tsconfig.json scripts/eval-answer-coverage.ts"
+    "eval:coverage": "tsx --tsconfig tsconfig.json scripts/eval-answer-coverage.ts",
+    "steward:holdback": "node scripts/steward-holdback.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
