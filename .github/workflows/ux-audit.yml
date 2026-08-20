@@ -37,6 +37,11 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          # Shards 1 and 2 died with "Ineffective mark-compacts near heap
+          # limit" — a build OOM, not a test failure, which still emailed a
+          # red audit twice a week. The repo's own typecheck script already
+          # raises this ceiling for the same reason.
+          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit

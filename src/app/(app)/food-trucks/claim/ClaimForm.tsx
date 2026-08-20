@@ -92,7 +92,7 @@ export default function ClaimForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+    <form onSubmit={submit} noValidate className="space-y-4 rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
       <label className="block">
         <span className={labelCls} style={{ color: "var(--app-ink-3)" }}>Your truck</span>
         <select

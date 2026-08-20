@@ -87,7 +87,7 @@ export default function ManagePanel({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
       <div
         role="radiogroup"
         aria-label="Post type"
@@ -177,7 +177,7 @@ function Field({
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
         {label}
-        {required ? <span style={{ color: "var(--app-brand)" }}>*</span> : null}
+        {required ? <span aria-hidden style={{ color: "var(--app-brand)" }}>*</span> : null}
       </span>
       <input
         name={name}

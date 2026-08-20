@@ -5,14 +5,14 @@ import { Mail, CheckCircle2, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * LoginForm — client island that sends a magic link via Supabase Auth.
+ * LoginForm â client island that sends a magic link via Supabase Auth.
  *
  * Two states:
- *   - "form"  → email input + submit
- *   - "sent"  → "Check your inbox" confirmation with the recipient
+ *   - "form"  â email input + submit
+ *   - "sent"  â "Check your inbox" confirmation with the recipient
  *               address echoed back so the user knows where to look
  *
- * Errors are inline (red text under the input) — never toasted,
+ * Errors are inline (red text under the input) â never toasted,
  * since the user is mid-flow and a disappearing toast would lose
  * the context.
  */
@@ -55,7 +55,7 @@ export default function LoginForm({
       }
       setSentTo(trimmed);
     } catch {
-      setError("Something went wrong. Try again in a moment.");
+      setError("That link didn’t send. Try again in a moment.");
     } finally {
       setBusy(false);
     }
@@ -158,7 +158,7 @@ export default function LoginForm({
         {busy ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} aria-hidden />
-            Sending…
+            Sendingâ¦
           </>
         ) : (
           <>Send magic link</>

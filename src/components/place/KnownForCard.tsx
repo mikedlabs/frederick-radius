@@ -53,13 +53,13 @@ export default function KnownForCard({
           strokeWidth={2.25}
           style={{ color: "var(--app-cool)" }}
         />
-        <h3
+        <h2
           id="known-for-heading"
           className="text-[11px] font-bold uppercase tracking-[0.12em]"
           style={{ color: "var(--app-ink-3)" }}
         >
           What people say
-        </h3>
+        </h2>
       </header>
 
       {k.length > 0 && (

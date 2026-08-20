@@ -1261,7 +1261,7 @@ export default function AppMap({
   const {
     showCivic, setShowCivic,
     showTrails, setShowTrails,
-    showTransit, setShowTransit,
+    showTransit, setShowTransit, transitFromRememberedPref,
     showAerial, setShowAerial,
     showCemeteries, setShowCemeteries,
     showParking, setShowParking,
@@ -1328,8 +1328,15 @@ export default function AppMap({
     amenityLayerActive ||
     Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
     Boolean(activeSlugs);
+  // A remembered Transit choice draws its layer but does NOT claim the map.
+  // Suppressing the whole catalog is the right answer to "I am looking at
+  // buses right now" and the wrong answer to "I looked at buses once" — the
+  // second reading turned every later cold open into a bus map with zero
+  // places visible, which is the map friction the owner reported. Re-toggling
+  // Transit in-session clears the flag and restores the single-purpose view.
+  const transitClaimsMap = visibleTransit && !transitFromRememberedPref;
   const operationalLayerRequested =
-    visibleTransit ||
+    transitClaimsMap ||
     showRadar ||
     showTraffic ||
     showIncidents ||
@@ -4877,7 +4884,11 @@ export default function AppMap({
               were visibly moving on the map. */}
           <LiveBuses
             show={liveBusesVisible}
-            preview={!visibleTransit}
+            // Remembered transit stays the ambient one-badge preview rather
+            // than expanding into fifteen per-vehicle route markers over a
+            // downtown the person came to browse. A deliberate toggle this
+            // session (or a deep link) still gets the full vehicle field.
+            preview={!transitClaimsMap}
             compactOverview={Boolean(dock)}
             overviewZoom={cameraZoom}
             showInlineStatus={!dock}
