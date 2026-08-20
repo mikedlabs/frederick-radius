@@ -54,10 +54,16 @@ describe("data-health page runtime boundary", () => {
       getSourceHealthLedger: vi.fn(() => never),
     });
 
+    // The database reads run SEQUENTIALLY now — one connection at a time,
+    // because the pool is max: 1 and concurrent readers queue rather than
+    // overlap. So the deadlines fire one after another instead of together:
+    // hydrate, then each database read, then the feed probe, then the ledger.
     await vi.advanceTimersByTimeAsync(DATA_HEALTH_HYDRATE_DEADLINE_MS);
-    await vi.advanceTimersByTimeAsync(
-      DATA_HEALTH_FEED_DEADLINE_MS + DATA_HEALTH_DB_DEADLINE_MS,
-    );
+    for (let read = 0; read < 4; read++) {
+      await vi.advanceTimersByTimeAsync(DATA_HEALTH_DB_DEADLINE_MS);
+    }
+    await vi.advanceTimersByTimeAsync(DATA_HEALTH_FEED_DEADLINE_MS);
+    await vi.advanceTimersByTimeAsync(DATA_HEALTH_DB_DEADLINE_MS);
 
     await expect(result).resolves.toMatchObject({
       liveCheck: null,
@@ -66,6 +72,19 @@ describe("data-health page runtime boundary", () => {
       ingestRuns: [],
       sourceLedger: [],
       snapshotStorage: null,
+    });
+    // Failing soft is only half of it. The board must be able to tell that
+    // these are FALLBACKS and not answers, or it renders an all-clear over
+    // telemetry it never read.
+    await expect(result).resolves.toMatchObject({
+      unavailable: [
+        "drift decisions",
+        "unparseable locations",
+        "recent ingest runs",
+        "snapshot storage",
+        "live event feeds",
+        "source ledger",
+      ],
     });
     expect(feedSignal?.aborted).toBe(true);
     expect(warn).toHaveBeenCalledWith(

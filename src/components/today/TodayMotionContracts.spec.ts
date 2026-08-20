@@ -30,9 +30,24 @@ describe("Today motion contracts", () => {
     );
   });
 
+  it("keeps the phone answer shelf a grid, not a rail", () => {
+    // The rail hid most of the answer at every phone width (1.59 of 4 cards
+    // visible at 375px, cards 3-4 fully off-screen at 430px), so below sm the
+    // answer shelf is a lead-plus-two-column grid. Scoped to its own class
+    // because .shelf-rail is shared by eight other surfaces. The grid block
+    // lives with the shelf-rail layout family, OUTSIDE the motion slice, so
+    // these assertions read the whole stylesheet.
+    expect(css).toContain(".today-answer-shelf");
+    expect(css).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(css).toContain(".today-answer-shelf > [data-shelf-lead]");
+    expect(css).toContain("grid-column: 1 / -1;");
+  });
+
   it("scopes mobile snap and focus treatment to the Today reading surface", () => {
+    // :not(.today-answer-shelf): the snap and end-padding treatment belongs
+    // to rails that still scroll, and must not leak onto the answer grid.
     expect(todayMotionCss).toContain(
-      ".app-main-reading:has([data-today-section-heading]) .shelf-rail",
+      ".app-main-reading:has([data-today-section-heading]) .shelf-rail:not(.today-answer-shelf)",
     );
     expect(todayMotionCss).toContain("scroll-snap-type: x proximity");
     expect(todayMotionCss).toContain("padding-inline-end: 1rem");

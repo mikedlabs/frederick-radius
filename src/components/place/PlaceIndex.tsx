@@ -24,6 +24,12 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { usePlacePhoto } from "@/components/place/usePlacePhoto";
+import {
+  daypartPhotoSrc,
+  isPhotoFailureSignal,
+} from "@/components/today/DaypartNeeds";
 import { track } from "@/lib/track";
 
 export type IndexRow = {
@@ -76,10 +82,18 @@ export default function PlaceIndex({
   sections,
   showSort = true,
   prioritizeFirstPhoto = false,
+  lazyPhotos = false,
 }: {
   sections: IndexSection[];
   showSort?: boolean;
   prioritizeFirstPhoto?: boolean;
+  /** Hydrate row photos on scroll instead of expecting them inline. Set by
+   *  surfaces that deliberately withhold photo URLs from the RSC payload:
+   *  each Google photo token is ~700B of incompressible base64, and the 800
+   *  on /open-now were 88% of the compressed document while ~30 ever
+   *  painted. Hydration batches through /api/places/by-slugs, so the
+   *  photo-suppression verdicts keep applying. */
+  lazyPhotos?: boolean;
 }) {
   const [sort, setSort] = useState<SortKey>("ranked");
   const populated = sections.filter((s) => s.rows.length > 0);
@@ -127,6 +141,7 @@ export default function PlaceIndex({
           section={section}
           sort={sort}
           priorityPhotoSlug={priorityPhotoSlug}
+          lazyPhotos={lazyPhotos}
         />
       ))}
     </div>
@@ -137,10 +152,12 @@ function IndexSectionBlock({
   section,
   sort,
   priorityPhotoSlug,
+  lazyPhotos = false,
 }: {
   section: IndexSection;
   sort: SortKey;
   priorityPhotoSlug?: string;
+  lazyPhotos?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = sortRows(section.rows, sort);
@@ -192,6 +209,7 @@ function IndexSectionBlock({
             <PlaceCell
               row={row}
               eagerPhoto={row.slug === priorityPhotoSlug}
+              lazyPhoto={lazyPhotos}
             />
           </li>
         ))}
@@ -218,9 +236,11 @@ function IndexSectionBlock({
 function PlaceCell({
   row,
   eagerPhoto = false,
+  lazyPhoto = false,
 }: {
   row: IndexRow;
   eagerPhoto?: boolean;
+  lazyPhoto?: boolean;
 }) {
   const { openSheet } = usePlaceSheet();
 
@@ -253,32 +273,7 @@ function PlaceCell({
     >
       {/* 44px anchor: photo with a pressed ring, else the category glyph
           on its tinted paper square. An anchor for recognition, not a hero. */}
-      {row.photo ? (
-        <Image
-          src={row.photo}
-          alt=""
-          unoptimized={row.photo.startsWith("/api/place-photo")}
-          width={88}
-          height={88}
-          sizes="44px"
-          loading={eagerPhoto ? "eager" : "lazy"}
-          fetchPriority={eagerPhoto ? "high" : "auto"}
-          className="h-11 w-11 shrink-0 rounded-[9px] object-cover"
-          style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
-        />
-      ) : (
-        <span
-          aria-hidden
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[9px]"
-          style={{
-            background: `color-mix(in srgb, ${row.accent} 12%, var(--app-bg-elevated))`,
-            color: `color-mix(in srgb, ${row.accent} 78%, var(--app-ink))`,
-            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent)",
-          }}
-        >
-          <CategoryIcon slug={row.category} className="h-5 w-5" />
-        </span>
-      )}
+      <CellVisual row={row} eagerPhoto={eagerPhoto} lazyPhoto={lazyPhoto} />
 
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
@@ -330,5 +325,69 @@ function PlaceCell({
         )}
       </span>
     </button>
+  );
+}
+
+/**
+ * The 44px cell anchor. With an inline URL it paints immediately, exactly as
+ * before. Under lazyPhoto the URL arrives on scroll through the shared
+ * batched loader, and the category glyph carries both the "not known yet"
+ * and the honest "there is none" states, so nothing flashes and a suppressed
+ * record never regains its wrong photo (the loader answers through the full
+ * server loader's suppression gates).
+ */
+function CellVisual({
+  row,
+  eagerPhoto,
+  lazyPhoto,
+}: {
+  row: IndexRow;
+  eagerPhoto: boolean;
+  lazyPhoto: boolean;
+}) {
+  const { photoUrl, anchorRef } = usePlacePhoto(row.slug, row.photo, lazyPhoto);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // fallback=signal: the proxy answers a dead photo with a 1x1 instead of
+  // Google's grey "PHOTO NOT AVAILABLE" plate, and the onLoad check swaps to
+  // the category glyph. Four components already did this; the canonical list
+  // card was the missed adopter (craft audit, 2026-08-19), so a rotted photo
+  // rendered a third party's error plate as if it were the place's picture.
+  // "No photo > wrong photo" is this repo's own rule.
+  const src = photoUrl ? daypartPhotoSrc(proxyPhotoAtWidth(photoUrl, 44)) : null;
+  const showPhoto = Boolean(src && failedSrc !== src);
+  return (
+    <div ref={anchorRef} className="h-11 w-11 shrink-0">
+      {src && showPhoto ? (
+        <Image
+          // The row paints a 44px square, so ask the proxy for 88px rather than
+          // the 800px hero it defaults to. Non-proxy URLs pass through.
+          src={src}
+          alt=""
+          unoptimized={src.startsWith("/api/place-photo")}
+          width={88}
+          height={88}
+          sizes="44px"
+          loading={eagerPhoto ? "eager" : "lazy"}
+          fetchPriority={eagerPhoto ? "high" : "auto"}
+          className="h-11 w-11 rounded-[9px] object-cover"
+          style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
+          onLoad={(event) => {
+            if (isPhotoFailureSignal(event.currentTarget)) setFailedSrc(src);
+          }}
+        />
+      ) : (
+        <span
+          aria-hidden
+          className="grid h-11 w-11 place-items-center rounded-[9px]"
+          style={{
+            background: `color-mix(in srgb, ${row.accent} 12%, var(--app-bg-elevated))`,
+            color: `color-mix(in srgb, ${row.accent} 78%, var(--app-ink))`,
+            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent)",
+          }}
+        >
+          <CategoryIcon slug={row.category} className="h-5 w-5" />
+        </span>
+      )}
+    </div>
   );
 }

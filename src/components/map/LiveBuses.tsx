@@ -513,6 +513,29 @@ function VisibleLiveBuses({
   // the route polyline where it fits, straight-line otherwise.
   useEffect(() => {
     if (vehicles.length === 0) return;
+    // While the ambient aggregate badge is the ONLY thing rendered, the
+    // per-vehicle glide is invisible work: the loop was committing React
+    // state ~12x/sec for 14 of every 15 seconds on every cold-open browse
+    // map (mobile audit 2026-08-18) — the main suspect behind a measured
+    // 30s input stall. Snap positions to the reported fixes once per poll
+    // instead. posRef stays fresh, so when the person zooms in or opens
+    // Transit (aggregateOverview flips, and it MUST be in this effect's
+    // deps for that flip to re-run us — without it the markers would mount
+    // empty for up to a poll), the next glide starts exactly where the bus
+    // actually is.
+    if (aggregateOverview) {
+      const next: Record<string, Pos> = {};
+      for (const v of vehicles) {
+        next[v.vehicleId] = { lng: v.lng, lat: v.lat, bearing: v.bearing, moving: false, len: 0 };
+      }
+      posRef.current = next;
+      setPos(next);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      return;
+    }
     const from = posRef.current;
     const tweens: Tween[] = vehicles.map((v) => {
       const fromLng = from[v.vehicleId]?.lng ?? v.lng;
@@ -615,7 +638,7 @@ function VisibleLiveBuses({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [vehicles, reduced]);
+  }, [vehicles, reduced, aggregateOverview]);
 
   // The selected bus's path-ahead: a line from its REPORTED fix to its next
   // stop, plus the stop itself. Memoized on [selected, vehicles] so it only

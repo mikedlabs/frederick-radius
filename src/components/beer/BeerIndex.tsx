@@ -126,7 +126,9 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
             onChange={(e) => patch({ q: e.target.value })}
             placeholder={`Search ${ALL_BEERS.length} beers, breweries, or flavors`}
             aria-label="Search the beer index"
-            className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--app-ink-3)]"
+            // self-stretch so the whole 44px pill is the tap target, not a
+            // dead-band sandwich around a 20px input line.
+            className="min-w-0 flex-1 self-stretch bg-transparent text-[14px] outline-none placeholder:text-[var(--app-ink-3)]"
             style={{ color: "var(--app-ink)" }}
           />
           {filter.q && (

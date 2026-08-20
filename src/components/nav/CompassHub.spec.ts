@@ -279,13 +279,22 @@ describe("compass live lines", () => {
     ).toBe("78 customers out");
   });
 
-  it("uses the remaining deck feeds in the intent rows without inventing state", () => {
+  it("makes no live claim on a card whose groups hold no live tools", () => {
+    // "Explore & save" (stories, yours) used to advertise headlines and river
+    // gauges whose destinations live on OTHER cards, so the promise "6 local
+    // headlines" led to a card with no headlines on it. A card's live line
+    // may only speak for destinations the card contains; this one contains
+    // none, so it stays silent even when those feeds are healthy.
     expect(
       liveLineForIntent("explore-yours", [
         key("news", "6", "local headlines"),
         key("water", "9", "gauges reporting"),
       ]),
-    ).toBe("6 local headlines");
+    ).toBeNull();
+    // Same rule for the new Find something tile: instruments, not feeds.
+    expect(
+      liveLineForIntent("find", [key("news", "6", "local headlines")]),
+    ).toBeNull();
   });
 
   it("stays silent rather than rendering a placeholder", () => {

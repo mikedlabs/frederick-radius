@@ -86,6 +86,18 @@ function reviewedRemovalEvidence(statusOverrides, slug, asOf) {
     : undefined;
 }
 
+function reviewedAdditionEvidence(statusOverrides, slug, asOf) {
+  const evidence = currentStatusEvidence(statusOverrides, slug, asOf);
+  // An addition is accounted for by source-backed OPERATIONAL evidence: a
+  // recorded "this place is really open" is exactly the judgement the flag
+  // asks a human for. This was the one flag with no evidence path at all
+  // (removals and closures both have one), so every seasonal reopening or
+  // net-new listing blocked the entire nightly artifact until someone
+  // clicked. Now the same overrides file that clears the other two flags
+  // clears this one.
+  return evidence?.status === "operational" ? evidence : undefined;
+}
+
 function checkedAt(artifact, slug) {
   const value = artifact?.[slug]?.refreshed_at;
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -229,14 +241,25 @@ export function analyzeHoursRefreshChange({
   const unreviewedPublicRemovals = publicRemovals.filter(
     (slug) => !reviewedRemovalStatuses.has(slug),
   );
+  const reviewedAdditionStatuses = new Map(
+    publicAdditions.flatMap((slug) => {
+      const evidence = reviewedAdditionEvidence(statusOverrides, slug, asOf);
+      return evidence ? [[slug, evidence]] : [];
+    }),
+  );
+  const unreviewedPublicAdditions = publicAdditions.filter(
+    (slug) => !reviewedAdditionStatuses.has(slug),
+  );
   const unreviewedNewlyClosed = newlyClosed.filter(
     (entry) =>
       (entry.public_before || entry.public_after) &&
       !reviewedStatuses.has(entry.slug),
   );
   const reviewReasons = [];
-  if (publicAdditions.length > 0) {
-    reviewReasons.push(`${publicAdditions.length} public listing addition(s)`);
+  if (unreviewedPublicAdditions.length > 0) {
+    reviewReasons.push(
+      `${unreviewedPublicAdditions.length} unreviewed public listing addition(s)`,
+    );
   }
   if (unreviewedPublicRemovals.length > 0) {
     reviewReasons.push(
@@ -270,6 +293,8 @@ export function analyzeHoursRefreshChange({
     ),
     unmatched_rows: artifactNumber(afterArtifact, "unmatched_rows"),
     publicAdditions,
+    unreviewedPublicAdditions,
+    reviewedAdditionStatuses,
     publicRemovals,
     unreviewedPublicRemovals,
     statusTransitions,
@@ -285,13 +310,27 @@ export function analyzeHoursRefreshChange({
   };
 }
 
-export function renderHoursRefreshReview(analysis) {
+export function renderHoursRefreshReview(analysis, holdback = null) {
   const generated = analysis.generated_at
     ? new Date(analysis.generated_at).toISOString()
     : "unknown";
   const reviewLine = analysis.review_required
     ? `**Manual review required:** ${analysis.reviewReasons.join("; ")}.`
     : "**No unreviewed public catalog or public closure transition requires manual review.**";
+  const heldEntries = Array.isArray(holdback?.held) ? holdback.held : [];
+  const heldSection = heldEntries.length > 0
+    ? [
+        "## Held back tonight",
+        "",
+        "These changes were detected by the refresh and are WAITING for evidence rather than blocking it. Each slug was kept at its previously reviewed value; everything else in this artifact shipped. Record evidence in `src/data/place-status-overrides.json` and the hold releases on the next nightly run.",
+        "",
+        markdownTable(
+          ["Slug", "Reason"],
+          heldEntries.map((entry) => [`\`${entry.slug}\``, entry.reason]),
+          "Nothing is held.",
+        ),
+      ]
+    : [];
 
   const removedRows = analysis.publicRemovals.map((slug) => {
     const place = analysis.before.get(slug);
@@ -314,12 +353,14 @@ export function renderHoursRefreshReview(analysis) {
     const transition = analysis.statusTransitions.find(
       (entry) => entry.slug === slug,
     );
+    const evidence = analysis.reviewedAdditionStatuses?.get(slug);
     return [
       `\`${slug}\``,
       placeLabel(place, slug),
       place?.category,
       place?.municipality,
       transition?.to,
+      evidence ? statusEvidenceLink(evidence) : "Review required",
     ];
   });
   const closedRows = analysis.newlyClosed.map((entry) => {
@@ -361,6 +402,7 @@ export function renderHoursRefreshReview(analysis) {
     "",
     reviewLine,
     "",
+    ...heldSection,
     "## Coverage delta",
     "",
     "| Metric | Before | After | Change |",
@@ -393,7 +435,7 @@ export function renderHoursRefreshReview(analysis) {
     "### Added to public discovery",
     "",
     markdownTable(
-      ["Slug", "Place", "Category", "Town", "Provider status"],
+      ["Slug", "Place", "Category", "Town", "Provider status", "Review evidence"],
       addedRows,
       "No public listings were added.",
     ),
@@ -459,7 +501,16 @@ export function main() {
       "src/data/place-status-overrides.json",
     ),
   });
-  writeFileSync(outputPath, renderHoursRefreshReview(analysis));
+  let holdback = null;
+  const holdbackPath = process.env.HOURS_HOLDBACK_MANIFEST;
+  if (holdbackPath) {
+    try {
+      holdback = JSON.parse(readFileSync(holdbackPath, "utf8"));
+    } catch {
+      // A missing manifest means nothing was held tonight; render normally.
+    }
+  }
+  writeFileSync(outputPath, renderHoursRefreshReview(analysis, holdback));
 
   const outputs = {
     review_required: analysis.review_required,

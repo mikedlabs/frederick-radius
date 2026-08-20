@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Landmark } from "lucide-react";
-import { getHistoricMarkers, getRegisterSites } from "@/lib/integrations/historicSites";
+import { getHistoricMarkersResult, getRegisterSitesResult } from "@/lib/integrations/historicSites";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -24,16 +24,30 @@ export const metadata: Metadata = {
     "Read roadside marker records from MDOT and browse National Register sites returned by the National Park Service.",
 };
 
-// Markers + the register change rarely; the integration revalidates weekly.
-export const revalidate = 604800;
+// Markers and the register change rarely, so a week of caching cost nothing in
+// freshness. It cost something worse: when a build fetched nothing, the empty
+// page was frozen for SEVEN DAYS while telling readers to "check back shortly".
+// Both services are keyless and this page is tiny, so an hour is effectively
+// free and makes that sentence true.
+export const revalidate = 3600;
 
 const muniName = (slug: string) => MUNICIPALITY_BY_SLUG[slug]?.name ?? "Around the county";
 
 export default async function MarkersPage() {
-  const [markers, register] = await Promise.all([
-    getHistoricMarkers().catch(() => []),
-    getRegisterSites().catch(() => []),
+  // Ask each service whether it actually answered. An empty list alone cannot
+  // tell the difference between "the county has no markers" and "we never
+  // reached MDOT", and this page previously asserted the second from the
+  // first, over services that were answering fine.
+  const [markerResult, registerResult] = await Promise.all([
+    getHistoricMarkersResult().catch(() => ({ items: [], ok: false })),
+    getRegisterSitesResult().catch(() => ({ items: [], ok: false })),
   ]);
+  const markers = markerResult.items;
+  const register = registerResult.items;
+  const unreachable = [
+    markerResult.ok ? null : "Maryland's roadside marker service",
+    registerResult.ok ? null : "the National Park Service register",
+  ].filter((name): name is string => Boolean(name));
 
   const bridges = register.filter((s) => s.isCoveredBridge);
 
@@ -80,14 +94,31 @@ export default async function MarkersPage() {
         </p>
       </header>
 
-      {markers.length === 0 && register.length === 0 ? (
+      {/* Name what could not be read, even when the other source carried the
+          page. A layer silently missing is the same falsehood in a quieter
+          form: the intro above promises both. */}
+      {unreachable.length > 0 && (
         <section
           className="rounded-[var(--app-radius-lg)] border p-5"
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
           <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            The state and federal history layers aren&rsquo;t answering right now.
-            Check back shortly.
+            {unreachable.length === 1
+              ? `We could not reach ${unreachable[0]} on this load, so those records are missing below.`
+              : "We could not reach either history service on this load, so no records are shown below."}{" "}
+            This page rechecks every hour.
+          </p>
+        </section>
+      )}
+
+      {markers.length === 0 && register.length === 0 && unreachable.length === 0 ? (
+        <section
+          className="rounded-[var(--app-radius-lg)] border p-5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Both history services answered and returned no Frederick County
+            records.
           </p>
         </section>
       ) : (

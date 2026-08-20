@@ -227,7 +227,11 @@ export default async function PulseWeatherPanel({
   const freshAqi = (aqiObs ?? []).filter((observation) => isFreshAqiObservation(observation));
   const aqi = pickWorstAqi(freshAqi);
   const sun = sunTimes(new Date(), FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-  const updated = forecast.asOf ? fmtClock(new Date(forecast.asOf)) : null;
+  // The National Weather Service issues a gridpoint forecast every few hours,
+  // so this stamp is an ISSUANCE time and needs to say which time it is. It
+  // used to be the render clock wearing the NWS label, which advanced on every
+  // request while the numbers beneath it sat still behind a 30-minute cache.
+  const issued = forecast.asOf ? fmtClock(new Date(forecast.asOf)) : null;
   const days = buildDays(daily);
 
   return (
@@ -244,7 +248,7 @@ export default async function PulseWeatherPanel({
       >
         <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ opacity: 0.85 }}>
           <span aria-hidden className="pulse-dot inline-block h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-          Current · NWS · Frederick{updated ? ` · ${updated}` : ""}
+          Current · NWS · Frederick{issued ? ` · Issued ${issued}` : " · Issue time unavailable"}
         </p>
         <div className="mt-1.5 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -253,7 +257,7 @@ export default async function PulseWeatherPanel({
               <span className="font-serif text-[28px] font-light leading-none">&deg;</span>
             </div>
             <p className="mt-1 text-[15px] font-semibold leading-tight">{condition}</p>
-            <p className="text-[12px] leading-tight" style={{ opacity: 0.82 }}>
+            <p className="text-[12px] leading-tight">
               Feels {feels}&deg;
               {high != null && <> · H {high}&deg;</>}
               {low != null && <> · L {low}&deg;</>}

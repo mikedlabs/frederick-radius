@@ -54,18 +54,25 @@ const DEFAULT_DEPENDENCIES: DataHealthPageDependencies = {
   getSourceHealthLedger,
 };
 
+type BoundedRead<T> = { value: T; unavailable: boolean };
+
 async function boundedDataHealthRead<T>(
   label: string,
   promise: Promise<T>,
   deadlineMs: number,
   fallback: T,
-): Promise<T> {
+): Promise<BoundedRead<T>> {
   const outcome = await withDeadlineOutcome(promise, deadlineMs);
-  if (outcome.status === "fulfilled") return outcome.value;
+  if (outcome.status === "fulfilled") {
+    return { value: outcome.value, unavailable: false };
+  }
   console.warn(
     `[data-health-page] ${label} ${outcome.status} after ${deadlineMs}ms`,
   );
-  return fallback;
+  // The caller now learns that this is a FALLBACK, not an answer. Returning a
+  // bare [] here is what let the operator board print an all-clear over a
+  // ledger it never managed to read.
+  return { value: fallback, unavailable: true };
 }
 
 export type DataHealthPageRuntime = {
@@ -76,6 +83,9 @@ export type DataHealthPageRuntime = {
   ingestRuns: IngestRunSummary[];
   sourceLedger: SourceLedgerRow[];
   snapshotStorage: FeedSnapshotStorageTelemetry | null;
+  /** Reads that did NOT answer, by label. A board that cannot see its
+   *  telemetry must say so rather than render the fallback as an all-clear. */
+  unavailable: string[];
 };
 
 /**
@@ -87,34 +97,11 @@ export type DataHealthPageRuntime = {
 export async function loadDataHealthPageRuntime(
   dependencies: DataHealthPageDependencies = DEFAULT_DEPENDENCIES,
 ): Promise<DataHealthPageRuntime> {
-  // Start independent database reads immediately. They can use the time spent
-  // on snapshot hydration instead of extending the critical path afterward.
-  const independentDatabaseReads = Promise.all([
-    boundedDataHealthRead(
-      "drift decisions",
-      Promise.resolve().then(() => dependencies.getDriftDecisions()),
-      DATA_HEALTH_DB_DEADLINE_MS,
-      {},
-    ),
-    boundedDataHealthRead(
-      "unparseable locations",
-      Promise.resolve().then(() => dependencies.getUnparseableLocationSummary()),
-      DATA_HEALTH_DB_DEADLINE_MS,
-      [],
-    ),
-    boundedDataHealthRead(
-      "recent ingest runs",
-      Promise.resolve().then(() => dependencies.getRecentIngestRuns()),
-      DATA_HEALTH_DB_DEADLINE_MS,
-      [],
-    ),
-    boundedDataHealthRead(
-      "snapshot storage",
-      Promise.resolve().then(() => dependencies.getFeedSnapshotStorageTelemetry()),
-      DATA_HEALTH_DB_DEADLINE_MS,
-      null,
-    ),
-  ] as const);
+  const unavailable: string[] = [];
+  const track = <T,>(label: string, read: BoundedRead<T>): T => {
+    if (read.unavailable) unavailable.push(label);
+    return read.value;
+  };
 
   await boundedDataHealthRead(
     "snapshot hydration",
@@ -123,36 +110,89 @@ export async function loadDataHealthPageRuntime(
     undefined,
   );
 
-  const liveDeadline = createAbortDeadline(DATA_HEALTH_FEED_DEADLINE_MS);
-  const liveCheckPromise = boundedDataHealthRead<LiveCheck | null>(
-    "live event feeds",
-    Promise.resolve().then(() =>
-      dependencies.getLiveEvents(60, {
-        signal: liveDeadline.signal,
-      }),
+  // SEQUENTIALLY, one connection at a time.
+  //
+  // These four reads used to run under a single Promise.all, on the reasoning
+  // that independent queries should overlap with snapshot hydration rather
+  // than extend the critical path. That reasoning does not survive contact
+  // with the connection pool: Supavisor runs this app at max: 1, so
+  // concurrent getDb() callers do not overlap, they QUEUE. The first read
+  // holds the only connection and the other three sit behind it until their
+  // UI deadline fires, at which point each quietly returns its fallback.
+  //
+  // The board then rendered {} , [], [] and null as though the database had
+  // answered and had nothing to report: an explicit all-clear over a ledger
+  // it never actually read. The same Promise.all-over-getDb deadlock was
+  // diagnosed and fixed once before in this repo (PR #1024); it came back
+  // here wearing a deadline, which turned a hang into a silent lie.
+  const driftDecisions = track(
+    "drift decisions",
+    await boundedDataHealthRead(
+      "drift decisions",
+      Promise.resolve().then(() => dependencies.getDriftDecisions()),
+      DATA_HEALTH_DB_DEADLINE_MS,
+      {},
     ),
-    DATA_HEALTH_FEED_DEADLINE_MS,
-    null,
-  ).finally(liveDeadline.dispose);
+  );
+  const unparseable = track(
+    "unparseable locations",
+    await boundedDataHealthRead(
+      "unparseable locations",
+      Promise.resolve().then(() => dependencies.getUnparseableLocationSummary()),
+      DATA_HEALTH_DB_DEADLINE_MS,
+      [],
+    ),
+  );
+  const ingestRuns = track(
+    "recent ingest runs",
+    await boundedDataHealthRead(
+      "recent ingest runs",
+      Promise.resolve().then(() => dependencies.getRecentIngestRuns()),
+      DATA_HEALTH_DB_DEADLINE_MS,
+      [],
+    ),
+  );
+  const snapshotStorage = track(
+    "snapshot storage",
+    await boundedDataHealthRead(
+      "snapshot storage",
+      Promise.resolve().then(() => dependencies.getFeedSnapshotStorageTelemetry()),
+      DATA_HEALTH_DB_DEADLINE_MS,
+      null,
+    ),
+  );
 
-  const [liveCheck, databaseReads] = await Promise.all([
-    liveCheckPromise,
-    independentDatabaseReads,
-  ]);
-  const [driftDecisions, unparseable, ingestRuns, snapshotStorage] =
-    databaseReads;
+  const liveDeadline = createAbortDeadline(DATA_HEALTH_FEED_DEADLINE_MS);
+  // The live feed probe is HTTP, not the database, so it may still overlap
+  // nothing and simply run on its own deadline.
+  const liveCheck = track(
+    "live event feeds",
+    await boundedDataHealthRead<LiveCheck | null>(
+      "live event feeds",
+      Promise.resolve().then(() =>
+        dependencies.getLiveEvents(60, {
+          signal: liveDeadline.signal,
+        }),
+      ),
+      DATA_HEALTH_FEED_DEADLINE_MS,
+      null,
+    ).finally(liveDeadline.dispose),
+  );
 
   const liveCheckedAt = new Date().toISOString();
   const currentFeedEvidence = liveCheck
     ? buildRuntimeProbeEvidence(liveCheck, liveCheckedAt)
     : [];
-  const sourceLedger = await boundedDataHealthRead(
+  const sourceLedger = track(
     "source ledger",
-    Promise.resolve().then(() =>
-      dependencies.getSourceHealthLedger({ currentEvidence: currentFeedEvidence }),
+    await boundedDataHealthRead(
+      "source ledger",
+      Promise.resolve().then(() =>
+        dependencies.getSourceHealthLedger({ currentEvidence: currentFeedEvidence }),
+      ),
+      DATA_HEALTH_DB_DEADLINE_MS,
+      [],
     ),
-    DATA_HEALTH_DB_DEADLINE_MS,
-    [],
   );
 
   return {
@@ -163,5 +203,6 @@ export async function loadDataHealthPageRuntime(
     ingestRuns,
     sourceLedger,
     snapshotStorage,
+    unavailable,
   };
 }

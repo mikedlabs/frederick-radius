@@ -182,7 +182,13 @@ describe("GET /api/search map fast path", () => {
     const response = await GET(request("zzqxwvnotreal", "global"));
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    // 200, not 503. Both guarantees this test exists for are unchanged: the
+    // response still SAYS events are unavailable, and it still refuses to bank
+    // a miss it cannot trust. Only the transport changed, because the overlay
+    // treats any non-ok as a network failure and rendered "Check your
+    // connection" with no links out, over the person's own working connection.
+    // A caveat on the answer should not be delivered as a failed request.
+    expect(response.status).toBe(200);
     expect(body.results).toEqual([]);
     expect(body.meta.liveEventsUnavailable).toBe(true);
     expect(mocks.recordSearchMiss).not.toHaveBeenCalled();

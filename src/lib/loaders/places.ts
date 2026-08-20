@@ -1059,6 +1059,18 @@ export function deriveTags(category: string, tags?: string[]): string[] {
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
   const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
+  // A patch may only OUTRANK the provider refresh when it can itself publish.
+  // overrides.ts deliberately marks an hours patch UNVERIFIED when it carries
+  // no hours_updated_at, so that patch asserts nothing — and suppressing the
+  // refresh as well left the place with no hours at all, which is strictly
+  // worse than having no patch. Measured 2026-08-19: three of the catalog's
+  // hours patches are undated, and lima-soul-restaurant-frederick had a
+  // four-day-old provider schedule that passed every gate, silenced by a patch
+  // that published nothing. The typo-fix intent this guard was written for
+  // still holds for a DATED patch, which is the only kind that can win.
+  const hoursPatchOutranksRefresh = Boolean(
+    OV_PATCH?.[p.slug]?.hours && OV_PATCH?.[p.slug]?.hours_updated_at,
+  );
   // Shared-photo de-twin: a suppressed record shares its Google photo with
   // a stronger canonical record in the same ChIJ cluster, so null its hero
   // (and gallery) — the card falls back to the category placeholder. "No
@@ -1110,7 +1122,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // fixed. enriched.hours already carries the patched schedule (applyEnrichment
   // takes p.hours first), so we just suppress the refresh override here.
   const refresh = acceptedHoursRefresh(p.slug, enriched.google_place_id);
-  const refreshedHours = !hasHoursPatch && refresh?.weekday_hours
+  const refreshedHours = !hoursPatchOutranksRefresh && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
   const hours = refreshedHours ?? enriched.hours;
@@ -1147,7 +1159,9 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
     // back onto a place page as seven raw "Open 24 hours" rows.
     google_hours:
-      mayAssertHours && !hasHoursPatch ? enriched.google_hours : undefined,
+      mayAssertHours && !hoursPatchOutranksRefresh
+        ? enriched.google_hours
+        : undefined,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
@@ -1224,6 +1238,14 @@ export function slimForList(p: PlaceCardData): PlaceCardData {
 export function slimForNearby(p: PlaceCardData): PlaceCardData {
   const listPlace = slimForList(p);
   const {
+    // The hero photo URL goes too, unlike slimForList. Each Google photo
+    // token is ~700B of incompressible base64, and serializing one for every
+    // craving-eligible place made the tokens ~64% of /nearby's compressed
+    // transfer (~354KB of 549KB, measured 2026-08-19) while the bare page
+    // paints zero of them. Cards hydrate photos on scroll through
+    // usePlacePhoto -> /api/places/by-slugs, which re-applies the
+    // photo-suppression verdicts server-side.
+    google_photo_url: _googlePhotoUrl,
     description: _description,
     review_snippet: _reviewSnippet,
     review_author: _reviewAuthor,
@@ -1234,6 +1256,7 @@ export function slimForNearby(p: PlaceCardData): PlaceCardData {
     amenities: _amenities,
     ...rest
   } = listPlace;
+  void _googlePhotoUrl;
   void _description;
   void _reviewSnippet;
   void _reviewAuthor;

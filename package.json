@@ -10,7 +10,7 @@
     "build": "node scripts/build-application.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "audit:pages": "tsx --tsconfig tsconfig.json scripts/page-quality-audit.ts",
     "audit:repo-size": "tsx --tsconfig tsconfig.json scripts/check-repository-size-budget.ts",
@@ -102,6 +102,7 @@
     "refresh:public-amenities": "tsx --tsconfig tsconfig.json scripts/refresh-public-amenities.ts && npm run build:amenities",
     "build:shipping": "tsx --tsconfig tsconfig.json scripts/build-shipping.ts",
     "gates": "tsx --tsconfig tsconfig.json scripts/data-quality-gates.ts",
+    "verify:credentials": "node scripts/verify-credentials.mjs",
     "build:place-refresh-identities": "tsx --tsconfig tsconfig.json scripts/build-place-refresh-identities.ts",
     "build:client-places": "npm run build:place-refresh-identities && tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
     "build:radius-search": "tsx --tsconfig tsconfig.json scripts/build-radius-search.ts",
@@ -121,7 +122,9 @@
     "refresh:county-boundary": "tsx --tsconfig tsconfig.json scripts/refresh-census-county-boundary.ts",
     "audit:county-data": "tsx --tsconfig tsconfig.json scripts/audit-county-derived-data.ts",
     "test:ux": "playwright test e2e/ux-audit.spec.ts e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
-    "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1"
+    "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
+    "eval:coverage": "tsx --tsconfig tsconfig.json scripts/eval-answer-coverage.ts",
+    "steward:holdback": "node scripts/steward-holdback.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
@@ -136,7 +139,6 @@
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.191",
     "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.8.0",

@@ -30,6 +30,7 @@ import {
 } from "@/lib/mapboxMatrix";
 import {
   hasJsonContentType,
+  isOverPaidRequestBudget,
   isRateLimited,
   isSameOriginMutationRequest,
   isSameOriginRequest,
@@ -119,7 +120,7 @@ export async function GET(req: NextRequest) {
   }
   // A settled radius sends one debounced request. Thirty per minute leaves
   // generous room for real exploration while containing forged loops.
-  if (await isRateLimited(req, "travel-matrix", 30, 60)) {
+  if (await isOverPaidRequestBudget(req, "travel-matrix", 30, 60, 5)) {
     return new Response("Too Many Requests", { status: 429 });
   }
 

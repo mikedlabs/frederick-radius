@@ -43,7 +43,7 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
       {heading && (
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[var(--app-amber-text)]"><Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />Saved beers</p>
+            <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: "color-mix(in srgb, var(--app-amber-text) 85%, var(--app-ink))" }}><Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />Saved beers</p>
             <h2 className="mt-2 font-serif text-[34px] leading-none tracking-[-0.04em] text-[var(--app-ink)]">
               Your saved pours
             </h2>

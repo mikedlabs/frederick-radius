@@ -1,0 +1,147 @@
+name: Production health alert
+
+# A delivery channel for the nightly health report that CANNOT expire.
+#
+# The app already reports its own health to GitHub Issues from a Vercel cron,
+# which is the right design: the repo is the inbox the owner already reads. But
+# that path authenticates with GITHUB_ALERTS_TOKEN, a personal access token,
+# and on 2026-08-19 an audit found it returning 401 Bad Credentials on every
+# run since at least 2026-08-17. Nothing announced that. The token had simply
+# stopped working, and the only symptom was silence, which is the same symptom
+# as everything being fine.
+#
+# So the alerting had a single point of failure whose failure mode was
+# indistinguishable from health, guarding a system whose whole job is to make
+# failures distinguishable from health.
+#
+# This workflow closes that hole. It runs inside Actions, so it authenticates
+# with the automatic GITHUB_TOKEN: no secret to add, nothing to rotate, nothing
+# to expire. It reads the PUBLIC /api/health endpoint, so it needs no
+# credential of any kind, and it deliberately treats an unreachable app as the
+# loudest alert rather than a skipped run.
+#
+# It does not replace the richer in-app report (gates, tripwires, anomalies).
+# It is the floor: if everything else goes quiet, this still speaks.
+
+on:
+  schedule:
+    # 09:40 UTC, ten minutes after the app's own nightly data-health cron, so a
+    # recovery it performs is reflected before this reads.
+    - cron: "40 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: production-health-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read production health
+        id: health
+        env:
+          HEALTH_URL: https://frederickradius.app/api/health
+        run: |
+          set +e
+          body=$(curl --silent --show-error --max-time 30 --fail "$HEALTH_URL" 2>/tmp/curl.err)
+          code=$?
+          set -e
+          if [ $code -ne 0 ]; then
+            # An unreachable health endpoint is the most serious state there
+            # is, so it must not be a silent skip.
+            {
+              echo "status=unreachable"
+              echo "summary=The production health endpoint could not be read (curl exit $code)."
+            } >> "$GITHUB_OUTPUT"
+            {
+              echo "detail<<EOF"
+              echo "\`$HEALTH_URL\` did not answer."
+              echo
+              echo '```'
+              cat /tmp/curl.err 2>/dev/null || echo "(no curl error output)"
+              echo '```'
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$body" > /tmp/health.json
+          node -e '
+            const h = JSON.parse(require("fs").readFileSync("/tmp/health.json", "utf8"));
+            const out = [];
+            const d = h.data ?? {};
+            const status = h.status ?? "unknown";
+            out.push(`status=${status}`);
+            out.push(
+              `summary=${status} · ${d.current ?? "?"}/${d.tracked ?? "?"} sources current, ` +
+              `${d.stale ?? 0} stale, ${d.attention ?? 0} need attention, ${d.unknown ?? 0} unknown`,
+            );
+            const lines = [];
+            lines.push(`**Overall:** \`${status}\``);
+            lines.push(`**Deployment:** \`${h.deployment?.revision ?? "unknown"}\` (${h.deployment?.environment ?? "?"})`);
+            lines.push(`**Database:** ${h.database?.status ?? "?"}${h.database?.latencyMs != null ? ` (${h.database.latencyMs}ms)` : ""}`);
+            lines.push("");
+            lines.push("| Sources | Count |");
+            lines.push("| --- | ---: |");
+            for (const k of ["tracked", "current", "stale", "attention", "unknown"]) {
+              if (d[k] != null) lines.push(`| ${k} | ${d[k]} |`);
+            }
+            const diag = Object.entries(d.diagnostics ?? {}).filter(([, v]) => v > 0);
+            if (diag.length > 0) {
+              lines.push("");
+              lines.push("**Non-zero diagnostics**");
+              for (const [k, v] of diag) lines.push(`- ${k}: ${v}`);
+            }
+            const readiness = h.readiness ?? {};
+            const notReady = Object.entries(readiness.migrations ?? {}).filter(
+              ([k, v]) => k !== "status" && v !== "ready",
+            );
+            if (notReady.length > 0) {
+              lines.push("");
+              lines.push("**Not ready**");
+              for (const [k, v] of notReady) lines.push(`- ${k}: ${v}`);
+            }
+            out.push("detail<<EOF");
+            out.push(lines.join("\n"));
+            out.push("EOF");
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, out.join("\n") + "\n");
+          '
+
+      - name: Open, update, or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.health.outputs.status }}
+          SUMMARY: ${{ steps.health.outputs.summary }}
+          DETAIL: ${{ steps.health.outputs.detail }}
+          TITLE: "[health] Production is reporting degraded"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing=$(gh issue list --state open --search "$TITLE in:title" --json number,title \
+            --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
+
+          stamp=$(date -u '+%Y-%m-%d %H:%M UTC')
+          body=$(printf '%s\n\n%s\n\n_Checked %s. [Run](%s)._\n' "$SUMMARY" "$DETAIL" "$stamp" "$RUN_URL")
+
+          if [ "$STATUS" = "ok" ]; then
+            if [ -n "$existing" ]; then
+              recovered=$(printf 'Recovered. %s\n\n_Checked %s._\n' "$SUMMARY" "$stamp")
+              gh issue comment "$existing" --body "$recovered"
+              gh issue close "$existing" --reason completed
+              echo "Closed #$existing on recovery."
+            else
+              echo "Healthy, and no open issue. Nothing to do."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+            echo "Commented on #$existing."
+          else
+            gh issue create --title "$TITLE" --body "$body"
+            echo "Opened a new tracking issue."
+          fi
