@@ -300,12 +300,12 @@ export default async function PulsePage() {
     news,
     pressResult,
     riversResult,
-    airports,
-    forecast,
+    airportsResult,
+    forecastResult,
     marcBoardResult,
-    marcAlerts,
-    troutStockings,
-    campDavidTfr,
+    marcAlertsResult,
+    troutStockingsResult,
+    campDavidTfrResult,
   ] = await Promise.all([
     // Today, Map, Ask, the global status, and Pulse all begin with the same
     // normalized conditions. Only Pulse-exclusive feeds are fetched below.
@@ -354,10 +354,10 @@ export default async function PulsePage() {
       { data: [], available: false },
     ),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
-    withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
+    withTimeoutStatus(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // Current conditions for the leading Weather tile (the full panel is its
     // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
-    withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
+    withTimeoutStatus(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
     // MARC Brunswick Line — the county's commuter rail, schedule-backed with a
     // live delay overlay. The tile head shows the soonest departure; the body
     // is the full per-station board (NextTrainBoard). Complements the live bus
@@ -367,14 +367,17 @@ export default async function PulsePage() {
       FEED_MS,
       { stations: [], serviceToday: false },
     ),
-    withTimeout(getMarcAlerts(), FEED_MS, []),
+    // Status-carrying, or a dead MTA alerts feed sits silently under a calm
+    // tile: an empty alerts array from a feed we never reached is not "no
+    // alerts".
+    withTimeoutStatus(getMarcAlerts(), FEED_MS, []),
     // DNR trout stockings in Frederick waters (Carroll Creek included) —
     // near-daily during the spring/fall runs, empty mid-summer. Keyless
     // state JSON API; the tile self-hides out of season.
-    withTimeout(getFrederickStockings(14), FEED_MS, []),
+    withTimeoutStatus(getFrederickStockings(14), FEED_MS, []),
     // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
     // expanded — the quiet explanation for Thurmont's helicopter days.
-    withTimeout(getCampDavidTfr(), FEED_MS, null),
+    withTimeoutStatus(getCampDavidTfr(), FEED_MS, null),
   ]);
 
   const fixit = fixitResult.data;
@@ -388,6 +391,11 @@ export default async function PulsePage() {
   const riverSourceAvailable = riversResult.available;
   const marcBoard = marcBoardResult.data;
   const marcBoardAvailable = marcBoardResult.available;
+  const airports = airportsResult.data;
+  const forecast = forecastResult.data;
+  const marcAlerts = marcAlertsResult.data;
+  const troutStockings = troutStockingsResult.data;
+  const campDavidTfr = campDavidTfrResult.data;
   const marcNow = new Date(situation.generatedAt);
   const sourceIsCurrent = (
     source: { availability: string; freshness: string },
@@ -1157,6 +1165,25 @@ export default async function PulsePage() {
     // Weather LEADS the board as the wide feature tile: "what's it doing out"
     // is the most-asked live question. Tapping it opens the full conditions +
     // hourly + 7-day panel as its body.
+    ...(!wxCur
+      ? [{
+          key: "weather",
+          label: "Weather",
+          iconName: "CloudSun",
+          countLabel: "Feed unavailable",
+          accent: "var(--app-cool)",
+          active: false,
+          attention: false,
+          degraded: true,
+          keepVisibleWhenUnavailable: true,
+          kind: "status",
+          sourceLabel: "NWS · weather.gov",
+          peek: "The National Weather Service could not be reached.",
+          body: emptyNote(
+            "The National Weather Service could not be reached, so current conditions are unknown right now. This is the one tile whose absence would be loudest, so it stays and says so.",
+          ),
+        } as PulseTile]
+      : []),
     ...(wxCur
       ? [{
           key: "weather",
@@ -1947,6 +1974,25 @@ export default async function PulsePage() {
         )
         : emptyNote("River gauge readings are briefly unavailable."),
     },
+    ...(airports.length === 0 && !airportsResult.available
+      ? [{
+          key: "airports",
+          label: "Airports",
+          iconName: "Plane",
+          countLabel: "Feed unavailable",
+          accent: "var(--app-cool)",
+          active: false,
+          attention: false,
+          degraded: true,
+          keepVisibleWhenUnavailable: true,
+          kind: "status",
+          sourceLabel: "FAA",
+          peek: "The FAA status feed could not be reached.",
+          body: emptyNote(
+            "The FAA airport status feed could not be reached, so BWI, Dulles, and Reagan delays are unknown right now.",
+          ),
+        } as PulseTile]
+      : []),
     ...(airports.length > 0
       ? [{
           // BWI / Dulles / Reagan. The accent goes amber + the tile tints only
@@ -1991,11 +2037,23 @@ export default async function PulsePage() {
       key: "train",
       label: "MARC trains",
       iconName: "TrainFront",
-      countLabel: !marcBoard.serviceToday ? "No service" : marcNext ? marcNext.label : "Done today",
+      // Availability outranks the schedule read: the timeout fallback is
+      // { serviceToday: false }, and printing "No service" from it told a
+      // Wednesday commuter the trains were not running because a fetch was
+      // slow. "Schedule unavailable" is what is actually known.
+      countLabel: !marcBoardAvailable
+        ? "Schedule unavailable"
+        : !marcBoard.serviceToday
+          ? "No service"
+          : marcNext
+            ? marcNext.label
+            : "Done today",
       accent: marcAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: marcAlerts.length > 0,
       attention: false,
-      degraded: !marcBoardAvailable,
+      // A dead alerts feed is also a degraded tile: an empty alerts array
+      // from a feed we never reached is not "no alerts".
+      degraded: !marcBoardAvailable || !marcAlertsResult.available,
       kind: "status",
       sourceLabel: "MTA MARC · Brunswick Line",
       peek: marcAlerts.length > 0
@@ -2009,6 +2067,25 @@ export default async function PulsePage() {
     },
     // Trout stockings — seasonal, self-hides mid-summer. Frederick's waters
     // (Carroll Creek included) get near-daily drops in the spring/fall runs.
+    ...(troutStockings.length === 0 && !troutStockingsResult.available
+      ? [{
+          key: "trout",
+          label: "Trout stocking",
+          iconName: "Fish",
+          countLabel: "Feed unavailable",
+          accent: "var(--app-cool)",
+          active: false,
+          attention: false,
+          degraded: true,
+          keepVisibleWhenUnavailable: true,
+          kind: "status",
+          sourceLabel: "Maryland DNR",
+          peek: "The DNR stocking feed could not be reached.",
+          body: emptyNote(
+            "The Maryland DNR stocking feed could not be reached, so recent stockings are unknown right now. Out of season this tile simply stays hidden.",
+          ),
+        } as PulseTile]
+      : []),
     ...(troutStockings.length > 0
       ? [{
           key: "trout",
@@ -2036,6 +2113,25 @@ export default async function PulsePage() {
         } as PulseTile]
       : []),
     // Camp David airspace — renders ONLY while the P-40 ring is expanded.
+    ...(campDavidTfr === null && !campDavidTfrResult.available
+      ? [{
+          key: "airspace",
+          label: "Camp David airspace",
+          iconName: "Plane",
+          countLabel: "Feed unavailable",
+          accent: "var(--app-cool)",
+          active: false,
+          attention: false,
+          degraded: true,
+          keepVisibleWhenUnavailable: true,
+          kind: "status",
+          sourceLabel: "FAA TFR",
+          peek: "The FAA TFR feed could not be reached.",
+          body: emptyNote(
+            "The FAA TFR feed could not be reached, so whether the P-40 ring is expanded is unknown right now. This tile's absence normally means it is not expanded, which is a claim a failed check may not borrow.",
+          ),
+        } as PulseTile]
+      : []),
     ...(campDavidTfr
       ? [{
           key: "airspace",
