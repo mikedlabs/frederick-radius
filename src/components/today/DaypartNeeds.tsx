@@ -439,7 +439,7 @@ function DaypartPickCard({
         data-decision-position={lead ? "lead" : "alternative"}
         data-decision-action="open"
         className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
-          lead ? "w-[14.5rem]" : "w-[10.75rem]"
+          lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
         }`}
         style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
@@ -513,7 +513,7 @@ function DaypartPickCard({
       data-decision-position={lead ? "lead" : "alternative"}
       data-decision-action="open"
       className={`group flex h-full min-h-[76px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
-        lead ? "w-[14.5rem]" : "w-[10.75rem]"
+        lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
       }`}
       style={{
         borderColor: "var(--app-border)",
@@ -800,25 +800,47 @@ export default function DaypartNeeds({
 
         {awaitingLive ? (
           <div
-            className="mt-2 flex gap-2.5 overflow-hidden pb-1"
+            className="today-answer-shelf mt-2 flex gap-2.5 overflow-hidden pb-1"
             aria-busy="true"
             aria-label={`Loading open ${active.label.toLocaleLowerCase()} places`}
           >
+            {/* Mirrors the loaded shape (grid on phones, rail from sm) so the
+                answer does not jump from a row to a grid when it arrives. */}
             {[0, 1, 2].map((slot) => (
-              <Skeleton.Block
+              <div
                 key={slot}
-                width={slot === 0 ? "14.5rem" : "10.75rem"}
-                height="7.35rem"
-                round="var(--app-radius-md)"
-                className="shrink-0"
-              />
+                className="w-full shrink-0 sm:w-auto"
+                data-shelf-lead={slot === 0 ? "true" : undefined}
+              >
+                <Skeleton.Block
+                  width="100%"
+                  height="7.35rem"
+                  round="var(--app-radius-md)"
+                  className={slot === 0 ? "sm:!w-[14.5rem]" : "sm:!w-[10.75rem]"}
+                />
+              </div>
             ))}
           </div>
         ) : active.picks.length > 0 ? (
           <div>
-            <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
+            {/* Phones get a grid, not a rail. The rail hid most of the
+                answer at EVERY phone width: 1.59 of 4 cards visible at 375px
+                (~1.46 legible past the edge fade), cards 3 and 4 fully
+                off-screen even at 430px — two cards need a ~446px viewport,
+                which no phone has. A shelf that shows one option under a
+                heading promising four is the front door's biggest lie of
+                omission. Lead full-width, alternates two-up: measured +124px
+                of page height, against +384px for a naive one-column stack.
+                From sm up the rail keeps its role, where the column actually
+                has room. data-decision-position (lead/alternative) is layout-
+                independent, so "Why it leads" keeps its subject either way. */}
+            <ul ref={shelfRef} className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1">
               {active.picks.map((place, index) => (
-                <li key={place.slug} className="shrink-0">
+                <li
+                  key={place.slug}
+                  className="shrink-0"
+                  data-shelf-lead={index === 0 ? "true" : undefined}
+                >
                   <DaypartPickCard
                     place={place}
                     category={active.category}
