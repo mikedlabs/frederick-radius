@@ -40,6 +40,26 @@ const DEFAULT_ANTHROPIC_RETRIES = 2;
 const DEFAULT_ANTHROPIC_RETRY_DELAY_MS = 750;
 const MAX_ANTHROPIC_RETRY_DELAY_MS = 15_000;
 
+/**
+ * The extraction contract every model-assisted ingest is held to.
+ *
+ * This was two byte-identical copies, one inside extractJson and one inside
+ * extractJsonStrict, with nothing keeping them in step. Both are load-bearing
+ * beyond formatting: the "ONLY facts clearly present" and "never invent phone
+ * numbers, dates, prices, or hours" clauses are what stop the extractor
+ * fabricating civic and business facts, and the complete-sentence clause is
+ * what holds extracted prose to docs/VOICE.md. Editing one path and not the
+ * other would have quietly given the two extractors different rules, and no
+ * test compared them. One constant makes that drift impossible rather than
+ * merely unlikely.
+ */
+const EXTRACTION_PREAMBLE =
+  "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
+  "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
+  "dates, prices, or hours. If you can't find something, omit it. When a requested field contains " +
+  "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
+  "If nothing applies, return an empty result.\n\n";
+
 function htmlToText(html: string, maxChars: number): string {
   return html
     .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
@@ -549,12 +569,7 @@ export async function extractJson<T = unknown>(
 ): Promise<T | null> {
   const apiKey = opts.apiKey ?? API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const preamble =
-    "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
-    "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
-    "dates, prices, or hours. If you can't find something, omit it. When a requested field contains " +
-    "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
-    "If nothing applies, return an empty result.\n\n";
+  const preamble = EXTRACTION_PREAMBLE;
 
   const ctrl = new AbortController();
   const timeoutMs = opts.timeoutMs ?? 30_000;
@@ -827,12 +842,7 @@ export async function extractJsonStrict<T = unknown>(
 ): Promise<T | null> {
   const apiKey = opts.apiKey ?? API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  const preamble =
-    "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
-    "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
-    "dates, prices, or hours. If you can't find something, omit it. When a requested field contains " +
-    "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
-    "If nothing applies, return an empty result.\n\n";
+  const preamble = EXTRACTION_PREAMBLE;
 
   const response = await requestAnthropicMessage(
     apiKey,
