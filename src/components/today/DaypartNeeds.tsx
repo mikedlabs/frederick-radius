@@ -7,14 +7,11 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
-import {
-  getScope,
-  scopeToParam,
-  SCOPE_CHANGE_EVENT,
-  type Scope,
-} from "@/lib/scope";
+import { daypartBrowseHref } from "@/lib/today/daypart-needs";
+import { getScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
@@ -80,50 +77,11 @@ export function nextUnresolvedDaypartCategory(
   );
 }
 
-/**
- * Keep Today's location-aware shelf and its expanded list on the same ranking
- * path. Exact device coordinates stay in session storage; the URL carries only
- * the noun/facet and the coarse browsing scope.
- */
-export function daypartBrowseHref(
-  category: string,
-  label: string,
-  scope: Scope | null = null,
-): string | null {
-  const normalizedLabel = label.toLowerCase();
-  const target =
-    category === "coffee"
-      ? { craving: "coffee" }
-      : category === "bakery"
-        ? { craving: "breakfast" }
-        : category === "restaurant"
-          ? {
-              craving: normalizedLabel.includes("lunch")
-                ? "lunch"
-                : normalizedLabel.includes("dinner")
-                  ? "dinner"
-                  : normalizedLabel.includes("still")
-                    ? "late"
-                    : "food",
-            }
-          : category === "brewery"
-            ? { craving: "breweries" }
-            : category === "bar"
-              ? { craving: "drinks", facet: "bar" }
-              : category === "ice-cream"
-                ? { craving: "ice-cream" }
-                : category === "museum"
-                  ? { craving: "art", facet: "museum" }
-                  : category === "book-store"
-                    ? { craving: "shops", facet: "book-store" }
-                    : null;
-  if (!target) return null;
-
-  const params = new URLSearchParams({ c: target.craving });
-  if ("facet" in target && target.facet) params.set("facet", target.facet);
-  if (scope) params.set("in", scopeToParam(scope));
-  return `/nearby?${params.toString()}`;
-}
+/** The href mapping lives in lib/today/daypart-needs so the server HTML
+ * emits the same availability-ordered destination this client refines.
+ * Re-exported here because the client spec and callers reach it through this
+ * component's surface. */
+export { daypartBrowseHref };
 
 /** Turn the live decision response into the shelf verbatim, including an empty
  * answer. A successful scoped zero is information; only a rejected request may
@@ -396,7 +354,20 @@ function DaypartPickCard({
   eager?: boolean;
   lead?: boolean;
 }) {
-  const signaledPhoto = place.photo ? daypartPhotoSrc(place.photo) : null;
+  // Narrow the proxy request to what the card actually paints (lead 232px,
+  // alternates 172px; proxyPhotoAtWidth doubles for DPR). The stored URL is
+  // the w=800 hero, and because these render `unoptimized` (the proxy is an
+  // opaque route Next cannot resize) the `sizes` hint is inert — so every
+  // /today visit was downloading ~247KB per lead and ~104KB per alternate,
+  // re-paid on each visit since /api/place-photo is deliberately no-store
+  // (a Google licensing constraint). Measured by the friction audit: 819KB
+  // saved across the shelf's double paint. Narrowing composes with the
+  // failure signal below: the proxy returns its 1x1 at every width, so the
+  // honest broken-photo path is unchanged. Same missed-adopter fix as
+  // PlaceCard's Thumb (commit 31c91814 created the helper for this bug).
+  const signaledPhoto = place.photo
+    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 232 : 172))
+    : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
   const detail =
@@ -425,7 +396,7 @@ function DaypartPickCard({
         data-decision-position={lead ? "lead" : "alternative"}
         data-decision-action="open"
         className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
-          lead ? "w-[14.5rem]" : "w-[10.75rem]"
+          lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
         }`}
         style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
@@ -434,7 +405,6 @@ function DaypartPickCard({
           alt=""
           fill
           unoptimized={signaledPhoto.startsWith("/api/place-photo")}
-          sizes="168px"
           priority={eager}
           fetchPriority={eager ? "high" : "auto"}
           placeholder="blur"
@@ -500,7 +470,7 @@ function DaypartPickCard({
       data-decision-position={lead ? "lead" : "alternative"}
       data-decision-action="open"
       className={`group flex h-full min-h-[76px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
-        lead ? "w-[14.5rem]" : "w-[10.75rem]"
+        lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
       }`}
       style={{
         borderColor: "var(--app-border)",
@@ -787,25 +757,47 @@ export default function DaypartNeeds({
 
         {awaitingLive ? (
           <div
-            className="mt-2 flex gap-2.5 overflow-hidden pb-1"
+            className="today-answer-shelf mt-2 flex gap-2.5 overflow-hidden pb-1"
             aria-busy="true"
             aria-label={`Loading open ${active.label.toLocaleLowerCase()} places`}
           >
+            {/* Mirrors the loaded shape (grid on phones, rail from sm) so the
+                answer does not jump from a row to a grid when it arrives. */}
             {[0, 1, 2].map((slot) => (
-              <Skeleton.Block
+              <div
                 key={slot}
-                width={slot === 0 ? "14.5rem" : "10.75rem"}
-                height="7.35rem"
-                round="var(--app-radius-md)"
-                className="shrink-0"
-              />
+                className="w-full shrink-0 sm:w-auto"
+                data-shelf-lead={slot === 0 ? "true" : undefined}
+              >
+                <Skeleton.Block
+                  width="100%"
+                  height="7.35rem"
+                  round="var(--app-radius-md)"
+                  className={slot === 0 ? "sm:!w-[14.5rem]" : "sm:!w-[10.75rem]"}
+                />
+              </div>
             ))}
           </div>
         ) : active.picks.length > 0 ? (
           <div>
-            <ul ref={shelfRef} className="shelf-rail mt-2 gap-2.5 pb-1">
+            {/* Phones get a grid, not a rail. The rail hid most of the
+                answer at EVERY phone width: 1.59 of 4 cards visible at 375px
+                (~1.46 legible past the edge fade), cards 3 and 4 fully
+                off-screen even at 430px — two cards need a ~446px viewport,
+                which no phone has. A shelf that shows one option under a
+                heading promising four is the front door's biggest lie of
+                omission. Lead full-width, alternates two-up: measured +124px
+                of page height, against +384px for a naive one-column stack.
+                From sm up the rail keeps its role, where the column actually
+                has room. data-decision-position (lead/alternative) is layout-
+                independent, so "Why it leads" keeps its subject either way. */}
+            <ul ref={shelfRef} className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1">
               {active.picks.map((place, index) => (
-                <li key={place.slug} className="shrink-0">
+                <li
+                  key={place.slug}
+                  className="shrink-0"
+                  data-shelf-lead={index === 0 ? "true" : undefined}
+                >
                   <DaypartPickCard
                     place={place}
                     category={active.category}
