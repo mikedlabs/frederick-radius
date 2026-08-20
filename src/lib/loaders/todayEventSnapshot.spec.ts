@@ -115,6 +115,15 @@ describe("Today durable event snapshot", () => {
       envelope({ archive_status: "error" }),
       NOW,
     );
+    // A null status is the reader being locked OUT of `ingest_runs`, not the
+    // collector failing. RLS denial returns zero rows rather than an error, so
+    // these two states arrive looking identical and used to share a label —
+    // which pointed the 2026-08-18 diagnosis at a collector that was writing
+    // fine. They must never be merged again (issue #1581).
+    const unreadable = hydrateTodayEventSnapshot(
+      envelope({ archive_status: null }),
+      NOW,
+    );
 
     expect(partial.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
     expect(partial.sourceHealth).toEqual({
@@ -124,6 +133,10 @@ describe("Today durable event snapshot", () => {
     expect(stale.sourceHealth).toEqual({
       degraded: true,
       unavailable: ["event archive (stale)"],
+    });
+    expect(unreadable.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["event archive (unreadable)"],
     });
     expect(failed.sourceHealth).toEqual({
       degraded: true,
