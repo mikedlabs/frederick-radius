@@ -47,6 +47,11 @@ describe("install prompt policy", () => {
     expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(true);
     expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(true);
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
-    expect(isInstallPromptSuppressedPath("/today")).toBe(false);
+    // /today flipped to suppressed. It was the ONLY focused surface left
+    // unprotected, so the panel opened over the landing shelf ten seconds into
+    // a first visit, while the person was reading the answer they came for.
+    // Installing is still reachable from Saved, Compass and Settings, so what
+    // this removes is the interruption, not the capability.
+    expect(isInstallPromptSuppressedPath("/today")).toBe(true);
   });
 });

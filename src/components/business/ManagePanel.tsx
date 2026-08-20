@@ -134,7 +134,7 @@ export default function ManagePanel({
       {error ? (
         <p
           className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm"
-          style={{ background: "rgba(160,41,41,0.10)", color: "var(--app-danger)" }}
+          style={{ background: "color-mix(in srgb, var(--app-danger) 10%, transparent)", color: "var(--app-danger)" }}
         >
           {error}
         </p>

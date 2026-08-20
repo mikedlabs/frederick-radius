@@ -48,7 +48,13 @@ export function isIosSafari(): boolean {
 
 /** Keep acquisition UI away from focused work and persistent mobile action docks. */
 export function isInstallPromptSuppressedPath(pathname: string): boolean {
+  // /today included: every OTHER focused surface was suppressed, which left
+  // the panel opening over the landing shelf 10 seconds into a first visit,
+  // while the person is reading the thing they came for. The manual doors in
+  // Saved, Compass and Settings are untouched, so this removes an interruption
+  // rather than the ability to install.
   return pathname === "/map"
+    || pathname === "/today"
     || pathname.startsWith("/ask")
     || /^\/(places|events)\/[^/]+$/.test(pathname);
 }

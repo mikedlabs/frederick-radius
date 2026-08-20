@@ -779,7 +779,7 @@ export default function CollectClient() {
       {!riding && !editing && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
-            <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <circle cx="24" cy="24" r="14" fill="color-mix(in srgb, var(--app-brand) 10%, transparent)" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
             <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
             <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
             <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />

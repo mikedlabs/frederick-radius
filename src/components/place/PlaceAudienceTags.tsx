@@ -1,4 +1,4 @@
-import { TAG_BY_SLUG } from "@/data/tags";
+import { tagName } from "@/data/tags";
 
 /**
  * PlaceAudienceTags — surfaces the AUDIENCE facet (Toddler/Kid/Teen Friendly,
@@ -29,7 +29,10 @@ const GOOD_TO_KNOW: string[] = [
 export default function PlaceAudienceTags({ tags }: { tags?: string[] }) {
   if (!tags || tags.length === 0) return null;
   const have = new Set(tags);
-  const shown = GOOD_TO_KNOW.filter((slug) => have.has(slug));
+  // A tag we cannot name is a tag we cannot show. Rendering the raw slug was
+  // how "kids-0-5" reached a reader; rendering an empty pill would only be a
+  // quieter version of the same mistake.
+  const shown = GOOD_TO_KNOW.filter((slug) => have.has(slug) && tagName(slug));
   if (shown.length === 0) return null;
 
   return (
@@ -47,7 +50,7 @@ export default function PlaceAudienceTags({ tags }: { tags?: string[] }) {
             className="inline-flex items-center rounded-full border px-3 py-1.5 text-[13px] font-medium"
             style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
           >
-            {TAG_BY_SLUG[slug]?.name ?? slug}
+            {tagName(slug)}
           </li>
         ))}
       </ul>

@@ -171,7 +171,9 @@ export default function SearchOverlay({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchMeta, setSearchMeta] = useState<QualifiedSearchIndexResult["meta"] | null>(null);
+  const [searchMeta, setSearchMeta] = useState<
+    (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean }) | null
+  >(null);
   // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
@@ -668,6 +670,29 @@ export default function SearchOverlay({
                 >
                   Try again
                 </button>
+                {/* A retry button was the ONLY control here, so a person whose
+                    search failed had exactly one move and no way out of the
+                    overlay toward an answer. Give the same two exits the
+                    healthy empty state offers. */}
+                {query.trim() && (
+                  <p className="mt-3 text-xs">
+                    <a
+                      href={`/search?q=${encodeURIComponent(query.trim())}`}
+                      className="font-semibold underline"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Open the full search page
+                    </a>
+                    <span aria-hidden> · </span>
+                    <a
+                      href={`/ask?q=${encodeURIComponent(query.trim())}`}
+                      className="font-semibold underline"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Ask Radius instead
+                    </a>
+                  </p>
+                )}
               </div>
             ) : status === "loading" ? (
               <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
@@ -676,7 +701,21 @@ export default function SearchOverlay({
             ) : hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
-              <p className="mt-1 text-xs">Try a shorter search, then add a town if you need to narrow it.</p>
+              {/* The degraded-archive caveat, the load-bearing half of the
+                  503 removal. The API now answers 200 with this flag instead
+                  of failing the request, and no component read the flag
+                  before — so without this line an event the archive simply
+                  could not see would render as a confident "nothing matches",
+                  which is a quieter version of the same false answer. */}
+              {searchMeta?.liveEventsUnavailable ? (
+                <p className="mt-1 text-xs">
+                  Live events could not be checked just now, so a current event
+                  may be missing from this answer. Places and pages are
+                  unaffected.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs">Try a shorter search, then add a town if you need to narrow it.</p>
+              )}
             </div>
             )
           ) : (
