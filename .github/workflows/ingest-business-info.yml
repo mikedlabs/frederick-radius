@@ -36,7 +36,12 @@ jobs:
   ingest:
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # 30, not 120. A normal run is 9-12 minutes; the only thing a bigger
+    # ceiling ever bought was a bigger accident, and on 2026-08-19 a hung
+    # Ubuntu package mirror burned the full 120 before the runner gave up.
+    # A timeout is a hang detector, and this one now detects hangs at 3x the
+    # worst healthy runtime instead of 12x.
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
