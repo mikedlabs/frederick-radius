@@ -1,18 +1,27 @@
 # Hours refresh review
 
-Generated from the committed baseline and the refreshed artifacts at 2026-08-10T10:38:30.852Z.
+Generated from the committed baseline and the refreshed artifacts at 2026-08-20T09:52:26.996Z.
 This report is a review aid. It does not approve, reject, or change a place status.
 
 **No unreviewed public catalog or public closure transition requires manual review.**
+
+## Held back tonight
+
+These changes were detected by the refresh and are WAITING for evidence rather than blocking it. Each slug was kept at its previously reviewed value; everything else in this artifact shipped. Record evidence in `src/data/place-status-overrides.json` and the hold releases on the next nightly run.
+
+| Slug | Reason |
+| --- | --- |
+| `green-valley-harvesters-woodsboro` | public listing addition awaiting evidence |
+| `pour-decisions-restaurant-bar-music-new-market` | public listing removal awaiting evidence |
 
 ## Coverage delta
 
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
-| Public places | 1569 | 1569 | 0 |
-| Public places with publishable verified hours | 895 | 1083 | +188 |
+| Public places | 1568 | 1568 | 0 |
+| Public places with publishable verified hours | 1085 | 1085 | 0 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
-| Fresh schedule rows in snapshot | 1160 | 1159 | -1 |
+| Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
 
 ## Public catalog changes
@@ -31,9 +40,7 @@ No public listings were added.
 
 ### Newly closed
 
-| Slug | Place | Public before | From | To | Checked at | Review evidence |
-| --- | --- | --- | --- | --- | --- | --- |
-| `concettas-main-street-bistro-mount-airy` | Concetta's Main Street Bistro | yes | OPERATIONAL | CLOSED_PERMANENTLY | 2026-08-08T08:00:24.870Z | [Operational correction](https://concettasmainstreet.com/) |
+No new closed statuses were observed.
 
 ### Reopened
 

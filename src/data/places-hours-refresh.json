@@ -2,14 +2,14 @@
   "_doc": "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound by place_id to the canonical pre-business-status Google identity snapshot, which retains closed and off-season places so a later reopening can be discovered. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.",
   "_meta": {
     "schema_version": 2,
-    "generated_at": "2026-08-19T14:02:57.711Z",
+    "generated_at": "2026-08-20T09:52:26.996Z",
     "rows": 1522,
     "with_schedule": 1160,
     "fresh_schedule_rows": 1160,
-    "recent_rows": 487,
+    "recent_rows": 542,
     "unmatched_rows": 14,
     "oldest_refreshed_at": "2026-08-13T08:01:03.490Z",
-    "newest_refreshed_at": "2026-08-19T08:00:51.131Z"
+    "newest_refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "10-clarke": {
     "place_id": "ChIJq07GRkXayYkRxpzh86bor1o",
@@ -79,7 +79,7 @@
       "Sunday: 8:30 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "2nd-avenue-park-brunswick": {
     "place_id": "ChIJ__8_XdfhyYkRrx5a80i5VUw",
@@ -140,7 +140,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "7th-street-cafe": {
     "place_id": "ChIJ2x4DrfvayYkR2sP2DIQ8S_0",
@@ -336,7 +336,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "airborne-public-safety-association": {
     "place_id": "ChIJkaQa8RXbyYkR1cTPqdOoxeI",
@@ -608,7 +608,7 @@
       "Sunday: 11:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "anytime-fitness-frederick": {
     "place_id": "ChIJwZ3qPkjbyYkRofZnRkrYLbk",
@@ -622,7 +622,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "apostolic-lighthouse-united-middletown": {
     "place_id": "ChIJXQG8L8DcyYkRI0fnJj6PQTc",
@@ -679,7 +679,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "arise-chiropractic-wellness-center": {
     "place_id": "ChIJ6_OLkQ3byYkRuRz3d1B__O8",
@@ -924,7 +924,7 @@
   "b4damoney-studio": {
     "place_id": "ChIJr1VKPQDbyYkROxFrlBW6TyU",
     "business_status": "CLOSED_TEMPORARILY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bailey-massage-and-wellness": {
     "place_id": "ChIJSSb-FqTbyYkRNIFwRW7SIcE",
@@ -994,7 +994,7 @@
       "Sunday: 7:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bakery-de-france-frederick": {
     "place_id": "ChIJbZeidprayYkROAVAwzYiQvE",
@@ -1008,7 +1008,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ballenger-creek-dog-park": {
     "place_id": "ChIJKcpto1_ZyYkR6W9O0cMmrtc",
@@ -1036,7 +1036,7 @@
       "Sunday: 8:00 AM – 10:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ballenger-creek-trail-frederick": {
     "place_id": "ChIJXV19BIzZyYkRQ9ejU7bSr48",
@@ -1111,7 +1111,7 @@
       "Sunday: 11:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "barnstone-studios-llc-thurmont": {
     "place_id": "ChIJ1RcvgHA4xIkRwrRiKUEgS94",
@@ -1139,7 +1139,7 @@
       "Sunday: 8:00 AM – 2:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "barry-s-edland": {
     "place_id": "ChIJT6qvPPrayYkRhU2sd_kjFSc",
@@ -1209,7 +1209,7 @@
       "Sunday: 11:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "beans-bagels-frederick": {
     "place_id": "ChIJTyjEeVnayYkRvPCaqZoOhAw",
@@ -1279,7 +1279,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "beef-n-buns-n-paradise-frederick": {
     "place_id": "ChIJM3R-xXrayYkRgKPI4D58c8E",
@@ -1321,7 +1321,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "below-deck-mount-airy": {
     "place_id": "ChIJbeN-cgAtyIkR0TjNgbftYmk",
@@ -1349,7 +1349,7 @@
       "Sunday: 11:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "beneficial-hodson-library-frederick": {
     "place_id": "ChIJTTwpFP_ayYkR31v-bX4tlok",
@@ -1363,7 +1363,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bentztown": {
     "place_id": "ChIJrW-Ksk3byYkRFieoezpSRoM",
@@ -1415,7 +1415,7 @@
   "bethany-lutheran-church-brunswick": {
     "place_id": "ChIJWQXU8iMetokRWCCEQksbpN8",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bettes-creations": {
     "place_id": "ChIJWxXSOU_VyYkRDtakXPXvwIQ",
@@ -1443,7 +1443,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "big-bellys-brunswick": {
     "place_id": "ChIJBZa7-T4htokRgmX8hAlI8Uw",
@@ -1588,7 +1588,7 @@
       "Sunday: 11:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "black-label-tattoo": {
     "place_id": "ChIJxXZzUFnayYkRn1Z3KRkPDoA",
@@ -1649,7 +1649,7 @@
   "blue-elephant": {
     "place_id": "ChIJaT7zOwDbyYkR0JPgAy4rQ-s",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bold-love-farm-and-bakery-mount-airy": {
     "place_id": "ChIJSw_mF3styIkRkxVPCDvivms",
@@ -1720,7 +1720,7 @@
   "brainstorm-comics": {
     "place_id": "ChIJV_OR-8PayYkR8abcHZbcDWU",
     "business_status": "CLOSED_PERMANENTLY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "brandartyoga-frederick": {
     "place_id": "ChIJ491hN53ZyYkRsbksLK7ubvw",
@@ -1734,7 +1734,7 @@
       "Sunday: 12:00 – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bravura-arts-and-framing": {
     "place_id": "ChIJ_bJxfN3byYkRj7he6Rt8Bg4",
@@ -1776,7 +1776,7 @@
       "Sunday: 11:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "brick-block-cakes-walkersville": {
     "place_id": "ChIJD6aQ7XTPyYkRAp0pP8-tKWY",
@@ -1851,7 +1851,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "brunswick-boat-ramp-brunswick": {
     "place_id": "ChIJE9UMoCIetokRcqQnsGUaQqI",
@@ -2002,7 +2002,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "brunswick-recreation-center-brunswick": {
     "place_id": "ChIJURBAbAAftokRkcePP6RPH-0",
@@ -2012,7 +2012,7 @@
   "brunswick-sports-complex-brunswick": {
     "place_id": "ChIJi5ZV2NIftokR-OkxzpIs444",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "brunswickcsx-brunswick": {
     "place_id": "ChIJ4-B4DCMetokRRBF5oMk95jM",
@@ -2036,7 +2036,7 @@
   "buckeye-motel-frederick": {
     "place_id": "ChIJ6xd_ucrbyYkRXTben_2vUuU",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "buckeystown-park-frederick": {
     "place_id": "ChIJjWAd8FrYyYkR2GYoDtINoYM",
@@ -2083,7 +2083,7 @@
       "Sunday: 6:30 AM – 11:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "burkittsville-burkittsville": {
     "place_id": "ChIJwUK_fTfhyYkRbo5GWR2JsxQ",
@@ -2098,7 +2098,7 @@
   "burkittsville-ruritan-club-burkittsville": {
     "place_id": "ChIJzYN4nDfhyYkRqOCcNwkQVKM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "bush-creek-church-the-brethren-new-market": {
     "place_id": "ChIJw5Q3X_HTyYkRfAmsWBOAQMg",
@@ -2173,7 +2173,7 @@
       "Sunday: 12:00 – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "cafe-611-restaurant": {
     "place_id": "ChIJWTSQAvfayYkRL_hz4cyNeTY",
@@ -2262,7 +2262,7 @@
       "Sunday: 8:00 AM – 1:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "calvary-united-methodist-church-of-frederick-maryland": {
     "place_id": "ChIJeTdQm1fayYkRbwX9TmZOk-w",
@@ -2375,7 +2375,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "carleo-italian-pizza-emmitsburg": {
     "place_id": "ChIJT5SXeTqxyYkRK7B1Vs_k1mE",
@@ -2441,7 +2441,7 @@
   "carroll-creek-outdoor-amphitheater": {
     "place_id": "ChIJo6Ojw1vayYkRG_9gGcMtUZM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "carrollton-park-frederick": {
     "place_id": "ChIJSVIWI0vayYkRwk7tQag0e_A",
@@ -2493,7 +2493,7 @@
       "Sunday: 11:30 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "catoctin-church-of-christ-thurmont": {
     "place_id": "ChIJhUkZomq4yYkR8-snJk6p9Mw",
@@ -2554,7 +2554,7 @@
       "Sunday: 8:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "catoctin-mountain-orchard-thurmont": {
     "place_id": "ChIJE-dQaTm4yYkR-I8-F7TzaJQ",
@@ -2671,7 +2671,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "centennial-memorial-united-methodist-church": {
     "place_id": "ChIJvbZsTljayYkRyNyUHSEmIEE",
@@ -2685,12 +2685,12 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "center-for-integrative-healthcare": {
     "place_id": "ChIJo7WQTfjayYkRshQ-Gut98Tc",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "center-for-mind-body-therapies": {
     "place_id": "ChIJEdmwLVfayYkRPDMO4UNCvFA",
@@ -2897,7 +2897,7 @@
       "Sunday: 8:30 AM – 12:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "church-of-christ-at-mt-airy-mount-airy": {
     "place_id": "ChIJDeYBu4wsyIkRp78MF8EnLdI",
@@ -2964,7 +2964,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "city-of-brunswick-maryland-train-viewing-platform-brunswick": {
     "place_id": "ChIJlefldCkftokR4l6qFybWeso",
@@ -3053,7 +3053,7 @@
       "Sunday: 12:00 – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "clay-oven-restaurant-frederick": {
     "place_id": "ChIJa4_91J7byYkRgB2OdNvPrG4",
@@ -3095,7 +3095,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "clerestory-park-walkersville": {
     "place_id": "ChIJmx-9YEzFyYkRYslZ7eyZd5I",
@@ -3123,7 +3123,7 @@
       "Sunday: 11:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "clue-iq-an-escape-room-experience": {
     "place_id": "ChIJWRC0mVvayYkRrp7fGc8ZiVE",
@@ -3207,7 +3207,7 @@
       "Sunday: 10:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "coffman-chapel": {
     "place_id": "ChIJBzi_IvnayYkR1F5BxNb1brI",
@@ -3241,7 +3241,7 @@
   "collective-church-frederick": {
     "place_id": "ChIJY-4dDbXZyYkR8BbW1Pd0ME0",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "colonial-jewelers": {
     "place_id": "ChIJW92ajlnayYkRoVdIoAXSHec",
@@ -3274,7 +3274,7 @@
   "comfort-inn-frederick-ballenger-creek-frederick": {
     "place_id": "ChIJT40xhI_ZyYkRvv5MfXYAHCM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "comfort-inn-red-horse-frederick-frederick": {
     "place_id": "ChIJEykBEKTbyYkRH-GCKwfnJF0",
@@ -3293,7 +3293,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "common-market": {
     "place_id": "ChIJ1SMBEnXbyYkRnpHPIfHm7xc",
@@ -3321,7 +3321,7 @@
       "Sunday: 8:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "community-garden-thurmont": {
     "place_id": "ChIJRxkh_sO5yYkRDZ5IBHa-ob8",
@@ -3345,7 +3345,7 @@
   "concettas-main-street-bistro-mount-airy": {
     "place_id": "ChIJ8QmkXfEsyIkRyrJuUsq6dnQ",
     "business_status": "CLOSED_PERMANENTLY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "connection-church-middletown": {
     "place_id": "ChIJnR-DAW7dyYkRk17WftXW3Do",
@@ -3411,7 +3411,7 @@
       "Sunday: 1:00 – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "costco-frederick": {
     "place_id": "ChIJ4bzfyUbayYkRXdFSBXe8Yi4",
@@ -3430,7 +3430,7 @@
   "country-inn-suites-by-radisson-frederick-md-frederick": {
     "place_id": "ChIJSXlbXCPayYkRcqSJwqML870",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "country-pleasures-farm-burkittsville": {
     "place_id": "ChIJ9c-n907nyYkRdDuheQwjkVo",
@@ -3473,7 +3473,7 @@
   "cozy-castle-events-new-market": {
     "place_id": "ChIJZ-FEIHAb54gRW8ptIcjg3DI",
     "business_status": "CLOSED_TEMPORARILY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "cozy-house-of-curiosity-antiques-vintage-collectibles-thurmont": {
     "place_id": "ChIJUxfBCkG5yYkRgNooKpGjphg",
@@ -3586,7 +3586,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "crybaby-cafe-middletown": {
     "place_id": "ChIJD_VeYN3byYkRhNMdjVeEiXU",
@@ -3745,7 +3745,7 @@
       "Sunday: 11:30 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "da-silva-simmons-karate-brunswick": {
     "place_id": "ChIJ724oTSIetokR4qiE3MQgfoA",
@@ -3759,7 +3759,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dahlia-den-and-gardens-middletown": {
     "place_id": "ChIJGZ7zoTDfyYkR03bWlQsN7xQ",
@@ -3773,7 +3773,7 @@
       "Sunday: 8:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dahlia-noir-salon": {
     "place_id": "ChIJVR-SVIfZyYkRK4_OWUSDWgY",
@@ -3871,7 +3871,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "davita-ballenger-creek-dialysis": {
     "place_id": "ChIJ8y6I8fnayYkRQoiu_0gPQe8",
@@ -4025,7 +4025,7 @@
       "Sunday: 7:00 AM – 2:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "diamond-couture-bridal-by-my-sewing-studio": {
     "place_id": "ChIJXdHaS_HQyYkR9w9UPWuoxBY",
@@ -4208,7 +4208,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "doubs-meadow-basketball-courts-myersville": {
     "place_id": "ChIJDw-pXynDyYkRpoFh-z-Bnd0",
@@ -4321,7 +4321,7 @@
       "Sunday: 9:00 AM – 1:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dragon-distillery-frederick": {
     "place_id": "ChIJ6TVKj4DayYkRx1bqW46_P4I",
@@ -4349,7 +4349,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dream-house": {
     "place_id": "ChIJH7ebZVnayYkRpTV_nGBt1iw",
@@ -4424,7 +4424,7 @@
       "Sunday: 9:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dunkin-brunswick": {
     "place_id": "ChIJQ4cLPtThyYkR2p25YHXqBis",
@@ -4480,7 +4480,7 @@
       "Sunday: 10:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "dynamic-wellness-therapy": {
     "place_id": "ChIJlee4afrayYkRzVLZBLOHZs8",
@@ -4522,7 +4522,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "earthly-elements": {
     "place_id": "ChIJZ4AHu1nayYkR_SBmKlS1a9Q",
@@ -4659,7 +4659,7 @@
   "econo-lodge-frederick-i-70-frederick": {
     "place_id": "ChIJ9R-y0jjayYkRWa9YOoKVQ4w",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "edgeworks-knife-and-supply": {
     "place_id": "ChIJb37RUVjayYkRK4izFq2UeNc",
@@ -4687,7 +4687,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "edward-p-thomas-memorial-pool-playground": {
     "place_id": "ChIJb8J9a1TayYkRpRhNxlXbibw",
@@ -4771,7 +4771,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "elegant-forever-bridal-boutique": {
     "place_id": "ChIJldr2dVPfyYkRpWoZ2kSeMCM",
@@ -4785,7 +4785,7 @@
       "Sunday: 12:00 – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "elias-evangelical-lutheran-church-emmitsburg": {
     "place_id": "ChIJXYV_ESaxyYkRGMlun1P74II",
@@ -4888,7 +4888,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "emmitsburg-antique-mall-emmitsburg": {
     "place_id": "ChIJJwyHQS-xyYkRrfsb1PKYnxk",
@@ -4944,7 +4944,7 @@
       "Sunday: 12:00 – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "emmitsburg-farmers-market-emmitsburg": {
     "place_id": "ChIJIQneFymxyYkRR3QHvQM4htI",
@@ -4978,7 +4978,7 @@
   "emmitsburg-presbyterian-church-emmitsburg": {
     "place_id": "ChIJ19iEnS2xyYkRzJSNVjcScuA",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "emmitsburg-senior-center-emmitsburg": {
     "place_id": "ChIJ53rmFymxyYkRodXNCkRqjfQ",
@@ -4992,7 +4992,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "emmitsburg-tattoo-company-emmitsburg": {
     "place_id": "ChIJyTLeBiaxyYkRqY_dsS2-L8w",
@@ -5039,7 +5039,7 @@
       "Sunday: 7:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "endangered-species-theatre-project": {
     "place_id": "ChIJnSUhsrbbyYkRXQsbjc-m7V0",
@@ -5053,7 +5053,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "england-acres-farm-and-market-new-market": {
     "place_id": "ChIJ6zFQPKbTyYkRFMgbvHNUr6I",
@@ -5067,7 +5067,7 @@
       "Sunday: 10:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "erica-pearre-massage-therapy": {
     "place_id": "ChIJs9gUymXbyYkRPRScBOnvM6Y",
@@ -5081,7 +5081,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "escape-this-frederick": {
     "place_id": "ChIJlaM2vPLayYkRKrMAYt1cgG8",
@@ -5095,7 +5095,7 @@
       "Sunday: 12:00 – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "esthetics-by-addie": {
     "place_id": "ChIJ9w-otBXbyYkRneRXB4cKuWo",
@@ -5128,7 +5128,7 @@
       "Sunday: 8:30 AM – 1:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "everedy-square-and-shab-row": {
     "place_id": "ChIJGc72417ayYkRVz7IL8v44s0",
@@ -5142,7 +5142,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "executive-tailoring-embroidery": {
     "place_id": "ChIJJQENeFnayYkRz9Daa9bjbY8",
@@ -5170,7 +5170,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "exxon-myersville": {
     "place_id": "ChIJAU65fiHoyYkR1lymvaxIGa0",
@@ -5227,7 +5227,7 @@
       "Sunday: 10:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "farm-home-service-brunswick": {
     "place_id": "ChIJmyd1HdbhyYkRaTk_dSoWjpo",
@@ -5330,7 +5330,7 @@
       "Sunday: 10:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "fireoak-culinary-tavern-frederick": {
     "place_id": "ChIJ3_EgeADbyYkRJk7TvtDLtAo",
@@ -5368,7 +5368,7 @@
       "Sunday: 10:00 AM – 12:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "flamin-pizza": {
     "place_id": "ChIJJ6_1r6TbyYkR0_AXUgsyb3I",
@@ -5438,7 +5438,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "food-lion-crestwood-frederick": {
     "place_id": "ChIJr1JuJzPayYkRh3uwODy9bm8",
@@ -5518,7 +5518,7 @@
       "Sunday: 10:00 AM – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "fountain-rock-park-walkersville": {
     "place_id": "ChIJr3ayO2fPyYkRBDyVaQO--3Q",
@@ -5706,7 +5706,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-childrens-chorus": {
     "place_id": "ChIJNyK45vLLyYkRHNCkXlstwpM",
@@ -5767,7 +5767,7 @@
       "Sunday: 12:00 – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-coffee-company-frederick": {
     "place_id": "ChIJQX01417ayYkREFYwtViYX9Q",
@@ -5875,7 +5875,7 @@
   "frederick-county-master-gardeners-demonstration-gardens-frederick": {
     "place_id": "ChIJN2lGKQ7byYkRJxWGEfKrS_I",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-county-office-of-economic-development": {
     "place_id": "ChIJ1ZxjrlnayYkRWNHj02wXO60",
@@ -6020,7 +6020,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-health-hospital": {
     "place_id": "ChIJIVO6B3fbyYkRVNJgBVObotY",
@@ -6109,7 +6109,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-korean-baptist-church": {
     "place_id": "ChIJe_JEV1vayYkR_YwNHWhg6sY",
@@ -6123,7 +6123,7 @@
       "Sunday: 6:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-made": {
     "place_id": "ChIJvf_V2EvbyYkRBD-iZ0-Fhq0",
@@ -6217,7 +6217,7 @@
       "Sunday: 7:00 AM – 8:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-reflexology": {
     "place_id": "ChIJUQGuZqjbyYkRpvbxWO3WEs8",
@@ -6245,7 +6245,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-school-of-classical-ballet": {
     "place_id": "ChIJ-aWNeVnayYkRIXp0jrO8Nsc",
@@ -6297,7 +6297,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "frederick-wig-company": {
     "place_id": "ChIJwy_liM3byYkRTMSjF1w5ONc",
@@ -6368,7 +6368,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "freezone-fitness-new-market": {
     "place_id": "ChIJVWyApb7TyYkRfc9N7kVlYhs",
@@ -6396,7 +6396,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "friends-creek-church-of-god-emmitsburg": {
     "place_id": "ChIJXax88Ty6yYkRE2GzZE9r9Cw",
@@ -6434,7 +6434,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "full-gospel-pentecostal-church-emmitsburg": {
     "place_id": "ChIJA-IkUwC7yYkR81ZN-ajuYLE",
@@ -6669,7 +6669,7 @@
       "Sunday: 10:00 – 11:30 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "gentlemens-choice-barber-stylist-rt-40-w": {
     "place_id": "ChIJdQo0eoPbyYkRYQwNJbJls5M",
@@ -6753,7 +6753,7 @@
       "Sunday: 7:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "giant-food-kingfisher-frederick": {
     "place_id": "ChIJUUOdrqjayYkRxOcMxvPu5fQ",
@@ -6805,7 +6805,7 @@
   "give-rise-studio": {
     "place_id": "ChIJMfuxVM7byYkRWDVy2Xh99D4",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "giviga-hair-salon": {
     "place_id": "ChIJT6qvPPrayYkR3CwiNmHpo_c",
@@ -6960,7 +6960,7 @@
       "Sunday: 8:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "gospel-temple-apostolic-church-brunswick": {
     "place_id": "ChIJ_xT9E9_hyYkRET0HtpasYOY",
@@ -7074,7 +7074,7 @@
   "graceham-moravian-church-thurmont": {
     "place_id": "ChIJYwcNKAfIyYkRLkFKLYd7Wfw",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "grand-view-acres-farm-woodsboro": {
     "place_id": "ChIJbfDCSv_NyYkRYy3igjsHNkw",
@@ -7112,7 +7112,7 @@
       "Sunday: 9:15 AM – 2:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "gravel-and-grind-frederick": {
     "place_id": "ChIJMbBBm1vayYkRS5uqU9yRs6g",
@@ -7121,12 +7121,12 @@
       "Tuesday: 8:00 AM – 2:00 PM",
       "Wednesday: 8:00 AM – 5:00 PM",
       "Thursday: 8:00 AM – 5:00 PM",
-      "Friday: 8:00 AM – 3:00 PM",
+      "Friday: 8:00 AM – 5:00 PM",
       "Saturday: 8:00 AM – 5:00 PM",
       "Sunday: 8:00 AM – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "great-stuff-by-paul-frederick": {
     "place_id": "ChIJqU8dUPTayYkR2u8oZsRpDsQ",
@@ -7173,7 +7173,7 @@
   "green-health-docs": {
     "place_id": "ChIJ9QgXnPLayYkREfGpdmmB_RQ",
     "business_status": "CLOSED_PERMANENTLY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "green-valley-harvesters-woodsboro": {
     "place_id": "ChIJlaMkY7vLyYkRBv288YNm3qQ",
@@ -7216,7 +7216,7 @@
   "groffs-content-farm-emmitsburg": {
     "place_id": "ChIJSWE6Olu2yYkRVaOcKKDIQpw",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "grossnickle-church-of-the-brethren-myersville": {
     "place_id": "ChIJEak5tTrCyYkRnUKczOnv8HM",
@@ -7305,7 +7305,7 @@
   "hair-by-redz-barber-shop": {
     "place_id": "ChIJSWd721PayYkReHfPmkTgMK8",
     "business_status": "CLOSED_TEMPORARILY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "hampton-inn-frederick-frederick": {
     "place_id": "ChIJSzXURifayYkRXfHbqk5c1Is",
@@ -7357,7 +7357,7 @@
       "Sunday: 2:00 – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "happynest-laundry-service": {
     "place_id": "ChIJP_60K_gDyIkR9Dk_pXYnf_w",
@@ -7395,7 +7395,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "harmony-nails-spa-middletown": {
     "place_id": "ChIJmz6EEAndyYkRVgJjCG4g-gY",
@@ -7498,7 +7498,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "heal-u-fitness-myersville": {
     "place_id": "ChIJK6uD4o7pyYkRvag8MdcU9Ns",
@@ -7650,7 +7650,7 @@
       "Sunday: 4:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "highs-woodsboro": {
     "place_id": "ChIJp5AhtzbJyYkRN0yNRzr4uS8",
@@ -7664,7 +7664,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "hill-street-skate-park-frederick": {
     "place_id": "ChIJJ-s1HJjbyYkRcDEE0xV6kB0",
@@ -7744,7 +7744,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "historic-utica-covered-bridge-thurmont": {
     "place_id": "ChIJrw0IcOnFyYkRKCgf3r_QHCI",
@@ -7777,7 +7777,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "hoffman-brothers-ice-cream": {
     "place_id": "ChIJ42jmkKPbyYkR4GhmZ9leaPo",
@@ -7881,7 +7881,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "homewood-suites-by-hilton-frederick-frederick": {
     "place_id": "ChIJxyHPhYXZyYkRF_p-lZ-M4TU",
@@ -7905,7 +7905,7 @@
       "Sunday: 11:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "hope-christian-fellowship-church-brunswick": {
     "place_id": "ChIJh2IcWl_fyYkRcueDAzrZWPU",
@@ -8008,7 +8008,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ice-plant-park-thurmont": {
     "place_id": "ChIJOygOkU65yYkRJh5jlQ95e8U",
@@ -8022,7 +8022,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ideal-option": {
     "place_id": "ChIJxR5QTJTbyYkRt47qtTQpqMY",
@@ -8060,7 +8060,7 @@
   "iglesia-la-luz-del-mundo": {
     "place_id": "ChIJlz4bp1zayYkRKK26ZLxVTlQ",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "iglesia-palabra-viva-walkersville": {
     "place_id": "ChIJ6VeXNozPyYkRei0BrgJUFZQ",
@@ -8140,16 +8140,16 @@
   "in-balance-massage-therapy": {
     "place_id": "ChIJ7zx7-_TbyYkRsefn6g58BCk",
     "weekday_hours": [
-      "Monday: 1:00 – 7:00 PM",
+      "Monday: 1:00 – 8:00 PM",
       "Tuesday: 10:00 AM – 5:00 PM",
-      "Wednesday: 11:00 AM – 6:00 PM",
+      "Wednesday: 11:00 AM – 5:00 PM",
       "Thursday: 10:00 AM – 6:00 PM",
       "Friday: 10:00 AM – 5:00 PM",
       "Saturday: 10:00 AM – 4:00 PM",
-      "Sunday: 10:00 AM – 6:00 PM"
+      "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "in-fit-personal-training-studio": {
     "place_id": "ChIJTxkyZffayYkRTzPwURwyyr4",
@@ -8191,7 +8191,7 @@
       "Sunday: 8:00 AM – 2:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "indian-cave-new-market": {
     "place_id": "ChIJyyL8wSPRyYkRVoeY_tH_cKg",
@@ -8257,7 +8257,7 @@
       "Sunday: 8:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "israels-creek-lutheran-parish-woodsboro": {
     "place_id": "ChIJk5fEezTJyYkRlSscGvvpcYI",
@@ -8543,7 +8543,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kazmi-sibte-a-m-d": {
     "place_id": "ChIJpRsbQPrayYkR3EV57e-MuJ8",
@@ -8571,7 +8571,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kemmerer-norman-myersville": {
     "place_id": "ChIJT51suS7oyYkR5DnL6Co7MY8",
@@ -8590,7 +8590,7 @@
       "Sunday: 8:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kens-automotive-transmission": {
     "place_id": "ChIJw2JHt1PayYkRvK4V4Y-mTVs",
@@ -8646,7 +8646,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kfc-thurmont": {
     "place_id": "ChIJPRQToYTHyYkRsc6oDb_MG7g",
@@ -8660,7 +8660,7 @@
       "Sunday: 10:00 AM – 11:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kids-care-pediatrics": {
     "place_id": "ChIJuz0WHwjbyYkR7xkGDg2MRmI",
@@ -8674,7 +8674,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "kiley-morgan-artistry": {
     "place_id": "ChIJZfVdsQ7Nt4kRICi8zRddHTk",
@@ -9048,7 +9048,7 @@
       "Sunday: 8:00 – 11:00 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lifeswork-yoga-frederick": {
     "place_id": "ChIJMZ2XegXbyYkRr1ngin9OqGw",
@@ -9076,12 +9076,12 @@
       "Sunday: 10:00 – 11:00 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lighthouse-baptist-church-walkersville": {
     "place_id": "ChIJR15cNLvPyYkRSlKjbJRbdgM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lighthouse-seafood-new-market": {
     "place_id": "ChIJaQLSkKLTyYkRezq6KzX5olY",
@@ -9095,7 +9095,7 @@
       "Sunday: 10:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lil-cakes-creamery-new-market": {
     "place_id": "ChIJv7ulML7XyYkRed1JPTb2MD0",
@@ -9212,7 +9212,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "little-free-library-new-market": {
     "place_id": "ChIJW5UHZADTyYkRHy6fcGQ13Nk",
@@ -9268,7 +9268,7 @@
       "Sunday: 10:00 AM – 12:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lockhouse-gallery-brunswick": {
     "place_id": "ChIJw6n7jMIftokRPpMsbG3b8LU",
@@ -9306,7 +9306,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "loew-vineyards-mount-airy": {
     "place_id": "ChIJcVtx4iAzyIkRgY9G4ydpTZE",
@@ -9390,7 +9390,7 @@
       "Sunday: 12:00 – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "louyaa-fields-new-market": {
     "place_id": "ChIJfd2eDMXTyYkRfjbFsvlaWG0",
@@ -9465,7 +9465,7 @@
   "luxury-bakes-frederick": {
     "place_id": "ChIJmZ7xgdLbyYkRZi_JH_Dcj2w",
     "business_status": "CLOSED_TEMPORARILY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "lynns-automotive": {
     "place_id": "ChIJZ6iJYfPayYkRyrZH2Bl5jNY",
@@ -9624,7 +9624,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "mariachi-restaurant-frederick": {
     "place_id": "ChIJXWMaMjnayYkRvnGbgOBKo8g",
@@ -9638,7 +9638,7 @@
       "Sunday: 11:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "marion-burk-knott-auditorium-emmitsburg": {
     "place_id": "ChIJhbxnlD63yYkReQtJVNs3Iz8",
@@ -9671,7 +9671,7 @@
       "Sunday: 6:00 AM – 12:00 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "market-street-boba-beans": {
     "place_id": "ChIJcaDkhj3byYkRYg-7kN3qeBc",
@@ -9732,7 +9732,7 @@
       "Sunday: 1:00 – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "maryvale-park-frederick": {
     "place_id": "ChIJvSi_r63byYkRY6hME5tplMA",
@@ -9746,7 +9746,7 @@
       "Sunday: 7:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "mason-dixon-mixin-emmitsburg": {
     "place_id": "ChIJY_aupgWxyYkRzQs0rGBYOKY",
@@ -9901,7 +9901,7 @@
   "mccurdy-field": {
     "place_id": "ChIJtb8UoFLayYkRjjpER1sLJu4",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "mcdonalds-thurmont": {
     "place_id": "ChIJm95xQoTHyYkRtiunBNBG5Ps",
@@ -9934,7 +9934,7 @@
   "mcgowan-center-emmitsburg": {
     "place_id": "ChIJ5f275z63yYkRrfRLe0fcUTU",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "me-land-frederick-frederick": {
     "place_id": "ChIJE7KdWK3ZyYkRpGZuCzDbOPo",
@@ -9990,7 +9990,7 @@
       "Sunday: 7:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "memorial-grounds": {
     "place_id": "ChIJM6vZolfayYkRSNRnJN0_2E0",
@@ -10009,7 +10009,7 @@
   "memorial-gym-emmitsburg": {
     "place_id": "ChIJp_2BIgC3yYkRVwV48QufmG8",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "memories-charcoal-house-mount-airy": {
     "place_id": "ChIJvxRsRJEsyIkRy0mj12hXFuI",
@@ -10037,7 +10037,7 @@
       "Sunday: 12:00 – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "midar-fashion-llc": {
     "place_id": "ChIJeYNYL__byYkRKU4JH3nPGPM",
@@ -10093,12 +10093,12 @@
       "Sunday: 8:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "middletown-heritage-festival-middletown": {
     "place_id": "ChIJAzUeJG7dyYkR7pkraJTnvd0",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "middletown-high-school-middletown": {
     "place_id": "ChIJpXTe6BPdyYkRJwIQtsQfRXI",
@@ -10174,7 +10174,7 @@
   "middletown-recreational-park-middletown": {
     "place_id": "ChIJAQAA33PdyYkRucWOlxiSkbU",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "middletown-united-methodist-church-middletown": {
     "place_id": "ChIJw4UTJ1bcyYkRGPi1x5sMJrI",
@@ -10428,7 +10428,7 @@
       "Sunday: 11:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "monocacy-health-partners-dental-clinic": {
     "place_id": "ChIJDdfZfejbyYkRgie1MzlvY4E",
@@ -10578,7 +10578,7 @@
   "morrie-kelsey-new-market": {
     "place_id": "ChIJMYaIPePWyYkRnba93V0eaq4",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "mosaic-power": {
     "place_id": "ChIJl87Lu1vayYkR4HcHuLN3kRs",
@@ -10588,7 +10588,7 @@
   "mosart-fine-art-furniture-thurmont": {
     "place_id": "ChIJq6rGgnHHyYkRq7RhoY5t-fc",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "motel-6-frederick-md-fort-detrick-frederick": {
     "place_id": "ChIJ6RLB06XbyYkRlHi7FT9FxTc",
@@ -10857,7 +10857,7 @@
   "msd-foundation": {
     "place_id": "ChIJhf02y1rayYkRlN5jbKelATw",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "mt-airy-mocha-new-market": {
     "place_id": "ChIJlQrMAQDTyYkR5hSwJu7uldA",
@@ -10938,7 +10938,7 @@
       "Sunday: 7:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "my-thai-frederick": {
     "place_id": "ChIJ9wxPiMLayYkREqwj5VOWqc4",
@@ -10985,7 +10985,7 @@
   "myersville-historic-district-myersville": {
     "place_id": "ChIJad33dQDpyYkRO90TIb2GEv0",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "myersville-market-crown-gas-station-myersville": {
     "place_id": "ChIJLftCRBnoyYkRE6UEsYFIAis",
@@ -11140,7 +11140,7 @@
   "new-dimension-worship-center": {
     "place_id": "ChIJw7ry_fLayYkRhujvbOrGZFk",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "new-hope-united-methodist-church-brunswick": {
     "place_id": "ChIJbTVgRSIetokRKH9VeRZcidY",
@@ -11201,7 +11201,7 @@
       "Sunday: 8:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "new-market-historic-district-new-market": {
     "place_id": "ChIJTfzk5MHTyYkRzy_v7_zOUw4",
@@ -11258,7 +11258,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "new-spire-arts": {
     "place_id": "ChIJf74kk1nayYkRSuJkBqvb5Xg",
@@ -11436,7 +11436,7 @@
       "Sunday: 10:30 AM – 12:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "northstar-community-church-frederick": {
     "place_id": "ChIJkwa-kGjUyYkRPH6Mg0WfEFM",
@@ -11520,7 +11520,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "old-glory-antique-market-place-frederick": {
     "place_id": "ChIJJz8ZKjnayYkRms8i_e_w2gc",
@@ -11618,7 +11618,7 @@
       "Sunday: 1:00 – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "onelife-fitness-north-frederick-frederick": {
     "place_id": "ChIJ-1V2T-AtyIkRloDRyEcxcRk",
@@ -11693,7 +11693,7 @@
       "Sunday: 10:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ostertag-vistas-myersville": {
     "place_id": "ChIJwwc9RPnpyYkRUIyRgQNEEaM",
@@ -11726,7 +11726,7 @@
   "other-voices-theatre-frederick": {
     "place_id": "ChIJXSVspbLbyYkRR9kyGugMrZo",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ott-house-emmitsburg": {
     "place_id": "ChIJXT7m_yWxyYkR_Ni0kO3qVq4",
@@ -11745,7 +11745,7 @@
   "our-lady-of-mount-carmel-catholic-church-thurmont": {
     "place_id": "ChIJ64bltXe4yYkRnknXb9YSZvg",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "overboard-art-inc-new-market": {
     "place_id": "ChIJhwb4AkLNyYkRmfErFtPjK-o",
@@ -11806,7 +11806,7 @@
       "Sunday: 7:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "papa-johns-pizza-brunswick": {
     "place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
@@ -11839,7 +11839,7 @@
   "park-playground-frederick": {
     "place_id": "ChIJq6qO5lDayYkRMVRXCmVgm78",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "parkway-elementary-school": {
     "place_id": "ChIJ7wqwqVbayYkRFTUM0Pmmxd4",
@@ -11919,7 +11919,7 @@
       "Sunday: 10:30 AM – 12:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "peak-performance-and-fitness-center-frederick": {
     "place_id": "ChIJGwDmBQDbyYkRtdMjBfHCGuI",
@@ -11966,7 +11966,7 @@
       "Sunday: 10:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pho-52": {
     "place_id": "ChIJs2qK8FXbyYkRGhgRHGAY4iM",
@@ -11994,7 +11994,7 @@
       "Sunday: 11:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pho-and-more-frederick": {
     "place_id": "ChIJhYxQ8pXZyYkRchrtfgvWUXs",
@@ -12022,7 +12022,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pillar2wellness-mount-airy": {
     "place_id": "ChIJF-AHWXLVyYkRKeaaVFHcxic",
@@ -12149,7 +12149,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "play-ground-frederick": {
     "place_id": "ChIJq6rmFc_byYkR2YBnV3ZBcZQ",
@@ -12168,7 +12168,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "playful-therapy-connections": {
     "place_id": "ChIJfYnDDiXVyYkRh2MBvHEtllA",
@@ -12225,7 +12225,7 @@
   "pleasant-view-church-of-the-brethren-burkittsville": {
     "place_id": "ChIJ4UDfkdXmyYkRNhdDBfVMakE",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pleasant-walk-united-methodist-myersville": {
     "place_id": "ChIJ_dRzJ5XpyYkRuCe48zWS8oc",
@@ -12258,7 +12258,7 @@
       "Sunday: 8:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "point-of-rocks-overlook-brunswick": {
     "place_id": "ChIJYxPMKTogtokRqLJd9GWvmCk",
@@ -12272,7 +12272,7 @@
       "Sunday: 6:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "popeyes-louisiana-kitchen-new-market": {
     "place_id": "ChIJjxpcdb3TyYkRH3a-9E1BlBA",
@@ -12300,12 +12300,12 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "potomac-believers-fellowship-brunswick": {
     "place_id": "ChIJ2X1K99rhyYkRNc5PrvE6yAE",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "potomac-river-interiors-brunswick": {
     "place_id": "ChIJd0qBfOYftokRyQPXJiN5rfI",
@@ -12389,7 +12389,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pretzel-mania-frederick": {
     "place_id": "ChIJTwy7WljayYkRoYbnlT24fgk",
@@ -12515,7 +12515,7 @@
       "Sunday: 8:00 AM – 6:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "prys-deer-processing-burkittsville": {
     "place_id": "ChIJZ3oBCnPhyYkRhRqxGGfxYCU",
@@ -12529,7 +12529,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ps-jackson-enterprises-thurmont": {
     "place_id": "ChIJ78ypuyfHyYkRa8XYHvYKSyM",
@@ -12562,7 +12562,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "puerto-rico-distillery-brunswick": {
     "place_id": "ChIJUxNbV0TbyYkRx32tTuvkdB8",
@@ -12595,7 +12595,7 @@
       "Sunday: 8:00 AM – 3:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "pupuseria-diana-marixa-thurmont": {
     "place_id": "ChIJy5kUBh_HyYkRDYHNHVx7GqU",
@@ -12722,7 +12722,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "rak-brewing-co-frederick": {
     "place_id": "ChIJHSSkpPTbyYkR0Y26IDXy8Jk",
@@ -12914,7 +12914,7 @@
   "remsberg-park-middletown": {
     "place_id": "ChIJF1wjzArdyYkRpR1CwLDdkAA",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "retro-metro": {
     "place_id": "ChIJJU7RWljayYkRrbmXWIzr0h0",
@@ -12928,7 +12928,7 @@
       "Sunday: 11:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "revelation-community-church-middletown": {
     "place_id": "ChIJDZIJBn3byYkRGUdWyTqtb4Y",
@@ -13003,16 +13003,16 @@
   "ripleighs-creamery-emmitsburg": {
     "place_id": "ChIJi-qpo4WxyYkRblYxQc7rT-w",
     "weekday_hours": [
-      "Monday: 12:00 – 9:30 PM",
-      "Tuesday: 12:00 – 9:30 PM",
-      "Wednesday: 12:00 – 9:30 PM",
-      "Thursday: 12:00 – 9:30 PM",
+      "Monday: 3:00 – 9:30 PM",
+      "Tuesday: 3:00 – 9:30 PM",
+      "Wednesday: 3:00 – 9:30 PM",
+      "Thursday: 3:00 – 9:30 PM",
       "Friday: 12:00 – 10:00 PM",
       "Saturday: 12:00 – 10:00 PM",
       "Sunday: 12:00 – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ritas-italian-ice-frozen-custard-frederick": {
     "place_id": "ChIJq6pe2azbyYkRWvQk1B9BVC0",
@@ -13059,7 +13059,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "riverwalk-park-frederick": {
     "place_id": "ChIJcydgX5fayYkR1a4D2FCAGEU",
@@ -13073,7 +13073,7 @@
       "Sunday: 7:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "rj-beer-wine-and-convenience-emmitsburg": {
     "place_id": "ChIJadkTMu2xyYkR83swc5K18ec",
@@ -13101,7 +13101,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "roasthouse-pub-frederick": {
     "place_id": "ChIJp9Ao5jzayYkRAsMcu70Napo",
@@ -13242,7 +13242,7 @@
       "Sunday: 8:30 AM – 12:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "rosatis-pizza-5": {
     "place_id": "ChIJU1LRJ8vbyYkRpmrtUCZ3p_o",
@@ -13256,7 +13256,7 @@
       "Sunday: 11:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "rose-hill-manor-park-museums-frederick": {
     "place_id": "ChIJTfF4POrayYkRZkjTNHMiAWQ",
@@ -13373,7 +13373,7 @@
       "Sunday: 10:00 AM – 4:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sabor-casero-bakery-frederick-frederick": {
     "place_id": "ChIJ32ZnvkjbyYkRb1YFzmup_iU",
@@ -13406,7 +13406,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "safeway-middletown": {
     "place_id": "ChIJh8KikgXdyYkRIvph3dpb4Wk",
@@ -13420,7 +13420,7 @@
       "Sunday: 6:00 AM – 11:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "safeway-walkersville": {
     "place_id": "ChIJ69VHQa7PyYkREfEtwQwU-zI",
@@ -13462,12 +13462,12 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sailing-through-the-winter-solstice": {
     "place_id": "ChIJdwLwxD7byYkR1McOcsHb0Mc",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "saint-john-lutheran-church-myersville": {
     "place_id": "ChIJezxidXrCyYkRORKjgXGVKTg",
@@ -13500,17 +13500,17 @@
   "saint-johns-reformed-church-woodsboro": {
     "place_id": "ChIJ6-i6IDTJyYkRIqp2RWTQj0o",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "saint-michael-the-archangel-anglican-church-brunswick": {
     "place_id": "ChIJaYbIZyboyYkR_gf7bHbEeZ0",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "saint-paul-lutheran-church-walkersville": {
     "place_id": "ChIJxyC719bFyYkRU21u7JC3O10",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "salem-community-church-wolfsville-myersville": {
     "place_id": "ChIJf0nEMubByYkRbE4rUseTV1o",
@@ -13558,11 +13558,11 @@
       "Wednesday: 4:00 – 9:30 PM",
       "Thursday: 4:00 – 9:30 PM",
       "Friday: 3:00 – 10:30 PM",
-      "Saturday: 2:00 – 10:30 PM",
+      "Saturday: 12:00 – 10:30 PM",
       "Sunday: 12:00 – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "santa-rosa-restaurant-frederick": {
     "place_id": "ChIJB2bIGAjbyYkRAUNlCZmd0hM",
@@ -13618,7 +13618,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "saxbys-at-mount-st-marys-university-emmitsburg": {
     "place_id": "ChIJS0T_kd23yYkRmeMuEyNujuM",
@@ -13679,7 +13679,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "second-story-massage": {
     "place_id": "ChIJZ9JU7ofbyYkRR8Q04yb4274",
@@ -13693,7 +13693,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "see-dreams-studio-new-market": {
     "place_id": "ChIJIz0rpLvTyYkRKh3esltj93k",
@@ -13721,7 +13721,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "serendipity-market-more": {
     "place_id": "ChIJu4hOgVnayYkRDjPicDkFcJY",
@@ -13768,7 +13768,7 @@
       "Sunday: 9:00 AM – 4:45 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sheetz-thurmont": {
     "place_id": "ChIJU8YFKHC4yYkRyhG45DIAEyI",
@@ -13810,7 +13810,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "shieldco": {
     "place_id": "ChIJ_YY6fO3ayYkRGxZQyKcxOfA",
@@ -13852,7 +13852,7 @@
       "Sunday: 8:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "shuckin-shack-oyster-bar": {
     "place_id": "ChIJ94LvIlrayYkRUHhPsZfY7N8",
@@ -13871,7 +13871,7 @@
   "signature-arts-by-akg-burkittsville": {
     "place_id": "ChIJg-HqA4rhyYkRUw2umcQ6dAM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "signature-cafe-mount-airy": {
     "place_id": "ChIJm23xApIsyIkRidCFWAJuY9E",
@@ -13993,7 +13993,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sknfit-by-marissa": {
     "place_id": "ChIJ3_p-WnHZyYkR0m-X2TtARXk",
@@ -14101,7 +14101,7 @@
       "Sunday: 7:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "so-thai-restaurant-new-market": {
     "place_id": "ChIJddP5f7zXyYkRDZW_8Q3xYh8",
@@ -14227,7 +14227,7 @@
       "Sunday: 11:00 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "south-mountain-heritage-society-burkittsville": {
     "place_id": "ChIJNeMvtjfhyYkRNpYqroE7y7U",
@@ -14246,7 +14246,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sozra-gallery-woodsboro": {
     "place_id": "ChIJfe33ZYvLyYkR_GJphN3Kb2o",
@@ -14307,7 +14307,7 @@
       "Sunday: 6:00 AM – 11:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "springfield-manor-thurmont": {
     "place_id": "ChIJBbvtVozGyYkR6roujGSdGxc",
@@ -14369,7 +14369,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "st-john-lutheran-church-thurmont": {
     "place_id": "ChIJS4-Arwi5yYkRUEnBrzXgH-M",
@@ -14397,7 +14397,7 @@
       "Sunday: 7:30 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "st-johns-catholic-prep-school": {
     "place_id": "ChIJS7u2JbnbyYkR-nmfPYq7D44",
@@ -14435,7 +14435,7 @@
       "Sunday: 8:00 – 9:00 AM, 10:30 – 11:30 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "st-paul-lutheran-church-burkittsville": {
     "place_id": "ChIJsS5jsDfhyYkREA2Fg7wEPPk",
@@ -14473,7 +14473,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "stadler-nurseries-frederick": {
     "place_id": "ChIJf0EG067eyYkRN0q0WYzDCHY",
@@ -14735,7 +14735,7 @@
       "Sunday: 9:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "subway-middletown": {
     "place_id": "ChIJWTPxB27dyYkRpnf7DPjfxeI",
@@ -14782,7 +14782,7 @@
       "Sunday: 6:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "summit-ridge-soccer-field-mount-airy": {
     "place_id": "ChIJMciR5AEtyIkR2R4vcuoeE7Q",
@@ -14871,7 +14871,7 @@
       "Sunday: 12:00 – 8:45 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "suzanne-lafauce": {
     "place_id": "ChIJRbNqskbbyYkRgS8fi69gAdo",
@@ -14990,15 +14990,15 @@
     "place_id": "ChIJV28dsEDbyYkR4Mt74p1AX-4",
     "weekday_hours": [
       "Monday: Closed",
-      "Tuesday: 12:00 – 9:00 PM",
-      "Wednesday: 12:00 – 9:00 PM",
-      "Thursday: 12:00 – 9:00 PM",
-      "Friday: 12:00 – 9:00 PM",
+      "Tuesday: 2:00 – 9:00 PM",
+      "Wednesday: 2:00 – 9:00 PM",
+      "Thursday: 2:00 – 9:00 PM",
+      "Friday: 2:00 – 9:00 PM",
       "Saturday: 12:00 – 9:00 PM",
       "Sunday: 12:00 – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "sycamore-spring-farm-frederick": {
     "place_id": "ChIJ2WUEXlDZyYkRF81waFnpU-s",
@@ -15012,7 +15012,7 @@
       "Sunday: 10:00 AM – 2:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "tagthe-artists-gallery-frederick": {
     "place_id": "ChIJ55dru1nayYkRY9PI4LAK9Hg",
@@ -15162,7 +15162,7 @@
       "Sunday: 12:00 – 8:45 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "thai-table-frederick": {
     "place_id": "ChIJMUg-u_jZyYkRotGNhHnhM9U",
@@ -15256,7 +15256,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-body-lab-massage": {
     "place_id": "ChIJzbZFa-jbyYkRsWFdV-SQBAg",
@@ -15270,7 +15270,7 @@
       "Sunday: 9:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-bowl-new-market": {
     "place_id": "ChIJ____kIXRyYkRWPBNRSux93Y",
@@ -15317,7 +15317,7 @@
       "Sunday: 4:00 – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-center-for-empowerment-and-resilience-llc": {
     "place_id": "ChIJF00UAMz8-QkRGYoWq6oqz9A",
@@ -15355,7 +15355,7 @@
   "the-city-of-refuge-christian-church": {
     "place_id": "ChIJ-ZZBAvPayYkRV0HBGbv7kfE",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-crossings-community-church-brunswick": {
     "place_id": "ChIJfycQwyMetokRTI6eVgxw5Ro",
@@ -15369,7 +15369,7 @@
       "Sunday: 9:30 AM – 12:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-curious-iguana-frederick": {
     "place_id": "ChIJN4ikkVnayYkRz7gLMCLmks4",
@@ -15481,7 +15481,7 @@
       "Sunday: 10:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-furnace-grill-and-crab-house-thurmont": {
     "place_id": "ChIJ7518CAPHyYkR-VPwyRnopDE",
@@ -15575,7 +15575,7 @@
       "Sunday: 9:30 AM – 3:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-kitchenette": {
     "place_id": "ChIJt4LxRFjayYkRx_DOGspKXkk",
@@ -15739,7 +15739,7 @@
   "the-orthodox-mission-of-the-entrance-of-the-theotokos-into-t-emmitsburg": {
     "place_id": "ChIJ9dVNziexyYkR5x9BbbJTPuQ",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-perfect-blend-cafe": {
     "place_id": "ChIJR0Sv8VnayYkReBkofST6NVw",
@@ -15800,7 +15800,7 @@
       "Sunday: 11:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "the-spice-tea-exchange": {
     "place_id": "ChIJrXFWf1nayYkRfIoE-Ayqoo0",
@@ -15998,7 +15998,7 @@
       "Sunday: 9:00 – 11:30 AM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "thurmont-community-park-playground-thurmont": {
     "place_id": "ChIJQej7MgDHyYkRdiQI4lGjXRk",
@@ -16012,7 +16012,7 @@
       "Sunday: 6:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "thurmont-community-park-thurmont": {
     "place_id": "ChIJS2aLhIfHyYkRb-aKq6fiA4A",
@@ -16101,7 +16101,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "thurmont-main-street-farmers-market-thurmont": {
     "place_id": "ChIJfdY-SBC5yYkRcd0v_6g1PfE",
@@ -16134,7 +16134,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "thurmont-regional-library-thurmont": {
     "place_id": "ChIJ3Q5kwY_HyYkRwMLWqXsVYLk",
@@ -16299,7 +16299,7 @@
       "Sunday: 8:00 AM – 1:05 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "toniq": {
     "place_id": "ChIJM2QPwSfbyYkR1GYYOArPkYA",
@@ -16327,7 +16327,7 @@
       "Sunday: 11:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "top-gun-collision": {
     "place_id": "ChIJCT7h_fbayYkRrjWyeMJ3ozI",
@@ -16407,7 +16407,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "travelodge-by-wyndham-brunswick-near-frederick-brunswick": {
     "place_id": "ChIJVVUlItbhyYkR86VtwiR7Cyc",
@@ -16426,7 +16426,7 @@
   "treats-and-more-by-noy-frederick": {
     "place_id": "ChIJE2Bf7I_byYkRN4yWtpcdgpw",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "treaty-general-store": {
     "place_id": "ChIJN4sgW1jayYkR67F1BLkQZJg",
@@ -16558,7 +16558,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "tuscanys-pizzeria-emmitsburg": {
     "place_id": "ChIJp1Uuj0uxyYkR-QtYwL-KeQk",
@@ -16624,7 +16624,7 @@
   "union-mills-public-house-frederick": {
     "place_id": "ChIJO6DBl8DbyYkRCkZtTzBqQmY",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "unique-studio-hair-salon": {
     "place_id": "ChIJLQE18F7ayYkRMiTXQlCMgXY",
@@ -16708,7 +16708,7 @@
       "Sunday: 7:30 AM – 3:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "up-on-market": {
     "place_id": "ChIJ4yPlurzbyYkRz7_q0oSrQAc",
@@ -16797,7 +16797,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "utica-park-walkersville": {
     "place_id": "ChIJJ6cM-r3FyYkR3D3jL0Ac1_4",
@@ -16830,12 +16830,12 @@
       "Sunday: 11:00 AM – 8:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "valley-ho-farm-middletown": {
     "place_id": "ChIJQevt58fnyYkRMsP8kStK83s",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "valley-homemade-homegrown-middletown": {
     "place_id": "ChIJ9YEpj5rnyYkRxlcpikqlqxQ",
@@ -16845,7 +16845,7 @@
   "valley-view-acres-middletown": {
     "place_id": "ChIJP_mgcMTdyYkRmxtsZT0e9k8",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "vault-of-visions-art-gallery": {
     "place_id": "ChIJecmb0o7byYkRxbAtb9ZWLz0",
@@ -16864,7 +16864,7 @@
       "Sunday: 12:00 – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "verbena-salon-spa": {
     "place_id": "ChIJUUTnjFnayYkRZ2KgcjIPn1Q",
@@ -16916,7 +16916,7 @@
   "victory-tabernacle-thurmont": {
     "place_id": "ChIJgbPU9wXHyYkR1JdR74b8imM",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "village-tavern-walkersville": {
     "place_id": "ChIJ_5TLaa7PyYkRsur3bhCRZrs",
@@ -17062,7 +17062,7 @@
   "vw-knucklebuster-and-catoctin-national-trail-loop-myersville": {
     "place_id": "ChIJwaoHFCXDyYkR8fq9Jev-IXg",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "wags-restaurant": {
     "place_id": "ChIJ52yzPFrayYkRHfOmKuaFA4U",
@@ -17156,7 +17156,7 @@
       "Sunday: 7:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "walkersville-community-thrift-store-walkersville": {
     "place_id": "ChIJ9_I_TADPyYkR8EwwLaSCM3w",
@@ -17283,7 +17283,7 @@
       "Sunday: 10:30 AM – 7:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "war-memorial-middletown": {
     "place_id": "ChIJe7lA5wPdyYkR8Vl5_0Ho3Bs",
@@ -17330,7 +17330,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "wee-folk-school": {
     "place_id": "ChIJt-HQCFnayYkR-AVv4azNjCE",
@@ -17481,7 +17481,7 @@
       "Sunday: 8:00 AM – 9:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "wheel-base-bikes": {
     "place_id": "ChIJa7U8XVjayYkRQLk6hSJiCLw",
@@ -17495,7 +17495,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "whiskey-creek-golf-club-ijamsville": {
     "place_id": "ChIJo7P44bPWyYkRIcRxHSQppQQ",
@@ -17556,7 +17556,7 @@
       "Sunday: 11:00 AM – 10:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "white-rocks-trail-overlook-burkittsville": {
     "place_id": "ChIJx9jexcHnyYkRoGQ1EVIzV6Q",
@@ -17570,7 +17570,7 @@
       "Sunday: Open 24 hours"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "whitesell-pharmacy": {
     "place_id": "ChIJkTl9Z1jayYkRWKM6Pu-W-4M",
@@ -17598,7 +17598,7 @@
       "Sunday: 10:00 AM – 5:00 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "wildwood-park-mount-airy": {
     "place_id": "ChIJlxly4oosyIkRUhST_4BiMi0",
@@ -17810,7 +17810,7 @@
   "woodsboro-elementary-playground-woodsboro": {
     "place_id": "ChIJI-kfXF3JyYkRNK6OEUqH2eo",
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "woodsboro-elementary-school-woodsboro": {
     "place_id": "ChIJdVMJUjTJyYkRjwrlDqqWcw8",
@@ -17872,7 +17872,7 @@
   "woodsboro-tavern-woodsboro": {
     "place_id": "ChIJSylHprTOyYkRqJ2OUSuBAqU",
     "business_status": "CLOSED_PERMANENTLY",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "woodsboro-volunteer-fire-company-woodsboro": {
     "place_id": "ChIJJ-BvSTTJyYkR77yOrRkabbk",
@@ -17947,7 +17947,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "ymca-of-frederick-county": {
     "place_id": "ChIJzRSqjvHayYkRMDpqqYX7F2g",
@@ -17975,7 +17975,7 @@
       "Sunday: Closed"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "yogamour-yoga-healing-arts-center-frederick": {
     "place_id": "ChIJA_uwH_fayYkR8sZvV-umwaY",
@@ -18045,7 +18045,7 @@
       "Sunday: 8:00 AM – 12:30 PM"
     ],
     "business_status": "OPERATIONAL",
-    "refreshed_at": "2026-08-14T08:01:19.941Z"
+    "refreshed_at": "2026-08-20T08:00:37.009Z"
   },
   "zoes-chocolate-company": {
     "place_id": "ChIJxVdnslnayYkRTp_XMXH9sxQ",
