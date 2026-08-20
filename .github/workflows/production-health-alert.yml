@@ -114,6 +114,14 @@ jobs:
       - name: Open, update, or close the tracking issue
         env:
           GH_TOKEN: ${{ github.token }}
+          # This job deliberately does NOT check out the repo: it reads a public
+          # URL and needs no source. But `gh issue` infers its target repo from
+          # the git remote, so with no checkout every call died on "fatal: not a
+          # git repository" AFTER the health read had already succeeded. The
+          # alert was computed and then dropped, which is precisely the silent
+          # failure this workflow was built to end. GH_REPO supplies the target
+          # explicitly, so the delivery step no longer depends on a working tree.
+          GH_REPO: ${{ github.repository }}
           STATUS: ${{ steps.health.outputs.status }}
           SUMMARY: ${{ steps.health.outputs.summary }}
           DETAIL: ${{ steps.health.outputs.detail }}
