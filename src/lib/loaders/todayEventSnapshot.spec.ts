@@ -90,7 +90,15 @@ describe("Today durable event snapshot", () => {
     });
   });
 
-  it("keeps stale-good rows but marks a partial or aging archive degraded", () => {
+  it("serves a fresh partial archive at full trust, and still flags stale or failed runs", () => {
+    // "Partial" is the collector's steady state: it aggregates ~28 upstream
+    // sources and marks itself partial when ANY of them hiccups — 830
+    // consecutive runs never once reported "ok". The old expectation here
+    // enshrined the outage: a fresh archive holding hundreds of real events
+    // was branded degraded over a handful of failed records, and downstream
+    // surfaces preferred ten curated seeds to the real calendar. A fresh,
+    // successfully WRITTEN archive is trustworthy; collection gaps are
+    // per-source news, not a reason to reject the rows that made it in.
     const partial = hydrateTodayEventSnapshot(
       envelope({ archive_status: "partial", archive_records_failed: 3 }),
       NOW,
@@ -103,13 +111,24 @@ describe("Today durable event snapshot", () => {
       }),
       NOW,
     );
+    const failed = hydrateTodayEventSnapshot(
+      envelope({ archive_status: "error" }),
+      NOW,
+    );
 
     expect(partial.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(true);
     expect(partial.sourceHealth).toEqual({
-      degraded: true,
-      unavailable: ["event archive"],
+      degraded: false,
+      unavailable: [],
     });
-    expect(stale.sourceHealth.degraded).toBe(true);
+    expect(stale.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["event archive (stale)"],
+    });
+    expect(failed.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["event archive (last run failed)"],
+    });
   });
 
   it("withholds malformed snapshots and reports validation degradation", () => {
@@ -142,9 +161,12 @@ describe("Today durable event snapshot", () => {
     const result = await pending;
 
     expect(cancel).toHaveBeenCalledOnce();
+    // The reason is part of the contract: a timeout must be tellable apart
+    // from a genuinely unusable archive, or a cold-start latency problem
+    // masquerades as a data outage (which is exactly what happened).
     expect(result.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive"],
+      unavailable: ["event archive (read timeout)"],
     });
   });
 

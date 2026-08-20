@@ -25,7 +25,9 @@ export type NwsHourly = {
 };
 
 export type NwsForecast = {
-  asOf: string;
+  /** When the National Weather Service ISSUED this forecast, or null when the
+   *  payload does not carry an issuance time. NEVER the time we rendered. */
+  asOf: string | null;
   hourly: NwsHourly[];
   daily: NwsHourly[];
 };
@@ -41,7 +43,14 @@ type PointsResp = {
 
 type ForecastResp = {
   properties: {
-    updated: string;
+    // The live api.weather.gov payload carries `updateTime` (forecast
+    // issuance) and `generatedAt` (when the API answered). It has never
+    // carried `updated`, which this type declared as REQUIRED — so the
+    // `?? new Date()` fallback below looked like an unreachable safety net
+    // while being the only path that ever ran. Optional now, so the compiler
+    // stops vouching for a field the service does not send.
+    updated?: string;
+    updateTime?: string;
     periods: Array<{
       number: number;
       name: string;
@@ -122,7 +131,18 @@ async function loadNwsForecast(latValue: number, lngValue: number): Promise<NwsF
   );
 
   return {
-    asOf: hourly?.properties.updated ?? daily?.properties.updated ?? new Date().toISOString(),
+    // Issuance time, never the render clock. Stamping `new Date()` here and
+    // labelling it "NWS" made the panel advance its timestamp on every render
+    // while the values underneath sat still for the 30-minute cache — on
+    // production it read 12:14, 12:27 and 12:29 PM against an unchanged
+    // forecast issued at 14:53Z. A missing time is now null, and the UI says
+    // so rather than inventing one.
+    asOf:
+      hourly?.properties.updateTime ??
+      daily?.properties.updateTime ??
+      hourly?.properties.updated ??
+      daily?.properties.updated ??
+      null,
     hourly: hourlyCurrent.slice(0, 12).map(mapPeriod),
     // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
     daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),

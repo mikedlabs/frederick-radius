@@ -313,12 +313,13 @@ export async function evaluateDbHealth(
   if (!sql) return infrastructureUnavailable("not_configured");
 
   try {
-    const [rlsTables, missingRuntimeTables, staleIngestAnomalies] =
-      await Promise.all([
-        queryRlsUnprotectedTables(sql),
-        queryMissingRuntimeTables(sql),
-        queryStaleIngestSources(sql, maxAgeHours),
-      ]);
+    // One at a time. The pool is max: 1 (Supavisor), so these do not overlap;
+    // under contention the losers sit in the connection queue until a caller's
+    // deadline fires and the whole evaluation is then reported "unavailable" —
+    // which the nightly reporter turns into a 503 and a skipped heartbeat.
+    const rlsTables = await queryRlsUnprotectedTables(sql);
+    const missingRuntimeTables = await queryMissingRuntimeTables(sql);
+    const staleIngestAnomalies = await queryStaleIngestSources(sql, maxAgeHours);
     return {
       status: "available",
       reason: null,

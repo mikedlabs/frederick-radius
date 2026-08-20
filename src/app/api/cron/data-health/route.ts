@@ -173,21 +173,32 @@ async function runDataHealthReport() {
     getRecentIngestRuns(),
     PHASE_HEARTBEAT_DEADLINE_MS,
   );
-  const [dbOutcome, tripwireOutcome, foodTruckOutcome] =
-    await Promise.all([
-      withDeadlineOutcome(
-        evaluateDbHealth(),
-        DB_HEALTH_DEADLINE_MS,
-      ),
-      withDeadlineOutcome(
-        runTripwires(),
-        TRIPWIRE_OUTER_DEADLINE_MS,
-      ),
-      withDeadlineOutcome(
-        readStoredFoodTruckSchedule(),
-        FOOD_TRUCK_DEADLINE_MS,
-      ),
-    ]);
+  // SEQUENTIALLY. The comment directly above already names the hazard, and
+  // this Promise.all walked straight into it: Supavisor runs this app at
+  // max: 1, so evaluateDbHealth() and readStoredFoodTruckSchedule() do not
+  // overlap, they queue. Whichever loses the race sits in the connection
+  // queue until its deadline fires and is then reported as a FAILURE.
+  //
+  // The consequence was not subtle. A starved evaluateDbHealth() yields
+  // status "unavailable", the route's own contract turns that into a 503,
+  // and the reporter heartbeat never lands. So the nightly data-health run
+  // 503'd every night while the database was demonstrably fine (direct psql
+  // in 253ms, other crons writing rows the same morning), and the tripwire
+  // board froze at 2026-07-26 for 24 days. The one job whose entire purpose
+  // is noticing that something broke was the thing that was broken, which is
+  // a large part of why a county-wide hours blackout ran unnoticed.
+  const dbOutcome = await withDeadlineOutcome(
+    evaluateDbHealth(),
+    DB_HEALTH_DEADLINE_MS,
+  );
+  const foodTruckOutcome = await withDeadlineOutcome(
+    readStoredFoodTruckSchedule(),
+    FOOD_TRUCK_DEADLINE_MS,
+  );
+  const tripwireOutcome = await withDeadlineOutcome(
+    runTripwires(),
+    TRIPWIRE_OUTER_DEADLINE_MS,
+  );
   const dbHealth: DbHealthEvaluation =
     dbOutcome.status === "fulfilled"
       ? dbOutcome.value

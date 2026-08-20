@@ -56,6 +56,23 @@ export default function TimeScrubber({
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
+  // How many places actually carry a fresh, publishable schedule. When the
+  // rolling hours refresh stalls past the 7-day window, this hits ZERO and the
+  // open/closed dimming silently becomes a no-op: scrubbing to 3am looked
+  // identical to noon (data audit 2026-08-18). A control that cannot answer
+  // must say so, not shrug. Lazy-loaded on activation, matching AppMap's own
+  // deferred import of the same artifact, so the dock's initial chunk stays
+  // light. Event markers keep working either way; only place marks pause.
+  const [hoursCoverage, setHoursCoverage] = useState<number | null>(null);
+  useEffect(() => {
+    if (!active || hoursCoverage != null) return;
+    let cancelled = false;
+    import("@/lib/loaders/places-client-hours").then((mod) => {
+      if (!cancelled) setHoursCoverage(mod.clientPlaceHours().length);
+    });
+    return () => { cancelled = true; };
+  }, [active, hoursCoverage]);
+
   // Autoplay: quarter-hour steps are enough to communicate openings and event
   // starts. They also prevent the map from recomputing 1,000+ place states for
   // visually indistinguishable eight-minute increments. ~18 hours in 18s.
@@ -68,6 +85,30 @@ export default function TimeScrubber({
   }, [playing, active, hour, onChange]);
 
   if (!active) {
+    // Activating seeds an hour, which scopes the caption and the event counts
+    // to that hour — a real filter, so it stays opt-in rather than arming
+    // itself when the pane opens. What changes here is legibility: inside the
+    // dock this was a small pill adrift in a pane the person had already
+    // deliberately opened, so it read as decoration. As a full-width row with
+    // its own subtitle it reads as the instrument it is. The floating
+    // placement (dock-less full-bleed maps) keeps the compact pill.
+    if (!floating) {
+      return (
+        <button
+          type="button"
+          onClick={() => onChange(currentFrederickHour())}
+          className="dock-reveal w-full"
+        >
+          <span className="dock-content-icon" aria-hidden>
+            <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
+          </span>
+          <span className="dock-reveal-copy">
+            <strong>Play the day</strong>
+            <small>Scrub through the hours to see what is open and on.</small>
+          </span>
+        </button>
+      );
+    }
     const pill = (
       <button
         type="button"
@@ -83,7 +124,6 @@ export default function TimeScrubber({
         See the day
       </button>
     );
-    if (!floating) return pill;
     return (
       <div
         className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
@@ -103,7 +143,11 @@ export default function TimeScrubber({
     if (!el) return;
     const r = el.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (cx - r.left) / r.width));
-    onChange(START + p * (END - START));
+    // Quarter-hour steps, the same grain autoplay uses. Per-pixel values made
+    // one finger-drag emit hundreds of distinct hours, and every one re-ran
+    // the open/closed pass over every scoped place. ~72 possible positions
+    // are visually identical and an order of magnitude cheaper.
+    onChange(START + Math.round(p * (END - START) * 4) / 4);
   }
 
   const card = (
@@ -157,10 +201,21 @@ export default function TimeScrubber({
       <div
         ref={trackRef}
         className="relative h-6"
+        // The track IS a slider: claim the gesture here, not only on the
+        // 20px thumb, or a scrub that starts on the band scrolls the dock
+        // pane instead of moving time (mobile audit 2026-08-18).
+        style={{ touchAction: "none" }}
         onPointerDown={(e) => { setPlaying(false); draggingRef.current = true; (e.target as Element).setPointerCapture?.(e.pointerId); setFromClientX(e.clientX); }}
         onPointerMove={(e) => { if (draggingRef.current) setFromClientX(e.clientX); }}
         onPointerUp={() => { draggingRef.current = false; }}
+        // The OS can revoke a captured pointer mid-drag (notification pull,
+        // app switch). Without this the scrubber stayed "dragging" forever.
+        onPointerCancel={() => { draggingRef.current = false; }}
       >
+        {/* Invisible band growing the 24px track to a 44px effective target.
+            Downward only: the header row sits 4px above, while the tick
+            labels below are non-interactive, so this steals nothing. */}
+        <div aria-hidden className="absolute inset-x-0 top-0 -bottom-5" />
         <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ background: "var(--app-border)" }} />
         <div className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ width: `${pct}%`, background: "color-mix(in srgb, var(--app-brand) 55%, transparent)" }} />
         <div
@@ -182,6 +237,12 @@ export default function TimeScrubber({
       <div className="mt-0.5 flex justify-between font-mono text-[9px]" style={{ color: "var(--app-ink-3)" }}>
         <span>6a</span><span>noon</span><span>6p</span><span>12a</span>
       </div>
+      {hoursCoverage === 0 && (
+        <p className="mt-1.5 text-[11px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          Confirmed hours are refreshing, so open and closed marks are paused.
+          Events still move with the day.
+        </p>
+      )}
     </div>
   );
 

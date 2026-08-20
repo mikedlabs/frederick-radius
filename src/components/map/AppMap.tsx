@@ -2425,6 +2425,12 @@ export default function AppMap({
       const at = scrubInstant(scrubHour);
       for (const p of resultScopedPlaces) {
         const h = hoursBySlug.get(p.slug);
+        // Dim means PROVABLY closed at the scrubbed hour. A place without a
+        // fresh schedule stays bright because it cannot be proven closed —
+        // never because it is claimed open. When the whole artifact goes
+        // stale (7-day window) every place lands in this fallback and the
+        // loop dims nothing; TimeScrubber detects that zero-coverage state
+        // and says so in the control rather than letting it read as a no-op.
         const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
         const dim = !open;
         if (scrubDimStateRef.current.get(p.slug) === dim) continue;

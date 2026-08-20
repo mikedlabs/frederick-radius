@@ -198,7 +198,19 @@ export function knownFor(p: PlaceLike): string | null {
   const name = (p.name ?? "").trim();
   if (name) {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    b = b.replace(new RegExp(`^(?:${esc}\\s*[·\\-–—:]?\\s*)+`, "i"), "").trim();
+    const stripped = b
+      .replace(new RegExp(`^(?:${esc}\\s*[·\\-–—:]?\\s*)+`, "i"), "")
+      .trim();
+    // Only strip a name that was a LABEL, never one that was the SUBJECT.
+    //
+    // A lower-case remainder means the sentence continued through the name,
+    // so removing it leaves a fragment with nothing to attach to: "Baker Park
+    // is a 44-acre downtown park..." became "is a 44-acre downtown park...".
+    // Twenty-seven of these were rendering on live cards, sheets and I-want
+    // answers, which is exactly the manufactured-fragment voice the project
+    // bans in prose. The cases this strip exists for are unaffected, because
+    // "12 E Patrick St" and "They have bands" do not start lower-case.
+    if (stripped && !/^[a-z]/.test(stripped)) b = stripped;
   }
 
   // What's left is just a street address → not a description.

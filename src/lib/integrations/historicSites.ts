@@ -11,7 +11,7 @@
  * a feed hiccup never breaks the page; every row is bbox-guarded to Frederick MD.
  * Verified live 2026-06-20 (28 markers / 50 register points).
  */
-import { queryArcGIS } from "@/lib/integrations/arcgis";
+import { queryArcGISOutcome } from "@/lib/integrations/arcgis";
 import { resolveMunicipality } from "@/lib/connect";
 import { cleanFeedText } from "@/lib/format/text";
 
@@ -21,7 +21,12 @@ const MARKERS_URL =
 const NRHP_URL =
   "https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/0";
 
-const WEEK = 604800;
+// Markers and the register change maybe yearly, so a long window costs nothing
+// in freshness. It cost something else: a build that fetched nothing baked an
+// empty page for SEVEN DAYS, and the page told readers to "check back shortly".
+// An hour is still effectively free against two keyless services and lets a
+// transient failure heal itself the way the copy already promises.
+const WEEK = 3600;
 // Frederick County bbox [south, west, north, east] (matches fcTrails).
 const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
 const inBbox = (lng: number, lat: number) =>
@@ -64,7 +69,15 @@ export type RegisterSite = {
 
 /** The 28 roadside markers with their inscriptions, sorted by town then title. */
 export async function getHistoricMarkers(): Promise<HistoricMarker[]> {
-  const feats = await queryArcGIS(
+  return (await getHistoricMarkersResult()).items;
+}
+
+/** The same markers, plus whether MDOT actually answered. */
+export async function getHistoricMarkersResult(): Promise<{
+  items: HistoricMarker[];
+  ok: boolean;
+}> {
+  const { features: feats, ok } = await queryArcGISOutcome(
     MARKERS_URL,
     { where: "COUNTYID=11", outFields: "OBJECTID,MARKERTITLE,TOWN,MARKERTEXT,INSTALLDATE" },
     WEEK,
@@ -90,12 +103,26 @@ export async function getHistoricMarkers(): Promise<HistoricMarker[]> {
       lat: pt[1],
     });
   }
-  return out.sort((a, b) => a.municipality.localeCompare(b.municipality) || a.title.localeCompare(b.title));
+  return {
+    items: out.sort(
+      (a, b) =>
+        a.municipality.localeCompare(b.municipality) || a.title.localeCompare(b.title),
+    ),
+    ok,
+  };
 }
 
 /** The ~50 National Register sites, covered bridges flagged, newest listing first. */
 export async function getRegisterSites(): Promise<RegisterSite[]> {
-  const feats = await queryArcGIS(
+  return (await getRegisterSitesResult()).items;
+}
+
+/** The same register sites, plus whether the Park Service actually answered. */
+export async function getRegisterSitesResult(): Promise<{
+  items: RegisterSite[];
+  ok: boolean;
+}> {
+  const { features: feats, ok } = await queryArcGISOutcome(
     NRHP_URL,
     { where: "State='MARYLAND' AND County='Frederick'", outFields: "OBJECTID,RESNAME,Is_NHL,CertDate" },
     WEEK,
@@ -118,5 +145,10 @@ export async function getRegisterSites(): Promise<RegisterSite[]> {
       lat: pt[1],
     });
   }
-  return out.sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.name.localeCompare(b.name));
+  return {
+    items: out.sort(
+      (a, b) => (b.year ?? 0) - (a.year ?? 0) || a.name.localeCompare(b.name),
+    ),
+    ok,
+  };
 }

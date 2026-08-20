@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventOccursOnDate,
+  parseAskAvailabilityConstraint,
   parseAskDateTime,
   stripAskAvailabilityLanguage,
 } from "./time";
@@ -108,5 +109,48 @@ describe("eventOccursOnDate", () => {
       starts_at: "2026-07-18T14:00:00.000Z",
       ends_at: "2026-07-25T22:00:00.000Z",
     }, "2026-07-20")).toBe(true);
+  });
+});
+
+describe("late-night hours are read as night", () => {
+  /** The Eastern wall clock an availability constraint actually resolves to. */
+  const easternAt = (query: string): string | null => {
+    const parsed = parseAskAvailabilityConstraint(query, now) as
+      | { at?: Date | string }
+      | null;
+    if (!parsed?.at) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(parsed.at as string));
+  };
+
+  // The bug this pins: 8 through 11 fell through every meridiem rule and stayed
+  // AM, so the single most characteristic question a live local guide gets was
+  // answered against the wrong half of the day. "Bars open past 10" resolved to
+  // 10:01 AM and returned nearly the whole county as open.
+  it("reads a lateness question as evening", () => {
+    expect(easternAt("bars open past 10")).toBe("10:01 PM");
+    expect(easternAt("open past 9")).toBe("9:01 PM");
+    expect(easternAt("open late past 11")).toBe("11:01 PM");
+    expect(easternAt("still serving at 10")).toBe("10:00 PM");
+  });
+
+  it("still reads a morning question as morning", () => {
+    // The fix must not swing the other way: these are the hours where a
+    // morning reading is the correct one, and they are decided by the noun
+    // rather than the clock.
+    expect(easternAt("coffee after 8")).toBe("8:01 AM");
+    expect(easternAt("brunch past 11")).toBe("11:01 AM");
+    expect(easternAt("bakery open at 9")).toBe("9:00 AM");
+  });
+
+  it("keeps the readings that already worked", () => {
+    expect(easternAt("bars open past 10pm")).toBe("10:01 PM"); // explicit wins
+    expect(easternAt("open past 7")).toBe("7:01 PM"); // 1 through 7 rule
+    expect(easternAt("dinner past 10")).toBe("10:01 PM"); // keyword rule
+    expect(easternAt("what is open past midnight")).toBe("12:01 AM");
   });
 });

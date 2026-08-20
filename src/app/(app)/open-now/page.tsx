@@ -108,6 +108,20 @@ export default async function OpenNowPage() {
   // ── Index rows (the judged card system: serif name, one support line,
   //    one mono data line). Every field here earns its slot by decision
   //    value; what a cell can't say honestly, it doesn't say.
+  // Photo URLs ride inline for the first screenful only. Each Google photo
+  // token is ~700B of incompressible base64; the 800 this page used to
+  // serialize were 88% of its compressed document (322KB -> ~35KB measured
+  // 2026-08-19) while roughly 30 ever painted. Rows past the fold hydrate on
+  // scroll through PlaceIndex's lazyPhotos path, which answers via the full
+  // server loader so the photo-suppression verdicts keep applying. The first
+  // rows keep inline URLs so the above-the-fold anchors paint with the page
+  // (and prioritizeFirstPhoto keeps its subject).
+  const inlinePhotoSlugs = new Set(
+    verified
+      .filter((p) => p.google_photo_url)
+      .slice(0, 6)
+      .map((p) => p.slug),
+  );
   const toRow = (p: PlaceCardData, withStatus: boolean): IndexRow => {
     const cat = CATEGORY_BY_SLUG[p.category];
     // Support line takes CURATED intel only (known_for); scraped blurbs leak
@@ -153,7 +167,7 @@ export default async function OpenNowPage() {
       slug: p.slug,
       name: p.name,
       meta: `${cat?.name ?? p.category}${hook ? ` · ${hook}` : ""}`,
-      photo: p.google_photo_url ?? null,
+      photo: inlinePhotoSlugs.has(p.slug) ? p.google_photo_url ?? null : null,
       category: p.category,
       accent: cat?.color ?? "var(--app-ink-2)",
       status,
@@ -247,7 +261,7 @@ export default async function OpenNowPage() {
       />
 
       {verified.length > 0 ? (
-        <PlaceIndex sections={sections} prioritizeFirstPhoto />
+        <PlaceIndex sections={sections} prioritizeFirstPhoto lazyPhotos />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           {/* Only promise the "below" list when it actually renders (likely
@@ -260,7 +274,7 @@ export default async function OpenNowPage() {
         </p>
       )}
 
-      {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} />}
+      {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} lazyPhotos />}
 
       {/* Optional map fallback — the review's rule: list answer first,
           map second. This is the ONE door into the heavy surface. */}

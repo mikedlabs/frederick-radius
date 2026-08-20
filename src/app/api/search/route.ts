@@ -169,20 +169,20 @@ export async function GET(request: NextRequest) {
     ? { ...meta, liveEventsUnavailable: true }
     : meta;
 
-  if (liveEventsUnavailable && results.length === 0) {
-    return NextResponse.json(
-      {
-        results: [],
-        meta: responseMeta,
-      },
-      {
-        status: 503,
-        headers: { "Cache-Control": "private, no-store" },
-      },
-    );
-  }
-
-  // A real query that found nothing is a data gap — bank it after responding.
+  // A degraded event archive plus an empty result set used to answer 503, and
+  // the overlay treats any non-ok as a transport failure: it rendered "Check
+  // your connection" over the person's own working connection, with ZERO links
+  // out. The honest empty state and the Ask handoff are both gated on a done
+  // status, so both were unreachable, and the only real exit was a hint row
+  // that is hidden on touch. Three of nine realistic queries hit this.
+  //
+  // The condition is worth reporting, but it is a caveat on the answer, not a
+  // failure of the request. It travels in meta.liveEventsUnavailable, which the
+  // client now reads, so the person gets the results we do have plus a plain
+  // note that live events are missing from them.
+  //
+  // Search-miss telemetry stays gated on the archive being healthy: a miss
+  // recorded while events are unavailable is not evidence of a data gap.
   if (results.length === 0 && !mapAtmHandoff && !liveEventsUnavailable) {
     after(() => recordSearchMiss(q, "search"));
   }

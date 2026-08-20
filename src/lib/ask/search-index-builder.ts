@@ -93,6 +93,12 @@ export function buildRadiusSearchDocument(
     place.tags?.join(", "),
     place.known_for?.join("; "),
     place.field_note_tip,
+    // The lexical ranker scores these (search.ts aliasPhraseScore) but the
+    // indexed document omitted them, so the two halves of search disagreed
+    // about what a place is called. Only 7 places carry aliases today, but
+    // they are exactly the hard ones: "WLR" and "Wash Lube Repair" are how a
+    // person actually asks for Route 40 Lube Center.
+    place.search_aliases?.join(", "),
   ]
     .filter(Boolean)
     .join("\n")

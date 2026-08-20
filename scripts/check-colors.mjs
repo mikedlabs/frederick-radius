@@ -45,6 +45,14 @@ const EXCLUDE = [
   // KNOWN DEBT — remove when /beer is tokenized (see docs/UI_AUDIT_2026-07-21.md).
   "src/components/beer/",
   "src/app/(app)/beer/",
+  // Another organization's brand colour is not this palette's business. These
+  // surfaces render partner and team identity on purpose: WLR Automotive's
+  // navy, the Frederick Keys' orange, and the from-above booking partner. A
+  // token would be WRONG here, because the colour belongs to them.
+  "src/components/wlr/",
+  "src/components/today/KeysScore.tsx",
+  "src/components/today/KeysCard.tsx",
+  "src/app/from-above/preview/",
 ];
 
 // Matches an arbitrary color utility whose value is a bare hex — the "#" sits
@@ -60,9 +68,49 @@ function walk(dir, out = []) {
     const p = join(dir, entry.name);
     if (EXCLUDE.some((e) => p.includes(e))) continue;
     if (entry.isDirectory()) walk(p, out);
-    else if (/\.tsx?$/.test(entry.name)) out.push(p);
+    else if (/\.(?:tsx?|css)$/.test(entry.name)) out.push(p);
   }
   return out;
+}
+
+/**
+ * A SATURATED rgb()/rgba() literal, which is a palette colour wearing a
+ * different syntax.
+ *
+ * This guard only ever matched hex, and only ever read .tsx/.ts. Both gaps met
+ * in globals.css, where the retired vermilion #E14328 lived on as
+ * `rgba(225,67,40,.5)` across seven beacon and pulse shadows while the check
+ * reported a clean pass over it. A colour guard that cannot see the stylesheet
+ * holding the palette is not much of a guard.
+ *
+ * Near-neutral values are allowed and deliberately so: white, black and the
+ * warm-grey inks are how shadows and scrims are written, and they carry no
+ * brand meaning. Channel spread separates the two cleanly. #E14328 spreads
+ * 185; the widest legitimate neutral in the file spreads 20.
+ */
+const RGB_LITERAL = /\brgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g;
+const NEUTRAL_SPREAD = 40;
+
+/**
+ * An explicit, reasoned opt-out written at the offending line.
+ *
+ * Path-based exclusion cannot reach globals.css, where the marketing shell and
+ * the WLR partner grid keep their own palettes in the same file as the app's.
+ * Naming the exemption where it lives beats growing a path list nobody reads,
+ * and it forces a reason to be written down next to the colour.
+ */
+const EXEMPT_MARKER = /palette-exempt/;
+
+function saturatedRgbLiterals(line) {
+  if (EXEMPT_MARKER.test(line)) return [];
+  const found = [];
+  for (const m of line.matchAll(RGB_LITERAL)) {
+    const [r, g, b] = [m[1], m[2], m[3]].map(Number);
+    if (![r, g, b].every((v) => v >= 0 && v <= 255)) continue;
+    if (Math.max(r, g, b) - Math.min(r, g, b) <= NEUTRAL_SPREAD) continue;
+    found.push(m[0].replace(/\s+/g, "") + ")");
+  }
+  return found;
 }
 
 const files = walk("src");
@@ -72,6 +120,9 @@ for (const file of files) {
   lines.forEach((line, i) => {
     const m = line.match(BARE_HEX_UTILITY);
     if (m) hits.push(`${file}:${i + 1}  ${m[0]}`);
+    for (const rgb of saturatedRgbLiterals(line)) {
+      hits.push(`${file}:${i + 1}  ${rgb}`);
+    }
   });
 }
 
