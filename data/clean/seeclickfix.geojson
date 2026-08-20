@@ -6,6 +6,358 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.2259,
+          39.5831
+        ]
+      },
+      "properties": {
+        "external_id": "22559587",
+        "summary": "Roadway General Request",
+        "description": "When driving on Simpsons Mill Road and  approaching Johnsville Road bridge, view of oncoming traffic over the bridge is blocked due to vegetation growth along the riverbank.",
+        "address": "12725-12799 Simpsons Mill Rd Keymar, Maryland, 21757",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-20T01:29:43.000Z",
+        "url": "https://seeclickfix.com/issues/22559587",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.43910185407805,
+          39.37784304132647
+        ]
+      },
+      "properties": {
+        "external_id": "22557640",
+        "summary": "Roadway Sign Maintenance",
+        "description": "𝐍𝐨 𝐏𝐚𝐫𝐤𝐢𝐧𝐠 𝐬𝐢𝐠𝐧𝐬 𝐫𝐞𝐦𝐨𝐯𝐞𝐝 𝐨𝐧 𝐅𝐫𝐞𝐝𝐞𝐫𝐢𝐜𝐤 𝐂𝐨𝐮𝐧𝐭𝐲 𝐬𝐭𝐫𝐞𝐞𝐭. Parking is allowed on only one side of 𝐑𝐢𝐯𝐞𝐫 𝐁𝐢𝐫𝐜𝐡 𝐑𝐨𝐚𝐝.  No Parking signs were originall",
+        "address": "River Birch Rd Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-08-19T21:02:34.000Z",
+        "url": "https://seeclickfix.com/issues/22557640",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4555929157966,
+          39.449617379645005
+        ]
+      },
+      "properties": {
+        "external_id": "22557557",
+        "summary": "Roadway General Request",
+        "description": "The new Yellow Springs Elementary School is causing massive traffic and chaos in the Tuscarora and Clover Ridge neighborhoods.  The new traffic circle to access the school entrance on Spring Run, is c",
+        "address": "31 Rocky Springs Rd Frederick, MD, 21702, USA",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-19T20:54:56.000Z",
+        "url": "https://seeclickfix.com/issues/22557557",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.48855080805579,
+          39.32132708136194
+        ]
+      },
+      "properties": {
+        "external_id": "22556719",
+        "summary": "Noxious Weed",
+        "description": "Johnson grass growing wild at Mountville Rd and Ballenger Creek Pike near a transformer.",
+        "address": "Mountville Rd Frederick, MD, 21703, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Noxious Weed",
+        "reported_at": "2026-08-19T19:39:11.000Z",
+        "url": "https://seeclickfix.com/issues/22556719",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.37815850292247,
+          39.45331700838916
+        ]
+      },
+      "properties": {
+        "external_id": "22556681",
+        "summary": "General Inquiries- Animal Control",
+        "description": "Address of concern is 8207 Blue Heron Dr Apt 1C. Animal Nuisance and possible neglect. Two small Shih Tzu type dogs (one small, one slightly larger with 3 legs) that a neighbor lets outside their pati",
+        "address": "Blue Heron Dr Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "General Inquiries- Animal Control",
+        "reported_at": "2026-08-19T19:35:44.000Z",
+        "url": "https://seeclickfix.com/issues/22556681",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.49588799080618,
+          39.64014401434252
+        ]
+      },
+      "properties": {
+        "external_id": "22556306",
+        "summary": "Property Damage",
+        "description": "About 2 weeks ago, a work crew seems to have damaged the wall near constituents' barn. They would like to someone from the county to have a look at the bldg to access the issue. The wall looks to be f",
+        "address": "Foxville Deerfield Rd Sabillasville, Maryland, 21780",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Property Damage",
+        "reported_at": "2026-08-19T19:05:19.000Z",
+        "url": "https://seeclickfix.com/issues/22556306",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2083057729566,
+          39.33721105321139
+        ]
+      },
+      "properties": {
+        "external_id": "22556159",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Culvert is clogged and is causing storm water to flood the area and washout the roadway. Constituent would like county to remedy the backup.",
+        "address": "13079 Penn Shop Rd Mount Airy, Maryland, 21771",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-19T18:55:44.000Z",
+        "url": "https://seeclickfix.com/issues/22556159",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.42650255441038,
+          39.3820193245847
+        ]
+      },
+      "properties": {
+        "external_id": "22555558",
+        "summary": "Noxious Weed",
+        "description": "Lawn is overgrown and not being maintained. Appears to have not been mowed and also a large amount of debris that is down in the front yard.",
+        "address": "9007 Allington Manor Cir W Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Noxious Weed",
+        "reported_at": "2026-08-19T18:09:44.000Z",
+        "url": "https://seeclickfix.com/issues/22555558",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.18866378869333,
+          39.3742445645638
+        ]
+      },
+      "properties": {
+        "external_id": "22554902",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Requesting culvert to be cleared of debris.",
+        "address": "5028 Sidney Rd Mount Airy, Maryland, 21771",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-19T17:22:11.000Z",
+        "url": "https://seeclickfix.com/issues/22554902",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.51490866649658,
+          39.31476662152521
+        ]
+      },
+      "properties": {
+        "external_id": "22554495",
+        "summary": "Roadway Tree Maintenance",
+        "description": "Resident called with concerns of a dead tree dropping branches in his driveway and near/on the road.",
+        "address": "2910 Basford Rd Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-19T16:52:58.000Z",
+        "url": "https://seeclickfix.com/issues/22554495",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.45622000538567,
+          39.70029399742326
+        ]
+      },
+      "properties": {
+        "external_id": "22553291",
+        "summary": "Roadway Mowing Request",
+        "description": "Bushes need to be trimmed on Harbaugh Valley Rd. near Friends Creek, Hornet's Nest and Harbaugh Rd. Vehicles are being scratched due to bushes not being trimmed.",
+        "address": "Harbaugh Valley Rd Sabillasville, Maryland, 21780",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-19T15:30:34.000Z",
+        "url": "https://seeclickfix.com/issues/22553291",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.34485132847053,
+          39.42488474914659
+        ]
+      },
+      "properties": {
+        "external_id": "22553114",
+        "summary": "Roadway General Request",
+        "description": "There is a huge hump in the road here. It’s a new section of the road but it is awful and people drive on the opposite side of the road to avoid the hump. This is the worst blacktop job I’ve ever seen",
+        "address": "Linganore Rd Linganore, MD, 21701, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-19T15:19:44.000Z",
+        "url": "https://seeclickfix.com/issues/22553114",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.33968039756,
+          39.317184022234
+        ]
+      },
+      "properties": {
+        "external_id": "22552640",
+        "summary": "Roadway Pavement Maintenance",
+        "description": "pavement, sidewalk, apron concrete issues",
+        "address": "3033 Herb Garden Dr Frederick, Maryland, 21704",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Pavement Maintenance",
+        "reported_at": "2026-08-19T14:51:45.000Z",
+        "url": "https://seeclickfix.com/issues/22552640",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.29993263133798,
+          39.41105863769102
+        ]
+      },
+      "properties": {
+        "external_id": "22551101",
+        "summary": "Roadway General Request",
+        "description": "The concrete swale on Boyers Mill heading towards the bridge is full of debris, fallen trees, boulders, and overgrown foliage. During large rain events, the concern is that the water will not flow pro",
+        "address": "6449 Boyers Mill Rd New Market, Maryland, 21774",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway General Request",
+        "reported_at": "2026-08-19T12:54:49.000Z",
+        "url": "https://seeclickfix.com/issues/22551101",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.46758385443482,
+          39.67120655123788
+        ]
+      },
+      "properties": {
+        "external_id": "22550746",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Rainwater from the storms flow down from the top of the roadway and is flooding constituents yard. They would like the county to clear out drainage area so that overflow can be directed down the hill.",
+        "address": "15935 Manahan Rd Sabillasville, Maryland, 21780",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-19T12:21:13.000Z",
+        "url": "https://seeclickfix.com/issues/22550746",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.55919741695843,
+          39.622418670146935
+        ]
+      },
+      "properties": {
+        "external_id": "22550502",
+        "summary": "Roadway Mowing Request",
+        "description": "Loy Wolfe near Wolfsville Road",
+        "address": "14081-14127 Loy Wolfe Rd Smithsburg, MD, 21783, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-19T11:38:20.000Z",
+        "url": "https://seeclickfix.com/issues/22550502",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -77.49364000628407,
           39.425165464557914
         ]
@@ -64,380 +416,6 @@
         "category": "Roadway Drainage Maintenance",
         "reported_at": "2026-08-18T20:11:22.000Z",
         "url": "https://seeclickfix.com/issues/22546518",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.49643658636904,
-          39.36986319708957
-        ]
-      },
-      "properties": {
-        "external_id": "22545470",
-        "summary": "Roadway Mowing Request",
-        "description": "On Elmer Road as you approach the entrance, and upon exit of the tunnel the weeds have become overgrown. It's obstructing the view and scraping against vehicles. Constituent is requesting mowing and t",
-        "address": "Elmer Rd Frederick, Maryland, 21703",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-18T18:52:23.000Z",
-        "url": "https://seeclickfix.com/issues/22545470",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.51678646426498,
-          39.49806103247465
-        ]
-      },
-      "properties": {
-        "external_id": "22544860",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Constituent called inquiring about status of installing a dangerous curve sign due to numerous accidents.",
-        "address": "4397 Coxey Brown Rd Myersville, Maryland, 21773",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-18T18:10:32.000Z",
-        "url": "https://seeclickfix.com/issues/22544860",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.34359153422696,
-          39.324971169548746
-        ]
-      },
-      "properties": {
-        "external_id": "22541740",
-        "summary": "Roadway Mowing Request",
-        "description": "Constituent at 3338 Urbana Pike is requesting mowing be done at this location. They stated grass and weed growth in this area is unchecked. Requesting mowing to be done.",
-        "address": "3338 Urbana Pike Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-18T14:43:42.000Z",
-        "url": "https://seeclickfix.com/issues/22541740",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.38267022994471,
-          39.30969037332282
-        ]
-      },
-      "properties": {
-        "external_id": "22541137",
-        "summary": "Roadway General Request",
-        "description": "Constituent is requesting that mowing doesn't go so deep into their yard area. There are wildflowers that were recently mowed down. Also, there were reflector posts that were destroyed by the mowing a",
-        "address": "2753 Roderick Rd Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-18T14:06:49.000Z",
-        "url": "https://seeclickfix.com/issues/22541137",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.33925079802948,
-          39.42798358613475
-        ]
-      },
-      "properties": {
-        "external_id": "22541005",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Tree limbs and branches are falling onto the road in this area.",
-        "address": "7121 Linganore Rd Frederick, Maryland, 21701",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-18T13:56:51.000Z",
-        "url": "https://seeclickfix.com/issues/22541005",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.311153988033,
-          39.449041979131
-        ]
-      },
-      "properties": {
-        "external_id": "22540217",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Yield sign and stop sign have been knocked down",
-        "address": "Allview Dr & Mckaig Rd Frederick, MD, 21701, USA",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-18T13:00:07.000Z",
-        "url": "https://seeclickfix.com/issues/22540217",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.35091438393617,
-          39.353588872925215
-        ]
-      },
-      "properties": {
-        "external_id": "22539953",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "During yesterday's large storms, the stream was diverted onto the Road in two locations.  One at the driveway and the other at the bridge crossing.",
-        "address": "8739 Ball Rd Ijamsville, Maryland, 21754",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-18T12:32:57.000Z",
-        "url": "https://seeclickfix.com/issues/22539953",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.43593571588208,
-          39.45939003251747
-        ]
-      },
-      "properties": {
-        "external_id": "22533772",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Drainage pipe beneath the driveway is clogged and doesn't allow water to flow. Constituent said that the county attempted to clear the flow last year but the issue still exists. Would like county to r",
-        "address": "6605 Springhill Dr Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-17T18:22:05.000Z",
-        "url": "https://seeclickfix.com/issues/22533772",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.4966654679867,
-          39.37021707849947
-        ]
-      },
-      "properties": {
-        "external_id": "22530930",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "Elmer Rd pavement is very rough at the entrance and exit of the underpass. near Jefferson Pike. Constituent would like for the county to smooth this area out, because of the damage it causing to vehic",
-        "address": "Elmer Rd Braddock Heights, MD, 21703, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-17T15:29:22.000Z",
-        "url": "https://seeclickfix.com/issues/22530930",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.40053042474155,
-          39.31880384347441
-        ]
-      },
-      "properties": {
-        "external_id": "22530834",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Tree has fallen onto the road over power lines",
-        "address": "3055-3115 Flint Hill Rd Adamstown, MD, 21710, USA",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-17T15:23:52.000Z",
-        "url": "https://seeclickfix.com/issues/22530834",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.43625632367855,
-          39.525600152550254
-        ]
-      },
-      "properties": {
-        "external_id": "22530304",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Drainage pipe is clogged with debris, constituent would like the county to remove the trash for proper drainage.",
-        "address": "10633 Bethel Rd Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-17T14:55:45.000Z",
-        "url": "https://seeclickfix.com/issues/22530304",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.37516507384143,
-          39.312954076872565
-        ]
-      },
-      "properties": {
-        "external_id": "22529683",
-        "summary": "Roadway Pavement Maintenance",
-        "description": "The roads in our community have a lot of cracking and potholes.",
-        "address": "8404 Williams Dr Frederick, Maryland, 21704",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-17T14:18:47.000Z",
-        "url": "https://seeclickfix.com/issues/22529683",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.43685956925007,
-          39.525783758139355
-        ]
-      },
-      "properties": {
-        "external_id": "22529654",
-        "summary": "Property Damage",
-        "description": "Mailbox repair isn't working anymore. Bungy cord fix stop working. A complete repair is needed.",
-        "address": "10644 Bethel Rd Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Property Damage",
-        "reported_at": "2026-08-17T14:17:10.000Z",
-        "url": "https://seeclickfix.com/issues/22529654",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.54096423161262,
-          39.52066128374094
-        ]
-      },
-      "properties": {
-        "external_id": "22528766",
-        "summary": "Roadway Mowing Request",
-        "description": "Constituent said that weeds on this road need to be cut back., between route 40 and route 17 going towards Wolfsville",
-        "address": "10446 Harmony Rd Myersville, Maryland, 21773",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-17T13:09:13.000Z",
-        "url": "https://seeclickfix.com/issues/22528766",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.30681666666666,
-          39.308058333333335
-        ]
-      },
-      "properties": {
-        "external_id": "22528060",
-        "summary": "Gravel Road Maintenance",
-        "description": "Please patch 15 potholes",
-        "address": "10370-10720 Price Rd Ijamsville, Maryland, 21754",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Gravel Road Maintenance",
-        "reported_at": "2026-08-17T11:44:40.000Z",
-        "url": "https://seeclickfix.com/issues/22528060",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.20336271319695,
-          39.349124336016715
-        ]
-      },
-      "properties": {
-        "external_id": "22527789",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "I apologize but I’m not sure who to contact.  There is an issue in on my street in front of 4114 Larson Lane, Mt. Airy, MD.  The roadside drainage swale has eroded so much, due to heavy storm flows, t",
-        "address": "4114 Larson Ln Mount Airy, Maryland, 21771",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-17T10:25:30.000Z",
-        "url": "https://seeclickfix.com/issues/22527789",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.341434786721,
-          39.332488975177
-        ]
-      },
-      "properties": {
-        "external_id": "22525669",
-        "summary": "Water Issue",
-        "description": "",
-        "address": "3642 Singleton Ter Frederick, MD, 21704, USA",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Water Issue",
-        "reported_at": "2026-08-16T21:46:13.000Z",
-        "url": "https://seeclickfix.com/issues/22525669",
         "source": "seeclickfix"
       }
     }

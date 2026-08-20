@@ -10,13 +10,13 @@
   "type": "FeatureCollection",
   "features": [
     {
-      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-14069",
+      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-20449",
       "type": "Feature",
       "geometry": null,
       "properties": {
-        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-14069",
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0-KEEPALIVE-20449",
         "@type": "wx:Alert",
-        "id": "urn:oid:2.49.0.1.840.0-KEEPALIVE-14069",
+        "id": "urn:oid:2.49.0.1.840.0-KEEPALIVE-20449",
         "areaDesc": "Montgomery",
         "geocode": {
           "SAME": [
@@ -30,10 +30,10 @@
           "https://api.weather.gov/zones/county/MDC031"
         ],
         "references": [],
-        "sent": "2026-08-19T10:27:16+00:00",
-        "effective": "2026-08-19T10:27:16+00:00",
+        "sent": "2026-08-20T10:27:16+00:00",
+        "effective": "2026-08-20T10:27:16+00:00",
         "onset": null,
-        "expires": "2026-08-19T10:37:16+00:00",
+        "expires": "2026-08-20T10:37:16+00:00",
         "ends": null,
         "status": "Test",
         "messageType": "Alert",
@@ -54,7 +54,7 @@
             "KEPWBC"
           ],
           "WMOidentifier": [
-            "NZUS91 KWBC 191027"
+            "NZUS91 KWBC 201027"
           ],
           "BLOCKCHANNEL": [
             "CMAS",
@@ -78,5 +78,5 @@
     }
   ],
   "title": "Current watches, warnings, and advisories for Maryland",
-  "updated": "2026-08-19T10:27:21+00:00"
+  "updated": "2026-08-20T10:30:00+00:00"
 }
