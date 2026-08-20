@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
+import { exposeMarkerChild } from "./markerA11y";
 import { Video, ExternalLink } from "lucide-react";
 import type { TrafficCamera } from "@/lib/integrations/chartCameras";
 import {
@@ -102,7 +103,7 @@ export default function TrafficCameras({
   return (
     <>
       {cameras.map((cam) => (
-        <Marker key={`cam:${cam.id}`} longitude={cam.lng} latitude={cam.lat} anchor="center">
+        <Marker key={`cam:${cam.id}`} ref={exposeMarkerChild} longitude={cam.lng} latitude={cam.lat} anchor="center">
           <button
             type="button"
             onClick={(ev) => {

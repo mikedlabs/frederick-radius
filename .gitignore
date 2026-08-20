@@ -37,8 +37,17 @@ yarn-error.log*
 # vercel
 .vercel
 
-# local dev tooling
-.claude/
+# local dev tooling — the SHARED agent config is checked in on purpose
+# (slash commands, subagents, permissions, hooks), so the whole team and every
+# agent session get the same inner loops. Only machine-local and scratch state
+# stays out.
+.claude/*
+!.claude/agents/
+!.claude/commands/
+!.claude/settings.json
+!.claude/launch.json
+.claude/settings.local.json
+.claude/worktrees/
 
 # typescript
 *.tsbuildinfo

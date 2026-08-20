@@ -34,8 +34,11 @@ export type DaypartPick = {
   fact?: string | null;
   /** The same evidence-backed explanation used by Ask and Nearby. */
   decisionReasons?: DecisionReason[];
-  /** Whether the hours signal is live-confirmed or a conservative posted-hours fallback. */
-  confidence: "confirmed" | "likely";
+  /** How strong the hours signal is. "confirmed" = posted hours say open now;
+   *  "likely" = a conservative posted-hours fallback; "unconfirmed" = the
+   *  county's hours cannot answer for this place at all, so the row is offered
+   *  as a real candidate without an open claim. */
+  confidence: "confirmed" | "likely" | "unconfirmed";
 };
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
 
@@ -92,10 +95,25 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
           )
         : eligible;
       const confirmed = intentRanked.filter((place) => isOpenNow(place.open_status));
-      const confidence = confirmed.length > 0 ? "confirmed" : "likely";
+      const likely = confirmed.length > 0
+        ? []
+        : intentRanked.filter((place) => likelySlugs.has(place.slug));
+      // Third tier, added 2026-08-19. When the rolling hours refresh goes dark
+      // county-wide, `confirmed` AND `likely` are both empty for every
+      // category, and this used to return NO picks — so Today printed
+      // "Current hours do not confirm an open match for breakfast & bakeries
+      // across Frederick County" with not one bakery under it. The county
+      // still has 36 bakeries; what we lost was the ability to say whether
+      // they are open. Offer the quality-ranked candidates and let the row's
+      // own hours line say the honest thing, exactly as /api/want's notable
+      // lane already does for Nearby.
+      const confidence: DaypartPick["confidence"] =
+        confirmed.length > 0 ? "confirmed" : likely.length > 0 ? "likely" : "unconfirmed";
       const available = confirmed.length > 0
         ? confirmed
-        : intentRanked.filter((place) => likelySlugs.has(place.slug));
+        : likely.length > 0
+          ? likely
+          : intentRanked;
       const picks = need.category === "coffee"
         ? keepOneLocationPerChain(available)
         : available;

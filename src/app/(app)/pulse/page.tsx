@@ -30,7 +30,7 @@ import {
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
-import { getCivicPressReleases, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
+import { getCivicPressReleasesResult, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
@@ -298,7 +298,7 @@ export default async function PulsePage() {
     officialSignals,
     fixitResult,
     news,
-    press,
+    pressResult,
     riversResult,
     airports,
     forecast,
@@ -327,7 +327,23 @@ export default async function PulsePage() {
     withTimeout(getLocalHeadlines(), FEED_MS, []),
     // Official City + County press releases (CivicPlus News Flash RSS). The
     // police-lane items get the breaking strip up top + the blotter below.
-    withTimeout(getCivicPressReleases(), FEED_MS, []),
+    //
+    // Read the HEALTH-AWARE result, not the compatibility facade. The facade
+    // returns `.items` and drops the loader's own per-feed sourceHealth, so a
+    // refused connection arrived here as a plain empty array and the police
+    // tile rendered the word "Current" over nothing — a page announcing calm
+    // while blind, for the full 900s the failure stays cached. Verified
+    // flapping on production 2026-08-19 while both newsrooms were answering
+    // 200 in under a second.
+    //
+    // withTimeoutStatus keeps OUR timeout distinct from a successful empty
+    // read; sourceHealth.degraded then covers the case where the fetch
+    // returned but a feed inside it failed.
+    withTimeoutStatus(
+      getCivicPressReleasesResult(),
+      FEED_MS,
+      { items: [], sourceHealth: { degraded: true, unavailable: ["City of Frederick", "Frederick County"] } },
+    ),
     // USGS live gage height + streamflow for county rivers, WITH 24h history
     // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
     // Six hours is ~24 readings per gauge: ample for the eight-reading trend
@@ -505,6 +521,11 @@ export default async function PulsePage() {
 
   // Only a fresh, urgent police release earns the safety strip. Routine and
   // older releases remain in the standing blotter without alert styling.
+  // One place decides what the civic feed could actually tell us, so the
+  // police strip, the blotter, and the road-work tile cannot disagree.
+  const press = pressResult.data.items;
+  const civicAvailable =
+    pressResult.available && !pressResult.data.sourceHealth.degraded;
   const policeItems = policeReleases(press);
   const breakingPolice = featuredPoliceRelease(policeItems, nowMs);
   const latestPolice = policeItems[0] ?? null;
@@ -917,6 +938,13 @@ export default async function PulsePage() {
 
   const policeBody = (
     <div className="space-y-3">
+      {!civicAvailable && (
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          The City and County newsrooms could not be reached, so recent releases
+          are unknown right now. The official calls-for-service map below is
+          unaffected.
+        </p>
+      )}
       {breakingPolice && (
         <div className="space-y-1.5">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
@@ -962,9 +990,16 @@ export default async function PulsePage() {
     </div>
   );
 
+  // The empty branch here was unreachable while the tile was gated on
+  // advisories.length, and it says "reported right now" — a claim only worth
+  // making when the newsrooms actually answered.
   const roadworkBody = advisories.length > 0
     ? <PoliceBlotter items={advisories} now={nowMs} />
-    : emptyNote("No road work or closures are reported right now.");
+    : civicAvailable
+      ? emptyNote("No road work or closures are reported right now.")
+      : emptyNote(
+          "The City and County newsrooms could not be reached, so road work is unknown right now.",
+        );
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -2041,34 +2076,59 @@ export default async function PulsePage() {
       key: "police",
       label: "Police & safety",
       iconName: "Shield",
+      // "CFS map" used to be the fallback for BOTH "the newsrooms published
+      // nothing" and "we never reached the newsrooms", so an outage wore the
+      // calm accent under the word "Current". Those are different sentences
+      // now, and only the first is a quiet day.
       countLabel: breakingPolice
         ? "Breaking release"
         : blotter.length > 0
           ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}`
-          : "CFS map",
+          : civicAvailable
+            ? "CFS map"
+            : "Feed unavailable",
       accent: "var(--app-cool)",
       active: Boolean(breakingPolice),
+      degraded: !civicAvailable,
+      keepVisibleWhenUnavailable: true,
       // The dedicated breaking strip already keeps this release prominent.
       // Do not duplicate it in the board's "Happening now" row when another
       // higher-priority signal owns the masthead.
       attention: false,
       kind: "status",
       sourceLabel: "Frederick PD · City + County",
-      peek: breakingPolice?.title ?? latestPolice?.title,
+      peek:
+        breakingPolice?.title ??
+        latestPolice?.title ??
+        (civicAvailable
+          ? undefined
+          : "The City and County newsrooms could not be reached."),
       body: policeBody,
     },
-    ...(advisories.length > 0
+    // Road work is carried by the same feed, so it must not silently VANISH
+    // when that feed fails — a missing tile reads as "no road work", which is
+    // the same false all-clear one tile over. Absent because we asked and
+    // there is none: still hide it. Absent because we could not ask: say so.
+    ...(advisories.length > 0 || !civicAvailable
       ? [{
           key: "roadwork",
           label: "Road work",
           iconName: "TrafficCone",
-          countLabel: `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
+          countLabel: civicAvailable
+            ? `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`
+            : "Feed unavailable",
           accent: "var(--app-cool)",
           active: false,
           attention: false,
+          degraded: !civicAvailable,
+          keepVisibleWhenUnavailable: true,
           kind: "status",
           sourceLabel: "City + County advisories",
-          peek: advisories[0]?.title,
+          peek:
+            advisories[0]?.title ??
+            (civicAvailable
+              ? undefined
+              : "The City and County newsrooms could not be reached."),
           body: roadworkBody,
         } as PulseTile]
       : []),
@@ -2223,26 +2283,59 @@ export default async function PulsePage() {
             <ChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             Sources &amp; data trail
           </summary>
+          {/* Derived from the tiles actually assembled THIS render, not a
+              hand-maintained list. The hardcoded version drifted the way any
+              copy of the truth does: it named PulsePoint at full weight while
+              the board two screens up said "not connected", called the power
+              source FirstEnergy while the tile says Potomac Edison, and
+              omitted five sources that render their own "Source ·" lines on
+              the same page (USGS water, FAA, the scanner, Maryland WZDx,
+              TransIT). On a page whose pitch is a data trail, the trail was
+              the least complete part. Mapping over pulseTiles makes the
+              footer exactly as complete as the page, forever. Outbound links
+              come from a lookup keyed by the tile's own sourceLabel; a source
+              without a recorded home page renders as plain text rather than
+              inventing one. */}
           <div className="grid min-w-0 grid-cols-1 gap-x-4 pb-1 pt-1 sm:grid-cols-2">
-            <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
-            <SourceLine label="City alerts" source="City of Frederick" href="https://www.cityoffrederickmd.gov/AlertCenter.aspx?CID=City-Emergencies-4" />
-            <SourceLine label="County health alerts" source="Frederick County Health Department" href="https://health.frederickcountymd.gov/AlertCenter.aspx" />
-            <SourceLine label="Storm observations" source="NWS Baltimore/Washington" href="https://www.weather.gov/lwx/" />
-            <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
-            <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
-            <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
-            <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
-            <SourceLine label="MARC trains" source="MTA Maryland" href="https://www.mta.maryland.gov/schedule/marc" />
-            <SourceLine label="Air quality" source="AirNow · EPA" href="https://www.airnow.gov/" />
-            <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
-            <SourceLine label="News" source="Google News · Frederick" href="https://news.google.com/search?q=Frederick%20County%20Maryland" />
-            <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
+            {pulseTiles
+              .filter((tile) => tile.sourceLabel)
+              .map((tile) => (
+                <SourceLine
+                  key={tile.key}
+                  label={tile.label}
+                  source={tile.sourceLabel}
+                  href={SOURCE_HOMES[tile.sourceLabel]}
+                />
+              ))}
           </div>
         </details>
       </footer>
     </div>
   );
 }
+
+/** Outbound home pages for the sources the tiles name, keyed by the exact
+ * sourceLabel each tile displays, so the footer can only link a source the
+ * page is actually presenting. A label with no entry renders unlinked. */
+const SOURCE_HOMES: Record<string, string | undefined> = {
+  "NWS · weather.gov": "https://www.weather.gov/",
+  "NWS + City + County": "https://www.weather.gov/lwx/",
+  "City + County advisories": "https://www.cityoffrederickmd.gov/CivicAlerts.aspx",
+  "MDOT CHART + Maryland WZDx": "https://chart.maryland.gov/",
+  "Frederick Scanner + MDOT CHART": "https://chart.maryland.gov/",
+  "Potomac Edison": "https://outages-mdwv.firstenergycorp.com/",
+  "FCPS RSS": "https://www.fcps.org/",
+  "MTA MARC · Brunswick Line": "https://www.mta.maryland.gov/schedule/marc",
+  "AirNow · EPA": "https://www.airnow.gov/",
+  "FCG FixIT · SeeClickFix": "https://www.frederickcountymd.gov/8235/FCG-FixIT",
+  "Google News · Frederick County": "https://news.google.com/search?q=Frederick%20County%20Maryland",
+  "Frederick PD · City + County": "https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map",
+  "USGS Water Services": "https://waterdata.usgs.gov/md/nwis/rt",
+  FAA: "https://www.fly.faa.gov/",
+  "FAA TFR": "https://tfr.faa.gov/",
+  "Maryland DNR": "https://dnr.maryland.gov/fisheries/pages/stocking/index.aspx",
+  PulsePoint: "https://web.pulsepoint.org/",
+};
 
 /* ─────────────────────────────────────────────────────────────
  * Components
@@ -2314,8 +2407,27 @@ function SourceLine({
 }: {
   label: string;
   source: string;
-  href: string;
+  /** Absent when the source has no recorded home page; the line renders as
+   *  plain text rather than inventing a destination. */
+  href?: string;
 }) {
+  if (!href) {
+    return (
+      <span
+        className="flex min-h-11 min-w-0 w-full items-center gap-1.5 rounded-sm px-1"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        <span
+          className="shrink-0 font-semibold uppercase tracking-[0.06em]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {label}
+        </span>
+        <span>·</span>
+        <span className="min-w-0 truncate">{source}</span>
+      </span>
+    );
+  }
   return (
     <a
       href={href}

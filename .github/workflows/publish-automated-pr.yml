@@ -29,6 +29,15 @@ on:
       body:
         required: true
         type: string
+      auto_merge:
+        description: >
+          Queue the PR for auto-merge. This does NOT bypass anything: GitHub
+          holds the merge until every required check on main passes, so a
+          failing verify still blocks it. Callers should pass true only when
+          the refresh carries no change a human must sign off on.
+        required: false
+        default: false
+        type: boolean
     outputs:
       pr_branch:
         value: ${{ jobs.publish.outputs.pr_branch }}
@@ -52,10 +61,12 @@ jobs:
       pr_operation: ${{ steps.review_pr.outputs.pull-request-operation }}
       pr_head_sha: ${{ steps.review_pr.outputs.pull-request-head-sha }}
     steps:
-      - name: Refuse output generated from a stale main revision
+      - name: Resolve a main revision this output may publish onto
+        id: resolve_ref
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GENERATED_FROM_SHA: ${{ inputs.base_sha }}
+          ALLOWED_PATHS: ${{ inputs.allowed_paths }}
         with:
           script: |
             const expected = process.env.GENERATED_FROM_SHA;
@@ -68,14 +79,97 @@ jobs:
               repo: context.repo.repo,
               branch: 'main',
             });
-            if (branch.data.commit.sha !== expected) {
-              core.setFailed(`Main moved while data was generated. Expected ${expected}; found ${branch.data.commit.sha}. Retry from the current main branch.`);
+            const head = branch.data.commit.sha;
+            if (head === expected) {
+              core.setOutput('publish_ref', expected);
+              return;
             }
+
+            // Main moved while the generator ran. That used to be an
+            // unconditional abort, and it starved delivery: with a ~43-minute
+            // required check serializing merges, main moves most hours of a
+            // working day, every abort threw away a finished night's data, and
+            // the hours artifact decays a sixth per day while every claim
+            // expires on day 7. The bot PR sat still from Aug 4 to Aug 19 and
+            // the county's open/closed state went dark.
+            //
+            // The hazard the abort protected against is narrower than "main
+            // moved": it is "main changed a file THIS PUBLISH WILL OVERWRITE",
+            // which would silently discard newer reviewed data. So compare the
+            // two revisions and fail only when the delta intersects the
+            // publish surface. The surface is allowed_paths PLUS every file
+            // tracked by the release manifest when the manifest itself is
+            // being published, because the manifest digests files beyond
+            // allowed_paths and a benign-looking merge to one of those would
+            // land this PR with a digest mismatch and a red verify.
+            //
+            // Everything here fails CLOSED: an unreadable comparison, an
+            // oversized delta, or an unreadable manifest all abort exactly as
+            // before.
+            const allowed = (process.env.ALLOWED_PATHS || '')
+              .split('\n').map((line) => line.trim()).filter(Boolean);
+            const surface = new Set(allowed);
+            if (allowed.includes('src/data/data-release.json')) {
+              try {
+                const manifest = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: 'src/data/data-release.json',
+                  ref: head,
+                });
+                const parsed = JSON.parse(
+                  Buffer.from(manifest.data.content, 'base64').toString('utf8'),
+                );
+                for (const stream of Object.values(parsed.streams || {})) {
+                  for (const artifact of stream.artifacts || []) {
+                    if (artifact && typeof artifact.path === 'string') {
+                      surface.add(artifact.path);
+                    }
+                  }
+                }
+              } catch (error) {
+                core.setFailed(`Main moved and the release manifest could not be read to prove the movement safe (${error.message}). Retry from the current main branch.`);
+                return;
+              }
+            }
+            let files;
+            try {
+              const cmp = await github.rest.repos.compareCommitsWithBasehead({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                basehead: `${expected}...${head}`,
+                per_page: 250,
+              });
+              files = cmp.data.files;
+              if (!Array.isArray(files) || files.length >= 300 || cmp.data.total_commits > 100) {
+                core.setFailed(`Main moved by too much to prove the movement safe (${cmp.data.total_commits} commits). Retry from the current main branch.`);
+                return;
+              }
+            } catch (error) {
+              core.setFailed(`Main moved and the delta could not be read (${error.message}). Retry from the current main branch.`);
+              return;
+            }
+            const touches = (name) => {
+              if (surface.has(name)) return true;
+              for (const entry of surface) {
+                if (entry.endsWith('/') && name.startsWith(entry)) return true;
+              }
+              return false;
+            };
+            const conflicts = files
+              .flatMap((f) => [f.filename, f.previous_filename].filter(Boolean))
+              .filter(touches);
+            if (conflicts.length > 0) {
+              core.setFailed(`Main moved while data was generated AND the movement touched the publish surface: ${[...new Set(conflicts)].join(', ')}. Retry from the current main branch so its output cannot overwrite newer reviewed data.`);
+              return;
+            }
+            core.notice(`Main moved from ${expected.slice(0, 12)} to ${head.slice(0, 12)} while data was generated, but the delta does not touch the publish surface. Publishing onto current main.`);
+            core.setOutput('publish_ref', head);
 
       - name: Checkout a clean main worktree
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.base_sha }}
+          ref: ${{ steps.resolve_ref.outputs.publish_ref }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -138,21 +232,111 @@ jobs:
             fi
           done
 
+      # The same surface-aware rule as the resolve step, re-anchored to the
+      # revision actually checked out: a conflicting merge landing during the
+      # minute of artifact validation still aborts, while a benign one only
+      # leaves the PR a nudge behind, which tomorrow's regeneration absorbs.
       - name: Recheck main immediately before publication
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GENERATED_FROM_SHA: ${{ inputs.base_sha }}
+          GENERATED_FROM_SHA: ${{ steps.resolve_ref.outputs.publish_ref }}
+          ALLOWED_PATHS: ${{ inputs.allowed_paths }}
         with:
           script: |
             const expected = process.env.GENERATED_FROM_SHA;
+            if (!/^[0-9a-f]{40}$/.test(expected || '')) {
+              core.setFailed('The generator did not provide a valid base commit.');
+              return;
+            }
             const branch = await github.rest.repos.getBranch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               branch: 'main',
             });
-            if (branch.data.commit.sha !== expected) {
-              core.setFailed('Main moved during artifact validation. Retry the generator so its output cannot overwrite newer reviewed data.');
+            const head = branch.data.commit.sha;
+            if (head === expected) {
+              return; // main is exactly the revision we checked out
             }
+
+            // Main moved while the generator ran. That used to be an
+            // unconditional abort, and it starved delivery: with a ~43-minute
+            // required check serializing merges, main moves most hours of a
+            // working day, every abort threw away a finished night's data, and
+            // the hours artifact decays a sixth per day while every claim
+            // expires on day 7. The bot PR sat still from Aug 4 to Aug 19 and
+            // the county's open/closed state went dark.
+            //
+            // The hazard the abort protected against is narrower than "main
+            // moved": it is "main changed a file THIS PUBLISH WILL OVERWRITE",
+            // which would silently discard newer reviewed data. So compare the
+            // two revisions and fail only when the delta intersects the
+            // publish surface. The surface is allowed_paths PLUS every file
+            // tracked by the release manifest when the manifest itself is
+            // being published, because the manifest digests files beyond
+            // allowed_paths and a benign-looking merge to one of those would
+            // land this PR with a digest mismatch and a red verify.
+            //
+            // Everything here fails CLOSED: an unreadable comparison, an
+            // oversized delta, or an unreadable manifest all abort exactly as
+            // before.
+            const allowed = (process.env.ALLOWED_PATHS || '')
+              .split('\n').map((line) => line.trim()).filter(Boolean);
+            const surface = new Set(allowed);
+            if (allowed.includes('src/data/data-release.json')) {
+              try {
+                const manifest = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: 'src/data/data-release.json',
+                  ref: head,
+                });
+                const parsed = JSON.parse(
+                  Buffer.from(manifest.data.content, 'base64').toString('utf8'),
+                );
+                for (const stream of Object.values(parsed.streams || {})) {
+                  for (const artifact of stream.artifacts || []) {
+                    if (artifact && typeof artifact.path === 'string') {
+                      surface.add(artifact.path);
+                    }
+                  }
+                }
+              } catch (error) {
+                core.setFailed(`Main moved and the release manifest could not be read to prove the movement safe (${error.message}). Retry from the current main branch.`);
+                return;
+              }
+            }
+            let files;
+            try {
+              const cmp = await github.rest.repos.compareCommitsWithBasehead({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                basehead: `${expected}...${head}`,
+                per_page: 250,
+              });
+              files = cmp.data.files;
+              if (!Array.isArray(files) || files.length >= 300 || cmp.data.total_commits > 100) {
+                core.setFailed(`Main moved by too much to prove the movement safe (${cmp.data.total_commits} commits). Retry from the current main branch.`);
+                return;
+              }
+            } catch (error) {
+              core.setFailed(`Main moved and the delta could not be read (${error.message}). Retry from the current main branch.`);
+              return;
+            }
+            const touches = (name) => {
+              if (surface.has(name)) return true;
+              for (const entry of surface) {
+                if (entry.endsWith('/') && name.startsWith(entry)) return true;
+              }
+              return false;
+            };
+            const conflicts = files
+              .flatMap((f) => [f.filename, f.previous_filename].filter(Boolean))
+              .filter(touches);
+            if (conflicts.length > 0) {
+              core.setFailed(`Main moved while data was generated AND the movement touched the publish surface: ${[...new Set(conflicts)].join(', ')}. Retry from the current main branch so its output cannot overwrite newer reviewed data.`);
+              return;
+            }
+            core.warning(`Main moved from ${expected.slice(0, 12)} to ${head.slice(0, 12)} during artifact validation; the delta does not touch the publish surface, so the branch will start one nudge behind main, which the nightly regeneration absorbs.`);
 
       - name: Open or update the review PR
         id: review_pr
@@ -168,3 +352,21 @@ jobs:
             data-pipeline
             automated
           delete-branch: true
+
+      # A daily artifact is only useful if it actually reaches main. The hours
+      # snapshot loses about a sixth of its coverage per day and every claim
+      # expires on day 7, so a refresh that waits a fortnight for a click is
+      # the same as no refresh: on 2026-08-18 this PR had been open 14 days
+      # and every open/closed claim in the app had gone dark.
+      #
+      # Auto-merge is a queue, not a bypass. GitHub still holds the PR until
+      # verify, style-lint and Required browser chaos all pass, and the caller
+      # only sets auto_merge when the change carries nothing a human must
+      # judge (no public removals, no new closures).
+      - name: Queue an unflagged refresh for auto-merge
+        if: ${{ inputs.auto_merge && steps.review_pr.outputs.pull-request-number != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.review_pr.outputs.pull-request-number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --auto --squash --repo "$GITHUB_REPOSITORY"

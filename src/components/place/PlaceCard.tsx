@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { usePlacePhoto } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -152,24 +154,44 @@ function Thumb({
   category,
   color,
   size,
+  lazyPhoto = false,
 }: {
   place: PlaceCardData;
   category: string;
   color: string;
   size: number;
+  /** Hydrate the photo on scroll when the surface withheld inline URLs
+   *  (slimForNearby strips them — they were ~64% of /nearby's transfer).
+   *  Resolution goes through /api/places/by-slugs, so the suppression
+   *  verdicts keep applying; the glyph carries "not yet" and "none" alike. */
+  lazyPhoto?: boolean;
 }) {
-  if (place.google_photo_url) {
+  const { photoUrl, anchorRef } = usePlacePhoto(
+    place.slug,
+    place.google_photo_url,
+    lazyPhoto,
+  );
+  if (photoUrl) {
+    // Narrow the proxy URL to the size actually painted. places-client.json
+    // stores one URL per place at w=800, the size a hero needs, and proxy
+    // responses render `unoptimized` because Next cannot resize an opaque
+    // route — which also makes the `sizes` hint below inert for them. So a
+    // 40px thumbnail was downloading the full 800px asset, dozens of times
+    // per scroll across every list surface. PlaceMedallion has done this for
+    // a while; the card thumbs were simply missed.
+    const src = proxyPhotoAtWidth(photoUrl, size);
     return (
       <div
+        ref={anchorRef}
         className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
         style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
       >
         <Image
-          src={place.google_photo_url}
+          src={src}
           alt=""
           fill
-          unoptimized={place.google_photo_url.startsWith("/api/place-photo")}
-          sizes="72px"
+          unoptimized={src.startsWith("/api/place-photo")}
+          sizes={`${size}px`}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
@@ -177,7 +199,11 @@ function Thumb({
       </div>
     );
   }
-  return <CategoryMark category={category} color={color} size={size} />;
+  return (
+    <div ref={anchorRef} className="shrink-0" style={{ height: size, width: size }}>
+      <CategoryMark category={category} color={color} size={size} />
+    </div>
+  );
 }
 
 export default function PlaceCard({
@@ -189,10 +215,14 @@ export default function PlaceCard({
   // answer/feature lead. Override explicitly anywhere it's wanted.
   showSource = variant === "answer" || variant === "feature",
   neutral = false,
+  lazyPhoto = false,
 }: {
   place: PlaceCardData;
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Hydrate the photo on scroll; set by surfaces that withhold inline
+   *  photo URLs from their payload (see Thumb). */
+  lazyPhoto?: boolean;
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
@@ -251,7 +281,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-3 p-4 pl-5">
-            <Thumb place={place} category={place.category} color={color} size={52} />
+            <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -317,7 +347,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              <Thumb place={place} category={place.category} color={color} size={48} />
+              <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
@@ -397,7 +427,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2 p-3.5 pb-4">
             <div className="flex items-center gap-2.5">
-              <Thumb place={place} category={place.category} color={color} size={40} />
+              <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                 {cat?.name ?? place.category}
               </span>
@@ -455,7 +485,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-2.5 p-2.5">
-            <Thumb place={place} category={place.category} color={color} size={40} />
+            <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -521,7 +551,7 @@ export default function PlaceCard({
         className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       />
       <div className="pointer-events-none relative z-10 self-center">
-        <Thumb place={place} category={place.category} color={color} size={46} />
+        <Thumb place={place} category={place.category} color={color} size={46} lazyPhoto={lazyPhoto} />
       </div>
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">

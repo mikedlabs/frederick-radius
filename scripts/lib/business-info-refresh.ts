@@ -41,6 +41,9 @@ export function mergeBusinessInfoCommerceEvidence(
   input: {
     name: string;
     commerceLinks: ExtractedBusinessCommerceLink[];
+    /** Where and when this crawl actually looked. Used ONLY to date a record
+     *  that would otherwise carry published links and no timestamp at all. */
+    observed?: { url: string; checkedAt: string };
   },
 ): BusinessInfoRecord {
   const next: BusinessInfoRecord = {
@@ -54,6 +57,34 @@ export function mergeBusinessInfoCommerceEvidence(
   ]);
   if (links.length) next.commerce_links = links;
   else delete next.commerce_links;
+
+  // Never publish a record that cannot be dated.
+  //
+  // This function intentionally does not advance `source.fetchedAt` — the
+  // caller that failed a Claude extraction relies on the stale stamp to force
+  // a retry — and it treats `commerce_source` as belonging to the dedicated
+  // commerce crawl. Both are right, and together they left a gap: a place
+  // being seen for the FIRST time, whose extraction failed but whose home page
+  // yielded links, was written with commerce_links and no timestamp of any
+  // kind. Five such rows accumulated on bot/business-info-refresh and failed
+  // the artifact-evidence gate, which requires every published row to be
+  // datable so one fresh row cannot make a stale batch look current. That gate
+  // is correct, so the record has to carry its date.
+  //
+  // Only stamps when there is nothing to lose: an existing commerce_source or
+  // source stamp always wins, so a dedicated crawl's timestamp is never
+  // overwritten by an incidental one.
+  if (
+    next.commerce_links?.length
+    && input.observed
+    && !next.commerce_source?.checkedAt
+    && !next.source?.fetchedAt
+  ) {
+    next.commerce_source = {
+      url: input.observed.url,
+      checkedAt: input.observed.checkedAt,
+    };
+  }
   return next;
 }
 

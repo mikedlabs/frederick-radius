@@ -304,6 +304,38 @@ function aliasPhraseScore(query: string, aliases: readonly string[] | undefined)
   return best;
 }
 
+/**
+ * Reward a record that answers EVERY word of a multi-word request.
+ *
+ * `fieldScore` pays a prefix match (2) more than an exact whole-word hit (1),
+ * so a place merely starting with one query word outscored a place containing
+ * all of them: "urgent care" ranked Care of Self Center and Carefree Kitchens
+ * above Frederick Health Urgent Care. `compoundCoverage` already tiers by
+ * coverage but only for connector phrasings ("coffee and bikes"), which a
+ * plain noun like "urgent care" never triggers.
+ *
+ * This is additive on purpose — the established weights keep their meaning,
+ * and naming the whole request becomes a tier above naming part of it.
+ *
+ * Deliberately the NAME only. A weaker tier for full coverage anywhere in the
+ * evidence text was tried and removed: nearly every grocer's blurb contains
+ * both "grocery" and "store", so it outranked distance and answered "what
+ * grocery store is closest to me" with Common Market instead of the Costco
+ * actually nearest. Evidence-wide coverage is too cheap to rank on; a name
+ * that says the whole thing is not.
+ */
+function termCoverageScore(name: string, terms: string[]): number {
+  if (terms.length < 2) return 0;
+  const words = new Set(
+    name
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}'-]+/gu)
+      .filter(Boolean)
+      .flatMap(termVariants),
+  );
+  return terms.every((t) => termVariants(t).some((v) => words.has(v))) ? 8 : 0;
+}
+
 function compoundCoverage(
   query: string,
   evidenceText: string,
@@ -561,6 +593,18 @@ function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
 export type SearchOptions = {
   placeFilter?: (place: PlaceCardData) => boolean;
   onlyPlaces?: boolean;
+  /**
+   * Keep the app's own doors (town + category pages) even when `onlyPlaces`
+   * is excluding events.
+   *
+   * `onlyPlaces` is set for near-me requests to stop the list filling with
+   * events, but it also silenced the town and category doors — so "hardware
+   * store near me" lost `/category/hardware`, its only real answer, and
+   * returned nothing at all, while the bare "hardware store" answered fine.
+   * A door is a curated answer, not proximity padding, so the near-me path
+   * that filters places down to explicit evidence keeps them.
+   */
+  includeDoors?: boolean;
   includeMatchingPlaces?: boolean;
   origin?: LngLat | null;
   rankPlacesByDistance?: boolean;
@@ -671,7 +715,8 @@ export function search(
           xv +
           cv +
           utilityEvidence +
-          (coverage?.score ?? 0),
+          (coverage?.score ?? 0) +
+          termCoverageScore(p.name, terms),
         conceptCoverage: coverage
           ? { matched: coverage.matched, total: coverage.total }
           : undefined,
@@ -699,14 +744,42 @@ export function search(
     }
   }
 
-  if (!options.onlyPlaces && !shortIntent) for (const m of MUNICIPALITIES) {
+  const doorsAllowed = !options.onlyPlaces || options.includeDoors;
+  // A door riding the strict near-me path meets the same bar its places do:
+  // every term of the query has to land. Scoring alone is too generous when
+  // no places survive to balance it, and one shared weak word was enough to
+  // answer "public restroom near me" with Public art, Public WiFi, and
+  // Public safety.
+  const doorNeedsEveryTerm = Boolean(options.onlyPlaces && options.includeDoors);
+  const doorEarnsPlace = (text: string) => {
+    if (!doorNeedsEveryTerm) return true;
+    // `termVariants` only de-pluralizes the QUERY, so the term "store" never
+    // reaches the Hardware blurb's "stores". Singularize the haystack too, or
+    // this check drops the very door it exists to keep.
+    const words = new Set(
+      text
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}'-]+/gu)
+        .filter(Boolean)
+        .flatMap((w) => [w, singularTerm(w)]),
+    );
+    return terms.every(
+      (t) => termVariants(t).some((v) => words.has(v)) || fieldScore(text, [t]) > 0,
+    );
+  };
+
+  if (doorsAllowed && !shortIntent) for (const m of MUNICIPALITIES) {
     const s = fieldScore(m.name, terms) * 5 + fieldScore(m.description, terms) * 1;
-    if (s > 0) hits.push({ type: "municipality", municipality: m, score: s });
+    if (s > 0 && doorEarnsPlace(`${m.name} ${m.description}`)) {
+      hits.push({ type: "municipality", municipality: m, score: s });
+    }
   }
 
-  if (!options.onlyPlaces && !shortIntent) for (const c of CATEGORIES) {
+  if (doorsAllowed && !shortIntent) for (const c of CATEGORIES) {
     const s = fieldScore(c.name, terms) * 3 + fieldScore(c.blurb, terms) * 1;
-    if (s > 0) hits.push({ type: "category", category: c, score: s });
+    if (s > 0 && doorEarnsPlace(`${c.name} ${c.blurb}`)) {
+      hits.push({ type: "category", category: c, score: s });
+    }
   }
 
   // The app's own guides/tools: an exact keyword word scores high enough
@@ -750,6 +823,8 @@ export function search(
     // unrelated fragments cannot manufacture a "match."
     const fuzzyQuery = terms.join(" ");
     const fuzzyThreshold = fuzzyThresholdForQuery(fuzzyQuery);
+    let bestFuzzyPlaceScore = 0;
+    let bestFuzzyPlaceSimilarity = 0;
     if (!hits.some((h) => h.type === "place")) {
       const close: { p: PlaceCardData; f: number }[] = [];
       for (const p of clientPlaces()) {
@@ -758,13 +833,36 @@ export function search(
       }
       close.sort((a, b) => b.f - a.f);
       for (const { p, f } of close.slice(0, 3)) {
-        hits.push({ type: "place", place: p, score: f * 10 + p.feature_score });
+        const score = f * 10 + p.feature_score;
+        bestFuzzyPlaceScore = Math.max(bestFuzzyPlaceScore, score);
+        bestFuzzyPlaceSimilarity = Math.max(bestFuzzyPlaceSimilarity, f);
+        hits.push({ type: "place", place: p, score });
       }
     }
     if (!hits.some((h) => h.type === "municipality")) {
       for (const m of MUNICIPALITIES) {
         const f = fuzzyNameScore(fuzzyQuery, m.name);
-        if (f >= fuzzyThreshold) hits.push({ type: "municipality", municipality: m, score: f * 12 });
+        if (f < fuzzyThreshold) continue;
+        // A one-word query that fuzzy-matches a town name is a misspelled
+        // TOWN, not a business search. Similarity alone cannot separate the
+        // two — "thurmount" scores identically against "Thurmont" and
+        // "Thurmont Trolley Trail", because both carry the same token — so
+        // the place branch's `+ feature_score` decided it, and every town in
+        // the county lost to a business that merely shares its name:
+        // "emmitsburgh" led with Emmitsburg Liquors, "frederik" with
+        // Frederick Auto Repair. When the town matches at least as closely as
+        // the best fuzzy business, the town leads. Derived from the scores
+        // actually in play rather than a tuned constant, and reachable only
+        // through the typo net, so correctly-spelled queries never touch it.
+        const townIsTheWholeQuery =
+          terms.length === 1 && f >= bestFuzzyPlaceSimilarity;
+        hits.push({
+          type: "municipality",
+          municipality: m,
+          score: townIsTheWholeQuery
+            ? Math.max(f * 12, bestFuzzyPlaceScore + 1)
+            : f * 12,
+        });
       }
     }
   }
@@ -935,6 +1033,11 @@ export function qualifiedSearch(
   const candidateLimit = regionalScope && qualifiers.regions.length > 1 ? Math.max(limit * 4, 60) : limit;
   const candidates = search(effectiveQuery, candidateLimit, eventPool, {
     onlyPlaces: !preserveMixedEventResults,
+    // Only where places are filtered down to explicit evidence. That branch
+    // can legitimately empty the place list, and the town or category door is
+    // then the answer the reader came for. Category-recognized requests
+    // ("coffee near me") already rank real places and are left untouched.
+    includeDoors: requiresExplicitPlaceEvidence,
     includeMatchingPlaces,
     origin: rankingOrigin,
     rankPlacesByDistance: Boolean(rankingOrigin),

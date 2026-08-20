@@ -92,16 +92,21 @@ function isMapped(place: PublicPlaceInput): boolean {
 }
 
 /**
- * Build the public count contract from immutable, promoted inputs only.
- * Time-sensitive place facts are evaluated at the place stream's promotion
- * time, not at request time, so the same data version always returns the same
- * answer. Event inventory and source health still depend on runtime systems;
- * those values are explicitly unavailable until their canonical read models
- * are promoted as artifacts too.
+ * Build the public count contract from promoted inputs.
+ *
+ * Counts that are properties of the DATA are evaluated at the place stream's
+ * promotion time, so the same data version always returns the same answer.
+ * Hours coverage is the exception and is evaluated at request time: it is a
+ * property of the data's age rather than its content, so a promotion-anchored
+ * value stops being true the moment it is written. See the comment at the
+ * count itself. Event inventory and source health still depend on runtime
+ * systems; those values are explicitly unavailable until their canonical read
+ * models are promoted as artifacts too.
  */
 export function buildPublicDataSnapshot(
   release: DataReleaseInput,
   places: readonly PublicPlaceInput[],
+  now: Date = new Date(),
 ): PublicDataSnapshot {
   if (!/^sha256:[0-9a-f]{64}$/.test(release.data_version)) {
     throw new Error("promoted data release has an invalid data version");
@@ -112,7 +117,6 @@ export function buildPublicDataSnapshot(
   }
 
   const activePlaces = places.filter(isActivePublicPlace);
-  const promotionTime = new Date(placePromotion);
   const copyCounts = decisionCopyCounts(activePlaces);
 
   return {
@@ -122,11 +126,21 @@ export function buildPublicDataSnapshot(
     counts: {
       activePublicPlaces: available(activePlaces.length, placePromotion),
       mappedPlaces: available(activePlaces.filter(isMapped).length, placePromotion),
+      // Hours coverage is the ONE count here that is not a property of the
+      // promoted data — it is a property of the data's AGE, and it decays to
+      // zero on a 7-day timer whether or not anything is promoted. Anchoring
+      // it to promotion time froze it at its best-ever value and published
+      // that number indefinitely: /trust claimed "713 of 1,569 places (45%)"
+      // while the live figure, recomputed from the same rows, was 0. On the
+      // page whose entire job is to be checkable, a number that cannot go
+      // down is worse than no number. Evaluate it at request time and stamp
+      // it with that time, so the reader sees what is true when they look.
+      // Every other count below is genuinely immutable per data version and
+      // stays anchored to the promotion.
       placesWithCurrentHours: available(
-        activePlaces.filter((place) =>
-          hasPublishedFreshHours(place, promotionTime),
-        ).length,
-        placePromotion,
+        activePlaces.filter((place) => hasPublishedFreshHours(place, now))
+          .length,
+        now.toISOString(),
       ),
       placesWithDecisionCopy: available(
         activePlaces.filter((place) =>

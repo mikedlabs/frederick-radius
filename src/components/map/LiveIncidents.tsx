@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup } from "react-map-gl/mapbox";
+import { exposeMarkerChild } from "./markerA11y";
 import { AlertTriangle } from "lucide-react";
 import type {
   LiveIncidentSignal,
@@ -177,6 +178,7 @@ export default function LiveIncidents({
         return (
         <Marker
           key={inc.id}
+          ref={exposeMarkerChild}
           longitude={inc.coordinate.lng}
           latitude={inc.coordinate.lat}
           anchor="center"

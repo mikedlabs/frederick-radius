@@ -251,7 +251,7 @@ function MapRoom({ maps }: { maps: ArchiveViewRecord[] }) {
         className="tactile tactile-e2 overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
       >
-        <div className="grid border-b lg:grid-cols-[15rem_1fr]" style={{ borderColor: "var(--app-border)" }}>
+        <div className="grid grid-cols-1 border-b lg:grid-cols-[15rem_1fr]" style={{ borderColor: "var(--app-border)" }}>
           <div
             className="space-y-4 border-b p-4 lg:border-b-0 lg:border-r lg:p-5"
             style={{ borderColor: "var(--app-border)" }}
@@ -464,7 +464,7 @@ function BuildingRecords({ records }: { records: ArchiveViewRecord[] }) {
           </div>
         </div>
 
-        <article className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]" aria-live="polite">
+        <article className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]" aria-live="polite">
           <div className="relative min-h-[20rem] border-b lg:min-h-[32rem] lg:border-b-0 lg:border-r" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
             <RecordImage record={active} className="object-cover" />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 pt-16 text-white">
@@ -568,7 +568,7 @@ function PapersPanel({ records }: { records: ArchiveViewRecord[] }) {
         className="tactile tactile-e2 overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
       >
-        <div className="grid lg:grid-cols-[14rem_1fr]">
+        <div className="grid grid-cols-1 lg:grid-cols-[14rem_1fr]">
           <div className="border-b p-3 lg:border-b-0 lg:border-r lg:p-4" style={{ borderColor: "var(--app-border)" }}>
             <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
               Choose an issue
@@ -700,7 +700,7 @@ function DocumentaryFrame({ records }: { records: ArchiveViewRecord[] }) {
         style={{ borderColor: "var(--app-border)", background: "var(--app-ink)", color: "var(--app-on-brand)" }}
         aria-live="polite"
       >
-        <div className="grid lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
           <div className="relative min-h-[22rem] bg-black sm:min-h-[30rem] lg:min-h-[36rem]">
             <RecordImage record={active} className="object-contain" />
           </div>

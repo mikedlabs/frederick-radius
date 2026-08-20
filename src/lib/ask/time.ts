@@ -187,7 +187,28 @@ function easternWallMatches(
 
 function inferMeridiem(query: string, hour: number): "AM" | "PM" | null {
   if (/\b(?:breakfast|brunch|morning|coffee|cafe|bakery)\b/i.test(query)) return "AM";
-  if (/\b(?:lunch|afternoon|dinner|supper|evening|tonight|date[-\s]+night|show|concert|live music)\b/i.test(query)) return "PM";
+  // Drinking rooms are an evening frame in their own right, the same way
+  // "concert" already is. Deliberately excludes breweries, which commonly open
+  // at 11 in the morning, and cannot match "bakery" on a word boundary.
+  if (/\b(?:lunch|afternoon|dinner|supper|evening|tonight|date[-\s]+night|show|concert|live music|bars?|pubs?|taverns?|cocktails?|speakeasy|nightlife)\b/i.test(query)) return "PM";
+  // A LATENESS question. "Past 10", "open late" and "still serving" are only
+  // ever asked about the night, and 8 through 11 are exactly the hours where
+  // that mattered: 1 through 7 already resolve to PM below, and 12 stays
+  // ambiguous on purpose.
+  //
+  // Without this, "bars open past 10" resolved to 10:01 AM. The app then
+  // answered a question nobody asked and listed nearly the whole county as
+  // open, which is the single worst outcome for a guide whose entire promise
+  // is telling you what is open RIGHT NOW. Verified against the live parser
+  // 2026-08-19: "open past 9" gave 9:01 AM and "open late past 11" gave
+  // 11:01 AM.
+  if (
+    hour >= 8
+    && hour <= 11
+    && /\b(?:late|past|still\s+(?:open|serving)|last\s+call|nightcap)\b/i.test(query)
+  ) {
+    return "PM";
+  }
   // In conversational planning, "at 7" overwhelmingly means evening. Keep
   // noon and midnight ambiguous rather than manufacturing a choice.
   if (hour >= 1 && hour <= 7) return "PM";

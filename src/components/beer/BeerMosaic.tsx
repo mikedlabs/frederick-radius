@@ -21,7 +21,9 @@ import { beerColor } from "@/lib/beer/beer-color";
 function ratingChip(rating: number): { bg: string; fg: string } {
   if (rating >= 4.0) return { bg: "var(--app-ink)", fg: "var(--app-amber)" };
   if (rating >= 3.7) return { bg: "var(--app-bg-sunken)", fg: "var(--app-ink)" };
-  return { bg: "var(--app-paper-2)", fg: "var(--app-amber-text)" };
+  // amber-text is documented text-safe on CREAM; on this deeper paper it is
+  // 4.22:1, so the 10px bold chip needs the mix toward ink (5.04:1).
+  return { bg: "var(--app-paper-2)", fg: "color-mix(in srgb, var(--app-amber-text) 85%, var(--app-ink))" };
 }
 
 export default function BeerMosaic({

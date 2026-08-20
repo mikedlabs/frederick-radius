@@ -15,7 +15,10 @@
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import {
+  isOverPaidRequestBudget,
+  isSameOriginRequest,
+} from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND, RIPPLE_GEOMETRY } from "@/lib/brand";
@@ -187,7 +190,14 @@ export async function GET(req: NextRequest) {
   // route's normal artwork fallback instead of a 429, though: a long browsing
   // session or a shared NAT must never turn valid <img> elements into broken
   // icons. No-op when KV is not configured (see isRateLimited docs).
-  if (await isRateLimited(req, "place-photo", 120, 60)) {
+  // The second, much tighter bucket inside this helper bounds callers that
+  // sent neither Referer nor Origin. They are admitted at all only so Next's
+  // image optimizer and genuine server-to-server renders keep working, and
+  // that admission is also the cheapest way for anyone to turn this route
+  // into a free Google Places Photo proxy billed to us: a cache-busted name
+  // is a guaranteed paid miss every time. Soft failure either way, so a
+  // legitimate render burst degrades to artwork rather than a broken image.
+  if (await isOverPaidRequestBudget(req, "place-photo", 120, 60, 15)) {
     return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
   }
 

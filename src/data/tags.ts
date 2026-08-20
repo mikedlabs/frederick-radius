@@ -63,3 +63,37 @@ export const TAGS: Tag[] = [
 export const TAG_BY_SLUG = Object.fromEntries(
   TAGS.map((t) => [`${t.facet}:${t.slug}`, t])
 ) as Record<string, Tag>;
+
+/**
+ * Display name for a BARE tag slug, which is the only form the place records
+ * and the category facet counts actually carry.
+ *
+ * TAG_BY_SLUG is keyed `facet:slug`, and both of its consumers indexed it by
+ * the bare slug, so every lookup missed and the `?? slug` fallback was the
+ * only branch that ever ran. The result shipped machine identifiers as prose:
+ * a place page's "Good to know" section read "kids-0-5" and "kids-6-12" while
+ * the strings it should have shown, "Toddler Friendly" and "Wheelchair
+ * Accessible", sat three lines away in this file. No caller ever wanted the
+ * facet-prefixed key, so the fix belongs here rather than at each call site.
+ *
+ * `free` deliberately appears under both the feature and price facets. Both
+ * render "Free", so resolving by bare slug is unambiguous for naming; first
+ * match wins.
+ */
+export function tagName(slug: string): string | null {
+  const hit = TAGS.find((t) => t.slug === slug);
+  return hit ? hit.name : null;
+}
+
+/**
+ * Last-resort label for a slug with no TAGS entry, used where dropping the
+ * chip would delete a working filter. "kids-6-12" becomes "Kids 6 12" rather
+ * than reaching a reader as a database key.
+ */
+export function humanizeSlug(slug: string): string {
+  const words = slug.split("-").filter(Boolean);
+  if (words.length === 0) return slug;
+  return words
+    .map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}

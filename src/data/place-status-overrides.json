@@ -6,6 +6,13 @@
     "source": "https://concettasmainstreet.com/",
     "note": "The official Concetta's Main Street Bistro website presents the Mount Airy restaurant as active and offers current menu and ordering links. This corrects a conflicting provider closure signal without publishing provider hours until they are verified again."
   },
+  "emmitsburg-farmers-market-emmitsburg": {
+    "status": "closed_temporarily",
+    "effective_at": "2026-08-19",
+    "review_after": "2027-05-01",
+    "source": "https://emmitsburgmd.gov/residents/farmersmarket.php",
+    "note": "The town's own Farmers Market page posts \"CLOSED FOR THE SEASON SEE YOU IN 2027!\", confirming the provider's CLOSED_TEMPORARILY signal as a seasonal close rather than a catalog regression. Aggregator listings still advertise 2026 dates through September; the town page is the operator and wins. Review when the 2027 season would open."
+  },
   "green-health-docs": {
     "status": "operational",
     "effective_at": "2026-07-31",
@@ -30,9 +37,9 @@
   "saxbys-at-mount-st-marys-university-emmitsburg": {
     "status": "operational",
     "effective_at": "2026-07-31",
-    "review_after": "2026-08-15",
+    "review_after": "2026-12-15",
     "source": "https://msmary.edu/student-life/living-on-campus/campus-dining.html",
-    "note": "Mount St. Mary's official campus dining page lists Saxbys Cafe with current daily hours and mobile ordering."
+    "note": "Mount St. Mary's official campus dining page lists Saxbys Cafe on the second floor of the Knott Academic Center, open every day 7am to 4:30pm. Reconfirmed against that page on 2026-08-19; the page still lists it, noting only that hours differ during breaks. Next review set past the fall term."
   },
   "sabor-casero-bakery-frederick-frederick": {
     "status": "closed_permanently",

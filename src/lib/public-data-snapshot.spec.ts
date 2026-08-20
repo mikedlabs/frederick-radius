@@ -47,8 +47,9 @@ describe("public data snapshot", () => {
       },
     ];
 
-    const first = buildPublicDataSnapshot(RELEASE, places);
-    const second = buildPublicDataSnapshot(RELEASE, places);
+    const readAt = new Date("2026-08-11T12:00:00Z");
+    const first = buildPublicDataSnapshot(RELEASE, places, readAt);
+    const second = buildPublicDataSnapshot(RELEASE, places, readAt);
 
     expect(second).toEqual(first);
     expect(first.lastSuccessfulDataPromotion).toBe("2026-08-12T12:00:00Z");
@@ -58,6 +59,61 @@ describe("public data snapshot", () => {
     expect(first.counts.placesWithDecisionCopy.value).toBe(1);
     expect(first.counts.placesWithPhoto.value).toBe(1);
     expect(first.counts.placesWithAction.value).toBe(1);
+  });
+
+  it("ages hours coverage out with the clock while data counts hold still", () => {
+    // The whole point of the request-time evaluation. /trust published "713 of
+    // 1,569 places (45%)" for days after the real figure had decayed to 0,
+    // because the count was anchored to the promotion instead of to now. A
+    // reader checking the page got a number that could not go down. Hours
+    // coverage must fall as the schedules age; everything else must not move,
+    // because those ARE properties of the promoted data.
+    const places = [
+      {
+        slug: "ready-place",
+        name: "Ready Place",
+        is_operational: "operational",
+        geom: { lat: 39.4, lng: -77.4 },
+        hours_verified: true,
+        hours_updated_at: "2026-08-10T12:00:00Z",
+        hours: { mon: [{ open: "09:00", close: "17:00" }] },
+        short_blurb:
+          "This independent shop carries locally made gifts and practical home goods.",
+        hero_image: "/images/ready.jpg",
+        website: "https://example.test",
+      },
+    ];
+
+    const sameDay = buildPublicDataSnapshot(
+      RELEASE,
+      places,
+      new Date("2026-08-11T12:00:00Z"),
+    );
+    const eightDaysOn = buildPublicDataSnapshot(
+      RELEASE,
+      places,
+      new Date("2026-08-19T12:00:00Z"),
+    );
+
+    expect(sameDay.counts.placesWithCurrentHours.value).toBe(1);
+    expect(eightDaysOn.counts.placesWithCurrentHours.value).toBe(0);
+
+    // Stamped with the read, not the promotion, so the figure is checkable.
+    expect(eightDaysOn.counts.placesWithCurrentHours.asOf).toBe(
+      "2026-08-19T12:00:00.000Z",
+    );
+
+    // The promoted-data counts are identical across the same two reads.
+    for (const key of [
+      "activePublicPlaces",
+      "mappedPlaces",
+      "placesWithDecisionCopy",
+      "placesWithPhoto",
+      "placesWithAction",
+    ] as const) {
+      expect(eightDaysOn.counts[key]).toEqual(sameDay.counts[key]);
+      expect(eightDaysOn.counts[key].asOf).toBe("2026-08-11T12:00:00Z");
+    }
   });
 
   it("marks runtime-only event and source counts unavailable instead of zero", () => {

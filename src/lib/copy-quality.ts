@@ -83,9 +83,28 @@ export function classifyDescription(
   }
   if (!t || t.length < 25) return t ? "scraped" : "none";
 
+  // Name-repeat opener. The test used to be "does the description START with
+  // the place name" and nothing else, which is the wrong question: a scraped
+  // echo ("Baker Park", "Baker Park - Frederick, MD") and a real sentence
+  // ("Baker Park is a 44-acre downtown park with a band shell, lake, tennis,
+  // and the Joseph D. Baker carillon tower.") both open with the name. The
+  // reviewed path has always asked the right question instead — is there a
+  // real sentence AFTER the name — so ask it here too. The crude version was
+  // suppressing publishable copy for the county's best-known places:
+  // Baker Park, Cunningham Falls, Monocacy Battlefield, Carroll Creek,
+  // Gathland, Brewer's Alley, The Curious Iguana, and every public golf
+  // course. Everything genuinely scraped is still caught below by the
+  // address, contact, marketing, and low-information rules, and a bare echo
+  // fails the 5-word remainder here exactly as it should.
   const nm = (name ?? "").trim().toLowerCase();
-  const head = t.toLowerCase().slice(0, Math.max(8, Math.min(14, nm.length)));
-  if (nm && head && nm.startsWith(head)) return "scraped"; // name-repeat opener
+  if (nm && t.toLowerCase().startsWith(nm)) {
+    const remainderWords = t
+      .slice(nm.length)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (remainderWords.length < 5) return "scraped";
+  }
   if (STREET_SUFFIX.test(t) || ZIP.test(t)) return "scraped";
   if (SECOND_PERSON.test(t)) return "scraped";
   if (MARKETING.test(t)) return "scraped";

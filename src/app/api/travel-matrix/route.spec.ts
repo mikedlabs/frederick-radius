@@ -50,6 +50,14 @@ vi.mock("@/lib/origin-check", async () => {
     ...actual,
     isRateLimited: mocks.isRateLimited,
     isSameOriginRequest: mocks.isSameOriginRequest,
+    // ...actual would keep the REAL helper, which calls the real limiter
+    // and ignores the mock. Delegate so the mocked limit is what counts.
+    isOverPaidRequestBudget: (
+      req: Request,
+      key: string,
+      limit: number,
+      windowSeconds: number,
+    ) => mocks.isRateLimited(req, key, limit, windowSeconds),
   };
 });
 
