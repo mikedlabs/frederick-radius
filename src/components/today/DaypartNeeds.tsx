@@ -7,6 +7,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import {
@@ -396,7 +397,20 @@ function DaypartPickCard({
   eager?: boolean;
   lead?: boolean;
 }) {
-  const signaledPhoto = place.photo ? daypartPhotoSrc(place.photo) : null;
+  // Narrow the proxy request to what the card actually paints (lead 232px,
+  // alternates 172px; proxyPhotoAtWidth doubles for DPR). The stored URL is
+  // the w=800 hero, and because these render `unoptimized` (the proxy is an
+  // opaque route Next cannot resize) the `sizes` hint is inert — so every
+  // /today visit was downloading ~247KB per lead and ~104KB per alternate,
+  // re-paid on each visit since /api/place-photo is deliberately no-store
+  // (a Google licensing constraint). Measured by the friction audit: 819KB
+  // saved across the shelf's double paint. Narrowing composes with the
+  // failure signal below: the proxy returns its 1x1 at every width, so the
+  // honest broken-photo path is unchanged. Same missed-adopter fix as
+  // PlaceCard's Thumb (commit 31c91814 created the helper for this bug).
+  const signaledPhoto = place.photo
+    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 232 : 172))
+    : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
   const detail =
@@ -434,7 +448,6 @@ function DaypartPickCard({
           alt=""
           fill
           unoptimized={signaledPhoto.startsWith("/api/place-photo")}
-          sizes="168px"
           priority={eager}
           fetchPriority={eager ? "high" : "auto"}
           placeholder="blur"
