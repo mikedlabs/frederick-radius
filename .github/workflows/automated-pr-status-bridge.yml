@@ -175,7 +175,7 @@ jobs:
               per_page: 100,
             });
             const expectedJobs = run.name === 'CI'
-              ? ['verify', 'Required browser chaos']
+              ? ['verify']
               : run.name === 'style'
                 ? ['style-lint']
                 : [];

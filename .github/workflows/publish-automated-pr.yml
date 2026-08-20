@@ -185,7 +185,8 @@ jobs:
       # and every open/closed claim in the app had gone dark.
       #
       # Auto-merge is a queue, not a bypass. GitHub still holds the PR until
-      # verify, style-lint and Required browser chaos all pass, and the caller
+      # verify and style-lint pass (verify carries the browser chaos specs as a
+      # step), and the caller
       # only sets auto_merge when the change carries nothing a human must
       # judge (no public removals, no new closures).
       - name: Queue an unflagged refresh for auto-merge

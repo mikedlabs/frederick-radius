@@ -28,7 +28,11 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 60, not 45: the chaos specs folded in below add a few minutes, and the
+    # old ceiling was once measured two minutes from a passing run's runtime.
+    # A timeout is a hang detector, not a budget; billable minutes are actual
+    # usage either way.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -92,44 +96,12 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-browser-failure-traces
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 7
-
-  browser-chaos:
-    # Keep this job name stable and mark it required in the main branch rule.
-    # The broad UX sweep still runs nightly; this small PR gate attacks the
-    # higher-risk failure mode: several dependencies failing in different ways
-    # while the four primary decision surfaces remain useful and honest.
-    name: Required browser chaos
-    runs-on: ubuntu-latest
-    # A cold 2,740-page production build takes about 24 minutes on GitHub's
-    # shared runner before Chromium and the actual chaos cases begin. Keep a
-    # bounded ceiling, but leave enough time to exercise the thing this job is
-    # required to prove instead of cancelling it immediately after the build.
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: ".nvmrc"
-          cache: "npm"
-      - name: Install dependencies
-        run: npm ci
-      - name: Build the production app
-        run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-          NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      # Formerly its own required job ("Required browser chaos"), which
+      # duplicated this job's entire build and Chromium install to run two
+      # spec files — measured at ~20 billable minutes per push for work the
+      # steps above had already done. Same tests, same gate strength: a chaos
+      # failure fails `verify`, which is required. The broad UX sweep still
+      # runs nightly in its own workflow.
       - name: Exercise combined dependency failures and app upgrades
         run: >-
           npx playwright test
@@ -141,11 +113,12 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep chaos failure traces
+      - name: Keep browser failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: chaos-browser-failure-traces
+          name: release-browser-failure-traces
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
+

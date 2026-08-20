@@ -8,7 +8,8 @@ The repository uses a small protected path from reviewed code to production.
 - `style.yml` enforces the public editorial rules.
 - `ux-audit.yml` runs the broader nightly browser audit in bounded production-build shards.
 
-`main` requires `verify`, `Required browser chaos`, and `style-lint`. Do not
+`main` requires `verify` and `style-lint` (the browser chaos specs run as a
+step INSIDE `verify`, so a chaos failure still blocks the merge). Do not
 bypass those contexts. Automated data PRs dispatch the same secret-free gates;
 `automated-pr-status-bridge.yml` validates the bot branch and copies the real
 job conclusions to the merge revision evaluated by the ruleset.
