@@ -396,7 +396,7 @@ function DaypartPickCard({
         data-decision-position={lead ? "lead" : "alternative"}
         data-decision-action="open"
         className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
-          lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
+          lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
         }`}
         style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
@@ -427,7 +427,7 @@ function DaypartPickCard({
         />
         <span className="relative z-10 min-w-0 px-2.5 pb-2">
           <span
-            className="block truncate font-sans text-[14.5px] font-semibold leading-tight"
+            className="line-clamp-2 font-sans text-[14.5px] font-semibold leading-tight"
             style={{ color: "var(--app-on-brand)" }}
           >
             {place.name}
@@ -469,8 +469,8 @@ function DaypartPickCard({
       data-decision-id={place.slug}
       data-decision-position={lead ? "lead" : "alternative"}
       data-decision-action="open"
-      className={`group flex h-full min-h-[76px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
-        lead ? "w-full sm:w-[14.5rem]" : "w-full sm:w-[10.75rem]"
+      className={`group flex h-full min-h-[84px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
+        lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
       }`}
       style={{
         borderColor: "var(--app-border)",
@@ -489,7 +489,7 @@ function DaypartPickCard({
       </span>
       <span className="min-w-0 flex-1">
         <span
-          className="block truncate text-[14px] font-semibold"
+          className="line-clamp-3 text-[14px] font-semibold leading-tight"
           style={{ color: "var(--app-ink)" }}
         >
           {place.name}

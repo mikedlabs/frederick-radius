@@ -532,9 +532,13 @@ describe("DaypartNeeds", () => {
     const withoutPhoto = renderPick();
     expect(withoutPhoto).not.toContain("<img");
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
-    expect(withoutPhoto).toContain("min-h-[76px]");
+    expect(withoutPhoto).toContain("min-h-[84px]");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
     expect(withoutPhoto).toContain("w-[14.5rem]");
+    // A place name identifies the place, so it wraps instead of clipping.
+    // "National Museum of Civil War Medicine" truncated to "National Museum
+    // of Ci…" is not a recommendation the reader can act on.
+    expect(withoutPhoto).toContain("line-clamp-3 text-[14px]");
     expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
   });
 
