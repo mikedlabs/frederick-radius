@@ -60,6 +60,32 @@ export function isChainName(name: string): boolean {
 export function chainBrandKey(name: string): string | null {
   return name.match(CHAIN_RE)?.[1]?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? null;
 }
+/**
+ * One location per chain brand, for a SHORT recommendation row.
+ *
+ * A chain stays eligible on its merits. What this prevents is three
+ * Starbucks consuming a five-slot row in a county with 41 coffee places,
+ * which is what /today served until 2026-08-21: the server-rendered shelf
+ * applied this rule and the live /api/want refresh that replaces it did not,
+ * so the rule was correct, tested, and discarded before anyone saw it.
+ *
+ * `seed` pre-claims brands already spoken for elsewhere in the same answer,
+ * so a Starbucks hero does not get a Starbucks alternative underneath it.
+ */
+export function keepOneLocationPerChain<T extends { name: string }>(
+  places: readonly T[],
+  seed?: Iterable<string>,
+): T[] {
+  const seen = new Set<string>(seed ?? []);
+  return places.filter((place) => {
+    const brand = chainBrandKey(place.name);
+    if (!brand) return true;
+    if (seen.has(brand)) return false;
+    seen.add(brand);
+    return true;
+  });
+}
+
 export function isLooseCategory(name: string): boolean {
   return LOOSE_RE.test(name);
 }
