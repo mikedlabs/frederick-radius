@@ -144,6 +144,32 @@ test.describe("UX gate: render health + WCAG A/AA", () => {
       // fixed minimum document height treated concise search/chooser states as
       // blank, so assert the actual shell contract instead: visible main
       // content, one page heading, and meaningful text.
+      // ── No clipped chrome ──
+      // The app bar is a fixed row, never a scroller, so when its content
+      // outgrows the viewport the overflow is CLIPPED: a control loses its
+      // border and part of its tap target, silently.
+      //
+      // This gate already ran at 390px, which is exactly the width where
+      // that happened, and could not see it. Render health passes on a
+      // sliced chip and so does axe, because the element is present,
+      // labelled and the right colour. Nothing here measured whether it
+      // fit. On 2026-08-21 the Tools chip was 5px over on the most common
+      // phone width there is.
+      //
+      // Scoped to the header on purpose. Horizontal scrollers elsewhere
+      // (the /today shelves) are deliberate and must stay allowed.
+      const headerFit = await page.evaluate(() => {
+        const header = document.querySelector("header");
+        if (!header) return null;
+        return { needs: header.scrollWidth, has: header.clientWidth };
+      });
+      if (headerFit) {
+        expect(
+          headerFit.needs,
+          `${route}: the header needs ${headerFit.needs}px in ${headerFit.has}px, so ${headerFit.needs - headerFit.has}px of a control is clipped off the screen edge`,
+        ).toBeLessThanOrEqual(headerFit.has);
+      }
+
       const main = page.locator("main").first();
       await expect(main, `${route} should expose its main content`).toBeVisible();
       await expect(page.locator("main h1"), `${route} should have one page heading`).toHaveCount(1);
