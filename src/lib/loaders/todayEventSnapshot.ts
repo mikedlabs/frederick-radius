@@ -297,6 +297,27 @@ export async function loadEventArchiveSnapshot(
   );
   const sql = getSql();
   if (!sql) return curatedFallback(now, "no database");
+  // Bounds cross the wire as ISO text with an explicit cast, never as Date
+  // objects.
+  //
+  // Production answered every archive read with:
+  //
+  //   The "string" argument must be of type string or an instance of Buffer
+  //   or ArrayBuffer. Received an instance of Date
+  //
+  // That is the driver failing to serialise the parameter, not Postgres
+  // refusing the query, and it is why /today and /events served the compiled
+  // curated seeds instead of a full archive from 2026-08-19 onward.
+  //
+  // It never reproduced locally or in CI because those use a direct
+  // connection, where postgres-js can infer the parameter type and apply its
+  // Date serialiser. Production connects through the Supavisor pooler, where
+  // db/client.ts sets `prepare: false` (it must), the inference round trip
+  // does not happen, and the raw Date reaches the string writer.
+  //
+  // ISO text plus `::timestamptz` is correct under either mode, and it is
+  // what the WRITE path in event-identity.ts has always done - which is
+  // exactly why the collector kept working while every reader failed.
   const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
@@ -318,8 +339,8 @@ export async function loadEventArchiveSnapshot(
         on tombstone.canonical_event_id = canonical.id
       where canonical.event_status = 'scheduled'
         and tombstone.canonical_event_id is null
-        and canonical.starts_at < ${end}
-        and coalesce(canonical.ends_at, canonical.starts_at) >= ${start}
+        and canonical.starts_at < ${end.toISOString()}::timestamptz
+        and coalesce(canonical.ends_at, canonical.starts_at) >= ${start.toISOString()}::timestamptz
       order by canonical.starts_at asc, canonical.id
       limit ${limit}
     )
