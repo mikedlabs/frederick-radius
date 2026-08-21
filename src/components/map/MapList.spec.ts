@@ -189,3 +189,78 @@ describe("map list recovery copy", () => {
     expect(html).not.toContain("switch back to the map");
   });
 });
+
+// ── The map has to appear in the funnel ──────────────────────────────
+//
+// /map is a nav tab and the locked architecture calls it "the page", and it
+// was the largest blind spot in decision telemetry. It has always emitted
+// its own analytics (map_pin, map_layer, map_scene), but none of those are
+// decision events, so /admin/decisions could report how /today and /ask
+// convert and say nothing at all about this surface.
+//
+// These assertions are cheap and they are the thing that stops the blind
+// spot reopening the next time a row is restyled.
+describe("map list decision telemetry", () => {
+  it("marks a place row as a map impression that can be opened", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        places: [place("bushwaller", -77.41)],
+        events: [],
+        userLoc: null,
+        sortOrigin: { lng: -77.41, lat: 39.41 },
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('data-decision-surface="map"');
+    expect(html).toContain('data-decision-entity="place"');
+    expect(html).toContain('data-decision-id="bushwaller"');
+    expect(html).toContain('data-decision-action="open"');
+    // `result`, not `sheet`: browsing the list and tapping a pin are two
+    // different ways of reaching the same place and must stay separable.
+    expect(html).toContain('data-decision-position="result"');
+  });
+
+  it("keeps an event row a map event, not a place", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        places: [],
+        events: [
+          {
+            slug: "alive-at-five-2026-08-20",
+            title: "Alive @ Five",
+            starts_at: "2026-08-20T21:00:00.000Z",
+            venue_name: "Carroll Creek",
+            lng: -77.41,
+            lat: 39.41,
+          } as EventPin,
+        ],
+        userLoc: null,
+        sortOrigin: { lng: -77.41, lat: 39.41 },
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('data-decision-entity="event"');
+    expect(html).toContain('data-decision-id="alive-at-five-2026-08-20"');
+  });
+
+  it("never labels a row with anything but a public id", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        places: [{ ...place("bushwaller", -77.41), name: "Bushwaller's Irish Pub" } as MapPinPlace],
+        events: [],
+        userLoc: null,
+        sortOrigin: { lng: -77.41, lat: 39.41 },
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+
+    // The contract accepts slugs and fixed enums only. A business name
+    // reaching a decision id would be a privacy regression, not a typo.
+    expect(html).not.toContain('data-decision-id="Bushwaller');
+  });
+});

@@ -223,6 +223,12 @@ export default function MapList({
                       <button
                         type="button"
                         className="map-list-row map-list-event tap-44"
+                        data-decision-impression="true"
+                        data-decision-surface="map"
+                        data-decision-entity="event"
+                        data-decision-id={event.slug}
+                        data-decision-position="result"
+                        data-decision-action="open"
                         onClick={() => {
                           haptic("light");
                           onPickEvent(event);
@@ -268,10 +274,21 @@ export default function MapList({
                     userLoc && p.geom ? formatDistance(haversineMeters(userLoc, p.geom)) : null;
                   return (
                     <li key={p.slug}>
+                      {/* Picking a row IS the open: it selects the place and
+                          raises its peek. Position is `result` rather than
+                          `sheet` so the browse list and the pin tap stay
+                          distinguishable in the funnel — they are two
+                          different ways of finding the same place. */}
                       <button
                         type="button"
                         className="map-list-row tap-44"
                         data-map-place-slug={p.slug}
+                        data-decision-impression="true"
+                        data-decision-surface="map"
+                        data-decision-entity="place"
+                        data-decision-id={p.slug}
+                        data-decision-position="result"
+                        data-decision-action="open"
                         onClick={() => {
                           haptic("light");
                           onPick(p);

@@ -49,3 +49,44 @@ describe("MapResultSurface", () => {
     expect(source).not.toContain("onKeyDown={");
   });
 });
+
+// ── Decision context for every map selection ─────────────────────────
+//
+// This component is the one surface every mobile map selection passes
+// through: place, event, parking, live truck, discovery point. Carrying the
+// decision context here rather than in each peek is what stops the next peek
+// being born unmeasured, which is exactly how /map became the funnel's
+// largest blind spot in the first place.
+describe("MapResultSurface decision context", () => {
+  const base = {
+    className: "map-peek",
+    ariaLabel: "Gravel and Grind",
+    onClose: () => undefined,
+    children: null,
+  } satisfies ComponentProps<typeof MapResultSurface>;
+
+  it("publishes the map context an action can inherit", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapResultSurface, {
+        ...base,
+        decision: { entity: "place", id: "gravel-and-grind-frederick" },
+      }),
+    );
+
+    expect(html).toContain('data-decision-impression="true"');
+    expect(html).toContain('data-decision-surface="map"');
+    expect(html).toContain('data-decision-entity="place"');
+    expect(html).toContain('data-decision-id="gravel-and-grind-frederick"');
+    // A selection raised from a pin is a sheet unless it says otherwise.
+    expect(html).toContain('data-decision-position="sheet"');
+  });
+
+  it("stays silent when a surface has nothing to report", () => {
+    const html = renderToStaticMarkup(createElement(MapResultSurface, base));
+
+    // Not "false", not empty: absent. A surface with no decision must not
+    // register an impression at all.
+    expect(html).not.toContain("data-decision-impression");
+    expect(html).not.toContain("data-decision-surface");
+  });
+});
