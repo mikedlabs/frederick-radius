@@ -6,67 +6,21 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.1703,
-          39.354004
+          -77.65674,
+          39.3324
         ]
       },
       "properties": {
-        "external_id": "a9ff57b1d38b0883006ad32ec4235c0a",
-        "incident_type": "special",
-        "description": "MD 27 (RIDGE RD) @ MD 144 (OLD NATIONAL PIKE) [Opticom Fire Pre-Emption Signal]",
-        "county": "Frederick",
-        "road": "MD 27",
-        "direction": "North",
-        "location": "MD 27 (RIDGE RD) @ MD 144 (OLD NATIONAL PIKE) [Opticom Fire Pre-Emption Signal]",
-        "severity": "low",
-        "started_at": "2026-08-17T22:31:13.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.30923,
-          39.455967
-        ]
-      },
-      "properties": {
-        "external_id": "27ffbd9692fc0985006ad32ec4235c0a",
-        "incident_type": "special",
-        "description": "MD 26 (LIBERTY RD) @ WATER ST RD [Intersection Control Beacon (ICB)]",
-        "county": "Frederick",
-        "road": "MD 26",
-        "direction": "East",
-        "location": "MD 26 (LIBERTY RD) @ WATER ST RD [Intersection Control Beacon (ICB)]",
-        "severity": "low",
-        "started_at": "2026-08-19T18:57:26.000Z",
-        "expected_end": null,
-        "source": "mdot_chart"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.18681,
-          39.365734
-        ]
-      },
-      "properties": {
-        "external_id": "80003b62d4c80986006ad32ec4235c0a",
+        "external_id": "840048934f1a0088006ad32ec4235c0a",
         "incident_type": "incident",
-        "description": "I-70 WEST PRIOR TO MM 67.0",
+        "description": "US 340 WEST AT MM 3.0",
         "county": "Frederick",
-        "road": "I-70",
+        "road": "US 340",
         "direction": "West",
-        "location": "I-70 WEST PRIOR TO MM 67.0",
+        "location": "US 340 WEST AT MM 3.0",
         "severity": "high",
-        "lanes_affected": "2/3 Westbound-2 left Traffic Lanes, left Shoulder closed",
-        "started_at": "2026-08-20T09:26:58.000Z",
+        "lanes_affected": "Westbound-right Shoulder closed",
+        "started_at": "2026-08-21T09:29:55.000Z",
         "expected_end": null,
         "source": "mdot_chart"
       }
