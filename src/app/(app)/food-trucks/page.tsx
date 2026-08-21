@@ -442,7 +442,7 @@ export default async function FoodTrucksPage({
               <a
                 href="#vendors"
                 className="tap-44-y mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold underline underline-offset-4"
-                style={{ color: FOOD_ACCENT }}
+                style={{ color: "var(--app-brand-press)" }}
               >
                 Browse local trucks
                 <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />

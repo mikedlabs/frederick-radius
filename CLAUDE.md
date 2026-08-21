@@ -162,6 +162,23 @@ draft must read like a person typing in a thread, not composed copy:
 
 ## Verification norms
 
+### Component workshop
+
+- Reuse the shared primitives documented in Storybook before inventing a new
+  card, button, chip, heading, empty state, or drawer treatment. Run
+  `npm run storybook` and inspect the real mobile states at 320, 375, 390, and
+  430 pixels.
+- Any change to a shared UI primitive must update or add its story and pass
+  `npm run test:storybook`. Storybook's accessibility checks fail the component
+  test instead of leaving a warning for someone to notice later.
+- When Storybook is running, agents can inspect the component catalog through
+  the local `storybook` MCP server in `.mcp.json`. This is a development tool;
+  it is not included in the production application.
+- Use `npm run test:visual:capture` to review Find, Ask, and map changes. Only
+  reviewed Linux/Chromium references become blocking baselines; never promote
+  a macOS font-rendering difference into CI by accident. See
+  `docs/VISUAL_CONTRACT.md`.
+
 - `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
   must pass before any commit.
 - **Lockfile edits: regenerate with `npx -y npm@10 install`, never bare
