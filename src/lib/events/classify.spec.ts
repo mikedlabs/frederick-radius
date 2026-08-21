@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { classifyEvent, isPublicEvent } from "./classify";
+import {
+  classifyEvent,
+  inferEventCategoryFromTitle,
+  isPublicEvent,
+} from "./classify";
 
 describe("classifyEvent", () => {
   // Regression: the review found these leaking into public discovery (and
@@ -78,5 +82,69 @@ describe("classifyEvent", () => {
       attendance_mode: "online",
       source_url: "https://www.frederickcountymd.gov/Calendar.aspx?EID=15421",
     })).toBe(true);
+  });
+});
+
+// ── Category inference for feeds that send none ──────────────────────
+//
+// Every title here is a real one from the live county feed on 2026-08-21,
+// where 156 of 1,082 events arrived with `category: ""`.
+describe("inferEventCategoryFromTitle", () => {
+  it.each([
+    ["Chair Yoga Monday Class", "wellness"],
+    ["Tai Chi with Paul: Level 2", "wellness"],
+    ["Zumba Gold", "wellness"],
+    ["Strength & Stretch Tuesdays (hybrid)", "wellness"],
+    ["Circle of Friends Memory Cafe", "wellness"],
+    ["Pickleball", "sports"],
+    ["Wii Bowling", "sports"],
+    ["Brunswick Walking Group", "outdoors"],
+    ["Gentle Walk in Baker Park", "outdoors"],
+    ["Needle Felting", "gallery"],
+    ["Open Studio: Scrapbooking", "gallery"],
+    ["Untangled: A Yarn Arts Group", "gallery"],
+    ["Sky Stage-Concert", "music"],
+    ["Sky Stage-Sherlock Radio Play", "music"],
+    ["Lunch Bunch: Emmitsburg", "food"],
+    ["Crab Feed", "food"],
+    ["Sunset Slush-Farmers Market", "market"],
+  ])("reads %s as %s", (title, expected) => {
+    expect(inferEventCategoryFromTitle(title)).toBe(expected);
+  });
+
+  // "Needle Felting" went uncategorised in the first draft because the rule
+  // ended in \b and the word inflects. Stems, not whole words.
+  it("matches an inflected craft, not just its stem", () => {
+    expect(inferEventCategoryFromTitle("Needle Felting")).toBe("gallery");
+    expect(inferEventCategoryFromTitle("Scrapbooking Afternoon")).toBe("gallery");
+  });
+
+  // In this corpus a "drawing" is usually a raffle. The first draft filed both
+  // of these under art.
+  it.each([
+    "Walkersville Vol Fire Co-Sportsman Drawing",
+    "Jefferson Vol Fire Co 20/20 Dinner & Drawing",
+  ])("does not read a raffle as art: %s", (title) => {
+    expect(inferEventCategoryFromTitle(title)).not.toBe("gallery");
+  });
+
+  // A wrong category is worse than none: it files an event under a filter it
+  // does not belong in and hides it from the one it does. These are genuinely
+  // ambiguous and must stay blank rather than be guessed.
+  it.each([
+    "Game Time",
+    "Otago",
+    "Tech 101",
+    "Simple Wills",
+    "Groceries for Seniors",
+    "Men's Social Group",
+    "Documentary Series",
+  ])("leaves an ambiguous title alone: %s", (title) => {
+    expect(inferEventCategoryFromTitle(title)).toBeNull();
+  });
+
+  it("returns null for empty or whitespace titles", () => {
+    expect(inferEventCategoryFromTitle("")).toBeNull();
+    expect(inferEventCategoryFromTitle("   ")).toBeNull();
   });
 });
