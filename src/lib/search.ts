@@ -465,10 +465,51 @@ const INTENTS: Intent[] = [
   },
 ];
 
+/**
+ * Match a trigger on WORD boundaries, never as a bare substring.
+ *
+ * The old test was `q.includes(\` ${t} \`) || query.includes(t)`. The second
+ * half was there so a trigger still fired next to punctuation ("a date." or
+ * "kid-friendly"), and it did that by matching anywhere at all. So every
+ * trigger also fired inside longer words:
+ *
+ *   "validate parking"   -> "date"   -> date-night restaurants
+ *   "update my address"  -> "date"   -> date-night restaurants
+ *   "candidate forum"    -> "date"   -> date-night restaurants
+ *   "childcare"          -> "child"  -> parks and playgrounds
+ *   "drainage"           -> "rain"   -> rainy-day indoor venues
+ *   "training gym"       -> "rain"   -> rainy-day indoor venues
+ *   "family law attorney"-> "family" -> escape games
+ *
+ * Every one of those is a real query someone could type into a county app
+ * that has a parking section and a permits section. This is the same
+ * same-letters coincidence that synonyms.ts was built to end after the
+ * persona audit found "barbecue" returning barber shops.
+ *
+ * The boundary is alphanumeric-only, so a hyphen still reads as a break and
+ * "kid-friendly" and "date-night" keep working, as does a trailing period.
+ */
+const TRIGGER_PATTERNS = new WeakMap<Intent, RegExp[]>();
+
+function triggerPatterns(intent: Intent): RegExp[] {
+  let compiled = TRIGGER_PATTERNS.get(intent);
+  if (!compiled) {
+    compiled = intent.triggers.map(
+      (t) =>
+        new RegExp(
+          `(?<![a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`,
+          "i",
+        ),
+    );
+    TRIGGER_PATTERNS.set(intent, compiled);
+  }
+  return compiled;
+}
+
 function detectIntent(query: string): Intent | null {
-  const q = ` ${query.toLowerCase()} `;
+  const q = query.toLowerCase();
   for (const intent of INTENTS) {
-    if (intent.triggers.some((t) => q.includes(` ${t} `) || query.toLowerCase().includes(t))) return intent;
+    if (triggerPatterns(intent).some((rx) => rx.test(q))) return intent;
   }
   return null;
 }
