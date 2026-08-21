@@ -177,7 +177,22 @@ export function hydrateTodayEventSnapshot(
   // recently? Collection gaps are upstream news, already carried per-source
   // by feed health; the rows that made it into the archive are real either
   // way (events-outage diagnosis, 2026-08-18).
-  if (envelope.archive_status == null || envelope.archive_status === "error") {
+  // These two are NOT the same failure and must never share a label again.
+  //
+  // `archive_status` comes from `ingest_runs`, which the reader must be able to
+  // SELECT. When that read is denied — RLS on with no policy, a role without a
+  // grant — Postgres returns zero rows rather than an error, so the status
+  // arrives as null and the collector looks guilty. It is not: it can be
+  // writing perfectly while the reader is locked out. Reporting that as "last
+  // run failed" sent the 2026-08-18 events-outage diagnosis at the collector
+  // and produced a PR (#1576) that fixed real defects and could not have fixed
+  // this one, because the reader never receives rows no matter how patient or
+  // tolerant it is. Issue #1581 found the actual cause a day later.
+  //
+  // A null status means the archive's own ledger was unreadable. Say that.
+  if (envelope.archive_status == null) {
+    unavailable.push("event archive (unreadable)");
+  } else if (envelope.archive_status === "error") {
     unavailable.push("event archive (last run failed)");
   } else if (
     !Number.isFinite(finishedAt) ||

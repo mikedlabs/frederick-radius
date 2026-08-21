@@ -158,7 +158,20 @@ export async function transitTripwire(): Promise<Anomaly[]> {
 }
 
 const EVENT_SOURCE_FAILURE_THRESHOLD = 2;
-const BROAD_EVENT_SOURCE_FAILURES = new Set(["municipal calendars"]);
+// A broad failure is one whose loss is not survivable by the rest of the board.
+//
+// The event archive belongs here because it is not one source among many: it is
+// where every ingested feed lands, so losing it loses the whole live calendar
+// at once and leaves only the committed curated seeds. Before this, a dark
+// archive contributed exactly ONE entry to `unavailable`, which is below the
+// two-source threshold, so `eventSourceHealthAnomaly` returned null and the
+// tripwire stayed green while /today served hardcoded seeds (issue #1581).
+const BROAD_EVENT_SOURCE_FAILURES = new Set([
+  "municipal calendars",
+  "event archive (unreadable)",
+  "event archive (last run failed)",
+  "event archive (stale)",
+]);
 
 /**
  * A populated event board is not proof that its runtime sources are healthy:
@@ -207,6 +220,13 @@ export async function eventsTripwire(now: Date = new Date()): Promise<Anomaly[]>
     const today = publicEvents.filter((e) => isEventToday(e.starts_at, now)).length;
     const sourceAnomaly = eventSourceHealthAnomaly(sourceHealth);
     const anomalies: Anomaly[] = sourceAnomaly ? [sourceAnomaly] : [];
+    // `today > 0` is NOT evidence the pipeline works. The curated seeds are
+    // compiled into the bundle and survive any outage, so a single seed that
+    // happens to land today satisfied this check while the archive was dark.
+    // That is exactly what happened on 2026-08-20: /api/today/events returned
+    // zero archive events, /today rendered a seeded Alive @ Five, and this
+    // tripwire reported green. The seeds keep the page from being blank, which
+    // is their job; they must not also keep the alarm from ringing.
     if (today === 0) {
       anomalies.unshift({
         source: "unified-events",

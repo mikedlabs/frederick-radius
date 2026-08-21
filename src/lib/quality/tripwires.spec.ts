@@ -104,6 +104,25 @@ describe("unified event source-health tripwire", () => {
     );
   });
 
+  // The 2026-08-20 outage: RLS denied the archive read, so /today served only
+  // the compiled curated seeds. The archive contributed ONE unavailable entry,
+  // which sat below EVENT_SOURCE_FAILURE_THRESHOLD, so this returned null and
+  // nothing went red for two days. The archive is the whole live calendar, not
+  // one provider among many, so any of its failure states must fire alone.
+  it.each([
+    "event archive (unreadable)",
+    "event archive (last run failed)",
+    "event archive (stale)",
+  ])("flags a dark event archive on its own: %s", (source) => {
+    const anomaly = eventSourceHealthAnomaly({
+      degraded: true,
+      unavailable: [source],
+    });
+
+    expect(anomaly?.kind).toBe("events_sources_degraded");
+    expect(anomaly?.detail).toContain(source);
+  });
+
   it("does not infer a failure from an honest healthy or empty source list", () => {
     expect(
       eventSourceHealthAnomaly({
