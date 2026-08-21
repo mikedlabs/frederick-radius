@@ -6,7 +6,7 @@ import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { isRecommendable } from "@/lib/relevance";
 import {
-  chainBrandKey,
+  keepOneLocationPerChain,
   coffeeIntentTier,
   isChainName,
 } from "@/lib/category-ranking";
@@ -41,17 +41,6 @@ export type DaypartPick = {
   confidence: "confirmed" | "likely" | "unconfirmed";
 };
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
-
-function keepOneLocationPerChain<T extends { name: string }>(places: T[]): T[] {
-  const seen = new Set<string>();
-  return places.filter((place) => {
-    const brand = chainBrandKey(place.name);
-    if (!brand) return true;
-    if (seen.has(brand)) return false;
-    seen.add(brand);
-    return true;
-  });
-}
 
 function easternHour(now: Date): number {
   return Number(

@@ -20,6 +20,8 @@ import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import {
   coffeeIntentTier,
   isChainName,
+  chainBrandKey,
+  keepOneLocationPerChain,
   ratingSignal,
 } from "@/lib/category-ranking";
 import { isLikelyOpenNow } from "@/data/reliable-open-windows";
@@ -976,7 +978,24 @@ export function buildWantAnswer(
     : [];
 
   const heroIdx = opts?.approximateOrigin ? approxHeroIndex(current) : 0;
-  const alsoPool = current.filter((_, i) => i !== heroIdx);
+  // One location per chain, and the hero's brand is already spoken for.
+  //
+  // Without this, "coffee" answered with Starbucks, then Starbucks, Dunkin',
+  // Starbucks, Starbucks Coffee Company: four of five slots on one brand, in a
+  // county whose catalog holds 41 coffee places. The per-place chain penalties
+  // above are not enough on their own, because they push every location of a
+  // strong brand down by the same amount and leave their order intact.
+  //
+  // daypartPicks.ts has applied this rule to the server-rendered shelf all
+  // along. This is the path that REPLACES that shelf a moment later, so the
+  // rule had no effect on what anyone actually saw.
+  const heroBrand = current[heroIdx]
+    ? chainBrandKey(current[heroIdx].name)
+    : null;
+  const alsoPool = keepOneLocationPerChain(
+    current.filter((_, i) => i !== heroIdx),
+    heroBrand ? [heroBrand] : undefined,
+  );
 
   return withWantDecision({
     key: cKey,
