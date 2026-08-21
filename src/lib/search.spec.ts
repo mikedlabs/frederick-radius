@@ -498,6 +498,58 @@ describe("search — word boundaries protect meaning", () => {
     expect(names).not.toContain("Threaded by Melissa");
     expect(names).not.toContain("H Mart Frederick");
   });
+
+  // Intent triggers used to match as bare substrings, so every one of them
+  // also fired inside a longer word. "validate parking" is the worst of them
+  // in a county app that HAS a parking section: the "date" inside "validate"
+  // handed the whole page to date-night restaurants.
+  const DATE_NIGHT = ["Hootch & Banter", "The Wine Kitchen on the Creek"];
+
+  it.each(["validate parking", "update my address", "candidate forum"])(
+    "does not read date-night intent out of the letters in %s",
+    (query) => {
+      const { hits } = qualifiedSearch(query, 20, undefined, {
+        origin: { lng: -77.4109, lat: 39.4137 },
+      });
+      const names = hits.flatMap((hit) => (hit.type === "place" ? [hit.place.name] : []));
+      for (const restaurant of DATE_NIGHT) expect(names).not.toContain(restaurant);
+    },
+  );
+
+  it("answers validate parking with parking", () => {
+    const { hits } = qualifiedSearch("validate parking", 12, undefined, {
+      origin: { lng: -77.4109, lat: 39.4137 },
+    });
+    const places = hits.flatMap((hit) => (hit.type === "place" ? [hit.place] : []));
+    expect(places[0]?.category).toBe("parking");
+  });
+
+  it("does not read rainy-day intent out of drainage or training", () => {
+    for (const query of ["drainage", "training gym"]) {
+      const { hits } = qualifiedSearch(query, 20, undefined, {
+        origin: { lng: -77.4109, lat: 39.4137 },
+      });
+      const names = hits.flatMap((hit) => (hit.type === "place" ? [hit.place.name] : []));
+      expect(names).not.toContain("Endangered Species Theatre Project");
+    }
+  });
+
+  // The boundary is alphanumeric-only on purpose, so a hyphen still reads as
+  // a break. These are the triggers the fix must NOT break.
+  it("still fires a real trigger, including hyphenated and punctuated ones", () => {
+    const origin = { lng: -77.4109, lat: 39.4137 };
+    const leadCategory = (query: string) => {
+      const { hits } = qualifiedSearch(query, 12, undefined, { origin });
+      const places = hits.flatMap((hit) => (hit.type === "place" ? [hit.place] : []));
+      return places[0]?.category;
+    };
+
+    expect(["park", "playground", "family"]).toContain(leadCategory("kid-friendly things to do"));
+    expect(["park", "playground", "family"]).toContain(leadCategory("kid friendly"));
+    expect(leadCategory("i want a date.")).toBe("restaurant");
+    expect(leadCategory("oil change")).toBe("auto-care");
+    expect(leadCategory("hotel")).toBe("lodging");
+  });
 });
 
 /**
