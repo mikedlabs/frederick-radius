@@ -37,6 +37,13 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          # Next's route/type analysis crosses Node's ~2 GB default heap on a
+          # cold Linux runner, exactly as ci.yml already documents at its own
+          # build steps. This job never had the setting, so all four shards
+          # died in the build with FatalProcessOutOfMemory and SIGABRT before
+          # a single accessibility check ran. The axe gate is pinned at zero
+          # violations and had not actually run since 2026-08-18.
+          NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit
