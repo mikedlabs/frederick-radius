@@ -313,3 +313,54 @@ describe("a rejected archive read says why", () => {
     expect(result.sourceHealth.unavailable).toEqual(["event archive (no database)"]);
   });
 });
+
+// ── No Date may cross the wire as a query parameter ──────────────────
+//
+// Production answered every archive read with:
+//
+//   The "string" argument must be of type string or an instance of Buffer
+//   or ArrayBuffer. Received an instance of Date
+//
+// The driver could not serialise the parameter. /today and /events served
+// compiled curated seeds from 2026-08-19 while the archive held 2,185
+// records, 1,170 of them upcoming and 65 of them that day.
+//
+// It never reproduced locally or in CI, because both use a direct connection
+// where postgres-js infers the parameter type and applies its Date
+// serialiser. Production connects through the pooler, where client.ts must
+// set `prepare: false`, so the inference never happens.
+//
+// A unit test cannot see that difference. What it CAN do is refuse to let a
+// Date reach the driver at all, which is the property that actually matters.
+describe("archive query parameters", () => {
+  afterEach(() => {
+    mocks.getSql.mockReset();
+  });
+
+  it("sends timestamps as ISO text, never as Date objects", async () => {
+    const params: unknown[] = [];
+    const sql = (_strings: TemplateStringsArray, ...values: unknown[]) => {
+      params.push(...values);
+      const pending: Promise<never[]> & { cancel?: () => void } =
+        Promise.resolve([]);
+      pending.cancel = () => undefined;
+      return pending;
+    };
+    mocks.getSql.mockReturnValue(sql as unknown as ReturnType<typeof mocks.getSql>);
+
+    await loadEventArchiveSnapshot(NOW);
+
+    expect(params.length).toBeGreaterThan(0);
+    const dates = params.filter((value) => value instanceof Date);
+    expect(
+      dates,
+      `these parameters are Date objects and the pooled driver cannot serialise them: ${JSON.stringify(dates)}`,
+    ).toEqual([]);
+
+    // And the bounds are recognisable ISO text rather than some other string.
+    const isoish = params.filter(
+      (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value),
+    );
+    expect(isoish.length).toBeGreaterThanOrEqual(2);
+  });
+});

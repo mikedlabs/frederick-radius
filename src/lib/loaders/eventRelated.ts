@@ -59,13 +59,18 @@ async function archivedUpcoming(now: Date): Promise<EventWithMeta[]> {
   const sql = getSql();
   if (!sql) return [];
   const horizon = new Date(now.getTime() + 180 * 86_400_000);
+  // ISO text, not Date. Same driver serialisation failure as
+  // todayEventSnapshot.ts: under the pooler's `prepare: false` postgres-js
+  // cannot infer the parameter type and hands a Date to the string writer.
+  // This query had the identical bug and would have kept failing silently
+  // after the other was fixed.
   const pending = sql<SnapshotRow[]>`
     select canonical.canonical_slug, canonical.snapshot
     from public.event_canonical_records as canonical
     left join public.event_tombstones as tombstone
       on tombstone.canonical_event_id = canonical.id
-    where canonical.starts_at > ${now}
-      and canonical.starts_at <= ${horizon}
+    where canonical.starts_at > ${now.toISOString()}::timestamptz
+      and canonical.starts_at <= ${horizon.toISOString()}::timestamptz
       and canonical.event_status = 'scheduled'
       and tombstone.canonical_event_id is null
     order by canonical.starts_at asc, canonical.id
