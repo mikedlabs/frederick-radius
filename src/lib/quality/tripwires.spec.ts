@@ -123,6 +123,20 @@ describe("unified event source-health tripwire", () => {
     expect(anomaly?.detail).toContain(source);
   });
 
+  // The loader now reports the real Postgres error, so archive reason strings
+  // are open-ended. Matching them literally, as the first version of this did,
+  // would have silently stopped firing the moment a new reason appeared.
+  it("flags an archive failure whose reason it has never seen before", () => {
+    const anomaly = eventSourceHealthAnomaly({
+      degraded: true,
+      unavailable: [
+        "event archive (read rejected: permission denied for table event_canonical_records)",
+      ],
+    });
+
+    expect(anomaly?.kind).toBe("events_sources_degraded");
+  });
+
   it("does not infer a failure from an honest healthy or empty source list", () => {
     expect(
       eventSourceHealthAnomaly({

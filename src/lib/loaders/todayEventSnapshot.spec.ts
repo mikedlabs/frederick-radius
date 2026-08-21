@@ -115,6 +115,11 @@ describe("Today durable event snapshot", () => {
       envelope({ archive_status: "error" }),
       NOW,
     );
+    // A rejected read is not a slow read. The loader used to call every
+    // failure "read timeout", so when production stopped serving live events
+    // the only thing any surface could say was that the read was slow. It was
+    // not: /api/health had `SELECT 1` on the same connection at 3ms. The
+    // Postgres error sentence IS the diagnosis, so it has to survive.
     // A null status is the reader being locked OUT of `ingest_runs`, not the
     // collector failing. RLS denial returns zero rows rather than an error, so
     // these two states arrive looking identical and used to share a label —
@@ -255,5 +260,56 @@ describe("Today durable event snapshot", () => {
       degraded: false,
       unavailable: [],
     });
+  });
+});
+
+describe("a rejected archive read says why", () => {
+  afterEach(() => {
+    mocks.getSql.mockReset();
+  });
+
+  function rejectingSql(error: unknown) {
+    const sql = () => {
+      const pending: Promise<never> & { cancel?: () => void } =
+        Promise.reject(error);
+      pending.cancel = () => undefined;
+      return pending;
+    };
+    return sql as unknown as ReturnType<typeof mocks.getSql>;
+  }
+
+  it("carries the Postgres error instead of calling it a timeout", async () => {
+    mocks.getSql.mockReturnValue(
+      rejectingSql(new Error("permission denied for table event_canonical_records")),
+    );
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.sourceHealth.degraded).toBe(true);
+    expect(result.sourceHealth.unavailable).toEqual([
+      "event archive (read rejected: permission denied for table event_canonical_records)",
+    ]);
+    // The distinction is the whole point: this must NOT read as slowness.
+    expect(result.sourceHealth.unavailable[0]).not.toContain("timeout");
+  });
+
+  it("flattens and bounds the message, because it reaches a health payload", async () => {
+    mocks.getSql.mockReturnValue(
+      rejectingSql(new Error(`line one\n  line two${"x".repeat(400)}`)),
+    );
+
+    const [reason] = (await loadEventArchiveSnapshot(NOW)).sourceHealth.unavailable;
+
+    expect(reason).not.toContain("\n");
+    expect(reason.length).toBeLessThan(160);
+    expect(reason.startsWith("event archive (read rejected: line one line two")).toBe(true);
+  });
+
+  it("still reports a genuine absence of database as its own reason", async () => {
+    mocks.getSql.mockReturnValue(null);
+
+    const result = await loadEventArchiveSnapshot(NOW);
+
+    expect(result.sourceHealth.unavailable).toEqual(["event archive (no database)"]);
   });
 });

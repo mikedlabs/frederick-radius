@@ -166,12 +166,22 @@ const EVENT_SOURCE_FAILURE_THRESHOLD = 2;
 // archive contributed exactly ONE entry to `unavailable`, which is below the
 // two-source threshold, so `eventSourceHealthAnomaly` returned null and the
 // tripwire stayed green while /today served hardcoded seeds (issue #1581).
-const BROAD_EVENT_SOURCE_FAILURES = new Set([
-  "municipal calendars",
-  "event archive (unreadable)",
-  "event archive (last run failed)",
-  "event archive (stale)",
-]);
+const BROAD_EVENT_SOURCE_FAILURES = new Set(["municipal calendars"]);
+
+/**
+ * Any archive failure is a broad failure, whatever its reason string says.
+ *
+ * #1615 listed the three known reasons literally. That was already one
+ * refactor away from rotting, and the refactor arrived immediately: the
+ * loader now reports the actual Postgres error, so the strings are
+ * open-ended ("event archive (read rejected: permission denied for table
+ * ...)"). Match the source, not the sentence.
+ */
+function isBroadEventSourceFailure(source: string): boolean {
+  return (
+    BROAD_EVENT_SOURCE_FAILURES.has(source) || source.startsWith("event archive")
+  );
+}
 
 /**
  * A populated event board is not proof that its runtime sources are healthy:
@@ -192,9 +202,7 @@ export function eventSourceHealthAnomaly(
     .sort();
   if (!sourceHealth.degraded || unavailable.length === 0) return null;
 
-  const broadFailure = unavailable.some((source) =>
-    BROAD_EVENT_SOURCE_FAILURES.has(source),
-  );
+  const broadFailure = unavailable.some(isBroadEventSourceFailure);
   if (
     !broadFailure
     && unavailable.length < EVENT_SOURCE_FAILURE_THRESHOLD

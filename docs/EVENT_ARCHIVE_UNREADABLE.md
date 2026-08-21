@@ -1,6 +1,7 @@
 # The event archive is unreadable in production
 
-Status: **open**. Confirmed against the live database on 2026-08-20.
+Status: **open**. Confirmed against the live database on 2026-08-20, with the
+ownership and promoted-build findings added 2026-08-21.
 Tracking issue: #1581. Detection shipped in #1615. The fix below is not applied.
 
 ## What is wrong
@@ -45,31 +46,65 @@ RLS on with no policy denies every role except the table owner (because
 `rls_forced` is false) and `service_role`. A denial returns **zero rows, not an
 error**, which is why every surface degraded politely instead of failing.
 
-## The one thing still unknown
+## What is confirmed, and what the RLS table does not explain
 
-The app does not use PostgREST. `src/lib/db/client.ts` opens a direct
-`postgres-js` connection from `DATABASE_URL`, so the only thing that matters is
-which role that string authenticates as, and whether that role owns these
-tables.
+Two facts settled on 2026-08-21 that change the shape of this.
 
-`pg_stat_activity` during the investigation showed `authenticator` (PostgREST),
-`pgbouncer`, `postgres` (Supavisor and mgmt-api), and `supabase_admin`. The
-app's own connection was not sampled, so **the connecting role was never
-confirmed**, and neither was table ownership.
-
-That single answer decides which fix below is correct. Run this first:
+**The tables are owned by `postgres`, and `relforcerowsecurity` is false.**
 
 ```sql
-select c.relname as table_name, pg_get_userbyid(c.relowner) as owner
-from pg_class c
-join pg_namespace n on n.oid = c.relnamespace
+select c.relname, pg_get_userbyid(c.relowner) as owner
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
   and c.relname in ('event_canonical_records','event_tombstones','ingest_runs');
+--  all three -> postgres
 ```
 
-If the owner is `postgres` and `DATABASE_URL` authenticates as `postgres`, then
-reads should already work and something else is wrong. In every other case one
-of the two fixes below applies.
+A table owner bypasses RLS when force is off. So if `DATABASE_URL`
+authenticates as `postgres`, these reads succeed no matter how many policies
+are missing. **The RLS table above is real but is not on its own a sufficient
+explanation.** Whatever the runtime connects as, it is neither the owner nor
+`service_role`.
+
+**It is not promoted-build mode leaking into the runtime.** That hypothesis
+was worth testing because `getDb()` returns null whenever
+`isPromotedDataBuild()` is true, which would produce exactly these symptoms
+with a perfectly healthy database. It is ruled out: `defaultDatabaseProbe` in
+`public-health.ts` calls the same `getSql()` and throws on a null client, and
+production reports `database: reachable, latencyMs: 3`.
+
+That 3ms also rules out slowness. The connection is healthy and fast. The
+archive query specifically is being refused.
+
+## Getting the answer without guessing
+
+Do not pick a fix from the two below by reasoning. Ask production.
+
+Once #1619 ships, the loader carries the real Postgres error instead of
+calling every failure "read timeout":
+
+```
+curl -s https://frederickradius.app/api/today/events | jq .
+```
+
+`sourceHealth.unavailable` will read something like `event archive (read
+rejected: permission denied for table event_canonical_records)`. That
+sentence names the missing privilege and decides everything below.
+
+The role itself can also be read directly, from a Supabase SQL editor session
+or the project logs:
+
+```sql
+select usename, application_name, count(*)
+from pg_stat_activity
+where datname = current_database()
+group by 1, 2 order by 3 desc;
+```
+
+Sample it while the site is serving traffic. A `pg_stat_activity` snapshot
+taken on 2026-08-20 showed only `authenticator`, `pgbouncer`, `postgres` and
+`supabase_admin`, and never caught the app's own connection, which is why the
+role is still unnamed here.
 
 ## Fix A, preferred: let the app's role read
 
