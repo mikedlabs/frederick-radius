@@ -143,6 +143,13 @@ export function MapRawPeek({
       className="map-peek map-entity-peek"
       ariaLabel={item.name}
       closeLabel={`Close ${item.name}`}
+      // A catalog place and a mapped OSM point are different answers and must
+      // not be counted as one. `amenity` is the contract's word for the second.
+      decision={
+        isPlace
+          ? { entity: "place", id: item.slug }
+          : { entity: "amenity", id: item.osm_id }
+      }
       onClose={onClose}
     >
       <div className="map-peek-body">
@@ -211,18 +218,26 @@ export function MapRawPeek({
           )}
         </span>
       </div>
+      {/* Only the verb is needed here: the delegated observer resolves
+          surface, entity and id from the nearest [data-decision-surface]
+          ancestor, which is the MapResultSurface above. */}
       <div className="map-peek-acts">
         <a
           href={directionsHref(lat, lng)}
           target="_blank"
           rel="noopener noreferrer"
           className="map-peek-act map-peek-act-go"
+          data-decision-action="directions"
         >
           <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
           Directions
         </a>
         {isPlace ? (
-          <Link href={`/places/${item.slug}`} className="map-peek-act">
+          <Link
+            href={`/places/${item.slug}`}
+            className="map-peek-act"
+            data-decision-action="open"
+          >
             Place details
           </Link>
         ) : website ? (
@@ -231,6 +246,7 @@ export function MapRawPeek({
             target="_blank"
             rel="noopener noreferrer"
             className="map-peek-act"
+            data-decision-action="website"
           >
             Website
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />

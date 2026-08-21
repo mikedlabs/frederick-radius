@@ -8,10 +8,35 @@ import {
 } from "react";
 import { X } from "lucide-react";
 import { takeMapSelectionOpener } from "./mapSelectionFocus";
+import type {
+  DecisionEntityKind,
+  DecisionPosition,
+} from "@/lib/decision/telemetry";
 
 type AccessibleName =
   | { ariaLabel: string; labelledBy?: never }
   | { ariaLabel?: never; labelledBy: string };
+
+/**
+ * What this selection is, in the shared decision vocabulary.
+ *
+ * The map was the largest blind spot in the funnel. It has always emitted
+ * plenty of its own analytics (map_pin, map_layer, map_scene), but none of
+ * them are decision events, so /admin/decisions could report how /today and
+ * /ask convert and could say nothing at all about the surface the locked
+ * architecture calls "the page".
+ *
+ * It belongs here rather than in each peek because this component is already
+ * the one surface every mobile map selection passes through: place, event,
+ * parking, live truck, discovery point. Instrumenting it once covers them
+ * all, and keeps a future peek from being born unmeasured.
+ */
+type MapResultDecision = {
+  entity: DecisionEntityKind;
+  /** Public slug or stable id. Never a name, query, or coordinate. */
+  id: string;
+  position?: DecisionPosition;
+};
 
 type MapResultSurfaceProps = {
   children: ReactNode;
@@ -19,6 +44,7 @@ type MapResultSurfaceProps = {
   describedBy?: string;
   closeLabel?: string;
   showCloseButton?: boolean;
+  decision?: MapResultDecision;
   onClose: () => void;
 } & AccessibleName;
 
@@ -43,6 +69,7 @@ export default function MapResultSurface({
   describedBy,
   closeLabel = "Close map result",
   showCloseButton = true,
+  decision,
   onClose,
 }: MapResultSurfaceProps) {
   const surfaceRef = useRef<HTMLElement>(null);
@@ -138,6 +165,11 @@ export default function MapResultSurface({
       ref={surfaceRef}
       className={`map-result-surface ${className}`}
       data-map-result-surface
+      data-decision-impression={decision ? "true" : undefined}
+      data-decision-surface={decision ? "map" : undefined}
+      data-decision-entity={decision?.entity}
+      data-decision-id={decision?.id}
+      data-decision-position={decision ? decision.position ?? "sheet" : undefined}
       role="region"
       tabIndex={-1}
       aria-label={ariaLabel}
