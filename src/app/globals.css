@@ -465,6 +465,13 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
   outline: 2px solid var(--app-brand);
   outline-offset: 2px;
 }
+/* Ask moves focus to its answer heading after a response so assistive
+   technology announces the new result. The heading is not interactive, and
+   the answer appearing directly below the form is the visual update, so do
+   not draw the global control outline around this programmatic target. */
+.programmatic-focus-target:focus-visible {
+  outline: none;
+}
 /* SearchInput's text field lives inside the rounded visual control. Delegate
    the input ring to that shell so keyboard focus follows the pill instead of
    drawing a rectangular outline through its icon and Clear action. */
@@ -8503,4 +8510,3 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     transition: none;
   }
 }
-

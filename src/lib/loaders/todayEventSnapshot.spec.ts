@@ -261,6 +261,23 @@ describe("Today durable event snapshot", () => {
       unavailable: [],
     });
   });
+
+  it("honors the discovery read budget instead of silently clamping it below the exported value", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve([envelope()]), 2_000);
+    })));
+
+    const pending = loadEventArchiveSnapshot(NOW);
+    await vi.advanceTimersByTimeAsync(2_000);
+    const result = await pending;
+
+    expect(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS).toBe(2_500);
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({ slug: "archive-event-2026-07-31" }),
+    );
+    expect(result.sourceHealth.degraded).toBe(false);
+  });
 });
 
 describe("a rejected archive read says why", () => {

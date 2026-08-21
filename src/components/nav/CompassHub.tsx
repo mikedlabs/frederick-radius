@@ -14,9 +14,12 @@ import {
   ArrowRight,
   Bookmark,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
   ExternalLink,
   History,
   Landmark,
+  List,
   MapPinned,
   MessageCircleQuestion,
   Pin,
@@ -539,6 +542,8 @@ export default function CompassHub() {
 
   const [query, setQuery] = useState("");
   const [deckView, setDeckView] = useState<CompassDeckView | null>(null);
+  const [activeIntent, setActiveIntent] =
+    useState<CompassIntentId | null>(null);
   const [editingPins, setEditingPins] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([
     ...DEFAULT_TOOL_DECK_PIN_IDS,
@@ -689,13 +694,18 @@ export default function CompassHub() {
         href: contextualSuggestion.href ?? contextualBaseItem.href,
       }
     : null;
-  // Recents are suppressed only when the destination is ALREADY a one-tap
-  // shortcut: a pin, or one of the four journeys in the bottom navigation.
-  // Every tool now renders further down the page, so testing against the
-  // whole board would empty this row permanently - and "what you opened
-  // last" is worth more at the top of a long page, not less.
+  const activeIntentDefinition = COMPASS_INTENT_DEFINITIONS.find(
+    (intent) => intent.id === activeIntent,
+  );
+  // Recents are suppressed when the destination is already visible as a
+  // shortcut, a primary navigation destination, or an action in the open
+  // intent. This keeps the top of Compass useful without repeating itself.
   const visibleDestinationHrefs = new Set([
     ...pinnedItems.map((item) => item.href),
+    ...(activeIntentDefinition?.featuredIds.flatMap((id) => {
+      const item = itemById.get(id);
+      return item ? [item.href] : [];
+    }) ?? []),
     "/today",
     "/map",
     "/events",
@@ -748,7 +758,7 @@ export default function CompassHub() {
             className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Compass · {directory.total} tools
+            Compass
           </p>
           <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
             What do you need?
@@ -823,9 +833,13 @@ export default function CompassHub() {
 
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
-            groups={groups}
+            itemById={itemById}
+            activeIntent={activeIntent}
+            onActiveIntentChange={setActiveIntent}
+            onOpen={openDeck}
             intentProps={intentProps}
             liveKeys={deckLiveKeys}
+            toolCount={directory.total}
           />
         </>
       )}
@@ -1231,14 +1245,22 @@ function useDeckLiveKeys(): readonly DeckLiveKey[] {
 
 function CompassIntentBoard({
   intents,
-  groups,
+  itemById,
+  activeIntent,
+  onActiveIntentChange,
+  onOpen,
   intentProps,
   liveKeys,
+  toolCount,
 }: {
   intents: typeof COMPASS_INTENT_DEFINITIONS;
-  groups: ToolDeckGroup[];
+  itemById: ReadonlyMap<string, DirectoryItem>;
+  activeIntent: CompassIntentId | null;
+  onActiveIntentChange: (value: CompassIntentId | null) => void;
+  onOpen: (view: CompassDeckView, managePins?: boolean) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
   liveKeys: readonly DeckLiveKey[];
+  toolCount: number;
 }) {
   const liveLines = Object.fromEntries(
     COMPASS_INTENT_DEFINITIONS.flatMap((intent) => {
@@ -1246,109 +1268,177 @@ function CompassIntentBoard({
       return line ? [[intent.id, line]] : [];
     }),
   ) as Partial<Record<CompassIntentId, string>>;
-  const itemsByGroupId = new globalThis.Map(
-    groups.map((group) => [group.id, group.items]),
-  );
+  // Search, Ask Radius, and nearby shortcuts already provide the Find path at
+  // the top of the page. Repeating it as a fifth chapter adds another choice
+  // without adding a new outcome.
+  const directionIntents = intents.filter((intent) => intent.id !== "find");
 
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-6">
+    <section aria-labelledby="compass-browse-heading" className="space-y-2.5">
       <h2
         id="compass-browse-heading"
         className="text-[16px] font-semibold tracking-[-0.01em]"
       >
-        Every tool
+        Choose a direction
       </h2>
 
-      {intents.map((intent) => {
-        const tools = intent.groupIds.flatMap(
-          (id) => itemsByGroupId.get(id) ?? [],
-        );
-        if (tools.length === 0) return null;
-        const headingId = `compass-intent-${intent.id}`;
+      <div className="overflow-hidden">
+        {directionIntents.map((intent) => {
+          const expanded = activeIntent === intent.id;
+          const featured = intent.featuredIds.flatMap((id) => {
+            const item = itemById.get(id);
+            return item ? [item] : [];
+          });
+          const regionId = `compass-intent-${intent.id}`;
 
-        return (
-          <section key={intent.id} aria-labelledby={headingId}>
-            {/* The label carries the section. The old row also printed a
-                sentence restating it ("Get around / Use the map, parking,
-                transit, or road cameras") and then hid the seven tools that
-                sentence was describing. The tools say it better. */}
-            <div className="flex items-baseline gap-2 px-1">
-              <intent.icon
-                className="h-4 w-4 shrink-0 translate-y-[2px]"
-                strokeWidth={2}
-                style={{ color: "var(--app-ink-3)" }}
-                aria-hidden
-              />
-              <h3
-                id={headingId}
-                className="text-[15px] font-semibold leading-tight tracking-[-0.01em]"
+          return (
+            <section
+              key={intent.id}
+              className="border-b last:border-b-0"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={regionId}
+                onClick={() => {
+                  haptic("light");
+                  onActiveIntentChange(expanded ? null : intent.id);
+                }}
+                className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                style={{
+                  background: expanded
+                    ? "color-mix(in srgb, var(--app-brand) 6%, transparent)"
+                    : "transparent",
+                }}
               >
-                {intent.label}
-              </h3>
-              <span
-                className="text-[12px] tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {tools.length}
-              </span>
-            </div>
-
-            {liveLines[intent.id] ? (
-              // The one live fact this group can currently state, from the
-              // county's own feeds. Creek, because it is data.
-              <p
-                className="mt-1 px-1 text-[12px] font-medium tabular-nums leading-snug"
-                style={{ color: "var(--app-cool)" }}
-              >
-                {liveLines[intent.id]}
-              </p>
-            ) : null}
-
-            {/* Rows, not centred tiles. A tile grid gave 64 destinations the
-                same weight and made the page a wall; it also went ragged
-                wherever the count did not divide by the column span, and
-                stranded "Trails" and "All essentials on the map" alone on a
-                row. Left-aligned rows scan in one pass, hold a one-line
-                label without wrapping, and leave room for the tool's own
-                sentence once the column is wide enough to carry it. */}
-            <ul className="mt-1 grid grid-cols-2 lg:grid-cols-3">
-              {tools.map((item) => (
-                <li key={item.id} className="min-w-0">
-                  <Link
-                    href={item.href}
-                    prefetch={false}
-                    {...externalLinkProps(item)}
-                    {...intentProps(item)}
-                    className="tactile-interactive flex min-h-11 min-w-0 items-center gap-2.5 rounded-[var(--app-radius-md)] px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                <intent.icon
+                  className="h-5 w-5 shrink-0"
+                  strokeWidth={2}
+                  style={{
+                    color: expanded
+                      ? "var(--app-brand-press)"
+                      : "var(--app-ink-3)",
+                  }}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
+                    {intent.label}
+                  </span>
+                  <span
+                    className="mt-1 block text-[12px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
                   >
-                    <item.icon
-                      className="h-[17px] w-[17px] shrink-0"
-                      style={{ color: "var(--app-brand-press)" }}
-                      strokeWidth={2}
+                    {intent.description}
+                  </span>
+                  {liveLines[intent.id] ? (
+                    <span
+                      className="mt-1 block text-[12px] font-medium tabular-nums leading-snug"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      {liveLines[intent.id]}
+                    </span>
+                  ) : null}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${
+                    expanded ? "rotate-180" : ""
+                  }`}
+                  style={{
+                    color: expanded
+                      ? "var(--app-brand-press)"
+                      : "var(--app-ink-3)",
+                  }}
+                  strokeWidth={2.1}
+                  aria-hidden
+                />
+              </button>
+
+              {expanded ? (
+                <div
+                  id={regionId}
+                  className="border-t"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <ul
+                    className="grid grid-cols-3 divide-x"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    {featured.map((item) => (
+                      <li key={item.id} className="min-w-0">
+                        <Link
+                          href={item.href}
+                          prefetch={false}
+                          {...externalLinkProps(item)}
+                          {...intentProps(item)}
+                          className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 px-1.5 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                        >
+                          <item.icon
+                            className="h-[17px] w-[17px] shrink-0"
+                            style={{ color: "var(--app-brand-press)" }}
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                          <span className="line-clamp-2 text-[12px] font-semibold leading-[1.2]">
+                            {item.label}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(intent.id)}
+                    className="tactile-interactive flex min-h-11 w-full items-center justify-between border-t px-3 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-brand-press)",
+                    }}
+                  >
+                    {intent.moreLabel}
+                    <ChevronRight
+                      className="h-4 w-4"
+                      strokeWidth={2.1}
                       aria-hidden
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block text-[13px] font-semibold leading-tight">
-                        {item.label}
-                      </span>
-                      {/* The description is why the separate "with
-                          descriptions" door existed. At this width the page
-                          can simply say it. */}
-                      <span
-                        className="mt-0.5 hidden truncate text-[11px] font-normal leading-tight lg:block"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {item.description}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
-
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpen("all")}
+        className="tactile-interactive flex min-h-11 w-full items-center gap-2 rounded-[var(--app-radius-md)] px-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]"
+          style={{
+            background: "color-mix(in srgb, var(--app-brand) 9%, transparent)",
+          }}
+          aria-hidden
+        >
+          <List className="h-4 w-4" strokeWidth={2.1} />
+        </span>
+        <span className="min-w-0 flex-1">
+          All {toolCount} tools
+          <span
+            className="mt-0.5 block text-[11px] font-normal"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Browse every tool by category
+          </span>
+        </span>
+        <ChevronRight
+          className="h-4 w-4 shrink-0"
+          strokeWidth={2.1}
+          aria-hidden
+        />
+      </button>
     </section>
   );
 }

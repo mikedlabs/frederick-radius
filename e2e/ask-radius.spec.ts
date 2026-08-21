@@ -204,6 +204,16 @@ test.describe("Ask Radius deterministic workspace", () => {
     await page.goto("/ask");
     await submit(page, "coffee and bikes downtown");
 
+    const answerHeading = page.locator("#ask-answer-heading");
+    await expect(answerHeading).toBeFocused();
+    await expect
+      .poll(() =>
+        answerHeading.evaluate((element) =>
+          window.getComputedStyle(element).outlineStyle,
+        ),
+      )
+      .toBe("none");
+
     const card = page.locator('[data-ask-source-index="0"]');
     const media = card.locator("[data-ask-source-media]");
     await expect(card.getByRole("link", { name: "Gravel & Grind", exact: true })).toBeVisible();

@@ -294,7 +294,13 @@ test.describe("Today hydration clock boundary", () => {
     });
     expect(response?.status()).toBe(200);
     await expect(page.locator("main h1")).toHaveCount(1);
-    await expect(page.locator('[aria-label="Today in Frederick"]')).toBeVisible();
+    // The weather card deliberately changes its region label when the live
+    // source is unavailable. The route into the full forecast is the stable
+    // interaction contract in both states and still proves that the card
+    // survived hydration.
+    await expect(
+      page.locator('main a[href="/pulse?open=weather"]').first(),
+    ).toBeVisible();
     const readyCollapsibles = page.locator(
       '[data-collapsible-interaction-ready="true"]',
     );

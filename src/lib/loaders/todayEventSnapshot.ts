@@ -293,7 +293,7 @@ export async function loadEventArchiveSnapshot(
   );
   const timeoutMs = Math.max(
     100,
-    Math.min(1_500, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
+    Math.min(5_000, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
   );
   const sql = getSql();
   if (!sql) return curatedFallback(now, "no database");

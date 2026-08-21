@@ -2161,8 +2161,8 @@ export default function AskFrederick({
                 tabIndex={-1}
                 className={
                   workspace
-                    ? "font-serif text-[20px] font-semibold tracking-tight"
-                    : "text-[12px] font-semibold"
+                    ? "programmatic-focus-target font-serif text-[20px] font-semibold tracking-tight"
+                    : "programmatic-focus-target text-[12px] font-semibold"
                 }
                 style={{ color: "var(--app-ink)" }}
               >
