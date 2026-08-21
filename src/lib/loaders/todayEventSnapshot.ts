@@ -83,14 +83,42 @@ function snapshotBounds(
   };
 }
 
+/**
+ * A rejected read and a slow read are different problems and must not share
+ * an answer.
+ *
+ * This used to return `null` for both, and the caller labelled every null
+ * "read timeout". So when production stopped serving live events, the only
+ * thing any surface could say was that the read was slow. It was not slow:
+ * `/api/health` reports `SELECT 1` on this very connection at 3ms. Something
+ * rejected the archive query specifically, and the app had no way to say so,
+ * which turned a one-line Postgres error into a multi-day investigation.
+ *
+ * `postgres` raises a real error for a missing table grant ("permission
+ * denied for table ..."), and that sentence is the entire diagnosis. Carry it.
+ */
+type DeadlineOutcome<T> =
+  | { ok: true; value: T }
+  | { ok: false; reason: string };
+
+/** Postgres error text is safe to surface: it names relations and privileges,
+ *  never the connection string. Bounded and flattened anyway, because this
+ *  string reaches an operator-facing health payload. */
+function readFailureReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const flattened = message.replace(/\s+/gu, " ").trim();
+  if (!flattened) return "read rejected";
+  return `read rejected: ${flattened.slice(0, 120)}`;
+}
+
 async function beforeDeadline<T>(
   pending: CancellablePromiseLike<T>,
   timeoutMs: number,
-): Promise<T | null> {
+): Promise<DeadlineOutcome<T>> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const guarded = Promise.resolve(pending).then(
     (value) => ({ status: "ok" as const, value }),
-    () => ({ status: "failed" as const }),
+    (error: unknown) => ({ status: "failed" as const, error }),
   );
   const stopped = new Promise<{ status: "timeout" }>((resolve) => {
     timer = setTimeout(
@@ -106,9 +134,15 @@ async function beforeDeadline<T>(
       } catch {
         // Cancellation is best-effort; the guarded promise consumes a late rejection.
       }
-      return null;
+      return {
+        ok: false,
+        reason:
+          result.status === "timeout"
+            ? "read timeout"
+            : readFailureReason(result.error),
+      };
     }
-    return result.value;
+    return { ok: true, value: result.value };
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -308,12 +342,13 @@ export async function loadEventArchiveSnapshot(
     from (values (1)) as anchor(value)
     left join latest_archive on true
   `;
-  const rows = await beforeDeadline(
-    pending,
-    timeoutMs,
-  );
-  const envelope = rows?.[0];
-  // A null row set here means beforeDeadline gave up, not that the archive
-  // is empty: the query always returns one anchor row when it completes.
-  return envelope ? hydrateTodayEventSnapshot(envelope, now) : curatedFallback(now, "read timeout");
+  const outcome = await beforeDeadline(pending, timeoutMs);
+  if (!outcome.ok) return curatedFallback(now, outcome.reason);
+  const envelope = outcome.value?.[0];
+  // A missing row here is NOT an empty archive: the query anchors on
+  // `(values (1))`, so a completed read always returns exactly one row.
+  // Getting none back means the shape changed, which is its own bug.
+  return envelope
+    ? hydrateTodayEventSnapshot(envelope, now)
+    : curatedFallback(now, "read returned no anchor row");
 }
