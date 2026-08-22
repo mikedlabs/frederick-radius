@@ -27,13 +27,12 @@ type ArchiveEnvelope = {
   archive_records_failed: number | string | null;
 };
 
-// 650ms lost the race on every cold start: a fresh Supavisor connection takes
-// 300-800ms of TLS + auth before the query even runs, so the first request an
-// instance served always fell back to the ~10 curated seeds while 900+ real
-// events sat readable in the archive (events-outage diagnosis, 2026-08-18).
-// One second keeps the briefing budget honest while letting a cold connection
-// finish; warm reads still answer in tens of milliseconds.
-export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 1_000;
+// One second still lost production's Today read often enough to cache a blank
+// event section while the wider Events route read the same healthy archive.
+// The event section is already behind Suspense, so the shell can stream while
+// a cold Supavisor connection gets the same bounded allowance as discovery.
+// Warm reads still answer in tens of milliseconds.
+export const TODAY_EVENT_SNAPSHOT_TIMEOUT_MS = 2_500;
 export const TODAY_EVENT_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 60 * 1_000;
 const TODAY_EVENT_HORIZON_DAYS = 9;
 const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
@@ -45,6 +44,7 @@ const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
 export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 2_500;
 export const EVENT_BROWSE_HORIZON_DAYS = 90;
 export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
+const MAX_EVENT_ARCHIVE_SNAPSHOT_TIMEOUT_MS = 3_000;
 
 type EventArchiveSnapshotOptions = {
   horizonDays?: number;
@@ -293,7 +293,12 @@ export async function loadEventArchiveSnapshot(
   );
   const timeoutMs = Math.max(
     100,
-    Math.min(1_500, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
+    Math.min(
+      MAX_EVENT_ARCHIVE_SNAPSHOT_TIMEOUT_MS,
+      Math.floor(
+        options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+      ),
+    ),
   );
   const sql = getSql();
   if (!sql) return curatedFallback(now, "no database");

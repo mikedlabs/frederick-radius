@@ -188,6 +188,23 @@ describe("Today durable event snapshot", () => {
     });
   });
 
+  it("lets a cold Today archive read finish past the old one-second cutoff", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve([envelope()]), 1_250);
+    })));
+
+    const pending = loadTodayEventSnapshot(NOW);
+    await vi.advanceTimersByTimeAsync(1_250);
+    const result = await pending;
+
+    expect(TODAY_EVENT_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(1_250);
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({ slug: "archive-event-2026-07-31" }),
+    );
+    expect(result.sourceHealth.degraded).toBe(false);
+  });
+
   it("does not let the Today route start the live provider fan-out", () => {
     const page = readFileSync(
       new URL("../../app/(app)/today/page.tsx", import.meta.url),
@@ -202,6 +219,8 @@ describe("Today durable event snapshot", () => {
     expect(page).not.toMatch(/assembleUnifiedEvents\s*\(/);
     expect(endpoint).toContain("loadTodayEventSnapshot(now)");
     expect(endpoint).not.toMatch(/assembleUnifiedEvents\s*\(/);
+    expect(endpoint).toContain('export const dynamic = "force-dynamic"');
+    expect(endpoint).toContain('"private, no-store, max-age=0"');
   });
 
   it("keeps the Events board and its continuation on the durable archive", () => {
@@ -260,6 +279,23 @@ describe("Today durable event snapshot", () => {
       degraded: false,
       unavailable: [],
     });
+  });
+
+  it("does not silently clip discovery's declared timeout to 1.5 seconds", async () => {
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve([envelope()]), 2_000);
+    })));
+
+    const pending = loadEventArchiveSnapshot(NOW);
+    await vi.advanceTimersByTimeAsync(2_000);
+    const result = await pending;
+
+    expect(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(2_000);
+    expect(result.publicEvents).toContainEqual(
+      expect.objectContaining({ slug: "archive-event-2026-07-31" }),
+    );
+    expect(result.sourceHealth.degraded).toBe(false);
   });
 });
 

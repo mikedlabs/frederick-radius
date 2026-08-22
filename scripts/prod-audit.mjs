@@ -257,6 +257,62 @@ async function run() {
     bad(`/api/health readiness check failed: ${error.message}`);
   }
 
+  // Today and Events read the same durable archive, but Today has a tighter
+  // presentation budget and a promoted-build fallback. A production incident
+  // left the Events API healthy while /today silently rendered no event
+  // section at all. The compact runtime endpoint is the independent canary:
+  // it must be healthy, populated, and either represented in the server HTML
+  // or backed by the explicit client recovery component.
+  try {
+    const result = await request("/api/today/events", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/today/events", result);
+    check(
+      result.status === 200,
+      "/api/today/events is available",
+      `/api/today/events returned ${result.status}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(result.body);
+    } catch {
+      bad("/api/today/events did not return valid JSON");
+    }
+    if (payload) {
+      const events = Array.isArray(payload.events) ? payload.events : [];
+      check(
+        payload.partial === false,
+        "Today reads the healthy event archive",
+        `Today event coverage is partial (${JSON.stringify(payload.unavailable ?? [])})`,
+      );
+      check(
+        events.length > 0,
+        `Today has ${events.length} current event listing(s)`,
+        "Today has no current event listings while the production archive is expected",
+      );
+
+      const todayHtml = checkedPages.get("/today")?.body || "";
+      const rendered = new Set(eventDetailPathsFromHtml(todayHtml, BASE));
+      const apiPaths = events
+        .filter((event) => typeof event?.slug === "string")
+        .map((event) => `/events/${event.slug}`);
+      const shared = apiPaths.some((path) => rendered.has(path));
+      const hasRecovery = todayHtml.includes(
+        'data-today-event-recovery="true"',
+      );
+      check(
+        events.length === 0 || shared || hasRecovery,
+        shared
+          ? "Today server-renders a current event"
+          : "Today mounts its runtime event recovery",
+        "Today dropped every current event and has no runtime recovery",
+      );
+    }
+  } catch (error) {
+    bad(`/api/today/events contract check failed: ${error.message}`);
+  }
+
   // Installed-app contract: discover the linked manifest, verify its launch
   // target, then prove that target is the same healthy public Today route.
   try {
