@@ -21,6 +21,16 @@
     },
     "generated_at": "2026-08-01T09:50:51.885Z"
   },
+  "a-different-blend": {
+    "blurb": "A Different Blend is a barbershop located in Frederick, Maryland.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://adifferentblend.com/",
+      "fetched_at": "2026-08-22T08:23:07.834Z"
+    },
+    "generated_at": "2026-08-22T08:23:07.834Z"
+  },
   "averys-maryland-grille-frederick": {
     "blurb": "Avery's Maryland Grille is a casual seafood and steakhouse serving wood-grilled steaks, steamed crabs, and seafood.",
     "status": "approved",
@@ -33,6 +43,16 @@
     "reviewed_at": "2026-07-29T12:04:25.000Z",
     "reviewer_note": "Checked against Avery's current official About Us and menu pages on 2026-07-29; the business describes itself as a seafood and steakhouse, and the menu lists wood-grilled steak."
   },
+  "baileys-treasures": {
+    "blurb": "Bailey's Treasures specializes in vintage furniture and antique pieces, including art glass, bone china, uranium glass, and Asian antiques, along with local art and estate jewelry.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://baileystreasures.com/",
+      "fetched_at": "2026-08-22T08:21:12.782Z"
+    },
+    "generated_at": "2026-08-22T08:21:12.782Z"
+  },
   "bakehouse": {
     "blurb": "Bakehouse makes croissants, pastries, and baked goods from a storefront in Downtown Frederick.",
     "status": "candidate",
@@ -42,6 +62,36 @@
       "fetched_at": "2026-08-01T09:49:18.789Z"
     },
     "generated_at": "2026-08-01T09:49:18.789Z"
+  },
+  "baltimore-gold-of-frederick": {
+    "blurb": "Baltimore Gold of Frederick buys and sells fine jewelry, diamonds, gold, silver, and rare coins, with 30 years of experience.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.baltimoregold.com/",
+      "fetched_at": "2026-08-22T08:22:29.187Z"
+    },
+    "generated_at": "2026-08-22T08:22:29.187Z"
+  },
+  "barnes-noble-frederick": {
+    "blurb": "Barnes & Noble offers books, toys, games, and vinyl records at this Frederick location.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://stores.barnesandnoble.com/store/2257",
+      "fetched_at": "2026-08-22T08:23:53.880Z"
+    },
+    "generated_at": "2026-08-22T08:23:53.880Z"
+  },
+  "battery-warehouse": {
+    "blurb": "Battery Warehouse supplies batteries for cars, toys, laptops, and other devices across six Maryland locations with competitive pricing and free installation services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://batterywarehousemaryland.com/",
+      "fetched_at": "2026-08-22T08:20:11.989Z"
+    },
+    "generated_at": "2026-08-22T08:20:11.989Z"
   },
   "bellisarios-pizza": {
     "blurb": "Bellisario's Pizza has been locally owned since 2000 and serves pizza along with hoagies, calzones, and other Italian-style sandwiches.",
@@ -85,6 +135,16 @@
     },
     "generated_at": "2026-08-01T09:51:58.621Z"
   },
+  "black-label-tattoo": {
+    "blurb": "Black Label Tattoo is a collective of individual tattooers, each with their own style, schedule, pricing, and contact method.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.blacklabeltattoocompany.com/",
+      "fetched_at": "2026-08-22T08:18:28.243Z"
+    },
+    "generated_at": "2026-08-22T08:18:28.243Z"
+  },
   "cafe-nola": {
     "blurb": "Cafe Nola is a cafe and bar on East Patrick Street with pickup ordering.",
     "status": "approved",
@@ -97,6 +157,36 @@
     "reviewed_at": "2026-07-27T16:55:00.000Z",
     "reviewer_note": "Checked against the linked business website on 2026-07-27."
   },
+  "canapes-catering": {
+    "blurb": "Canapes Catering offers full-service catering with fine cuisine and personalized service since 1989, serving Maryland, Pennsylvania, Northern Virginia, and Washington, DC.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.canapescatering.com/",
+      "fetched_at": "2026-08-22T08:18:41.591Z"
+    },
+    "generated_at": "2026-08-22T08:18:41.591Z"
+  },
+  "candy-kitchen-6": {
+    "blurb": "Candy Kitchen has been making salt water taffy, creamy fudge, and hand-dipped chocolates since 1937 using quality ingredients and traditional recipes.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://candykitchen.com/",
+      "fetched_at": "2026-08-22T08:20:05.408Z"
+    },
+    "generated_at": "2026-08-22T08:20:05.408Z"
+  },
+  "catoctin-mountain-orchard-thurmont": {
+    "blurb": "Catoctin Mountain Orchard operates a farm market selling fresh home-grown fruits and vegetables, baked goods including apple cider donuts and fruit pies, and jarred preserves made with local ingredients.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.catoctinmountainorchard.com/",
+      "fetched_at": "2026-08-22T08:24:01.619Z"
+    },
+    "generated_at": "2026-08-22T08:24:01.619Z"
+  },
   "chappelle-co": {
     "blurb": "Chappelle & Co. sells candles, home goods, apparel, stationery, and accessories from a retail location in Frederick, Maryland.",
     "status": "candidate",
@@ -106,6 +196,16 @@
       "fetched_at": "2026-08-01T09:51:20.068Z"
     },
     "generated_at": "2026-08-01T09:51:20.068Z"
+  },
+  "charm-city-run-frederick": {
+    "blurb": "Charm City Run is a specialty running and walking retailer that expertly fits customers into the right shoes across seven locations in Maryland and Delaware.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.charmcityrun.com/",
+      "fetched_at": "2026-08-22T08:17:44.697Z"
+    },
+    "generated_at": "2026-08-22T08:17:44.697Z"
   },
   "cloud-jammer": {
     "blurb": "Cloud Jammer sells vape products including e-juice, nicotine, glass pieces, vape mods, batteries, and accessories across multiple locations in Pennsylvania and Maryland since 2014.",
@@ -127,6 +227,16 @@
     },
     "generated_at": "2026-08-01T09:49:08.539Z"
   },
+  "colorful-canvas": {
+    "blurb": "Colorful Canvas is a locally owned art supply store in Frederick, Maryland that has been operating since 2014 and carries professional-grade supplies including sketchbooks, paints, and canvases for artists of all levels.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.thecolorfulcanvas.com/",
+      "fetched_at": "2026-08-22T08:20:24.491Z"
+    },
+    "generated_at": "2026-08-22T08:20:24.491Z"
+  },
   "common-market": {
     "blurb": "Common Market is a locally owned grocery and cafe that works with local farmers and producers within 200 miles.",
     "status": "candidate",
@@ -146,6 +256,16 @@
       "fetched_at": "2026-08-01T09:50:59.144Z"
     },
     "generated_at": "2026-08-01T09:50:59.144Z"
+  },
+  "crystal-forests-llc": {
+    "blurb": "Crystal Forests offers psychic readings, mediumship sessions, and past-life regression hypnosis.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://crystal-forests-llc.square.site/",
+      "fetched_at": "2026-08-01T09:50:44.856Z"
+    },
+    "generated_at": "2026-08-01T09:50:44.856Z"
   },
   "dublin-roasters-frederick": {
     "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
@@ -169,6 +289,16 @@
     },
     "generated_at": "2026-08-01T09:51:29.888Z"
   },
+  "eastside-liquors": {
+    "blurb": "Eastside Liquors offers a wide selection of beer, wine, and liquor with rotating sales on select products.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://eastsideliquorsmd.com/",
+      "fetched_at": "2026-08-22T08:20:20.726Z"
+    },
+    "generated_at": "2026-08-22T08:20:20.726Z"
+  },
   "edgeworks-knife-and-supply": {
     "blurb": "Edgeworks sells cutlery, knives, and darts and provides knife-sharpening services; it has operated since 1993.",
     "status": "candidate",
@@ -178,6 +308,16 @@
       "fetched_at": "2026-08-01T09:51:21.370Z"
     },
     "generated_at": "2026-08-01T09:51:21.370Z"
+  },
+  "electrolysis-of-frederick": {
+    "blurb": "Electrolysis of Frederick provides permanent hair removal using electrolysis, which the business states is the only option for permanent hair removal.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.frederickelectrolysis.com/",
+      "fetched_at": "2026-08-22T08:20:23.005Z"
+    },
+    "generated_at": "2026-08-22T08:20:23.005Z"
   },
   "embark-skateboard-shop": {
     "blurb": "Embark Skateboard Shop sells skateboarding decks, trucks, wheels, bearings, and apparel, with Embark exclusive items and work from local and visiting artists displayed on a gallery wall.",
@@ -189,6 +329,16 @@
     },
     "generated_at": "2026-08-01T09:51:40.617Z"
   },
+  "emporium-antiques": {
+    "blurb": "Emporium Antiques has nearly 100 dealers offering antiques, vintage goods, and mid-century items across a 25,000-square-foot space in downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://emporiumantiques.com/",
+      "fetched_at": "2026-08-01T09:51:05.588Z"
+    },
+    "generated_at": "2026-08-01T09:51:05.588Z"
+  },
   "escape-this-frederick": {
     "blurb": "Escape This Frederick operates six private escape rooms with puzzles and themed scenarios, and also offers virtual reality games.",
     "status": "candidate",
@@ -198,6 +348,16 @@
       "fetched_at": "2026-08-01T09:47:49.097Z"
     },
     "generated_at": "2026-08-01T09:47:49.097Z"
+  },
+  "frederick-arts-council-sky-stage": {
+    "blurb": "Sky Stage is a temporarily transformed open-air theater in a pre-Revolutionary War building in downtown Frederick that offers free drama, music, children's story time, dance, poetry, and other arts programming.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.skystagefrederick.com/",
+      "fetched_at": "2026-08-22T08:20:10.011Z"
+    },
+    "generated_at": "2026-08-22T08:20:10.011Z"
   },
   "frederick-auto-repair": {
     "blurb": "This Route 40 shop provides major vehicle repairs and Maryland state inspections, with walk-in service and a night drop box.",
@@ -257,6 +417,26 @@
     },
     "generated_at": "2026-08-01T09:51:03.738Z"
   },
+  "frederick-social": {
+    "blurb": "Frederick Social is a self-pour taphouse where customers pour their own drinks from taps and pay by the ounce.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.frederick-social.com/",
+      "fetched_at": "2026-08-22T08:21:17.762Z"
+    },
+    "generated_at": "2026-08-22T08:21:17.762Z"
+  },
+  "gunrunners": {
+    "blurb": "Gunrunners is a locally owned gun shop in Frederick, Maryland that has been operating since 1991, offering firearm sales, transfers, consignments, and gunsmithing services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.gunrunnersmd.com/",
+      "fetched_at": "2026-08-22T08:19:19.286Z"
+    },
+    "generated_at": "2026-08-22T08:19:19.286Z"
+  },
   "happiness-is-balance-frederick-md": {
     "blurb": "Happiness Is Balance offers massage therapy, personal training, life coaching, food education, situational awareness instruction, and firearms training.",
     "status": "candidate",
@@ -278,6 +458,16 @@
     "generated_at": "2026-07-28T09:38:24.000Z",
     "reviewed_at": "2026-07-28T09:38:24.000Z",
     "reviewer_note": "Checked against SilverVox's event-spaces page on 2026-07-28; the page identifies The Vox Lounge as its music venue and lists live music and open-mic programming."
+  },
+  "hinzis-kitchen": {
+    "blurb": "Hinzi's Kitchen serves Pakistani-rooted halal bowls and wraps made fresh to order, featuring halal chicken, butter chicken, gyro, paneer, and falafel over basmati rice or wrapped in soft roti.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://hinzis.com/",
+      "fetched_at": "2026-08-22T08:15:18.429Z"
+    },
+    "generated_at": "2026-08-22T08:15:18.429Z"
   },
   "hispanos-sin-fronteras": {
     "blurb": "Hispanos Sin Fronteras helps Hispanic business owners with business formation, licensing, and legal procedures in the United States.",
@@ -310,6 +500,26 @@
       "fetched_at": "2026-08-01T09:49:23.569Z"
     },
     "generated_at": "2026-08-01T09:49:23.569Z"
+  },
+  "illuminate-beauty-studio": {
+    "blurb": "Illuminate Beauty Studio specializes in Invisible Bead Extensions and hair color services in Frederick, Maryland.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.illuminatebeautystudio.com/",
+      "fetched_at": "2026-08-22T08:18:37.901Z"
+    },
+    "generated_at": "2026-08-22T08:18:37.901Z"
+  },
+  "in-balance-massage-therapy": {
+    "blurb": "In Balance Massage Therapy provides massage therapy services in downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://inbalancefrederick.weebly.com/",
+      "fetched_at": "2026-08-22T08:18:24.520Z"
+    },
+    "generated_at": "2026-08-22T08:18:24.520Z"
   },
   "inbloom-jewelry": {
     "blurb": "InBloom Jewelry offers custom jewelry and transforms heirlooms using traditional metalsmithing techniques.",
@@ -355,6 +565,26 @@
     },
     "generated_at": "2026-08-01T09:49:10.420Z"
   },
+  "jonas-outdoor-furniture-co": {
+    "blurb": "JoNa's Outdoor Furniture Co. is a family-owned poly furniture and design boutique that sells customizable outdoor furniture made from recycled plastic by Amish craftsmen.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.jonasoutdoor.com/",
+      "fetched_at": "2026-08-22T08:18:36.414Z"
+    },
+    "generated_at": "2026-08-22T08:18:36.414Z"
+  },
+  "juno-bakery": {
+    "blurb": "JUNO Bakery & Cafe offers Korean-inspired baked goods including macarons, cakes, Korean bread, and boba tea.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://junobakery.com/",
+      "fetched_at": "2026-08-22T08:23:59.168Z"
+    },
+    "generated_at": "2026-08-22T08:23:59.168Z"
+  },
   "k-town-takeout": {
     "blurb": "K-town TakeOut serves Korean food, sushi, and takeout meals.",
     "status": "candidate",
@@ -396,6 +626,36 @@
       "fetched_at": "2026-08-01T09:48:50.357Z"
     },
     "generated_at": "2026-08-01T09:48:50.357Z"
+  },
+  "life-saving-certifiers": {
+    "blurb": "Life Saving Certifiers provides onsite CPR, first aid, and AED training for groups of five or more across the Mid-Atlantic region, including Maryland, Pennsylvania, Virginia, West Virginia, Delaware, New Jersey, and DC.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://lifesavingcertifiers.com/",
+      "fetched_at": "2026-08-22T08:24:06.174Z"
+    },
+    "generated_at": "2026-08-22T08:24:06.174Z"
+  },
+  "liveyoung-candle-company": {
+    "blurb": "LiveYoung Candle Company makes scented candles, wax melts, and home fragrance products, and offers candle-making classes and workshops.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://liveyoungcandles.com/",
+      "fetched_at": "2026-08-22T08:19:21.104Z"
+    },
+    "generated_at": "2026-08-22T08:19:21.104Z"
+  },
+  "lynns-automotive": {
+    "blurb": "Lynn's Automotive offers new and used tire installation and automotive services including diagnostics and maintenance, with over 40 years of combined experience.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.lynnsautomotivemd.com/",
+      "fetched_at": "2026-08-22T08:18:34.610Z"
+    },
+    "generated_at": "2026-08-22T08:18:34.610Z"
   },
   "mackies-southern-bbq": {
     "blurb": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
@@ -499,6 +759,16 @@
     },
     "generated_at": "2026-08-01T09:49:22.119Z"
   },
+  "nelson-coleman-jewelers": {
+    "blurb": "Nelson Coleman Jewelers has been in business since 1856 and offers custom engagement rings, estate jewelry, and jewelry repair services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://nelsoncoleman.com/pages/events",
+      "fetched_at": "2026-08-22T08:18:43.754Z"
+    },
+    "generated_at": "2026-08-22T08:18:43.754Z"
+  },
   "oscars-alehouse": {
     "blurb": "Oscar's Alehouse features a wood-burning grill that gives burgers, chicken, steak, and fish an oaky flavor, and rotates 36 craft beer drafts from breweries around the nation and local breweries.",
     "status": "candidate",
@@ -589,6 +859,16 @@
     },
     "generated_at": "2026-08-01T09:51:18.724Z"
   },
+  "raven-rest-aesthetic-parlor": {
+    "blurb": "Raven Rest Aesthetic Parlor offers barbering and cosmetology services in Frederick, Maryland.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.ravenrestaestheticparlor.com/",
+      "fetched_at": "2026-08-22T08:18:20.112Z"
+    },
+    "generated_at": "2026-08-22T08:18:20.112Z"
+  },
   "recycles-bikes": {
     "blurb": "ReCycles Bikes sells inspected pre-owned bicycles and lists a lifetime tune-up warranty.",
     "status": "candidate",
@@ -598,6 +878,26 @@
       "fetched_at": "2026-08-01T09:51:47.277Z"
     },
     "generated_at": "2026-08-01T09:51:47.277Z"
+  },
+  "relish-decor": {
+    "blurb": "Relish Decor is a lifestyle boutique known for a stylish selection of tabletop housewares, kitchen furnishings, and unique gifts.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://relishdecor.com/",
+      "fetched_at": "2026-08-22T08:19:22.055Z"
+    },
+    "generated_at": "2026-08-22T08:19:22.055Z"
+  },
+  "retro-metro": {
+    "blurb": "Retro-Metro offers an ever-changing selection of retro and eclectic merchandise including toys, novelties, home decor, books, candles, signs, and handmade jewelry.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.retro-metro.com/",
+      "fetched_at": "2026-08-22T08:18:39.673Z"
+    },
+    "generated_at": "2026-08-22T08:18:39.673Z"
   },
   "rides-for-good": {
     "blurb": "Rides for Good matches Frederick County residents who need transportation with volunteer drivers for essential appointments and services.",
@@ -611,6 +911,16 @@
     "reviewed_at": "2026-07-29T02:14:12.000Z",
     "reviewer_note": "Checked against Rides for Good's current site on 2026-07-28; it describes a Frederick County ride-matching network, volunteer drivers, and trips for medical appointments and other essential services."
   },
+  "river-bar-grill": {
+    "blurb": "River Bar & Grill serves Mexican and Salvadoran cuisine and is rated among the top Mexican restaurants in Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://riverbargrillfrederick.com/",
+      "fetched_at": "2026-08-22T08:18:45.260Z"
+    },
+    "generated_at": "2026-08-22T08:18:45.260Z"
+  },
   "riverwalk-park-frederick": {
     "blurb": "Riverwalk Park has a playground, pavilion, ball fields, restrooms, a water fountain, and walking and biking paths.",
     "status": "approved",
@@ -622,6 +932,16 @@
     "generated_at": "2026-07-29T12:04:25.000Z",
     "reviewed_at": "2026-07-29T12:04:25.000Z",
     "reviewer_note": "Checked against the City of Frederick's current Riverwalk Park facility page on 2026-07-29."
+  },
+  "rocky-point-creamery-brunswick": {
+    "blurb": "Rocky Point Creamery makes 120 flavors of homemade ice cream and sells milk, brown eggs, cheese, and beef from their own farm.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.rockypointcreamery.com/",
+      "fetched_at": "2026-08-22T08:23:55.437Z"
+    },
+    "generated_at": "2026-08-22T08:23:55.437Z"
   },
   "rosatis-pizza-5": {
     "blurb": "Rosati's Pizza serves pizza and Italian-American dishes using a family recipe passed down through generations.",
@@ -657,6 +977,26 @@
     "reviewed_at": "2026-07-29T12:23:10.000Z",
     "reviewer_note": "Checked against WLR Automotive Group's current Route 85 Lube Center page on 2026-07-29; it lists oil-change packages, preventive maintenance, the Frederick address, phone, and weekly hours."
   },
+  "second-chances-garage": {
+    "blurb": "Second Chances Garage provides affordable cars and reduced-cost repair services to low-income individuals and families in Frederick County, Maryland to help them achieve independent living.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://secondchancesgarage.org/",
+      "fetched_at": "2026-08-22T08:18:32.423Z"
+    },
+    "generated_at": "2026-08-22T08:18:32.423Z"
+  },
+  "shaestheticsss": {
+    "blurb": "Shaestheticsss is a Korean skincare spa in downtown Frederick offering permanent makeup services, skincare treatments, wax treatments, and cryoskin services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.shaestheticsss.com/",
+      "fetched_at": "2026-08-22T08:18:46.820Z"
+    },
+    "generated_at": "2026-08-22T08:18:46.820Z"
+  },
   "shieldco": {
     "blurb": "ShieldCo Art creates custom metal signs and business logos in various materials including steel, aluminum, brass, and copper.",
     "status": "candidate",
@@ -666,6 +1006,16 @@
       "fetched_at": "2026-08-01T09:50:57.623Z"
     },
     "generated_at": "2026-08-01T09:50:57.623Z"
+  },
+  "skin-starts-here": {
+    "blurb": "The business provides customized facials and professional makeup artistry services performed by a licensed esthetician and makeup artist.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.skinstartshere.com/",
+      "fetched_at": "2026-08-22T08:20:19.562Z"
+    },
+    "generated_at": "2026-08-22T08:20:19.562Z"
   },
   "smoke-signals": {
     "blurb": "Smoke Signals sells functional art glass and says it represents more than 100 glass artists from the United States and abroad.",
@@ -719,6 +1069,16 @@
     "reviewed_at": "2026-07-28T09:38:24.000Z",
     "reviewer_note": "Checked against Maryland Historical Trust inventory F-3-8 on 2026-07-28; the survey records the bridge's material, pedestrian use, 100-foot span, 1885 construction, Carroll Creek location, and 1928 move."
   },
+  "tattoo-alchemy": {
+    "blurb": "Tattoo Alchemy is a tattoo shop in Frederick, Maryland that accepts both custom bookings and walk-in clients.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tattooalchemy.ink/",
+      "fetched_at": "2026-08-22T08:19:23.225Z"
+    },
+    "generated_at": "2026-08-22T08:19:23.225Z"
+  },
   "tempo-di-pasta": {
     "blurb": "Tempo Di Pasta serves Italian cuisine including panini and pasta dishes.",
     "status": "candidate",
@@ -738,6 +1098,16 @@
       "fetched_at": "2026-08-01T09:51:28.645Z"
     },
     "generated_at": "2026-08-01T09:51:28.645Z"
+  },
+  "the-cellar-door": {
+    "blurb": "The Cellar Door serves comfort food and cocktails with entertainment in downtown Frederick.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.cellardoorfrederick.com/",
+      "fetched_at": "2026-08-22T08:22:30.927Z"
+    },
+    "generated_at": "2026-08-22T08:22:30.927Z"
   },
   "the-flying-barrel": {
     "blurb": "The Flying Barrel provides a brew house and guidance for customers making beer or wine batches up to 15 gallons.",
@@ -789,6 +1159,16 @@
     },
     "generated_at": "2026-08-01T09:51:44.936Z"
   },
+  "tiara-day": {
+    "blurb": "Tiara Day is a boutique shop for women's collections and gifts.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.tiaraday.com/",
+      "fetched_at": "2026-08-22T08:21:10.428Z"
+    },
+    "generated_at": "2026-08-22T08:21:10.428Z"
+  },
   "time-bomb-tattoos-curiosities": {
     "blurb": "Time Bomb Tattoos & Curiosities provides custom tattoos and piercings in Frederick.",
     "status": "candidate",
@@ -831,6 +1211,16 @@
     },
     "generated_at": "2026-08-01T09:51:23.356Z"
   },
+  "true-standard-distilling": {
+    "blurb": "True Standard Distilling produces handcrafted rum using traditional distillation methods in a hybrid copper pot still, with no added sweeteners or artificial flavors.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://truestandarddistilling.com/",
+      "fetched_at": "2026-08-22T08:20:07.108Z"
+    },
+    "generated_at": "2026-08-22T08:20:07.108Z"
+  },
   "twin-bears-bakery": {
     "blurb": "Twin Bears Bakery specializes in naturally fermented sourdough bread and bagels, with their bakers trained at San Francisco Baking Institute using traditional techniques.",
     "status": "candidate",
@@ -840,6 +1230,16 @@
       "fetched_at": "2026-08-01T09:51:12.113Z"
     },
     "generated_at": "2026-08-01T09:51:12.113Z"
+  },
+  "uncle-ralphs-bakery": {
+    "blurb": "Uncle Ralph's Bakery is one of the leading and oldest bakeries in the Frederick area, making freshly baked goods with fine ingredients.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.uncleralphsbakery.com/",
+      "fetched_at": "2026-08-22T08:21:16.095Z"
+    },
+    "generated_at": "2026-08-22T08:21:16.095Z"
   },
   "urbana-district-park-new-market": {
     "blurb": "Urbana District Park has a barrier-free playground, dog park, trails, ball fields, picnic shelters, and a veterans memorial.",
@@ -875,6 +1275,26 @@
     },
     "generated_at": "2026-08-01T09:51:32.433Z"
   },
+  "verilife-dispensary-new-market": {
+    "blurb": "Verilife New Market is a medical and recreational cannabis dispensary located in Frederick County, Maryland that serves both patient and adult-use customers.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.verilife.com/md/locations/new-market?utm_source=gbp&utm_medium=organic",
+      "fetched_at": "2026-08-22T08:23:57.806Z"
+    },
+    "generated_at": "2026-08-22T08:23:57.806Z"
+  },
+  "vintage-mc-frederick": {
+    "blurb": "Vintage MC sells curated mid-century modern and contemporary furniture, along with vintage-inspired home decor and gifts, all professionally restored.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://vintage-mc.com/",
+      "fetched_at": "2026-08-22T08:21:08.981Z"
+    },
+    "generated_at": "2026-08-22T08:21:08.981Z"
+  },
   "visitation-hotel": {
     "blurb": "Visitation Hotel is a boutique hotel in a restored downtown landmark that began as a monastery and later became a school; it also houses Wye Oak Tavern.",
     "status": "approved",
@@ -896,6 +1316,16 @@
       "fetched_at": "2026-08-01T09:49:20.099Z"
     },
     "generated_at": "2026-08-01T09:49:20.099Z"
+  },
+  "warehouse-cinemas-frederick-frederick": {
+    "blurb": "Warehouse Cinemas is an independently owned movie theater offering first-run films, heated leather recliner seating in every auditorium, and a full bar with 28 self-serve taps along with a creative food menu.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://frederick.warehousecinemas.com/home/",
+      "fetched_at": "2026-08-22T08:23:52.402Z"
+    },
+    "generated_at": "2026-08-22T08:23:52.402Z"
   },
   "wheel-base-bikes": {
     "blurb": "Wheel Base Bikes sells bicycles including road, mountain, commuter, comfort, cruiser, fitness, and hybrid models, along with parts and accessories.",
@@ -928,5 +1358,15 @@
       "fetched_at": "2026-08-01T09:48:01.377Z"
     },
     "generated_at": "2026-08-01T09:48:01.377Z"
+  },
+  "zoes-chocolate-company": {
+    "blurb": "Zoe's Chocolate Company makes chocolates and traces its family business across three generations to relatives who sold hand-rolled chocolates in the early 1900s.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://zoeschocolate.com/",
+      "fetched_at": "2026-08-01T09:51:43.737Z"
+    },
+    "generated_at": "2026-08-01T09:51:43.737Z"
   }
 }

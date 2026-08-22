@@ -1448,12 +1448,6 @@
         "source_url": "https://www.frederick-social.com/"
       },
       {
-        "type": "gift_card",
-        "url": "https://www.toasttab.com/frederick-social-50-citizens-way-suite-100/giftcards?utm_source=undefined&utm_content=online--frederick-social-50-citizens-way-suite-100&utm_medium=toast_sites&utm_campaign=giftcards",
-        "anchor_text": "GIFT CERTIFICATE",
-        "source_url": "https://www.frederick-social.com/"
-      },
-      {
         "type": "order",
         "url": "https://order.toasttab.com/online/frederick-social-50-citizens-way-suite-100",
         "anchor_text": "ORDER TAKE-OUT",
@@ -1465,7 +1459,16 @@
         "anchor_text": "SMALL BITES",
         "source_url": "https://www.frederick-social.com/menu"
       }
-    ]
+    ],
+    "hours_text": "Sunday 11am-8pm, Monday 12pm-9pm, Tuesday closed, Wednesday-Friday 12pm-10pm, Saturday 11am-10pm",
+    "known_for": "Frederick Social is a self-pour taphouse where customers pour their own drinks from taps and pay by the ounce.",
+    "notable": "The business has a patio and hosts private events including wedding parties.",
+    "source": {
+      "url": "https://www.frederick-social.com/",
+      "fetchedAt": "2026-08-22T08:21:17.762Z",
+      "contentHash": "dfb9e5517095be8d52ccb036a8be851e148edaf20a52f46c7efb8774b6d1c0bf",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "madrones": {
     "name": "Madrones",
@@ -1590,7 +1593,15 @@
         "anchor_text": "Gift Card",
         "source_url": "https://junobakery.com/"
       }
-    ]
+    ],
+    "hours_text": "Downtown location: Mon-Sat 8am-8pm, Sun 9am-6pm. H Mart location (West Patrick Street): Daily 9am-8pm. Ellicott City H Mart location: Daily 9am-8pm.",
+    "known_for": "JUNO Bakery & Cafe offers Korean-inspired baked goods including macarons, cakes, Korean bread, and boba tea.",
+    "source": {
+      "url": "https://junobakery.com/",
+      "fetchedAt": "2026-08-22T08:23:59.168Z",
+      "contentHash": "859b8ca6ba0c29b636abeef81017842a9cca1e1d17bd41b35494e2ccb441d0f2",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "wags-restaurant": {
     "name": "Wag's Restaurant",
@@ -1700,7 +1711,15 @@
         "anchor_text": "Retail Menu",
         "source_url": "https://www.uncleralphsbakery.com/"
       }
-    ]
+    ],
+    "known_for": "Uncle Ralph's Bakery is one of the leading and oldest bakeries in the Frederick area, making freshly baked goods with fine ingredients.",
+    "notable": "The bakery is located at 801 N East St, Frederick, MD 21701.",
+    "source": {
+      "url": "https://www.uncleralphsbakery.com/",
+      "fetchedAt": "2026-08-22T08:21:16.095Z",
+      "contentHash": "a749b6b10588008709d59486d89da29358c8abbc00d36a26dcc3e3fd8748721d",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "frederick-fudge-ice-cream": {
     "name": "Frederick Fudge Ice Cream",
@@ -1731,6 +1750,13 @@
     "commerce_source": {
       "url": "https://candykitchen.com/",
       "checkedAt": "2026-07-29T12:40:47.382Z"
+    },
+    "known_for": "Candy Kitchen has been making salt water taffy, creamy fudge, and hand-dipped chocolates since 1937 using quality ingredients and traditional recipes.",
+    "source": {
+      "url": "https://candykitchen.com/",
+      "fetchedAt": "2026-08-22T08:20:05.408Z",
+      "contentHash": "87619f7a6a835eb84c3694501e75437ced9cf2e99168469616b2da37099a9e0c",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
     }
   },
   "pistarros": {
@@ -1891,8 +1917,32 @@
     "commerce_links": [
       {
         "type": "menu",
-        "url": "https://hinzis.com/menu",
+        "url": "https://hinzis.com/menu/index.html",
         "anchor_text": "Menu",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://hinzis.com/catering/index.html",
+        "anchor_text": "Catering",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://order.hinzis.com/catering",
+        "anchor_text": "Request Catering",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://order.hinzis.com/s/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://hinzis.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://hinzis.com/menu",
+        "anchor_text": "Order Online",
         "source_url": "https://hinzis.com/"
       },
       {
@@ -1902,24 +1952,24 @@
         "source_url": "https://hinzis.com/"
       },
       {
-        "type": "catering",
-        "url": "https://hinzis.com/page/catering",
-        "anchor_text": "Catering",
-        "source_url": "https://hinzis.com/"
-      },
-      {
         "type": "order",
         "url": "https://hinzis.com/menu?dialogState=orderDetails",
         "anchor_text": "Order online",
         "source_url": "https://hinzis.com/"
-      },
-      {
-        "type": "order",
-        "url": "https://hinzis.com/menu",
-        "anchor_text": "Order Online",
-        "source_url": "https://hinzis.com/"
       }
-    ]
+    ],
+    "specials": [
+      "Germantown only: Sat & Sun 11am–3pm Weekend Nashta (full desi breakfast)"
+    ],
+    "hours_text": "Frederick: Mon–Sat 11am–9pm, Sun 12pm–8pm. Germantown: Tue–Sun 11am–9pm, closed Mondays.",
+    "known_for": "Hinzi's Kitchen serves Pakistani-rooted halal bowls and wraps made fresh to order, featuring halal chicken, butter chicken, gyro, paneer, and falafel over basmati rice or wrapped in soft roti.",
+    "notable": "The Germantown location offers weekend breakfast service on Saturdays and Sundays from 11am to 3pm.",
+    "source": {
+      "url": "https://hinzis.com/",
+      "fetchedAt": "2026-08-22T08:15:18.429Z",
+      "contentHash": "726f59c116989176128e6167ad67b77fb9fa87320da18b15dec733823ad132f9",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "cafe-nola": {
     "name": "Cafe Nola",
@@ -1955,7 +2005,17 @@
         "anchor_text": "Order Online",
         "source_url": "https://riverbargrillfrederick.com/"
       }
-    ]
+    ],
+    "happy_hour": "Mon-Fri 3-5pm",
+    "hours_text": "11:00 am – 10:00 pm",
+    "known_for": "River Bar & Grill serves Mexican and Salvadoran cuisine and is rated among the top Mexican restaurants in Frederick.",
+    "notable": "The restaurant has indoor dining, a sports bar, and an outdoor patio.",
+    "source": {
+      "url": "https://riverbargrillfrederick.com/",
+      "fetchedAt": "2026-08-22T08:18:45.260Z",
+      "contentHash": "f7e07c8f5814bd89724a9706a38d2ea732bb3423f510617b4d3354c2a468331e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
   },
   "bakehouse": {
     "name": "Bakehouse",
@@ -2896,6 +2956,715 @@
       "url": "https://www.qc-cigars.com/",
       "fetchedAt": "2026-08-01T09:52:11.849Z",
       "contentHash": "a9efff1a9ce3d64d5aba13d764bd3e231307385df1d9302b3e2b97589b49c832",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "charm-city-run-frederick": {
+    "name": "Charm City Run Frederick",
+    "known_for": "Charm City Run is a specialty running and walking retailer that expertly fits customers into the right shoes across seven locations in Maryland and Delaware.",
+    "source": {
+      "url": "https://www.charmcityrun.com/",
+      "fetchedAt": "2026-08-22T08:17:44.697Z",
+      "contentHash": "643cc469e58679a5fa9dce1ebd42518b5583df50930d79b70604f7c70a911edc",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "raven-rest-aesthetic-parlor": {
+    "name": "Raven Rest Aesthetic Parlor",
+    "known_for": "Raven Rest Aesthetic Parlor offers barbering and cosmetology services in Frederick, Maryland.",
+    "source": {
+      "url": "https://www.ravenrestaestheticparlor.com/",
+      "fetchedAt": "2026-08-22T08:18:20.112Z",
+      "contentHash": "baa60f08255dd833afcec72b3d6b4b1c2cd8eb8288d89d5031f2af40f43cde37",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "tlc-bridal-boutique-inc": {
+    "name": "Tlc Bridal Boutique Inc",
+    "hours_text": "By appointment only, seven days a week.",
+    "known_for": "TLC Bridal Boutique is the oldest bridal shop in Frederick, Maryland, serving the area since 2002 and specializing in customer service with one-on-one attention for each bride. The boutique carries gowns in sizes 6 to 24 and also offers one of the largest selections of mothers of the bride dresses in the area.",
+    "notable": "The boutique is located at a walk-up address and provides private dressing rooms with individual attention.",
+    "source": {
+      "url": "https://www.tlcboutique.com/",
+      "fetchedAt": "2026-08-22T08:18:23.104Z",
+      "contentHash": "45a5b5309e5eba80bc8a6b7ab81c8cf1a963d7b109705b9db63f78ee21a4d97b",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "in-balance-massage-therapy": {
+    "name": "In Balance Massage Therapy",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://squareup.com/gift/SETT624K6Y1YP/order",
+        "anchor_text": "Buy an e-Gift Card",
+        "source_url": "https://inbalancefrederick.weebly.com/"
+      }
+    ],
+    "known_for": "In Balance Massage Therapy provides massage therapy services in downtown Frederick.",
+    "notable": "Street parking and a nearby parking garage at the Carroll Creek Parking Deck are available, with the business located at 12 S. Market Street Suite 102.",
+    "source": {
+      "url": "https://inbalancefrederick.weebly.com/",
+      "fetchedAt": "2026-08-22T08:18:24.520Z",
+      "contentHash": "550e902d1a06c54d9c893396829ca6358914cc3850e2186d741d775e19a70ee0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "skinfinite-solutions-wellness-spa": {
+    "name": "Skinfinite Solutions Wellness Spa",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.skinfinitesolutionsws.com/gift-card-1",
+        "anchor_text": "Gift Card",
+        "source_url": "https://www.skinfinitesolutionsws.com/"
+      }
+    ],
+    "specials": [
+      "Night Shift Recovery Massage: 1 hr 15 min for $160"
+    ],
+    "known_for": "Skinfinite Solutions offers post-surgical recovery treatments, manual lymphatic drainage, therapeutic massage, and skin treatments including microneedling with and without PRF, PRF injections, and HydraFacials, all provided by founder Jeannette Garcia, a nurse practitioner and licensed massage therapist.",
+    "notable": "Free parking is available on-site, and all services are provided by appointment only.",
+    "source": {
+      "url": "https://www.skinfinitesolutionsws.com/",
+      "fetchedAt": "2026-08-22T08:18:27.221Z",
+      "contentHash": "3d15921adaa7312d9b37764b91b610aa36ee785e464d29ac9db5cc98d701cd4c",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "black-label-tattoo": {
+    "name": "Black Label Tattoo",
+    "known_for": "Black Label Tattoo is a collective of individual tattooers, each with their own style, schedule, pricing, and contact method.",
+    "source": {
+      "url": "https://www.blacklabeltattoocompany.com/",
+      "fetchedAt": "2026-08-22T08:18:28.243Z",
+      "contentHash": "00dfd93c2a02532e026f1f1b23ce9a1ac5824745fe8b43204c1f3d3d5fb23665",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "second-chances-garage": {
+    "name": "Second Chances Garage",
+    "hours_text": "Monday–Thursday: 9AM–5PM, Friday: 9AM–4:30PM, Saturday & Sunday: Closed",
+    "known_for": "Second Chances Garage provides affordable cars and reduced-cost repair services to low-income individuals and families in Frederick County, Maryland to help them achieve independent living.",
+    "notable": "The organization accepts car donations and helps recipients through partner agencies, with 81% of recipients being women with dependent children.",
+    "source": {
+      "url": "https://secondchancesgarage.org/",
+      "fetchedAt": "2026-08-22T08:18:32.423Z",
+      "contentHash": "6e572e4fed897e8e9a25622446af45e2c0b80a73f3bfab33040967ec927d77f7",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "lynns-automotive": {
+    "name": "Lynns Automotive",
+    "hours_text": "Mon-Fri 9:00 am - 5:00 pm, Sat 9:00 am - 2:00 pm, Sun closed (by appointment only)",
+    "known_for": "Lynn's Automotive offers new and used tire installation and automotive services including diagnostics and maintenance, with over 40 years of combined experience.",
+    "notable": "The business provides a 14-year sealing patch repair installation guarantee and offers free same-day tire estimates and diagnostics.",
+    "source": {
+      "url": "https://www.lynnsautomotivemd.com/",
+      "fetchedAt": "2026-08-22T08:18:34.610Z",
+      "contentHash": "277e0aaa992853310094a1f9639dec2fbc9fe784d27ca16c1094a70a22206b93",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "jonas-outdoor-furniture-co": {
+    "name": "Jonas Outdoor Furniture Co",
+    "hours_text": "Thursday - Saturday: 11am - 5pm, Sunday: 1pm - 5pm, Monday - Wednesday: by appointment",
+    "known_for": "JoNa's Outdoor Furniture Co. is a family-owned poly furniture and design boutique that sells customizable outdoor furniture made from recycled plastic by Amish craftsmen.",
+    "notable": "The furniture is manufactured in the USA with a 20-year residential limited warranty and requires only simple cleaning for maintenance.",
+    "source": {
+      "url": "https://www.jonasoutdoor.com/",
+      "fetchedAt": "2026-08-22T08:18:36.414Z",
+      "contentHash": "f60d707c2e1fe8b57c98f4546e0b40796578c6d0a67f0fd7ff41acb79b1522e8",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "illuminate-beauty-studio": {
+    "name": "Illuminate Beauty Studio",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.illuminatebeautystudio.com/services",
+        "anchor_text": "SERVICE MENU",
+        "source_url": "https://www.illuminatebeautystudio.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.illuminatebeautystudio.com/extensions",
+        "anchor_text": "EXTENSION MENU",
+        "source_url": "https://www.illuminatebeautystudio.com/"
+      }
+    ],
+    "hours_text": "Tue 10 AM–6 PM, Thurs 10 AM–6 PM, Fri 10 AM–6 PM, Sat 10 AM–5 PM (2 a month); closed Sun, Mon, Wed",
+    "known_for": "Illuminate Beauty Studio specializes in Invisible Bead Extensions and hair color services in Frederick, Maryland.",
+    "source": {
+      "url": "https://www.illuminatebeautystudio.com/",
+      "fetchedAt": "2026-08-22T08:18:37.901Z",
+      "contentHash": "1de0e73fae3f708f3e87e6cf8e9100d570b89772607571ef42de2ab614d27773",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "retro-metro": {
+    "name": "Retro Metro",
+    "hours_text": "Mon-Thurs 11am-6pm, Fri-Sat 11am-7pm, Sun 11am-5pm. Open until 8pm or later on the first Saturday of each month.",
+    "known_for": "Retro-Metro offers an ever-changing selection of retro and eclectic merchandise including toys, novelties, home decor, books, candles, signs, and handmade jewelry.",
+    "notable": "The store is located on Market Street in historic downtown Frederick and has been operating for nearly 20 years.",
+    "source": {
+      "url": "https://www.retro-metro.com/",
+      "fetchedAt": "2026-08-22T08:18:39.673Z",
+      "contentHash": "20b94bc77e2fd142738212897c6f673832ad5f63cd613eb8082588536ccf3f4e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "canapes-catering": {
+    "name": "Canapes Catering",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.canapescatering.com/wedding-menu/",
+        "anchor_text": "Wedding Menu",
+        "source_url": "https://www.canapescatering.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.canapescatering.com/holiday-menu/",
+        "anchor_text": "Holiday Menu",
+        "source_url": "https://www.canapescatering.com/"
+      },
+      {
+        "type": "menu",
+        "url": "https://canapescatering.com/corporate-casual/",
+        "anchor_text": "View Our Cafe Menu",
+        "source_url": "https://www.canapescatering.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.canapescatering.com/daily-dash-catering-menu-pdf/",
+        "anchor_text": "Café & Bakery",
+        "source_url": "https://www.canapescatering.com/"
+      }
+    ],
+    "hours_text": "Grab & Go/Bakery: Mon-Fri, Kitchen closes at 3pm, Bakery closes at 5pm. Sales Office: Mon-Fri 9am-5pm, weekend and evenings by appointment only. Closed Saturday and Sunday.",
+    "known_for": "Canapes Catering offers full-service catering with fine cuisine and personalized service since 1989, serving Maryland, Pennsylvania, Northern Virginia, and Washington, DC.",
+    "notable": "The business provides event coordination services in addition to catering, handling caterer, cake maker, rental company, and event coordinator needs.",
+    "source": {
+      "url": "https://www.canapescatering.com/",
+      "fetchedAt": "2026-08-22T08:18:41.591Z",
+      "contentHash": "1d65310d7a1423555b9fed68c7ea40047cc5b4d6ba079e28e5c31176ea657e77",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "nelson-coleman-jewelers": {
+    "name": "Nelson Coleman Jewelers",
+    "hours_text": "Tuesday-Saturday: 10:00 AM - 6:00 PM; Sunday-Monday: Closed",
+    "known_for": "Nelson Coleman Jewelers has been in business since 1856 and offers custom engagement rings, estate jewelry, and jewelry repair services.",
+    "source": {
+      "url": "https://nelsoncoleman.com/pages/events",
+      "fetchedAt": "2026-08-22T08:18:43.754Z",
+      "contentHash": "67e783928cae12a2e97276e4ba5e69faf183bf961a5c19f26e9340084a9c61f4",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "shaestheticsss": {
+    "name": "Shaestheticsss",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.shaestheticsss.com/gift-card",
+        "anchor_text": "Gift Card",
+        "source_url": "https://www.shaestheticsss.com/"
+      }
+    ],
+    "known_for": "Shaestheticsss is a Korean skincare spa in downtown Frederick offering permanent makeup services, skincare treatments, wax treatments, and cryoskin services.",
+    "source": {
+      "url": "https://www.shaestheticsss.com/",
+      "fetchedAt": "2026-08-22T08:18:46.820Z",
+      "contentHash": "14e51afb1d562473998b4d2a0883e0a270c826a40c554ed7a771b23850b029a0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "gunrunners": {
+    "name": "Gunrunners",
+    "hours_text": "Tuesday-Friday: 5pm to 8pm, Saturday: 9am to 5pm. Closed Sunday, Monday, and the 3rd Tuesday of every month.",
+    "known_for": "Gunrunners is a locally owned gun shop in Frederick, Maryland that has been operating since 1991, offering firearm sales, transfers, consignments, and gunsmithing services.",
+    "notable": "The shop is located on the second floor in downtown Frederick on East Patrick Street, across from the Carroll Creek public parking garage with free street parking available after 5pm.",
+    "source": {
+      "url": "https://www.gunrunnersmd.com/",
+      "fetchedAt": "2026-08-22T08:19:19.286Z",
+      "contentHash": "f2d108139ad28a492e5ca2e737aa0cbcdfdd494a1c2d9ff882c79a2e5ec3ab12",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "liveyoung-candle-company": {
+    "name": "Liveyoung Candle Company",
+    "hours_text": "Tuesday-Thursday 11am-5pm, Friday 11am-7pm, Saturday 11am-6pm. Closed Monday and Sunday.",
+    "known_for": "LiveYoung Candle Company makes scented candles, wax melts, and home fragrance products, and offers candle-making classes and workshops.",
+    "notable": "Walk-in candle making is available Tuesday-Friday from 12pm-4pm, and Saturday classes at 12pm and 4pm require pre-registration.",
+    "source": {
+      "url": "https://liveyoungcandles.com/",
+      "fetchedAt": "2026-08-22T08:19:21.104Z",
+      "contentHash": "b2ba3dda1b62b3e2f2d4df20bfda9f535d904636431611f0898da44ee9c4f743",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "relish-decor": {
+    "name": "Relish Decor",
+    "known_for": "Relish Decor is a lifestyle boutique known for a stylish selection of tabletop housewares, kitchen furnishings, and unique gifts.",
+    "source": {
+      "url": "https://relishdecor.com/",
+      "fetchedAt": "2026-08-22T08:19:22.055Z",
+      "contentHash": "cdf1b9762f294c5adea47fa2706e926d435fd45868c37159840ede060350916e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "tattoo-alchemy": {
+    "name": "Tattoo Alchemy",
+    "hours_text": "Tuesday–Saturday Noon–8pm. Hours are subject to change depending on artist availability.",
+    "known_for": "Tattoo Alchemy is a tattoo shop in Frederick, Maryland that accepts both custom bookings and walk-in clients.",
+    "notable": "The shop is located at 415 N Market St, Frederick, MD 21701.",
+    "source": {
+      "url": "https://www.tattooalchemy.ink/",
+      "fetchedAt": "2026-08-22T08:19:23.225Z",
+      "contentHash": "30d3ff3d50c94244a294380f772418008baeaf85e89ca69ee3ad36e1fc9069f0",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "true-standard-distilling": {
+    "name": "True Standard Distilling",
+    "hours_text": "Tasting Room: Wed-Thu 3-9pm, Fri 1-10pm, Sat 1-10pm, Sun 1-7pm",
+    "known_for": "True Standard Distilling produces handcrafted rum using traditional distillation methods in a hybrid copper pot still, with no added sweeteners or artificial flavors.",
+    "notable": "The distillery is located at 10 North Carroll Street in Frederick, Maryland.",
+    "source": {
+      "url": "https://truestandarddistilling.com/",
+      "fetchedAt": "2026-08-22T08:20:07.108Z",
+      "contentHash": "7ab213ee2a4c7c4d8d40e07f54412c69bfc23aa5cd046d066af5fbc64e7b5c7d",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "frederick-arts-council-sky-stage": {
+    "name": "Frederick Arts Council Sky Stage",
+    "known_for": "Sky Stage is a temporarily transformed open-air theater in a pre-Revolutionary War building in downtown Frederick that offers free drama, music, children's story time, dance, poetry, and other arts programming.",
+    "notable": "The theater seats 140 people among trees and features a centerpiece two-story sculpture with drought-resistant plants integrated into a computationally designed wooden lattice.",
+    "source": {
+      "url": "https://www.skystagefrederick.com/",
+      "fetchedAt": "2026-08-22T08:20:10.011Z",
+      "contentHash": "fc77421c621222b304bc870ea2ec9f59577f6c17c529fe0c0f05baa5c0f90a13",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "battery-warehouse": {
+    "name": "Battery Warehouse",
+    "hours_text": "Monday–Friday 8:30am–5:30pm, Saturday 9:00am–3:00pm, Sunday closed",
+    "known_for": "Battery Warehouse supplies batteries for cars, toys, laptops, and other devices across six Maryland locations with competitive pricing and free installation services.",
+    "notable": "The business has operated for over 40 years as a family-owned company and offers bulk order discounts.",
+    "source": {
+      "url": "https://batterywarehousemaryland.com/",
+      "fetchedAt": "2026-08-22T08:20:11.989Z",
+      "contentHash": "c6a05b92139c21637f6a227ea3dfd7aa35df792b105623105ac38c272060e71e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "skin-starts-here": {
+    "name": "Skin Starts Here",
+    "known_for": "The business provides customized facials and professional makeup artistry services performed by a licensed esthetician and makeup artist.",
+    "notable": "After-hours facial appointments are available by texting to book.",
+    "source": {
+      "url": "https://www.skinstartshere.com/",
+      "fetchedAt": "2026-08-22T08:20:19.562Z",
+      "contentHash": "a96e547239e14f32e27c8688ebcf464bf46c7382276bdc1163b49167aa473e41",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "eastside-liquors": {
+    "name": "Eastside Liquors",
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://eastsideliquorsmd.com/order-here",
+        "anchor_text": "Order Here!",
+        "source_url": "https://eastsideliquorsmd.com/"
+      }
+    ],
+    "known_for": "Eastside Liquors offers a wide selection of beer, wine, and liquor with rotating sales on select products.",
+    "notable": "Located at 507-509 N. East Street in Frederick, Maryland.",
+    "source": {
+      "url": "https://eastsideliquorsmd.com/",
+      "fetchedAt": "2026-08-22T08:20:20.726Z",
+      "contentHash": "a222f88624a0368562711d34685519c35bf0bc5035ccaf013a9b5307be38f17f",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "electrolysis-of-frederick": {
+    "name": "Electrolysis of Frederick",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://www.frederickelectrolysis.com/gift-certificates",
+        "anchor_text": "Gift Certificates",
+        "source_url": "https://www.frederickelectrolysis.com/"
+      }
+    ],
+    "known_for": "Electrolysis of Frederick provides permanent hair removal using electrolysis, which the business states is the only option for permanent hair removal.",
+    "source": {
+      "url": "https://www.frederickelectrolysis.com/",
+      "fetchedAt": "2026-08-22T08:20:23.005Z",
+      "contentHash": "24f07899d46f375f09fb807dcf62461ea66c402784fbba5fe17d571a9ad59d80",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "colorful-canvas": {
+    "name": "Colorful Canvas",
+    "known_for": "Colorful Canvas is a locally owned art supply store in Frederick, Maryland that has been operating since 2014 and carries professional-grade supplies including sketchbooks, paints, and canvases for artists of all levels.",
+    "notable": "The store is owned by Kandy Finneyfrock, who is known in the community for providing personalized, hands-on service and deep product knowledge.",
+    "source": {
+      "url": "https://www.thecolorfulcanvas.com/",
+      "fetchedAt": "2026-08-22T08:20:24.491Z",
+      "contentHash": "d7a078598eb59b29766c583efa341ce56a1ef4fb391ab38cc09da649084f09d3",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "spin-the-bottle-wine-company": {
+    "name": "Spin the Bottle Wine Company",
+    "source": {
+      "url": "https://spinthebottlewinecompany.com/",
+      "fetchedAt": "2026-08-22T08:21:06.952Z",
+      "contentHash": "57def674fb7e9a68fe0a72e47a30510570d2005a6254dbbc17f1daabf357285f",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "vintage-mc-frederick": {
+    "name": "Vintage Mc Frederick",
+    "hours_text": "Monday-Friday 11am to 5pm, Saturday 10am to 7pm, Sunday 11am to 6pm",
+    "known_for": "Vintage MC sells curated mid-century modern and contemporary furniture, along with vintage-inspired home decor and gifts, all professionally restored.",
+    "notable": "The business offers furniture refinishing services to restore vintage pieces.",
+    "source": {
+      "url": "https://vintage-mc.com/",
+      "fetchedAt": "2026-08-22T08:21:08.981Z",
+      "contentHash": "39e99a17e671e2209899a91f36f68b8847d7dadc5897d48d59f3a39cf9243e78",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "tiara-day": {
+    "name": "Tiara Day",
+    "hours_text": "Sunday, Monday, and Thursday 12-6pm; Friday and Saturday 12-7pm; Tuesday and Wednesday closed. Open until 8pm on the First Saturday of each month during Downtown Frederick's Gallery Walk.",
+    "known_for": "Tiara Day is a boutique shop for women's collections and gifts.",
+    "notable": "The shop is located at 141 N. Market Street in Frederick with metered street parking and Church Street parking garage across the street.",
+    "source": {
+      "url": "https://www.tiaraday.com/",
+      "fetchedAt": "2026-08-22T08:21:10.428Z",
+      "contentHash": "524fc328ed495fc1060fb30d5ddfdcd9f2232b56e858399516b83cf701b22d61",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "skys-the-limit": {
+    "name": "Skys the Limit",
+    "source": {
+      "url": "https://skysthelimitboutique.com/pages/contact-us?srsltid=AfmBOopiSIL3k-NNugAYhstk4dLvOKKfi-Jz-higEiaXgGyjXlTPY4K9",
+      "fetchedAt": "2026-08-22T08:21:11.425Z",
+      "contentHash": "ceb9d4ae808ee768a4d57ce17468b3f7d633505b226b60131e5551d1cd4cc687",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "baileys-treasures": {
+    "name": "Baileys Treasures",
+    "known_for": "Bailey's Treasures specializes in vintage furniture and antique pieces, including art glass, bone china, uranium glass, and Asian antiques, along with local art and estate jewelry.",
+    "notable": "The store occupies a 4,000 square foot vintage furniture warehouse on North Market Street and offers hand-painted furniture services using Country Chic chalk paint or Sherwin Williams latex paint.",
+    "source": {
+      "url": "https://baileystreasures.com/",
+      "fetchedAt": "2026-08-22T08:21:12.782Z",
+      "contentHash": "a0e4bf5c1571d70099cbbec28dd35aa9c3b8de8ccc276765a992d126056610ae",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "ardor-home": {
+    "name": "Ardor Home",
+    "hours_text": "Wed–Sat 11am–6pm, Sun 12pm–5pm",
+    "notable": "The store offers an on-approval program that allows customers to try rugs at home before making a purchase.",
+    "source": {
+      "url": "https://ardorhome.com/",
+      "fetchedAt": "2026-08-22T08:21:14.887Z",
+      "contentHash": "a411d9d1b5b04394ec9594cbb356ad8536356dcad757dd64a1e4a07f75880e58",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "dutchs-daughter-frederick": {
+    "name": "Dutch's Daughter",
+    "source": {
+      "url": "http://www.dutchsdaughter.com/.well-known/sgcaptcha/?r=%2F&y=ipc:52.159.243.168:1787386942.231",
+      "fetchedAt": "2026-08-22T08:22:26.691Z",
+      "contentHash": "e5cc26665477912506f5c23b57490ca613b9e50715f57322981b86e51ee08482",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "everedy-square-and-shab-row": {
+    "name": "Everedy Square and Shab Row",
+    "known_for": "Everedy Square and Shab Row is downtown Frederick's largest cluster of specialty shops, eateries, and services housed in beautifully restored 19th century buildings in historic downtown Frederick, Maryland.",
+    "source": {
+      "url": "http://www.everedysquare.com/",
+      "fetchedAt": "2026-08-22T08:22:28.093Z",
+      "contentHash": "ea53bc2f815b2da6f593e3d87809cecfff75c73144ffc67a2aa6a1a56e703abb",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "baltimore-gold-of-frederick": {
+    "name": "Baltimore Gold of Frederick",
+    "hours_text": "Friday through Sunday 11 AM-4 PM; Monday through Thursday by appointment only",
+    "known_for": "Baltimore Gold of Frederick buys and sells fine jewelry, diamonds, gold, silver, and rare coins, with 30 years of experience.",
+    "notable": "The business offers professional jewelry repair services.",
+    "source": {
+      "url": "https://www.baltimoregold.com/",
+      "fetchedAt": "2026-08-22T08:22:29.187Z",
+      "contentHash": "2c208e59381c1d69fba81b0033706d0e9af0f305470c13c51abb5edc4ef1a204",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "the-cellar-door": {
+    "name": "The Cellar Door",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.cellardoorfrederick.com/menus",
+        "anchor_text": "Menus",
+        "source_url": "https://www.cellardoorfrederick.com/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.cellardoorfrederick.com/reservations",
+        "anchor_text": "Reservations",
+        "source_url": "https://www.cellardoorfrederick.com/"
+      },
+      {
+        "type": "catering",
+        "url": "https://www.cellardoorfrederick.com/catering",
+        "anchor_text": "Book Event",
+        "source_url": "https://www.cellardoorfrederick.com/"
+      },
+      {
+        "type": "order",
+        "url": "https://www.cellardoorfrederick.com/take-out-delivery",
+        "anchor_text": "Take-Out & Delivery",
+        "source_url": "https://www.cellardoorfrederick.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.toasttab.com/the-cellar-door-5-east-church-market-street/giftcards",
+        "anchor_text": "Purchase E-Gift Cards Here",
+        "source_url": "https://www.cellardoorfrederick.com/"
+      }
+    ],
+    "hours_text": "Sunday 4 PM–10 PM, Tuesday 4 PM–11 PM, 1st Wednesday of the month 4 PM–11 PM, Thursday 4 PM–1 AM, Friday 4 PM–1:30 AM, Saturday 4 PM–1:30 AM. Closed Mondays and other Wednesdays.",
+    "known_for": "The Cellar Door serves comfort food and cocktails with entertainment in downtown Frederick.",
+    "notable": "The restaurant offers comedy shows and entertainment events.",
+    "source": {
+      "url": "https://www.cellardoorfrederick.com/",
+      "fetchedAt": "2026-08-22T08:22:30.927Z",
+      "contentHash": "b6bc4a2728109bf15ad2de5282025a830631e52e4da1981016b55168067cf0d7",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "a-different-blend": {
+    "name": "A Different Blend",
+    "known_for": "A Different Blend is a barbershop located in Frederick, Maryland.",
+    "notable": "The shop allows customers to book appointments with specific barbers including Justus, Trey, and Brandon.",
+    "source": {
+      "url": "https://adifferentblend.com/",
+      "fetchedAt": "2026-08-22T08:23:07.834Z",
+      "contentHash": "eef05b29363ddd88a750a264439bb56389507cdd6b78a05b8925583c1e6cff20",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "sapporo-ii-japanese-restaurant": {
+    "name": "Sapporo II Japanese Restaurant",
+    "hours_text": "Mon, Wed, Thu, Fri: 11:30am–2:30pm (lunch), 4:30pm–10pm (dinner); Sat: 12pm–10pm; Sun: 12pm–9pm; Tue: Closed. Mon–Fri 2:30pm–4:30pm available except during holiday breaks.",
+    "known_for": "Sapporo II offers sushi, sashimi, special rolls, and omakase prepared by master chef Song.",
+    "notable": "Omakase is available as a chef's special course featuring ten sushi bar courses and six kitchen courses for $150 per person.",
+    "source": {
+      "url": "http://sapporo4u.com/",
+      "fetchedAt": "2026-08-22T08:23:43.551Z",
+      "contentHash": "927df2773d4032818530e731bc31a91ee9a4ae8222e8a96430bb9fbc7afeac85",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "fratellis-italian-seafood-middletown": {
+    "name": "Fratelli's Italian & Seafood",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.fratellispasta.com/menu/drinks/",
+        "anchor_text": "Drinks",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.fratellispasta.com/reservations",
+        "anchor_text": "Reservations",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/"
+      }
+    ],
+    "hours_text": "Sunday-Thursday: 11:00am - 10:00pm, Friday & Saturday: 11:00am - 11:00pm",
+    "source": {
+      "url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+      "fetchedAt": "2026-08-22T08:23:44.418Z",
+      "contentHash": "9aba7071ee4a4e63c6551eef80b5ad3d3d5e4c14a63b7640a35c5072fd2e4bd7",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "up-on-market": {
+    "name": "Up on Market",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.uponmarket301.com/entrees-specialty-french-baked-good",
+        "anchor_text": "Menu Highlights",
+        "source_url": "https://www.uponmarket301.com/"
+      }
+    ],
+    "hours_text": "Monday-Wednesday 10:00am-9:00pm, Thursday 10:00am-9:00pm, Friday 10:00am-11:00pm, Saturday 9:00am-11:00pm, Sunday 9:00am-9:00pm",
+    "notable": "The bistro has outdoor seating.",
+    "source": {
+      "url": "https://www.uponmarket301.com/",
+      "fetchedAt": "2026-08-22T08:23:45.475Z",
+      "contentHash": "dc85771c93b2ee9a76367ae3b6047d68b4e24de3d5385a95494e315291fce7ce",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "warehouse-cinemas-frederick-frederick": {
+    "name": "Warehouse Cinemas Frederick",
+    "commerce_links": [
+      {
+        "type": "order",
+        "url": "https://frederick.warehousecinemas.com/movie/harry-potter-and-the-order-of-the-phoenix",
+        "anchor_text": "Harry Potter and the Order of the Phoenix",
+        "source_url": "https://frederick.warehousecinemas.com/home/"
+      },
+      {
+        "type": "menu",
+        "url": "https://frederick.warehousecinemas.com/food-drink",
+        "anchor_text": "VIEW FULL MENU",
+        "source_url": "https://frederick.warehousecinemas.com/home/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.warehousecinemas.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://frederick.warehousecinemas.com/home/"
+      }
+    ],
+    "specials": [
+      "Wednesday: $8 movie tickets all day, all showtimes (valid through August 27th)",
+      "Wednesday: 50% off all beer, wine, and cocktails"
+    ],
+    "known_for": "Warehouse Cinemas is an independently owned movie theater offering first-run films, heated leather recliner seating in every auditorium, and a full bar with 28 self-serve taps along with a creative food menu.",
+    "notable": "The theater hosts Film League, a free monthly community group for moviegoers to experience and discuss films together.",
+    "source": {
+      "url": "https://frederick.warehousecinemas.com/home/",
+      "fetchedAt": "2026-08-22T08:23:52.402Z",
+      "contentHash": "357b7beac90b4c25e3cc68a2aa7269ecfde41fd63670821a152ba94561422126",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "barnes-noble-frederick": {
+    "name": "Barnes & Noble",
+    "known_for": "Barnes & Noble offers books, toys, games, and vinyl records at this Frederick location.",
+    "notable": "The store includes a café and is located in Francis Scott Key Mall.",
+    "source": {
+      "url": "https://stores.barnesandnoble.com/store/2257",
+      "fetchedAt": "2026-08-22T08:23:53.880Z",
+      "contentHash": "c13bc37e9e5a556918d23cee39d8f85bbdd72cb3a20dc4dd597d5b571af909ad",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "rocky-point-creamery-brunswick": {
+    "name": "Rocky Point Creamery",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.rockypointcreamery.com/menu",
+        "anchor_text": "Menu",
+        "source_url": "https://www.rockypointcreamery.com/"
+      },
+      {
+        "type": "gift_card",
+        "url": "https://www.rockypointcreamery.com/gift-cards",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://www.rockypointcreamery.com/"
+      }
+    ],
+    "hours_text": "Tuesday - Sunday: 11:30 AM to 8:30 PM; Monday: CLOSED",
+    "known_for": "Rocky Point Creamery makes 120 flavors of homemade ice cream and sells milk, brown eggs, cheese, and beef from their own farm.",
+    "notable": "The creamery plants a two-acre sunflower field each year with flowers available for sale in late summer and early fall, with all proceeds donated to St. Jude's Children's Research Hospital.",
+    "source": {
+      "url": "https://www.rockypointcreamery.com/",
+      "fetchedAt": "2026-08-22T08:23:55.437Z",
+      "contentHash": "4ad774fdb7e42b9ad8eae64ed2d55e669b29d01042445e261a7489b750571c19",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "verilife-dispensary-new-market": {
+    "name": "Verilife Dispensary",
+    "commerce_links": [
+      {
+        "type": "menu",
+        "url": "https://www.verilife.com/md/menu/new-market-recreational",
+        "anchor_text": "Shop Now",
+        "source_url": "https://www.verilife.com/md/locations/new-market?utm_source=gbp&utm_medium=organic"
+      },
+      {
+        "type": "menu",
+        "url": "https://www.verilife.com/md/menu/new-market-medical",
+        "anchor_text": "Shop Medical",
+        "source_url": "https://www.verilife.com/md/locations/new-market?utm_source=gbp&utm_medium=organic"
+      }
+    ],
+    "hours_text": "Monday–Sunday: 8:00am–10:00pm",
+    "known_for": "Verilife New Market is a medical and recreational cannabis dispensary located in Frederick County, Maryland that serves both patient and adult-use customers.",
+    "notable": "The dispensary provides free parking, private consultation rooms, on-site ATMs, a dedicated service line for medical purchases, and is wheelchair accessible and welcomes service animals.",
+    "source": {
+      "url": "https://www.verilife.com/md/locations/new-market?utm_source=gbp&utm_medium=organic",
+      "fetchedAt": "2026-08-22T08:23:57.806Z",
+      "contentHash": "4e99f76be83493e2a444ad3a13c0794b7f1a7868859d7273b6e608bfdd37a9d2",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "catoctin-mountain-orchard-thurmont": {
+    "name": "Catoctin Mountain Orchard",
+    "hours_text": "Open Daily 9am–5pm",
+    "known_for": "Catoctin Mountain Orchard operates a farm market selling fresh home-grown fruits and vegetables, baked goods including apple cider donuts and fruit pies, and jarred preserves made with local ingredients.",
+    "notable": "The orchard offers pick-your-own fruit and flowers, with a half-acre flower garden containing more than twenty-five varieties, and has supplied apples and other fruits to Frederick County Public Schools for over ten years.",
+    "source": {
+      "url": "https://www.catoctinmountainorchard.com/",
+      "fetchedAt": "2026-08-22T08:24:01.619Z",
+      "contentHash": "e00d8d401835d0eee4fb834a07b78497d5955bc16f90a8f9879e452f1dc597b7",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "life-saving-certifiers": {
+    "name": "Life Saving Certifiers",
+    "known_for": "Life Saving Certifiers provides onsite CPR, first aid, and AED training for groups of five or more across the Mid-Atlantic region, including Maryland, Pennsylvania, Virginia, West Virginia, Delaware, New Jersey, and DC.",
+    "notable": "The business is firefighter-owned and offers both AHA and HSI certified courses, including specialized training in Stop the Bleed and active shooter response.",
+    "source": {
+      "url": "https://lifesavingcertifiers.com/",
+      "fetchedAt": "2026-08-22T08:24:06.174Z",
+      "contentHash": "cd0b1b395b4d67e242b94324a74444b852eee53181ec70c5ec5b16c8a49a633e",
+      "extractorVersion": "business-deep-info-v2-plain-copy"
+    }
+  },
+  "beans-in-the-belfry-brunswick": {
+    "name": "Beans in the Belfry",
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/ML4E4YSP8R2SZ/order",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://beansinthebelfry.com/"
+      }
+    ],
+    "hours_text": "Monday to Friday 8:30am to 3:00pm, Saturday and Sunday 8:00am to 5:00pm",
+    "known_for": "Beans in the Belfry is an award-winning cafe located in a restored 1910 church building serving breakfast, lunch, and dinner all day, along with organic fair trade coffee and espresso drinks. The business offers one of the finest English Afternoon Tea Services on the East Coast.",
+    "notable": "The cafe features live music on Friday nights and open jam sessions on Sundays, and the space is available for private events such as dinners, birthday parties, showers, and meetings.",
+    "source": {
+      "url": "https://beansinthebelfry.com/",
+      "fetchedAt": "2026-08-22T08:24:08.254Z",
+      "contentHash": "5bbd5646647fbcd297012b5604fa6863ab955d38c2bb0f78cee7fc9a74773ef8",
       "extractorVersion": "business-deep-info-v2-plain-copy"
     }
   }
