@@ -1,6 +1,6 @@
 # Hours refresh review
 
-Generated from the committed baseline and the refreshed artifacts at 2026-08-20T09:52:26.996Z.
+Generated from the committed baseline and the refreshed artifacts at 2026-08-22T09:45:32.097Z.
 This report is a review aid. It does not approve, reject, or change a place status.
 
 **No unreviewed public catalog or public closure transition requires manual review.**
@@ -12,6 +12,7 @@ These changes were detected by the refresh and are WAITING for evidence rather t
 | Slug | Reason |
 | --- | --- |
 | `green-valley-harvesters-woodsboro` | public listing addition awaiting evidence |
+| `mt-airy-mocha-new-market` | public listing removal awaiting evidence |
 | `pour-decisions-restaurant-bar-music-new-market` | public listing removal awaiting evidence |
 
 ## Coverage delta
@@ -19,7 +20,7 @@ These changes were detected by the refresh and are WAITING for evidence rather t
 | Metric | Before | After | Change |
 | --- | ---: | ---: | ---: |
 | Public places | 1568 | 1568 | 0 |
-| Public places with publishable verified hours | 1085 | 1085 | 0 |
+| Public places with publishable verified hours | 1085 | 1086 | +1 |
 | Hours snapshot rows | 1522 | 1522 | 0 |
 | Fresh schedule rows in snapshot | 1160 | 1160 | 0 |
 | Unmatched database rows ignored | — | 14 | — |
