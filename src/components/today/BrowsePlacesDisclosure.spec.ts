@@ -20,7 +20,10 @@ describe("BrowsePlacesDisclosure", () => {
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('id="browse-places-panel"');
     expect(html).toContain("Category choices");
-    expect(html).toContain("hidden");
+    expect(html).toContain('data-state="closed"');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain("inert");
+    expect(html).not.toContain(' hidden=""');
     expect(html).not.toContain('class="mt-3"');
   });
 });

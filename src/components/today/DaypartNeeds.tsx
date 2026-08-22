@@ -469,17 +469,28 @@ function DaypartPickCard({
       data-decision-id={place.slug}
       data-decision-position={lead ? "lead" : "alternative"}
       data-decision-action="open"
-      className={`group flex h-full min-h-[84px] items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
+      className={`group relative flex h-full min-h-[84px] items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
         lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
       }`}
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-edge), var(--app-hi)",
+        background: lead
+          ? "linear-gradient(118deg, color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 68%)"
+          : "var(--app-bg-elevated)",
       }}
     >
+      {lead ? (
+        <CategoryIcon
+          slug={category}
+          aria-hidden
+          className="pointer-events-none absolute -right-2 -top-2 h-[74px] w-[74px] rotate-[-7deg] opacity-[0.055] transition-transform duration-300 motion-safe:group-hover:rotate-0 motion-safe:group-hover:scale-[1.03]"
+          strokeWidth={1.35}
+        />
+      ) : null}
       <span
         aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+        className={`relative z-10 grid shrink-0 place-items-center rounded-[var(--app-radius-sm)] ${lead ? "h-11 w-11" : "h-9 w-9"}`}
         style={{
           color: "var(--app-brand-press)",
           background: "var(--app-brand-tint-6)",
@@ -487,7 +498,7 @@ function DaypartPickCard({
       >
         <CategoryIcon slug={category} className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </span>
-      <span className="min-w-0 flex-1">
+      <span className="relative z-10 min-w-0 flex-1">
         <span
           className="line-clamp-3 text-[14px] font-semibold leading-tight"
           style={{ color: "var(--app-ink)" }}
@@ -740,10 +751,11 @@ export default function DaypartNeeds({
       )}
 
       <div
+        key={active.category}
         id="daypart-active-panel"
         role={rows.length > 1 ? "tabpanel" : undefined}
         aria-labelledby={rows.length > 1 ? `daypart-tab-${active.category}` : undefined}
-        className={rows.length > 1 ? "mt-2" : "mt-1"}
+        className={`${rows.length > 1 ? "mt-2" : "mt-1"} today-decision-swap`}
       >
         {awaitingLive || shelfTier !== "confirmed" ? <div className="px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>

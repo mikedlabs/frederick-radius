@@ -748,7 +748,7 @@ export default function CompassHub() {
             className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-brand-press)" }}
           >
-            Compass · {directory.total} tools
+            Compass
           </p>
           <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
             What do you need?
@@ -824,8 +824,8 @@ export default function CompassHub() {
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
             groups={groups}
-            intentProps={intentProps}
             liveKeys={deckLiveKeys}
+            onOpen={openDeck}
           />
         </>
       )}
@@ -1232,13 +1232,13 @@ function useDeckLiveKeys(): readonly DeckLiveKey[] {
 function CompassIntentBoard({
   intents,
   groups,
-  intentProps,
   liveKeys,
+  onOpen,
 }: {
   intents: typeof COMPASS_INTENT_DEFINITIONS;
   groups: ToolDeckGroup[];
-  intentProps: (item: DirectoryItem) => LinkIntentProps;
   liveKeys: readonly DeckLiveKey[];
+  onOpen: (view: CompassDeckView) => void;
 }) {
   const liveLines = Object.fromEntries(
     COMPASS_INTENT_DEFINITIONS.flatMap((intent) => {
@@ -1249,106 +1249,109 @@ function CompassIntentBoard({
   const itemsByGroupId = new globalThis.Map(
     groups.map((group) => [group.id, group.items]),
   );
+  const intentColor: Record<CompassIntentId, string> = {
+    find: "var(--app-brand-press)",
+    "go-out": "var(--app-accent-press)",
+    "get-around": "var(--app-cool)",
+    "local-help": "var(--app-civic)",
+    "explore-yours": "var(--app-positive)",
+  };
 
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-6">
+    <section aria-labelledby="compass-browse-heading" className="space-y-3">
       <h2
         id="compass-browse-heading"
         className="text-[16px] font-semibold tracking-[-0.01em]"
       >
-        Every tool
+        Choose a direction
       </h2>
 
-      {intents.map((intent) => {
-        const tools = intent.groupIds.flatMap(
-          (id) => itemsByGroupId.get(id) ?? [],
-        );
-        if (tools.length === 0) return null;
-        const headingId = `compass-intent-${intent.id}`;
+      <ul className="grid gap-2.5 sm:grid-cols-2">
+        {intents.map((intent, index) => {
+          const tools = intent.groupIds.flatMap(
+            (id) => itemsByGroupId.get(id) ?? [],
+          );
+          if (tools.length === 0) return null;
+          const liveLine = liveLines[intent.id];
+          const color = intentColor[intent.id];
 
-        return (
-          <section key={intent.id} aria-labelledby={headingId}>
-            {/* The label carries the section. The old row also printed a
-                sentence restating it ("Get around / Use the map, parking,
-                transit, or road cameras") and then hid the seven tools that
-                sentence was describing. The tools say it better. */}
-            <div className="flex items-baseline gap-2 px-1">
-              <intent.icon
-                className="h-4 w-4 shrink-0 translate-y-[2px]"
-                strokeWidth={2}
-                style={{ color: "var(--app-ink-3)" }}
-                aria-hidden
-              />
-              <h3
-                id={headingId}
-                className="text-[15px] font-semibold leading-tight tracking-[-0.01em]"
+          return (
+            <li
+              key={intent.id}
+              className={index === 0 ? "sm:col-span-2" : undefined}
+            >
+              <button
+                type="button"
+                onClick={() => onOpen(intent.id)}
+                className="tactile-interactive group relative flex min-h-[92px] w-full overflow-hidden rounded-[var(--app-radius-md)] border p-3.5 text-left outline-none transition-[border-color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] active:scale-[0.99]"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-elevated-solid)",
+                  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                }}
               >
-                {intent.label}
-              </h3>
-              <span
-                className="text-[12px] tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {tools.length}
-              </span>
-            </div>
-
-            {liveLines[intent.id] ? (
-              // The one live fact this group can currently state, from the
-              // county's own feeds. Creek, because it is data.
-              <p
-                className="mt-1 px-1 text-[12px] font-medium tabular-nums leading-snug"
-                style={{ color: "var(--app-cool)" }}
-              >
-                {liveLines[intent.id]}
-              </p>
-            ) : null}
-
-            {/* Rows, not centred tiles. A tile grid gave 64 destinations the
-                same weight and made the page a wall; it also went ragged
-                wherever the count did not divide by the column span, and
-                stranded "Trails" and "All essentials on the map" alone on a
-                row. Left-aligned rows scan in one pass, hold a one-line
-                label without wrapping, and leave room for the tool's own
-                sentence once the column is wide enough to carry it. */}
-            <ul className="mt-1 grid grid-cols-2 lg:grid-cols-3">
-              {tools.map((item) => (
-                <li key={item.id} className="min-w-0">
-                  <Link
-                    href={item.href}
-                    prefetch={false}
-                    {...externalLinkProps(item)}
-                    {...intentProps(item)}
-                    className="tactile-interactive flex min-h-11 min-w-0 items-center gap-2.5 rounded-[var(--app-radius-md)] px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-                  >
-                    <item.icon
-                      className="h-[17px] w-[17px] shrink-0"
-                      style={{ color: "var(--app-brand-press)" }}
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 h-[3px]"
+                  style={{ background: color }}
+                />
+                <span
+                  aria-hidden
+                  className="mr-3 grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+                  style={{
+                    color,
+                    background: `color-mix(in srgb, ${color} 10%, transparent)`,
+                  }}
+                >
+                  <intent.icon className="h-5 w-5" strokeWidth={2.05} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="text-[14px] font-semibold leading-tight tracking-[-0.01em]">
+                      {intent.label}
+                    </span>
+                    <ArrowRight
+                      className="mt-0.5 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
                       strokeWidth={2}
+                      style={{ color: "var(--app-ink-3)" }}
                       aria-hidden
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block text-[13px] font-semibold leading-tight">
-                        {item.label}
-                      </span>
-                      {/* The description is why the separate "with
-                          descriptions" door existed. At this width the page
-                          can simply say it. */}
+                  </span>
+                  <span
+                    className="mt-1 block text-[11.5px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {intent.description}
+                  </span>
+                  {liveLine ? (
+                    <span
+                      className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-[11px] font-semibold tabular-nums"
+                      style={{ color }}
+                    >
                       <span
-                        className="mt-0.5 hidden truncate text-[11px] font-normal leading-tight lg:block"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {item.description}
-                      </span>
+                        aria-hidden
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: color }}
+                      />
+                      {liveLine}
                     </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
+      <button
+        type="button"
+        onClick={() => onOpen("all")}
+        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        Browse the full tool index
+        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.1} aria-hidden />
+      </button>
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { LayoutGrid, ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import MotionDisclosure from "@/components/ui/MotionDisclosure";
 
 /**
  * BrowsePlacesDisclosure — an OBVIOUS tap target for the "I want…" category
@@ -10,8 +11,8 @@ import { haptic } from "@/lib/haptics";
  * than another floating card competing with it.
  *
  * Keeps the tap-to-open contract: children (the CravingStrip) ship in the HTML
- * and are display:none until opened, so there is zero fetch and the panel opens
- * instantly. Open state persists per device.
+ * and open without a fetch. The reveal stays visually attached to the row and
+ * the closed controls remain inert. Open state persists per device.
  */
 export default function BrowsePlacesDisclosure({
   children,
@@ -89,14 +90,14 @@ export default function BrowsePlacesDisclosure({
           style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
         />
       </button>
-      <div
+      <MotionDisclosure
         id={panelId}
-        hidden={!open}
-        className={embedded ? "border-t px-3 pb-3 pt-3" : "mt-3"}
-        style={embedded ? { borderColor: "var(--app-border)" } : undefined}
+        open={open}
+        className={embedded ? "border-t border-[var(--app-border)]" : ""}
+        innerClassName={embedded ? "px-3 pb-3 pt-3" : "mt-3"}
       >
         {children}
-      </div>
+      </MotionDisclosure>
     </section>
   );
 }

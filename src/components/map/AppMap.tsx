@@ -100,6 +100,7 @@ import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
 import { collapseInitialMapAttribution } from "./mapAttribution";
 import type { MapLayerGroup } from "./deferredBrowseLayers";
+import { mapCameraDuration } from "@/lib/motion";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -788,7 +789,7 @@ export default function AppMap({
       map.resize();
       map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
         padding: countyFitPadding(),
-        duration: prefersReducedMotion() ? 0 : 450,
+        duration: mapCameraDuration("nudge"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -1207,7 +1208,7 @@ export default function AppMap({
       fitCountyCamera: () => {
         mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
           padding: countyFitPadding(),
-          duration: prefersReducedMotion() ? 0 : 900,
+          duration: mapCameraDuration("reframe"),
           easing: CAM_EASE,
           essential: true,
         });
@@ -2355,7 +2356,7 @@ export default function AppMap({
         center: [nearest.point.lng, nearest.point.lat],
         zoom: Math.max(map.getZoom(), 15.5),
         offset: [0, -110],
-        duration: prefersReducedMotion() ? 0 : 600,
+        duration: mapCameraDuration("focus"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -2638,7 +2639,7 @@ export default function AppMap({
           center: [place.geom.lng, place.geom.lat],
           zoom: Math.max(m.getZoom(), 14),
           offset: [0, -120],
-          duration: prefersReducedMotion() ? 0 : 500,
+          duration: mapCameraDuration("nudge"),
           essential: true,
         });
       }
@@ -3180,7 +3181,7 @@ export default function AppMap({
           center: [lng, lat],
           zoom: 15,
           offset: [0, -100],
-          duration: prefersReducedMotion() ? 0 : 700,
+          duration: mapCameraDuration("focus"),
           easing: CAM_EASE,
           essential: true,
         });
@@ -3286,7 +3287,7 @@ export default function AppMap({
             mapRef.current?.getMap().flyTo({
               center: [userLoc.lng, userLoc.lat],
               zoom: 15,
-              duration: prefersReducedMotion() ? 0 : 800,
+              duration: mapCameraDuration("journey"),
               curve: 1.2,
               easing: CAM_EASE,
               essential: true,
@@ -3363,7 +3364,7 @@ export default function AppMap({
           mapRef.current?.getMap().flyTo({
             center: [town.centroid.lng, town.centroid.lat],
             zoom: 13.4,
-            duration: prefersReducedMotion() ? 0 : 900,
+            duration: mapCameraDuration("journey"),
             curve: 1.25,
             easing: CAM_EASE,
             essential: true,
@@ -3511,7 +3512,7 @@ export default function AppMap({
     setOffOverview(false);
     mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
       padding: countyFitPadding(),
-      duration: prefersReducedMotion() ? 0 : 900,
+      duration: mapCameraDuration("reframe"),
       easing: CAM_EASE,
       essential: true,
     });
@@ -3591,7 +3592,7 @@ export default function AppMap({
       map.fitBounds(evidenceBounds, {
         padding: countyFitPadding(),
         maxZoom: scene.definition.camera.maxZoom,
-        duration: prefersReducedMotion() ? 0 : 850,
+        duration: mapCameraDuration("reframe"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3603,7 +3604,7 @@ export default function AppMap({
       pending.fallbackApplied = true;
       map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
         padding: countyFitPadding(),
-        duration: prefersReducedMotion() ? 0 : 700,
+        duration: mapCameraDuration("reframe"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3698,7 +3699,7 @@ export default function AppMap({
       map.easeTo({
         center: discovery.center,
         zoom: Math.max(map.getZoom(), discovery.zoom),
-        duration: prefersReducedMotion() ? 0 : 950,
+        duration: mapCameraDuration("journey"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3838,7 +3839,7 @@ export default function AppMap({
     mapRef.current?.getMap().easeTo({
       center: [incident.coordinate.lng, incident.coordinate.lat],
       zoom: 14.5,
-      duration: prefersReducedMotion() ? 0 : 800,
+      duration: mapCameraDuration("journey"),
       easing: CAM_EASE,
       essential: true,
     });
@@ -4888,7 +4889,7 @@ export default function AppMap({
               map.fitBounds(bounds, {
                 padding: countyFitPadding(),
                 maxZoom: 13,
-                duration: prefersReducedMotion() ? 0 : 700,
+                duration: mapCameraDuration("reframe"),
                 easing: CAM_EASE,
                 essential: true,
               });
@@ -6551,7 +6552,7 @@ export default function AppMap({
               mapRef.current?.getMap().flyTo({
                 center,
                 zoom,
-                duration: prefersReducedMotion() ? 0 : 1100,
+                duration: mapCameraDuration("journey"),
                 curve: 1.25,
                 easing: CAM_EASE,
                 essential: true,
@@ -6642,7 +6643,7 @@ export default function AppMap({
                 center: [place.geom.lng, place.geom.lat],
                 zoom: Math.max(map.getZoom(), 14),
                 offset: [0, -120],
-                duration: prefersReducedMotion() ? 0 : 500,
+                duration: mapCameraDuration("nudge"),
                 essential: true,
               });
             }

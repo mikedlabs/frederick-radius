@@ -28,6 +28,18 @@ const config: StorybookConfig = {
   core: {
     disableTelemetry: true,
   },
+  async viteFinal(viteConfig) {
+    // Canonical Sheet stories are the first workshop surface to exercise the
+    // production Framer portal. Pre-bundle both dependencies up front so a
+    // clean CI cache does not reload Vitest midway through its first run.
+    viteConfig.optimizeDeps ??= {};
+    viteConfig.optimizeDeps.include = [
+      ...(viteConfig.optimizeDeps.include ?? []),
+      "framer-motion",
+      "react-dom",
+    ];
+    return viteConfig;
+  },
 };
 
 export default config;

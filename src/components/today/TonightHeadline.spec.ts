@@ -136,7 +136,7 @@ describe("TonightHeadline", () => {
     expect(html).not.toContain("/_next/image");
   });
 
-  it("keeps optional hover motion behind the reduced-motion preference", () => {
+  it("uses the one-shot editorial photo treatment while keeping link motion optional", () => {
     const imageHtml = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
@@ -153,13 +153,11 @@ describe("TonightHeadline", () => {
       }),
     );
 
-    expect(imageHtml).toContain(
-      "motion-safe:group-hover:scale-[1.015]",
-    );
+    expect(imageHtml).toContain("ken-burns object-cover");
     expect(noImageHtml).toContain(
       "motion-safe:group-hover:translate-x-0.5",
     );
-    expect(imageHtml).not.toMatch(/(?<!motion-safe:)group-hover:scale/);
+    expect(imageHtml).not.toContain("group-hover:scale");
     expect(noImageHtml).not.toMatch(/(?<!motion-safe:)group-hover:translate/);
   });
 

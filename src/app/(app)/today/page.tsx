@@ -62,6 +62,7 @@ import { shouldRenderTodayEventSection } from "@/lib/today-events";
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
+import AppTransitionLink from "@/components/nav/AppTransitionLink";
 
 /**
  * Now — the daily briefing.
@@ -262,7 +263,7 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="mb-3 px-0.5">
+          <header className="today-arrival today-arrival--masthead mb-3 px-0.5">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
                 just another section. 30/32 restores the ladder: page over
@@ -293,8 +294,8 @@ export default async function HomePage() {
       {/* The whole weather plate is a door to the full forecast (July 2026
           Reddit review: it looked tappable and wasn't — now it is, with the
           standard right-edge disclosure chevron). */}
-      <SkyHero className="relative z-10">
-        <Link
+      <SkyHero className="today-arrival today-arrival--weather relative z-10">
+        <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
           className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
@@ -308,12 +309,14 @@ export default async function HomePage() {
             strokeWidth={2.25}
             className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
           />
-        </Link>
+        </AppTransitionLink>
       </SkyHero>
 
       {/* One town-aware first move. It stays mounted so a LocationChip change
           immediately re-ranks this answer instead of only changing the chip. */}
-      {decisionLead}
+      <div className="today-arrival today-arrival--decision">
+        {decisionLead}
+      </div>
 
       {/* One decision index: ask a specific question or open the category
           browse. The rows share a surface so they read as two routes through
@@ -321,7 +324,7 @@ export default async function HomePage() {
       <div
         role="group"
         aria-label="Find what you need"
-        className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
+        className="today-arrival today-arrival--find mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",

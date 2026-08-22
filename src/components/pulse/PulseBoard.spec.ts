@@ -257,18 +257,18 @@ describe("Pulse smart blocks", () => {
     expect(groups.actionable.map((entry) => entry.key)).toEqual(["traffic"]);
   });
 
-  it("keeps essential missing readings visible with an unavailable state", () => {
+  it("collapses a missing reading into the source-status disclosure", () => {
     const air: PulseTile = {
       ...tile("air"),
       reading: true,
       degraded: true,
-      keepVisibleWhenUnavailable: true,
     };
 
     const groups = pulseDisplayGroups([air]);
 
-    expect(groups.readings).toEqual([air]);
-    expect(pulseTileState(groups.readings[0])).toBe("Feed unavailable");
+    expect(groups.readings).toEqual([]);
+    expect(groups.quiet).toEqual([air]);
+    expect(pulseTileState(groups.quiet[0])).toBe("Feed unavailable");
   });
 });
 

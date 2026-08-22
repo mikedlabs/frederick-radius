@@ -3,9 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 /**
- * Deliberate visual contracts for the three shared surfaces where small CSS
- * drift has the largest product-wide cost: Find, Ask, and the map command
- * surface.
+ * Deliberate visual contracts for the shared surfaces where small CSS drift
+ * has the largest product-wide cost: Find, Ask, Compass, the canonical detail
+ * sheet, and the map command surface.
  *
  * This suite is opt-in while the Linux reference images are being reviewed:
  *
@@ -220,6 +220,107 @@ for (const viewport of VIEWPORTS) {
         testInfo,
         name: `ask-empty-${viewport.name}`,
         target: ask,
+      });
+    });
+
+    test("Ask Radius keeps a stable, branded working state", async ({ page }, testInfo) => {
+      const requestGate: { release: (() => void) | null } = { release: null };
+      await page.route("**/api/ask", async (route) => {
+        await new Promise<void>((resolve) => {
+          requestGate.release = resolve;
+        });
+        await route.abort();
+      });
+      await page.goto("/ask", { waitUntil: "domcontentloaded" });
+      await expect(page.locator('[data-ask-interaction-ready="true"]')).toBeVisible({
+        timeout: 20_000,
+      });
+      await page
+        .getByRole("textbox", { name: "Ask Radius" })
+        .fill("What is worth doing tonight?");
+      await page.getByRole("button", { name: "Ask Radius" }).click();
+
+      const working = page.locator("[data-ask-working-panel]");
+      await expect(working).toBeVisible();
+      await visualContract({
+        page,
+        testInfo,
+        name: `ask-working-${viewport.name}`,
+        target: working,
+      });
+      requestGate.release?.();
+    });
+
+    test("the live-bus map opens in the canonical solid sheet", async ({ page }, testInfo) => {
+      await page.route("**/api/transit/vehicles", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          json: { available: true, status: "ok", vehicles: [] },
+        });
+      });
+      await page.route("**/api/transit/alerts", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          json: { available: true, status: "ok", alerts: [] },
+        });
+      });
+      await page.route("**/api/transit/shapes", async (route) => {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          json: { error: "visual fixture" },
+        });
+      });
+      await page.goto("/pulse", { waitUntil: "domcontentloaded" });
+      const trigger = page.getByRole("button", { name: "Show current buses" });
+      await expect(trigger).toBeVisible({ timeout: 20_000 });
+      // The trigger is server-rendered before React can handle its click. The
+      // summary changes only after the client effect has run and both mocked
+      // feeds have answered, which gives this interaction a semantic hydration
+      // boundary instead of relying on an arbitrary timeout.
+      await expect(page.locator("#pulse-live-buses-summary")).not.toHaveText(
+        "Checking live service…",
+        { timeout: 20_000 },
+      );
+      await trigger.click();
+
+      const dialog = page.getByRole("dialog", { name: "Buses right now" });
+      await expect(dialog).toBeVisible({ timeout: 20_000 });
+      const panel = dialog.locator("[data-bottom-sheet-panel]");
+      await visualContract({
+        page,
+        testInfo,
+        name: `pulse-bus-sheet-${viewport.name}`,
+        target: panel,
+      });
+    });
+
+    test("Compass leads with decisions instead of its full inventory", async ({
+      page,
+    }, testInfo) => {
+      await page.route("**/api/deck", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          json: { keys: [] },
+        });
+      });
+      await page.goto("/compass", { waitUntil: "domcontentloaded" });
+      const compass = page.locator('[data-compass-ready="true"]');
+      await expect(compass).toBeVisible({ timeout: 20_000 });
+      await expect(
+        compass.getByRole("heading", { name: "Choose a direction" }),
+      ).toBeVisible();
+      await expect(
+        compass.getByRole("button", { name: /Find something/ }),
+      ).toBeVisible();
+
+      await visualContract({
+        page,
+        testInfo,
+        name: `compass-directions-${viewport.name}`,
       });
     });
 

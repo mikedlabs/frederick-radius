@@ -424,14 +424,65 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
     var(--app-hi);
 }
 
+/* Ask's wait state uses Radius's own ripple geometry and preserves the space
+ * that the starter choices occupied. It communicates one honest state—local
+ * sources are being checked—without inventing step-by-step AI progress. */
+.ask-lock-on__field {
+  background:
+    linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--app-border) 42%, transparent) 50%, transparent 50.2%),
+    linear-gradient(transparent 49.8%, color-mix(in srgb, var(--app-border) 42%, transparent) 50%, transparent 50.2%),
+    radial-gradient(circle at center, color-mix(in srgb, var(--app-brand) 7%, transparent), transparent 62%);
+}
+
+.ask-lock-on__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 34%, transparent);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  animation: ask-lock-on 1600ms var(--app-ease-out) infinite;
+}
+.ask-lock-on__ring--inner {
+  width: 66px;
+  height: 66px;
+  animation-delay: 320ms;
+}
+.ask-lock-on__ring--outer {
+  width: 104px;
+  height: 104px;
+}
+.ask-lock-on__beacon {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-brand) 12%, transparent);
+}
+.ask-answer-arrival {
+  animation: ask-answer-arrival 260ms var(--app-ease-out) both;
+}
+
+@keyframes ask-lock-on {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  28% { opacity: 0.76; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08); }
+}
+@keyframes ask-answer-arrival {
+  from { opacity: 0; transform: translateY(5px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ask-composer,
-  .ask-composer-submit {
+  .ask-composer-submit,
+  .ask-answer-arrival {
     transition: none;
+    animation: none;
   }
 
-  .ask-composer-submit svg {
+  .ask-composer-submit svg,
+  .ask-lock-on__ring {
     animation: none;
+  }
+
+  .ask-lock-on__ring {
+    opacity: 0.42;
   }
 }
 
@@ -1290,8 +1341,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * the lead image feels alive without ever pulling focus. Long and subtle
  * by design (28s, ~6% scale): it should be felt, not watched. The hero
  * wrapper clips overflow, so the scaled image never disturbs layout.
- * Opt-in via SeasonalPhoto's `kenBurns` prop — reserved for the large
- * county heroes, never list thumbnails. */
+ * Reserved for a single large editorial photograph on a page (county or
+ * event hero), never list thumbnails. */
 @keyframes ken-burns {
   0%   { transform: scale(1) translate3d(0, 0, 0); }
   100% { transform: scale(1.06) translate3d(0, -1.5%, 0); }
@@ -1531,6 +1582,73 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
+/* Progressive detail should unfold from its trigger instead of appearing as
+ * a second page. Grid rows handle dynamic content without guessed max-heights;
+ * MotionDisclosure supplies `inert` while closed so motion never creates a
+ * hidden keyboard journey. */
+[data-motion-disclosure] {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    grid-template-rows var(--app-dur-slow) var(--app-ease-out),
+    opacity var(--app-dur-med) var(--app-ease-out),
+    transform var(--app-dur-med) var(--app-ease-out);
+}
+[data-motion-disclosure][data-state="open"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+.motion-disclosure__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-motion-disclosure] {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Today opens like one edited page, not a stack of independently animated
+ * widgets. Safety alerts intentionally sit outside this sequence so urgent
+ * information is present immediately. */
+.today-arrival {
+  animation: today-arrival 380ms var(--app-ease-out) both;
+}
+.today-arrival--masthead { animation-delay: 0ms; }
+.today-arrival--weather { animation-delay: 65ms; }
+.today-arrival--decision,
+.today-arrival--find { animation-delay: 130ms; }
+
+.today-decision-swap {
+  animation: today-decision-swap 220ms var(--app-ease-out) both;
+}
+
+@keyframes today-arrival {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+@keyframes today-decision-swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-arrival,
+  .today-decision-swap {
+    animation: none;
+  }
+}
+
 /* ─────────────────────────────────────────────────────
  * Floating action button — bottom-right, mobile only.
  * Subtle scale-breath so it draws the eye without being noisy.
@@ -1693,25 +1811,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ─────────────────────────────────────────────────────
  * View Transitions API — controlled in-app navigation.
- * BottomNav and SideRail opt into these animations around
- * App Router changes. Do not enable automatic cross-document
- * transitions here: the map deliberately uses a hard return
- * navigation to clear stale route state, and Chrome can abort an
- * automatic transition before the returned map hydrates.
+ * The header, paper, and primary navigation are persistent app chrome, so
+ * only the main document surface moves. Shared entities (the Today/Pulse
+ * weather plate) can own a named transition inside that surface.
  * ───────────────────────────────────────────────────── */
-::view-transition-old(root) {
+#main-content {
+  view-transition-name: app-main;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(app-main) {
   animation: vt-fade-out 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-::view-transition-new(root) {
-  animation: vt-fade-in 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+::view-transition-new(app-main) {
+  animation: vt-fade-in 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-6px); } }
-@keyframes vt-fade-in  { from { opacity: 0; transform: translateY(6px); } }
+::view-transition-group(radius-weather) {
+  animation-duration: 380ms;
+  animation-timing-function: var(--app-ease-out);
+}
+::view-transition-image-pair(radius-weather) {
+  isolation: auto;
+}
+@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes vt-fade-in  { from { opacity: 0; transform: translateY(5px); } }
 /* Reduced motion: gate the navigation slide off for prefers-reduced-motion
  * users (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  ::view-transition-old(app-main),
+  ::view-transition-new(app-main),
+  ::view-transition-group(radius-weather) {
     animation: none;
   }
 }
@@ -8503,4 +8634,3 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     transition: none;
   }
 }
-

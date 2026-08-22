@@ -114,6 +114,42 @@ describe("BusesReveal closed summary", () => {
     );
   });
 
+  it("opens the live map in a fixed detail sheet without moving the briefing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>((input) => {
+        const href = String(input);
+        if (href.endsWith("/shapes")) {
+          return response({
+            shapes: { type: "FeatureCollection", features: [{}] },
+          });
+        }
+        return response(
+          href.endsWith("/vehicles")
+            ? { available: true, status: "ok", vehicles: [] }
+            : { available: true, status: "ok", alerts: [] },
+        );
+      }),
+    );
+
+    await act(async () => root.render(createElement(BusesReveal)));
+    await settle();
+
+    const trigger = container.querySelector<HTMLButtonElement>(
+      'button[aria-controls="pulse-live-buses"]',
+    );
+    expect(trigger).not.toBeNull();
+
+    await act(async () => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.getAttribute("aria-label")).toBe("Buses right now");
+    expect(dialog?.className).toContain("fixed");
+    expect(document.body.querySelector("#pulse-live-buses")).not.toBeNull();
+  });
+
   it("aborts both inexpensive status requests when unmounted", async () => {
     const signals: AbortSignal[] = [];
     vi.stubGlobal(

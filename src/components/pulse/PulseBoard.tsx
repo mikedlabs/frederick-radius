@@ -31,8 +31,8 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import BottomDrawer from "@/components/ui/BottomDrawer";
 import Link from "next/link";
+import Sheet from "@/components/ui/Sheet";
 import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
@@ -193,9 +193,6 @@ export type PulseTile = {
    * degraded fallback never claims to be a reading.
    */
   reading?: boolean;
-  /** Important context such as air quality remains visible when unavailable,
-   * with its unavailable state written plainly. */
-  keepVisibleWhenUnavailable?: boolean;
   kind: "feature" | "gauge" | "status";
   peek?: string;
   /** A direct measurement. Do not add a visual fill unless the provider
@@ -297,12 +294,10 @@ export function pulseDisplayGroups(
     const state = pulseTileState(tile);
     if (state === "Attention") attention.push(tile);
     else if (state === "Active") actionable.push(tile);
-    // Current readings earn the open board. A small set of essential readings
-    // can stay there while unavailable, but only with the missing state named.
-    else if (
-      tile.reading &&
-      (state === "Current" || tile.keepVisibleWhenUnavailable)
-    ) readings.push(tile);
+    // Only actual current measurements earn the open board. An unavailable
+    // source remains reachable once in the source-status disclosure instead
+    // of taking a full visual card and repeating the same failure state.
+    else if (tile.reading && state === "Current") readings.push(tile);
     else quiet.push(tile);
   }
 
@@ -557,6 +552,7 @@ function PulseSmartBlock({
     ? "Latest reading unavailable"
     : pulseTileReading(tile);
   const gaugeValue = formatGaugeValue(tile);
+  const seatsOnArrival = index < 4;
 
   return (
     <li
@@ -569,13 +565,14 @@ function PulseSmartBlock({
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
-        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]"
+        className={`fr-pulse-key${seatsOnArrival ? " fr-pulse-seat" : ""} group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]`}
         style={{
           borderColor: unavailable
             ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
             : "var(--app-border)",
           background: `linear-gradient(160deg, color-mix(in srgb, ${keyColor} 7%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-bg-sunken) 52%, var(--app-bg-elevated-solid)) 100%)`,
-          animationDelay: `${Math.min(index, 8) * 38}ms`,
+          animationDelay: seatsOnArrival ? `${index * 34}ms` : undefined,
+          viewTransitionName: tile.key === "weather" ? "radius-weather" : undefined,
         }}
       >
         <span
@@ -952,6 +949,15 @@ export default function PulseBoard({
   };
 
   const closeDrawer = () => {
+    // Back already removed the query parameter when it initiated the close.
+    // In that path, do not traverse history a second time after the shared
+    // sheet finishes its exit animation.
+    const hasOpenParam = new URL(window.location.href).searchParams.has("open");
+    if (!hasOpenParam) {
+      pushedOpen.current = false;
+      setOpen(null);
+      return;
+    }
     if (pushedOpen.current) {
       pushedOpen.current = false;
       window.history.back();
@@ -1037,15 +1043,6 @@ export default function PulseBoard({
             {hero.line}
           </h1>
           <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {degraded && (lead || hero.operational) ? (
-            <p
-              className="mt-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-warning)" }}
-            >
-              <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
-              Some other live checks are unavailable. The update above comes from a current source.
-            </p>
-          ) : null}
           {(hero.leadMeta || lead) && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               {hero.leadMeta && (
@@ -1172,10 +1169,10 @@ export default function PulseBoard({
           }
         }
         .fr-pulse-seat {
-          animation: fr-pulse-seat 420ms cubic-bezier(.2,.8,.3,1) both;
+          animation: fr-pulse-seat 240ms cubic-bezier(.2,.8,.3,1) both;
         }
         @keyframes fr-pulse-seat {
-          from { opacity: 0; transform: translateY(7px) scale(0.975); }
+          from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: none; }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -1191,13 +1188,14 @@ export default function PulseBoard({
         }
       `}</style>
 
-      <BottomDrawer
+      <Sheet
         open={open !== null}
-        onOpenChange={(nextOpen) => { if (!nextOpen) closeDrawer(); }}
+        onClose={closeDrawer}
         title={current?.label ?? ""}
         subtitle={current ? `Source: ${current.sourceLabel}` : undefined}
+        maxHeight="85dvh"
       >
-        <div className="space-y-2 px-4 pb-2">
+        <div className="space-y-2 pb-2">
           {current?.body}
           {current?.action ? (
             <Link
@@ -1214,7 +1212,7 @@ export default function PulseBoard({
             </Link>
           ) : null}
         </div>
-      </BottomDrawer>
+      </Sheet>
     </>
   );
 }
