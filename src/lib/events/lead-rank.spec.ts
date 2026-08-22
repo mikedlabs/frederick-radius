@@ -4,6 +4,7 @@ import {
   eventLeadTier,
   eventProminence,
   compareForLead,
+  isCarrollCreekEvent,
   pickLeadEvent,
 } from "./lead-rank";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -64,6 +65,46 @@ describe("eventProminence", () => {
       price_text: "$10",
       ticket_url: undefined,
     }))).toBe(1);
+  });
+
+  it("treats the public creek venues as a landmark without matching nearby businesses or parking", () => {
+    expect(isCarrollCreekEvent(ev({
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
+      venue_name: "Carroll Creek Outdoor Amphitheater",
+    }))).toBe(true);
+    expect(isCarrollCreekEvent(ev({
+      venue_name: "Carroll Creek Linear Park",
+    }))).toBe(true);
+    expect(isCarrollCreekEvent(ev({
+      venue_name: "The Wine Kitchen",
+      address: "50 Carroll Creek Way, Frederick, MD",
+    }))).toBe(false);
+    expect(isCarrollCreekEvent(ev({
+      venue_name: "Carroll Creek Parking Deck",
+    }))).toBe(false);
+  });
+
+  it("makes a major Carroll Creek festival the Today lead", () => {
+    const festival = ev({
+      slug: "black-frederick-festival-2026-08-22",
+      title: "Black Frederick Festival",
+      category: "music",
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
+      venue_name: "Carroll Creek Outdoor Amphitheater",
+      starts_at: "2026-08-22T16:00:00.000Z",
+    });
+    const ticketedShow = ev({
+      slug: "ticketed-show",
+      title: "Ticketed concert",
+      category: "music",
+      ticket_url: "https://tickets.example/show",
+      starts_at: "2026-08-22T17:00:00.000Z",
+    });
+
+    expect(eventProminence(festival)).toBeGreaterThan(
+      eventProminence(ticketedShow),
+    );
+    expect(pickLeadEvent([ticketedShow, festival])).toBe(festival);
   });
 });
 

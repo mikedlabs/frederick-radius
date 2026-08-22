@@ -18,7 +18,16 @@ describe("TodayEventsRecoveryView", () => {
               time: "12:00 PM",
               moment: "Now",
               image: null,
-              free: true,
+              free: false,
+              when: "Sat, Aug 22 · 12:00 PM–6:00 PM",
+              description:
+                "A community celebration with performances, food, vendors, and activities for all ages.",
+              address: "50 Carroll Creek Way, Frederick, MD 21701",
+              admission: "Not listed by the event source",
+              sourceLabel: "Downtown Frederick Partnership",
+              sourceUrl:
+                "https://downtownfrederick.org/vm-event/black-frederick-festival/",
+              highlight: true,
             },
           ],
         },
@@ -29,8 +38,14 @@ describe("TodayEventsRecoveryView", () => {
     expect(html).toContain(
       'href="/events/black-frederick-festival-2026-08-22"',
     );
-    expect(html).toContain("Now");
-    expect(html).toContain("Free");
+    expect(html).toContain("Not listed by the event source");
+    expect(html).toContain("On Carroll Creek now");
+    expect(html).toContain("Sat, Aug 22 · 12:00 PM–6:00 PM");
+    expect(html).toContain("50 Carroll Creek Way");
+    expect(html).toContain("Full event details");
+    expect(html).toContain("Source · Downtown Frederick Partnership");
+    expect(html).toContain("Official event page");
+    expect(html).toContain('data-today-event-highlight="carroll-creek"');
     expect(html).toContain('data-today-event-recovery="true"');
   });
 

@@ -29,7 +29,36 @@ export type LeadRankable = {
   is_free?: boolean;
   price_text?: string | null;
   venue_name?: string | null;
+  venue_place_slug?: string | null;
+  address?: string | null;
 };
+
+const CARROLL_CREEK_VENUE_SLUGS = new Set([
+  "carroll-creek-outdoor-amphitheater",
+  "carroll-creek-linear-park-frederick",
+  "carroll-creek-park-frederick",
+]);
+const CARROLL_CREEK_PUBLIC_VENUE =
+  /\b(?:carroll creek(?: outdoor)? amphitheat(?:er|re)|carroll creek(?: linear)? park|creek stage)\b/i;
+
+/**
+ * A bounded editorial landmark signal for public events on Carroll Creek.
+ * Match the known park/amphitheater identities, not every Carroll Creek Way
+ * business or the parking deck: the signal means "the creek is the venue,"
+ * not merely that the street address is nearby.
+ */
+export function isCarrollCreekEvent(
+  event: Pick<
+    LeadRankable,
+    "venue_place_slug" | "venue_name" | "address"
+  >,
+): boolean {
+  const venueSlug = event.venue_place_slug?.trim().toLowerCase();
+  if (venueSlug && CARROLL_CREEK_VENUE_SLUGS.has(venueSlug)) return true;
+  return CARROLL_CREEK_PUBLIC_VENUE.test(
+    `${event.venue_name ?? ""} ${event.address ?? ""}`,
+  );
+}
 
 // Standing programs that recur on a calendar and aren't a "come out tonight"
 // draw. Tight, specific phrases so a real draw (carnival, concert, festival,
@@ -64,7 +93,12 @@ const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|thea
 export function eventProminence(e: LeadRankable): number {
   let score = 0;
   if (e.ticket_url) score += 3;
-  if (MARQUEE_CATEGORY.test(e.category ?? "")) score += 2;
+  if (MARQUEE_CATEGORY.test(`${e.category ?? ""} ${e.title ?? ""}`)) score += 2;
+  // Carroll Creek festivals and public draws are countywide downtown moments,
+  // not interchangeable venue listings. This makes the known park venues an
+  // explicit Today signal while the routine-program tier still prevents a
+  // recurring class from becoming a headline just because it meets there.
+  if (isCarrollCreekEvent(e)) score += 4;
   if (e.price_text?.trim()) score += 1;
   if (/\b(library|branch)\b/i.test(e.venue_name ?? "")) score -= 3;
   return score;

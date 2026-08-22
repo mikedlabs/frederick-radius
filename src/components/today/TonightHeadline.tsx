@@ -3,11 +3,14 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // Data-free formatter (never the loader) so this stays a light leaf.
-import { eventDateBlock } from "@/lib/events/format";
+import { eventDateBlock, formatEventWhen } from "@/lib/events/format";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { isCarrollCreekEvent } from "@/lib/events/lead-rank";
+import { eventSourceLabel } from "@/lib/events/source-label";
 import { isKeysEvent } from "@/lib/today/keysEvent";
 import KeysCard from "@/components/today/KeysCard";
+import EventSourceLink from "@/components/event/EventSourceLink";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
@@ -42,6 +45,12 @@ function easternStartHour(iso: string): number {
   );
 }
 
+function isGenericTownAddress(address: string): boolean {
+  return /^(?:Frederick|Brunswick|Thurmont|Middletown|Emmitsburg|Walkersville|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Urbana),?\s+MD(?:\s+\d{5})?$/i.test(
+    address.trim(),
+  );
+}
+
 export default function TonightHeadline({
   event,
   now,
@@ -55,14 +64,24 @@ export default function TonightHeadline({
 }) {
   const live = isEventLiveNow(event, now);
   const date = eventDateBlock(event);
+  const when = formatEventWhen(event);
   const accent = CATEGORY_BY_SLUG[event.category]?.color ?? "#7A7975";
   const approvedVisual = eventCardVisual(event);
   const featureImage = approvedVisual?.src;
   const tonight = !event.is_all_day && easternStartHour(event.starts_at) >= 17;
+  const onCarrollCreek = isCarrollCreekEvent(event);
   // The one editor's pick, and it SAYS so (the unlabeled hero was the first
   // "why is this big?" of the old section) — same wording the What's-on
   // feature used, so the label survives the move.
-  const label = tonight ? "Tonight's pick" : "Today's pick";
+  const label = onCarrollCreek
+    ? live
+      ? "On Carroll Creek now"
+      : tonight
+        ? "On Carroll Creek tonight"
+        : "On Carroll Creek today"
+    : tonight
+      ? "Tonight's pick"
+      : "Today's pick";
 
   const venue = event.venue_name?.trim();
   // Same town label the program rows print (shared eventTown helper). This
@@ -70,9 +89,23 @@ export default function TonightHeadline({
   // guard that no longer matched anything, so the headliner and the rows
   // below could name the same city two different ways on one screen.
   const town = eventTown(event);
-  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
+  const address = event.address?.trim();
+  const addressDetail =
+    address && !isGenericTownAddress(address) ? address : null;
+  const where = [
+    venue,
+    addressDetail ??
+      (town && town.toLowerCase() !== venue?.toLowerCase() ? town : null),
+  ]
     .filter(Boolean)
     .join(" · ");
+  const admission = event.is_free
+    ? "Free"
+    : event.price_text?.trim() ||
+      event.info?.admission?.trim() ||
+      "Not listed by the event source";
+  const description = event.description.trim();
+  const sourceLabel = eventSourceLabel(event.source, event.organizer);
   const titleId = `today-headliner-${event.slug}-title`;
   const detailId = `today-headliner-${event.slug}-detail`;
   const Title = embedded ? "h3" : "h2";
@@ -124,20 +157,53 @@ export default function TonightHeadline({
             >
               {event.title}
             </Title>
-            <p
+            <div
               id={detailId}
-              className="mt-2 px-0.5 text-[13px] leading-snug"
+              className="mt-2 space-y-1 px-0.5 text-[13px] leading-snug"
               style={{ color: "var(--app-ink-2)" }}
             >
-              <span
-                className="font-mono font-semibold tabular-nums"
-                style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+              <p>
+                {live ? (
+                  <span
+                    className="font-mono font-semibold tabular-nums"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    On now
+                  </span>
+                ) : null}
+                <span
+                  className="font-mono font-semibold tabular-nums"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {live ? ` · ${when}` : when}
+                </span>
+              </p>
+              {where ? (
+                <p style={{ color: "var(--app-ink-3)" }}>{where}</p>
+              ) : null}
+              <p>
+                <span className="font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                  Admission
+                </span>
+                <span
+                  style={{
+                    color: event.is_free
+                      ? "var(--app-cool)"
+                      : "var(--app-ink-2)",
+                  }}
+                >
+                  {` · ${admission}`}
+                </span>
+              </p>
+            </div>
+            {description ? (
+              <p
+                className="mt-3 max-w-[68ch] px-0.5 text-[14px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
               >
-                {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
-              </span>
-              {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
-              {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
-            </p>
+                {description}
+              </p>
+            ) : null}
             {eventHasPreciseDisplayLocation(event) ? (
               <EventWalkTime dest={event.geom} />
             ) : null}
@@ -162,19 +228,7 @@ export default function TonightHeadline({
                 />
                 <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
               </figure>
-            ) : (
-              <span
-                className="mt-3 inline-flex items-center gap-1.5 px-0.5 text-[12px] font-semibold"
-                style={{ color: "var(--app-brand-press)" }}
-              >
-                View event
-                <ArrowRight
-                  aria-hidden
-                  className="h-3.5 w-3.5 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5"
-                  strokeWidth={2.1}
-                />
-              </span>
-            )}
+            ) : null}
           </Link>
           {approvedVisual ? (
             <EventVisualCredit
@@ -182,6 +236,28 @@ export default function TonightHeadline({
               className="mt-1.5 px-0.5"
             />
           ) : null}
+          <div
+            className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[12px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <Link
+              href={`/events/${event.slug}`}
+              prefetch={false}
+              className="tap-44-y inline-flex items-center gap-1 font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Full event details
+              <ArrowRight
+                aria-hidden
+                className="h-3.5 w-3.5"
+                strokeWidth={2.1}
+              />
+            </Link>
+            <span>Source · {sourceLabel}</span>
+            {event.source_url ? (
+              <EventSourceLink href={event.source_url} />
+            ) : null}
+          </div>
         </article>
       )}
     </section>

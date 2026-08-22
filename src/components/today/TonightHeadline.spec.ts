@@ -82,7 +82,7 @@ describe("TonightHeadline", () => {
     expect(html).toContain(
       'aria-describedby="today-headliner-summer-concert-detail"',
     );
-    expect(html).toContain(">View event<");
+    expect(html).toContain("Full event details");
     expect(html).toContain("border-y");
     expect(html).not.toContain("<img");
     expect(html).not.toContain("unattributed-event.jpg");
@@ -102,7 +102,7 @@ describe("TonightHeadline", () => {
     expect(html).toContain("<img");
     expect(html).toContain("approved-event.jpg");
     expect(html).toContain("Event image · Ticketmaster");
-    expect(html).not.toContain(">View event<");
+    expect(html).toContain("Full event details");
   });
 
   it("keeps the full venue-photo credit outside the event link", () => {
@@ -136,7 +136,7 @@ describe("TonightHeadline", () => {
     expect(html).not.toContain("/_next/image");
   });
 
-  it("keeps optional hover motion behind the reduced-motion preference", () => {
+  it("keeps optional image hover motion behind the reduced-motion preference", () => {
     const imageHtml = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
@@ -146,21 +146,47 @@ describe("TonightHeadline", () => {
         now,
       }),
     );
-    const noImageHtml = renderToStaticMarkup(
-      createElement(TonightHeadline, {
-        event: event(),
-        now,
-      }),
-    );
-
     expect(imageHtml).toContain(
       "motion-safe:group-hover:scale-[1.015]",
     );
-    expect(noImageHtml).toContain(
-      "motion-safe:group-hover:translate-x-0.5",
-    );
     expect(imageHtml).not.toMatch(/(?<!motion-safe:)group-hover:scale/);
-    expect(noImageHtml).not.toMatch(/(?<!motion-safe:)group-hover:translate/);
+  });
+
+  it("gives a Carroll Creek festival the full decision-ready Today feature", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({
+          slug: "black-frederick-festival-2026-08-22",
+          title: "Black Frederick Festival",
+          description:
+            "A community celebration with performances, food, vendors, and activities for all ages.",
+          starts_at: "2026-08-22T16:00:00.000Z",
+          ends_at: "2026-08-22T22:00:00.000Z",
+          venue_place_slug: "carroll-creek-outdoor-amphitheater",
+          venue_name: "Carroll Creek Outdoor Amphitheater",
+          address: "50 Carroll Creek Way, Frederick, MD 21701",
+          source: "dfp",
+          source_url:
+            "https://downtownfrederick.org/vm-event/black-frederick-festival/",
+          is_free: false,
+        }),
+        now: new Date("2026-08-22T20:00:00.000Z"),
+        embedded: true,
+      }),
+    );
+
+    expect(html).toContain("On Carroll Creek now");
+    expect(html).toContain("Sat, Aug 22 · 12:00 PM–6:00 PM");
+    expect(html).toContain("Carroll Creek Outdoor Amphitheater");
+    expect(html).toContain("50 Carroll Creek Way");
+    expect(html).toContain(
+      "A community celebration with performances, food, vendors, and activities for all ages.",
+    );
+    expect(html).toContain("Admission");
+    expect(html).toContain("Not listed by the event source");
+    expect(html).toContain("Full event details");
+    expect(html).toContain("Source · Downtown Frederick Partnership");
+    expect(html).toContain("Official event page");
   });
 
   it("uses nested semantics and lazy art inside the event program", () => {

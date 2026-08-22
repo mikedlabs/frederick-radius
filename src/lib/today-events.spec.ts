@@ -55,6 +55,35 @@ describe("Today event shortlist", () => {
     expect(result.map((item) => item.moment)).toEqual(["Now", "Later", "Tonight"]);
   });
 
+  it("carries enough sourced detail to restore a Carroll Creek feature", () => {
+    const [festival] = selectTodayEvents([
+      event({
+        slug: "black-frederick-festival-2026-08-22",
+        title: "Black Frederick Festival",
+        description:
+          "A community celebration with performances, food, vendors, and activities.",
+        starts_at: "2026-07-16T17:00:00.000Z",
+        ends_at: "2026-07-16T22:00:00.000Z",
+        venue_place_slug: "carroll-creek-outdoor-amphitheater",
+        venue_name: "Carroll Creek Outdoor Amphitheater",
+        address: "50 Carroll Creek Way, Frederick, MD 21701",
+        source: "dfp",
+        source_url: "https://downtownfrederick.org/events/black-frederick-festival",
+        is_free: false,
+      }),
+    ], now);
+
+    expect(festival).toMatchObject({
+      title: "Black Frederick Festival",
+      moment: "Now",
+      highlight: true,
+      when: "Thu, Jul 16 · 1:00 PM–6:00 PM",
+      admission: "Not listed by the event source",
+      sourceLabel: "Downtown Frederick Partnership",
+      sourceUrl: "https://downtownfrederick.org/events/black-frederick-festival",
+    });
+  });
+
   it("trusts an official publisher row without pretending Radius verified it", () => {
     const official = event({
       slug: "library-concert",

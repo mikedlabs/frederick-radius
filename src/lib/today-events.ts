@@ -1,7 +1,13 @@
 import type { Event } from "@/data/events";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventEnded, isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
-import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
+import { formatEventWhen } from "@/lib/events/format";
+import {
+  compareForLead,
+  isCarrollCreekEvent,
+  isRoutineProgram,
+} from "@/lib/events/lead-rank";
+import { eventSourceLabel } from "@/lib/events/source-label";
 import { eventTrust } from "@/lib/trust";
 
 export type TodayEventMoment = "Now" | "Later" | "Tonight" | "Today";
@@ -15,6 +21,13 @@ export type TodayEvent = {
   moment: TodayEventMoment;
   image: string | null;
   free: boolean;
+  when: string;
+  description: string;
+  address: string;
+  admission: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  highlight: boolean;
 };
 
 export type TodayEventResponse = {
@@ -57,6 +70,15 @@ function clock(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+function admissionFor(event: Event): string {
+  if (event.is_free) return "Free";
+  return (
+    event.price_text?.trim() ||
+    event.info?.admission?.trim() ||
+    "Not listed by the event source"
+  );
 }
 
 function momentFor(event: Event, now: Date): TodayEventMoment {
@@ -112,5 +134,14 @@ export function selectTodayEvents(pool: readonly Event[], now = new Date(), limi
     moment,
     image: event.hero_image ?? null,
     free: event.is_free,
+    when: formatEventWhen(event),
+    description: event.description.trim(),
+    address: event.address.trim(),
+    admission: admissionFor(event),
+    sourceLabel: eventSourceLabel(event.source, event.organizer),
+    sourceUrl: event.source_url?.startsWith("https://")
+      ? event.source_url
+      : null,
+    highlight: isCarrollCreekEvent(event),
   }));
 }
