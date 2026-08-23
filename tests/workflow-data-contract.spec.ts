@@ -605,11 +605,32 @@ describe("scheduled data workflow contracts", () => {
     );
     expect(publisherText).not.toContain("npm ci");
 
-    expect(workflowText("ci.yml")).toContain("workflow_dispatch: {}");
+    const ciText = workflowText("ci.yml");
+    expect(ciText).toContain("workflow_dispatch:");
+    expect(ciText).toContain("automated_pr_head_sha:");
+    expect(ciText).toContain("automated_pr_style_run_id:");
+    expect(ciText).toContain("automated_pr_token:");
+    expect(ciText).toContain("ci_run_id: String(context.runId)");
+    expect(ciText).toContain("\n  push:");
+    expect(ciText).toContain("e2e/critical-dependency-chaos.spec.ts");
+    expect(ciText).toContain("e2e/service-worker-upgrade-contract.spec.ts");
+    expect(ciText).not.toContain("\n  browser-chaos:");
+    expect(ciText).toContain("needs: verify");
+    expect(ciText).toContain(
+      "workflow_id: 'automated-pr-status-bridge.yml'",
+    );
+    const uxText = workflowText("ux-audit.yml");
+    expect(uxText).toContain('cron: "17 8 * * *"');
+    expect(uxText).toContain("--workers=2");
+    expect(uxText).not.toContain("matrix:");
+    expect(uxText).not.toContain("--shard=");
+    expect(workflowText("style.yml")).not.toContain("\n  push:");
+    expect(workflowText("style.yml")).toContain("style / automated {0}");
     const dispatcher = workflowText("automated-pr-checks.yml");
     expect(dispatcher).toContain("actions: write");
     expect(dispatcher).toContain("contents: read");
-    expect(dispatcher).toContain("['ci.yml', 'style.yml']");
+    expect(dispatcher).toContain("workflow_id: 'ci.yml'");
+    expect(dispatcher).toContain("workflow_id: 'style.yml'");
     expect(dispatcher).toContain(
       "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
     );
@@ -617,17 +638,19 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("compareCommitsWithBasehead");
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
     expect(dispatcher).toContain("allowedByBranch");
-    expect(dispatcher).toContain(
+    expect(dispatcher).toContain("automated_pr_head_sha: expectedHead");
+    expect(dispatcher).toContain("automated_pr_style_run_id: String(styleRun.id)");
+    expect(dispatcher).toContain("run.display_title === `style / automated ${dispatchToken}`");
+    expect(dispatcher).not.toContain(
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
-    expect(dispatcher).toContain("ref: 'main'");
-    expect(dispatcher).toContain("dispatched_after: dispatchedAfter");
     expect(dispatcher).not.toContain("actions/checkout");
 
     // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
     // not reliably create another workflow_run hop. The bridge must therefore
-    // be explicitly dispatched on trusted main, then poll only the exact bot
-    // head and post-dispatch run window before writing required statuses.
+    // be explicitly dispatched on trusted main after CI finishes. The bridge
+    // receives the exact paired run IDs and a one-time run-name token, while a
+    // cheap schedule fails a whole-workflow cancellation closed.
     const bridgeText = workflowText("automated-pr-status-bridge.yml");
     const bridge = parse(bridgeText) as WorkflowDocument;
     expect(bridge.permissions).toEqual({
@@ -638,29 +661,27 @@ describe("scheduled data workflow contracts", () => {
     });
     expect(bridgeText).toContain("workflow_dispatch:");
     expect(bridgeText).not.toContain("workflow_run:");
+    expect(bridgeText).toContain('cron: "23 */6 * * *"');
     expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
-    expect(bridgeText).toContain("run.head_sha === headSha");
-    expect(bridgeText).toContain("run.head_branch === branch");
-    expect(bridgeText).toContain(
-      "Date.parse(run.created_at || '') >= acceptedAfter",
-    );
+    expect(bridgeText).toContain("candidate.head_sha !== headSha");
+    expect(bridgeText).toContain("candidate.head_branch !== branch");
+    expect(bridgeText).toContain("candidate.id !== spec.runId");
+    expect(bridgeText).toContain("candidate.display_title !== spec.displayTitle");
+    expect(bridgeText).toContain("github.rest.actions.getWorkflowRun");
+    expect(bridgeText).not.toContain("acceptedAfter");
     expect(bridgeText).toContain("comparison.data.behind_by !== 0");
     expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
     expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
     expect(bridgeText).toContain("writeAllStatuses('pending'");
-    expect(bridgeText).toContain("['verify', 'Required browser chaos']");
+    expect(bridgeText).toContain("contexts: ['verify']");
     expect(bridgeText).toContain("contexts: ['style-lint']");
-    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(43);
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
     expect(bridgeText).toContain(
-      "const discoveryDeadline = Date.now() + 3 * 60_000",
+      "const completionDeadline = Date.now() + 5 * 60_000",
     );
-    expect(bridgeText).toContain(
-      "const completionDeadline = Date.now() + 40 * 60_000",
-    );
-    expect(bridgeText).toContain("candidate.conclusion !== 'success'");
-    expect(bridgeText).toContain(
-      "concluded before the other gates",
-    );
+    expect(bridgeText).toContain("Fail stale automated PR checks closed");
+    expect(bridgeText).toContain("Date.now() - 90 * 60_000");
+    expect(bridgeText).toContain("latest.state !== 'pending'");
     expect(bridgeText).not.toContain("actions/checkout");
 
     // Validation attachment does not broaden the publication policy: only a

@@ -1,7 +1,10 @@
 name: CI
 
+run-name: >-
+  ${{ inputs.automated_pr_token != '' && format('CI / automated {0}', inputs.automated_pr_token) || format('CI / {0}', github.ref_name) }}
+
 # The mechanical quality gate the repo was missing: typecheck, lint,
-# unit tests, and a production build on every PR and every push to main.
+# unit tests, and one production build on every PR and every push to main.
 # Until now CI only ran editorial-style + data-freshness checks, so a
 # type error or failing test could land on main unnoticed — especially
 # risky with autonomous agents committing. A green check here is the
@@ -14,7 +17,24 @@ on:
   # Bot-created pull requests use the repository token. GitHub holds their
   # pull_request runs for manual approval, so the creating workflow explicitly
   # dispatches these same secret-free gates on the allowlisted bot branch.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      automated_pr_branch:
+        description: Trusted bot branch validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_head_sha:
+        description: Exact trusted bot head validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_style_run_id:
+        description: Exact style workflow run paired by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_token:
+        description: One-time correlation token for an automated PR gate pair
+        required: false
+        type: string
 
 # Cancel superseded runs on the same ref so a rapid push series doesn't
 # queue stale builds.
@@ -94,44 +114,6 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-browser-failure-traces
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 7
-
-  browser-chaos:
-    # Keep this job name stable and mark it required in the main branch rule.
-    # The broad UX sweep still runs nightly; this small PR gate attacks the
-    # higher-risk failure mode: several dependencies failing in different ways
-    # while the four primary decision surfaces remain useful and honest.
-    name: Required browser chaos
-    runs-on: ubuntu-latest
-    # A cold 2,740-page production build takes about 24 minutes on GitHub's
-    # shared runner before Chromium and the actual chaos cases begin. Keep a
-    # bounded ceiling, but leave enough time to exercise the thing this job is
-    # required to prove instead of cancelling it immediately after the build.
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: ".nvmrc"
-          cache: "npm"
-      - name: Install dependencies
-        run: npm ci
-      - name: Build the production app
-        run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-          NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
       - name: Exercise combined dependency failures and app upgrades
         run: >-
           npx playwright test
@@ -143,11 +125,60 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
-      - name: Keep chaos failure traces
+      - name: Keep browser failure traces
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: chaos-browser-failure-traces
+          name: release-browser-failure-traces
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  attach-automated-pr-checks:
+    # Start the trusted status bridge only after the expensive CI gate ends.
+    # Style normally finishes before CI, so this short runner observes
+    # completed work instead of polling for the full production build.
+    needs: verify
+    if: >-
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.automated_pr_branch != '' &&
+      inputs.automated_pr_head_sha != '' &&
+      inputs.automated_pr_style_run_id != '' &&
+      inputs.automated_pr_token != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Attach completed bot checks to the merge revision
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
+          AUTOMATED_PR_STYLE_RUN_ID: ${{ inputs.automated_pr_style_run_id }}
+          AUTOMATED_PR_TOKEN: ${{ inputs.automated_pr_token }}
+        with:
+          script: |
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
+            const styleRunId = process.env.AUTOMATED_PR_STYLE_RUN_ID;
+            const dispatchToken = process.env.AUTOMATED_PR_TOKEN;
+            if (context.sha !== headSha) {
+              core.setFailed(`The dispatched CI revision moved: expected ${headSha}, got ${context.sha}.`);
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'automated-pr-status-bridge.yml',
+              ref: 'main',
+              inputs: {
+                branch,
+                head_sha: headSha,
+                ci_run_id: String(context.runId),
+                style_run_id: styleRunId,
+                dispatch_token: dispatchToken,
+              },
+            });

@@ -4,14 +4,17 @@ The repository uses a small protected path from reviewed code to production.
 
 ## Pull-request gates
 
-- `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks.
+- `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks from one shared production build.
 - `style.yml` enforces the public editorial rules.
-- `ux-audit.yml` runs the broader nightly browser audit in bounded production-build shards.
+- `ux-audit.yml` runs the broader daily browser audit from one production build.
 
-`main` requires `verify`, `Required browser chaos`, and `style-lint`. Do not
-bypass those contexts. Automated data PRs dispatch the same secret-free gates;
-`automated-pr-status-bridge.yml` validates the bot branch and copies the real
-job conclusions to the merge revision evaluated by the ruleset.
+`main` requires `verify` and `style-lint`. Do not bypass those contexts.
+Automated data PRs dispatch the same secret-free gates. After `verify` ends,
+`automated-pr-status-bridge.yml` validates the bot branch and the exact paired
+workflow run IDs, then copies the real job conclusions to the merge revision
+evaluated by the ruleset. A six-hour, API-only reconciliation pass fails stale
+missing statuses closed after a whole-workflow cancellation; it never turns a
+missing check into success.
 
 ## Data automation
 
