@@ -5,24 +5,29 @@
  * NOTHING: it builds the exact Scenario A query plan (the discoverable
  * taxonomy × every municipality), then prints the precise number of
  * billed calls and a real dollar projection using current Google
- * Places API (New) pricing. Only an explicit `--live --confirm` (with
- * a key and under `--max-cost`) actually calls the API, and even then
+ * Places API (New) pricing. Only an explicit
+ * `--live --confirm --limit N` actually calls the API, and even then
  * it writes a REVIEW file — it never auto-merges places into the app
  * (data-sensitive: the owner reviews the list, same rule as dedupe).
  *
  *   npm run discover                         # dry run, $0, prints the plan + cost
  *   npm run discover -- --pages 2            # project 2 pages/query
- *   npm run discover -- --assume-new 6       # tune the Details ceiling
- *   npm run discover -- --live --confirm     # execute (gated, capped)
+ *   npm run discover -- --live --confirm --limit 325
  *
- * Pricing (fetched 2026-05, USD per 1,000, top of volume band):
+ * Pricing (verified 2026-08, USD per 1,000, top of volume band):
  *   Text Search, lean mask  = Pro                 $32.00
- *   Place Details, full     = Enterprise+Atmos    $25.00
- * Pro/Enterprise tiers include 5,000 free billable events / month.
+ * This discovery stage requests Text Search identity fields only. Candidate
+ * details are enriched later by a separately reviewed, separately capped job.
  */
 import { writeFileSync } from "node:fs";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { PLACES } from "@/data/places";
+import {
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+  type ManualGoogleCallBudget,
+} from "./lib/manual-google-run";
 
 // Discoverable categories only — deliberately NOT the B2B/trade types
 // the relevance filter hides, so we never pay to discover noise.
@@ -34,44 +39,23 @@ const CATEGORIES = [
   "gym", "hotel", "garden", "place of worship",
 ];
 
-const PRICE_TEXT_SEARCH_PRO = 32.0 / 1000; // USD/request, lean mask
-const PRICE_PLACE_DETAILS = 25.0 / 1000; // USD/request, Enterprise+Atmosphere
-const FREE_EVENTS_PER_MONTH = 5000;
+const PRICE_TEXT_SEARCH_PRO_PER_1000 = 32;
 
 function arg(name: string, def?: string): string | undefined {
   const i = process.argv.indexOf(name);
   return i >= 0 ? (process.argv[i + 1] ?? "") : def;
 }
-function flag(name: string): boolean {
-  return process.argv.includes(name);
-}
-
 function main() {
+  const run = parseManualGoogleRun(process.argv.slice(2), {
+    defaultLimit: 500,
+    maxLimit: 1_000,
+  });
   const areas = MUNICIPALITIES.map((m) => ({ name: m.name, centroid: m.centroid }));
-  const pages = Math.max(1, parseInt(arg("--pages", "1")!, 10) || 1);
-  const assumeNew = Math.max(0, parseInt(arg("--assume-new", "8")!, 10) || 0);
-  const maxCost = parseFloat(arg("--max-cost", "140")!) || 140;
+  const pages = Math.min(3, Math.max(1, parseInt(arg("--pages", "1")!, 10) || 1));
 
   const queries = CATEGORIES.length * areas.length;
-  const searchCalls = queries * pages;
-
-  // Floor: 0 new places found anywhere -> only the search calls bill.
-  // Ceiling: assumeNew genuinely-new places per (category x area) need
-  // a Place Details call. Existing places dedupe out (~PLACES.length
-  // already known), so real spend trends toward the floor.
-  const detailsCallsCeiling = queries * assumeNew;
-  const searchCost = searchCalls * PRICE_TEXT_SEARCH_PRO;
-  const detailsCostCeiling = detailsCallsCeiling * PRICE_PLACE_DETAILS;
-  const floor = searchCost;
-  const ceiling = searchCost + detailsCostCeiling;
-  const billedCeiling = searchCalls + detailsCallsCeiling;
-  const afterFreeFloor = Math.max(0, (searchCalls - FREE_EVENTS_PER_MONTH)) * PRICE_TEXT_SEARCH_PRO;
-  const afterFreeCeiling =
-    Math.max(0, billedCeiling - FREE_EVENTS_PER_MONTH) *
-    ((searchCost + detailsCostCeiling) / Math.max(1, billedCeiling));
-
-  const live = flag("--live");
-  const confirmed = flag("--confirm");
+  const possibleSearchCalls = queries * pages;
+  const plannedSearchCalls = Math.min(possibleSearchCalls, run.limit);
 
   console.log("\n  County-wide discovery — Scenario A plan");
   console.log("  ----------------------------------------");
@@ -79,34 +63,21 @@ function main() {
   console.log(`  Areas (municipalities) ${areas.length}`);
   console.log(`  Pages per query        ${pages}`);
   console.log(`  Already known places   ${PLACES.length} (dedupe out, push spend toward the floor)`);
-  console.log(`  Text Search calls      ${searchCalls}  (exact)`);
-  console.log(`  Place Details ceiling  ${detailsCallsCeiling}  (assume ${assumeNew} new / query)`);
-  console.log("\n  Projected one-time cost (current Google pricing)");
-  console.log("  ------------------------------------------------");
-  console.log(`  Floor  (0 new found)   $${floor.toFixed(2)}`);
-  console.log(`  Ceiling (all assumed)  $${ceiling.toFixed(2)}`);
-  console.log(`  After 5,000/mo free    $${afterFreeFloor.toFixed(2)} – $${afterFreeCeiling.toFixed(2)}`);
-  console.log(`  Hard cap (--max-cost)  $${maxCost.toFixed(2)}`);
+  console.log(`  Possible searches      ${possibleSearchCalls}`);
+  console.log(`  Hard request ceiling   ${run.limit}`);
+  console.log(`  Planned calls          ${plannedSearchCalls}`);
+  console.log(
+    `  ${googleCostPreview({
+      calls: plannedSearchCalls,
+      pricePerThousandUsd: PRICE_TEXT_SEARCH_PRO_PER_1000,
+      sku: "Text Search Pro",
+    })}`,
+  );
 
-  if (ceiling > maxCost) {
-    console.log(
-      `\n  ! Ceiling $${ceiling.toFixed(2)} exceeds the $${maxCost.toFixed(2)} cap.` +
-        ` Lower --assume-new or --pages, or raise --max-cost.`,
-    );
-  }
-
-  if (!live) {
+  if (run.dryRun) {
     console.log("\n  DRY RUN — nothing was called, $0 spent.");
-    console.log("  To execute: npm run discover -- --live --confirm\n");
+    console.log("  To execute: npm run discover -- --live --confirm --limit N\n");
     return;
-  }
-  if (!confirmed) {
-    console.log("\n  --live requires --confirm. Aborted, $0 spent.\n");
-    process.exit(1);
-  }
-  if (ceiling > maxCost) {
-    console.log("\n  Refusing to run: projected ceiling exceeds the cost cap. $0 spent.\n");
-    process.exit(1);
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     console.log("\n  GOOGLE_PLACES_API_KEY not set. Aborted, $0 spent.\n");
@@ -117,7 +88,11 @@ function main() {
   // mutates src/data. The owner reviews discovered candidates before
   // any merge (same discipline as the dedupe review).
   console.log("\n  LIVE run acknowledged. Executing the discovery sweep…");
-  runLive(areas, pages, maxCost).catch((e) => {
+  runLive(
+    areas,
+    pages,
+    createManualGoogleCallBudget(run.limit),
+  ).catch((e) => {
     console.error("  discovery failed:", e);
     process.exit(1);
   });
@@ -126,7 +101,7 @@ function main() {
 async function runLive(
   areas: { name: string; centroid: { lng: number; lat: number } }[],
   pages: number,
-  maxCost: number,
+  callBudget: ManualGoogleCallBudget,
 ) {
   const BASE = "https://places.googleapis.com/v1";
   const key = process.env.GOOGLE_PLACES_API_KEY!;
@@ -140,10 +115,8 @@ async function runLive(
     for (const area of areas) {
       let pageToken: string | undefined;
       for (let pg = 0; pg < pages; pg++) {
-        const spent =
-          searchCalls * PRICE_TEXT_SEARCH_PRO + found.length * PRICE_PLACE_DETAILS;
-        if (spent > maxCost) {
-          console.log(`  Cost cap reached (~$${spent.toFixed(2)}). Stopping.`);
+        if (!callBudget.reserve()) {
+          console.log(`  Hard request ceiling reached at ${callBudget.used} call(s). Stopping.`);
           finalize(found);
           return;
         }

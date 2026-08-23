@@ -1,10 +1,115 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  meterUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/usage-meter", () => ({
+  meterUsage: mocks.meterUsage,
+}));
+
 import {
   decisionFeatures,
+  getPlaceDetails,
+  googlePlacesPaidUpstream,
   normalizeGooglePhotoAttributions,
   normalizeGooglePlaceSummary,
   pickReview,
+  resolveAndEnrich,
 } from "./google-places";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-key");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+describe("Google Places billing tiers", () => {
+  it.each([
+    ["details", "status", "google_place_details_pro"],
+    ["details", "hours", "google_place_details_enterprise"],
+    ["details", "basic", "google_place_details_enterprise"],
+    ["details", "lean", "google_place_details_enterprise"],
+    ["details", "full", "google_place_details_enterprise_atmosphere"],
+    ["details", "photos", null],
+    ["details", "photo-resolve", "google_place_details_pro"],
+    ["details", "experience", "google_place_details_enterprise_atmosphere"],
+    ["text-search", "status", "google_text_search_pro"],
+    ["text-search", "hours", "google_text_search_enterprise"],
+    ["text-search", "basic", "google_text_search_enterprise"],
+    ["text-search", "lean", "google_text_search_enterprise"],
+    ["text-search", "full", "google_text_search_enterprise_atmosphere"],
+    ["text-search", "photos", "google_text_search_pro"],
+    ["text-search", "photo-resolve", "google_text_search_pro"],
+    ["text-search", "experience", "google_text_search_enterprise_atmosphere"],
+  ] as const)("maps %s / %s to %s", (method, fields, upstream) => {
+    expect(googlePlacesPaidUpstream(method, fields)).toBe(upstream);
+  });
+
+  it("keeps the lean Details mask at Enterprise and meters the outbound attempt", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "ChIJtest", businessStatus: "OPERATIONAL" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPlaceDetails("ChIJtest", "lean")).resolves.toMatchObject({
+      google_place_id: "ChIJtest",
+    });
+
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_place_details_enterprise",
+    );
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const mask = new Headers(init.headers).get("X-Goog-FieldMask");
+    expect(mask).toContain("rating");
+    expect(mask).not.toContain("editorialSummary");
+    expect(mask).not.toContain("reviews");
+  });
+
+  it("meters user-requested Text Search as Enterprise + Atmosphere", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        places: [{
+          id: "ChIJtest",
+          businessStatus: "OPERATIONAL",
+          displayName: { text: "Test Place" },
+        }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveAndEnrich({ name: "Test Place" }, "experience"),
+    ).resolves.toMatchObject({ google_place_id: "ChIJtest" });
+
+    expect(mocks.meterUsage).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_text_search_enterprise_atmosphere",
+    );
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const mask = new Headers(init.headers).get("X-Goog-FieldMask");
+    expect(mask).toContain("places.editorialSummary");
+    expect(mask).toContain("places.generativeSummary");
+  });
+
+  it("does not meter a request when Google Places is not configured", async () => {
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPlaceDetails("ChIJtest", "status")).resolves.toBeNull();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.meterUsage).not.toHaveBeenCalled();
+  });
+});
 
 describe("pickReview", () => {
   it("preserves the selected review's author and Google Maps links", () => {

@@ -21,6 +21,10 @@ import MotionDisclosure from "@/components/ui/MotionDisclosure";
  * Children remain server-rendered and mounted so opening never refetches.
  * MotionDisclosure gives the reveal spatial continuity and makes the closed
  * panel inert, rather than snapping between display:none and visible.
+ * Costly browse surfaces may opt into `mountOnOpen`: their contents are not
+ * added to the DOM until the reader opens the section, then remain mounted so
+ * closing and reopening stays instant. This prevents a collapsed directory
+ * from quietly loading dozens of paid image requests.
  *
  * SSR-safe: server and first client render both use `defaultOpen`, so
  * there's no hydration mismatch; the stored preference is applied after
@@ -34,6 +38,7 @@ export default function CollapsibleSection({
   headingLevel,
   storageKey,
   defaultOpen = false,
+  mountOnOpen = false,
   children,
   className = "",
 }: {
@@ -51,33 +56,58 @@ export default function CollapsibleSection({
   /** localStorage key so the open/closed choice persists per section. */
   storageKey: string;
   defaultOpen?: boolean;
+  /** Delay mounting children until the section is first opened. Once mounted,
+   *  they stay mounted so a later close preserves controls and scroll state. */
+  mountOnOpen?: boolean;
   children: ReactNode;
   className?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [contentMounted, setContentMounted] = useState(
+    defaultOpen || !mountOnOpen,
+  );
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    let storedOpen: boolean | null = null;
     try {
       const stored = window.localStorage.getItem(storageKey);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate stored preference after mount; localStorage isn't readable during SSR
-      if (stored === "true" || stored === "false") setOpen(stored === "true");
+      if (stored === "true" || stored === "false") {
+        storedOpen = stored === "true";
+      }
     } catch {
       // localStorage unavailable — keep defaultOpen
     }
-    setMounted(true);
+
+    // Apply the browser-only preference after the hydration effect has
+    // completed. The microtask keeps the server and first client render
+    // identical without synchronously cascading another render from the
+    // effect body.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (storedOpen !== null) {
+        setOpen(storedOpen);
+        if (storedOpen) setContentMounted(true);
+      }
+      setMounted(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [storageKey]);
 
-  const toggle = () =>
-    setOpen((v) => {
-      const next = !v;
-      try {
-        window.localStorage.setItem(storageKey, String(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
+  const toggle = () => {
+    const next = !open;
+    if (next) setContentMounted(true);
+    setOpen(next);
+    try {
+      window.localStorage.setItem(storageKey, String(next));
+    } catch {
+      // ignore
+    }
+  };
 
   const contentId = `collapsible-${storageKey.replace(/[^a-z0-9]/gi, "-")}`;
   // When the count is aria-only, fold it into the section's accessible name
@@ -131,7 +161,7 @@ export default function CollapsibleSection({
     >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <MotionDisclosure id={contentId} open={open} innerClassName="pt-1.5">
-        {children}
+        {contentMounted ? children : null}
       </MotionDisclosure>
     </section>
   );

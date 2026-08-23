@@ -131,6 +131,7 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
 | `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
 | `GOOGLE_PLACES_API_KEY` | Place photos, enrichment, and the bounded hours refresh |
+| `GOOGLE_ROUTES_API_KEY` | Preferred API-restricted key for Routes; falls back to `GOOGLE_PLACES_API_KEY` during migration |
 | `NWS_USER_AGENT` | Required identifier for the NWS API |
 | `SENTRY_DSN` | Runtime error capture |
 | `NEXT_PUBLIC_PLAUSIBLE_SRC` | Optional override for the checked-in Frederick Radius `pa-….js` URL, mainly for a future first-party proxy |

@@ -14,11 +14,22 @@ import {
   isSameOriginMutationRequest,
   readJsonBodyWithLimit,
 } from "@/lib/origin-check";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
+const DEFAULT_PRIVATE_ROUTE_DAILY_CAP = 100;
+const MAX_PRIVATE_ROUTE_DAILY_CAP = 150;
+
+function privateRouteDailyCap(): number {
+  const raw = process.env.GOOGLE_ROUTES_PRIVATE_DAILY_CAP?.trim();
+  if (!raw || !/^\d+$/.test(raw)) return DEFAULT_PRIVATE_ROUTE_DAILY_CAP;
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed)) return DEFAULT_PRIVATE_ROUTE_DAILY_CAP;
+  return Math.min(MAX_PRIVATE_ROUTE_DAILY_CAP, Math.max(1, parsed));
+}
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: NO_STORE });
@@ -69,6 +80,18 @@ export async function POST(req: NextRequest) {
   ) {
     return json({});
   }
+
+  // Per-IP limits stop a single browser, not a distributed caller. Reserve one
+  // shared daily estimate only after all free validation. The estimate fans
+  // out to one walking Essentials element and one traffic-aware Pro element;
+  // 100/day stays inside both current monthly free allowances in a 30-day
+  // month. Database uncertainty fails closed to the existing unavailable UI.
+  const reservation = await reserveDailyUsage(
+    "budget_google_routes_private",
+    privateRouteDailyCap(),
+  );
+  if (!reservation?.reserved) return json({});
+
   return json(await privateTravelTimes(
     { lat: fromLat, lng: fromLng },
     { lat, lng },

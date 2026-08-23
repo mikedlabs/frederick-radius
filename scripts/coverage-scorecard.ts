@@ -24,7 +24,10 @@ import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
 import { isHoursFresh } from "@/lib/hours-freshness";
-import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  hoursRefreshTargetArtifact,
+  hoursRefreshTargetIdentities,
+} from "@/lib/loaders/placeRefreshIdentities";
 import {
   COVERAGE_TARGETS,
   summarizeCoverageByCategory,
@@ -184,14 +187,12 @@ const categoryCoverage = summarizeCoverageByCategory(
 const categoryLine = (category: (typeof categoryCoverage)[number]) =>
   `| ${category.name} | ${category.total} | ${category.hours} (${category.percentages.hours}%) | ${category.photo} (${category.percentages.photo}%) | ${category.copy} (${category.percentages.copy}%) | ${category.action} (${category.percentages.action}%) |`;
 
-const googleBackedSlugs = new Set(
-  PLACES.filter((place) => isGooglePlaceId(place.google_place_id)).map(
-    (place) => place.slug,
-  ),
+const hoursRefreshTargetSlugs = new Set(
+  hoursRefreshTargetIdentities().map((place) => place.slug),
 );
 const hoursArtifact = summarizeHoursRefreshArtifact(
-  hoursRefresh as Record<string, unknown>,
-  googleBackedSlugs,
+  hoursRefreshTargetArtifact(hoursRefresh as Record<string, unknown>),
+  hoursRefreshTargetSlugs,
 );
 const eventPlacement = partitionEvents(
   EVENTS,
@@ -271,7 +272,7 @@ const md = [
   "",
   "| Check | Count |",
   "| --- | ---: |",
-  `| Public Google-backed places expected in the ${hoursArtifact.cycle.days}-day cycle | ${hoursArtifact.expectedGoogleBackedPlaces} |`,
+  `| Time-sensitive food/drink places expected in the ${hoursArtifact.cycle.days}-day cycle | ${hoursArtifact.expectedGoogleBackedPlaces} |`,
   `| Snapshot rows | ${hoursArtifact.rows} |`,
   `| Rows matched to the public set | ${hoursArtifact.matchedRows} |`,
   `| Rows carrying a schedule | ${hoursArtifact.withSchedule} |`,

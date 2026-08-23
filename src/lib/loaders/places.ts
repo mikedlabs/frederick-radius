@@ -625,6 +625,23 @@ function acceptedEnrichmentIdentity(
   };
 }
 
+/**
+ * Resolve the category attached to an accepted provider identity. Keep this
+ * shared by the public decorator and paid refresh artifact so a place cannot
+ * render as a restaurant while the hours policy still sees its stale source
+ * bucket (for example, shopping).
+ */
+function resolveAcceptedPlaceCategory(
+  place: Place,
+  enrichment: Enrichment | undefined,
+): string {
+  return (
+    OV_PATCH?.[place.slug]?.category ??
+    categoryFromPrimaryType(enrichment?.primary_type) ??
+    place.category
+  );
+}
+
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = Omit<Provenance, "source"> & {
   /** Proxied photo URL (server route, key-safe) — first photo, for heroes */
@@ -930,8 +947,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   //      no name heuristic can (a coffee shop with no "coffee" in its name).
   //      Conservative: only confident Google types map; a vague type returns
   //      null and the existing category is kept.
-  const category =
-    OV_PATCH?.[p.slug]?.category ?? categoryFromPrimaryType(e.primary_type) ?? p.category;
+  const category = resolveAcceptedPlaceCategory(p, e);
   // Curated editorial voice (seed/manual) is kept. Approved, source-backed
   // Radius copy wins when present. Google summaries are intentionally NOT
   // promoted into our permanent blurb: current Google context is fetched at
@@ -1586,6 +1602,7 @@ export function isSubstantive(p: Place): boolean {
 export type PlaceRefreshIdentity = {
   slug: string;
   google_place_id: string;
+  category: string;
 };
 
 /**
@@ -1606,9 +1623,17 @@ export function canonicalPlaceRefreshIdentities(): PlaceRefreshIdentity[] {
     .filter(isSubstantive)
     .filter((place) => isValidCoord(place.geom))
     .flatMap((place) => {
-      const googlePlaceId = acceptedEnrichmentIdentity(place).googlePlaceId;
+      const acceptedIdentity = acceptedEnrichmentIdentity(place);
+      const googlePlaceId = acceptedIdentity.googlePlaceId;
       return isGooglePlaceId(googlePlaceId)
-        ? [{ slug: place.slug, google_place_id: googlePlaceId }]
+        ? [{
+            slug: place.slug,
+            google_place_id: googlePlaceId,
+            category: resolveAcceptedPlaceCategory(
+              place,
+              acceptedIdentity.enrichment,
+            ),
+          }]
         : [];
     })
     .sort((left, right) => left.slug.localeCompare(right.slug));

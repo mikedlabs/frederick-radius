@@ -27,6 +27,7 @@ import {
 import { selectRotatingStatusTargets } from "@/lib/business-status-refresh";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 import { isGooglePlaceId } from "@/lib/provenance";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,8 +78,21 @@ export async function GET(request: Request) {
   const cycleDay = Math.floor(Date.now() / 86_400_000);
   const targets = selectRotatingStatusTargets(allTargets, BATCH, cycleDay);
   const mismatches: Array<{ slug: string; name: string; current: string; google: string }> = [];
+  let checked = 0;
+  let budgetExhausted = false;
 
   for (const p of targets) {
+    // Retries and manual invocations share one real daily boundary. The route's
+    // 40-row selection cap alone cannot stop the same paid batch running twice.
+    const reservation = await reserveDailyUsage(
+      "budget_google_business_status",
+      BATCH,
+    );
+    if (!reservation?.reserved) {
+      budgetExhausted = true;
+      break;
+    }
+    checked++;
     const details = await getPlaceDetails(p.google_place_id as string, "status");
     if (!details) continue;
     const mapped = googleStatusToOperational(details.business_status);
@@ -92,7 +106,8 @@ export async function GET(request: Request) {
     enabled: true,
     cycleDay,
     catalog: allTargets.length,
-    checked: targets.length,
+    checked,
+    budgetExhausted,
     mismatches,
     note: "Add closed places to the denylist or run npm run refresh:business-status to refresh the override.",
   });

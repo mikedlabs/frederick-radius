@@ -1,10 +1,10 @@
 # Hosting & Environment Checklist
 
 > Mike's question: "Am I missing something in the containers I use to host
-> and run the app?" This is the answer — every env var the app reads,
-> WHICH host it belongs in, and why. Walk your dashboards against this.
+> and run the app?" This is the production-critical environment checklist:
+> which host each setting belongs in and why. Walk your dashboards against it.
 > Checked against the active workflows and `process.env.*` reads on
-> 2026-08-02.
+> 2026-08-23.
 >
 > **The #1 gotcha:** there are THREE separate systems, and a key in the
 > wrong one silently does nothing. They do NOT share variables:
@@ -32,6 +32,14 @@
 | `NEXT_PUBLIC_SUPABASE_URL`                                 | Vercel | Auth (magic link)                                                                                                                                                             |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`)    | Vercel | Auth client                                                                                                                                                                   |
 | `GOOGLE_PLACES_API_KEY`                                    | Vercel | Place photos + enrichment                                                                                                                                                     |
+| `GOOGLE_ROUTES_API_KEY`                                    | Vercel | Preferred server-only key restricted to Routes. The app falls back to `GOOGLE_PLACES_API_KEY` during migration, but a separate key allows an independent Routes quota.       |
+| `GOOGLE_GEOCODING_API_KEY`                                 | Vercel | Preferred server-only key restricted to Geocoding. The app falls back to `GOOGLE_PLACES_API_KEY` during migration.                                                           |
+| `GOOGLE_PHOTO_DAILY_CAP=50`                                | Vercel | Shared daily ceiling for the photo proxy and photo-health probes. The application cannot accept a value above 100.                                                          |
+| `GOOGLE_PLACE_ENRICH_DAILY_CAP=30`                         | Vercel | Shared daily ceiling for basic/on-demand place enrichment. The application cannot accept a value above 80.                                                                 |
+| `GOOGLE_PLACE_EXPERIENCE_DAILY_CAP=20`                     | Vercel | Shared daily ceiling for deliberate experience-detail requests. The application cannot accept a value above 20.                                                            |
+| `GOOGLE_GEOCODE_DAILY_CAP=50`                              | Vercel | Shared daily ceiling for uncached Google event-address geocoding. The application cannot accept a value above 100.                                                          |
+| `GOOGLE_ROUTES_PRIVATE_DAILY_CAP=100`                      | Vercel | Shared daily ceiling for device-origin travel-time estimates. The application cannot accept a value above 150.                                                             |
+| `HOURS_REFRESH_RUN_CAP=80`                                 | Vercel | Shared Eastern-day ceiling for the paid hours job; scheduled runs, retries, and backfills all consume the same operator-lowerable allowance, capped at an immutable 80 calls. |
 | `HOURS_REFRESH_CRON=1`                                     | Vercel | Runs the paid, six-day rolling hours refresh into Postgres. The seven-day publication boundary remains unchanged; without the cron, stale schedules remain safely withheld.   |
 | `RADIUS_SEARCH_CRON=1`                                     | Vercel | Runs the bounded, idempotent full-text place-index refresh used by Ask Radius.                                                                                                |
 | `RADIUS_POSTGIS_SYNC=1`                                    | Vercel | Refreshes the private PostGIS place mirror after migration `0037` is applied and verified. Keep off before then.                                                              |

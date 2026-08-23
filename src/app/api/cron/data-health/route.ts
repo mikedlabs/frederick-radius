@@ -47,7 +47,10 @@ import {
 import { readStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-store";
 import { evaluateFoodTruckScheduleHealth } from "@/lib/quality/food-truck-schedule-health";
 import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
-import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  hoursRefreshTargetArtifact,
+  hoursRefreshTargetIdentities,
+} from "@/lib/loaders/placeRefreshIdentities";
 import { withDeadlineOutcome } from "@/lib/promise-deadline";
 import {
   DATA_HEALTH_FEEDS_RUN,
@@ -119,14 +122,14 @@ async function runDataHealthReport() {
   // current fresh-hours eligibility, the confidence distribution, and the
   // count of open/closed assertions whose hours verification is stale.
   const trust = computePlaceTrustReport();
-  const googleBackedSlugs = new Set(
-    clientPlaces
-      .filter((place) => isGooglePlaceId(place.google_place_id))
-      .map((place) => place.slug),
+  const hoursRefreshTargetSlugs = new Set(
+    hoursRefreshTargetIdentities().map((place) => place.slug),
   );
   const hoursArtifact = summarizeHoursRefreshArtifact(
-    HOURS_REFRESH_RAW as Record<string, unknown>,
-    googleBackedSlugs,
+    hoursRefreshTargetArtifact(
+      HOURS_REFRESH_RAW as Record<string, unknown>,
+    ),
+    hoursRefreshTargetSlugs,
   );
 
   // Coordinate-divergence regression gate: a curated place whose
@@ -405,9 +408,18 @@ async function runDataHealthReport() {
     places: clientPlaces.length,
     dedup: { clusters, folded },
     hours: {
+      // Whole-catalog coverage remains visible, while the release gate tracks
+      // the exact food/drink population maintained by the paid six-day job.
       fresh_count: trust.fresh_hours.fresh_count,
       total_count: trust.fresh_hours.total_count,
       coverage_pct: trust.fresh_hours.coverage_pct,
+      eligibility_fresh_count:
+        trust.fresh_hours.eligibility_fresh_count,
+      eligibility_total_count:
+        trust.fresh_hours.eligibility_total_count,
+      eligibility_coverage_pct:
+        trust.fresh_hours.eligibility_coverage_pct,
+      eligibility_scope: trust.fresh_hours.eligibility_scope,
       target_count: trust.fresh_hours.target_count,
       target_pct: trust.fresh_hours.target_pct,
       open_now_eligible: trust.fresh_hours.open_now_eligible,
@@ -432,7 +444,7 @@ async function runDataHealthReport() {
         lag_hours: hoursPromotionHealth.lagHours,
         max_lag_hours: hoursPromotionHealth.maxLagHours,
       },
-      note: "Only current verified schedules count. Stored or historical schedules do not.",
+      note: "Whole-catalog coverage is reported separately. Open Now health is gated only on current verified schedules in the canonical paid food/drink refresh scope. Stored or historical schedules do not count.",
     },
     trust: {
       provenance_coverage_pct: trust.provenance.coverage_pct,

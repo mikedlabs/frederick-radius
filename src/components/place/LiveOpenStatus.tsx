@@ -5,6 +5,10 @@ import type { Hours } from "@/data/places";
 import type { OpenStatus } from "@/lib/hours";
 import { getOpenStatus } from "@/lib/hours";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
+import {
+  loadLivePlaceHours,
+  type LivePlaceHoursData,
+} from "@/components/place/livePlaceHours";
 
 /**
  * LiveOpenStatus — the detail hero's open/closed line, recomputed against
@@ -23,23 +27,45 @@ import OpenClosedDot from "@/components/place/OpenClosedDot";
  * is nothing fresher to compute from.
  */
 export default function LiveOpenStatus({
+  slug,
   hours,
   verified,
   initial,
 }: {
+  slug?: string;
   hours?: Hours;
   verified: boolean;
   initial: OpenStatus;
 }) {
   const [status, setStatus] = useState<OpenStatus>(initial);
+  const [live, setLive] = useState<LivePlaceHoursData | null>(null);
+  const currentHours = live?.structured_hours ?? hours;
+  const currentVerified = live?.structured_hours ? true : verified;
 
   useEffect(() => {
-    if (!hours) return;
-    const tick = () => setStatus(getOpenStatus(hours, { verified }, new Date()));
+    if (!slug || verified) return;
+    let cancelled = false;
+    loadLivePlaceHours(slug)
+      .then((value) => {
+        if (cancelled || !value.structured_hours || !value.open_status) return;
+        setLive(value);
+        setStatus(value.open_status);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [slug, verified]);
+
+  useEffect(() => {
+    if (!currentHours) return;
+    const tick = () => setStatus(getOpenStatus(
+      currentHours,
+      { verified: currentVerified },
+      new Date(),
+    ));
     tick();
     const id = window.setInterval(tick, 60_000);
     return () => window.clearInterval(id);
-  }, [hours, verified]);
+  }, [currentHours, currentVerified]);
 
   return <OpenClosedDot status={status} />;
 }

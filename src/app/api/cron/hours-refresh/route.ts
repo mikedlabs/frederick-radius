@@ -1,11 +1,10 @@
 /**
  * Rolling hours refresh (data brief, Phase 1, section 4.3).
  *
- * Walks the Google-backed catalog on a six-day cycle: each run handles the
- * slice of slugs whose hash lands on today's cycle day. Every canonical
- * record with a Google place ID participates, including the discovered
- * tail. Field mask scoped to hours and business status only, so every
- * call stays on the cheapest applicable SKU.
+ * Walks time-sensitive food and drink businesses on a six-day cycle: each
+ * run handles the slice of eligible slugs whose hash lands on today's cycle
+ * day. Other categories keep honest unknown hours after existing evidence
+ * ages out instead of consuming recurring Google lookups.
  *
  * Results upsert into the place_hours_refresh table. The loader does not
  * read the table at request time (the place pipeline is synchronous);
@@ -32,19 +31,17 @@ import {
   assessHoursRefreshRun,
   HOURS_REFRESH_CYCLE_DAYS,
   resolveHoursRefreshCycleSelection,
+  resolveHoursRefreshRunCap,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
 import { isGooglePlaceId } from "@/lib/provenance";
 import { monitorCronResponse } from "@/lib/observability/cron-monitor";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Canonical pre-status targets are verified unique by Google ID before
-// bucketing. Keep headroom so a deterministic slice can never strand the tail
-// forever.
-const BATCH_CAP = 400;
 const CONCURRENCY = 6;
 
 export async function GET(request: Request) {
@@ -127,10 +124,11 @@ async function runHoursRefresh(request: Request) {
   }
 
   // Today's slice of the cycle. This provider snapshot is deliberately
-  // upstream of live status and season: a closed or off-season place remains
-  // refreshable, which is how a later reopening is discovered. The cap still
-  // provides a hard upper bound on paid calls.
+  // upstream of live status and season: an eligible closed or off-season
+  // food/drink place remains refreshable, while categories outside the hours
+  // policy stay out of paid calls. The cap is an immutable upper bound of 80.
   const today = cycle.cycleDay;
+  const runCap = resolveHoursRefreshRunCap();
   const places = placeRefreshIdentities();
   const placesWithGoogleId = places.filter((place) =>
     Boolean(place.google_place_id),
@@ -165,7 +163,7 @@ async function runHoursRefresh(request: Request) {
       { status: 503 },
     );
   }
-  const targets = eligibleTargets.slice(0, BATCH_CAP);
+  const targets = eligibleTargets.slice(0, runCap);
   const deferred = eligibleTargets.length - targets.length;
 
   // A deterministic bucket that exceeds the cap would strand the same tail on
@@ -187,6 +185,7 @@ async function runHoursRefresh(request: Request) {
         catalog: places.length,
         validGoogleIds: validGooglePlaces.length,
         invalidGoogleIds,
+        runCap,
         eligible: eligibleTargets.length,
         targeted: targets.length,
         deferred,
@@ -199,6 +198,7 @@ async function runHoursRefresh(request: Request) {
   const refreshedAt = new Date();
   let written = 0;
   let withHours = 0;
+  let budgetBlocked = 0;
   const failures: string[] = [];
 
   // A six-wide pool keeps a 300-second function from timing out on the full
@@ -209,8 +209,21 @@ async function runHoursRefresh(request: Request) {
     const outcomes = await Promise.all(
       batch.map(async (p) => {
         try {
+          // Vercel may retry a cron and an authenticated operator may request
+          // a missed cycle bucket. Share the operator-selected, immutable-
+          // maximum daily allowance across every invocation instead of
+          // resetting the lower run cap on each request.
+          const reservation = await reserveDailyUsage(
+            "budget_google_hours_refresh",
+            runCap,
+          );
+          if (!reservation?.reserved) {
+            return { ok: false, withHours: false, budgetBlocked: true };
+          }
           const details = await getPlaceDetails(p.google_place_id as string, "hours");
-          if (!details) return { ok: false, withHours: false };
+          if (!details) {
+            return { ok: false, withHours: false, budgetBlocked: false };
+          }
           await db
             .insert(placeHoursRefresh)
             .values({
@@ -232,9 +245,10 @@ async function runHoursRefresh(request: Request) {
           return {
             ok: true,
             withHours: Boolean(details.weekday_hours?.length),
+            budgetBlocked: false,
           };
         } catch {
-          return { ok: false, withHours: false };
+          return { ok: false, withHours: false, budgetBlocked: false };
         }
       }),
     );
@@ -243,7 +257,10 @@ async function runHoursRefresh(request: Request) {
         written++;
         if (outcome.withHours) withHours++;
       }
-      else failures.push(batch[index].slug);
+      else {
+        if (outcome.budgetBlocked) budgetBlocked++;
+        failures.push(batch[index].slug);
+      }
     });
   }
 
@@ -262,11 +279,13 @@ async function runHoursRefresh(request: Request) {
       catalog: places.length,
       validGoogleIds: validGooglePlaces.length,
       invalidGoogleIds,
+      runCap,
       eligible: eligibleTargets.length,
       targeted: targets.length,
       written,
       withHours,
       failed: failures.length,
+      budgetBlocked,
       failures: failures.slice(0, 10),
       ...(health.error ? { error: health.error } : {}),
       note: health.healthy

@@ -47,6 +47,7 @@ describe("Google Routes usage metering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.routeCache.clear();
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-google-key");
     vi.stubGlobal("fetch", mocks.fetch);
   });
@@ -57,6 +58,7 @@ describe("Google Routes usage metering", () => {
   });
 
   it("skips both Google and the meter when configuration is missing", async () => {
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "");
 
     await expect(
@@ -64,6 +66,27 @@ describe("Google Routes usage metering", () => {
     ).resolves.toEqual([]);
     expect(mocks.fetch).not.toHaveBeenCalled();
     expect(mocks.meterUsage).not.toHaveBeenCalled();
+  });
+
+  it("prefers a dedicated Routes key while preserving the Places-key fallback", async () => {
+    mocks.fetch.mockResolvedValue(matrixResponse([]));
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "dedicated-routes-key");
+
+    await computePrivateMatrix(ORIGIN, [DESTINATION], "WALK");
+
+    const [, dedicatedInit] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(dedicatedInit.headers).get("X-Goog-Api-Key")).toBe(
+      "dedicated-routes-key",
+    );
+
+    mocks.fetch.mockClear();
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "");
+    await computePrivateMatrix(ORIGIN, [DESTINATION], "WALK");
+
+    const [, fallbackInit] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(fallbackInit.headers).get("X-Goog-Api-Key")).toBe(
+      "test-google-key",
+    );
   });
 
   it("skips both Google and the meter when there are no destinations", async () => {
@@ -91,7 +114,10 @@ describe("Google Routes usage metering", () => {
     ]);
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("google_routes_matrix");
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_routes_matrix_pro",
+      1,
+    );
 
     const [, init] = mocks.fetch.mock.calls[0] as [string, RequestInit];
     expect(init.method).toBe("POST");
@@ -109,7 +135,10 @@ describe("Google Routes usage metering", () => {
     ).resolves.toEqual([]);
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("google_routes_matrix");
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_routes_matrix_essentials",
+      1,
+    );
   });
 
   it("records both 1x1 matrices used for walk and drive travel times", async () => {
@@ -143,11 +172,13 @@ describe("Google Routes usage metering", () => {
     expect(mocks.meterUsage).toHaveBeenCalledTimes(2);
     expect(mocks.meterUsage).toHaveBeenNthCalledWith(
       1,
-      "google_routes_matrix",
+      "google_routes_matrix_essentials",
+      1,
     );
     expect(mocks.meterUsage).toHaveBeenNthCalledWith(
       2,
-      "google_routes_matrix",
+      "google_routes_matrix_pro",
+      1,
     );
   });
 
@@ -168,7 +199,27 @@ describe("Google Routes usage metering", () => {
 
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("google_routes_matrix");
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_routes_matrix_essentials",
+      1,
+    );
+  });
+
+  it("meters matrix elements rather than only the HTTP request", async () => {
+    const destinations = [
+      DESTINATION,
+      { lat: 39.418, lng: -77.405 },
+      { lat: 39.42, lng: -77.4 },
+    ];
+    mocks.fetch.mockResolvedValue(matrixResponse([]));
+
+    await computePrivateMatrix(ORIGIN, destinations, "WALK");
+
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.meterUsage).toHaveBeenCalledWith(
+      "google_routes_matrix_essentials",
+      destinations.length,
+    );
   });
 
   it("never persists a user-specific origin in the application route cache", async () => {

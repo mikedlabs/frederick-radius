@@ -391,6 +391,16 @@ describe("scheduled data workflow contracts", () => {
     expect(paidEnrichment).toBeGreaterThan(reviewGate);
   });
 
+  it("gives every scheduled Google enrichment run an immutable request ceiling", () => {
+    const workflow = workflowText("enrich-places.yml");
+
+    expect(workflow).toContain("Maximum Google requests for this reviewed batch (1-500)");
+    expect(workflow).toContain('REQUEST_LIMIT: ${{ inputs.limit || \'100\' }}');
+    expect(workflow).toContain('[ "$REQUEST_LIMIT" -gt 500 ]');
+    expect(workflow).toContain('--live --confirm --limit "$REQUEST_LIMIT"');
+    expect(workflow).not.toContain("--max-cost");
+  });
+
   it("bounds manual official commerce scans to the workflow runtime budget", () => {
     const workflow = workflowText("refresh-commerce-links.yml");
 

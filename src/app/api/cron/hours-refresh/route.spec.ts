@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HOURS_REFRESH_CYCLE_DAYS,
+  HOURS_REFRESH_MAX_RUN_CAP,
   hoursRefreshCycleDay,
 } from "@/lib/hours-refresh-targets";
 
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   getPlaceDetails: vi.fn(),
   googlePlacesConfigured: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/loaders/placeRefreshIdentities", () => ({
@@ -21,6 +23,9 @@ vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
   googlePlacesConfigured: mocks.googlePlacesConfigured,
 }));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
+}));
 
 import { GET } from "./route";
 
@@ -28,12 +33,24 @@ const NOW = new Date("2026-07-26T08:00:00.000Z");
 const cycleDay =
   Math.floor(NOW.getTime() / 86_400_000) % HOURS_REFRESH_CYCLE_DAYS;
 
-function slugForCycle(day = cycleDay) {
-  for (let index = 0; index < 100; index++) {
-    const slug = `hours-route-place-${index}`;
-    if (hoursRefreshCycleDay(slug) === day) return slug;
+function slugsForCycle(
+  count: number,
+  day = cycleDay,
+  prefix = "hours-route-place",
+) {
+  const slugs: string[] = [];
+  for (let index = 0; index < 100_000 && slugs.length < count; index++) {
+    const slug = `${prefix}-${index}`;
+    if (hoursRefreshCycleDay(slug) === day) slugs.push(slug);
   }
-  throw new Error("Unable to build a deterministic hours test slug.");
+  if (slugs.length !== count) {
+    throw new Error("Unable to build deterministic hours test slugs.");
+  }
+  return slugs;
+}
+
+function slugForCycle(day = cycleDay) {
+  return slugsForCycle(1, day)[0];
 }
 
 function request(query = "") {
@@ -73,10 +90,12 @@ describe("GET /api/cron/hours-refresh", () => {
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.HOURS_REFRESH_CRON = "1";
     mocks.googlePlacesConfigured.mockReturnValue(true);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
     mocks.placeRefreshIdentities.mockReturnValue([
       {
         slug: slugForCycle(),
         google_place_id: "ChIJ-hours-route-test",
+        category: "restaurant",
       },
     ]);
   });
@@ -85,6 +104,7 @@ describe("GET /api/cron/hours-refresh", () => {
     vi.useRealTimers();
     delete process.env.CRON_SECRET;
     delete process.env.HOURS_REFRESH_CRON;
+    delete process.env.HOURS_REFRESH_RUN_CAP;
   });
 
   it("checks migration 0024 before making a paid Google call", async () => {
@@ -136,10 +156,12 @@ describe("GET /api/cron/hours-refresh", () => {
       {
         slug: "duplicate-a",
         google_place_id: "ChIJ-duplicate",
+        category: "restaurant",
       },
       {
         slug: "duplicate-b",
         google_place_id: "ChIJ-duplicate",
+        category: "restaurant",
       },
     ]);
 
@@ -161,6 +183,7 @@ describe("GET /api/cron/hours-refresh", () => {
       {
         slug: slugForCycle(),
         google_place_id: "ChIJ-hours-route-test",
+        category: "restaurant",
       },
     ]);
     mocks.getPlaceDetails.mockResolvedValue({
@@ -184,6 +207,13 @@ describe("GET /api/cron/hours-refresh", () => {
       "ChIJ-hours-route-test",
       "hours",
     );
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      HOURS_REFRESH_MAX_RUN_CAP,
+    );
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getPlaceDetails.mock.invocationCallOrder[0],
+    );
     expect(storage.values).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: slugForCycle(),
@@ -199,6 +229,129 @@ describe("GET /api/cron/hours-refresh", () => {
     );
   });
 
+  it("fails closed before Google when the shared daily allowance is exhausted", async () => {
+    mocks.getDb.mockReturnValue(db());
+    mocks.reserveDailyUsage.mockResolvedValue({
+      reserved: false,
+      count: HOURS_REFRESH_MAX_RUN_CAP,
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      targeted: 1,
+      written: 0,
+      failed: 1,
+      budgetBlocked: 1,
+    });
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      HOURS_REFRESH_MAX_RUN_CAP,
+    );
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("uses a lowered operator cap for the shared daily allowance", async () => {
+    process.env.HOURS_REFRESH_RUN_CAP = "1";
+    mocks.getDb.mockReturnValue(db());
+    mocks.getPlaceDetails.mockResolvedValue({
+      weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+      business_status: "OPERATIONAL",
+    });
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      1,
+    );
+  });
+
+  it("refreshes eligible food/drink places while leaving excluded categories unknown", async () => {
+    const [restaurantSlug, parkSlug] = slugsForCycle(
+      2,
+      cycleDay,
+      "hours-category-policy",
+    );
+    const storage = db();
+    mocks.getDb.mockReturnValue(storage);
+    mocks.placeRefreshIdentities.mockReturnValue([
+      {
+        slug: restaurantSlug,
+        google_place_id: "ChIJ-eligible-restaurant",
+        category: "restaurant",
+      },
+      {
+        slug: parkSlug,
+        google_place_id: "ChIJ-excluded-park",
+        category: "park",
+      },
+    ]);
+    mocks.getPlaceDetails.mockResolvedValue({
+      weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+      business_status: "OPERATIONAL",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      catalog: 2,
+      validGoogleIds: 2,
+      eligible: 1,
+      targeted: 1,
+      written: 1,
+    });
+    expect(mocks.getPlaceDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.getPlaceDetails).toHaveBeenCalledWith(
+      "ChIJ-eligible-restaurant",
+      "hours",
+    );
+    expect(storage.values).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: restaurantSlug }),
+    );
+    expect(storage.values).not.toHaveBeenCalledWith(
+      expect.objectContaining({ slug: parkSlug }),
+    );
+  });
+
+  it("fails before spending when an eligible bucket exceeds the hard 80-call cap", async () => {
+    const slugs = slugsForCycle(
+      HOURS_REFRESH_MAX_RUN_CAP + 1,
+      cycleDay,
+      "hours-hard-cap",
+    );
+    const storage = db();
+    process.env.HOURS_REFRESH_RUN_CAP = "9999";
+    mocks.getDb.mockReturnValue(storage);
+    mocks.placeRefreshIdentities.mockReturnValue(
+      slugs.map((slug, index) => ({
+        slug,
+        google_place_id: `ChIJ-hard-cap-${index}`,
+        category: "restaurant",
+      })),
+    );
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      runCap: HOURS_REFRESH_MAX_RUN_CAP,
+      eligible: HOURS_REFRESH_MAX_RUN_CAP + 1,
+      targeted: HOURS_REFRESH_MAX_RUN_CAP,
+      deferred: 1,
+    });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+    expect(storage.insert).not.toHaveBeenCalled();
+  });
+
   it("can recover one missed cycle bucket through an authenticated backfill", async () => {
     const backfillDay = (cycleDay + 1) % HOURS_REFRESH_CYCLE_DAYS;
     const backfillSlug = slugForCycle(backfillDay);
@@ -208,6 +361,7 @@ describe("GET /api/cron/hours-refresh", () => {
       {
         slug: backfillSlug,
         google_place_id: "ChIJ-hours-backfill-test",
+        category: "cafe",
       },
     ]);
     mocks.getPlaceDetails.mockResolvedValue({

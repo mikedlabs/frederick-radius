@@ -17,6 +17,15 @@ import { getSql } from "@/lib/db/client";
  */
 export type PaidUpstream =
   | "google_photo"
+  | "google_place_details_pro"
+  | "google_place_details_enterprise"
+  | "google_place_details_enterprise_atmosphere"
+  | "google_text_search_pro"
+  | "google_text_search_enterprise"
+  | "google_text_search_enterprise_atmosphere"
+  | "google_routes_matrix_essentials"
+  | "google_routes_matrix_pro"
+  | "google_geocode"
   | "anthropic_ask"
   | "mapbox_geocode"
   | "mapbox_directions"
@@ -31,6 +40,18 @@ export type UsageReservation = {
   reserved: boolean;
   count: number;
 };
+
+/** Internal guardrail rows share the atomic counter table but are not provider
+ * SKUs. The provider-specific meter still records the actual field-mask tier;
+ * these namespaces only prevent a public route from spending without bound. */
+export type UsageBudgetNamespace =
+  | PaidUpstream
+  | "budget_google_place_enrich_basic"
+  | "budget_google_place_enrich_experience"
+  | "budget_google_routes_private"
+  | "budget_google_geocode"
+  | "budget_google_hours_refresh"
+  | "budget_google_business_status";
 
 export type UsageIntervalLease = {
   acquired: boolean;
@@ -93,7 +114,7 @@ export async function reserveUsageIntervalLease(
  * serverless workers share one real limit instead of racing process memory.
  */
 export async function reserveDailyUsage(
-  upstream: PaidUpstream,
+  upstream: UsageBudgetNamespace,
   limit: number,
 ): Promise<UsageReservation | null> {
   if (!Number.isSafeInteger(limit) || limit <= 0) return null;

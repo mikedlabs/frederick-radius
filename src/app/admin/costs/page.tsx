@@ -3,6 +3,9 @@ import { gte } from "drizzle-orm";
 import { getDb, getSql } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
 import type { PaidUpstream } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
+import { resolveGoogleGeocodeDailyCap } from "@/lib/ingest/geocode";
+import { resolveHoursRefreshRunCap } from "@/lib/hours-refresh-targets";
 import {
   AdminShell,
   SectionLabel,
@@ -23,13 +26,12 @@ export const dynamic = "force-dynamic";
 /**
  * /admin/costs — what is incurring cost, from the app's own meter.
  *
- * usage_counters is incremented beside every PAID upstream fetch
- * (lib/usage-meter.ts). This page turns those tallies into a per-upstream
- * readout (today / 7 days / 30 days) with either an ESTIMATED dollar figure or
- * an honest capped-attempt count, plus a cost-controls checklist showing which
- * protections are actually configured. The estimates are deliberately
- * conservative labels, never a bill: the provider consoles (linked) are the
- * source of truth.
+ * usage_counters receives best-effort SKU telemetry from database-connected
+ * app paths (lib/usage-meter.ts). Awaited atomic budget rows are the spend
+ * boundary; these reporting rows are not. Maintenance and scheduled CLI runs
+ * print an explicit request/SKU preview but may not appear here. The page
+ * therefore presents an operational estimate, never a bill: the provider
+ * consoles (linked) are the source of truth.
  *
  * Composed from the shared admin kit (@/components/admin/kit) so the whole
  * /admin surface reads as one calm field guide. The metered rows and cost
@@ -59,9 +61,21 @@ type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
 /** Unit prices are estimates, not bills. Capped-attempt services deliberately do
  * not receive a made-up dollar conversion. */
 const UPSTREAMS: MeteredUpstream[] = [
-  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
+  // Global Google Maps Platform list prices and monthly free usage caps,
+  // verified 2026-08-23. Each named SKU receives its own free cap. Source:
+  // https://developers.google.com/maps/billing-and-pricing/pricing
+  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, freeMonthly: 1_000, note: "Place Details Photos SKU. The first 1,000 media requests each month are free. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
+  { key: "google_place_details_pro", label: "Google Place Details Pro", billing: "unit-estimate", per1000: 17, freeMonthly: 5_000, note: "Direct Place Details requests whose highest field is Pro, including status-only checks. The first 5,000 requests each month are free." },
+  { key: "google_place_details_enterprise", label: "Google Place Details Enterprise", billing: "unit-estimate", per1000: 20, freeMonthly: 1_000, note: "Direct Place Details requests for fields such as opening hours, rating, phone, or website. The first 1,000 requests each month are free." },
+  { key: "google_place_details_enterprise_atmosphere", label: "Google Place Details Enterprise + Atmosphere", billing: "unit-estimate", per1000: 25, freeMonthly: 1_000, note: "Direct Place Details requests for reviews, summaries, or visit-decision attributes. The first 1,000 requests each month are free." },
+  { key: "google_text_search_pro", label: "Google Text Search Pro", billing: "unit-estimate", per1000: 32, freeMonthly: 5_000, note: "Text Search requests whose highest field is Pro, including identity-safe photo resolution. The first 5,000 requests each month are free." },
+  { key: "google_text_search_enterprise", label: "Google Text Search Enterprise", billing: "unit-estimate", per1000: 35, freeMonthly: 1_000, note: "Text Search requests for fields such as opening hours, rating, phone, or website. The first 1,000 requests each month are free." },
+  { key: "google_text_search_enterprise_atmosphere", label: "Google Text Search Enterprise + Atmosphere", billing: "unit-estimate", per1000: 40, freeMonthly: 1_000, note: "Text Search requests for reviews, summaries, or visit-decision attributes. The first 1,000 requests each month are free." },
   { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
-  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Place-sheet travel time runs only after an explicit tap. Each estimate uses two 1×1 matrices (walk and traffic-aware drive); device origins are rounded and never stored in Radius's persistent cache." },
+  { key: "google_routes_matrix", label: "Google Routes matrix (legacy)", billing: "unit-estimate", per1000: 10, freeMonthly: 5_000, note: "Conservative historical estimate for the former combined counter. New requests are split by their actual Routes SKU below." },
+  { key: "google_routes_matrix_essentials", label: "Google Routes walking matrix", billing: "unit-estimate", per1000: 5, freeMonthly: 10_000, note: "Compute Route Matrix Essentials elements. Place-sheet estimates run only after an explicit tap; device origins are rounded and never stored in Radius's persistent cache." },
+  { key: "google_routes_matrix_pro", label: "Google Routes traffic-aware matrix", billing: "unit-estimate", per1000: 10, freeMonthly: 5_000, note: "Compute Route Matrix Pro elements. Traffic-aware driving triggers this tier; the app now meters it separately from walking." },
+  { key: "google_geocode", label: "Google event geocoding", billing: "unit-estimate", per1000: 5, freeMonthly: 10_000, note: "Geocoding requests for uncached event addresses. Radius reserves a shared daily attempt before each request; trusted cache hits do not reach Google." },
   { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
   { key: "mapbox_matrix", label: "Mapbox travel matrix", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Mapbox bills each returned matrix element. Within reach caches its 2–9-place shortlist for five minutes or one day, while map-search walking enrichment stays no-store." },
@@ -88,6 +102,18 @@ const BILLING_LINKS: Array<{ label: string; href: string }> = [
 
 function dayKeyEastern(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
+}
+
+function boundedGoogleDailyCap(
+  raw: string | undefined,
+  safeDefault: number,
+  maximum: number,
+): number {
+  const value = raw?.trim();
+  if (!value || !/^\d+$/.test(value)) return safeDefault;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) return safeDefault;
+  return Math.min(maximum, Math.max(1, parsed));
 }
 
 function estimatedMonthlyCost(
@@ -203,11 +229,33 @@ export default async function CostsAdmin() {
     0,
   );
   const hotCount = monthMath.filter((m) => m.hot).length;
+  const atomicGoogleCapsReady = Boolean(db && rawSql && !dbError);
+  const photoDailyCap = googlePhotoDailyCap();
+  const placeBasicDailyCap = boundedGoogleDailyCap(
+    process.env.GOOGLE_PLACE_ENRICH_DAILY_CAP,
+    30,
+    80,
+  );
+  const placeExperienceDailyCap = boundedGoogleDailyCap(
+    process.env.GOOGLE_PLACE_EXPERIENCE_DAILY_CAP,
+    20,
+    20,
+  );
+  const routeDailyCap = boundedGoogleDailyCap(
+    process.env.GOOGLE_ROUTES_PRIVATE_DAILY_CAP,
+    100,
+    150,
+  );
+  const geocodeDailyCap = resolveGoogleGeocodeDailyCap();
+  const hoursRefreshDailyCap = resolveHoursRefreshRunCap();
 
   // Cost-control posture — read live from env so the checklist is honest.
   const controls: Array<{ label: string; ok: boolean; why: string }> = [
-    { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
-    { label: "Google Maps key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Places and Routes share this deployment key. Set quota limits and billing alerts in Google Cloud." },
+    { label: "Shared per-IP rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN ? "Requests share one per-IP limiter across serverless workers." : "A bounded per-instance fallback remains active. Atomic database reservations still cap protected Google spend, but KV is needed for one shared per-IP bucket across workers." },
+    { label: "Google Places key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Place details and photos use this server-only deployment key. Restrict it to the Places APIs and set a quota in Google Cloud." },
+    { label: "Google Routes key isolation", ok: Boolean(process.env.GOOGLE_ROUTES_API_KEY), why: process.env.GOOGLE_ROUTES_API_KEY ? "Routes uses its own API-restricted key and independent Google Cloud quota." : "Routes still works through the Places-key fallback, but it cannot have an independent key restriction and quota until GOOGLE_ROUTES_API_KEY is set." },
+    { label: "Google Geocoding key isolation", ok: Boolean(process.env.GOOGLE_GEOCODING_API_KEY), why: process.env.GOOGLE_GEOCODING_API_KEY ? "Geocoding uses its own API-restricted key and independent Google Cloud quota." : "Geocoding still works through the Places-key fallback, but it cannot have an independent key restriction and quota until GOOGLE_GEOCODING_API_KEY is set." },
+    { label: "Atomic Google daily ceilings", ok: atomicGoogleCapsReady, why: atomicGoogleCapsReady ? `Shared Eastern-day reservations are active: photos ${photoDailyCap}, place basic/hours ${placeBasicDailyCap}, place experience ${placeExperienceDailyCap}, route estimates ${routeDailyCap}, geocodes ${geocodeDailyCap}, hours refresh ${hoursRefreshDailyCap}, and business status 40.` : `The database counter is unavailable, so protected Google paths fail closed instead of spending. Configured ceilings are photos ${photoDailyCap}, place basic/hours ${placeBasicDailyCap}, place experience ${placeExperienceDailyCap}, route estimates ${routeDailyCap}, geocodes ${geocodeDailyCap}, hours refresh ${hoursRefreshDailyCap}, and business status 40.` },
     { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
     { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },
     { label: "Mapbox Matrix switch", ok: process.env.MAPBOX_MATRIX_ENABLED === "1", why: "Real travel-time ranking stays off unless this dedicated switch is set to 1." },
@@ -221,10 +269,10 @@ export default async function CostsAdmin() {
       title="Usage costs"
       intro={
         <>
-          The app&rsquo;s own tally of paid calls and capped recovery attempts.
-          Metered services use rough unit estimates; attempt counters stay
-          separate from provider credits and bills. Provider consoles remain
-          the source of truth.
+          Best-effort app telemetry for paid calls and capped recovery
+          attempts. Atomic ceilings protect Google spend even if a reporting
+          write is lost. Manual and scheduled CLI runs may not appear here,
+          and provider consoles remain the source of truth.
         </>
       }
     >
@@ -233,7 +281,9 @@ export default async function CostsAdmin() {
           <Notice tone="warning">
             The usage_counters table isn&rsquo;t migrated yet. Run
             <code className="mx-1">drizzle/0017_usage_counters.sql</code> in the Supabase
-            SQL editor, then reload. Counters start filling as soon as it exists.
+            SQL editor, then reload. Protected Google paths fail closed until
+            the atomic counter is available; reporting starts filling as soon
+            as the table exists.
           </Notice>
         </div>
       )}
@@ -346,11 +396,13 @@ export default async function CostsAdmin() {
       </section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Counts record validated paid fetch attempts. Cache-aware paths exclude
-        cache hits; a few older fetch-cache counters remain an upper bound.
-        Providers can still reject or fail an attempted call, so their consoles
-        remain the billing source of truth. Unit prices are estimates pinned in
-        code (src/app/admin/costs/page.tsx); update them when provider pricing
+        Counts are best-effort telemetry for validated paid fetch attempts;
+        short-lived serverless or CLI processes can end before a reporting
+        write lands, so this view may undercount. Cache-aware paths exclude
+        cache hits, while a few older fetch-cache counters remain an upper
+        bound. Google Cloud Billing and the other provider consoles remain the
+        billing source of truth. Unit prices are estimates pinned in code
+        (src/app/admin/costs/page.tsx); update them when provider pricing
         changes. Firecrawl recovery is shown as app-side attempts and is
         excluded from dollar totals because an attempt is not the same as a
         provider credit or billable call. The month

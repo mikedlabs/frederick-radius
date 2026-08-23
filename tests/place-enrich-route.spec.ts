@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getPlaceDetails: vi.fn(),
   resolveAndEnrich: vi.fn(),
   activeManualPlaceStatusOverride: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -52,6 +53,9 @@ vi.mock("@/lib/place-status-overrides", () => ({
     override?.status === "closed_temporarily" ||
     override?.status === "closed_permanently",
 }));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
+}));
 
 import { GET } from "@/app/api/place/[slug]/enrich/route";
 
@@ -77,6 +81,7 @@ describe("GET /api/place/[slug]/enrich", () => {
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.getPlaceDetails.mockResolvedValue(null);
     mocks.activeManualPlaceStatusOverride.mockReturnValue(undefined);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   it("rejects a foreign request before a paid Google call", async () => {

@@ -197,15 +197,23 @@ function PlaceSheetContent({
     !place.phone &&
     !place.website,
   );
+  const automaticEnrichmentMode = needsBasicEnrichment
+    ? "basic"
+    : !place.hours_verified
+      ? "hours"
+      : null;
   useEffect(() => {
-    if (!needsBasicEnrichment) return;
+    if (!automaticEnrichmentMode) return;
     let cancelled = false;
-    fetch(`/api/place/${place.slug}/enrich?mode=basic`, { cache: "no-store" })
+    fetch(
+      `/api/place/${place.slug}/enrich?mode=${automaticEnrichmentMode}`,
+      { cache: "no-store" },
+    )
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setExtra(d); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [needsBasicEnrichment, place.slug]);
+  }, [automaticEnrichmentMode, place.slug]);
 
   // Client-safe place rows intentionally omit the large attribution object.
   // Fetch it only for the one photo the user opens, preserving the complete
@@ -281,9 +289,13 @@ function PlaceSheetContent({
       placeGoogleMapsUri: googleMapsUri,
     };
   });
-  const hoursLines = place.google_hours?.length
-    ? place.google_hours
-    : (extra?.hours ?? []);
+  const hoursLines = extra?.hours?.length
+    ? extra.hours
+    : (place.google_hours ?? []);
+  const effectiveOpenStatus = extra?.open_status ?? place.open_status;
+  const effectiveHoursCheckedAt = extra?.hours_checked_at ?? (
+    place.hours_verified ? place.hours_updated_at : undefined
+  );
   const effectivePlace = {
     ...place,
     phone: place.phone ?? extra?.phone,
@@ -468,7 +480,7 @@ function PlaceSheetContent({
            *  data row. Kept compact so the next block (the trust pill
            *  cluster) reads as a single thought. */}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
-            <OpenClosedDot status={place.open_status} />
+            <OpenClosedDot status={effectiveOpenStatus} />
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
                 <span style={{ color: "var(--app-accent-press)" }}>★</span>
@@ -496,8 +508,8 @@ function PlaceSheetContent({
            *  The previous layout stacked three tiny rows on top of
            *  each other; this reads as one trust statement. */}
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <TrustChip signal={placeHoursTrust(place.open_status)} />
-            {place.google_verified && (
+            <TrustChip signal={placeHoursTrust(effectiveOpenStatus)} />
+            {(place.google_verified || Boolean(extra?.hours_checked_at)) && (
               <>
                 <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
@@ -509,11 +521,11 @@ function PlaceSheetContent({
             <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
             <FreshnessChip
               iso={
-                place.hours_verified && place.hours_updated_at
-                  ? place.hours_updated_at
+                effectiveHoursCheckedAt
+                  ? effectiveHoursCheckedAt
                   : place.last_verified_at
               }
-              subject={place.hours_verified && place.hours_updated_at ? "Hours" : "Listing"}
+              subject={effectiveHoursCheckedAt ? "Hours" : "Listing"}
             />
           </div>
 

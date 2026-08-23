@@ -3,10 +3,18 @@
  * initial audit pass (Stern Group, New Horizon Title, Creekside
  * House, Ben & Jerry's, Rick Ridgely). Unbiased search to confirm
  * whether the bias-circle pulled an unrelated business.
+ *
+ * Plan: npm exec tsx scripts/audit-dfp-mash-followup.ts
+ * Live: GOOGLE_PLACES_API_KEY=... npm exec tsx scripts/audit-dfp-mash-followup.ts -- --live --confirm --limit 9
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveAndEnrich, googlePlacesConfigured } from "@/lib/integrations/google-places";
+import {
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 function loadEnvLocal() {
   try {
@@ -37,13 +45,37 @@ const QUERIES = [
 ];
 
 async function main() {
+  const run = parseManualGoogleRun(process.argv.slice(2), {
+    defaultLimit: QUERIES.length,
+    maxLimit: QUERIES.length,
+  });
+  const batch = QUERIES.slice(0, run.limit);
+  console.log("\nDFP mash follow-up audit");
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(
+    googleCostPreview({
+      calls: batch.length,
+      pricePerThousandUsd: 35,
+      sku: "Text Search Enterprise",
+    }),
+  );
+  if (run.dryRun) {
+    console.log("DRY RUN — no API calls and no files changed.");
+    console.log(
+      "Add --live --confirm --limit N after reviewing the request ceiling.\n",
+    );
+    return;
+  }
   if (!googlePlacesConfigured()) {
-    console.error("GOOGLE_PLACES_API_KEY missing.");
+    console.error("GOOGLE_PLACES_API_KEY missing — aborting (no spend).");
     process.exit(1);
   }
+  const callBudget = createManualGoogleCallBudget(run.limit);
   const out: Array<Record<string, unknown>> = [];
-  for (const q of QUERIES) {
-    const enr = await resolveAndEnrich({ name: q.name });
+  for (const q of batch) {
+    if (!callBudget.reserve()) break;
+    const enr = await resolveAndEnrich({ name: q.name }, "lean");
     console.log(
       `${q.slug.padEnd(40)} "${q.name}" → ${enr?.display_name ?? "(no result)"} | ${enr?.formatted_address ?? ""} | status=${enr?.business_status ?? "?"}`,
     );

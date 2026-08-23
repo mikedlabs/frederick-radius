@@ -19,6 +19,7 @@ import {
   withMapSearchQuery,
 } from "@/lib/map-return";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -138,19 +139,27 @@ function SearchResultRow({
   divided,
   showBranchAddress,
   mapReturnTo,
+  allowPaidPhoto = false,
 }: {
   hit: SearchHit;
   dominantType?: string;
   divided: boolean;
   showBranchAddress?: boolean;
   mapReturnTo?: string;
+  /** A submitted search is a deliberate action, but loading dozens of Google
+   * photos would still be wasteful. Only the first few ranked results opt in;
+   * live typeahead and the long tail keep their category marks. */
+  allowPaidPhoto?: boolean;
 }) {
   const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
   const href =
     hit.type === "place" ? withMapReturnTo(d.href, mapReturnTo) : d.href;
   const placePhoto =
-    hit.type === "place" ? hit.place.google_photo_url : undefined;
+    hit.type === "place"
+      ? browseSafePhotoUrl(hit.place.hero_image) ??
+        (allowPaidPhoto ? hit.place.google_photo_url : undefined)
+      : undefined;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <Link
@@ -499,6 +508,7 @@ export default async function SearchPage({
                 hit={hit}
                 dominantType={dominantType}
                 divided={index > 0}
+                allowPaidPhoto={index < 4}
                 showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                 mapReturnTo={mapReturnHref ?? undefined}
               />
@@ -517,6 +527,7 @@ export default async function SearchPage({
                     hit={hit}
                     dominantType={dominantType}
                     divided={index > 0}
+                    allowPaidPhoto={false}
                     showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                     mapReturnTo={mapReturnHref ?? undefined}
                   />

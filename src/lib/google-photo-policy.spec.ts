@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  browseSafePhotoUrl,
   googlePhotoNameFromProxyUrl,
+  isPaidGooglePhotoUrl,
   publishableGooglePhotoAttribution,
   publishableGooglePhotoNames,
 } from "./google-photo-policy";
@@ -33,5 +35,16 @@ describe("Google photo publishing policy", () => {
       google_maps_uri: "https://www.google.com/maps/photos/different",
       authors: [],
     }])).toEqual([]);
+  });
+
+  it("keeps paid Google imagery out of automatic browse surfaces", () => {
+    const proxy = `/api/place-photo?name=${encodeURIComponent(photoName)}&w=800`;
+    expect(isPaidGooglePhotoUrl(proxy)).toBe(true);
+    expect(isPaidGooglePhotoUrl("https://places.googleapis.com/v1/photo/media")).toBe(true);
+    expect(isPaidGooglePhotoUrl("https://lh3.googleusercontent.com/photo")).toBe(true);
+    expect(browseSafePhotoUrl(proxy, "/images/owned/coffee.jpg")).toBe(
+      "/images/owned/coffee.jpg",
+    );
+    expect(browseSafePhotoUrl(proxy)).toBeUndefined();
   });
 });

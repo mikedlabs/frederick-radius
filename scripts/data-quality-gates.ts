@@ -42,7 +42,15 @@ import {
   MANUAL_PLACE_STATUS_OVERRIDES,
 } from "@/lib/place-status-overrides";
 import { isHoursFresh } from "@/lib/hours-freshness";
-import { HOURS_REFRESH_CYCLE_DAYS } from "@/lib/hours-refresh-targets";
+import {
+  HOURS_REFRESH_CYCLE_DAYS,
+  HOURS_REFRESH_MAX_RUN_CAP,
+  selectHoursRefreshTargets,
+} from "@/lib/hours-refresh-targets";
+import {
+  hoursRefreshTargetIdentities,
+  placeRefreshIdentities,
+} from "@/lib/loaders/placeRefreshIdentities";
 import { classifyDescription } from "@/lib/copy-quality";
 import {
   decisionCopyCounts,
@@ -155,18 +163,50 @@ const GATES: Gate[] = [
     },
   },
   {
-    id: "place_hours_refresh_reach",
+    id: "google_place_identity_coverage",
     severity: "high",
-    audit: "DQ-001/DQ-003 pipeline capacity",
+    audit: "DQ-020 provider identity coverage",
     run: () => {
-      const refreshable = PLACES.filter((place) =>
+      const identified = PLACES.filter((place) =>
         isGooglePlaceId(place.google_place_id),
       ).length;
-      const r = pct(refreshable, PLACES.length);
+      const r = pct(identified, PLACES.length);
       return {
         pass: r >= 0.6,
-        observed: `${fmtPct(r)} (${refreshable} of ${PLACES.length}) can enter the ${HOURS_REFRESH_CYCLE_DAYS}-day Google refresh cycle`,
-        expect: ">= 60% so the refresh pipeline can satisfy the strict hours gate",
+        observed: `${fmtPct(r)} (${identified} of ${PLACES.length}) public places carry a usable Google identity`,
+        expect: ">= 60% provider identity coverage (paid refresh scope reported separately)",
+      };
+    },
+  },
+  {
+    id: "place_hours_refresh_reach",
+    severity: "high",
+    audit: "DQ-001/DQ-003 paid pipeline capacity",
+    run: () => {
+      const identities = placeRefreshIdentities();
+      const targets = hoursRefreshTargetIdentities();
+      const buckets = Array.from(
+        { length: HOURS_REFRESH_CYCLE_DAYS },
+        (_, day) =>
+          selectHoursRefreshTargets(
+            identities,
+            day,
+            HOURS_REFRESH_MAX_RUN_CAP,
+          ),
+      );
+      const scheduled = buckets.flat();
+      const scheduledSlugs = new Set(scheduled.map((place) => place.slug));
+      const largestBucket = Math.max(
+        0,
+        ...buckets.map((bucket) => bucket.length),
+      );
+      const complete =
+        scheduled.length === targets.length &&
+        scheduledSlugs.size === targets.length;
+      return {
+        pass: complete && largestBucket <= HOURS_REFRESH_MAX_RUN_CAP,
+        observed: `${scheduled.length} of ${targets.length} canonical food/drink places enter the paid ${HOURS_REFRESH_CYCLE_DAYS}-day cycle; largest bucket ${largestBucket} of ${HOURS_REFRESH_MAX_RUN_CAP}`,
+        expect: `100% of the time-sensitive food/drink policy scope, with every daily bucket <= ${HOURS_REFRESH_MAX_RUN_CAP}`,
       };
     },
   },

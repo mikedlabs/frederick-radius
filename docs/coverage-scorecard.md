@@ -7,11 +7,11 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-08-22 — 1567 places._
+_Generated 2026-08-23 — 1570 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 851 | 677 (80%) | 634 (75%) | 709 (83%) | 709 (83%) | 50 | 295 |
+| Frederick | 854 | 680 (80%) | 640 (75%) | 710 (83%) | 710 (83%) | 50 | 296 |
 | Thurmont | 110 | 75 (68%) | 66 (60%) | 100 (91%) | 99 (90%) | 3 | 30 |
 | Brunswick | 97 | 65 (67%) | 56 (58%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 64 (74%) | 81 (94%) | 78 (91%) | 2 | 29 |
@@ -24,7 +24,7 @@ _Generated 2026-08-22 — 1567 places._
 | Burkittsville | 30 | 15 (50%) | 14 (47%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Urbana | 29 | 20 (69%) | 22 (76%) | 23 (79%) | 25 (86%) | 2 | 9 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1567** | 1161 (74%) | 1085 (69%) | 1340 (86%) | 1327 (85%) | **79** | **500** |
+| **Total** | **1570** | 1164 (74%) | 1091 (69%) | 1341 (85%) | 1328 (85%) | **79** | **501** |
 
 ## Coverage by category
 
@@ -34,43 +34,43 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Churches & worship | 161 | 82 (50.9%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
-| Services | 52 | 39 (75%) | 38 (73.1%) | 0 (0%) | 48 (92.3%) |
-| Yoga & fitness | 41 | 27 (65.9%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
-| Salon & barber | 27 | 22 (81.5%) | 22 (81.5%) | 0 (0%) | 26 (96.3%) |
-| Massage | 18 | 16 (88.9%) | 15 (83.3%) | 0 (0%) | 18 (100%) |
+| Salon & barber | 28 | 22 (78.6%) | 22 (78.6%) | 0 (0%) | 27 (96.4%) |
+| Massage | 19 | 16 (84.2%) | 15 (78.9%) | 0 (0%) | 19 (100%) |
 | Antiques | 15 | 13 (86.7%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
 | Playgrounds | 13 | 4 (30.8%) | 8 (61.5%) | 0 (0%) | 5 (38.5%) |
 | Spas | 12 | 9 (75%) | 11 (91.7%) | 0 (0%) | 11 (91.7%) |
 | Parking | 10 | 0 (0%) | 7 (70%) | 2 (20%) | 10 (100%) |
 | Distilleries | 8 | 6 (75%) | 7 (87.5%) | 0 (0%) | 8 (100%) |
-| Government | 8 | 6 (75%) | 5 (62.5%) | 0 (0%) | 8 (100%) |
 | Public safety | 5 | 0 (0%) | 4 (80%) | 0 (0%) | 5 (100%) |
 | Pharmacies | 3 | 3 (100%) | 3 (100%) | 0 (0%) | 3 (100%) |
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Shopping | 188 | 158 (84%) | 161 (85.6%) | 2 (1.1%) | 178 (94.7%) |
-| Wellness | 134 | 106 (79.1%) | 107 (79.9%) | 3 (2.2%) | 132 (98.5%) |
-| Civic & public | 75 | 39 (52%) | 62 (82.7%) | 2 (2.7%) | 66 (88%) |
+| Churches & worship | 162 | 82 (50.6%) | 129 (79.6%) | 1 (0.6%) | 149 (92%) |
+| Shopping | 176 | 158 (89.8%) | 161 (91.5%) | 2 (1.1%) | 169 (96%) |
+| Yoga & fitness | 42 | 27 (64.3%) | 40 (95.2%) | 1 (2.4%) | 40 (95.2%) |
+| Civic & public | 75 | 39 (52%) | 62 (82.7%) | 2 (2.7%) | 67 (89.3%) |
 | Galleries | 27 | 14 (51.9%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
 | Live music | 23 | 7 (30.4%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
+| Wellness | 137 | 106 (77.4%) | 108 (78.8%) | 6 (4.4%) | 135 (98.5%) |
 | Farms & pick-your-own | 22 | 9 (40.9%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Lodging | 34 | 2 (5.9%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
 | Libraries | 14 | 11 (78.6%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
-| Bakeries | 36 | 29 (80.6%) | 33 (91.7%) | 3 (8.3%) | 33 (91.7%) |
 | Bars | 24 | 21 (87.5%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
 | Book stores | 12 | 10 (83.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
 | Theaters | 12 | 9 (75%) | 11 (91.7%) | 1 (8.3%) | 10 (83.3%) |
 | Golf | 7 | 3 (42.9%) | 3 (42.9%) | 6 (85.7%) | 1 (14.3%) |
+| Services | 59 | 45 (76.3%) | 38 (64.4%) | 6 (10.2%) | 55 (93.2%) |
 | Ice cream & treats | 28 | 26 (92.9%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
+| Bakeries | 36 | 29 (80.6%) | 33 (91.7%) | 4 (11.1%) | 33 (91.7%) |
 | Parks | 137 | 70 (51.1%) | 119 (86.9%) | 16 (11.7%) | 99 (72.3%) |
-| Coffee | 41 | 31 (75.6%) | 36 (87.8%) | 5 (12.2%) | 35 (85.4%) |
+| Coffee | 40 | 31 (77.5%) | 36 (90%) | 5 (12.5%) | 34 (85%) |
 | Trails | 22 | 4 (18.2%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
-| Family | 39 | 31 (79.5%) | 32 (82.1%) | 6 (15.4%) | 39 (100%) |
 | Pizza | 18 | 17 (94.4%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
-| Restaurants | 175 | 164 (93.7%) | 159 (90.9%) | 35 (20%) | 168 (96%) |
+| Family | 39 | 31 (79.5%) | 32 (82.1%) | 7 (17.9%) | 39 (100%) |
+| Government | 10 | 6 (60%) | 5 (50%) | 2 (20%) | 10 (100%) |
 | Museums | 18 | 8 (44.4%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
-| Markets | 57 | 53 (93%) | 53 (93%) | 20 (35.1%) | 56 (98.2%) |
+| Restaurants | 175 | 164 (93.7%) | 159 (90.9%) | 40 (22.9%) | 168 (96%) |
+| Markets | 57 | 53 (93%) | 53 (93%) | 21 (36.8%) | 56 (98.2%) |
 | Breweries | 16 | 13 (81.3%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
 | Tours & rides | 2 | 1 (50%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Auto care | 16 | 9 (56.3%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
@@ -84,28 +84,28 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1481 |
-| Snapshot rows | 1522 |
-| Rows matched to the public set | 1480 |
-| Rows carrying a schedule | 1159 |
-| Rows refreshed within policy, including status-only results | 1478 (99.8%) |
-| Rows fresh within policy | 1158 (78.2%) |
+| Time-sensitive food/drink places expected in the 6-day cycle | 418 |
+| Snapshot rows | 417 |
+| Rows matched to the public set | 417 |
+| Rows carrying a schedule | 382 |
+| Rows refreshed within policy, including status-only results | 415 (99.3%) |
+| Rows fresh within policy | 381 (91.1%) |
 | 6-day cycle state | healthy |
 | Cycle buckets meeting the minimum write ratio | 6 / 6 |
 | Stale rows | 1 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 42 |
+| Unmatched rows | 0 |
 
-Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.244Z.
+Oldest refresh: 2026-08-14T08:01:19.941Z. Newest refresh: 2026-08-22T08:01:01.244Z.
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
-| 0 | 273 | 273 | 221 | yes |
-| 1 | 208 | 208 | 169 | yes |
-| 2 | 273 | 271 | 203 | yes |
-| 3 | 259 | 258 | 209 | yes |
-| 4 | 243 | 243 | 184 | yes |
-| 5 | 225 | 225 | 172 | yes |
+| 0 | 72 | 72 | 67 | yes |
+| 1 | 51 | 51 | 48 | yes |
+| 2 | 77 | 77 | 72 | yes |
+| 3 | 67 | 66 | 60 | yes |
+| 4 | 76 | 75 | 69 | yes |
+| 5 | 75 | 74 | 65 | yes |
 
 Every cycle bucket meets the writer's minimum persistence ratio.
 
@@ -139,7 +139,7 @@ Category distribution (39 rows): arts: 5, family: 5, music: 27, outdoors: 1, the
 
 ## Core amenity coverage by town
 
-The committed OpenStreetMap baseline has 843 points.
+The committed OpenStreetMap baseline has 792 points.
 Approved `field_amenities` rows are merged from Postgres at runtime and are
 not copied into this repository report, so the field count here is
 0. Audit live field rows in the owner desk before
@@ -148,21 +148,21 @@ not proof that the amenity does not exist.
 
 | Town | Restroom | Water | Trash | Dog bags | Bench | Power |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick City | 7 | 7 | 7 | 0 | 167 | 0 |
-| Brunswick | 0 | 3 | 6 | 1 | 32 | 0 |
+| Frederick City | 8 | 7 | 7 | 0 | 167 | 0 |
+| Brunswick | 0 | 3 | 6 | 1 | 31 | 0 |
 | Thurmont | 0 | 14 | 2 | 1 | 3 | 0 |
 | Middletown | 0 | 2 | 0 | 0 | 2 | 0 |
 | Walkersville | 0 | 1 | 0 | 0 | 2 | 0 |
 | Emmitsburg | 0 | 1 | 16 | 0 | 59 | 0 |
 | New Market | 0 | 0 | 0 | 0 | 1 | 0 |
 | Mount Airy | 0 | 0 | 0 | 0 | 0 | 0 |
-| Myersville | 0 | 6 | 1 | 0 | 23 | 0 |
+| Myersville | 1 | 2 | 1 | 0 | 11 | 0 |
 | Woodsboro | 0 | 0 | 0 | 0 | 0 | 0 |
 | Burkittsville | 0 | 1 | 0 | 0 | 0 | 0 |
 | Rosemont | 0 | 0 | 18 | 0 | 9 | 0 |
-| Urbana | 0 | 0 | 1 | 0 | 6 | 0 |
+| Urbana | 0 | 0 | 1 | 0 | 5 | 0 |
 
-There are 50 empty town/kind cells in the committed baseline.
+There are 49 empty town/kind cells in the committed baseline.
 
 ## Brewery media trust
 

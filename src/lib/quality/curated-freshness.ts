@@ -14,6 +14,7 @@ import VENUE_EVENTS from "@/data/venue-events.json";
 import FIELD_NOTES from "@/data/field-notes.json";
 import CLIFFNOTES from "@/data/town-cliffnotes.json";
 import HOURS_REFRESH from "@/data/places-hours-refresh.json";
+import { hoursRefreshTargetArtifact } from "@/lib/loaders/placeRefreshIdentities";
 import { HOURS_MAX_AGE_DAYS } from "@/lib/hours-freshness";
 
 const DAY = 86_400_000;
@@ -144,7 +145,7 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
   // unless the resulting artifact reaches the canonical loader. An empty or
   // old file is therefore a release-health failure, not an invisible advisory.
   const hoursEntries = Object.entries(
-    HOURS_REFRESH as Record<string, unknown>,
+    hoursRefreshTargetArtifact(HOURS_REFRESH as Record<string, unknown>),
   ).filter(([key]) => !key.startsWith("_"));
   // The window is one day TIGHTER than the publication window on purpose.
   // HOURS_MAX_AGE_DAYS is 7 (src/lib/hours-freshness.ts), so a row stops

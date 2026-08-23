@@ -7,25 +7,22 @@ name: Enrich places (Google)
 # empty string, which is why the run logs printed a bare "GOOGLE_PLACES_API_KEY:"
 # instead of the "***" GitHub substitutes for a real value. Re-set on
 # 2026-08-19, and a dispatch that same day proved the credential path: the run
-# cleared the gate, reached the enrich step, and stopped on the cost projection
-# rather than on the credential.
+# cleared the gate and reached the script's planning boundary rather than
+# stopping on the credential.
 #
-# That projection is the remaining catch. The default scope is every curated
-# place (1,090 targets, $31.54), so it aborts against any sane cap and the
-# handful of records that actually need enrichment cannot be reached. The
-# default scope is now `needs-enrichment` (189 places, $6.26, inside the 5,000
-# free calls a month), and `slugs` reaches exact records by name.
+# The default scope is now `needs-enrichment`, and `slugs` reaches exact
+# records by name. Every paid run also supplies a finite 1-500 request ceiling;
+# the script prints the exact SKU/list-price exposure before making a call.
 #
-# The script only writes with --live --confirm, and the cap ABORTS before
-# spending rather than truncating mid-run. DFP's long tail is enriched on
-# demand elsewhere.
+# The script only writes with --live --confirm --limit N. DFP's long tail is
+# enriched on demand elsewhere.
 
 on:
   # Monthly, scoped to places that have never been resolved against Google at
   # all. That scope is what makes a schedule safe: it is exactly the hole a
   # newly curated record falls into, it drains, and once drained the run exits
-  # early having spent nothing. "Every curated place" could never be scheduled,
-  # because it re-pays for ~1,000 healthy rows and aborts against any cap.
+  # early having spent nothing. The ceiling keeps newly accumulated backlog
+  # in reviewed batches instead of turning one schedule into an open sweep.
   schedule:
     - cron: "0 7 1 * *" # 1st of the month, 07:00 UTC
   workflow_dispatch:
@@ -43,10 +40,10 @@ on:
         description: "Comma-separated slugs. Only used when scope=slugs."
         required: false
         default: ""
-      max_cost:
-        description: "Hard cap in dollars. The run aborts BEFORE calling Google if the projection exceeds it."
+      limit:
+        description: "Maximum Google requests for this reviewed batch (1-500)."
         required: false
-        default: "10"
+        default: "100"
       refresh_open_review:
         description: "I want to replace the currently open Google enrichment review with a fresh paid run"
         required: false
@@ -125,6 +122,17 @@ jobs:
             echo "::error title=Missing GOOGLE_PLACES_API_KEY::Add the repository secret before running curated-place enrichment."
             exit 1
           fi
+      - name: Validate immutable request ceiling
+        env:
+          REQUEST_LIMIT: ${{ inputs.limit || '100' }}
+        run: |
+          case "$REQUEST_LIMIT" in
+            ''|*[!0-9]*) echo "::error title=Invalid request limit::limit must be an integer from 1 to 500."; exit 1 ;;
+          esac
+          if [ "$REQUEST_LIMIT" -lt 1 ] || [ "$REQUEST_LIMIT" -gt 500 ]; then
+            echo "::error title=Invalid request limit::limit must be between 1 and 500."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -138,23 +146,21 @@ jobs:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
           SCOPE: ${{ inputs.scope }}
           SLUGS: ${{ inputs.slugs }}
-          MAX_COST: ${{ inputs.max_cost }}
+          REQUEST_LIMIT: ${{ inputs.limit || '100' }}
         run: |
-          # A scheduled run carries no inputs, so both default here.
-          CAP="${MAX_COST:-10}"
           case "${SCOPE:-needs-enrichment}" in
             slugs)
               if [ -z "$SLUGS" ]; then
                 echo "::error title=No slugs given::scope=slugs requires the slugs input."
                 exit 1
               fi
-              npm run enrich -- --slug "$SLUGS" --live --confirm --max-cost "$CAP"
+              npm run enrich -- --slug "$SLUGS" --live --confirm --limit "$REQUEST_LIMIT"
               ;;
             all-curated)
-              npm run enrich -- --live --confirm --max-cost "$CAP"
+              npm run enrich -- --live --confirm --limit "$REQUEST_LIMIT"
               ;;
             *)
-              npm run enrich -- --needs-enrichment --live --confirm --max-cost "$CAP"
+              npm run enrich -- --needs-enrichment --live --confirm --limit "$REQUEST_LIMIT"
               ;;
           esac
       - name: Rebuild public place snapshot

@@ -2,8 +2,9 @@
  * Google Routes API (computeRouteMatrix) — real walk / drive / transit times.
  *
  * Replaces straight-line haversine for the cases users actually feel:
- * "is it walkable", "how long to drive there". Gated on GOOGLE_PLACES_API_KEY
- * (same key — Routes API just needs enabling in the GCP console).
+ * "is it walkable", "how long to drive there". A dedicated Routes key is
+ * preferred so its API restriction and quota can be isolated from Places;
+ * the existing Places key remains a non-breaking fallback during rotation.
  *
  * Cost: Route Matrix is billed per element (origins × destinations). We
  * keep matrices tiny (1 origin × ≤25 destinations). Shared planning calls
@@ -27,7 +28,11 @@ export type TravelLeg = {
 };
 
 function key(): string | null {
-  return process.env.GOOGLE_PLACES_API_KEY || null;
+  return (
+    process.env.GOOGLE_ROUTES_API_KEY ||
+    process.env.GOOGLE_PLACES_API_KEY ||
+    null
+  );
 }
 
 export function routesConfigured(): boolean {
@@ -47,7 +52,12 @@ async function computeMatrixUncached(
   // Meter at the upstream boundary so every count represents a Google call.
   // Shared callers reach this boundary only on cache misses; private callers
   // reach it after an explicit user action and are never persisted.
-  meterUsage("google_routes_matrix");
+  meterUsage(
+    mode === "DRIVE"
+      ? "google_routes_matrix_pro"
+      : "google_routes_matrix_essentials",
+    destinations.length,
+  );
   const res = await fetch(URL, {
     method: "POST",
     headers: {

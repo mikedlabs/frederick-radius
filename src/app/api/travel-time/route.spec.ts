@@ -1,14 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   privateTravelTimes: vi.fn(),
+  reserveDailyUsage: vi.fn(),
   isRateLimited: vi.fn(),
   isSameOriginMutationRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/integrations/google-routes", () => ({
   privateTravelTimes: mocks.privateTravelTimes,
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 vi.mock("@/lib/origin-check", async () => {
@@ -41,6 +45,11 @@ describe("POST /api/travel-time", () => {
     mocks.isSameOriginMutationRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.privateTravelTimes.mockResolvedValue({ walkMin: 8, driveMin: 4 });
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("routes from the consented visitor origin without caching the response", async () => {
@@ -57,6 +66,13 @@ describe("POST /api/travel-time", () => {
       { lat: 39.414, lng: -77.411 },
       { lat: 39.421, lng: -77.407 },
     );
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_routes_private",
+      100,
+    );
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.privateTravelTimes.mock.invocationCallOrder[0],
+    );
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
@@ -65,6 +81,7 @@ describe("POST /api/travel-time", () => {
 
     expect(response.status).toBe(400);
     expect(mocks.privateTravelTimes).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
   });
 
   it("does no paid routing work for an out-of-county origin", async () => {
@@ -78,6 +95,7 @@ describe("POST /api/travel-time", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({});
     expect(mocks.privateTravelTimes).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
   });
 
   it("requires a same-origin JSON request before doing paid work", async () => {
@@ -92,5 +110,40 @@ describe("POST /api/travel-time", () => {
     ));
     expect(unsupported.status).toBe(415);
     expect(mocks.privateTravelTimes).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the shared daily travel allowance is unavailable", async () => {
+    mocks.reserveDailyUsage.mockResolvedValue(null);
+
+    const response = await POST(request({
+      fromLat: 39.414,
+      fromLng: -77.411,
+      lat: 39.421,
+      lng: -77.407,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({});
+    expect(mocks.privateTravelTimes).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["not-a-number", 100],
+    ["0", 1],
+    ["9999", 150],
+  ])("bounds GOOGLE_ROUTES_PRIVATE_DAILY_CAP=%s to %i", async (value, expected) => {
+    vi.stubEnv("GOOGLE_ROUTES_PRIVATE_DAILY_CAP", value);
+
+    await POST(request({
+      fromLat: 39.414,
+      fromLng: -77.411,
+      lat: 39.421,
+      lng: -77.407,
+    }));
+
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_routes_private",
+      expected,
+    );
   });
 });

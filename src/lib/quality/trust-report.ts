@@ -6,6 +6,7 @@ import {
   type HoursAvailabilityPlace,
 } from "@/lib/hours-availability";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { hoursRefreshTargetIdentities } from "@/lib/loaders/placeRefreshIdentities";
 
 /**
  * Trust report (data brief, Section 8 gates, made measurable).
@@ -47,9 +48,15 @@ export type TrustReport = {
 };
 
 export type FreshHoursHealth = {
+  /** Honest whole-catalog coverage; this is not the Open Now health gate. */
   fresh_count: number;
   total_count: number;
   coverage_pct: number;
+  /** Exact paid food/drink refresh policy used by the Open Now health gate. */
+  eligibility_fresh_count: number;
+  eligibility_total_count: number;
+  eligibility_coverage_pct: number;
+  eligibility_scope: "time-sensitive-food-drink";
   target_count: number;
   target_pct: number;
   open_now_eligible: boolean;
@@ -72,24 +79,51 @@ export function summarizeFreshHoursHealth(
   places: readonly HoursAvailabilityPlace[],
   now: Date = new Date(),
   targetCoverage: number = OPEN_NOW_MINIMUM_COVERAGE,
+  eligibilityTargetSlugs: ReadonlySet<string> = new Set(
+    hoursRefreshTargetIdentities().map((identity) => identity.slug),
+  ),
 ): FreshHoursHealth {
-  const total = places.length;
-  const fresh = places.filter(
-    (place) =>
-      Boolean(place.hours) &&
-      Object.keys(place.hours ?? {}).length > 0 &&
+  const isCurrentVerifiedSchedule = (place: HoursAvailabilityPlace) => {
+    const hours = place.hours;
+    return Boolean(
+      hours &&
+      Object.keys(hours).length > 0 &&
       place.hours_verified === true &&
       isHoursFresh(place.hours_updated_at, now) &&
-      mayPublishVisitabilityHours(place.slug, place.hours, now),
-  ).length;
+      mayPublishVisitabilityHours(place.slug, hours, now),
+    );
+  };
+
+  const total = places.length;
+  const fresh = places.filter(isCurrentVerifiedSchedule).length;
   const coverage = total > 0 ? fresh / total : 0;
-  const targetCount = Math.ceil(total * targetCoverage);
-  const eligible = fresh > 0 && coverage >= targetCoverage;
+  // The generated target artifact has already enforced the canonical loader,
+  // usable Google identity, accepted-enrichment binding, and food/drink
+  // category policy. Category text alone is not enough to enter this gate.
+  const eligibilityPlaces = places.filter((place) =>
+    eligibilityTargetSlugs.has(place.slug),
+  );
+  const eligibilityTotal = eligibilityPlaces.length;
+  const eligibilityFresh = eligibilityPlaces.filter(
+    isCurrentVerifiedSchedule,
+  ).length;
+  const eligibilityCoverage = eligibilityTotal > 0
+    ? eligibilityFresh / eligibilityTotal
+    : 0;
+  const targetCount = Math.ceil(eligibilityTotal * targetCoverage);
+  const eligible =
+    eligibilityFresh > 0 && eligibilityCoverage >= targetCoverage;
 
   return {
     fresh_count: fresh,
     total_count: total,
     coverage_pct: Number((coverage * 100).toFixed(1)),
+    eligibility_fresh_count: eligibilityFresh,
+    eligibility_total_count: eligibilityTotal,
+    eligibility_coverage_pct: Number(
+      (eligibilityCoverage * 100).toFixed(1),
+    ),
+    eligibility_scope: "time-sensitive-food-drink",
     target_count: targetCount,
     target_pct: Number((targetCoverage * 100).toFixed(1)),
     open_now_eligible: eligible,

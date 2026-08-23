@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   sendAnomalyAlert: vi.fn(),
   computePlaceTrustReport: vi.fn(),
   summarizeHoursRefreshArtifact: vi.fn(),
+  hoursRefreshTargetArtifact: vi.fn(),
+  hoursRefreshTargetIdentities: vi.fn(),
   curatedFreshnessAnomalies: vi.fn(),
   evaluateDbHealth: vi.fn(),
   getLatestHoursRefreshAt: vi.fn(),
@@ -56,6 +58,10 @@ vi.mock("@/lib/quality/trust-report", () => ({
 }));
 vi.mock("@/lib/quality/operator-coverage", () => ({
   summarizeHoursRefreshArtifact: mocks.summarizeHoursRefreshArtifact,
+}));
+vi.mock("@/lib/loaders/placeRefreshIdentities", () => ({
+  hoursRefreshTargetArtifact: mocks.hoursRefreshTargetArtifact,
+  hoursRefreshTargetIdentities: mocks.hoursRefreshTargetIdentities,
 }));
 vi.mock("@/lib/provenance", () => ({
   isGooglePlaceId: (value: unknown) =>
@@ -128,6 +134,10 @@ describe("GET /api/cron/data-health", () => {
         fresh_count: 70,
         total_count: 100,
         coverage_pct: 70,
+        eligibility_fresh_count: 70,
+        eligibility_total_count: 100,
+        eligibility_coverage_pct: 70,
+        eligibility_scope: "time-sensitive-food-drink",
         target_count: 60,
         target_pct: 60,
         open_now_eligible: true,
@@ -170,6 +180,14 @@ describe("GET /api/cron/data-health", () => {
         buckets: [],
       },
     });
+    mocks.hoursRefreshTargetArtifact.mockImplementation((artifact) => artifact);
+    mocks.hoursRefreshTargetIdentities.mockReturnValue([
+      {
+        slug: "test-place",
+        google_place_id: "ChIJ-test-place",
+        category: "restaurant",
+      },
+    ]);
     mocks.curatedFreshnessAnomalies.mockReturnValue([]);
     mocks.evaluateDbHealth.mockResolvedValue({
       status: "available",
@@ -281,7 +299,11 @@ describe("GET /api/cron/data-health", () => {
         fresh_count: 0,
         total_count: 1_528,
         coverage_pct: 0,
-        target_count: 917,
+        eligibility_fresh_count: 0,
+        eligibility_total_count: 418,
+        eligibility_coverage_pct: 0,
+        eligibility_scope: "time-sensitive-food-drink",
+        target_count: 251,
         target_pct: 60,
         open_now_eligible: false,
         below_gate: true,
@@ -319,7 +341,11 @@ describe("GET /api/cron/data-health", () => {
       fresh_count: 0,
       total_count: 1_528,
       coverage_pct: 0,
-      target_count: 917,
+      eligibility_fresh_count: 0,
+      eligibility_total_count: 418,
+      eligibility_coverage_pct: 0,
+      eligibility_scope: "time-sensitive-food-drink",
+      target_count: 251,
       target_pct: 60,
       open_now_eligible: false,
       below_gate: true,

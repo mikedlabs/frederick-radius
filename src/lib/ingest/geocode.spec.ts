@@ -1,12 +1,36 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const usageMocks = vi.hoisted(() => ({
+  meterUsage: vi.fn(),
+  reserveDailyUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/usage-meter", () => ({
+  meterUsage: usageMocks.meterUsage,
+  reserveDailyUsage: usageMocks.reserveDailyUsage,
+}));
+
 import {
   geocodeLimitForRemaining,
   googleGeocode,
   parseGoogleGeocodeResponse,
+  resolveGoogleGeocodeDailyCap,
   trustedCachedCoordinate,
   VERIFIED_CATALOG_CACHE_SOURCE,
   VERIFIED_GOOGLE_CACHE_SOURCE,
 } from "@/lib/ingest/geocode";
+
+describe("resolveGoogleGeocodeDailyCap", () => {
+  it("uses a safe default and never lets an environment value exceed the hard cap", () => {
+    expect(resolveGoogleGeocodeDailyCap()).toBe(50);
+    expect(resolveGoogleGeocodeDailyCap("17")).toBe(17);
+    expect(resolveGoogleGeocodeDailyCap("100")).toBe(100);
+    expect(resolveGoogleGeocodeDailyCap("101")).toBe(100);
+    expect(resolveGoogleGeocodeDailyCap("9999")).toBe(100);
+    expect(resolveGoogleGeocodeDailyCap("0")).toBe(50);
+    expect(resolveGoogleGeocodeDailyCap("not-a-number")).toBe(50);
+  });
+});
 
 describe("geocodeLimitForRemaining", () => {
   it("turns remaining route time into a bounded worst-case batch", () => {
@@ -229,8 +253,16 @@ describe("trustedCachedCoordinate", () => {
 });
 
 describe("googleGeocode network boundary", () => {
+  beforeEach(() => {
+    usageMocks.meterUsage.mockReset();
+    usageMocks.reserveDailyUsage.mockReset();
+    usageMocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+  });
+
   afterEach(() => {
     delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_API_KEY;
+    delete process.env.GOOGLE_GEOCODE_DAILY_CAP;
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
@@ -243,6 +275,67 @@ describe("googleGeocode network boundary", () => {
       kind: "disabled",
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(usageMocks.reserveDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("fails closed without a provider call when the shared daily cap is exhausted", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODE_DAILY_CAP = "7";
+    usageMocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 7 });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "system",
+      reason: "daily-budget",
+    });
+    expect(usageMocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_geocode",
+      7,
+    );
+    expect(usageMocks.meterUsage).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed without a provider call when the atomic reservation is unavailable", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    usageMocks.reserveDailyUsage.mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "system",
+      reason: "daily-budget",
+    });
+    expect(usageMocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_geocode",
+      50,
+    );
+    expect(usageMocks.meterUsage).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers a dedicated Geocoding API key while retaining the shared-key fallback", async () => {
+    process.env.GOOGLE_GEOCODING_API_KEY = "dedicated-key";
+    process.env.GOOGLE_PLACES_API_KEY = "shared-key";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "ZERO_RESULTS", results: [] })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "reject",
+      reason: "zero-results",
+    });
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain("key=dedicated-key");
+    expect(requestedUrl).not.toContain("shared-key");
+    expect(usageMocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      usageMocks.meterUsage.mock.invocationCallOrder[0],
+    );
+    expect(usageMocks.meterUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      fetchMock.mock.invocationCallOrder[0],
+    );
   });
 
   it("classifies HTTP quota failures as system outcomes", async () => {
@@ -261,6 +354,11 @@ describe("googleGeocode network boundary", () => {
       reason: "quota",
       status: 429,
     });
+    expect(usageMocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_geocode",
+      50,
+    );
+    expect(usageMocks.meterUsage).toHaveBeenCalledWith("google_geocode");
   });
 
   it.each([

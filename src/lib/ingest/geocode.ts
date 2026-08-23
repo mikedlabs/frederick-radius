@@ -2,12 +2,15 @@ import type { Sql } from "postgres";
 import { normalizeForCache } from "./location";
 import { PLACES } from "@/data/places";
 import { isValidCoord, type LngLat } from "@/lib/geo";
+import { meterUsage, reserveDailyUsage } from "@/lib/usage-meter";
 
 const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 const RATE_DELAY_MS = 120;
 const GEOCODE_TIMEOUT_MS = 8_000;
 const GEOCODE_CALL_BUDGET_MS = GEOCODE_TIMEOUT_MS + RATE_DELAY_MS + 500;
 const GEOCODE_ROUTE_RESERVE_MS = 5_000;
+const GOOGLE_GEOCODE_DEFAULT_DAILY_CAP = 50;
+const GOOGLE_GEOCODE_MAX_DAILY_CAP = 100;
 
 export const VERIFIED_GOOGLE_CACHE_SOURCE = "google-verified-v1";
 export const VERIFIED_CATALOG_CACHE_SOURCE = "catalog-verified-v1";
@@ -80,7 +83,8 @@ export type GoogleGeocodeSystemReason =
   | "invalid-request"
   | "malformed-response"
   | "network"
-  | "timeout";
+  | "timeout"
+  | "daily-budget";
 
 export type GoogleGeocodeOutcome =
   | { kind: "match"; coordinate: LngLat }
@@ -91,6 +95,30 @@ export type GoogleGeocodeOutcome =
       status?: number | string;
     }
   | { kind: "disabled" };
+
+/** Operators may lower the shared daily Google geocoding budget without a
+ * deploy. Invalid values retain the safe default, and no environment value
+ * can raise the immutable ceiling. */
+export function resolveGoogleGeocodeDailyCap(
+  rawCap = process.env.GOOGLE_GEOCODE_DAILY_CAP,
+): number {
+  if (typeof rawCap !== "string" || !/^\d+$/.test(rawCap.trim())) {
+    return GOOGLE_GEOCODE_DEFAULT_DAILY_CAP;
+  }
+  const requested = Number(rawCap.trim());
+  if (!Number.isSafeInteger(requested) || requested < 1) {
+    return GOOGLE_GEOCODE_DEFAULT_DAILY_CAP;
+  }
+  return Math.min(requested, GOOGLE_GEOCODE_MAX_DAILY_CAP);
+}
+
+function googleGeocodingKey(): string | null {
+  return (
+    process.env.GOOGLE_GEOCODING_API_KEY ||
+    process.env.GOOGLE_PLACES_API_KEY ||
+    null
+  );
+}
 
 const ADDRESS_RESULT_TYPES = new Set([
   "street_address",
@@ -332,8 +360,22 @@ export async function reconcilePublishedGeocodes(
 export async function googleGeocode(
   address: string,
 ): Promise<GoogleGeocodeOutcome> {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
+  // Prefer a key restricted to the Geocoding API. Keep the shared Places key
+  // as an explicit migration fallback until Production has the split key.
+  const key = googleGeocodingKey();
   if (!key) return { kind: "disabled" };
+
+  // This is the single Google Geocoding provider boundary. Cache hits never
+  // reach it. The database reservation is atomic across cron workers and
+  // fails closed when the counter table is unavailable or today's shared cap
+  // is exhausted.
+  const reservation = await reserveDailyUsage(
+    "budget_google_geocode",
+    resolveGoogleGeocodeDailyCap(),
+  );
+  if (!reservation?.reserved) {
+    return { kind: "system", reason: "daily-budget" };
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
@@ -342,6 +384,7 @@ export async function googleGeocode(
       ? address
       : `${address}, Maryland`;
     const url = `${GEOCODE_URL}?address=${encodeURIComponent(query)}&region=us&key=${key}`;
+    meterUsage("google_geocode");
     const response = await fetch(url, { signal: controller.signal });
 
     let parsed: GoogleGeocodeOutcome;
@@ -395,7 +438,7 @@ export async function geocodePending(
   limit = 500,
   options: GeocodePendingOptions = {},
 ): Promise<GeocodeStats> {
-  const googleEnabled = Boolean(process.env.GOOGLE_PLACES_API_KEY);
+  const googleEnabled = Boolean(googleGeocodingKey());
   const stats: GeocodeStats = {
     fromCache: 0,
     fromApi: 0,
@@ -506,7 +549,11 @@ export async function geocodePending(
     }
 
     if (outcome.kind === "system") {
-      stats.failed++;
+      if (outcome.reason === "daily-budget") {
+        stats.budgetStopped = pending.length - index;
+      } else {
+        stats.failed++;
+      }
       stats.status = "degraded";
       stats.degradedReason = outcome.reason;
       stats.upstreamStatus = outcome.status;

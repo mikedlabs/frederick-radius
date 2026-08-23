@@ -12,9 +12,10 @@
  * The `name` MUST be a Google "places/.../photos/..." resource path — we
  * validate the shape to prevent the route being used as an open proxy.
  */
-import { meterUsage } from "@/lib/usage-meter";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
 import {
   isOverPaidRequestBudget,
   isSameOriginRequest,
@@ -208,8 +209,35 @@ export async function GET(req: NextRequest) {
     return placeholderResponse(name, w, "no-key", slug, signalFallback);
   }
 
+  // reserveDailyUsage atomically increments the same counter that
+  // meterUsage used to update here. A successful reservation is therefore
+  // both the aggregate daily gate and the attempt's usage record; calling
+  // both would double-meter every paid photo fetch. Database uncertainty
+  // fails closed so a broken counter cannot turn into unbounded Google spend.
+  let reservation: Awaited<ReturnType<typeof reserveDailyUsage>> = null;
   try {
-    meterUsage("google_photo");
+    reservation = await reserveDailyUsage(
+      "google_photo",
+      googlePhotoDailyCap(),
+    );
+  } catch {
+    // The helper is already fail-closed, but keep the route safe if that
+    // contract ever regresses.
+  }
+  if (!reservation) {
+    return placeholderResponse(
+      name,
+      w,
+      "budget-unavailable",
+      slug,
+      signalFallback,
+    );
+  }
+  if (!reservation.reserved) {
+    return placeholderResponse(name, w, "daily-cap", slug, signalFallback);
+  }
+
+  try {
     const upstream = await fetch(url, {
       // Google redirects to the actual CDN object; follow it.
       redirect: "follow",

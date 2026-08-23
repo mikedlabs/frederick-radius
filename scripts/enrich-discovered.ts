@@ -3,20 +3,25 @@
  * Place Details (by place_id = the cheapest path). DRY RUN FIRST.
  *
  * Default: $0, no calls — prints the exact projected cost. Only
- * `--live --confirm` (under --max-cost) actually calls. Writes
+ * `--live --confirm --limit N` actually calls. Writes
  * src/data/discovered-enriched.json (review artifact for Phase 3);
  * mutates nothing in the app.
  *
  *   npm run enrich:discovered                 # dry run, $0
- *   npm run enrich:discovered -- --live --confirm
+ *   npm run enrich:discovered -- --live --confirm --limit 500
  *
- * Pricing (2026-05): Place Details, our field mask = Enterprise+
- * Atmosphere $25.00 / 1,000. Pro/Enterprise tiers include 5,000 free
- * billable events / month (discovery used ~300).
+ * Pricing (2026-08): Place Details, our full field mask = Enterprise +
+ * Atmosphere $25.00 / 1,000, with 1,000 free requests per month
+ * (discovery used ~300).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { getPlaceDetails } from "@/lib/integrations/google-places";
 import { partitionFrederickCountyRows } from "@/lib/placement-trust";
+import {
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 type Clean = {
   google_place_id: string;
@@ -28,18 +33,14 @@ type Clean = {
   municipality: string;
 };
 
-const PRICE_DETAILS = 25.0 / 1000;
-const FREE_EVENTS = 5000;
 const IN = new URL("../src/data/discovered-clean.json", import.meta.url).pathname;
 const OUT = new URL("../src/data/discovered-enriched.json", import.meta.url).pathname;
 
-const arg = (n: string, d?: string) => {
-  const i = process.argv.indexOf(n);
-  return i >= 0 ? (process.argv[i + 1] ?? "") : d;
-};
-const flag = (n: string) => process.argv.includes(n);
-
 async function main() {
+  const run = parseManualGoogleRun(process.argv.slice(2), {
+    defaultLimit: 100,
+    maxLimit: 1_500,
+  });
   const clean = JSON.parse(readFileSync(IN, "utf8")) as Clean[];
   // A stale or hand-edited Phase 1 artifact must not turn into paid calls.
   // Partition before the cost projection and retain the source file unchanged.
@@ -47,37 +48,31 @@ async function main() {
     lng: row.lng,
     lat: row.lat,
   }));
-  const targets = placement.accepted;
+  const targets = placement.accepted.slice(0, run.limit);
   const calls = targets.length;
-  const listCost = calls * PRICE_DETAILS;
-  const afterFree = Math.max(0, calls - FREE_EVENTS) * PRICE_DETAILS;
-  const maxCost = parseFloat(arg("--max-cost", "60")!) || 60;
 
   console.log(`\n  Ingest Phase 2 — enrich ${calls} discovered places`);
   console.log("  --------------------------------------------------");
+  console.log(`  Eligible rows         ${placement.accepted.length}`);
   console.log(`  Place Details calls   ${calls} (by place_id, exact)`);
-  console.log(`  List cost             $${listCost.toFixed(2)}`);
-  console.log(`  After 5,000/mo free   $${afterFree.toFixed(2)}`);
-  console.log(`  Hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  console.log(`  Hard request ceiling  ${run.limit}`);
+  console.log(
+    `  ${googleCostPreview({
+      calls,
+      pricePerThousandUsd: 25,
+      sku: "Place Details Enterprise + Atmosphere",
+    })}`,
+  );
   if (placement.rejected.length > 0) {
     console.log(
       `  Placement rejects     ${placement.rejected.length} (retained in discovered-clean.json; no paid call)`,
     );
   }
 
-  const live = flag("--live");
-  if (!live) {
+  if (run.dryRun) {
     console.log("\n  DRY RUN — nothing called, $0 spent.");
-    console.log("  To execute: npm run enrich:discovered -- --live --confirm\n");
+    console.log("  To execute: npm run enrich:discovered -- --live --confirm --limit N\n");
     return;
-  }
-  if (!flag("--confirm")) {
-    console.log("\n  --live requires --confirm. Aborted, $0 spent.\n");
-    process.exit(1);
-  }
-  if (listCost > maxCost) {
-    console.log(`\n  Refusing: list cost $${listCost.toFixed(2)} exceeds cap. $0 spent.\n`);
-    process.exit(1);
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     console.log("\n  GOOGLE_PLACES_API_KEY not set. Aborted, $0 spent.\n");
@@ -100,7 +95,9 @@ async function main() {
     review_author?: string;
   }> = [];
   let ok = 0, miss = 0;
+  const callBudget = createManualGoogleCallBudget(run.limit);
   for (let i = 0; i < targets.length; i++) {
+    if (!callBudget.reserve()) break;
     const c = targets[i];
     const d = await getPlaceDetails(c.google_place_id, "full").catch(() => null);
     if (d) {

@@ -2,16 +2,17 @@
  * Google Places API (New) client — authoritative status, hours, rating, photos.
  *
  * Two resolution paths:
- *   1. We already have a `places/ChIJ…` id  → Place Details directly (cheapest)
- *   2. We only have name + address          → Text Search to resolve the id,
- *                                              then Place Details
+ *   1. We already have a `places/ChIJ…` id  → Place Details directly
+ *   2. We only have name + address          → Text Search returns the requested
+ *                                              fields and a durable Place ID
  *
  * Everything is gated on GOOGLE_PLACES_API_KEY. Without it, every function
  * returns null and callers fall back to the existing seed/DFP data.
  *
- * Pricing-aware: we request only the field masks we use. Place Details with
- * the "Pro + Enterprise" fields (hours, rating) is billed per the field mask,
- * so we keep the mask tight.
+ * Pricing-aware: Google bills each request at the highest tier triggered by
+ * its field mask, so every caller must choose a named mask explicitly. The
+ * integration meters that exact Place Details or Text Search tier beside the
+ * outbound request.
  *
  * Caching: this client always uses `no-store`. Callers must not persist Google
  * content unless a specific Maps Platform term permits that field. Place IDs
@@ -21,6 +22,7 @@
 
 import type { OperationalStatus } from "@/data/places";
 import { hasIdentitySubfacilityConflict } from "@/lib/quality/enrichmentBinding";
+import { meterUsage, type PaidUpstream } from "@/lib/usage-meter";
 
 const BASE = "https://places.googleapis.com/v1";
 
@@ -142,15 +144,21 @@ export function googlePlacesConfigured(): boolean {
 
 /**
  * Field sets, chosen to control the Places API (New) billing SKU:
+ * https://developers.google.com/maps/documentation/places/web-service/data-fields
  *   - "full"   → includes `reviews` ⇒ Enterprise + Atmosphere (priciest).
  *                Use ONLY at build time, where we actually store reviews.
  *   - "basic"  → visit logistics + photos, with no summaries or reviews.
  *                This is the only field set an automatic, gap-filling place
  *                sheet request may use.
- *   - "lean"   → everything except reviews ⇒ Enterprise tier. Kept for
- *                explicit callers that need editorial context.
- *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
+ *   - "lean"   → enrichment without reviews or editorialSummary ⇒
+ *                Enterprise. Kept for explicit broad-data callers.
+ *   - "status" → id + businessStatus ⇒ Pro. For the
  *                business-status cron, which reads nothing else.
+ *   - "hours"  → status + opening hours ⇒ Enterprise.
+ *   - "photos" → id + photo names ⇒ Details IDs Only (no paid Details
+ *                tier); fetching photo media is billed separately.
+ *   - "photo-resolve" → identity-safe Text Search ⇒ Pro.
+ *   - "experience" → user-requested context ⇒ Enterprise + Atmosphere.
  */
 export type GoogleFieldSet =
   | "status"
@@ -168,10 +176,12 @@ const FIELDS_FULL = [
   "rating", "userRatingCount", "nationalPhoneNumber", "websiteUri", "location",
   "photos", "editorialSummary", "primaryTypeDisplayName", "reviews", "googleMapsUri",
 ];
-const FIELDS_LEAN = FIELDS_FULL.filter((f) => f !== "reviews");
+const FIELDS_LEAN = FIELDS_FULL.filter(
+  (f) => f !== "reviews" && f !== "editorialSummary",
+);
 const FIELDS_STATUS = ["id", "businessStatus"];
 // The rolling hours refresh (data brief 4.3): hours plus status, nothing
-// else, so the per call cost stays on the cheapest applicable SKU.
+// else. Opening-hours fields make this an Enterprise request.
 const FIELDS_HOURS = [
   "id", "businessStatus",
   "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
@@ -187,9 +197,9 @@ const FIELDS_BASIC = [
   "location", "photos", "googleMapsUri",
 ];
 
-// Photo self-heal (place-photo proxy): photo resource names only, so the
-// per-call cost of refreshing a rotated name stays on the smallest SKU
-// that carries photos.
+// Photo self-heal (place-photo proxy): photo resource names only. That mask is
+// Place Details Essentials (IDs Only), which has an unlimited free usage cap;
+// a later photo-media request is billed under Place Details Photos.
 const FIELDS_PHOTOS = ["id", "photos"];
 // Identity-safe photo discovery for a public listing that does not yet have a
 // durable Google Place ID. Text Search needs the returned name and point so
@@ -205,13 +215,12 @@ const FIELDS_PHOTO_RESOLVE = [
   "photos",
   "googleMapsUri",
 ];
-// User-opened place context. FIELDS_LEAN already reaches the Enterprise +
-// Atmosphere SKU because it requests editorialSummary; these additional
-// decision fields make that paid request materially more useful without
-// moving it to a higher Places Details tier.
+// User-opened place context. These summary, review, and decision fields move
+// the request from Enterprise to Enterprise + Atmosphere, so they are only
+// requested after a deliberate user action.
 const FIELDS_EXPERIENCE = [
   ...FIELDS_LEAN,
-  "generativeSummary", "reviews",
+  "editorialSummary", "generativeSummary", "reviews",
   "allowsDogs", "curbsidePickup", "delivery", "dineIn",
   "goodForChildren", "goodForGroups", "goodForWatchingSports", "liveMusic",
   "outdoorSeating", "reservable", "restroom", "servesBreakfast",
@@ -219,14 +228,61 @@ const FIELDS_EXPERIENCE = [
 ];
 
 function fieldsFor(set: GoogleFieldSet): string[] {
-  return set === "status" ? FIELDS_STATUS
-    : set === "hours" ? FIELDS_HOURS
-    : set === "basic" ? FIELDS_BASIC
-    : set === "full" ? FIELDS_FULL
-    : set === "photos" ? FIELDS_PHOTOS
-    : set === "photo-resolve" ? FIELDS_PHOTO_RESOLVE
-    : set === "experience" ? FIELDS_EXPERIENCE
-    : FIELDS_LEAN;
+  switch (set) {
+    case "status": return FIELDS_STATUS;
+    case "hours": return FIELDS_HOURS;
+    case "basic": return FIELDS_BASIC;
+    case "lean": return FIELDS_LEAN;
+    case "full": return FIELDS_FULL;
+    case "photos": return FIELDS_PHOTOS;
+    case "photo-resolve": return FIELDS_PHOTO_RESOLVE;
+    case "experience": return FIELDS_EXPERIENCE;
+  }
+}
+
+type GooglePlacesMethod = "details" | "text-search";
+type GooglePaidTier = "pro" | "enterprise" | "enterprise_atmosphere";
+
+const ENTERPRISE_ATMOSPHERE_FIELDS = new Set([
+  "editorialSummary", "generativeSummary", "reviews",
+  "allowsDogs", "curbsidePickup", "delivery", "dineIn",
+  "goodForChildren", "goodForGroups", "goodForWatchingSports", "liveMusic",
+  "outdoorSeating", "reservable", "restroom", "servesBreakfast",
+  "servesBrunch", "servesCoffee", "servesVegetarianFood", "takeout",
+]);
+const ENTERPRISE_FIELDS = new Set([
+  "currentOpeningHours", "regularOpeningHours", "rating", "userRatingCount",
+  "nationalPhoneNumber", "websiteUri",
+]);
+const DETAILS_PRO_FIELDS = new Set([
+  "businessStatus", "displayName", "googleMapsUri", "primaryType",
+  "primaryTypeDisplayName",
+]);
+
+/** Return the billable Google SKU represented by one explicit field set.
+ * Place Details `id,photos` is intentionally null: requesting those resource
+ * names is an IDs Only call, while the later media request has its own meter. */
+export function googlePlacesPaidUpstream(
+  method: GooglePlacesMethod,
+  set: GoogleFieldSet,
+): PaidUpstream | null {
+  const roots = fieldsFor(set).map((field) => field.split(".", 1)[0]);
+  let tier: GooglePaidTier | null = null;
+  if (roots.some((field) => ENTERPRISE_ATMOSPHERE_FIELDS.has(field))) {
+    tier = "enterprise_atmosphere";
+  } else if (roots.some((field) => ENTERPRISE_FIELDS.has(field))) {
+    tier = "enterprise";
+  } else if (
+    method === "text-search"
+      ? roots.some((field) => field !== "id")
+      : roots.some((field) => DETAILS_PRO_FIELDS.has(field))
+  ) {
+    tier = "pro";
+  }
+  if (!tier) return null;
+  return method === "details"
+    ? `google_place_details_${tier}`
+    : `google_text_search_${tier}`;
 }
 
 type GApiPlace = {
@@ -440,15 +496,17 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
 }
 
 /** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…").
- *  `fields` controls the billing SKU — defaults to "lean" (no reviews). */
+ * `fields` is required because it controls the billing SKU. */
 export async function getPlaceDetails(
   placeId: string,
-  fields: GoogleFieldSet = "lean",
+  fields: GoogleFieldSet,
 ): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
   try {
+    const upstream = googlePlacesPaidUpstream("details", fields);
+    if (upstream) meterUsage(upstream);
     const res = await fetch(`${BASE}/${id}`, {
       headers: {
         "X-Goog-Api-Key": k,
@@ -475,7 +533,7 @@ export async function getPlaceDetails(
 
 /**
  * Resolve a place id from a name + address (+ optional bias point) via
- * Text Search. Returns the first, best match's full enrichment in one call.
+ * Text Search. Returns the first, best match's requested enrichment in one call.
  */
 /** Meters between two lat/lng. */
 function metersBetween(la1: number, lo1: number, la2: number, lo2: number): number {
@@ -523,7 +581,7 @@ export async function resolveAndEnrich(opts: {
   address?: string;
   lat?: number;
   lng?: number;
-}, fields: GoogleFieldSet = "lean"): Promise<PlaceEnrichment | null> {
+}, fields: GoogleFieldSet): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const textQuery = [opts.name, opts.address].filter(Boolean).join(", ");
@@ -539,6 +597,8 @@ export async function resolveAndEnrich(opts: {
         },
       };
     }
+    const upstream = googlePlacesPaidUpstream("text-search", fields);
+    if (upstream) meterUsage(upstream);
     const res = await fetch(`${BASE}/places:searchText`, {
       method: "POST",
       headers: {
@@ -578,7 +638,7 @@ export async function resolveAndEnrich(opts: {
 
 /**
  * Build a usable photo URL from a photo resource name.
- * `maxWidthPx` keeps cost down and matches our card sizes.
+ * `maxWidthPx` keeps response bytes down and matches our card sizes.
  * NOTE: this URL embeds the API key, so only use it server-side or proxy it.
  */
 export function photoUrl(photoName: string, maxWidthPx = 800): string | null {

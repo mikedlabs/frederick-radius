@@ -5,9 +5,10 @@
  * (source !== "dfp"), ~51 places, ~$2 one-time. DFP's 1,280 long-tail are
  * enriched on-demand elsewhere (when a user opens the sheet).
  *
- *   npm run enrich                 # curated only
- *   npm run enrich -- --limit 5    # smoke test
- *   npm run enrich -- --all        # everything ($$)
+ *   npm run enrich                                   # plan first 100 curated
+ *   npm run enrich -- --limit 5                      # plan a smoke batch
+ *   npm run enrich -- --live --confirm --limit 100   # execute reviewed batch
+ *   npm run enrich -- --all --limit 100              # plan across all sources
  *
  * Resolution: google_place_id when present (cheap), else Text Search by
  * "name, address" biased to the place's coordinates.
@@ -20,23 +21,22 @@ import {
   resolveAndEnrich,
   type PlaceEnrichment,
 } from "@/lib/integrations/google-places";
+import {
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 const OUT = new URL("../src/data/places-enrichment.json", import.meta.url).pathname;
 
 async function main() {
-  if (!process.env.GOOGLE_PLACES_API_KEY) {
-    console.error("GOOGLE_PLACES_API_KEY not set. Run: vercel env pull .env.local");
-    process.exit(1);
-  }
-
   const args = process.argv.slice(2);
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
+  });
   const all = args.includes("--all");
   const dfpThin = args.includes("--dfp-thin");
-  const live = args.includes("--live") && args.includes("--confirm");
-  const mi = args.indexOf("--max-cost");
-  const maxCost = mi >= 0 ? parseFloat(args[mi + 1]) : 60;
-  const li = args.indexOf("--limit");
-  const limit = li >= 0 ? parseInt(args[li + 1], 10) : Infinity;
   // --slug a,b,c — enrich exactly these records and nothing else.
   //
   // Without this the smallest possible run was "every curated place", which
@@ -90,13 +90,14 @@ async function main() {
     }
     return p.source !== "dfp"; // default: curated only (original behaviour)
   });
-  if (Number.isFinite(limit)) targets = targets.slice(0, limit);
+  const eligibleCount = targets.length;
+  const eligibleSlugs = new Set(targets.map((place) => place.slug));
+  targets = targets.slice(0, run.limit);
 
   // A mistyped or already-removed slug would otherwise shrink a paid run in
   // silence and read as "done". Name what could not be matched.
   if (slugs) {
-    const matched = new Set(targets.map((p) => p.slug));
-    const missing = [...slugs].filter((slug) => !matched.has(slug));
+    const missing = [...slugs].filter((slug) => !eligibleSlugs.has(slug));
     if (missing.length > 0) {
       console.log(
         `\n  WARNING: ${missing.length} requested slug(s) matched no in-county place: ${missing.join(", ")}`,
@@ -104,13 +105,13 @@ async function main() {
     }
   }
 
-  // Cost projection. place_id present -> Place Details ($25/1k);
-  // otherwise resolveAndEnrich = Text Search ($32/1k) + Details.
+  // Cost projection for the explicit "full" mask. A known ID uses Place
+  // Details Enterprise + Atmosphere ($25/1k); resolution without an ID is one
+  // Text Search Enterprise + Atmosphere call ($40/1k), not Search + Details.
   const withId = targets.filter(
     (p) => p.google_place_id && /^ChIJ/.test(p.google_place_id),
   ).length;
   const noId = targets.length - withId;
-  const listCost = (withId * 25 + noId * (32 + 25)) / 1000;
   const scope = slugs
     ? `${slugs.size} named slug(s)`
     : needsEnrichment
@@ -122,10 +123,23 @@ async function main() {
         : "curated only";
   console.log(`\n  Enrich — ${scope}`);
   console.log(`  ----------------------------------------`);
+  console.log(`  eligible              ${eligibleCount}`);
   console.log(`  targets               ${targets.length}  (place_id ${withId} · text-search ${noId})`);
-  console.log(`  list cost             $${listCost.toFixed(2)}`);
-  console.log(`  after 5,000/mo free   ~$0.00`);
-  console.log(`  hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  console.log(`  hard request ceiling  ${run.limit}`);
+  console.log(
+    `  ${googleCostPreview({
+      calls: withId,
+      pricePerThousandUsd: 25,
+      sku: "Place Details Enterprise + Atmosphere",
+    })}`,
+  );
+  console.log(
+    `  ${googleCostPreview({
+      calls: noId,
+      pricePerThousandUsd: 40,
+      sku: "Text Search Enterprise + Atmosphere",
+    })}`,
+  );
   if (rejectedPlacement.length > 0) {
     console.log(
       `  placement rejects     ${rejectedPlacement.length} (retained in source data; no paid call)`,
@@ -137,16 +151,16 @@ async function main() {
     console.log(`  nothing to enrich — every targeted place already has a Google identity.\n`);
     process.exit(0);
   }
-  if (listCost > maxCost) {
-    console.log(`  ABORT: projected list cost exceeds the cap.\n`);
-    process.exit(1);
-  }
-  if (!live) {
+  if (run.dryRun) {
     console.log(`  DRY RUN — nothing called, $0 spent.`);
     console.log(
-      `  To execute: npm run enrich -- ${dfpThin ? "--dfp-thin " : all ? "--all " : ""}--live --confirm\n`,
+      `  To execute: npm run enrich -- ${dfpThin ? "--dfp-thin " : all ? "--all " : ""}--live --confirm --limit N\n`,
     );
     process.exit(0);
+  }
+  if (!process.env.GOOGLE_PLACES_API_KEY) {
+    console.error("GOOGLE_PLACES_API_KEY not set. Run: vercel env pull .env.local");
+    process.exit(1);
   }
   console.log(`  LIVE — enriching…\n`);
 
@@ -156,8 +170,10 @@ async function main() {
   const touched: string[] = [];
   let ok = 0, closed = 0, miss = 0;
   const t0 = Date.now();
+  const callBudget = createManualGoogleCallBudget(run.limit);
 
   for (let i = 0; i < targets.length; i++) {
+    if (!callBudget.reserve()) break;
     const p = targets[i];
     let data: PlaceEnrichment | null = null;
     if (p.google_place_id && /^ChIJ/.test(p.google_place_id)) {

@@ -7,8 +7,12 @@ import type {
   GooglePlaceSummary,
 } from "@/lib/integrations/google-places";
 import { GoogleReviewAttribution } from "@/components/place/GoogleAttribution";
+import {
+  rememberLivePlaceHours,
+  type LivePlaceHoursData,
+} from "@/components/place/livePlaceHours";
 
-export type LiveGooglePlaceData = {
+export type LiveGooglePlaceData = LivePlaceHoursData & {
   editorial_summary?: string;
   generative_summary?: GooglePlaceSummary;
   decision_features?: GooglePlaceFeature[];
@@ -34,6 +38,10 @@ export function loadLiveGooglePlaceContext(slug: string): Promise<LiveGooglePlac
     .then((response) => {
       if (!response.ok) throw new Error(`Google context request failed: ${response.status}`);
       return response.json() as Promise<LiveGooglePlaceData>;
+    })
+    .then((value) => {
+      rememberLivePlaceHours(slug, value);
+      return value;
     })
     .finally(() => IN_FLIGHT.delete(key));
   IN_FLIGHT.set(key, pending);

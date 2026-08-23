@@ -2,6 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/data/places", () => ({ PLACES: [] }));
 
+const usageMocks = vi.hoisted(() => ({
+  meterUsage: vi.fn(),
+  reserveDailyUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/usage-meter", () => ({
+  meterUsage: usageMocks.meterUsage,
+  reserveDailyUsage: usageMocks.reserveDailyUsage,
+}));
+
 import {
   geocodePending,
   VERIFIED_CATALOG_CACHE_SOURCE,
@@ -77,10 +87,14 @@ function googlePayload(
 describe("geocodePending", () => {
   beforeEach(() => {
     process.env.GOOGLE_PLACES_API_KEY = "test-google-key";
+    usageMocks.meterUsage.mockReset();
+    usageMocks.reserveDailyUsage.mockReset();
+    usageMocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   afterEach(() => {
     delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_API_KEY;
     vi.unstubAllGlobals();
   });
 
@@ -257,6 +271,28 @@ describe("geocodePending", () => {
       failed: 0,
       status: "degraded",
       degradedReason: "disabled",
+      budgetStopped: 1,
+    });
+    expect(matchingCalls(sql, "insert into unparseable_locations")).toHaveLength(0);
+    expect(matchingCalls(sql, "update ingested_events")).toHaveLength(0);
+  });
+
+  it("stops cleanly without a provider call when the shared daily budget is exhausted", async () => {
+    const sql = createSql();
+    usageMocks.reserveDailyUsage.mockResolvedValue({
+      reserved: false,
+      count: 50,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await geocodePending(sql as never, 1);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      failed: 0,
+      status: "degraded",
+      degradedReason: "daily-budget",
       budgetStopped: 1,
     });
     expect(matchingCalls(sql, "insert into unparseable_locations")).toHaveLength(0);

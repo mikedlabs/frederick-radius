@@ -7,6 +7,8 @@ export const OPEN_NOW_MINIMUM_COVERAGE = 0.6;
 
 export type HoursAvailabilityPlace = {
   slug: string;
+  /** Catalog metadata only; the health gate never infers paid eligibility from it. */
+  category?: string;
   hours?: Hours;
   hours_verified?: boolean;
   hours_updated_at?: string;

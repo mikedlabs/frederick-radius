@@ -24,8 +24,11 @@ import ENRICHMENT from "@/data/places-enrichment.json" with { type: "json" };
 import BUSINESS_INFO from "@/data/business-info.json" with { type: "json" };
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import HOURS_REFRESH from "@/data/places-hours-refresh.json" with { type: "json" };
+import { hoursRefreshTargetArtifact } from "@/lib/loaders/placeRefreshIdentities";
 import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
+import { reserveDailyUsage } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -101,6 +104,17 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
     picks.map(async ([slug, v]) => {
       const url = photoUrl(v.photo_names![0], 80);
       if (!url) return { configured: false, failure: null };
+      // A health check is still a billable photo-media request. Reserve from
+      // the exact same counter as /api/place-photo so the watchdog can never
+      // push production beyond the public daily ceiling. An exhausted or
+      // unavailable counter means "not probed", not "photo failed".
+      const reservation = await reserveDailyUsage(
+        "google_photo",
+        googlePhotoDailyCap(),
+      );
+      if (!reservation?.reserved) {
+        return { configured: true, failure: null };
+      }
       try {
         const res = await fetch(url, {
           redirect: "follow",
@@ -338,7 +352,9 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   // six-day window is one day of daylight before that.
   check(
     "places-hours-refresh",
-    Object.entries(HOURS_REFRESH as Record<string, unknown>)
+    Object.entries(
+      hoursRefreshTargetArtifact(HOURS_REFRESH as Record<string, unknown>),
+    )
       .filter(([key]) => !key.startsWith("_"))
       .map(([, value]) => (value as { refreshed_at?: string })?.refreshed_at),
     HOURS_SNAPSHOT_MAX_AGE_DAYS,
@@ -356,7 +372,9 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   //
   // Measure what the reader actually loses. Below 85% publishable fires on
   // day two and leaves five days to act.
-  const hoursRows = Object.entries(HOURS_REFRESH as Record<string, unknown>)
+  const hoursRows = Object.entries(
+    hoursRefreshTargetArtifact(HOURS_REFRESH as Record<string, unknown>),
+  )
     .filter(([key]) => !key.startsWith("_"))
     .map(([, value]) => value as { refreshed_at?: string; weekday_hours?: unknown });
   const withSchedule = hoursRows.filter((row) => Array.isArray(row.weekday_hours));

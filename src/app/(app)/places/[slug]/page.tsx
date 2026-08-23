@@ -10,8 +10,7 @@ import { getPlaceBySlug } from "@/lib/loaders/places";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import { isCommerceSearchLink, resolveCommerceLinks } from "@/lib/commerce/links";
 import LiveOpenStatus from "@/components/place/LiveOpenStatus";
-import HoursBlock from "@/components/place/HoursBlock";
-import GoogleHours from "@/components/place/GoogleHours";
+import LiveHoursBlock from "@/components/place/LiveHoursBlock";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
@@ -344,6 +343,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                   the ISR-baked value said "Closing soon" while HoursBlock said
                   "Closed" around closing time (fresh-eyes audit, Jul 2026). */}
               <LiveOpenStatus
+                slug={place.slug}
                 hours={place.hours}
                 verified={place.hours_verified ?? false}
                 initial={place.open_status}
@@ -502,11 +502,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      {place.hours ? (
-        <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
-      ) : place.google_hours && place.google_hours.length > 0 ? (
-        <GoogleHours lines={place.google_hours} />
-      ) : null}
+      <LiveHoursBlock
+        slug={place.slug}
+        hours={place.hours}
+        googleHours={place.google_hours}
+        verified={place.hours_verified ?? false}
+        provenance={hoursConfirmed ?? undefined}
+      />
 
       <PlacePhotoGallery
         photos={place.google_photos ?? []}

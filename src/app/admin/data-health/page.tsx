@@ -22,7 +22,10 @@ import {
   summarizeHoursRefreshArtifact,
   withheldHoursReviewQueue,
 } from "@/lib/quality/operator-coverage";
-import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  hoursRefreshTargetArtifact,
+  hoursRefreshTargetIdentities,
+} from "@/lib/loaders/placeRefreshIdentities";
 import {
   sourceLedgerNeedsAction,
   type SourceManifestEntry,
@@ -178,19 +181,14 @@ async function Board() {
   // the stale open-assertion count that the freshness flip would blank.
   const trust = computePlaceTrustReport();
   const conf = trust.confidence;
-  const googleBackedSlugs = new Set(
-    (
-      PLACES_CLIENT_RAW as Array<{
-        slug: string;
-        google_place_id?: string;
-      }>
-    )
-      .filter((place) => isGooglePlaceId(place.google_place_id))
-      .map((place) => place.slug),
+  const hoursRefreshTargetSlugs = new Set(
+    hoursRefreshTargetIdentities().map((place) => place.slug),
   );
   const hoursArtifact = summarizeHoursRefreshArtifact(
-    HOURS_REFRESH_RAW as Record<string, unknown>,
-    googleBackedSlugs,
+    hoursRefreshTargetArtifact(
+      HOURS_REFRESH_RAW as Record<string, unknown>,
+    ),
+    hoursRefreshTargetSlugs,
   );
   const hoursCycle = hoursArtifact.cycle;
   const hoursReviewQueue = withheldHoursReviewQueue(
@@ -219,14 +217,19 @@ async function Board() {
     ["Places (raw)", String(PLACES.length), ""],
     ["Duplicate clusters", String(clusters), `${folded} records fold`],
     [
-      "Current fresh hours",
+      "Whole-catalog fresh hours",
       `${trust.fresh_hours.fresh_count} / ${trust.fresh_hours.total_count} (${trust.fresh_hours.coverage_pct}%)`,
-      `target ${trust.fresh_hours.target_count} (${trust.fresh_hours.target_pct}%); Open Now ${trust.fresh_hours.open_now_eligible ? "eligible" : "unavailable"}`,
+      "Coverage visibility across every public place; not the paid refresh health gate",
+    ],
+    [
+      "Food & drink Open Now health",
+      `${trust.fresh_hours.eligibility_fresh_count} / ${trust.fresh_hours.eligibility_total_count} (${trust.fresh_hours.eligibility_coverage_pct}%)`,
+      `target ${trust.fresh_hours.target_count} (${trust.fresh_hours.target_pct}%); ${trust.fresh_hours.open_now_eligible ? "healthy" : "below gate"}`,
     ],
     [
       "Hours refresh cycle",
       `${hoursCycle.completedDays} / ${hoursCycle.days} buckets`,
-      `${hoursCycle.state}; ${hoursArtifact.freshRefreshRows} of ${hoursArtifact.expectedGoogleBackedPlaces} Google-backed places refreshed within policy`,
+      `${hoursCycle.state}; ${hoursArtifact.freshRefreshRows} of ${hoursArtifact.expectedGoogleBackedPlaces} eligible food/drink places refreshed within policy`,
     ],
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
@@ -306,9 +309,9 @@ async function Board() {
   }
   if (trust.fresh_hours.below_gate) {
     actions.push({
-      label: `Only ${trust.fresh_hours.fresh_count} of ${trust.fresh_hours.total_count} public places have current verified hours`,
+      label: `Only ${trust.fresh_hours.eligibility_fresh_count} of ${trust.fresh_hours.eligibility_total_count} food/drink places have current verified hours`,
       fix: hoursSnapshotAnomaly?.detail ??
-        `Open Now stays unavailable until ${trust.fresh_hours.target_count} places (${trust.fresh_hours.target_pct}%) have fresh schedules.`,
+        `The paid Open Now health gate needs ${trust.fresh_hours.target_count} eligible food/drink places (${trust.fresh_hours.target_pct}%) with fresh schedules.`,
     });
   } else if (hoursSnapshotAnomaly) {
     actions.push({
