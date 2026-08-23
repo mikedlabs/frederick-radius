@@ -2,7 +2,7 @@ name: Ingest venue events
 run-name: Ingest venue events (firecrawl=${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
 
 # Captures lineups from venues that only post on their own site
-# (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
+# (the official Weinberg calendar, The Banyan, Sky Stage, and others). Runs the venue
 # extraction agent, refreshes src/data/venue-events.json, commits.
 # Uses a standard Anthropic API key dedicated to this workflow in the GitHub
 # Data Enrichment environment. Never use an Anthropic Admin API key here.
@@ -109,7 +109,7 @@ jobs:
         if: ${{ always() }}
         run: |
           npm run style:lint
-          npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
+          npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts tests/weinberg-events.spec.ts tests/venue-event-alternatives.spec.ts
       - name: Promote reviewed venue-event artifacts
         if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}
         run: npm run data:release:write -- --stream venue-events

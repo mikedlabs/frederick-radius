@@ -7,6 +7,7 @@ import {
   nearbyEventsWhereLabel,
   eventMatchesTimeWindow,
   eventGroupRenderState,
+  eventsBrowseRequest,
   initialBrowseIsComplete,
   reconcileBrowseResponse,
 } from "./EventsExplorer";
@@ -45,6 +46,20 @@ function event(
 }
 
 describe("EventsExplorer deferred browse reconciliation", () => {
+  it("bypasses a cached degraded response only when the person checks again", () => {
+    expect(eventsBrowseRequest()).toEqual({
+      url: "/api/events/browse",
+      init: { headers: { Accept: "application/json" } },
+    });
+    expect(eventsBrowseRequest(true)).toEqual({
+      url: "/api/events/browse?refresh=1",
+      init: {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      },
+    });
+  });
+
   it("loads the complete event population before claiming a near-me ranking", () => {
     expect(eventScopeNeedsCompleteData("nearme")).toBe(true);
     expect(eventScopeNeedsCompleteData("county")).toBe(false);

@@ -55,6 +55,10 @@ import {
   type VenueCollectionStatus,
 } from "./lib/venue-event-promotion";
 import { normalizeVenueEventTimes } from "./lib/venue-event-time";
+import {
+  fetchWeinbergEventsResult,
+  type WeinbergVenueFilter,
+} from "./lib/weinberg-events";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 import { lintSourceText } from "./style-lint";
 
@@ -68,7 +72,7 @@ const MAX_IMAGE_FINGERPRINT_BYTES = 12_000_000;
 const VENUE_TEXT_EXTRACTOR_VERSION = "venue-events-text-v1";
 const VENUE_IMAGE_EXTRACTOR_VERSION = "venue-events-image-v1";
 
-export type Method = "feed" | "image" | "render" | "fetch";
+export type Method = "feed" | "image" | "render" | "fetch" | "weinberg";
 export type VenueSource = {
   slug: string;
   name: string;
@@ -76,6 +80,8 @@ export type VenueSource = {
   method?: Method;
   urls: string[];
   imageUrl?: string;
+  /** Reviewed venue taxonomy used by Weinberg's official calendar endpoint. */
+  venueFilter?: WeinbergVenueFilter;
   /** Exact reviewed redirect destinations beyond the configured source host. */
   allowedRedirectHosts?: string[];
   // Legacy flag kept for back-compat: render:true == method "render".
@@ -112,6 +118,7 @@ type EnsureModelReady = () => Promise<boolean>;
 export type VenueCollectDependencies = {
   fetchPageSnapshot: typeof fetchPageSnapshot;
   fetchSquarespaceEventsResult: typeof fetchSquarespaceEventsResult;
+  fetchWeinbergEventsResult: typeof fetchWeinbergEventsResult;
   extractTextEvents: (
     instructions: string,
     content: string,
@@ -125,6 +132,7 @@ export type VenueCollectDependencies = {
 const DEFAULT_COLLECT_DEPENDENCIES: VenueCollectDependencies = {
   fetchPageSnapshot,
   fetchSquarespaceEventsResult,
+  fetchWeinbergEventsResult,
   extractTextEvents: (instructions, content) =>
     extractJson<RawEvent[]>(instructions, content),
   extractImageEvents: (instructions, imageUrl) =>
@@ -401,6 +409,46 @@ export async function collect(
       events: [],
       source: directSource(venue.urls[0] ?? ""),
       status: "failed",
+    };
+  }
+
+  if (method === "weinberg") {
+    const url = venue.urls[0];
+    if (!url || !venue.venueFilter) {
+      console.log(`  – official Weinberg source is missing its venue filter`);
+      return {
+        events: [],
+        source: directSource(url ?? ""),
+        status: "failed",
+      };
+    }
+    const result = await dependencies.fetchWeinbergEventsResult(url, {
+      venueFilter: venue.venueFilter,
+    });
+    if (result.status === "failure") {
+      console.log(`  – official Weinberg calendar incomplete: ${result.reason}`);
+      return {
+        events: [],
+        source: directSource(result.sourceUrl),
+        status: "failed",
+      };
+    }
+    const events = publishableRawEvents(result.events);
+    if (events.length !== result.events.length) {
+      console.log(`  – official Weinberg calendar contained an invalid date-time`);
+      return {
+        events: [],
+        source: directSource(result.sourceUrl),
+        status: "failed",
+      };
+    }
+    console.log(
+      `  ✓ ${events.length} performance(s) from ${result.foundCards} official event card(s)`,
+    );
+    return {
+      events,
+      source: directSource(result.sourceUrl),
+      status: "complete",
     };
   }
 

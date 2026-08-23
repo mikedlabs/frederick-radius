@@ -66,6 +66,12 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
  * all stream artifacts at build time.
  */
 export const DATA_RELEASE_STREAMS = Object.freeze({
+  amenities: Object.freeze([
+    // Published civic-utility points are a distinct reviewable map-data
+    // product. Keeping them in their own stream means a future OSM refresh
+    // cannot silently change the public map under an unrelated place release.
+    "src/data/amenities.json",
+  ]),
   basemap: Object.freeze([
     "src/data/basemap-release.json",
   ]),

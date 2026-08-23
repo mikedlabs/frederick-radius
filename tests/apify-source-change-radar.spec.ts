@@ -44,7 +44,9 @@ async function canonicalFixtures(): Promise<{
     canonicalEvents: [
       {
         venue_slug: "weinberg-center",
-        source: { url: "https://weinbergcenter.org/performances/" },
+        source: {
+          url: "https://weinbergcenter.org/performances/?venue=weinberg-center",
+        },
       },
       {
         venue_slug: "weinberg-center",

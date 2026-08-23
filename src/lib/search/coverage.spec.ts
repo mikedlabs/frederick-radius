@@ -77,6 +77,15 @@ describe("answer coverage", () => {
     expect(bbq.every((r) => !/barber/i.test(r.title))).toBe(true);
   });
 
+  it("answers singular antique shopping language with actual antique places", () => {
+    const rows = answerRowsFor("antique shopping", EVENTS).slice(0, 3);
+    expect(rows.some((row) =>
+      row.source === "ranked" &&
+      row.resultType === "place" &&
+      row.category === "antiques"
+    )).toBe(true);
+  });
+
   it("scores a need by its weakest phrasing", () => {
     // A need that only answers when phrased perfectly is not answered.
     const outcome = evaluateQuery("pharmacy", { kind: "place", categories: ["pharmacy"] }, EVENTS);

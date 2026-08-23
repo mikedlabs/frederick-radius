@@ -675,6 +675,10 @@ export default function DaypartNeeds({
   const shelfTier = daypartShelfTier(active.picks);
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
   const leadReason = daypartLeadReason(active.picks);
+  // Today edits the answer to one lead and two alternatives. The deeper route
+  // remains in See all; a fourth card created a second mobile row that pushed
+  // the universal Find doorway well below the first viewport.
+  const visiblePicks = active.picks.slice(0, 3);
 
   return (
     <section aria-label={DAYPART_SHELF_ARIA[shelfTier]} className="mt-6">
@@ -792,19 +796,13 @@ export default function DaypartNeeds({
           </div>
         ) : active.picks.length > 0 ? (
           <div>
-            {/* Phones get a grid, not a rail. The rail hid most of the
-                answer at EVERY phone width: 1.59 of 4 cards visible at 375px
-                (~1.46 legible past the edge fade), cards 3 and 4 fully
-                off-screen even at 430px — two cards need a ~446px viewport,
-                which no phone has. A shelf that shows one option under a
-                heading promising four is the front door's biggest lie of
-                omission. Lead full-width, alternates two-up: measured +124px
-                of page height, against +384px for a naive one-column stack.
-                From sm up the rail keeps its role, where the column actually
-                has room. data-decision-position (lead/alternative) is layout-
-                independent, so "Why it leads" keeps its subject either way. */}
+            {/* Phones get an edited grid, not a hidden horizontal rail. One
+                lead and two alternatives fit as a complete decision set; See
+                all owns the longer inventory. From sm up the same three cards
+                become a rail, where the column has room. The decision role is
+                layout-independent, so "Why it leads" keeps its subject. */}
             <ul ref={shelfRef} className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1">
-              {active.picks.map((place, index) => (
+              {visiblePicks.map((place, index) => (
                 <li
                   key={place.slug}
                   className="shrink-0"

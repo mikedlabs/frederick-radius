@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   nameListSentence,
@@ -157,6 +158,17 @@ describe("Pulse status language", () => {
 });
 
 describe("Pulse smart blocks", () => {
+  it("keeps quiet and unavailable checks behind one compact source disclosure", () => {
+    const source = readFileSync("src/components/pulse/PulseBoard.tsx", "utf8");
+    const secondaryStart = source.indexOf("function SecondarySignals");
+    const secondaryEnd = source.indexOf("function AttentionTile", secondaryStart);
+    const secondarySource = source.slice(secondaryStart, secondaryEnd);
+
+    expect(secondarySource).toContain("Source status");
+    expect(secondarySource).toContain("<SecondarySignalRow");
+    expect(secondarySource).not.toContain("<PulseSmartBlock");
+  });
+
   it("uses written states and lets unavailable data outrank activity", () => {
     expect(pulseTileState(tile("quiet"))).toBe("Current");
     expect(pulseTileState(tile("moving", { active: true }))).toBe("Active");

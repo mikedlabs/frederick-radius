@@ -83,23 +83,10 @@ const GROUP_META: Record<
   yours: { icon: Bookmark, color: "var(--app-positive)" },
 };
 
-const COMPASS_INTENT_DEFINITIONS = [
-  // "Find something" leads. The hub exists to be a door, and this is the
-  // group people come for — yet it was the ONE group with no direction tile:
-  // ask-radius, search, nearby, open-now, plan and collections all lived
-  // behind "All 64 tools" plus a scroll while every other group had a door on
-  // the landing view (craft audit, 2026-08-19). Its live line stays empty on
-  // purpose: these are instruments, not feeds, and a card with nothing live
-  // to say makes no claim.
-  {
-    id: "find",
-    label: "Find something",
-    description: "Search, ask, see what is open, or browse what is near you.",
-    moreLabel: "More ways to find",
-    icon: Search,
-    groupIds: ["decide"],
-    featuredIds: ["search", "open-now", "ask-radius"],
-  },
+export const COMPASS_INTENT_DEFINITIONS = [
+  // The search field above is already the broad Find direction. These cards
+  // begin only where the person's intent becomes distinct, avoiding a large
+  // first row that repeats the job they just saw.
   {
     id: "go-out",
     label: "Eat, drink & go out",
@@ -756,7 +743,7 @@ export default function CompassHub() {
         </div>
 
         <label className="mt-4 block">
-          <span className="sr-only">Search all Radius tools</span>
+          <span className="sr-only">Search Radius tools and local guides</span>
           <span className="relative block">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
@@ -770,7 +757,7 @@ export default function CompassHub() {
               enterKeyHint="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try parking, live music, a restroom…"
+              placeholder="Try parking, live music, or restrooms…"
               className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-11 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
                 borderColor: "var(--app-border)",
@@ -811,21 +798,21 @@ export default function CompassHub() {
             />
           ) : null}
 
-          <PinnedTools
-            items={pinnedItems}
-            intentProps={intentProps}
-            onManage={() => openDeck("all", true)}
+          <CompassIntentBoard
+            intents={COMPASS_INTENT_DEFINITIONS}
+            groups={groups}
+            liveKeys={deckLiveKeys}
+            onOpen={openDeck}
           />
 
           {recentItems.length > 0 ? (
             <RecentTools items={recentItems} intentProps={intentProps} />
           ) : null}
 
-          <CompassIntentBoard
-            intents={COMPASS_INTENT_DEFINITIONS}
-            groups={groups}
-            liveKeys={deckLiveKeys}
-            onOpen={openDeck}
+          <PinnedTools
+            items={pinnedItems}
+            intentProps={intentProps}
+            onManage={() => openDeck("all", true)}
           />
         </>
       )}
@@ -842,7 +829,7 @@ export default function CompassHub() {
             ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
             : selectedIntent?.description ??
               selectedGroup?.description ??
-              `${directory.total} tools, organized by category. Search or jump to a category.`
+              "Browse by category or search for a specific tool."
         }
         onClose={closeDeck}
       >
@@ -1202,6 +1189,11 @@ export function liveLineForIntent(
     if (key?.status === "ok" && face?.value && face.label) {
       const value = face.value.trim();
       const label = face.label.trim();
+      // Quiet zero states are useful inside Pulse, where their source and
+      // context are visible. On a Compass direction card, “None · running”
+      // reads like a broken feed, so omit the garnish and keep the clear
+      // registry sentence instead.
+      if (/^(?:none|no|0)$/i.test(value)) continue;
       if (label.toLocaleLowerCase().startsWith(value.toLocaleLowerCase())) {
         return label;
       }
@@ -1250,7 +1242,6 @@ function CompassIntentBoard({
     groups.map((group) => [group.id, group.items]),
   );
   const intentColor: Record<CompassIntentId, string> = {
-    find: "var(--app-brand-press)",
     "go-out": "var(--app-accent-press)",
     "get-around": "var(--app-cool)",
     "local-help": "var(--app-civic)",
@@ -1389,7 +1380,7 @@ function ToolSearchResults({
           aria-live="polite"
           className="text-[17px] font-semibold tracking-[-0.01em]"
         >
-          {resolvedItems.length} {resolvedItems.length === 1 ? "tool" : "tools"} for “{query}”
+          {resolvedItems.length} {resolvedItems.length === 1 ? "match" : "matches"} for “{query}”
         </h2>
       </div>
       {resolvedItems.length > 0 ? (
@@ -1421,7 +1412,7 @@ function EmptySearch({ query }: { query: string }) {
         background: "var(--app-bg-elevated-solid)",
       }}
     >
-      <p className="text-[13px] font-semibold">No tool is named “{query}.”</p>
+      <p className="text-[13px] font-semibold">Nothing here matches “{query}.”</p>
       <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         Search Frederick itself or ask Radius in plain language.
       </p>

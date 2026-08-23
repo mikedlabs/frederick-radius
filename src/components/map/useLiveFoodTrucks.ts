@@ -1,10 +1,8 @@
 "use client";
 
-// Live food-truck pins for the map (#77 extraction from AppMap.tsx).
-// Owns the public poll of /api/food-trucks/live plus the minute clock that
-// ages pins out as their windows close. Behavior is byte-identical to the
-// inline original; the peek-pruning effect stays in AppMap because it
-// touches selection state.
+// Current food-truck availability for the map. The compatibility endpoint
+// returns operator-confirmed beacons plus clearly labeled published stops;
+// the minute clock expires each one under its own trust rules.
 
 import { useEffect, useMemo, useState } from "react";
 import { activeFoodTruckPins } from "./foodTruckPins";
@@ -33,7 +31,7 @@ export function useLiveFoodTrucks(
         const body = (await response.json()) as { pins?: FoodTruckMapPin[] };
         if (active && Array.isArray(body.pins)) setCurrentFoodTruckPins(body.pins);
       } catch {
-        // Keep the server-provided snapshot. Live pins are an enhancement;
+        // Keep the server-provided snapshot. Availability pins are optional;
         // a temporary read failure must never disturb the rest of the map.
       }
     };

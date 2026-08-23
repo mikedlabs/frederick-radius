@@ -180,10 +180,30 @@ export async function GET(request: Request) {
     ),
   };
 
+  const unifiedUnavailable =
+    unified.status === "fulfilled"
+      ? [...new Set(unified.value.sourceHealth.unavailable)]
+          .map((source) => source.trim())
+          .filter(Boolean)
+          .sort()
+          .slice(0, 32)
+      : [];
+  const sourceDegraded =
+    unified.status === "fulfilled"
+    && unified.value.sourceHealth.degraded;
   const body = () => ({
+    // `ok` answers whether both cache writes completed. Source health is a
+    // separate truth: a fail-soft warm can be operationally complete while
+    // one publisher is unavailable.
     ok: failures.length === 0,
+    healthy: failures.length === 0 && !sourceDegraded,
+    degraded: failures.length > 0 || sourceDegraded,
     duration_ms: Date.now() - t0,
     warmed,
+    source_health: {
+      degraded: sourceDegraded,
+      unavailable: unifiedUnavailable,
+    },
   });
 
   if (failures.length > 0) {

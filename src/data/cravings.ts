@@ -343,7 +343,7 @@ export const CRAVINGS: Craving[] = [
       /\bamphitheat(er|re)|music hall|sky stage|bandshell\b/i.test(p.name),
   },
   {
-    // ~299 places (shopping 225 + market 61 + book-store 13) — the biggest
+    // Shopping, markets, books, and the dedicated antiques category — the biggest
     // answerable cluster after the non-craving worship/wellness. Mirrors the
     // map's WithinReach "Shops" matcher so /today and /map never disagree.
     key: "shops",
@@ -353,7 +353,8 @@ export const CRAVINGS: Craving[] = [
     match: (p) =>
       p.category === "shopping" ||
       p.category === "market" ||
-      p.category === "book-store",
+      p.category === "book-store" ||
+      p.category === "antiques",
     facets: [
       { key: "shopping", label: "Shops", match: (p) => p.category === "shopping" },
       // Thrift / vintage / consignment (incl. the few "antiques" rows) — a real

@@ -577,6 +577,13 @@ type AcceptedEnrichmentIdentity = {
 function acceptedEnrichmentIdentity(
   place: Place,
 ): AcceptedEnrichmentIdentity {
+  // A wrong-business quarantine has to sever the provider identity itself,
+  // not only hide the static enrichment row. Otherwise a matching row in the
+  // rolling hours/status snapshot can still reattach the quarantined Google
+  // listing and publish the other business's hours under this place. Keeping
+  // the result empty also removes the slug from future paid refresh targets
+  // until an editor binds the correct identity.
+  if (ENRICHMENT_QUARANTINE.has(place.slug)) return {};
   const candidate = enrichmentFor(place.slug);
   const candidateGooglePlaceId = candidate?.google_place_id;
   const enrichmentOwners = isGooglePlaceId(candidateGooglePlaceId)

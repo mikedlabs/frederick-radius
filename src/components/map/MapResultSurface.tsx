@@ -176,7 +176,6 @@ export default function MapResultSurface({
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
     >
-      <span className="map-result-handle" aria-hidden />
       {showCloseButton && (
         <button
           type="button"

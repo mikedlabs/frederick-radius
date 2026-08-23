@@ -45,9 +45,19 @@ export function useOsmPlaces({
         if (!response.ok) throw new Error("OpenStreetMap enrichment is unavailable");
         const payload: unknown = await response.json();
         const data = Array.isArray(payload) ? payload as OsmPlace[] : [];
+        const sourceStatus = response.headers.get("X-Radius-Source-Status");
+        if (
+          data.length === 0
+          && (sourceStatus === "empty" || sourceStatus === "unavailable")
+        ) {
+          throw new Error("OpenStreetMap enrichment is temporarily unavailable");
+        }
         if (cancelled) return;
         setOsmPlaces(data);
-        saveCachedOsm(data);
+        // A provider outage must not become the browser's local daily truth.
+        // The route keeps the legacy [] body for compatibility, while this
+        // header-aware client retains the reviewed static amenity layer.
+        if (data.length > 0) saveCachedOsm(data);
       } catch (err) {
         if (cancelled) return;
         setOsmError(err instanceof Error ? err.message : "Failed to load OSM data");

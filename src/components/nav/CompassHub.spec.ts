@@ -9,6 +9,7 @@ import {
 } from "./toolDeckModel";
 import {
   ALL_COMPASS_TOOLS_ID,
+  COMPASS_INTENT_DEFINITIONS,
   buildToolDeckDirectory,
   buildToolDeckGroups,
   compassShortcutGridClass,
@@ -31,6 +32,22 @@ describe("Compass search control", () => {
     expect(source).toContain('type="text"');
     expect(source).toContain('role="searchbox"');
     expect(source).toContain('aria-label="Clear tool search"');
+  });
+
+  it("leads with resident intents and keeps the complete index behind one explicit action", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+
+    expect(COMPASS_INTENT_DEFINITIONS.map((intent) => intent.label)).toEqual([
+      "Eat, drink & go out",
+      "Get around",
+      "Essentials & local help",
+      "Explore & save",
+    ]);
+    expect(source.indexOf("<CompassIntentBoard")).toBeLessThan(
+      source.indexOf("<PinnedTools"),
+    );
+    expect(source).toContain("Browse the full tool index");
+    expect(source).not.toContain("tools, organized by category");
   });
 });
 
@@ -291,10 +308,6 @@ describe("compass live lines", () => {
         key("water", "9", "gauges reporting"),
       ]),
     ).toBeNull();
-    // Same rule for the new Find something tile: instruments, not feeds.
-    expect(
-      liveLineForIntent("find", [key("news", "6", "local headlines")]),
-    ).toBeNull();
   });
 
   it("stays silent rather than rendering a placeholder", () => {
@@ -307,6 +320,20 @@ describe("compass live lines", () => {
       ]),
     ).toBeNull();
     expect(liveLineForIntent("explore-yours", [key("buses", "10", "buses moving")])).toBeNull();
+  });
+
+  it("keeps quiet zero states off direction cards", () => {
+    expect(
+      liveLineForIntent("get-around", [
+        key("buses", "None", "running"),
+      ]),
+    ).toBeNull();
+    expect(
+      liveLineForIntent("get-around", [
+        key("buses", "0", "buses moving"),
+        key("traffic", "12 min", "I-70 to the county line"),
+      ]),
+    ).toBe("12 min · I-70 to the county line");
   });
 });
 

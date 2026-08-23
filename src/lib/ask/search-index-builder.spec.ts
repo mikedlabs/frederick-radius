@@ -309,6 +309,55 @@ describe("Radius search index builder", () => {
     warn.mockRestore();
   });
 
+  it("binds cleanup ids and cutoff as pooled-database-safe text", async () => {
+    mocks.publicPlaces.mockReturnValue([places[0], places[1]]);
+    const cleanupBindings: unknown[][] = [];
+    let transactionCount = 0;
+    const tx = vi.fn(
+      (strings: TemplateStringsArray, ...values: unknown[]) => {
+        const text = queryText(strings);
+        if (text.includes("pg_try_advisory_xact_lock")) {
+          return Promise.resolve([{ acquired: true }]);
+        }
+        if (text.includes("select source_id")) {
+          return Promise.resolve([]);
+        }
+        if (text.includes("delete from public.radius_search_documents")) {
+          cleanupBindings.push(values);
+          return Promise.resolve([]);
+        }
+        return Promise.resolve([]);
+      },
+    );
+    const sql = Object.assign(vi.fn(), {
+      begin: vi.fn(
+        async (callback: (transaction: typeof tx) => unknown) => {
+          transactionCount += 1;
+          return callback(tx);
+        },
+      ),
+    });
+    mocks.getSql.mockReturnValue(sql);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result.cleanupWarning).toBeUndefined();
+    expect(transactionCount).toBe(2);
+    expect(cleanupBindings).toHaveLength(1);
+    expect(cleanupBindings[0]?.[0]).toBe('["alpha","bravo"]');
+    expect(Array.isArray(cleanupBindings[0]?.[0])).toBe(false);
+    expect(cleanupBindings[0]?.[1]).toEqual(expect.any(String));
+    expect(Number.isFinite(Date.parse(cleanupBindings[0]?.[1] as string))).toBe(
+      true,
+    );
+    expect(cleanupBindings[0]?.[1]).not.toBeInstanceOf(Date);
+    expect(
+      tx.mock.calls.some(([strings]) =>
+        queryText(strings).includes("jsonb_array_elements_text"),
+      ),
+    ).toBe(true);
+  });
+
   it("skips a concurrent refresh before any storage or paid work", async () => {
     const tx = vi.fn(
       (strings: TemplateStringsArray) =>

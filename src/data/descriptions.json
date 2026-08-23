@@ -35,13 +35,15 @@
   },
   "bakehouse": {
     "blurb": "Bakehouse makes croissants, pastries, and baked goods from a storefront in Downtown Frederick.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.bakehousemd.com/",
       "fetched_at": "2026-08-01T09:49:18.789Z"
     },
-    "generated_at": "2026-08-01T09:49:18.789Z"
+    "generated_at": "2026-08-01T09:49:18.789Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "bellisarios-pizza": {
     "blurb": "Bellisario's Pizza has been locally owned since 2000 and serves pizza along with hoagies, calzones, and other Italian-style sandwiches.",
@@ -97,6 +99,18 @@
     "reviewed_at": "2026-07-27T16:55:00.000Z",
     "reviewer_note": "Checked against the linked business website on 2026-07-27."
   },
+  "currys-kitchen-brunswick": {
+    "blurb": "Adele's Tex Mex serves Tex-Mex dishes and Salvadoran favorites, including pupusas, in Brunswick.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://brunswickmd.gov/index.asp?DE=2F4D9131-6BA9-46F8-959F-98ADA68DF06B&SEC=DB893447-9C07-4EA7-9CDF-208EA6201C99",
+      "fetched_at": "2026-08-22T17:30:00.000Z"
+    },
+    "generated_at": "2026-08-22T17:30:00.000Z",
+    "reviewed_at": "2026-08-22T17:30:00.000Z",
+    "reviewer_note": "Checked against the City of Brunswick dining page and the Frederick County Office of Economic Development directory on 2026-08-22. Both identify Adele's Tex Mex in Brunswick; the county directory confirms the current 640 Souder Road address and phone number."
+  },
   "chappelle-co": {
     "blurb": "Chappelle & Co. sells candles, home goods, apparel, stationery, and accessories from a retail location in Frederick, Maryland.",
     "status": "candidate",
@@ -108,14 +122,16 @@
     "generated_at": "2026-08-01T09:51:20.068Z"
   },
   "cloud-jammer": {
-    "blurb": "Cloud Jammer sells vape products including e-juice, nicotine, glass pieces, vape mods, batteries, and accessories across multiple locations in Pennsylvania and Maryland since 2014.",
-    "status": "candidate",
+    "blurb": "Cloud Jammer's North Market Street shop carries vape juice, salt nicotine, glass pieces, batteries, and other vape accessories.",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.cloud-jammervapes.com/",
       "fetched_at": "2026-08-01T09:50:46.051Z"
     },
-    "generated_at": "2026-08-01T09:50:46.051Z"
+    "generated_at": "2026-08-01T09:50:46.051Z",
+    "reviewed_at": "2026-08-22T19:15:00.000Z",
+    "reviewer_note": "Checked against Cloud Jammer's current official site on 2026-08-22; the site lists its Frederick shop and the product categories described here."
   },
   "colonial-jewelers": {
     "blurb": "Colonial Jewelers is a fourth-generation Frederick business offering custom jewelry design, engagement and wedding jewelry, and repair services.",
@@ -127,15 +143,29 @@
     },
     "generated_at": "2026-08-01T09:49:08.539Z"
   },
+  "care-of-self-center": {
+    "blurb": "Care of Self offers individual, couples, family, adolescent, and group counseling, plus ADHD testing and cognitive assessments.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.careofselfcenter.com/",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against Care of Self's current services and contact information on 2026-08-22."
+  },
   "common-market": {
     "blurb": "Common Market is a locally owned grocery and cafe that works with local farmers and producers within 200 miles.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.commonmarket.coop/",
       "fetched_at": "2026-08-01T09:50:35.402Z"
     },
-    "generated_at": "2026-08-01T09:50:35.402Z"
+    "generated_at": "2026-08-01T09:50:35.402Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "critters-reptiles-exotics": {
     "blurb": "Critters, Reptiles & Exotics is an exotic pet store offering lizards, snakes, birds, rabbits, hamsters, guinea pigs, hedgehogs, chinchillas, sugar gliders, axolotls, and freshwater and saltwater fish for sale.",
@@ -257,6 +287,40 @@
     },
     "generated_at": "2026-08-01T09:51:03.738Z"
   },
+  "frederick-county-department-of-planning-development-review": {
+    "blurb": "Frederick County Department of Development Review and Planning handles development applications, land-use changes, subdivision plans, and site plans.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.frederickcountymd.gov/7969/Development-Review",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against Frederick County's current Development Review and Planning page on 2026-08-22."
+  },
+  "frederick-county-public-school": {
+    "blurb": "The Frederick County Public Schools central office connects families with athletics, enrollment, transportation, special education, school directories, and other district services.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.fcps.org/connect_with_fcps",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against FCPS's current central-office contact page on 2026-08-22; it confirms the East Street address and listed district services."
+  },
+  "growwith-abi": {
+    "blurb": "Grow With Abi offers financial education, tax preparation, and retirement and legacy planning services.",
+    "status": "candidate",
+    "source": {
+      "kind": "business_website",
+      "url": "https://growwithabi.com/",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z"
+  },
   "happiness-is-balance-frederick-md": {
     "blurb": "Happiness Is Balance offers massage therapy, personal training, life coaching, food education, situational awareness instruction, and firearms training.",
     "status": "candidate",
@@ -347,33 +411,39 @@
   },
   "jojos-restaurant-tap-house": {
     "blurb": "JoJo's Restaurant & Tap House offers both a restaurant with a semi-private dining room and a tap house side with over 30 rotating draft beers, cocktails, and wine.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://jojosrestauranttaphouse.com/",
       "fetched_at": "2026-08-01T09:49:10.420Z"
     },
-    "generated_at": "2026-08-01T09:49:10.420Z"
+    "generated_at": "2026-08-01T09:49:10.420Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "k-town-takeout": {
     "blurb": "K-town TakeOut serves Korean food, sushi, and takeout meals.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://k-towntakeout.com/",
       "fetched_at": "2026-08-01T09:50:49.865Z"
     },
-    "generated_at": "2026-08-01T09:50:49.865Z"
+    "generated_at": "2026-08-01T09:50:49.865Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "key-city-tattoo": {
-    "blurb": "Key City Tattoo offers custom tattoo services at two locations in Frederick, Maryland, with multiple artists available at each shop.",
-    "status": "candidate",
+    "blurb": "Key City Tattoo's Monocacy Village shop offers custom tattoos by its Frederick artists; piercing is available only at its Urbana shop.",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.keycitytattoos.com/",
       "fetched_at": "2026-08-01T09:50:31.837Z"
     },
-    "generated_at": "2026-08-01T09:50:31.837Z"
+    "generated_at": "2026-08-01T09:50:31.837Z",
+    "reviewed_at": "2026-08-22T19:15:00.000Z",
+    "reviewer_note": "Checked against Key City Tattoo's current official site on 2026-08-22; the site separates the Frederick and Urbana shops and says piercing is available only in Urbana."
   },
   "kindred-nutrition": {
     "blurb": "Kindred Nutrition is a dietitian-led practice specializing in sports nutrition and eating-disorder treatment. It offers in-person care in Frederick and virtual care in multiple states.",
@@ -389,23 +459,27 @@
   },
   "lazy-fish": {
     "blurb": "Lazy Fish serves sushi and Asian fusion dishes from its upstairs space in downtown Frederick.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://lazyfishsushi.com/",
       "fetched_at": "2026-08-01T09:48:50.357Z"
     },
-    "generated_at": "2026-08-01T09:48:50.357Z"
+    "generated_at": "2026-08-01T09:48:50.357Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "mackies-southern-bbq": {
     "blurb": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
-    "status": "candidate",
+    "status": "rejected",
     "source": {
       "kind": "business_website",
       "url": "https://www.mackiesbarbecue.com/",
       "fetched_at": "2026-05-31T18:17:58.141Z"
     },
-    "generated_at": "2026-05-31T18:17:58.141Z"
+    "generated_at": "2026-05-31T18:17:58.141Z",
+    "reviewed_at": "2026-08-22T19:15:00.000Z",
+    "reviewer_note": "Rejected after a 2026-08-22 source check: Mackie's official site now identifies a Gaithersburg location, while K-town TakeOut's official site occupies the Frederick address attached to this stale listing."
   },
   "main-cup-middletown": {
     "blurb": "The Main Cup serves comfort-food standards and globally inspired dishes in a restaurant and bar setting.",
@@ -499,15 +573,29 @@
     },
     "generated_at": "2026-08-01T09:49:22.119Z"
   },
+  "outreach-healthcare-frederick": {
+    "blurb": "Outreach Recovery's Frederick clinic provides addiction treatment, mental health counseling, medication management, and substance-use counseling.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://outreachrecovery.com/locations/",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against Outreach Recovery's current Frederick location listing on 2026-08-22 and corroborated with Maryland and Frederick County public-health directories."
+  },
   "oscars-alehouse": {
     "blurb": "Oscar's Alehouse features a wood-burning grill that gives burgers, chicken, steak, and fish an oaky flavor, and rotates 36 craft beer drafts from breweries around the nation and local breweries.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.oscarsalehouse.net/west",
       "fetched_at": "2026-08-01T09:48:14.084Z"
     },
-    "generated_at": "2026-08-01T09:48:14.084Z"
+    "generated_at": "2026-08-01T09:48:14.084Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "panera-bread-urbana": {
     "blurb": "The Urbana Panera is a bakery-cafe serving breakfast, soups, sandwiches, salads, and baked sweets.",
@@ -677,6 +765,18 @@
     },
     "generated_at": "2026-08-01T09:50:37.122Z"
   },
+  "sonus-center": {
+    "blurb": "Sonus Hearing Care Professionals is an independently owned audiology practice offering hearing screenings, evaluations, hearing aids, fittings, and follow-up care.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://sonusfrederick.com/",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against Sonus Hearing Care Professionals' current Frederick site on 2026-08-22."
+  },
   "south-market-sandwich-co": {
     "blurb": "South Market Sandwich Company makes sandwiches and offers free delivery to downtown Frederick Monday through Friday from 11am to 2:30pm.",
     "status": "candidate",
@@ -689,13 +789,15 @@
   },
   "spinners-pinball-arcade": {
     "blurb": "Spinners is a nonprofit arcade in Frederick, Maryland offering unlimited all-day play on pinball machines, arcade games, skeeball, air hockey, and console gaming for a single admission price.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.spinnerspinball.org/",
       "fetched_at": "2026-08-01T09:49:13.111Z"
     },
-    "generated_at": "2026-08-01T09:49:13.111Z"
+    "generated_at": "2026-08-01T09:49:13.111Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
   },
   "sumittra-thai-cuisine": {
     "blurb": "Sumittra serves Thai fusion cuisine in Downtown Frederick.",
@@ -889,13 +991,27 @@
   },
   "wags-restaurant": {
     "blurb": "Wag's serves burgers and fries, with bar hours that run later than the kitchen Monday through Saturday.",
-    "status": "candidate",
+    "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.eatatwags.com/",
       "fetched_at": "2026-08-01T09:49:20.099Z"
     },
-    "generated_at": "2026-08-01T09:49:20.099Z"
+    "generated_at": "2026-08-01T09:49:20.099Z",
+    "reviewed_at": "2026-08-22T19:39:36.980Z",
+    "reviewer_note": "Editor-approved after source review; the mechanical pre-flight supplied decision support only."
+  },
+  "william-r-talley-recreation-center": {
+    "blurb": "The city-run Talley Recreation Center has a public fitness center, full gymnasium, basketball and volleyball courts, meeting rooms, bathrooms, and a water fountain.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/William-R-Talley-Recreation-Center-143",
+      "fetched_at": "2026-08-22T20:00:00.000Z"
+    },
+    "generated_at": "2026-08-22T20:00:00.000Z",
+    "reviewed_at": "2026-08-22T20:00:00.000Z",
+    "reviewer_note": "Checked against the City of Frederick's current Talley Recreation Center facility page on 2026-08-22."
   },
   "wheel-base-bikes": {
     "blurb": "Wheel Base Bikes sells bicycles including road, mountain, commuter, comfort, cruiser, fitness, and hybrid models, along with parts and accessories.",

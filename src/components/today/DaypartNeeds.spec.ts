@@ -542,6 +542,32 @@ describe("DaypartNeeds", () => {
     expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
   });
 
+  it("edits Today to one lead and two alternatives", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        rows: [
+          {
+            category: "coffee",
+            label: "Coffee",
+            href: "/category/coffee",
+            picks: ["Lead", "Second", "Third", "Fourth"].map((name, index) => ({
+              slug: `pick-${index}`,
+              name,
+              rating: 4.8 - index / 10,
+              where: "Frederick",
+              confidence: "confirmed" as const,
+            })),
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("Lead");
+    expect(html).toContain("Second");
+    expect(html).toContain("Third");
+    expect(html).not.toContain("Fourth");
+  });
+
   it("uses the photo proxy signal and recognizes its 1x1 failure image", () => {
     expect(
       daypartPhotoSrc(

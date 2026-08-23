@@ -14,8 +14,8 @@ const storybookMode =
  *
  * Scope note: the existing tests/*.test.ts files use the Node built-in
  * test runner (node:test) and are kept on the `test:node` script. Vitest
- * only collects *.spec.ts so the two runners do not collide. New unit
- * tests are written as *.spec.ts.
+ * collects *.spec.ts and *.spec.tsx so the two runners do not collide while
+ * React component contracts remain part of the normal verification gate.
  */
 export default defineConfig({
   ...(storybookMode
@@ -68,7 +68,7 @@ export default defineConfig({
       }
     : {
         environment: "node",
-        include: ["src/**/*.spec.ts", "tests/**/*.spec.ts"],
+        include: ["src/**/*.spec.{ts,tsx}", "tests/**/*.spec.{ts,tsx}"],
         exclude: ["node_modules", ".next", "e2e/**"],
         // 20s, up from the 5s default. This is a FLAKE fix, not a slow-test
         // accommodation: a family of specs that decorate the full 1,568-place

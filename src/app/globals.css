@@ -317,6 +317,16 @@
   .app-main-reading[data-bottom-nav-reserve="true"] {
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* A modal sheet owns the full mobile viewport, including the bottom band.
+     Hiding the persistent nav while the canonical panel is present prevents
+     it from flashing through the sheet's spring/floating-bottom gap and also
+     removes those obscured destinations from pointer and accessibility hit
+     testing. The nav returns only after AnimatePresence removes the panel. */
+  html:has([data-bottom-sheet-panel]) [data-bottom-nav-shell] {
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 @media (min-width: 640px) {
@@ -1795,6 +1805,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background-repeat: no-repeat !important;
   background-size: 22px 22px !important;
 }
+/* Expanded legal attribution already occupies a 44px control shelf on the
+ * field-mapping screens. Give each text link that full hit area too, without
+ * enlarging the visible type or covering more of the map. */
+.maplibregl-ctrl-attrib.maplibregl-compact-show
+  .maplibregl-ctrl-attrib-inner,
+.maplibregl-ctrl-attrib:not(.maplibregl-compact)
+  .maplibregl-ctrl-attrib-inner {
+  min-height: 44px;
+  align-items: center;
+}
+.maplibregl-ctrl-attrib.maplibregl-compact-show
+  .maplibregl-ctrl-attrib-inner a,
+.maplibregl-ctrl-attrib:not(.maplibregl-compact)
+  .maplibregl-ctrl-attrib-inner a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: 2px;
+}
 
 /* Radius-map hover preview — a quiet mini-label that follows the dot
  * under the cursor. Non-interactive so moving toward it never counts as
@@ -3070,6 +3099,89 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   max-width: 680px;
 }
 
+/* The first-use location request is guidance, not a gate. It stays attached
+   to the command dock, explains why location helps before any browser prompt,
+   and leaves Search + What to see fully operable. This also prevents an async
+   permission check from replacing a task somebody has already started. */
+.map-location-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent);
+  box-shadow: var(--app-shadow-2);
+  color: var(--app-ink);
+  animation: map-dock-arrive 220ms var(--app-ease-out) both;
+}
+.map-location-offer-copy {
+  min-width: 0;
+}
+.map-location-offer-copy strong,
+.map-location-offer-copy span {
+  display: block;
+}
+.map-location-offer-copy strong {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.map-location-offer-copy span {
+  margin-top: 2px;
+  color: var(--app-ink-3);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.map-location-offer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-location-offer-actions button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-inline: 11px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.map-location-offer-actions button:first-child {
+  border-color: color-mix(in srgb, var(--app-brand) 38%, var(--app-border));
+  background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated));
+  color: var(--app-brand-press);
+}
+.map-location-offer-actions button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-brand);
+}
+
+@media (max-width: 639.98px) {
+  .map-location-offer {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .map-location-offer-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .map-location-offer-actions button {
+    min-width: 0;
+    padding-inline: 7px;
+  }
+}
+
 /* On phones the command bar belongs to the thumb, not the horizon. The map
    canvas already stops above BottomNav, so this sits inside the map's actual
    lower edge and visually docks to the app navigation without a second
@@ -3915,7 +4027,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-scenes-heading {
   min-height: 20px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 7px;
@@ -4678,6 +4790,44 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+}
+.dock-source-health {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 10px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--app-warning) 34%, var(--app-border));
+  border-radius: var(--app-radius-sm);
+  background: color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated));
+  color: color-mix(in srgb, var(--app-warning-press) 76%, var(--app-ink));
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.dock-source-health span {
+  min-width: 0;
+}
+.dock-source-health button {
+  flex: 0 0 auto;
+  padding-inline: 8px;
+  border-radius: 999px;
+  color: var(--app-warning-press);
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dock-source-health button:focus-visible {
+  outline: 2px solid var(--app-warning-press);
+  outline-offset: 1px;
+}
+@media (max-width: 359.98px) {
+  .dock-source-health {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 .dock-clear {
   flex: 0 0 auto;
@@ -6020,12 +6170,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-entity-contact {
   display: flex;
+  min-height: 44px;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
 }
 .map-entity-contact a {
   flex: 0 0 auto;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline-start: 8px;
   color: var(--app-cool);
   font-weight: 700;
 }
@@ -6243,7 +6400,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    motion make place, parking, truck, point, and discovery cards feel like one
    map system instead of unrelated popups. */
 .map-result-surface {
-  padding-top: 18px;
+  padding-top: 12px;
   border-color: color-mix(in srgb, var(--app-ink) 14%, var(--app-border));
   border-radius: 20px;
   background: var(--app-bg-elevated-solid);
@@ -6258,21 +6415,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation-delay: 55ms;
 }
 .map-result-surface.map-finding-peek {
-  padding-top: 18px;
+  padding-top: 12px;
   background: var(--app-bg-elevated-solid);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-}
-.map-result-handle {
-  position: absolute;
-  top: 7px;
-  left: 50%;
-  width: 36px;
-  height: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-ink-3) 38%, transparent);
-  transform: translateX(-50%);
-  pointer-events: none;
 }
 .map-result-surface .map-peek-close {
   top: 8px;
@@ -6294,7 +6440,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (max-width: 520px) {
   .map-result-surface {
     right: max(8px, env(safe-area-inset-right, 0px));
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    /* The map canvas already reserves the bottom safe area and mobile nav.
+       Adding the inset again lifts every result card twice on modern iPhones. */
+    bottom: 8px;
     left: max(8px, env(safe-area-inset-left, 0px));
     max-height: min(54dvh, 430px);
   }
@@ -6521,8 +6669,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (prefers-reduced-motion: reduce) {
   .dock-head,
   .dock-pane,
+  .map-location-offer,
   .dock-chip {
     transition: none !important;
+    animation: none !important;
   }
 }
 
@@ -6647,6 +6797,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .eb-whenribbon .eb-chip {
   flex: 0 0 auto;
+}
+/* The date shortcuts are choices, not status alerts. Only the selected date
+   earns a dot; three identical inactive dots made every option look active. */
+.eb-whenribbon .eb-chip:not([data-on]) .eb-chip-dot {
+  display: none;
 }
 .eb-dock.eb-collapsed .eb-whenribbon,
 .eb-dock.eb-open .eb-whenribbon {
@@ -6819,12 +6974,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     max-height: 48px;
     padding: 0 10px 5px;
   }
-  /* Keep the three decisions people make most often on the first screen.
-     Tomorrow and Later this week remain in the When sheet and date picker. */
-  .eb-whenribbon .eb-chip:nth-child(3),
-  .eb-whenribbon .eb-chip:nth-child(5) {
-    display: none;
-  }
+  /* The component supplies exactly the three primary date decisions on
+     phones. Longer-range choices remain in the canonical Filters sheet. */
   .eb-filterbar {
     padding: 0 8px 6px;
   }

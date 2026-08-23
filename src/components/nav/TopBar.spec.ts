@@ -60,6 +60,22 @@ describe("TopBar search ownership", () => {
     expect(location).toContain("min-h-0 overflow-y-auto overscroll-contain");
   });
 
+  it("keeps the town inventory behind one deliberate choice", () => {
+    const location = readFileSync("src/components/nav/LocationChip.tsx", "utf8");
+
+    expect(location).toContain("const [showTowns, setShowTowns] = useState(false)");
+    expect(location).toContain("Choose a town");
+    expect(location).toContain("Back to area choices");
+    expect(location.match(/data-town-disclosure/g)).toHaveLength(1);
+    expect(location).toContain("setShowTowns((visible) => !visible)");
+    expect(location).toContain("aria-expanded={showTowns}");
+    expect(location).toContain('aria-controls="location-town-choices"');
+    expect(location).toContain('id="location-town-choices" hidden={!showTowns}');
+    expect(location.indexOf("data-town-disclosure")).toBeLessThan(
+      location.indexOf('id="location-town-choices"'),
+    );
+  });
+
   it("keeps Compass branded while clarifying the tool destination on mobile", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
     const pulse = readFileSync("src/components/nav/PulseIndicator.tsx", "utf8");

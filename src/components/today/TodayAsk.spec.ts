@@ -3,22 +3,29 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import TodayAsk from "./TodayAsk";
 
-describe("Today Ask Radius launcher", () => {
-  it("hands a named question to the dedicated Ask workspace", () => {
-    const html = renderToStaticMarkup(createElement(TodayAsk));
+describe("Today universal Find launcher", () => {
+  it("uses the shared Find doorway instead of a second Ask form", () => {
+    const html = renderToStaticMarkup(
+      createElement(TodayAsk, null, createElement("span", null, "Category choices")),
+    );
 
-    expect(html).toContain('action="/ask"');
-    expect(html).toContain('name="q"');
-    expect(html).toContain("data-ask-composer");
-    expect(html).toContain("data-ask-composer-mark");
-    expect(html).not.toContain("/api/ask");
+    expect(html).toContain('aria-label="Find a place, service, event, or answer"');
+    expect(html).toContain('href="/search"');
+    expect(html).toContain("What do you need?");
+    expect(html).toContain('href="/open-now"');
+    expect(html).toContain('href="/amenities"');
+    expect(html).toContain('href="/places"');
+    expect(html).toContain("Browse all places");
+    expect(html).toContain("Category choices");
+    expect(html).not.toContain('action="/ask"');
+    expect(html).not.toContain("data-ask-composer");
   });
 
   it("can sit flush inside the shared Today decision surface", () => {
     const html = renderToStaticMarkup(createElement(TodayAsk, { embedded: true }));
 
-    expect(html).toContain('data-surface-row="ask"');
-    expect(html).not.toContain('class="mt-3 scroll-mt-24"');
-    expect(html).toContain("border-b py-2");
+    expect(html).toContain('data-surface-row="find"');
+    expect(html).not.toContain('class="mt-3 scroll-mt-24');
+    expect(html).toContain("overflow-hidden");
   });
 });

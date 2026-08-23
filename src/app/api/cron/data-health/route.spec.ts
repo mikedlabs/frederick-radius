@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   summarizeHoursRefreshArtifact: vi.fn(),
   curatedFreshnessAnomalies: vi.fn(),
   evaluateDbHealth: vi.fn(),
+  getLatestHoursRefreshAt: vi.fn(),
   getRecentIngestRuns: vi.fn(),
   runTripwires: vi.fn(),
   deliverDataHealthReport: vi.fn(),
@@ -65,6 +66,7 @@ vi.mock("@/lib/quality/curated-freshness", () => ({
 }));
 vi.mock("@/lib/quality/db-health", () => ({
   evaluateDbHealth: mocks.evaluateDbHealth,
+  getLatestHoursRefreshAt: mocks.getLatestHoursRefreshAt,
   getRecentIngestRuns: mocks.getRecentIngestRuns,
 }));
 vi.mock("@/lib/quality/tripwires", () => ({
@@ -114,6 +116,7 @@ describe("GET /api/cron/data-health", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("DATA_RETENTION_PRUNE", "0");
+    vi.stubEnv("VERCEL_GITHUB_ALERTS_ENABLED", "1");
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
     mocks.classifyDescription.mockReturnValue("none");
@@ -173,6 +176,9 @@ describe("GET /api/cron/data-health", () => {
       reason: null,
       anomalies: [],
     });
+    mocks.getLatestHoursRefreshAt.mockResolvedValue(
+      "2026-07-27T08:00:00.000Z",
+    );
     mocks.getRecentIngestRuns.mockResolvedValue([
       healthyPhaseRun("data-health:feeds"),
       healthyPhaseRun("event-archive"),
@@ -258,6 +264,17 @@ describe("GET /api/cron/data-health", () => {
     expect(body.summary.github_delivery).toBe("auth_failed");
   });
 
+  it("delegates health issues to the non-expiring Actions channel by default", async () => {
+    vi.stubEnv("VERCEL_GITHUB_ALERTS_ENABLED", "");
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.github_delivery).toBe("delegated_to_actions");
+    expect(mocks.deliverDataHealthReport).not.toHaveBeenCalled();
+  });
+
   it("keeps the headline red when current fresh hours are zero", async () => {
     mocks.computePlaceTrustReport.mockReturnValue({
       fresh_hours: {
@@ -341,6 +358,64 @@ describe("GET /api/cron/data-health", () => {
       unmatched: 0,
       oldest_refresh: "2026-07-27T08:00:00.000Z",
       newest_refresh: "2026-07-27T08:00:00.000Z",
+    });
+    expect(body.hours.publication).toMatchObject({
+      green: true,
+      state: "current",
+      lag_hours: 0,
+    });
+  });
+
+  it("reports a stalled Google-to-Supabase-to-artifact handoff", async () => {
+    mocks.getLatestHoursRefreshAt.mockResolvedValue(
+      "2026-07-29T08:00:00.000Z",
+    );
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.gates).toContainEqual({
+      name: "hours-publication",
+      green: false,
+    });
+    expect(body.hours.publication).toMatchObject({
+      green: false,
+      state: "stalled",
+      source_latest_at: "2026-07-29T08:00:00.000Z",
+      artifact_latest_at: "2026-07-27T08:00:00.000Z",
+      lag_hours: 48,
+    });
+    expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anomalies: expect.arrayContaining([
+          expect.objectContaining({
+            source: "places-hours-refresh-publication",
+            kind: "ingest_stale",
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("fails the publication gate closed when its Supabase watermark is unavailable", async () => {
+    mocks.getLatestHoursRefreshAt.mockRejectedValue(
+      new Error("connection unavailable"),
+    );
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.gates).toContainEqual({
+      name: "hours-publication",
+      green: false,
+    });
+    expect(body.hours.publication).toMatchObject({
+      green: false,
+      state: "unknown",
+      source_latest_at: null,
+      lag_hours: null,
     });
   });
 

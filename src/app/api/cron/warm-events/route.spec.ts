@@ -85,6 +85,12 @@ describe("GET /api/cron/warm-events", () => {
     expect(mocks.getCachedLiveEvents).toHaveBeenCalledWith(90);
     expect(body).toMatchObject({
       ok: true,
+      healthy: true,
+      degraded: false,
+      source_health: {
+        degraded: false,
+        unavailable: [],
+      },
       warmed: {
         unified: { ok: true, count: 2 },
         live90: { ok: true, count: 3 },
@@ -93,6 +99,36 @@ describe("GET /api/cron/warm-events", () => {
     expect(body.warmed).not.toHaveProperty("live60");
     expect(body).not.toHaveProperty("mapFeeds");
     expect(body).not.toHaveProperty("archive");
+  });
+
+  it("separates a completed cache warm from degraded publisher coverage", async () => {
+    mocks.assembleUnifiedEvents.mockResolvedValue({
+      unified: [{ id: "a" }, { id: "b" }],
+      publicEvents: [],
+      sourceHealth: {
+        degraded: true,
+        unavailable: ["venue calendars", "county", "county"],
+      },
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      healthy: false,
+      degraded: true,
+      source_health: {
+        degraded: true,
+        unavailable: ["county", "venue calendars"],
+      },
+      warmed: {
+        unified: { ok: true, count: 2 },
+        live90: { ok: true, count: 3 },
+      },
+    });
+    expect(mocks.sendWarmFailureAlert).not.toHaveBeenCalled();
   });
 
   it("keeps a failed required event warm loud without leaking map work back in", async () => {

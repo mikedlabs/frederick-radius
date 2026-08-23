@@ -784,6 +784,77 @@ export function pulseWideReadingKeys(tiles: readonly PulseTile[]): Set<string> {
   return new Set([compactTiles[compactTiles.length - 1].key]);
 }
 
+/** Quiet and unavailable feeds remain inspectable without turning source
+ * health into another card grid. One compact row says what the check found,
+ * who supplied it, and opens the existing detail sheet. */
+function SecondarySignalRow({
+  tile,
+  onOpen,
+}: {
+  tile: PulseTile;
+  onOpen: () => void;
+}) {
+  const state = pulseTileState(tile);
+  const needsContext =
+    state === "Partial data" ||
+    state === "Feed unavailable" ||
+    state === "Not connected";
+  const color = needsContext ? "var(--app-warning)" : "var(--app-ink-3)";
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex min-h-[58px] w-full min-w-0 items-center gap-2.5 border-t px-1 py-2 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+        style={{ borderColor: "var(--app-border)" }}
+        aria-label={`${tile.label}: ${needsContext ? state : tile.countLabel}. Source: ${tile.sourceLabel}`}
+      >
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{
+            color,
+            background: `color-mix(in srgb, ${color} 9%, transparent)`,
+          }}
+        >
+          {createElement(iconFor(tile), {
+            className: "h-4 w-4",
+            strokeWidth: 2,
+          })}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-baseline justify-between gap-2">
+            <span className="min-w-0 truncate text-[12.5px] font-semibold text-[var(--app-ink)]">
+              {tile.label}
+            </span>
+            {needsContext ? (
+              <span
+                className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em]"
+                style={{ color }}
+              >
+                {state}
+              </span>
+            ) : null}
+          </span>
+          <span className="mt-0.5 block truncate text-[10.5px] text-[var(--app-ink-3)]">
+            {needsContext ? tile.countLabel : `${tile.countLabel} · ${tile.sourceLabel}`}
+          </span>
+          {needsContext ? (
+            <span className="mt-0.5 block truncate text-[9.5px] text-[var(--app-ink-3)]">
+              Source · {tile.sourceLabel}
+            </span>
+          ) : null}
+        </span>
+        <ArrowRight
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
+        />
+      </button>
+    </li>
+  );
+}
+
 function SecondarySignals({
   updates,
   onOpen,
@@ -839,14 +910,10 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {secondarySignalsHeadline(
-                partial.length,
-                unavailable.length,
-                notConnected.length,
-              )}
+              Source status
             </span>
             <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: degraded.length > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-              {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check" : "checks"}`}
+              {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check is" : "checks are"} current`}
             </span>
           </span>
           <ChevronDown
@@ -855,18 +922,20 @@ function SecondarySignals({
           />
         </summary>
 
-        <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
-          <ul
-            id="pulse-local-updates"
-            data-pulse-bank="local-pulse"
-            className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-          >
-            {updates.map((tile, index) => (
-              <PulseSmartBlock
+        <div className="border-t px-3 pb-2 pt-2.5" style={{ borderColor: "var(--app-border)" }}>
+          <p className="pb-2 text-[10.5px] leading-relaxed text-[var(--app-ink-3)]">
+            {secondarySignalsSummary(
+              updates.length,
+              partial.length,
+              unavailable.length,
+              notConnected.length,
+            )}
+          </p>
+          <ul id="pulse-local-updates" data-pulse-bank="local-pulse">
+            {updates.map((tile) => (
+              <SecondarySignalRow
                 key={tile.key}
                 tile={tile}
-                bankKey="local-pulse"
-                index={index}
                 onOpen={() => onOpen(tile.key)}
               />
             ))}

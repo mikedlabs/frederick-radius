@@ -21,7 +21,7 @@ export type CuisineDef = { slug: string; label: string; re: RegExp };
 // Specific → general. First match is the primary.
 export const CUISINES: CuisineDef[] = [
   { slug: "italian", label: "Italian", re: /\b(italian|ristorante|trattoria|osteria|pasta|porto|pizzeria|napoli|toscana)\b/i },
-  { slug: "mexican", label: "Mexican", re: /\b(mexican|taqueria|taco|cantina|burrito|tequila|agave|cocina|mariscos)\b/i },
+  { slug: "mexican", label: "Mexican", re: /\b(mexican|tex[ -]?mex|taqueria|taco|cantina|burrito|tequila|agave|cocina|mariscos)\b/i },
   { slug: "thai", label: "Thai", re: /\bthai\b/i },
   { slug: "chinese", label: "Chinese", re: /\b(chinese|szechuan|sichuan|hunan|dim\s?sum|wok|panda|dragon)\b/i },
   { slug: "japanese", label: "Japanese / Sushi", re: /\b(japanese|sushi|ramen|izakaya|hibachi|teriyaki|sake)\b/i },

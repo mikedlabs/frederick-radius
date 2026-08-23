@@ -29,6 +29,7 @@ import {
 } from "@/lib/nfc-constants";
 import { parseDecisionAggregateEvent } from "@/lib/decision/telemetry";
 import { easternDayKey } from "@/lib/tz";
+import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import {
   isRateLimited,
   isSameOriginMutationRequest,
@@ -157,9 +158,24 @@ export async function POST(req: NextRequest) {
   // server honors the cookie even if a script replays the request directly.
   if (req.cookies.get(ANALYTICS_OPTOUT_COOKIE)?.value === "1") return drop();
 
+  const rawProps =
+    typeof body.props === "object" && body.props !== null && !Array.isArray(body.props)
+      ? body.props as Record<string, unknown>
+      : null;
+  const searchMissQuery =
+    event === "search_empty" && typeof rawProps?.query === "string"
+      ? rawProps.query
+      : null;
+
   // 5. Identity from the signed cookie only. Anonymous decision events may
-  //    reach the aggregate; all other anonymous events retain the old drop.
+  //    reach the aggregate. A settled anonymous search miss retains its
+  //    privacy-safe data-gap write, but a signed member must pass the
+  //    authoritative persisted opt-out check before that write can occur.
   const memberId = await verifyMemberCookie(req.cookies.get(MEMBER_COOKIE)?.value);
+  if (!memberId && searchMissQuery) {
+    await recordSearchMiss(searchMissQuery, "search");
+    return drop();
+  }
   if (!memberId && !decisionAggregate) return drop();
 
   // 6. A missing DB still fails closed for a valid member (existing contract),
@@ -189,6 +205,13 @@ export async function POST(req: NextRequest) {
     } catch {
       return drop();
     }
+  }
+
+  // SearchOverlay emits only after a stable zero-result state. Bank the miss
+  // after both consent layers have passed. The raw query remains excluded from
+  // the member-linked event log and Plausible.
+  if (searchMissQuery) {
+    await recordSearchMiss(searchMissQuery, "search");
   }
 
   if (decisionAggregate) {

@@ -176,7 +176,7 @@ test("Compass routes everyday language and exposes pinning in results", async ({
     "true",
   );
 
-  const search = page.getByRole("searchbox", { name: "Search all Radius tools" });
+  const search = page.getByRole("searchbox", { name: /Search Radius tools/ });
   await search.fill("closest trash can");
   await expect(page.getByRole("link", { name: /^Trash cans\b/ })).toBeVisible();
   const pinTrash = page.getByRole("button", { name: "Pin Trash cans" });

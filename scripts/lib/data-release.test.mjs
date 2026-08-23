@@ -95,6 +95,27 @@ test("the place release covers canonical server and place-page inputs", () => {
   );
 });
 
+test("the published amenity map is a dedicated protected release stream", () => {
+  assert.deepEqual(DATA_RELEASE_STREAMS.amenities, [
+    "src/data/amenities.json",
+  ]);
+
+  const root = fixtureRoot();
+  const manifest = fixtureManifest(root);
+  const target = resolve(root, DATA_RELEASE_STREAMS.amenities[0]);
+  writeFileSync(target, `${readFileSync(target, "utf8").trim()} `);
+
+  const result = validateDataRelease(manifest, root);
+  assert.equal(result.dataVersion, null);
+  assert.ok(
+    result.errors.some(
+      (error) =>
+        error.includes("src/data/amenities.json") &&
+        error.includes("digest differs"),
+    ),
+  );
+});
+
 test("TypeScript data modules are digest-protected without fake record counts", () => {
   const root = fixtureRoot();
   const artifact = inspectArtifact(root, "src/data/places.ts");

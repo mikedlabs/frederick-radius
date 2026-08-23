@@ -1,4 +1,3 @@
-import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -6,16 +5,14 @@ import MotionDisclosure from "./MotionDisclosure";
 
 function render(open: boolean): string {
   return renderToStaticMarkup(
-    createElement(
-      MotionDisclosure,
-      {
-        id: "test-disclosure",
-        open,
-        className: "outer-class",
-        innerClassName: "inner-class",
-      },
-      createElement("a", { href: "/map" }, "Open the map"),
-    ),
+    <MotionDisclosure
+      id="test-disclosure"
+      open={open}
+      className="outer-class"
+      innerClassName="inner-class"
+    >
+      <a href="/map">Open the map</a>
+    </MotionDisclosure>,
   );
 }
 

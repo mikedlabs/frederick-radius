@@ -52,7 +52,6 @@ import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
-import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
@@ -72,7 +71,7 @@ import AppTransitionLink from "@/components/nav/AppTransitionLink";
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
  *   2. Decision lead  → the location-aware open-place shelf, which is the
  *                       first Today answer that follows the shared town lens
- *   3. Ask / Browse   → secondary routes for a more specific need
+ *   3. Find           → one route for a name, need, category, or question
  *   4. What's on      → a qualified event feature + today's public program
  *   5. Available      → scheduled local utilities and tomorrow's next move
  *   6. More           → secondary local guides and saved places, collapsed
@@ -312,29 +311,22 @@ export default async function HomePage() {
         </AppTransitionLink>
       </SkyHero>
 
+      {/* One universal doorway. A person can type a name, need, or question;
+          the Find surface chooses search or reasoning automatically. The two
+          urgent shortcuts stay visible, while the full category taxonomy is
+          attached but closed instead of becoming a second competing wall.
+          It sits before the deeper recommendation shelf so the control stays
+          tappable above the phone nav on the first screen. */}
+      <div className="today-arrival today-arrival--find">
+        <TodayAsk embedded>
+          <CravingStrip />
+        </TodayAsk>
+      </div>
+
       {/* One town-aware first move. It stays mounted so a LocationChip change
           immediately re-ranks this answer instead of only changing the chip. */}
       <div className="today-arrival today-arrival--decision">
         {decisionLead}
-      </div>
-
-      {/* One decision index: ask a specific question or open the category
-          browse. The rows share a surface so they read as two routes through
-          the same job, not two unrelated cards competing below the weather. */}
-      <div
-        role="group"
-        aria-label="Find what you need"
-        className="today-arrival today-arrival--find mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <TodayAsk embedded />
-        <BrowsePlacesDisclosure embedded>
-          <CravingStrip />
-        </BrowsePlacesDisclosure>
       </div>
 
       {/* The day's chronological program belongs before sports and specials.

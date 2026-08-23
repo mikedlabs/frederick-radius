@@ -111,6 +111,9 @@ describe("multi-day all-day ingested visibility", () => {
     });
     const cards = ingestedSeriesToCards(series, new Date());
     expect(cards[0]?.hero_image).toBe(heroImage);
+    expect(cards[0]?.description).toBe(
+      "Create a colorful paper project.",
+    );
   });
 
   it("resolves a county live-feed slug from the stored official mirror", async () => {

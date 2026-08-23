@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { shouldShowBottomNav } from "./BottomNav";
+import {
+  isPlainPrimaryNavigation,
+  shouldShowBottomNav,
+} from "./BottomNav";
 
 describe("BottomNav contextual chrome", () => {
   it("yields the bottom edge only to a real contextual action bar", () => {
@@ -32,5 +35,26 @@ describe("BottomNav contextual chrome", () => {
         'aria-current={isRealActive ? "page" : undefined}',
       );
     }
+  });
+
+  it("leaves modified and non-primary clicks to the browser", () => {
+    const plain = {
+      button: 0,
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+    };
+
+    expect(isPlainPrimaryNavigation(plain)).toBe(true);
+    expect(isPlainPrimaryNavigation({ ...plain, metaKey: true })).toBe(false);
+    expect(isPlainPrimaryNavigation({ ...plain, ctrlKey: true })).toBe(false);
+    expect(isPlainPrimaryNavigation({ ...plain, button: 1 })).toBe(false);
+  });
+
+  it("clears optimistic state when a touch gesture is cancelled", () => {
+    const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
+    expect(source).toContain("onPointerCancel={() => setPendingIdx(null)}");
+    expect(source).toContain("if (event.buttons !== 0) setPendingIdx(null)");
   });
 });

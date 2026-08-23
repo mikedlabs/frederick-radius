@@ -8,7 +8,7 @@
 // fitNearbyCamera / fitCountyCamera) so the map ref and camera-intent ref never
 // leave AppMap.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LngLat } from "@/lib/geo";
 import {
   GEOLOCATION_CHANGE_EVENT,
@@ -21,6 +21,11 @@ import { replaceMapUrl } from "@/lib/map-url-state";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { isInFrederickCounty } from "./constants";
+import {
+  readMapLocationIntroDismissed,
+  rememberMapLocationIntroDismissed,
+  shouldShowMapLocationIntro,
+} from "./mapLocationIntro";
 
 export function useMapLocation({
   isBrowseMap,
@@ -54,6 +59,8 @@ export function useMapLocation({
   userAccuracyM: number | null;
   locationFixTimestamp: number | null;
   locationAvailability: "available" | "requestable" | "unavailable";
+  showLocationIntro: boolean;
+  dismissLocationIntro: () => void;
   locating: boolean;
   goNearMe: () => void;
 } {
@@ -66,6 +73,13 @@ export function useMapLocation({
     readCachedGeoPosition()?.timestamp ?? null,
   );
   const [locating, setLocating] = useState(false);
+  // Keep the server and hydration render identical. The persisted preference
+  // is applied after mount, before the silent permission check can reveal the
+  // first-use sheet on a normal cold entry.
+  const [locationIntroDismissed, setLocationIntroDismissed] = useState(false);
+  const [locationPermissionChecked, setLocationPermissionChecked] = useState(
+    () => !isBrowseMap || rankingSeed !== null,
+  );
   const {
     state: sharedGeolocationState,
     requestHighAccuracy: requestSharedGeolocation,
@@ -80,6 +94,7 @@ export function useMapLocation({
 
   useEffect(() => {
     mountedRef.current = true;
+    setLocationIntroDismissed(readMapLocationIntroDismissed());
     return () => {
       mountedRef.current = false;
     };
@@ -102,6 +117,7 @@ export function useMapLocation({
 
     automaticLocationCheckRef.current = true;
     void refreshGrantedGeolocation().then((started) => {
+      if (!started && mountedRef.current) setLocationPermissionChecked(true);
       if (
         started ||
         !mountedRef.current ||
@@ -123,28 +139,51 @@ export function useMapLocation({
     });
   }, [autoFitNearbyScope, fitCountyCamera, isBrowseMap, refreshGrantedGeolocation, setGeoMsg]);
 
+  useEffect(() => {
+    if (
+      sharedGeolocationState.status !== "idle" &&
+      sharedGeolocationState.status !== "loading"
+    ) {
+      setLocationPermissionChecked(true);
+    }
+  }, [sharedGeolocationState.status]);
+
   // Location can be granted from Ask, Today, or the map itself. The shared
   // same-tab event keeps map ranking current without moving the camera.
   useEffect(() => {
     const syncRankingLocation = () => {
       const cached = readCachedGeoPosition();
-      setUserLoc(
-        cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null,
+      const inCounty = Boolean(
+        cached && isInFrederickCounty(cached.lng, cached.lat),
       );
+      setUserLoc(inCounty ? cached : null);
       setUserAccuracyM(
-        cached && isInFrederickCounty(cached.lng, cached.lat)
+        inCounty && cached
           ? cached.accuracy
           : null,
       );
       setLocationFixTimestamp(
-        cached && isInFrederickCounty(cached.lng, cached.lat)
+        inCounty && cached
           ? cached.timestamp
           : null,
       );
+      // A Near me choice made in the shared header requests location through
+      // that header's hook. When its fix lands, honor the already-selected
+      // scope here without issuing a second browser request.
+      if (
+        inCounty &&
+        cached &&
+        getScope() === "nearme" &&
+        !locateRequestedRef.current
+      ) {
+        markCameraIntent();
+        fitNearbyCamera(cached);
+      }
     };
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
     return () =>
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- camera callbacks are stable wrappers around AppMap refs
   }, []);
 
   // An explicit Locate tap may move the camera. The only automatic exception
@@ -231,7 +270,18 @@ export function useMapLocation({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- camera callbacks are stable wrappers around AppMap refs
   }, [isBrowseMap, sharedGeolocationState]);
 
+  const dismissLocationIntro = useCallback(() => {
+    setLocationIntroDismissed(true);
+    rememberMapLocationIntroDismissed();
+  }, []);
+
   const goNearMe = () => {
+    dismissLocationIntro();
+    if (isBrowseMap && getScope() !== "nearme") {
+      setScope("nearme");
+      replaceMapUrl((params) => params.set(SCOPE_PARAM, "nearme"));
+    }
+    if (locateRequestedRef.current) return;
     onBeforeNearMe();
     // A fresh cached/shared fix makes Near me instant. Still ask the shared
     // geolocation hook to refresh it in the background; a newer fix will
@@ -249,12 +299,21 @@ export function useMapLocation({
         sharedGeolocationState.status === "unavailable"
       ? "unavailable"
       : "requestable";
+  const showLocationIntro = shouldShowMapLocationIntro({
+    isBrowseMap,
+    permissionChecked: locationPermissionChecked,
+    hasLocation: Boolean(userLoc),
+    availability: locationAvailability,
+    dismissed: locationIntroDismissed,
+  });
 
   return {
     userLoc,
     userAccuracyM,
     locationFixTimestamp,
     locationAvailability,
+    showLocationIntro,
+    dismissLocationIntro,
     locating,
     goNearMe,
   };

@@ -219,7 +219,7 @@ export function loadCachedOsm(): OsmPlace[] | null {
 }
 
 export function saveCachedOsm(data: OsmPlace[]) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || data.length === 0) return;
   try {
     window.sessionStorage.setItem(
       OSM_CACHE_KEY,

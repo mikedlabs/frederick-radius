@@ -140,7 +140,27 @@ export function normalizeVenueEventDateTime(value: string): string | null {
     const normalized =
       `${year}-${month}-${day}T${hour}:${minute}` +
       `${second ? `:${second}${fraction ?? ""}` : ""}${zone}`;
-    return Number.isFinite(Date.parse(normalized)) ? normalized : null;
+    if (!Number.isFinite(Date.parse(normalized))) return null;
+    // Structured feeds may carry a real UTC instant, which must remain an
+    // instant. Model-assisted venue sources are instructed to attach the
+    // America/New_York offset to a published Frederick wall clock, but models
+    // occasionally choose -05:00 during daylight time. Preserve a numeric
+    // offset only when it represents that exact Eastern wall clock; otherwise
+    // resolve the published local time through the same DST-safe path below.
+    if (zone === "Z") return normalized;
+    const expectedWall = {
+      year: Number(year),
+      month: Number(month),
+      day: Number(day),
+      hour: Number(hour),
+      minute: Number(minute),
+      second: Number(second ?? 0),
+    };
+    if (matchesEasternWall(normalized, expectedWall)) return normalized;
+    return normalizeVenueEventDateTime(
+      `${year}-${month}-${day}T${hour}:${minute}` +
+        `${second ? `:${second}${fraction ?? ""}` : ""}`,
+    );
   }
 
   const local = LOCAL_DATE_TIME.exec(input);

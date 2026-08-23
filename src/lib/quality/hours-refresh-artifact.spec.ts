@@ -10,6 +10,7 @@ import {
 } from "@/lib/loaders/places";
 import PLACE_REFRESH_IDENTITIES_RAW from "@/data/place-refresh-identities.json" with { type: "json" };
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
+import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 
 const NOW = new Date("2026-07-26T13:00:00.000Z");
 const recent = "2026-07-26T12:00:00.000Z";
@@ -29,6 +30,23 @@ function row(
 }
 
 describe("hours refresh artifact safety", () => {
+  it("never pays to refresh or republishes a quarantined wrong-business identity", () => {
+    const quarantined = new Set(
+      Object.entries(
+        (OVERRIDES_RAW as {
+          patch?: Record<string, { clearEnrichment?: boolean }>;
+        }).patch ?? {},
+      )
+        .filter(([, patch]) => patch.clearEnrichment)
+        .map(([slug]) => slug),
+    );
+    const identities = canonicalPlaceRefreshIdentities();
+
+    expect(
+      identities.filter((identity) => quarantined.has(identity.slug)),
+    ).toEqual([]);
+  });
+
   it("paginates the read-only Data API without sending a privileged credential", async () => {
     const fetchImpl = vi
       .fn()

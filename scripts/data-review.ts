@@ -16,6 +16,10 @@ import { nearDupeCandidates, type DupeRecord } from "@/lib/overrides";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
 import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
+import {
+  hasCategoryDisposition,
+  type CategoryDispositionPatch,
+} from "./lib/category-disposition";
 
 const enr = ENRICH as Record<
   string,
@@ -24,7 +28,7 @@ const enr = ENRICH as Record<
 const ov = OVERRIDES as {
   fold?: Record<string, string>;
   remove?: string[];
-  patch?: Record<string, { category?: string; clearEnrichment?: boolean }>;
+  patch?: Record<string, CategoryDispositionPatch>;
 };
 const ovFold = ov.fold ?? {};
 const ovRemove = new Set(ov.remove ?? []);
@@ -116,7 +120,7 @@ for (const p of survivors) {
   const sugg = t ? categoryFromPrimaryType(t) : null;
   // A human category patch is the final word by contract. Do not turn an
   // intentional exception back into a recurring audit false positive.
-  if (ovPatch[p.slug]?.category || ovPatch[p.slug]?.clearEnrichment) continue;
+  if (hasCategoryDisposition(ovPatch[p.slug])) continue;
   if (sugg && sugg !== shipped.category) {
     misc.push({
       slug: p.slug,

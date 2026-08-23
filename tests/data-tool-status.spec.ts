@@ -46,6 +46,27 @@ describe("data-tool activation status", () => {
     );
   });
 
+  it("reports native menus as manual review intake rather than a live scraper", () => {
+    const inactive = classifyDataTools({}, schedules).find(
+      (tool) => tool.id === "native-menu-review",
+    );
+    expect(inactive).toMatchObject({
+      status: "missing_configuration",
+      scope: "operator",
+      missing: ["one of DATABASE_URL, POSTGRES_URL, SUPABASE_DB_URL"],
+    });
+
+    const active = classifyDataTools(
+      { DATABASE_URL: "configured" },
+      schedules,
+    ).find((tool) => tool.id === "native-menu-review");
+    expect(active).toMatchObject({
+      label: "Native menu review intake",
+      note: "manual, restaurant-authorized intake; stages draft/unverified records and has no publication command",
+      status: "active",
+    });
+  });
+
   it("distinguishes a disabled job from an enabled job missing requirements", () => {
     const disabled = classifyDataTools({}, schedules).find(
       (tool) => tool.id === "hours-refresh",

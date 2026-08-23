@@ -186,13 +186,25 @@ async function cleanupRetiredPlaceDocuments({
 }: {
   rootSql: RootSql;
   liveIds: string[];
-  refreshStartedAt: Date;
+  refreshStartedAt: string;
 }): Promise<RadiusSearchRefreshResult["cleanupWarning"] | undefined> {
+  // Bind the live catalog as JSON instead of handing a raw JavaScript array to
+  // postgres.js. A raw array in a tagged-template parameter is not an encoded
+  // Postgres array; depending on the connection's learned type map it can
+  // reach the driver's Buffer writer as an object and throw
+  // ERR_INVALID_ARG_TYPE before Postgres sees the DELETE. JSON is a bounded,
+  // unambiguous text parameter, and jsonb_array_elements_text restores the
+  // exact source ids inside the query.
+  const liveIdsJson = JSON.stringify(liveIds);
   const removeRetired = async (sql: TransactionSql): Promise<void> => {
     await sql`
       delete from public.radius_search_documents
       where kind = 'place'
-        and not (source_id = any(${liveIds}::text[]))
+        and not exists (
+          select 1
+          from jsonb_array_elements_text(${liveIdsJson}::jsonb) as live(source_id)
+          where live.source_id = radius_search_documents.source_id
+        )
         and updated_at < ${refreshStartedAt}
     `;
   };
@@ -242,7 +254,11 @@ export async function refreshRadiusSearchIndex({
       "The public place catalog is empty; the existing Radius search index was left untouched.",
     );
   }
-  const refreshStartedAt = new Date();
+  // Supavisor runs postgres.js with prepared statements disabled. Bind the
+  // cutoff as ISO text rather than a JavaScript Date so the pooled writer does
+  // not receive an object it cannot serialize (ERR_INVALID_ARG_TYPE). Postgres
+  // infers timestamptz from updated_at at the comparison boundary.
+  const refreshStartedAt = new Date().toISOString();
 
   const run = async (
     sql: TransactionSql,

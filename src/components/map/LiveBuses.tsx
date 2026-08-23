@@ -1050,10 +1050,11 @@ function VisibleLiveBuses({
             latitude={p.lat}
             anchor="bottom"
             offset={24}
-            closeOnClick
+            closeOnClick={false}
             onClose={() => {
               setDismissedFocusKey(focusKey);
               setSelected(null);
+              gate?.onDidClose();
             }}
             maxWidth="230px"
           >
