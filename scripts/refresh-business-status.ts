@@ -2,11 +2,11 @@
  * Refreshes a rotating, request-capped batch of business statuses from Google
  * Place Details and merges it into src/data/business-status.json.
  *
- * PAID. Each target costs one status-only Place Details call. The default
- * ceiling is 100 requests; over roughly two weeks the nightly data steward
- * covers the canonical pre-status identity catalog without repeatedly paying
- * to refresh every row every night. `--limit` is a hard request ceiling
- * (max 500).
+ * PAID. Each target costs one status-only Place Details call. The command is
+ * dry-run by default. A paid batch requires `--live --confirm --limit N`; the
+ * immutable per-run maximum remains 500 requests. Over roughly two weeks,
+ * reviewed 100-request batches cover the canonical pre-status identity
+ * catalog without repeatedly paying to refresh every row.
  *
  * Serverless storage is read-only at request time, so this is a local or
  * CI script (the pattern used by dedup and copy:scores), not a runtime
@@ -14,7 +14,8 @@
  * status evidence. Manual closures stay suppressed; operational corrections
  * remain refreshable so the provider can eventually repair a false closure.
  *
- * Usage: GOOGLE_PLACES_API_KEY=... npm run refresh:business-status -- --limit 100
+ * Preview: npm run refresh:business-status -- --limit 100
+ * Live: GOOGLE_PLACES_API_KEY=... npm run refresh:business-status -- --live --confirm --limit 100
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -30,25 +31,21 @@ import {
 } from "@/lib/business-status-refresh";
 import { placeRefreshIdentities } from "@/lib/loaders/placeRefreshIdentities";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
+import {
+  assertManualGoogleArgs,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 const OUT = resolve("src/data/business-status.json");
 
-function requestLimit(): number {
-  const index = process.argv.indexOf("--limit");
-  const parsed = index >= 0 ? Number(process.argv[index + 1]) : 100;
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 500) {
-    throw new Error("--limit must be an integer between 1 and 500.");
-  }
-  return parsed;
-}
-
 async function main() {
-  if (!googlePlacesConfigured()) {
-    console.error("GOOGLE_PLACES_API_KEY is not set. Aborting (no spend).");
-    process.exit(1);
-  }
-
-  const limit = requestLimit();
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args);
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
+  });
   const allTargets = placeRefreshIdentities()
     .filter((place) => isGooglePlaceId(place.google_place_id))
     .sort((a, b) => a.slug.localeCompare(b.slug));
@@ -63,18 +60,43 @@ async function main() {
   const cycleDay = Math.floor(Date.now() / 86_400_000);
   const targets = selectRotatingStatusTargets(
     allTargets,
-    Math.min(limit, allTargets.length),
+    Math.min(run.limit, allTargets.length),
     cycleDay,
   );
+  console.log("\nGoogle business-status refresh");
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Eligible canonical identities: ${allTargets.length}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(`This rotating batch: ${targets.length}`);
+  console.log(googleCostPreview({
+    calls: targets.length,
+    pricePerThousandUsd: 17,
+    sku: "Place Details Pro",
+  }));
+  if (run.dryRun) {
+    console.log("No Google API calls or business-status output changes from this script.");
+    console.log(
+      `First ${Math.min(25, targets.length)} candidates: ${targets
+        .slice(0, 25)
+        .map((target) => target.slug)
+        .join(", ") || "none"}`,
+    );
+    console.log(
+      "Run with --live --confirm --limit N after reviewing this batch.\n",
+    );
+    return;
+  }
+  if (!googlePlacesConfigured()) {
+    throw new Error("GOOGLE_PLACES_API_KEY is not set. Aborting (no spend).");
+  }
+
   const previous = JSON.parse(readFileSync(OUT, "utf8")) as {
     overrides?: Record<string, BusinessStatusRefreshEntry>;
   };
   const overrides: Record<string, BusinessStatusRefreshEntry> = {
     ...(previous.overrides ?? {}),
   };
-  console.log(
-    `Refreshing ${targets.length}/${allTargets.length} business statuses (status-only field mask).`,
-  );
+  console.log(`Refreshing ${targets.length} status-only place details.`);
 
   let calls = 0;
   let updated = 0;

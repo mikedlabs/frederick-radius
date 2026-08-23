@@ -10,15 +10,16 @@
  * existing facet UI lights up.
  *
  * COST: amenity fields are the Places "Enterprise + Atmosphere" SKU. One Place
- * Details call per place with a google_place_id (~1,300 places) ≈ $40–75
- * one-time, depending on your Google pricing. The script prints a projection
- * and asks nothing destructive — it MERGES into the existing file and is
- * resumable, so a re-run only fills gaps.
+ * Details call is made per selected place. The script is dry-run by default,
+ * prints the exact request ceiling and current list-price exposure, and only
+ * spends with `--live --confirm --limit N`. It MERGES into the existing file
+ * and is resumable, so each reviewed batch advances through the backlog.
  *
  * RUN:
  *   vercel env pull .env.local        # needs GOOGLE_PLACES_API_KEY
- *   npm run enrich:amenities          # all places with a place_id
- *   npm run enrich:amenities -- 200   # cap to first 200 (a cheap smoke test)
+ *   npm run enrich:amenities          # dry-run; defaults to a 100-call preview
+ *   npm run enrich:amenities -- 200   # legacy dry-run limit remains supported
+ *   npm run enrich:amenities -- --live --confirm --limit 100
  * Then: npm run build:client-places   # so map/search pick up the new tags
  *
  * HONESTY: only fields Google returns TRUE are stored. A missing field means
@@ -28,6 +29,11 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { AMENITY_FIELDS } from "../src/lib/loaders/placeAmenities";
 import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
+import {
+  assertManualGoogleArgs,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 const ENRICHMENT_PATH = resolve(process.cwd(), "src/data/places-enrichment.json");
 const OUT = resolve(process.cwd(), "src/data/places-amenities.json");
@@ -58,18 +64,22 @@ async function fetchAmenities(placeId: string, key: string): Promise<AmenityReco
 }
 
 async function main() {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) {
-    console.error("GOOGLE_PLACES_API_KEY not set. Run: vercel env pull .env.local");
-    process.exit(1);
-  }
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args, { maxPositionals: 1 });
+  const legacyLimit = args[0] && !args[0].startsWith("--")
+    ? args[0]
+    : undefined;
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
+    ...(legacyLimit ? { legacyLimit } : {}),
+  });
 
   const enrichment = JSON.parse(readFileSync(ENRICHMENT_PATH, "utf8")) as Record<string, EnrichRow>;
   const existing: Record<string, AmenityRecord> = existsSync(OUT)
     ? JSON.parse(readFileSync(OUT, "utf8"))
     : {};
 
-  const cap = Number(process.argv[2]) || Infinity;
   // The client artifact is the canonical county-gated public set. Legacy
   // enrichment rows outside it remain untouched instead of spending another
   // paid Details call on a place the app cannot publish.
@@ -84,11 +94,37 @@ async function main() {
         /^ChIJ/.test(r.google_place_id) &&
         !existing[slug],
     )
-    .slice(0, cap);
+    .slice(0, run.limit);
 
-  console.log(`enrich:amenities — ${targets.length} place(s) to fetch (${Object.keys(existing).length} already done)`);
-  console.log(`  est. cost: ~$${(targets.length * 0.025).toFixed(2)}–$${(targets.length * 0.05).toFixed(2)} (Enterprise+Atmosphere SKU)`);
+  console.log(`enrich:amenities — ${targets.length} place(s) selected (${Object.keys(existing).length} already done)`);
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(googleCostPreview({
+    calls: targets.length,
+    pricePerThousandUsd: 25,
+    sku: "Place Details Enterprise + Atmosphere",
+  }));
   if (targets.length === 0) return;
+  if (run.dryRun) {
+    console.log("No Google API calls or output-file changes from this script.");
+    console.log(
+      `First ${Math.min(25, targets.length)} candidates: ${targets
+        .slice(0, 25)
+        .map(([slug]) => slug)
+        .join(", ")}`,
+    );
+    console.log(
+      "Run with --live --confirm --limit N after reviewing this batch.",
+    );
+    return;
+  }
+
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) {
+    throw new Error(
+      "GOOGLE_PLACES_API_KEY not set. Run: vercel env pull .env.local",
+    );
+  }
 
   let done = 0;
   for (const [slug, row] of targets) {
