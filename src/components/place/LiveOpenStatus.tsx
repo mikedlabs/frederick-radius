@@ -6,7 +6,7 @@ import type { OpenStatus } from "@/lib/hours";
 import { getOpenStatus } from "@/lib/hours";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import {
-  loadLivePlaceHours,
+  subscribeLivePlaceHours,
   type LivePlaceHoursData,
 } from "@/components/place/livePlaceHours";
 
@@ -44,15 +44,11 @@ export default function LiveOpenStatus({
 
   useEffect(() => {
     if (!slug || verified) return;
-    let cancelled = false;
-    loadLivePlaceHours(slug)
-      .then((value) => {
-        if (cancelled || !value.structured_hours || !value.open_status) return;
-        setLive(value);
-        setStatus(value.open_status);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    return subscribeLivePlaceHours(slug, (value) => {
+      if (!value.structured_hours || !value.open_status) return;
+      setLive(value);
+      setStatus(value.open_status);
+    });
   }, [slug, verified]);
 
   useEffect(() => {

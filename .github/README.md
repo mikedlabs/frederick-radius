@@ -4,12 +4,12 @@ The repository uses a small protected path from reviewed code to production.
 
 ## Pull-request gates
 
-- `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks.
+- `ci.yml` runs type, lint, data, unit, build, and release-browser checks on pull requests. Dependency chaos runs weekly or on an explicit manual request.
 - `style.yml` enforces the public editorial rules.
-- `ux-audit.yml` runs the broader nightly browser audit in bounded production-build shards.
+- `ux-audit.yml` runs the broader weekly browser audit from one production build.
 
-`main` requires `verify`, `Required browser chaos`, and `style-lint`. Do not
-bypass those contexts. Automated data PRs dispatch the same secret-free gates;
+`main` requires `verify` and `style-lint`. Do not bypass those contexts.
+Automated data PRs dispatch the same secret-free gates. After `verify` ends,
 `automated-pr-status-bridge.yml` validates the bot branch and copies the real
 job conclusions to the merge revision evaluated by the ruleset.
 

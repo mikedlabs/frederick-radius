@@ -233,12 +233,12 @@ export default async function CostsAdmin() {
   const photoDailyCap = googlePhotoDailyCap();
   const placeBasicDailyCap = boundedGoogleDailyCap(
     process.env.GOOGLE_PLACE_ENRICH_DAILY_CAP,
-    30,
+    10,
     80,
   );
   const placeExperienceDailyCap = boundedGoogleDailyCap(
     process.env.GOOGLE_PLACE_EXPERIENCE_DAILY_CAP,
-    20,
+    5,
     20,
   );
   const routeDailyCap = boundedGoogleDailyCap(

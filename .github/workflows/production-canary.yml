@@ -11,10 +11,10 @@ name: Production apex canary
 # the repository secret VERCEL_TOKEN; read-only canary runs do not.
 on:
   deployment_status:
-  # Event providers can degrade after a clean deployment. Six small checks a
-  # day catch that drift without turning this canary into a high-cost crawler.
+  # Deployment events cover every promotion. Two scheduled checks a day catch
+  # later drift, while the separate daily health workflow covers data health.
   schedule:
-    - cron: "27 */4 * * *"
+    - cron: "27 4,16 * * *"
   workflow_dispatch:
     inputs:
       base_url:

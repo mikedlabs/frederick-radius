@@ -1,7 +1,9 @@
 name: CI
 
 # The mechanical quality gate the repo was missing: typecheck, lint,
-# unit tests, and a production build on every PR and every push to main.
+# unit tests, and a production build on every PR. Vercel already validates the
+# merged revision, so running the same cold build again on every push to main
+# spent runner minutes without creating a second review boundary.
 # Until now CI only ran editorial-style + data-freshness checks, so a
 # type error or failing test could land on main unnoticed — especially
 # risky with autonomous agents committing. A green check here is the
@@ -9,12 +11,34 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # The broad dependency-failure sweep is intentionally weekly. The required
+  # PR gate already exercises the production browser journeys; rebuilding the
+  # same 2,700-page app in a second PR job added roughly 17 billed minutes to
+  # every change without being part of the live branch ruleset.
+  schedule:
+    - cron: "47 8 * * 0"
   # Bot-created pull requests use the repository token. GitHub holds their
   # pull_request runs for manual approval, so the creating workflow explicitly
   # dispatches these same secret-free gates on the allowlisted bot branch.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      run_browser_chaos:
+        description: Also run the weekly dependency-failure browser sweep
+        required: false
+        type: boolean
+        default: false
+      automated_pr_branch:
+        description: Trusted bot branch validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_head_sha:
+        description: Exact trusted bot head validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_dispatched_after:
+        description: Start of the trusted automated check window
+        required: false
+        type: string
 
 # Cancel superseded runs on the same ref so a rapid push series doesn't
 # queue stale builds.
@@ -27,6 +51,9 @@ permissions:
 
 jobs:
   verify:
+    # The weekly schedule is reserved for browser chaos. Pull requests and
+    # manual/bot dispatches keep the normal required verification job.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -104,11 +131,13 @@ jobs:
           retention-days: 7
 
   browser-chaos:
-    # Keep this job name stable and mark it required in the main branch rule.
-    # The broad UX sweep still runs nightly; this small PR gate attacks the
-    # higher-risk failure mode: several dependencies failing in different ways
-    # while the four primary decision surfaces remain useful and honest.
+    # Keep the historical job name so old run links remain understandable, but
+    # run it only on the weekly schedule or an explicit manual request. It is a
+    # valuable resilience audit, not a duplicate per-PR release build.
     name: Required browser chaos
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_browser_chaos)
     runs-on: ubuntu-latest
     # A cold 2,740-page production build takes about 24 minutes on GitHub's
     # shared runner before Chromium and the actual chaos cases begin. Keep a
@@ -151,3 +180,48 @@ jobs:
           path: test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  attach-automated-pr-checks:
+    # Start the trusted status bridge only after the expensive CI gate ends.
+    # The former design started a second runner immediately and paid it to
+    # sleep for the full build. Style normally finishes before CI, so the
+    # bridge now observes completed work instead of polling for half an hour.
+    needs: verify
+    if: >-
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.automated_pr_branch != '' &&
+      inputs.automated_pr_head_sha != '' &&
+      inputs.automated_pr_dispatched_after != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Attach completed bot checks to the merge revision
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
+          AUTOMATED_PR_DISPATCHED_AFTER: ${{ inputs.automated_pr_dispatched_after }}
+        with:
+          script: |
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
+            const dispatchedAfter = process.env.AUTOMATED_PR_DISPATCHED_AFTER;
+            if (context.sha !== headSha) {
+              core.setFailed(`The dispatched CI revision moved: expected ${headSha}, got ${context.sha}.`);
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'automated-pr-status-bridge.yml',
+              ref: 'main',
+              inputs: {
+                branch,
+                head_sha: headSha,
+                dispatched_after: dispatchedAfter,
+              },
+            });

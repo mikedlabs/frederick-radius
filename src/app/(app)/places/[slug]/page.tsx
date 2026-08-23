@@ -508,6 +508,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         googleHours={place.google_hours}
         verified={place.hours_verified ?? false}
         provenance={hoursConfirmed ?? undefined}
+        canCheckCurrentHours={/^(?:places\/)?ChIJ[A-Za-z0-9_-]+$/.test(
+          place.google_place_id ?? "",
+        )}
       />
 
       <PlacePhotoGallery

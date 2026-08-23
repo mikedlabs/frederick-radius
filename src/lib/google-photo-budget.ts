@@ -1,4 +1,7 @@
-const DEFAULT_GOOGLE_PHOTO_DAILY_CAP = 50;
+// 25/day remains below the current 1,000-request monthly free allowance in a
+// 31-day month. Production can lower this further, while the immutable maximum
+// prevents an accidental environment edit from reopening the original spend.
+const DEFAULT_GOOGLE_PHOTO_DAILY_CAP = 25;
 const MIN_GOOGLE_PHOTO_DAILY_CAP = 1;
 const MAX_GOOGLE_PHOTO_DAILY_CAP = 100;
 

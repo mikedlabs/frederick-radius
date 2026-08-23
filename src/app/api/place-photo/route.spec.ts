@@ -59,13 +59,13 @@ describe("GET /api/place-photo daily budget", () => {
     vi.unstubAllGlobals();
   });
 
-  it("reserves the default 50-call budget before the paid fetch", async () => {
+  it("reserves the default 25-call budget before the paid fetch", async () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/jpeg");
     expect(response.headers.get("x-photo-fallback")).toBeNull();
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 50);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 25);
     expect(mocks.fetch).toHaveBeenCalledOnce();
     expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.fetch.mock.invocationCallOrder[0],
@@ -89,12 +89,12 @@ describe("GET /api/place-photo daily budget", () => {
   it("uses the conservative default for a malformed cap without exposing it", async () => {
     const malformed = "100photos-private-value";
     vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", malformed);
-    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 50 });
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 25 });
 
     const response = await GET(request());
     const body = await response.text();
 
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 50);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 25);
     expect(response.headers.get("x-photo-fallback")).toBe("daily-cap");
     expect(body).not.toContain(malformed);
     expect(mocks.fetch).not.toHaveBeenCalled();

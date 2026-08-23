@@ -44,11 +44,9 @@ function refreshError(error: string, status: number) {
  * searching, or changing view. The underlying unified feed and this response
  * share the page's five-minute cache horizon.
  */
-export async function GET(request?: Request) {
-  const bypassCache = request
-    ? new URL(request.url).searchParams.get("refresh") === "1"
-    : false;
-  if (bypassCache && request) {
+export async function GET(request: Request) {
+  const bypassCache = new URL(request.url).searchParams.get("refresh") === "1";
+  if (bypassCache) {
     // The normal endpoint is public and edge-cached. Only the explicit
     // recovery read bypasses that protection, so guard that button-shaped
     // escape hatch before it can start another archive load.

@@ -86,9 +86,9 @@ type EnrichResponse = {
 
 const EMPTY: EnrichResponse = { photos: [], hours: [] };
 type EnrichMode = "basic" | "hours" | "experience";
-const DEFAULT_BASIC_DAILY_CAP = 30;
+const DEFAULT_BASIC_DAILY_CAP = 10;
 const MAX_BASIC_DAILY_CAP = 80;
-const DEFAULT_EXPERIENCE_DAILY_CAP = 20;
+const DEFAULT_EXPERIENCE_DAILY_CAP = 5;
 const MAX_EXPERIENCE_DAILY_CAP = 20;
 
 function boundedDailyCap(

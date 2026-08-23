@@ -37,6 +37,10 @@ import {
 } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
+import {
+  loadLivePlaceHours,
+  subscribeLivePlaceHours,
+} from "@/components/place/livePlaceHours";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import { normalizeMapReturnTo, withMapReturnTo } from "@/lib/map-return";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
@@ -180,8 +184,9 @@ function PlaceSheetContent({
     }
   };
 
-  // On-demand Google enrichment for the long-tail (DFP) places that have no
-  // build-time enrichment. Curated places already carry google_photo_url.
+  // Runtime Google data is requested only after a deliberate tap. Opening a
+  // place sheet must remain a free catalog read, even when stored hours are
+  // old or the long-tail record has no media/contact enrichment yet.
   const [extra, setExtra] = useState<{
     photos: string[]; hours: string[]; phone?: string; website?: string;
     photo_attributions?: GooglePhotoAttribution[]; google_maps_uri?: string;
@@ -191,29 +196,37 @@ function PlaceSheetContent({
     google_photo_attribution?: GooglePhotoAttribution;
     google_maps_uri?: string;
   } | null>(null);
-  const needsBasicEnrichment = Boolean(
-    !place.google_photo_url &&
-    !place.google_hours?.length &&
-    !place.phone &&
-    !place.website,
-  );
-  const automaticEnrichmentMode = needsBasicEnrichment
-    ? "basic"
-    : !place.hours_verified
-      ? "hours"
-      : null;
+  const [currentHoursStatus, setCurrentHoursStatus] = useState<
+    "idle" | "loading" | "unavailable"
+  >("idle");
+
+  // A current-hours request can also be satisfied by the explicit richer
+  // Google-details action below. Listen for either action without starting a
+  // request here, then update every hours/status label in this sheet together.
   useEffect(() => {
-    if (!automaticEnrichmentMode) return;
-    let cancelled = false;
-    fetch(
-      `/api/place/${place.slug}/enrich?mode=${automaticEnrichmentMode}`,
-      { cache: "no-store" },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setExtra(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [automaticEnrichmentMode, place.slug]);
+    if (place.hours_verified) return;
+    return subscribeLivePlaceHours(place.slug, (value) => {
+      setExtra((current) => ({
+        ...current,
+        ...value,
+        photos: current?.photos ?? [],
+        hours: value.hours ?? current?.hours ?? [],
+      }));
+      setCurrentHoursStatus("idle");
+    });
+  }, [place.hours_verified, place.slug]);
+
+  const checkCurrentHours = () => {
+    if (currentHoursStatus === "loading") return;
+    setCurrentHoursStatus("loading");
+    loadLivePlaceHours(place.slug)
+      .then((value) => {
+        if (!value.structured_hours || !value.hours?.length) {
+          setCurrentHoursStatus("unavailable");
+        }
+      })
+      .catch(() => setCurrentHoursStatus("unavailable"));
+  };
 
   // Client-safe place rows intentionally omit the large attribution object.
   // Fetch it only for the one photo the user opens, preserving the complete
@@ -528,6 +541,29 @@ function PlaceSheetContent({
               subject={effectiveHoursCheckedAt ? "Hours" : "Listing"}
             />
           </div>
+
+          {!place.hours_verified &&
+          /^(?:places\/)?ChIJ[A-Za-z0-9_-]+$/.test(place.google_place_id ?? "") &&
+          !extra?.hours_checked_at ? (
+            <div className="mt-1.5">
+              <button
+                type="button"
+                disabled={currentHoursStatus === "loading"}
+                onClick={checkCurrentHours}
+                className="tap-44-y inline-flex items-center text-xs font-semibold disabled:opacity-60"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                {currentHoursStatus === "loading"
+                  ? "Checking current hours…"
+                  : "Check current hours"}
+              </button>
+              {currentHoursStatus === "unavailable" ? (
+                <p className="text-xs" role="status" style={{ color: "var(--app-ink-3)" }}>
+                  Current hours are unavailable. Check the official listing before you go.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
         {/* The moat, surfaced where the tap lands: this place's VERIFIED Field
             Notes (happy hour / deal / parking / insider), led high in the sheet

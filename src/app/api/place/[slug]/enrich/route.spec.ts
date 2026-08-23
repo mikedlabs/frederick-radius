@@ -85,7 +85,7 @@ describe("place enrichment shared daily budgets", () => {
     expect(response.status).toBe(200);
     expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
       "budget_google_place_enrich_basic",
-      30,
+      10,
     );
     expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getPlaceDetails.mock.invocationCallOrder[0],
@@ -98,7 +98,7 @@ describe("place enrichment shared daily budgets", () => {
 
     expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
       "budget_google_place_enrich_experience",
-      20,
+      5,
     );
     expect(mocks.getPlaceDetails).toHaveBeenCalledWith(
       "ChIJtest",
@@ -111,7 +111,7 @@ describe("place enrichment shared daily budgets", () => {
 
     expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
       "budget_google_place_enrich_basic",
-      30,
+      10,
     );
     expect(mocks.getPlaceDetails).toHaveBeenCalledWith("ChIJtest", "hours");
   });
@@ -146,7 +146,7 @@ describe("place enrichment shared daily budgets", () => {
 
   it.each([
     ["GOOGLE_PLACE_ENRICH_DAILY_CAP", "9999", 80],
-    ["GOOGLE_PLACE_ENRICH_DAILY_CAP", "not-a-number", 30],
+    ["GOOGLE_PLACE_ENRICH_DAILY_CAP", "not-a-number", 10],
     ["GOOGLE_PLACE_EXPERIENCE_DAILY_CAP", "9999", 20],
     ["GOOGLE_PLACE_EXPERIENCE_DAILY_CAP", "0", 1],
   ] as const)("bounds %s=%s to %i", async (name, configured, expected) => {

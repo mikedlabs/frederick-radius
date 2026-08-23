@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   loadLivePlaceHours,
   rememberLivePlaceHours,
+  subscribeLivePlaceHours,
 } from "@/components/place/livePlaceHours";
 
 afterEach(() => {
@@ -51,8 +52,38 @@ describe("live place hours request coalescing", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     rememberLivePlaceHours("primed-hours-place", live);
+    const listener = vi.fn();
+    const unsubscribe = subscribeLivePlaceHours("primed-hours-place", listener);
 
     await expect(loadLivePlaceHours("primed-hours-place")).resolves.toEqual(live);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(listener).toHaveBeenCalledWith(live);
+    unsubscribe();
+  });
+
+  it("updates passive hours consumers only after an explicit request succeeds", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => live,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const listener = vi.fn();
+    const unsubscribe = subscribeLivePlaceHours(
+      "user-requested-hours-place",
+      listener,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+
+    await loadLivePlaceHours("user-requested-hours-place");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith(live);
+
+    unsubscribe();
+    rememberLivePlaceHours("user-requested-hours-place", live);
+    expect(listener).toHaveBeenCalledOnce();
   });
 });

@@ -64,12 +64,12 @@ describe("Google photo tripwire daily budget", () => {
     expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
       1,
       "google_photo",
-      50,
+      25,
     );
     expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
       2,
       "google_photo",
-      50,
+      25,
     );
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(Math.max(...mocks.reserveDailyUsage.mock.invocationCallOrder)).toBeLessThan(

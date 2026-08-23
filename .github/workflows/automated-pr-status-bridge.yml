@@ -3,9 +3,10 @@ name: Attach automated PR checks
 # Data publishers create review PRs with the repository token. GitHub holds
 # their native pull_request workflows for approval, so the publisher dispatches
 # the same secret-free CI and style workflows on the exact bot commit, then
-# explicitly dispatches this bridge on main. The bridge polls only runs started
-# by that dispatch and copies their real job conclusions to GitHub's synthetic
-# PR merge commit, which is evaluated by the strict main-branch ruleset.
+# CI explicitly dispatches this bridge on main after its expensive verify job
+# finishes. The bridge therefore polls only long enough for the parent CI run
+# to settle, then copies real job conclusions to GitHub's synthetic PR merge
+# commit, which is evaluated by the strict main-branch ruleset.
 #
 # No generated code is checked out or executed here. Before a status is
 # written, the bot branch, head SHA, changed paths, current main revision, and
@@ -36,7 +37,7 @@ permissions:
 jobs:
   attach:
     runs-on: ubuntu-latest
-    timeout-minutes: 43
+    timeout-minutes: 8
     steps:
       - name: Validate the bot PR and attach its real job results
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -61,7 +62,7 @@ jobs:
               return;
             }
             const now = Date.now();
-            if (dispatchedAfter > now + 60_000 || dispatchedAfter < now - 10 * 60_000) {
+            if (dispatchedAfter > now + 60_000 || dispatchedAfter < now - 60 * 60_000) {
               core.setFailed('The check dispatch start time is outside the accepted window.');
               return;
             }
@@ -211,7 +212,7 @@ jobs:
               {
                 workflowId: 'ci.yml',
                 workflowName: 'CI',
-                contexts: ['verify', 'Required browser chaos'],
+                contexts: ['verify'],
               },
               {
                 workflowId: 'style.yml',
@@ -236,8 +237,8 @@ jobs:
             await writeAllStatuses('pending', 'Trusted automated-data checks are running');
 
             const acceptedAfter = dispatchedAfter - 5_000;
-            const discoveryDeadline = Date.now() + 3 * 60_000;
-            const completionDeadline = Date.now() + 40 * 60_000;
+            const discoveryDeadline = Date.now() + 2 * 60_000;
+            const completionDeadline = Date.now() + 5 * 60_000;
             const discoveredRuns = new Map();
             const completedRuns = new Map();
             while (completedRuns.size < workflowSpecs.length) {
@@ -294,12 +295,12 @@ jobs:
                 core.setFailed('Timed out waiting for dispatched checks to finish.');
                 return;
               }
-              await new Promise((resolve) => setTimeout(resolve, 30_000));
+              await new Promise((resolve) => setTimeout(resolve, 10_000));
             }
 
-            // CI can take half an hour. Revalidate every mutable identity after
-            // it finishes so a branch, PR, or main movement cannot inherit an
-            // earlier result.
+            // Revalidate every mutable identity after observing the completed
+            // runs so a branch, PR, or main movement cannot inherit an earlier
+            // result.
             const [latestMain, latestBot, latestPull] = await Promise.all([
               github.rest.git.getRef({ owner, repo, ref: 'heads/main' }),
               github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` }),

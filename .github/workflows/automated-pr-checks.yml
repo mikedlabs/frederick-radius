@@ -4,10 +4,10 @@ name: Automated PR checks
 # approval. Data generators call this tiny, isolated workflow after their
 # allowlisted PR branch changes. It receives no source API secrets, does not
 # check out or execute repository code, and can only start the existing CI and
-# style workflows on a bot/* branch plus the trusted status bridge on main.
-# The bridge polls those exact dispatched runs, validates their completed jobs,
-# and attaches their conclusions to the PR merge SHA evaluated by the strict
-# main-branch ruleset.
+# style workflows on a bot/* branch. CI starts the trusted status bridge after
+# its expensive gate finishes, so a second runner is not billed for the full
+# build. The bridge validates the completed jobs and attaches their conclusions
+# to the PR merge SHA evaluated by the strict main-branch ruleset.
 
 on:
   workflow_call:
@@ -128,28 +128,23 @@ jobs:
               return;
             }
             const dispatchedAfter = new Date().toISOString();
-            for (const workflow_id of ['ci.yml', 'style.yml']) {
-              await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id,
-                ref: branch,
-              });
-            }
-            // A workflow_run event caused by these GITHUB_TOKEN dispatches is
-            // not a reliable second hop. Explicitly dispatch the trusted bridge
-            // on main instead. It receives no generated files or source secrets;
-            // it only polls runs created at or after this instant and revalidates
-            // the branch, head, PR, base, and changed-path allowlist before it
-            // can write a status.
+            // Start the fast voice gate first. CI receives the exact validated
+            // bot identity and dispatches the trusted bridge only after its
+            // expensive verify job has finished.
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'automated-pr-status-bridge.yml',
-              ref: 'main',
+              workflow_id: 'style.yml',
+              ref: branch,
+            });
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              ref: branch,
               inputs: {
-                branch,
-                head_sha: expectedHead,
-                dispatched_after: dispatchedAfter,
+                automated_pr_branch: branch,
+                automated_pr_head_sha: expectedHead,
+                automated_pr_dispatched_after: dispatchedAfter,
               },
             });

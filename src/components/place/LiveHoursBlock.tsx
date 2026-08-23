@@ -6,6 +6,7 @@ import GoogleHours from "@/components/place/GoogleHours";
 import HoursBlock from "@/components/place/HoursBlock";
 import {
   loadLivePlaceHours,
+  subscribeLivePlaceHours,
   type LivePlaceHoursData,
 } from "@/components/place/livePlaceHours";
 
@@ -15,27 +16,43 @@ export default function LiveHoursBlock({
   googleHours,
   verified,
   provenance,
+  canCheckCurrentHours = false,
 }: {
   slug: string;
   hours?: Hours;
   googleHours?: string[];
   verified: boolean;
   provenance?: string;
+  canCheckCurrentHours?: boolean;
 }) {
   const [live, setLive] = useState<LivePlaceHoursData | null>(null);
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "unavailable"
+  >("idle");
 
-  useEffect(() => {
-    if (verified) return;
-    let cancelled = false;
+  useEffect(
+    () => subscribeLivePlaceHours(slug, (value) => {
+      if (!value.structured_hours || !value.hours?.length) return;
+      setLive(value);
+      setStatus("idle");
+    }),
+    [slug],
+  );
+
+  const checkCurrentHours = () => {
+    if (status === "loading") return;
+    setStatus("loading");
     loadLivePlaceHours(slug)
       .then((value) => {
-        if (!cancelled && value.structured_hours && value.hours?.length) {
+        if (value.structured_hours && value.hours?.length) {
           setLive(value);
+          setStatus("idle");
+        } else {
+          setStatus("unavailable");
         }
       })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [slug, verified]);
+      .catch(() => setStatus("unavailable"));
+  };
 
   if (live?.structured_hours) {
     return (
@@ -46,9 +63,32 @@ export default function LiveHoursBlock({
       />
     );
   }
-  if (hours) {
-    return <HoursBlock hours={hours} verified={verified} provenance={provenance} />;
-  }
-  if (googleHours?.length) return <GoogleHours lines={googleHours} />;
-  return null;
+
+  const schedule = hours ? (
+    <HoursBlock hours={hours} verified={verified} provenance={provenance} />
+  ) : googleHours?.length ? (
+    <GoogleHours lines={googleHours} />
+  ) : null;
+
+  if (verified || !canCheckCurrentHours) return schedule;
+
+  return (
+    <div className="space-y-2">
+      {schedule}
+      <button
+        type="button"
+        disabled={status === "loading"}
+        onClick={checkCurrentHours}
+        className="tap-44-y inline-flex items-center text-sm font-semibold disabled:opacity-60"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        {status === "loading" ? "Checking current hours…" : "Check current hours"}
+      </button>
+      {status === "unavailable" ? (
+        <p className="text-xs" role="status" style={{ color: "var(--app-ink-3)" }}>
+          Current hours are unavailable. Check the official listing before you go.
+        </p>
+      ) : null}
+    </div>
+  );
 }

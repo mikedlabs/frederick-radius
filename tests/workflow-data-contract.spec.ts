@@ -615,11 +615,23 @@ describe("scheduled data workflow contracts", () => {
     );
     expect(publisherText).not.toContain("npm ci");
 
-    expect(workflowText("ci.yml")).toContain("workflow_dispatch: {}");
+    const ciText = workflowText("ci.yml");
+    expect(ciText).toContain("workflow_dispatch:");
+    expect(ciText).toContain("automated_pr_head_sha:");
+    expect(ciText).toContain("run_browser_chaos:");
+    expect(ciText).not.toContain("\n  push:");
+    expect(ciText).toContain("needs: verify");
+    expect(ciText).toContain(
+      "workflow_id: 'automated-pr-status-bridge.yml'",
+    );
+    expect(ciText).toContain("github.event_name == 'schedule'");
+    expect(workflowText("style.yml")).not.toContain("\n  push:");
+    expect(workflowText("ux-audit.yml")).toContain('cron: "17 8 * * 0"');
     const dispatcher = workflowText("automated-pr-checks.yml");
     expect(dispatcher).toContain("actions: write");
     expect(dispatcher).toContain("contents: read");
-    expect(dispatcher).toContain("['ci.yml', 'style.yml']");
+    expect(dispatcher).toContain("workflow_id: 'ci.yml'");
+    expect(dispatcher).toContain("workflow_id: 'style.yml'");
     expect(dispatcher).toContain(
       "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
     );
@@ -627,17 +639,17 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("compareCommitsWithBasehead");
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
     expect(dispatcher).toContain("allowedByBranch");
-    expect(dispatcher).toContain(
+    expect(dispatcher).toContain("automated_pr_head_sha: expectedHead");
+    expect(dispatcher).not.toContain(
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
-    expect(dispatcher).toContain("ref: 'main'");
-    expect(dispatcher).toContain("dispatched_after: dispatchedAfter");
     expect(dispatcher).not.toContain("actions/checkout");
 
     // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
     // not reliably create another workflow_run hop. The bridge must therefore
-    // be explicitly dispatched on trusted main, then poll only the exact bot
-    // head and post-dispatch run window before writing required statuses.
+    // be explicitly dispatched on trusted main after CI finishes, then poll
+    // only the exact bot head and post-dispatch run window before writing the
+    // two required statuses.
     const bridgeText = workflowText("automated-pr-status-bridge.yml");
     const bridge = parse(bridgeText) as WorkflowDocument;
     expect(bridge.permissions).toEqual({
@@ -658,14 +670,14 @@ describe("scheduled data workflow contracts", () => {
     expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
     expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
     expect(bridgeText).toContain("writeAllStatuses('pending'");
-    expect(bridgeText).toContain("['verify', 'Required browser chaos']");
+    expect(bridgeText).toContain("contexts: ['verify']");
     expect(bridgeText).toContain("contexts: ['style-lint']");
-    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(43);
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
     expect(bridgeText).toContain(
-      "const discoveryDeadline = Date.now() + 3 * 60_000",
+      "const discoveryDeadline = Date.now() + 2 * 60_000",
     );
     expect(bridgeText).toContain(
-      "const completionDeadline = Date.now() + 40 * 60_000",
+      "const completionDeadline = Date.now() + 5 * 60_000",
     );
     expect(bridgeText).toContain("candidate.conclusion !== 'success'");
     expect(bridgeText).toContain(

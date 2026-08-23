@@ -15,6 +15,10 @@ type CachedLiveHours = {
 };
 
 const CACHE = new Map<string, CachedLiveHours>();
+const LISTENERS = new Map<
+  string,
+  Set<(value: LivePlaceHoursData) => void>
+>();
 const CLIENT_CACHE_MS = 5 * 60_000;
 
 function usableLiveHours(value: LivePlaceHoursData): boolean {
@@ -25,10 +29,39 @@ function usableLiveHours(value: LivePlaceHoursData): boolean {
     value.hours?.length,
   );
 }
+
+function publishLivePlaceHours(
+  slug: string,
+  value: LivePlaceHoursData,
+): void {
+  for (const listener of LISTENERS.get(slug) ?? []) listener(value);
+}
+
 /**
- * Coalesce the two consumers on a full place page (the hero status and the
- * schedule disclosure). The short-lived cache is memory-only, scoped to the
- * current browser session, and never written to Next's data cache or storage.
+ * Keep the hero status and schedule disclosure in sync after a deliberate
+ * current-hours request. Subscribing is local and free; it never starts a
+ * network request by itself.
+ */
+export function subscribeLivePlaceHours(
+  slug: string,
+  listener: (value: LivePlaceHoursData) => void,
+): () => void {
+  const listeners = LISTENERS.get(slug) ?? new Set();
+  listeners.add(listener);
+  LISTENERS.set(slug, listeners);
+  const cached = CACHE.get(slug);
+  if (cached?.value && cached.expiresAt > Date.now()) {
+    listener(cached.value);
+  }
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) LISTENERS.delete(slug);
+  };
+}
+/**
+ * Coalesce deliberate current-hours checks across place surfaces. The
+ * short-lived cache is memory-only, scoped to the current browser session,
+ * and never written to Next's data cache or storage.
  */
 export function loadLivePlaceHours(slug: string): Promise<LivePlaceHoursData> {
   const now = Date.now();
@@ -48,7 +81,7 @@ export function loadLivePlaceHours(slug: string): Promise<LivePlaceHoursData> {
       }
       const value = await response.json() as LivePlaceHoursData;
       if (usableLiveHours(value)) {
-        CACHE.set(slug, { value, expiresAt: Date.now() + CLIENT_CACHE_MS });
+        rememberLivePlaceHours(slug, value);
       } else {
         CACHE.delete(slug);
       }
@@ -74,4 +107,5 @@ export function rememberLivePlaceHours(
     value,
     expiresAt: Date.now() + CLIENT_CACHE_MS,
   });
+  publishLivePlaceHours(slug, value);
 }
