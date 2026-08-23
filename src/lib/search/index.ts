@@ -906,11 +906,22 @@ export function qualifiedSearchIndex(
   // an explicit layer/amenity request, the deterministic map answer still
   // leads because it executes the full request instead of guessing one
   // record. In all cases, URL-level duplicates are removed after merging.
-  const merged = qualified.meta.qualifiers.constrained && !hasDeterministicMapAction
-    ? ranked.length > 0
-      ? [ranked[0], ...head, ...ranked.slice(1)]
-      : head
-    : [...head, ...ranked];
+  const supportiveMapAction = hasDeterministicMapAction && !deterministicUtilityAction;
+  const firstPlaceIndex = supportiveMapAction
+    ? ranked.findIndex((result) => result.type === "place")
+    : -1;
+  const merged = firstPlaceIndex >= 0
+    ? [
+        head[0],
+        ranked[firstPlaceIndex],
+        ...head.slice(1),
+        ...ranked.filter((_, index) => index !== firstPlaceIndex),
+      ]
+    : qualified.meta.qualifiers.constrained && !hasDeterministicMapAction
+      ? ranked.length > 0
+        ? [ranked[0], ...head, ...ranked.slice(1)]
+        : head
+      : [...head, ...ranked];
   return {
     results: dedupeByHref(merged, limit),
     meta: qualified.meta,

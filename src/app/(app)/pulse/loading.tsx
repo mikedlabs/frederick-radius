@@ -5,7 +5,7 @@ export default function PulseLoading() {
     <div className="relative space-y-5 pb-4" aria-label="Loading live county conditions" aria-busy="true">
       <PageBloom variant="warm-cool" />
       <div
-        className="min-h-[280px] animate-pulse overflow-hidden border-y p-6 sm:rounded-[8px] sm:border"
+        className="min-h-[280px] overflow-hidden border-y p-6 motion-safe:animate-pulse sm:rounded-[8px] sm:border"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated-solid)",
@@ -21,10 +21,10 @@ export default function PulseLoading() {
           <div className="h-9 rounded-lg bg-black/[0.055]" />
         </div>
       </div>
-      <div className="h-16 animate-pulse border-y border-[var(--app-border)] bg-black/[0.025]" />
+      <div className="h-16 border-y border-[var(--app-border)] bg-black/[0.025] motion-safe:animate-pulse" />
       <div className="grid grid-cols-2 gap-2.5">
-        <div className="h-24 animate-pulse border-y border-[var(--app-border)] bg-black/[0.025]" />
-        <div className="h-24 animate-pulse border-y border-[var(--app-border)] bg-black/[0.025]" />
+        <div className="h-24 border-y border-[var(--app-border)] bg-black/[0.025] motion-safe:animate-pulse" />
+        <div className="h-24 border-y border-[var(--app-border)] bg-black/[0.025] motion-safe:animate-pulse" />
       </div>
       <span className="sr-only">Checking weather, roads, power, schools, and emergency feeds…</span>
     </div>

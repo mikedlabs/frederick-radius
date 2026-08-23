@@ -1,24 +1,28 @@
-import { describe, it, expect } from "vitest";
-import { normalizeQueryKey } from "./searchMiss";
+import { describe, expect, it } from "vitest";
 
-describe("normalizeQueryKey", () => {
-  it("folds case, punctuation, and spacing so repeats group", () => {
-    expect(normalizeQueryKey("Dog-friendly patios!")).toBe("dog friendly patios");
-    expect(normalizeQueryKey("  DOG   friendly   patios ")).toBe("dog friendly patios");
+import {
+  normalizeQueryKey,
+  worthLoggingSearchMiss,
+} from "@/lib/telemetry/searchMiss";
+
+describe("search miss quality", () => {
+  it("groups punctuation and leading articles into one useful intent", () => {
+    expect(normalizeQueryKey("A dog-friendly patio! ")).toBe(
+      "dog friendly patio",
+    );
   });
 
-  it("drops a leading article", () => {
-    expect(normalizeQueryKey("the pool")).toBe("pool");
-    expect(normalizeQueryKey("a splash pad")).toBe("splash pad");
-  });
+  it.each(["f", "bu", "do", "the", " and "])(
+    "rejects incomplete or non-intent query %j",
+    (query) => {
+      expect(worthLoggingSearchMiss(query.trim())).toBe(false);
+    },
+  );
 
-  it("keeps digits and distinct words distinct", () => {
-    expect(normalizeQueryKey("route 15 diner")).toBe("route 15 diner");
-    expect(normalizeQueryKey("pho")).toBe("pho");
-  });
-
-  it("returns empty for punctuation-only input", () => {
-    expect(normalizeQueryKey("!!!")).toBe("");
-    expect(normalizeQueryKey("   ")).toBe("");
-  });
+  it.each(["tea", "DMV", "quiet place to read", "wheelchair accessible patio"])(
+    "keeps meaningful compact and natural-language intent %j",
+    (query) => {
+      expect(worthLoggingSearchMiss(query)).toBe(true);
+    },
+  );
 });

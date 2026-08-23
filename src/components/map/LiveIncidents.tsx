@@ -212,6 +212,7 @@ export default function LiveIncidents({
           onClose={() => {
             setSelected(null);
             onFocusIncidentChange?.(null);
+            gate?.onDidClose();
           }}
         >
           <div className="min-w-[176px] p-1">

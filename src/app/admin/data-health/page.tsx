@@ -18,7 +18,10 @@ import {
 import { getDriftStats, getDrift } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
-import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
+import {
+  summarizeHoursRefreshArtifact,
+  withheldHoursReviewQueue,
+} from "@/lib/quality/operator-coverage";
 import { isGooglePlaceId } from "@/lib/provenance";
 import {
   sourceLedgerNeedsAction,
@@ -190,6 +193,17 @@ async function Board() {
     googleBackedSlugs,
   );
   const hoursCycle = hoursArtifact.cycle;
+  const hoursReviewQueue = withheldHoursReviewQueue(
+    HOURS_REFRESH_RAW as Record<string, unknown>,
+    PLACES_CLIENT_RAW as Array<{
+      slug: string;
+      name: string;
+      category?: string;
+      municipality?: string;
+      hours?: unknown;
+      hours_verified?: boolean;
+    }>,
+  );
 
   // THE ONE NUMBER — the nightly cron collapses every gate (catalog gates +
   // the end-to-end tripwires: photo rot, transit zero-routes, empty event
@@ -216,7 +230,7 @@ async function Board() {
     ],
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
-    ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE === "1" ? "on" : "off", "default off = today's production"],
+    ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE !== "0" ? "on" : "off", "default on; set 0 only for rollback"],
     ["HOURS_GATE", process.env.HOURS_GATE !== "0" ? "on" : "off", "default on"],
     ["RADIUS_EVENTS_BY_TOWN", process.env.RADIUS_EVENTS_BY_TOWN === "1" ? "on" : "off", "default off = today's production"],
   ];
@@ -306,6 +320,12 @@ async function Board() {
     actions.push({
       label: `The hours refresh cycle is stalled at ${hoursCycle.completedDays} of ${hoursCycle.days} buckets`,
       fix: `Missing cycle days: ${hoursCycle.missingDays.join(", ") || "none"}. Underfilled cycle days: ${hoursCycle.underfilledDays.join(", ") || "none"}. Check the Vercel hours-refresh runs before the next data-steward pull.`,
+    });
+  }
+  if (hoursReviewQueue.length > 0) {
+    actions.push({
+      label: `${hoursReviewQueue.length} current provider schedule${hoursReviewQueue.length === 1 ? " is" : "s are"} safely withheld`,
+      fix: "Review Hours waiting for evidence. Confirm public visitability against a first-party source before allowing a near-all-day claim into Open Now.",
     });
   }
   if (flaggedCoords > 0) {
@@ -516,6 +536,61 @@ async function Board() {
           </Table>
         </Disclosure>
       </section>
+
+      <Section
+        title="Hours waiting for evidence"
+        aside={
+          <StatusPill tone={hoursReviewQueue.length > 0 ? "warning" : "positive"}>
+            {hoursReviewQueue.length > 0 ? hoursReviewQueue.length : "clear"}
+          </StatusPill>
+        }
+        description="Fresh provider schedules that Radius deliberately keeps out of Open Now because they contain an all-week 24-hour claim or a 20-plus-hour window. This is the human review queue between the paid feed and the public answer."
+      >
+        {hoursReviewQueue.length === 0 ? (
+          <AllClear>No fresh provider schedule is waiting for visitability evidence.</AllClear>
+        ) : (
+          <Disclosure open summary={`Review ${Math.min(50, hoursReviewQueue.length)} highest-risk schedules`}>
+            <Table>
+              <THead>
+                <Th>Place</Th>
+                <Th>Reason</Th>
+                <Th>Provider schedule</Th>
+                <Th>Checked</Th>
+              </THead>
+              <TBody>
+                {hoursReviewQueue.slice(0, 50).map((candidate) => (
+                  <Tr key={candidate.slug}>
+                    <Td>
+                      <span className="block font-semibold">{candidate.name}</span>
+                      <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                        {candidate.slug}
+                      </span>
+                      <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                        {[candidate.category, candidate.municipality].filter(Boolean).join(" · ")}
+                      </span>
+                    </Td>
+                    <Td semibold tone="warning">
+                      {candidate.reason === "all-week-24h" ? "24/7 claim" : "20+ hour window"}
+                      {candidate.review === "expired" ? " · review expired" : " · needs source"}
+                    </Td>
+                    <Td tone="muted">{candidate.weekdayHours.join(" · ")}</Td>
+                    <Td tone="muted">
+                      {candidate.refreshedAt
+                        ? new Date(candidate.refreshedAt).toLocaleString()
+                        : "unknown"}
+                    </Td>
+                  </Tr>
+                ))}
+              </TBody>
+            </Table>
+            {hoursReviewQueue.length > 50 && (
+              <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                {hoursReviewQueue.length - 50} more schedules remain withheld. Export the full queue before reviewing in batches.
+              </p>
+            )}
+          </Disclosure>
+        )}
+      </Section>
 
       <Section
         title="Placement (needs review)"

@@ -47,6 +47,11 @@ on:
         description: "Hard cap in dollars. The run aborts BEFORE calling Google if the projection exceeds it."
         required: false
         default: "10"
+      refresh_open_review:
+        description: "I want to replace the currently open Google enrichment review with a fresh paid run"
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -55,8 +60,58 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  enrich:
+  review-gate:
     if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.review.outputs.should_run }}
+      review_url: ${{ steps.review.outputs.review_url }}
+    steps:
+      - name: Pause paid enrichment while its review is open
+        id: review
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REFRESH_OPEN_REVIEW: ${{ inputs.refresh_open_review || 'false' }}
+        with:
+          script: |
+            const branch = 'bot/curated-place-enrichment';
+            const override = process.env.REFRESH_OPEN_REVIEW === 'true';
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+            const review = pulls.find((pull) =>
+              pull.head?.ref === branch &&
+              pull.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+            );
+
+            if (review && !override) {
+              core.notice(`Skipping paid Google enrichment while review PR #${review.number} is open: ${review.html_url}`);
+              core.summary
+                .addHeading('Google enrichment paused')
+                .addRaw(`Review PR [#${review.number}](${review.html_url}) before paying to resolve the same gap again.\n`)
+                .addRaw('Use the manual refresh_open_review override only when replacing that review is intentional.\n');
+              await core.summary.write();
+              core.setOutput('should_run', 'false');
+              core.setOutput('review_url', review.html_url);
+              return;
+            }
+
+            if (review && override) {
+              core.notice(`Manual override accepted; paid Google enrichment may update review PR #${review.number}.`);
+            }
+            core.setOutput('should_run', 'true');
+            core.setOutput('review_url', review?.html_url || '');
+
+  enrich:
+    needs: review-gate
+    if: ${{ needs.review-gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

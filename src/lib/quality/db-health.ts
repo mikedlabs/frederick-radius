@@ -46,6 +46,33 @@ export type DbHealthEvaluation = {
   anomalies: Anomaly[];
 };
 
+/**
+ * Source-side watermark for the paid Google hours handoff. This is collection
+ * evidence only: callers must compare it with the bundled artifact before
+ * claiming the data reached users.
+ *
+ * The strict error behavior is intentional. The data-health reporter wraps
+ * this read in its own deadline and turns failure into an explicit unknown
+ * publication state rather than a false zero or an all-clear.
+ */
+export async function getLatestHoursRefreshAt(): Promise<string | null> {
+  const sql = getSql();
+  if (!sql) {
+    throw new Error("Database is not configured for the hours publication check.");
+  }
+  const rows = (await sql`
+    SELECT max(refreshed_at) AS latest_refreshed_at
+    FROM place_hours_refresh
+  `) as unknown as Array<{ latest_refreshed_at: string | Date | null }>;
+  const value = Array.isArray(rows) ? rows[0]?.latest_refreshed_at : null;
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new Error("The hours collection watermark is not a valid timestamp.");
+  }
+  return parsed.toISOString();
+}
+
 function infrastructureUnavailable(
   reason: DbHealthUnavailableReason,
 ): DbHealthEvaluation {

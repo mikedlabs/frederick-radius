@@ -234,8 +234,11 @@ export default function LiveMarcTrains({
             latitude={p.lat}
             anchor="bottom"
             offset={24}
-            closeOnClick
-            onClose={() => setSelected(null)}
+            closeOnClick={false}
+            onClose={() => {
+              setSelected(null);
+              gate?.onDidClose();
+            }}
             maxWidth="230px"
           >
             <div style={{ padding: "2px 2px 4px" }}>

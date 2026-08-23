@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bus, ChevronDown, ChevronUp, LoaderCircle, RotateCcw } from "lucide-react";
+import Sheet from "@/components/ui/Sheet";
 import type { LineFC } from "@/lib/integrations/transitFrederick";
 
 // The live bus map is heavy (Mapbox), so defer it until the rider opens this
@@ -133,9 +134,11 @@ function isLineFC(value: unknown): value is LineFC {
  *
  * The closed state makes no geometry request and mounts none of the transit
  * visualizations. Opening starts the route-shape request while their chunks
- * load in parallel. Once fetched, shapes stay in component state so collapsing
- * and reopening is instant. Upstream failures stay local to the map and offer
- * a real retry; the live route and next-stop boards can still be useful.
+ * load in parallel. The map lives in the shared fixed sheet instead of adding
+ * 280 pixels in the middle of Pulse, so opening it never moves the live briefing
+ * out from under the rider. Once fetched, shapes stay in component state so
+ * closing and reopening is instant. Upstream failures stay local to the map
+ * and offer a real retry.
  */
 export default function BusesReveal() {
   const [open, setOpen] = useState(false);
@@ -247,7 +250,7 @@ export default function BusesReveal() {
               }}
               title={open ? undefined : closedSummary.text}
             >
-              {open ? "Route progress, map, and next stops" : closedSummary.text}
+              {open ? "Live locations and route paths" : closedSummary.text}
             </span>
           </span>
         </span>
@@ -263,14 +266,16 @@ export default function BusesReveal() {
         </span>
       </button>
 
-      {open ? (
-        // Just the live buses on Pulse: the map with live vehicle positions.
-        // The detailed route + arrival boards live on /transit now.
-        <div
-          id="pulse-live-buses"
-          className="space-y-3 rounded-[var(--app-radius-md)] border p-3"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Buses right now"
+        subtitle="Live TransIT vehicle locations"
+        maxHeight="78dvh"
+      >
+        {/* Just the live buses on Pulse: the map with live vehicle positions.
+            Detailed route and arrival boards remain on /transit. */}
+        <div id="pulse-live-buses" className="min-h-[280px] space-y-3">
           {shapesState.status === "ready" ? (
             <TransitMap
               shapes={shapesState.shapes}
@@ -321,13 +326,13 @@ export default function BusesReveal() {
               }}
             >
               <span className="inline-flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2.25} aria-hidden />
+                <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" strokeWidth={2.25} aria-hidden />
                 Loading route map…
               </span>
             </div>
           )}
         </div>
-      ) : null}
+      </Sheet>
     </section>
   );
 }

@@ -5,6 +5,7 @@ describe("cuisinesOf — text signal (name + blurb)", () => {
   it("matches a cuisine word in the name", () => {
     expect(cuisinesOf({ name: "Sumittra Thai Cuisine" })).toContain("thai");
     expect(cuisinesOf({ name: "Il Porto Ristorante" })).toContain("italian");
+    expect(cuisinesOf({ name: "Adele's Tex Mex" })).toContain("mexican");
   });
 
   it("keeps the most-specific cuisine first (primary)", () => {

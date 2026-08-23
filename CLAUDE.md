@@ -88,9 +88,18 @@ draft must read like a person typing in a thread, not composed copy:
 
 ## Locked architecture (do not restructure)
 
+The interaction rules that keep this capability-dense app understandable are
+documented in `docs/USER_FIRST_INTERACTION_CONTRACT.md`. Preserve its single
+request doorway, explicit location scope, one-overlay limit, and origin-aware
+Back behavior when adding or changing tools.
+
 - /map is the clean whole-county browse surface by default (owner call
   2026-07-08: "the map IS the page" — the Nearby/Whole-county toggle pill
-  was removed as clutter). Radius ("Nearby") mode still exists behind
+  was removed as clutter). A first-time visitor may see one consent sheet
+  offering **Use my location** or **Browse county**; it explains the benefit
+  before any browser prompt. After that, the shared header location control is
+  the sole Near me / Whole county / town scope control. Do not add another
+  floating Locate or scope toggle to the map. Radius ("Nearby") mode still exists behind
   `/map?mode=radius` (isochrone + control sheet) but has no UI entry point;
   don't re-add the floating toggle without an owner ask. The nav is FOUR
   tabs, `Today · Map · Events · Saved(/my-radius)`, from ONE source of
@@ -161,6 +170,23 @@ draft must read like a person typing in a thread, not composed copy:
   tripwire makes empty or badly stale coverage red on /admin/data-health.
 
 ## Verification norms
+
+### Component workshop
+
+- Reuse the shared primitives documented in Storybook before inventing a new
+  card, button, chip, heading, empty state, or drawer treatment. Run
+  `npm run storybook` and inspect the real mobile states at 320, 375, 390, and
+  430 pixels.
+- Any change to a shared UI primitive must update or add its story and pass
+  `npm run test:storybook`. Storybook's accessibility checks fail the component
+  test instead of leaving a warning for someone to notice later.
+- When Storybook is running, agents can inspect the component catalog through
+  the local `storybook` MCP server in `.mcp.json`. This is a development tool;
+  it is not included in the production application.
+- Use `npm run test:visual:capture` to review Find, Ask, and map changes. Only
+  reviewed Linux/Chromium references become blocking baselines; never promote
+  a macOS font-rendering difference into CI by accident. See
+  `docs/VISUAL_CONTRACT.md`.
 
 - `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
   must pass before any commit.

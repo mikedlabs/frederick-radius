@@ -103,6 +103,19 @@ describe("Maryland WZDx normalization", () => {
     expect(normalizeMdotWzdx(raw, NOW).data[0].status).toBe("scheduled");
   });
 
+  it("turns provider route codes and repeated directions into readable copy", () => {
+    const raw = payload();
+    const core = (((raw.features as Array<Record<string, unknown>>)[0]
+      .properties as Record<string, unknown>).core_details as Record<string, unknown>);
+    core.road_names = ["US15BU"];
+    core.description = "Active Closure @ US 15 SOUTH SOUTH OF MM 1.0";
+
+    expect(normalizeMdotWzdx(raw, NOW).data[0]).toMatchObject({
+      road: "US 15 Business",
+      description: "US 15 SOUTH OF MM 1.0",
+    });
+  });
+
   it("suppresses expired, stale, malformed, and out-of-county records", () => {
     const expired = payload();
     const expiredProperties = ((expired.features as Array<Record<string, unknown>>)[0]

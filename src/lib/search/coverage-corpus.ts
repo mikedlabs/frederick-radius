@@ -64,8 +64,6 @@ export const COVERAGE_CORPUS: readonly CoverageNeed[] = [
     need: "hardware store",
     expect: { kind: "place", categories: ["shopping", "services"] },
     phrasings: ["bare", "nearMe"],
-    knownGap:
-      "Zero hardware stores in places-client.json: no Home Depot, Lowe's, Ace, True Value, or Tractor Supply row, and nothing carries a `hardware` subcategory. The `hardware` category exists but is empty, so it route-overrides to /category/services. The door is honest; the shelf behind it is bare.",
   },
   {
     persona: "Resident · decided",
@@ -254,8 +252,6 @@ export const COVERAGE_CORPUS: readonly CoverageNeed[] = [
     need: "mosque",
     expect: { kind: "place", categories: ["worship"] },
     phrasings: ["bare", "nearMe"],
-    knownGap:
-      "No mosque row anywhere in places-client.json. The Islamic Society of Frederick is already an event-feed source (PR #1084) but has no place row.",
   },
 
   // ── Family ────────────────────────────────────────────────────────────

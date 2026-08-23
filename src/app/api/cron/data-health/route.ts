@@ -33,9 +33,11 @@ import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
 import {
   evaluateDbHealth,
+  getLatestHoursRefreshAt,
   getRecentIngestRuns,
   type DbHealthEvaluation,
 } from "@/lib/quality/db-health";
+import { evaluateHoursPromotionHealth } from "@/lib/quality/hours-promotion-health";
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import {
@@ -61,6 +63,7 @@ export const maxDuration = 90;
 
 const HYDRATE_DEADLINE_MS = 8_000;
 const DB_HEALTH_DEADLINE_MS = 18_000;
+const HOURS_PROMOTION_DEADLINE_MS = 8_000;
 const PHASE_HEARTBEAT_DEADLINE_MS = 8_000;
 const FOOD_TRUCK_DEADLINE_MS = 8_000;
 const TRIPWIRE_OUTER_DEADLINE_MS = 25_000;
@@ -191,6 +194,10 @@ async function runDataHealthReport() {
     evaluateDbHealth(),
     DB_HEALTH_DEADLINE_MS,
   );
+  const hoursPromotionOutcome = await withDeadlineOutcome(
+    getLatestHoursRefreshAt(),
+    HOURS_PROMOTION_DEADLINE_MS,
+  );
   const foodTruckOutcome = await withDeadlineOutcome(
     readStoredFoodTruckSchedule(),
     FOOD_TRUCK_DEADLINE_MS,
@@ -258,6 +265,13 @@ async function runDataHealthReport() {
   ].filter((anomaly): anomaly is NonNullable<typeof anomaly> => Boolean(anomaly));
   const healthWorkMs = Date.now() - healthWorkStartedAt;
   const dbAnomalies = dbHealth.anomalies;
+  const hoursPromotionHealth = evaluateHoursPromotionHealth({
+    sourceLatestAt:
+      hoursPromotionOutcome.status === "fulfilled"
+        ? hoursPromotionOutcome.value
+        : null,
+    artifactLatestAt: hoursArtifact.newestRefresh ?? null,
+  });
   const foodTruckScheduleHealth =
     evaluateFoodTruckScheduleHealth(storedFoodTruckSchedule);
 
@@ -266,6 +280,7 @@ async function runDataHealthReport() {
   const allAnomalies = [
     ...anomalies,
     ...dbAnomalies,
+    ...(hoursPromotionHealth.anomaly ? [hoursPromotionHealth.anomaly] : []),
     ...freshnessAnomalies,
     ...foodTruckScheduleHealth.anomalies,
     ...tripwires.anomalies,
@@ -299,6 +314,10 @@ async function runDataHealthReport() {
       name: "db-health",
       green: dbHealth.status === "available" && dbAnomalies.length === 0,
     },
+    {
+      name: "hours-publication",
+      green: hoursPromotionHealth.green,
+    },
     ...(retentionPruneEnabled
       ? [{
           name: "data-retention",
@@ -310,18 +329,27 @@ async function runDataHealthReport() {
   const red = gates.filter((g) => !g.green);
   const headline = `${gates.length - red.length}/${gates.length} green${red.length > 0 ? ` · red: ${red.map((g) => g.name).join(", ")}` : ""}`;
 
-  // GitHub delivery — the channel the owner already checks. One issue per
-  // incident: opens on the first red morning, gains a daily comment while
-  // red, closes itself on recovery. AWAITED (not void like the Slack post):
-  // delivery is this feature's entire point, and serverless drops floating
-  // promises. Fail-soft inside; configuration, auth, rate-limit, HTTP, and
-  // network failures return distinct delivery codes in the response.
+  // GitHub Actions owns the durable health issue by default. Its automatic
+  // GITHUB_TOKEN cannot expire and the production-health-alert workflow reads
+  // /api/health after this reporter runs. The older Vercel -> GitHub path uses
+  // a personal token; it repeatedly returned 401 after that token expired.
+  // Keep the richer direct report available only as an explicit opt-in after
+  // its credential has been probed, rather than retrying a known-broken secret
+  // forever. This does not remove alerting: the Actions workflow remains the
+  // non-expiring delivery floor.
+  const directGitHubDeliveryEnabled =
+    process.env.VERCEL_GITHUB_ALERTS_ENABLED === "1";
   const deliveryStartedAt = Date.now();
   const [deliveryOutcome, reporterHeartbeatOutcome] = await Promise.all([
-    withDeadlineOutcome(
-      deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
-      DELIVERY_DEADLINE_MS,
-    ),
+    directGitHubDeliveryEnabled
+      ? withDeadlineOutcome(
+          deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
+          DELIVERY_DEADLINE_MS,
+        )
+      : Promise.resolve({
+          status: "fulfilled" as const,
+          value: "delegated_to_actions" as const,
+        }),
     withDeadlineOutcome((async () => {
       const runId = await startIngestRunStrict("tripwires");
       if (!runId) throw new Error("Reporter heartbeat could not start.");
@@ -366,6 +394,7 @@ async function runDataHealthReport() {
       deadlines: {
         hydrate_snapshots: HYDRATE_DEADLINE_MS,
         db_health: DB_HEALTH_DEADLINE_MS,
+        hours_publication: HOURS_PROMOTION_DEADLINE_MS,
         phase_heartbeats: PHASE_HEARTBEAT_DEADLINE_MS,
         food_truck_schedule: FOOD_TRUCK_DEADLINE_MS,
         tripwires: TRIPWIRE_OUTER_DEADLINE_MS,
@@ -394,6 +423,14 @@ async function runDataHealthReport() {
         unmatched: hoursArtifact.unmatchedRows,
         oldest_refresh: hoursArtifact.oldestRefresh ?? null,
         newest_refresh: hoursArtifact.newestRefresh ?? null,
+      },
+      publication: {
+        green: hoursPromotionHealth.green,
+        state: hoursPromotionHealth.state,
+        source_latest_at: hoursPromotionHealth.sourceLatestAt,
+        artifact_latest_at: hoursPromotionHealth.artifactLatestAt,
+        lag_hours: hoursPromotionHealth.lagHours,
+        max_lag_hours: hoursPromotionHealth.maxLagHours,
       },
       note: "Only current verified schedules count. Stored or historical schedules do not.",
     },

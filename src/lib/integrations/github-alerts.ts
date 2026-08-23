@@ -2,7 +2,7 @@ import "server-only";
 import type { Anomaly } from "@/lib/integrations/feed-snapshot";
 
 /**
- * GitHub-issue delivery for the nightly data-health board.
+ * Optional GitHub-issue delivery for the nightly data-health board.
  *
  * The July 2026 lesson, twice over: detection existed (stale-ingest
  * checks, feed anomalies) but nothing DELIVERED it, so the FCPL ingest
@@ -10,6 +10,11 @@ import type { Anomaly } from "@/lib/integrations/feed-snapshot";
  * tiles app-wide until a human noticed. Slack delivery exists but
  * requires a webhook the deployment never got. This channel uses the
  * inbox the owner already checks: the repo itself.
+ *
+ * The durable production-health-alert Actions workflow is the default health
+ * channel because its automatic GITHUB_TOKEN does not expire. The data-health
+ * route calls this richer personal-token path only when
+ * VERCEL_GITHUB_ALERTS_ENABLED=1 after a successful credential probe.
  *
  * Lifecycle, one issue per incident (never issue-per-day spam):
  *   - first red morning  → OPEN one issue titled [data-health] with the

@@ -52,7 +52,6 @@ import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
-import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
@@ -62,6 +61,7 @@ import { shouldRenderTodayEventSection } from "@/lib/today-events";
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
+import AppTransitionLink from "@/components/nav/AppTransitionLink";
 
 /**
  * Now — the daily briefing.
@@ -71,7 +71,7 @@ import { eventDecisionVerification } from "@/lib/events/decision-verification";
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
  *   2. Decision lead  → the location-aware open-place shelf, which is the
  *                       first Today answer that follows the shared town lens
- *   3. Ask / Browse   → secondary routes for a more specific need
+ *   3. Find           → one route for a name, need, category, or question
  *   4. What's on      → a qualified event feature + today's public program
  *   5. Available      → scheduled local utilities and tomorrow's next move
  *   6. More           → secondary local guides and saved places, collapsed
@@ -262,7 +262,7 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="mb-3 px-0.5">
+          <header className="today-arrival today-arrival--masthead mb-3 px-0.5">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
                 just another section. 30/32 restores the ladder: page over
@@ -293,8 +293,8 @@ export default async function HomePage() {
       {/* The whole weather plate is a door to the full forecast (July 2026
           Reddit review: it looked tappable and wasn't — now it is, with the
           standard right-edge disclosure chevron). */}
-      <SkyHero className="relative z-10">
-        <Link
+      <SkyHero className="today-arrival today-arrival--weather relative z-10">
+        <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
           className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
@@ -308,30 +308,25 @@ export default async function HomePage() {
             strokeWidth={2.25}
             className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
           />
-        </Link>
+        </AppTransitionLink>
       </SkyHero>
+
+      {/* One universal doorway. A person can type a name, need, or question;
+          the Find surface chooses search or reasoning automatically. The two
+          urgent shortcuts stay visible, while the full category taxonomy is
+          attached but closed instead of becoming a second competing wall.
+          It sits before the deeper recommendation shelf so the control stays
+          tappable above the phone nav on the first screen. */}
+      <div className="today-arrival today-arrival--find">
+        <TodayAsk embedded>
+          <CravingStrip />
+        </TodayAsk>
+      </div>
 
       {/* One town-aware first move. It stays mounted so a LocationChip change
           immediately re-ranks this answer instead of only changing the chip. */}
-      {decisionLead}
-
-      {/* One decision index: ask a specific question or open the category
-          browse. The rows share a surface so they read as two routes through
-          the same job, not two unrelated cards competing below the weather. */}
-      <div
-        role="group"
-        aria-label="Find what you need"
-        className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <TodayAsk embedded />
-        <BrowsePlacesDisclosure embedded>
-          <CravingStrip />
-        </BrowsePlacesDisclosure>
+      <div className="today-arrival today-arrival--decision">
+        {decisionLead}
       </div>
 
       {/* The day's chronological program belongs before sports and specials.

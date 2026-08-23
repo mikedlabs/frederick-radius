@@ -1,5 +1,12 @@
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { parseGoogleHours } from "@/lib/googleHours";
+import {
+  hasReviewRequiredExtendedWindow,
+  isAllWeekAllDay,
+  mayPublishVisitabilityHours,
+  REVIEWED_ALL_WEEK_24H_VISITABILITY,
+} from "@/lib/hours-visitability";
 import {
   HOURS_REFRESH_CYCLE_DAYS,
   HOURS_REFRESH_MIN_SUCCESS_RATIO,
@@ -28,6 +35,86 @@ export type HoursRefreshArtifactSummary = {
   oldestRefresh?: string;
   cycle: HoursRefreshCycleSummary;
 };
+
+export type WithheldHoursReviewCandidate = {
+  slug: string;
+  name: string;
+  category?: string;
+  municipality?: string;
+  reason: "all-week-24h" | "extended-window";
+  review: "missing" | "expired";
+  weekdayHours: string[];
+  refreshedAt?: string;
+};
+
+/**
+ * Provider schedules that Radius fetched successfully but intentionally does
+ * not publish because they make a near-all-day visitability claim. This turns
+ * a silent trust guard into a bounded editor queue: the paid call is visible,
+ * the suspicious schedule stays off public surfaces, and an operator can add
+ * first-party evidence instead of hunting through a generated JSON diff.
+ */
+export function withheldHoursReviewQueue(
+  artifact: Readonly<Record<string, unknown>>,
+  publicPlaces: ReadonlyArray<{
+    slug: string;
+    name: string;
+    category?: string;
+    municipality?: string;
+    hours?: unknown;
+    hours_verified?: boolean;
+  }>,
+  now = new Date(),
+): WithheldHoursReviewCandidate[] {
+  const places = new Map(publicPlaces.map((place) => [place.slug, place]));
+  const reviewed = REVIEWED_ALL_WEEK_24H_VISITABILITY as Readonly<
+    Record<string, { review_after: string }>
+  >;
+
+  return Object.entries(artifact)
+    .flatMap(([slug, value]) => {
+      if (slug.startsWith("_") || !value || typeof value !== "object") return [];
+      const place = places.get(slug);
+      if (!place || (place.hours_verified && place.hours)) return [];
+      const row = value as HoursRefreshArtifactEntry;
+      if (
+        !Array.isArray(row.weekday_hours) ||
+        row.weekday_hours.length === 0 ||
+        !row.weekday_hours.every((line) => typeof line === "string") ||
+        !isHoursFresh(row.refreshed_at, now)
+      ) {
+        return [];
+      }
+      const weekdayHours = row.weekday_hours as string[];
+      const hours = parseGoogleHours(weekdayHours);
+      if (!hours || mayPublishVisitabilityHours(slug, hours, now)) return [];
+      const reason = isAllWeekAllDay(hours)
+        ? ("all-week-24h" as const)
+        : hasReviewRequiredExtendedWindow(hours)
+          ? ("extended-window" as const)
+          : null;
+      if (!reason) return [];
+      const existing = reviewed[slug];
+      return [{
+        slug,
+        name: place.name,
+        category: place.category,
+        municipality: place.municipality,
+        reason,
+        review:
+          existing && existing.review_after < now.toISOString().slice(0, 10)
+            ? ("expired" as const)
+            : ("missing" as const),
+        weekdayHours,
+        refreshedAt: row.refreshed_at,
+      }];
+    })
+    .sort(
+      (left, right) =>
+        left.reason.localeCompare(right.reason) ||
+        left.name.localeCompare(right.name),
+    );
+}
 
 export type HoursRefreshCycleState =
   | "empty"

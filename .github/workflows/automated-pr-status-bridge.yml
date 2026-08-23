@@ -2,18 +2,30 @@ name: Attach automated PR checks
 
 # Data publishers create review PRs with the repository token. GitHub holds
 # their native pull_request workflows for approval, so the publisher dispatches
-# the same secret-free CI and style workflows on the exact bot commit. This
-# bridge copies those real job conclusions to GitHub's synthetic PR merge
-# commit, which is the revision evaluated by the strict main-branch ruleset.
+# the same secret-free CI and style workflows on the exact bot commit, then
+# explicitly dispatches this bridge on main. The bridge polls only runs started
+# by that dispatch and copies their real job conclusions to GitHub's synthetic
+# PR merge commit, which is evaluated by the strict main-branch ruleset.
 #
 # No generated code is checked out or executed here. Before a status is
 # written, the bot branch, head SHA, changed paths, current main revision, and
 # open PR are all revalidated through the API.
 
 on:
-  workflow_run:
-    workflows: [CI, style]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Validated bot PR branch
+        required: true
+        type: string
+      head_sha:
+        description: Exact validated bot PR head
+        required: true
+        type: string
+      dispatched_after:
+        description: Earliest accepted CI/style dispatch time
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -23,21 +35,36 @@ permissions:
 
 jobs:
   attach:
-    if: >-
-      github.event.workflow_run.event == 'workflow_dispatch' &&
-      startsWith(github.event.workflow_run.head_branch, 'bot/')
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 43
     steps:
       - name: Validate the bot PR and attach its real job results
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.head_sha }}
+          AUTOMATED_PR_DISPATCHED_AFTER: ${{ inputs.dispatched_after }}
         with:
           script: |
-            const run = context.payload.workflow_run;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const branch = run.head_branch;
-            const headSha = run.head_sha;
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
+            const dispatchedAfter = Date.parse(process.env.AUTOMATED_PR_DISPATCHED_AFTER || '');
+
+            if (context.ref !== 'refs/heads/main') {
+              core.setFailed('The automated status bridge must run from main.');
+              return;
+            }
+            if (!Number.isFinite(dispatchedAfter)) {
+              core.setFailed('The check dispatcher did not provide a valid start time.');
+              return;
+            }
+            const now = Date.now();
+            if (dispatchedAfter > now + 60_000 || dispatchedAfter < now - 10 * 60_000) {
+              core.setFailed('The check dispatch start time is outside the accepted window.');
+              return;
+            }
 
             const mainRef = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
             const mainSha = mainRef.data.object.sha;
@@ -106,8 +133,13 @@ jobs:
               core.setFailed(`Refusing an unexpected automated branch or head: ${String(branch)}`);
               return;
             }
-            if (run.head_repository?.full_name !== `${owner}/${repo}`) {
-              core.setFailed('Automated status bridging is limited to same-repository branches.');
+            const botRef = await github.rest.git.getRef({
+              owner,
+              repo,
+              ref: `heads/${branch}`,
+            });
+            if (botRef.data.object.sha !== headSha) {
+              core.setFailed('The bot branch moved before its check results could be attached.');
               return;
             }
 
@@ -146,44 +178,6 @@ jobs:
               return;
             }
 
-            const recentRuns = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: run.workflow_id,
-              branch,
-              event: 'workflow_dispatch',
-              per_page: 100,
-            });
-            const latestForHead = recentRuns.data.workflow_runs.find(
-              (candidate) => candidate.head_sha === headSha,
-            );
-            if (
-              !latestForHead ||
-              latestForHead.id !== run.id ||
-              latestForHead.run_attempt !== run.run_attempt ||
-              latestForHead.status !== 'completed'
-            ) {
-              core.setFailed('A newer workflow run or attempt exists for this bot commit.');
-              return;
-            }
-
-            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
-              owner,
-              repo,
-              run_id: run.id,
-              attempt_number: run.run_attempt,
-              per_page: 100,
-            });
-            const expectedJobs = run.name === 'CI'
-              ? ['verify', 'Required browser chaos']
-              : run.name === 'style'
-                ? ['style-lint']
-                : [];
-            if (expectedJobs.length === 0) {
-              core.setFailed(`Unexpected workflow name: ${String(run.name)}`);
-              return;
-            }
-
             let mergeSha = null;
             for (let attempt = 0; attempt < 12; attempt += 1) {
               const current = await github.rest.pulls.get({ owner, repo, pull_number: pull.number });
@@ -213,39 +207,164 @@ jobs:
               return;
             }
 
-            for (const contextName of expectedJobs) {
-              await github.rest.repos.createCommitStatus({
-                owner,
-                repo,
-                sha: mergeSha,
-                state: 'error',
-                context: contextName,
-                description: 'Automated-data result is being validated',
-                target_url: run.html_url,
-              });
-            }
+            const workflowSpecs = [
+              {
+                workflowId: 'ci.yml',
+                workflowName: 'CI',
+                contexts: ['verify', 'Required browser chaos'],
+              },
+              {
+                workflowId: 'style.yml',
+                workflowName: 'style',
+                contexts: ['style-lint'],
+              },
+            ];
+            const allContexts = workflowSpecs.flatMap((spec) => spec.contexts);
+            const writeAllStatuses = async (state, description, targetUrl = pull.html_url) => {
+              for (const contextName of allContexts) {
+                await github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: mergeSha,
+                  state,
+                  context: contextName,
+                  description,
+                  target_url: targetUrl,
+                });
+              }
+            };
+            await writeAllStatuses('pending', 'Trusted automated-data checks are running');
 
-            for (const contextName of expectedJobs) {
-              const job = jobs.find((candidate) => candidate.name === contextName);
-              if (!job || !job.completed_at) {
-                core.setFailed(`The ${run.name} run did not contain a completed ${contextName} job.`);
+            const acceptedAfter = dispatchedAfter - 5_000;
+            const discoveryDeadline = Date.now() + 3 * 60_000;
+            const completionDeadline = Date.now() + 40 * 60_000;
+            const discoveredRuns = new Map();
+            const completedRuns = new Map();
+            while (completedRuns.size < workflowSpecs.length) {
+              for (const spec of workflowSpecs) {
+                const recentRuns = await github.rest.actions.listWorkflowRuns({
+                  owner,
+                  repo,
+                  workflow_id: spec.workflowId,
+                  branch,
+                  event: 'workflow_dispatch',
+                  per_page: 100,
+                });
+                const candidate = recentRuns.data.workflow_runs.find((run) =>
+                  run.head_sha === headSha &&
+                  run.head_branch === branch &&
+                  run.head_repository?.full_name === `${owner}/${repo}` &&
+                  Date.parse(run.created_at || '') >= acceptedAfter
+                );
+                if (candidate) {
+                  discoveredRuns.set(spec.workflowId, candidate);
+                  if (candidate.status === 'completed') {
+                    // A completed unsuccessful workflow cannot recover. Stop
+                    // paying for this bridge runner while an unrelated gate
+                    // finishes; the dispatched workflows keep their own logs.
+                    if (candidate.conclusion !== 'success') {
+                      const conclusion = candidate.conclusion || 'unknown';
+                      await writeAllStatuses(
+                        'error',
+                        `${spec.workflowName} concluded: ${conclusion}`,
+                        candidate.html_url,
+                      );
+                      core.setFailed(`${spec.workflowName} concluded before the other gates: ${conclusion}`);
+                      return;
+                    }
+                    completedRuns.set(spec.workflowId, candidate);
+                  }
+                }
+              }
+
+              if (completedRuns.size === workflowSpecs.length) break;
+              if (
+                Date.now() >= discoveryDeadline &&
+                discoveredRuns.size < workflowSpecs.length
+              ) {
+                const missing = workflowSpecs
+                  .filter((spec) => !discoveredRuns.has(spec.workflowId))
+                  .map((spec) => spec.workflowName);
+                await writeAllStatuses('error', `Checks did not start: ${missing.join(', ')}`);
+                core.setFailed(`Timed out waiting for dispatched checks to appear: ${missing.join(', ')}`);
                 return;
               }
-              const state = job.conclusion === 'success'
-                ? 'success'
-                : job.conclusion === 'failure'
-                  ? 'failure'
-                  : 'error';
-              await github.rest.repos.createCommitStatus({
+              if (Date.now() >= completionDeadline) {
+                await writeAllStatuses('error', 'Trusted automated-data checks timed out');
+                core.setFailed('Timed out waiting for dispatched checks to finish.');
+                return;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 30_000));
+            }
+
+            // CI can take half an hour. Revalidate every mutable identity after
+            // it finishes so a branch, PR, or main movement cannot inherit an
+            // earlier result.
+            const [latestMain, latestBot, latestPull] = await Promise.all([
+              github.rest.git.getRef({ owner, repo, ref: 'heads/main' }),
+              github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` }),
+              github.rest.pulls.get({ owner, repo, pull_number: pull.number }),
+            ]);
+            if (
+              latestMain.data.object.sha !== mainSha ||
+              latestBot.data.object.sha !== headSha ||
+              latestPull.data.head.sha !== headSha ||
+              latestPull.data.base.ref !== 'main' ||
+              latestPull.data.base.sha !== mainSha ||
+              latestPull.data.state !== 'open'
+            ) {
+              await writeAllStatuses('error', 'The PR changed while checks were running');
+              core.setFailed('The PR, bot branch, or main changed while checks were running. Regenerate it.');
+              return;
+            }
+
+            for (const spec of workflowSpecs) {
+              const run = completedRuns.get(spec.workflowId);
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
                 owner,
                 repo,
-                sha: mergeSha,
-                state,
-                context: contextName,
-                description: state === 'success'
-                  ? 'Passed in the trusted automated-data gate'
-                  : `Automated-data gate concluded: ${job.conclusion || 'unknown'}`,
-                target_url: job.html_url,
+                run_id: run.id,
+                attempt_number: run.run_attempt,
+                per_page: 100,
               });
-              core.info(`${contextName}: ${state} -> ${mergeSha}`);
+              const missingJobs = spec.contexts.filter((contextName) => {
+                const job = jobs.find((candidate) => candidate.name === contextName);
+                return !job || !job.completed_at;
+              });
+              if (missingJobs.length > 0) {
+                for (const contextName of spec.contexts) {
+                  await github.rest.repos.createCommitStatus({
+                    owner,
+                    repo,
+                    sha: mergeSha,
+                    state: 'error',
+                    context: contextName,
+                    description: `${spec.workflowName} did not produce its required jobs`,
+                    target_url: run.html_url,
+                  });
+                }
+                core.setFailed(`${spec.workflowName} did not contain completed jobs: ${missingJobs.join(', ')}`);
+                return;
+              }
+
+              for (const contextName of spec.contexts) {
+                const job = jobs.find((candidate) => candidate.name === contextName);
+                const state = job.conclusion === 'success'
+                  ? 'success'
+                  : job.conclusion === 'failure'
+                    ? 'failure'
+                    : 'error';
+                await github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: mergeSha,
+                  state,
+                  context: contextName,
+                  description: state === 'success'
+                    ? 'Passed in the trusted automated-data gate'
+                    : `Automated-data gate concluded: ${job.conclusion || 'unknown'}`,
+                  target_url: job.html_url,
+                });
+                core.info(`${contextName}: ${state} -> ${mergeSha}`);
+              }
             }

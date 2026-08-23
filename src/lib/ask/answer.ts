@@ -52,6 +52,12 @@ import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
 import { clientPlaceBySlug, clientPlaces } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
+import {
+  getFoodTruckAvailability,
+  type FoodTruckAvailability,
+} from "@/lib/food-trucks/availability";
+import { formatEasternClock } from "@/lib/format/easternClock";
+import { easternDayKey } from "@/lib/tz";
 import { clockLine, timeAnchorOf, eventContextLines, eventHasCredibleLocation, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, scopeAskEventsByProximity, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import {
   getOpenStatus,
@@ -1155,8 +1161,172 @@ function answerBrunchRequest(
   };
 }
 
-function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchContext): AskResult {
+function foodTruckAvailabilityMatchesTown(
+  item: FoodTruckAvailability,
+  municipalitySlug: string | null | undefined,
+): boolean {
+  if (!municipalitySlug) return true;
+  // A publisher stop without a verified municipality can still help on the
+  // countywide board, but it cannot answer a town-scoped request honestly.
+  // Treating an unknown town as a match leaked the same stop into Urbana,
+  // Brunswick, and every other selected municipality.
+  if (!item.municipality) return false;
+  const selected = MUNICIPALITY_BY_SLUG[municipalitySlug];
+  const normalized = item.municipality.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return normalized === municipalitySlug || normalized === selected?.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+function foodTruckPublishedStatus(item: FoodTruckAvailability, now: Date): string {
+  const start = new Date(item.startsAt);
+  const end = item.endsAt ? new Date(item.endsAt) : null;
+  if (start.getTime() <= now.getTime() && end && end.getTime() > now.getTime()) {
+    return `Scheduled now through ${formatEasternClock(end)}`;
+  }
+  const day = easternDayKey(start) === easternDayKey(now)
+    ? "today"
+    : new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short",
+      }).format(start);
+  return `Published for ${day} at ${formatEasternClock(start)}`;
+}
+
+function foodTruckAvailabilityMatchesRequestedWindow(
+  item: FoodTruckAvailability,
+  query: string,
+  now: Date,
+): boolean {
+  if (item.kind === "operator-live") return true;
+  const start = new Date(item.startsAt);
+  const startMs = start.getTime();
+  if (!Number.isFinite(startMs)) return false;
+
+  if (/\b(?:right now|currently|out now)\b/i.test(query)) {
+    const endMs = item.endsAt ? Date.parse(item.endsAt) : Number.NaN;
+    return startMs <= now.getTime() && Number.isFinite(endMs) && endMs > now.getTime();
+  }
+
+  const requested = parseAskDateTime(query, now);
+  if (requested.explicitDate && requested.dateKey) {
+    return easternDayKey(start) === requested.dateKey;
+  }
+
+  if (/\bweekend\b/i.test(query)) {
+    const todayKey = easternDayKey(now);
+    const today = new Date(`${todayKey}T00:00:00.000Z`);
+    const weekday = today.getUTCDay();
+    // “This weekend” means the current Sat/Sun when already inside it,
+    // otherwise the next Sat/Sun. A next-week modifier advances one more
+    // week. ISO day keys compare safely because every value is YYYY-MM-DD.
+    let saturdayOffset = weekday === 6 ? 0 : weekday === 0 ? -1 : 6 - weekday;
+    if (/\bnext weekend\b/i.test(query)) saturdayOffset += 7;
+    const keyAtOffset = (offset: number) => {
+      const shifted = new Date(today);
+      shifted.setUTCDate(shifted.getUTCDate() + offset);
+      return shifted.toISOString().slice(0, 10);
+    };
+    const startKey = easternDayKey(start);
+    return startKey === keyAtOffset(saturdayOffset) ||
+      startKey === keyAtOffset(saturdayOffset + 1);
+  }
+
+  // Week-shaped requests deliberately use the complete bounded publisher
+  // snapshot. Everything else gets the same conservative horizon as the map,
+  // so “where are the food trucks?” cannot count next week's stops as current.
+  if (/\b(?:this week|next week|weekly)\b/i.test(query)) return true;
+  return startMs <= now.getTime() + 24 * 60 * 60 * 1_000;
+}
+
+async function answerFoodTruckRequest(
+  query: string,
+  intent: AskIntent,
+  context: QualifiedSearchContext,
+  now: Date,
+): Promise<AskResult> {
   const showDistance = canExposeDistance(context);
+  const availability = await getFoodTruckAvailability(now);
+  const coverageNote = availability.scheduleState === "partial"
+    ? "Some publisher schedules did not answer, so other stops may be missing."
+    : availability.scheduleState === "unavailable"
+      ? "Publisher schedules are unavailable right now, so other stops may be missing."
+      : "";
+  const available = availability.items
+    .filter((item) => foodTruckAvailabilityMatchesTown(item, context.municipality))
+    .filter((item) => foodTruckAvailabilityMatchesRequestedWindow(item, query, now))
+    .map((item) => ({
+      item,
+      distance: context.origin && typeof item.lat === "number" && typeof item.lng === "number"
+        ? haversineMeters(context.origin, { lat: item.lat, lng: item.lng })
+        : null,
+    }))
+    .sort((a, b) => {
+      if (a.item.kind !== b.item.kind) {
+        return a.item.kind === "operator-live" ? -1 : 1;
+      }
+      if (a.distance != null && b.distance != null && a.distance !== b.distance) {
+        return a.distance - b.distance;
+      }
+      return Date.parse(a.item.startsAt) - Date.parse(b.item.startsAt);
+    });
+
+  if (available.length > 0) {
+    const sources = available.slice(0, 4).map(({ item, distance }): AskSource => {
+      const distanceText = showDistance && distance != null
+        ? `, ${formatDistance(distance)} away`
+        : "";
+      if (item.kind === "operator-live") {
+        return {
+          slug: item.id,
+          name: item.name,
+          category: "food-truck",
+          city: item.municipality,
+          href: item.href,
+          eyebrow: "Operator confirmed live",
+          reason: `The operator confirmed this location${item.spot ? ` at ${item.spot}` : ""}${distanceText}.`,
+          detail: item.note ?? "The pin expires automatically at the operator's stated end time.",
+          distance: showDistance && distance != null ? formatDistance(distance) : undefined,
+          status: item.endsAt
+            ? `Out now until ${formatEasternClock(new Date(item.endsAt))}`
+            : "Operator confirmed live",
+          confidence: "high",
+        };
+      }
+      return {
+        slug: item.id,
+        name: item.name,
+        category: "food-truck",
+        city: item.municipality,
+        href: item.href,
+        eyebrow: "Published stop",
+        reason: `${item.sourceName} lists this truck at ${item.venueName}${distanceText}.`,
+        detail: "This is a published schedule, not confirmation that the truck has arrived.",
+        distance: showDistance && distance != null ? formatDistance(distance) : undefined,
+        status: foodTruckPublishedStatus(item, now),
+        confidence: "high",
+      };
+    });
+    const liveCount = available.filter(({ item }) => item.kind === "operator-live").length;
+    const scheduledCount = available.filter(({ item }) => item.kind === "published-stop").length;
+    const primaryAnswer = liveCount > 0
+      ? `${liveCount} food truck${liveCount === 1 ? " has" : "s have"} an operator-confirmed live pin right now. ${scheduledCount > 0 ? `${scheduledCount} published stop${scheduledCount === 1 ? " is" : "s are"} listed separately.` : ""}`.trim()
+      : `Radius found ${scheduledCount} current published stop${scheduledCount === 1 ? "" : "s"}. The schedule shows where each truck plans to be, but it does not confirm arrival.`;
+    const answer = `${primaryAnswer}${coverageNote ? ` ${coverageNote}` : ""}`;
+    return {
+      status: "matches",
+      configured: hasKey(),
+      usedModel: false,
+      answer,
+      sources,
+      context: context.origin ? context.contextLabel ?? "your location" : context.contextLabel ?? "Frederick County",
+      intent,
+      actions: [
+        { label: "Open the food-truck guide", kind: "open", href: "/food-trucks" },
+        { label: "Food events this weekend", kind: "refine", query: "What food events are happening this weekend?" },
+      ],
+      intelligence: { tools: ["food-trucks"], confidence: "high", retrieval: "keyword" },
+    };
+  }
+
   const candidates = FOOD_TRUCKS.map((truck) => {
     const home = resolveHomeBase(truck.homeBase);
     const place = home ? clientPlaceBySlug(home.slug) : null;
@@ -1221,9 +1391,14 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
   const selectedTownName = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality
     : null;
+  const availabilityGap = availability.scheduleState === "unavailable"
+    ? "Publisher schedules are unavailable right now, so Radius cannot confirm that no stops are listed."
+    : availability.scheduleState === "partial"
+      ? "Some publisher schedules did not answer, so other stops may be missing."
+      : "No published stop is listed for that time in the current schedule.";
   const answer = selectedTownName && sources.length === 0
-    ? `Radius does not have a verified food-truck home base in ${selectedTownName}, and it does not have live truck locations yet. Open the countywide food-truck guide to check each truck's current feed.`
-    : `Radius tracks ${FOOD_TRUCKS.length} local food and treat trucks. ${groundedHomes} have a reliable brewery home base; the others roam, and Radius does not have live truck locations yet, so their own feeds are the honest source for today's stop.`;
+    ? `Radius does not have an operator-confirmed live pin or a verified food-truck home base in ${selectedTownName}. ${availabilityGap} Open the countywide guide before heading out.`
+    : `Radius tracks ${FOOD_TRUCKS.length} local food and treat trucks, but no operator-confirmed live pin is available right now. ${availabilityGap} ${groundedHomes} have a reliable brewery home base; check a roaming truck's own feed before heading out.`;
 
   return {
     status: sources.length > 0 ? "matches" : "empty",
@@ -2164,7 +2339,7 @@ export async function askFrederick(
     return answerBrunchRequest(q, intent, context, fit);
   }
   if (/\bfood trucks?\b/i.test(q) && intent.kind !== "plan") {
-    return answerFoodTruckRequest(intent, context);
+    return answerFoodTruckRequest(q, intent, context, now);
   }
   if (requestedTransitStop(q) && intent.kind !== "plan") {
     return answerTransitStopRequest(intent, context);

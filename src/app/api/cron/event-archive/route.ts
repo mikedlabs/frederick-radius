@@ -274,6 +274,14 @@ async function runEventArchive(request: Request) {
 
   const publicEvents =
     unified?.status === "fulfilled" ? unified.value.publicEvents : [];
+  const unifiedUnavailable =
+    unified?.status === "fulfilled"
+      ? [...new Set(unified.value.sourceHealth.unavailable)]
+          .map((source) => source.trim())
+          .filter(Boolean)
+          .sort()
+          .slice(0, 32)
+      : [];
   // Civic meetings and town reminders have first-party detail links on the
   // Events page even though they are intentionally excluded from public
   // discovery. Archive every route-bearing lane so a transient calendar
@@ -476,6 +484,11 @@ async function runEventArchive(request: Request) {
         live90?.status === "fulfilled"
           ? live90.value.sources_failed
           : [],
+      // `unified-partial` used to be a permanent mystery label. These names
+      // are controlled adapter/source identifiers behind cron auth, bounded
+      // here so operators can distinguish one publisher outage from a broad
+      // assembly failure without exposing raw provider errors.
+      unified_unavailable: unifiedUnavailable,
       tombstone_eligible: successfulSources.length,
     },
     archive: archive

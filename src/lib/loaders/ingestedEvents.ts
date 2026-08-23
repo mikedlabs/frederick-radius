@@ -291,8 +291,16 @@ const LIFT_HORIZON_DAYS = 60;
  *  ONE card per series (the next occurrence) within the horizon — a recurring
  *  bingo reads as a single card with its "N upcoming dates" cadence, not a
  *  flood, and the whole ~1,700-row library calendar can't bloat the assembly
- *  past the 2MB unstable_cache ceiling. Descriptions are dropped (cards don't
- *  render them; the detail route's getIngestedCardBySlug rebuilds the full one). */
+ *  past the 2MB unstable_cache ceiling.
+ *
+ *  Keep the bounded, source-written description on that one series card. The
+ *  durable event archive now uses this same card as the detail-page snapshot;
+ *  erasing the description here meant the archive permanently stored an empty
+ *  detail even though `ingested_events` already held the publisher's prose.
+ *  `getIngestedSeries` cleans and caps it at 320 characters before this point,
+ *  so retaining it adds bounded context without generating copy or expanding
+ *  every recurrence into another payload.
+ */
 export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSeries = 1): EventWithMeta[] {
   const horizon = +now + LIFT_HORIZON_DAYS * 86_400_000;
   const cards: EventWithMeta[] = [];
@@ -313,7 +321,7 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
       .slice(0, perSeries);
     for (const occ of upcoming) {
       const card = occurrenceToCard(s, occ);
-      if (card) cards.push({ ...card, description: "" });
+      if (card) cards.push(card);
     }
   }
   return cards;

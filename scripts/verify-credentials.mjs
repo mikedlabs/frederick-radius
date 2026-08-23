@@ -10,9 +10,10 @@
  *     and the credential in the bundle is the one in git history.
  *   - MAPBOX_SERVER_TOKEN unset falls back to the browser token, so lifting
  *     the public token out of the JS also spends the routing budget.
- *   - SLACK_WEBHOOK_URL and GITHUB_ALERTS_TOKEN unset make alert delivery a
- *     console.warn. Detection still works; nobody is told. That is exactly
- *     how the open-now outage stayed invisible for a week.
+ *   - SLACK_WEBHOOK_URL unset makes detailed anomaly delivery a console.warn.
+ *     Production health issues still have the non-expiring GitHub Actions
+ *     channel. GITHUB_ALERTS_TOKEN is used for the weekly digest and only for
+ *     duplicate Vercel health delivery when that path is explicitly enabled.
  *
  * So this asks the sharper question in each case: is the value present, is it
  * DIFFERENT from the fallback it is meant to replace, and where a cheap
@@ -123,13 +124,16 @@ if (!slack) {
 }
 
 const ghToken = env("GITHUB_ALERTS_TOKEN");
+const directHealthGitHub = env("VERCEL_GITHUB_ALERTS_ENABLED") === "1";
 record(
   "GITHUB_ALERTS_TOKEN",
-  true,
-  ghToken ? "ok" : "fail",
+  directHealthGitHub,
+  ghToken ? "ok" : directHealthGitHub ? "fail" : "warn",
   ghToken
-    ? `token ${fingerprint(ghToken)}, repo ${env("GITHUB_ALERTS_REPO") || "mikedlabs/frederick-radius"}`
-    : "unset — the nightly data-health issue and weekly digest are never opened",
+    ? `token ${fingerprint(ghToken)}, repo ${env("GITHUB_ALERTS_REPO") || "mikedlabs/frederick-radius"}; weekly digest available${directHealthGitHub ? "; direct Vercel health delivery enabled" : ""}`
+    : directHealthGitHub
+      ? "unset — disable VERCEL_GITHUB_ALERTS_ENABLED or add a probed Issues token"
+      : "unset — the weekly digest is skipped; production health issues still use the automatic Actions token",
 );
 
 // ── Optional but load-bearing ───────────────────────────────────────────

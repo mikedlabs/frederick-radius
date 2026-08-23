@@ -12,10 +12,17 @@
  *   verification than a map tag alone
  */
 import { writeFileSync } from "node:fs";
-import { isInFrederickCountyArea } from "@/lib/geo";
+import { FREDERICK_GUIDE_BBOX, isInFrederickCountyArea } from "@/lib/geo";
 
 const OUT = new URL("../src/data/osm-amenities/public_utilities.geojson", import.meta.url).pathname;
-const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
+// Collection envelope includes all of incorporated Mount Airy; the precise
+// county/town-area check below rejects every unrelated point in the rectangle.
+const BBOX: [number, number, number, number] = [
+  FREDERICK_GUIDE_BBOX.south,
+  FREDERICK_GUIDE_BBOX.west,
+  FREDERICK_GUIDE_BBOX.north,
+  FREDERICK_GUIDE_BBOX.east,
+];
 const [s, w, n, e] = BBOX;
 
 type Element = {

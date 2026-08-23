@@ -19,6 +19,10 @@ import { useEffect, useRef } from "react";
  *    popup. It runs the full gate clear — foreground card, sibling layers,
  *    and this layer's own closer. The layer's set-state follows in the same
  *    handler, so React's batching lands its popup as the one survivor.
+ *  - `onDidClose` is called only when the layer closes its own popup. It lets
+ *    AppMap leave the single selection-history entry as well, so the next
+ *    browser Back never appears to do nothing. Registry-driven closes must
+ *    not call it: those are selection swaps inside the same history entry.
  *
  * A layer given no gate behaves exactly as before, which keeps every other
  * mount site (storybook-style probes, standalone embeds) working unchanged.
@@ -27,6 +31,7 @@ export type LiveLayerGate = {
   /** Returns the unregister cleanup, ready to hand straight to useEffect. */
   register: (close: () => void) => () => void;
   onWillOpen: () => void;
+  onDidClose: () => void;
 };
 
 /**

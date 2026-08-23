@@ -6,18 +6,16 @@ const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
 
-  it("puts the town-aware place lead below weather, before Ask, Browse, and the event program", () => {
+  it("keeps the one Find doorway tappable after weather, before the deeper place lead and event program", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");
-    const ask = renderedPage.indexOf("<TodayAsk embedded");
-    const browse = renderedPage.indexOf("<BrowsePlacesDisclosure embedded");
+    const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
-    expect(lead).toBeGreaterThan(weather);
-    expect(ask).toBeGreaterThan(lead);
-    expect(browse).toBeGreaterThan(ask);
-    expect(events).toBeGreaterThan(browse);
+    expect(find).toBeGreaterThan(weather);
+    expect(lead).toBeGreaterThan(find);
+    expect(events).toBeGreaterThan(lead);
   });
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
@@ -109,7 +107,8 @@ describe("Today decision hierarchy", () => {
 
   it("uses the upper decision surface instead of repeating the Toolbox teaser", () => {
     expect(todayPage).toContain("<TodayAsk embedded");
-    expect(todayPage).toContain("<BrowsePlacesDisclosure embedded");
+    expect(todayPage.match(/<TodayAsk embedded/g)).toHaveLength(1);
+    expect(todayPage).not.toContain("<BrowsePlacesDisclosure");
     expect(todayPage).toContain("<CravingStrip");
     expect(todayPage).not.toContain("ToolboxTeaser");
   });

@@ -19,13 +19,13 @@ describe("BreweryStrip", () => {
     expect(html).not.toContain("Untappd");
   });
 
-  it("uses a light typographic identity when no publishable photo exists", () => {
+  it("uses a light branded identity when no publishable photo exists", () => {
     const html = renderToStaticMarkup(
       createElement(BreweryStrip, { photos: {} }),
     );
 
     expect(html).toContain("Frederick County brewery");
-    expect(html).not.toContain("/images/beer/logos/");
+    expect(html).toContain("/images/beer/logos/olde-mother-brewing-frederick.jpg");
     expect(html).not.toContain("bg-[var(--app-ink)]");
   });
 });

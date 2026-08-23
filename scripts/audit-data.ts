@@ -17,6 +17,10 @@ import {
   hasUsefulDecisionCopy,
 } from "@/lib/quality/coverage";
 import { isDirectoryTemplateBlurb } from "./lib/audit-copy";
+import {
+  hasCategoryDisposition,
+  type CategoryDispositionPatch,
+} from "./lib/category-disposition";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
 import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 
@@ -24,7 +28,7 @@ const COUNTY = { s: 39.265, w: -77.7, n: 39.745, e: -77.15 };
 const enr = ENRICH as Record<string, { primary_type?: string; editorial_summary?: string }>;
 const categoryPatches = (
   OVERRIDES as {
-    patch?: Record<string, { category?: string; clearEnrichment?: boolean }>;
+    patch?: Record<string, CategoryDispositionPatch>;
   }
 ).patch ?? {};
 
@@ -37,6 +41,8 @@ const cell = (lat: number, lng: number) => `${Math.round(lat * 80)},${Math.round
 const ex = (a: string[], n = 6) => a.slice(0, n).join(" | ") + (a.length > n ? ` … +${a.length - n}` : "");
 
 function main() {
+  const detailed = process.argv.includes("--details");
+  const detailLimit = detailed ? Number.MAX_SAFE_INTEGER : 8;
   const pub = publicPlaces();
   const dec = pub.map((p) => decoratePlace(p));
   console.log(`\n=== FREDERICK RADIUS DATA AUDIT ===`);
@@ -110,7 +116,7 @@ function main() {
   // of false alarms for corrections that were already live.
   const catDisagree = dec.filter((p) => {
     const humanDecision = categoryPatches[p.slug];
-    if (humanDecision?.category || humanDecision?.clearEnrichment) return false;
+    if (hasCategoryDisposition(humanDecision)) return false;
     const fromG = categoryFromPrimaryType(enr[p.slug]?.primary_type);
     return fromG && fromG !== p.category;
   });
@@ -194,7 +200,17 @@ function main() {
   if (stackedCoords.length) console.log(`coord-clumps: ${ex(stackedCoords.map(([c, v]) => `${c}×${v.length}`))}`);
   if (relevanceLeak.length) console.log(`B2B-leak: ${ex(relevanceLeak.map((p) => `${p.name}[${enr[p.slug]?.primary_type}]`))}`);
   if (badMuni.length) console.log(`bad-muni: ${ex(badMuni.map((p) => `${p.name}=${p.municipality}`))}`);
-  if (catDisagree.length) console.log(`cat≠Google: ${ex(catDisagree.map((p) => `${p.name} ${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`), 8)}`);
+  if (catDisagree.length) {
+    console.log(
+      `cat≠Google: ${ex(
+        catDisagree.map(
+          (p) =>
+            `${p.slug}\t${p.name}\t${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`,
+        ),
+        detailLimit,
+      )}`,
+    );
+  }
   console.log("");
 }
 

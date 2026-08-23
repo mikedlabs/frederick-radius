@@ -29,6 +29,12 @@ function dependencies(
       status: "failure",
       events: [],
     }),
+    fetchWeinbergEventsResult: async (sourceUrl) => ({
+      status: "failure",
+      events: [],
+      sourceUrl,
+      reason: "not configured in test",
+    }),
     extractTextEvents: async () => null,
     extractImageEvents: async () => null,
     ...overrides,
@@ -88,6 +94,41 @@ describe("venue source alternatives", () => {
 
     expect(result.status).toBe("complete");
     expect(result.events).toEqual([]);
+  });
+
+  it("collects the complete official Weinberg inventory without a model call", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const ensureModelReady = vi.fn(async () => false);
+    const result = await collect(
+      {
+        ...venue("weinberg"),
+        urls: ["https://weinbergcenter.org/performances/"],
+        venueFilter: "weinberg-center",
+      },
+      emptyVenueSourceState(),
+      ensureModelReady,
+      false,
+      dependencies({
+        fetchWeinbergEventsResult: async (sourceUrl, options) => ({
+          status: "success",
+          sourceUrl,
+          foundCards: 1,
+          events: [{
+            title: "Official performance",
+            starts_at: "2026-10-09T20:00-04:00",
+            ticket_url: `https://weinbergcenter.org/shows/${options.venueFilter}/`,
+          }],
+        }),
+      }),
+    );
+
+    expect(result.status).toBe("complete");
+    expect(result.events).toEqual([{
+      title: "Official performance",
+      starts_at: "2026-10-09T20:00-04:00",
+      ticket_url: "https://weinbergcenter.org/shows/weinberg-center/",
+    }]);
+    expect(ensureModelReady).not.toHaveBeenCalled();
   });
 
   it.each(["render", "fetch"] as const)(

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import MotionDisclosure from "@/components/ui/MotionDisclosure";
 
 /**
  * CollapsibleSection — a reusable "hide when not needed, reveal when
@@ -17,12 +18,9 @@ import { ChevronDown } from "lucide-react";
  * Header matches the app's `.eyebrow` section-label register so a
  * collapsed section reads as native page furniture, not a widget.
  *
- * Children are server-rendered as usual and toggled via the `hidden`
- * attribute (display:none) rather than conditional mounting — same
- * tradeoff WeatherMore makes: the markup ships in the HTML (a small
- * byte cost) in exchange for zero layout jump and no client refetch on
- * expand. Using `hidden` (not an overflow-clipped height animation)
- * also means edge-to-edge content (rails with `-mx-4`) isn't clipped.
+ * Children remain server-rendered and mounted so opening never refetches.
+ * MotionDisclosure gives the reveal spatial continuity and makes the closed
+ * panel inert, rather than snapping between display:none and visible.
  *
  * SSR-safe: server and first client render both use `defaultOpen`, so
  * there's no hydration mismatch; the stored preference is applied after
@@ -132,9 +130,9 @@ export default function CollapsibleSection({
       className={className}
     >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
-      <div id={contentId} hidden={!open} className="pt-1.5">
+      <MotionDisclosure id={contentId} open={open} innerClassName="pt-1.5">
         {children}
-      </div>
+      </MotionDisclosure>
     </section>
   );
 }

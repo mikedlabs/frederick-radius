@@ -6,6 +6,14 @@ const mocks = vi.hoisted(() => ({
   mapPinPlaces: vi.fn(() => []),
   fetchMapillaryTrash: vi.fn(async () => []),
   getFieldAmenities: vi.fn(async () => []),
+  getCurrentSituationSnapshot: vi.fn<() => Promise<unknown>>(async () => null),
+  getRoadIntelligenceSnapshot: vi.fn<() => Promise<unknown>>(async () => null),
+  marketsOpenToday: vi.fn(async () => []),
+  loadTodayEventSnapshot: vi.fn<() => Promise<unknown>>(async () => ({
+    unified: [],
+    publicEvents: [],
+    sourceHealth: { degraded: false, unavailable: [], issues: [] },
+  })),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -22,6 +30,18 @@ vi.mock("@/lib/integrations/mapillary", () => ({
 vi.mock("@/lib/loaders/fieldAmenities", () => ({
   getFieldAmenities: mocks.getFieldAmenities,
 }));
+vi.mock("@/lib/live/currentSituation", () => ({
+  getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
+}));
+vi.mock("@/lib/live/roadIntelligence", () => ({
+  getRoadIntelligenceSnapshot: mocks.getRoadIntelligenceSnapshot,
+}));
+vi.mock("@/lib/markets-today", () => ({
+  marketsOpenToday: mocks.marketsOpenToday,
+}));
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
+  loadTodayEventSnapshot: mocks.loadTodayEventSnapshot,
+}));
 
 import { GET } from "./route";
 
@@ -36,6 +56,14 @@ describe("GET /api/map/layers request boundary", () => {
     vi.clearAllMocks();
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(null);
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue(null);
+    mocks.marketsOpenToday.mockResolvedValue([]);
+    mocks.loadTodayEventSnapshot.mockResolvedValue({
+      unified: [],
+      publicEvents: [],
+      sourceHealth: { degraded: false, unavailable: [], issues: [] },
+    });
   });
 
   it("redirects the empty URL to the one canonical context key", async () => {
@@ -96,7 +124,116 @@ describe("GET /api/map/layers request boundary", () => {
     expect(response.headers.get("x-radius-map-groups")).toBe("context");
     expect(body.amenities).toEqual(expect.any(Array));
     expect(body.parking).toEqual(expect.any(Array));
+    expect(body.sourceHealth.context).toEqual({
+      status: "current",
+      unavailable: [],
+    });
     expect(mocks.mapPinPlaces).toHaveBeenCalledOnce();
     expect(mocks.getFieldAmenities).toHaveBeenCalledOnce();
+  });
+
+  it("labels a provider miss instead of presenting its fallback as a real zero", async () => {
+    mocks.getFieldAmenities.mockRejectedValueOnce(new Error("provider down"));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, s-maxage=30, stale-while-revalidate=60",
+    );
+    expect(body.amenities).toEqual(expect.any(Array));
+    expect(body.sourceHealth.context).toEqual({
+      status: "partial",
+      unavailable: ["Radius field notes"],
+    });
+  });
+
+  it("records optional road-feed outages even when required coverage is complete", async () => {
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValueOnce({
+      schemaVersion: 1,
+      generatedAt: "2026-08-22T12:00:00.000Z",
+      sources: {
+        workZones: {
+          available: true,
+          data: [],
+          asOf: "2026-08-22T12:00:00.000Z",
+          sourceUrl: "https://example.com/work-zones",
+        },
+        speeds: { available: false, data: [] },
+        travelTimes: { available: false, data: [] },
+        messages: { available: false, data: [] },
+        weatherStations: { available: false, data: [] },
+        roadConditions: {
+          available: true,
+          data: [],
+          asOf: "2026-08-22T12:00:00.000Z",
+        },
+        snowEmergency: {
+          available: true,
+          data: [],
+          asOf: "2026-08-22T12:00:00.000Z",
+        },
+      },
+      attention: [],
+      summary: {
+        status: "quiet",
+        coverage: "complete",
+        activeCount: 0,
+        unavailable: [
+          "travelTimes",
+          "speeds",
+          "messages",
+          "weatherStations",
+        ],
+      },
+    });
+
+    const response = await GET(request("?groups=signals"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, s-maxage=30, stale-while-revalidate=60",
+    );
+    expect(body.sourceHealth.signals).toEqual({
+      status: "unavailable",
+      unavailable: [
+        "Highway messages",
+        "Road weather stations",
+        "Traffic speeds",
+        "Travel times",
+      ],
+    });
+  });
+
+  it("never exposes an event archive diagnostic as a map source label", async () => {
+    mocks.loadTodayEventSnapshot.mockResolvedValueOnce({
+      unified: [],
+      publicEvents: [],
+      sourceHealth: {
+        degraded: true,
+        unavailable: [
+          "read rejected: postgres://user:secret@example.test/database",
+        ],
+        issues: [{
+          code: "event_archive_unavailable",
+          message: "read rejected: postgres://user:secret@example.test/database",
+        }],
+      },
+    });
+
+    const response = await GET(request("?groups=events"));
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, s-maxage=30, stale-while-revalidate=60",
+    );
+    expect(text).not.toContain("secret");
+    expect(JSON.parse(text).sourceHealth.events).toEqual({
+      status: "unavailable",
+      unavailable: ["Event schedule"],
+    });
   });
 });

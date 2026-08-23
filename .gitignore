@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/storybook-static/
+/visual-contract-candidates/
 
 # next.js
 /.next/

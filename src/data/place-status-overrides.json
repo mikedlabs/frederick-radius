@@ -6,6 +6,13 @@
     "source": "https://concettasmainstreet.com/",
     "note": "The official Concetta's Main Street Bistro website presents the Mount Airy restaurant as active and offers current menu and ordering links. This corrects a conflicting provider closure signal without publishing provider hours until they are verified again."
   },
+  "clubhouse-kids-at-monocacy-valley-montessori-public-school": {
+    "status": "closed_temporarily",
+    "effective_at": "2026-08-22",
+    "review_after": "2026-10-01",
+    "source": "https://www.clubhousekidsonline.com/contact.html",
+    "note": "Clubhouse Kids' official locations page says its Monocacy Valley Montessori location is temporarily closed until construction of the new building is complete. The stale Google match belongs to The Banner School and has been quarantined separately."
+  },
   "emmitsburg-farmers-market-emmitsburg": {
     "status": "closed_temporarily",
     "effective_at": "2026-08-19",

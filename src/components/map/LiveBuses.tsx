@@ -36,8 +36,9 @@ import { exposeMarkerChild } from "./markerA11y";
  *   • Speed cue — the streak's length scales with how far the bus moved
  *     between reports; a stationary bus shows a calm "dwell" ring instead of
  *     a streak, so a stop reads as a stop.
- *   • Fresh-data ripple + badge pop — a one-shot ring and a gentle scale pop
- *     fire the instant a new poll lands, so you SEE the feed breathe.
+ *   • Fresh-data cue — a selected bus gets one restrained ring + badge pop
+ *     when a new report lands. Newly appearing buses use the entrance cue;
+ *     the whole fleet no longer pulses on every poll.
  *
  * Honest by construction: renders nothing when the feed reports zero (no
  * fake activity on a quiet evening). Reduced-motion users get instant
@@ -64,6 +65,30 @@ type FeedStatus =
   | "empty"
   | "stale"
   | "error";
+
+/** One stable sentence for assistive technology. Visible age text may tick,
+ * but the live region changes only when the feed state or vehicle count does. */
+export function liveBusFeedAnnouncement(
+  status: FeedStatus,
+  count: number,
+): string {
+  if (status === "loading") return "Checking live bus positions.";
+  if (status === "error") return "Live bus positions are unavailable.";
+  if (status === "empty") return "No buses are reporting right now.";
+  if (status === "stale") {
+    return count === 1
+      ? "One bus position is delayed."
+      : `${count} bus positions are delayed.`;
+  }
+  if (status === "degraded") {
+    return count === 1
+      ? "One bus is reporting. Arrival estimates are unavailable."
+      : `${count} buses are reporting. Arrival estimates are unavailable.`;
+  }
+  return count === 1
+    ? "One live bus is reporting."
+    : `${count} live buses are reporting.`;
+}
 
 export type LiveBusLayerSnapshot = {
   status: FeedStatus;
@@ -369,6 +394,7 @@ function VisibleLiveBuses({
   const posRef = useRef<Record<string, Pos>>({});
   const rafRef = useRef<number | null>(null);
   const alertedStopRef = useRef<string | null>(null);
+  const lastHealthSignalRef = useRef<string | null>(null);
   const focusKey = focusVehicleId
     ? `${focusRequestId ?? "default"}:${focusVehicleId}`
     : null;
@@ -386,6 +412,10 @@ function VisibleLiveBuses({
     focusedVehicle && focusKey !== dismissedFocusKey
       ? focusedVehicle.vehicleId
       : selected;
+  const feedAnnouncement = liveBusFeedAnnouncement(
+    effectiveFeedStatus,
+    vehicles.length,
+  );
 
   // The ambient map signal is intentionally one aggregate at every zoom.
   // Expanding it into fifteen moving controls beside a selected place made
@@ -404,6 +434,9 @@ function VisibleLiveBuses({
     : null;
 
   useEffect(() => {
+    const signal = `${effectiveFeedStatus}:${vehicles.length}`;
+    if (lastHealthSignalRef.current === signal) return;
+    lastHealthSignalRef.current = signal;
     const bounds: LiveBusLayerSnapshot["bounds"] = vehicles.length > 0
       ? [
           [
@@ -682,31 +715,53 @@ function VisibleLiveBuses({
   }, [effectiveFeedStatus, nowMs, vehicles, watching]);
 
   if (vehicles.length === 0) {
-    return showInlineStatus ? (
-      <div className="map-live-status" role="status" aria-live="polite">
-        <span aria-hidden className={effectiveFeedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
-        {effectiveFeedStatus === "loading"
-          ? "Loading live buses"
-          : effectiveFeedStatus === "error"
-            ? "Live bus positions unavailable"
-            : effectiveFeedStatus === "stale"
-              ? "Live bus feed delayed"
-            : "No buses reporting right now"}
-      </div>
-    ) : null;
+    return (
+      <>
+        <span
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-live-bus-announcement
+        >
+          {feedAnnouncement}
+        </span>
+        {showInlineStatus && (
+          <div className="map-live-status" aria-hidden="true">
+            <span className={effectiveFeedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
+            {effectiveFeedStatus === "loading"
+              ? "Loading live buses"
+              : effectiveFeedStatus === "error"
+                ? "Live bus positions unavailable"
+                : effectiveFeedStatus === "stale"
+                  ? "Live bus feed delayed"
+                : "No buses reporting right now"}
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
     <>
+      <span
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-live-bus-announcement
+      >
+        {feedAnnouncement}
+      </span>
       {showInlineStatus && effectiveFeedStatus === "stale" && (
-        <div className="map-live-status" role="status" aria-live="polite">
-          <span aria-hidden className="map-live-status-dot" />
+        <div className="map-live-status" aria-hidden="true">
+          <span className="map-live-status-dot" />
           Bus feed delayed · last update {ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago
         </div>
       )}
       {showInlineStatus && effectiveFeedStatus === "degraded" && (
-        <div className="map-live-status" role="status" aria-live="polite">
-          <span aria-hidden className="map-live-status-dot" />
+        <div className="map-live-status" aria-hidden="true">
+          <span className="map-live-status-dot" />
           Buses live · arrival estimates unavailable
         </div>
       )}
@@ -818,6 +873,7 @@ function VisibleLiveBuses({
         const label = route?.short ?? "·";
         const moving = !reduced && p.moving;
         const dwelling = !reduced && !p.moving;
+        const selectedFreshCue = activeSelected === v.vehicleId;
         // Streak length tracks derived speed (10–34px).
         const streakLen = 10 + p.len * 24;
         return (
@@ -842,12 +898,13 @@ function VisibleLiveBuses({
               data-live-bus-marker
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: effectiveFeedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
-              {/* Fresh-data ripple: re-keying on pollSeq remounts it, so the
-                  one-shot ring fires on every poll the bus is on screen. */}
-              {!reduced && (
+              {/* A fresh report only calls attention to the bus the rider is
+                  inspecting. New unselected buses already receive fr-bus-in. */}
+              {!reduced && selectedFreshCue && (
                 <span
                   key={`ripple-${pollSeq}`}
                   aria-hidden
+                  data-live-bus-fresh-cue
                   style={{
                     position: "absolute", left: "50%", top: "50%",
                     width: 28, height: 28, borderRadius: 999,
@@ -877,12 +934,16 @@ function VisibleLiveBuses({
               {dwelling && (
                 <span
                   aria-hidden
+                  data-live-bus-dwell-cue
                   style={{
                     position: "absolute", left: "50%", top: "50%",
                     width: 30, height: 30, borderRadius: 999,
                     border: `1.5px solid ${color}`,
                     transform: "translate(-50%,-50%)",
-                    animation: "fr-bus-dwell 2.6s ease-in-out infinite",
+                    opacity: selectedFreshCue ? undefined : 0.3,
+                    animation: selectedFreshCue
+                      ? "fr-bus-dwell 2.6s ease-in-out infinite"
+                      : undefined,
                     pointerEvents: "none",
                   }}
                 />
@@ -903,8 +964,9 @@ function VisibleLiveBuses({
                 />
               )}
               <span
-                key={`badge-${pollSeq}`}
+                key={selectedFreshCue ? `badge-${pollSeq}` : "badge"}
                 aria-hidden
+                data-live-bus-badge
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
                   minWidth: 34, height: 24, padding: "0 5px",
@@ -915,7 +977,10 @@ function VisibleLiveBuses({
                   boxShadow: "0 2px 6px rgba(0,0,0,0.28)",
                   fontVariantNumeric: "tabular-nums",
                   position: "relative",
-                  animation: reduced ? undefined : "fr-bus-pop 420ms ease-out",
+                  animation:
+                    !reduced && selectedFreshCue
+                      ? "fr-bus-pop 420ms ease-out"
+                      : undefined,
                 }}
               >
                 <BusFront size={10} strokeWidth={2.4} />
@@ -985,10 +1050,11 @@ function VisibleLiveBuses({
             latitude={p.lat}
             anchor="bottom"
             offset={24}
-            closeOnClick
+            closeOnClick={false}
             onClose={() => {
               setDismissedFocusKey(focusKey);
               setSelected(null);
+              gate?.onDidClose();
             }}
             maxWidth="230px"
           >

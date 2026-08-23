@@ -56,7 +56,20 @@ type CivicAskContext = {
 const ROAD_NOUN_RE =
   /\b(?:road|roads|roadway|traffic|highway|highways|interstate|route|routes|i-?\s?\d+|us\s?\d+|md\s?\d+)\b/i;
 const ROAD_STATUS_RE =
-  /\b(?:closed|closure|closures|open|condition|conditions|incident|incidents|crash|crashes|collision|blocked|blocking|detour|detours|delay|delays|backup|backed up|clear|hazard|hazards|ice|icy|slick|slippery|snowy|snow-covered|plowed|plowing|how (?:are|is)|what(?:'s| is) happening)\b/i;
+  /\b(?:closed|closure|closures|open|condition|conditions|incident|incidents|crash|crashes|collision|blocked|blocking|detour|detours|delay|delays|backup|backed up|clear|hazard|hazards|ice|icy|slick|slippery|snowy|snow-covered|plowed|plowing|how (?:are|is)|(?:what(?:'s| is)|anything) (?:happening|going on))\b/i;
+// “Problem” and “issue” are too broad to add to ROAD_STATUS_RE by
+// themselves. Keep them next to a road/traffic noun so product questions such
+// as “problems with this road design” continue through general Ask.
+const ROAD_PROBLEM_RE =
+  /\b(?:roads?|roadway|traffic|highways?|interstate|i-?\s?\d+|us\s?\d+|md\s?\d+) (?:problems?|issues?)\b|\b(?:problems?|issues?) (?:on|along|affecting) (?:the )?(?:roads?|roadway|traffic|highways?|interstate|i-?\s?\d+|us\s?\d+|md\s?\d+)\b|\b(?:problems?|issues?) with (?:the )?traffic\b/i;
+const ROAD_PROJECT_CONTEXT_RE =
+  /\b(?:design|redesign|project|projects|proposal|proposed|planning|planned|plan|plans|study|studies|widening|realignment|capital improvement|corridor study|engineering|public comment|comment period|future construction|long[- ]term)\b/i;
+const ROAD_PROCESS_OPEN_RE =
+  /\bopen (?:for|to) (?:public )?(?:comment|feedback|input|bids?|proposals?|applications?|review)\b|\bcomment period\b/i;
+const ROAD_IMMEDIATE_CONTEXT_RE =
+  /\b(?:now|right now|currently|at the moment|today|tonight|this morning|this afternoon|this evening|are there|is there|how (?:are|is)|what (?:are|is) (?:the )?(?:road|roads|traffic))\b/i;
+const ROAD_OPERATIONAL_RE =
+  /\b(?:closed|closure|closures|open|condition|conditions|incident|incidents|crash|crashes|collision|blocked|blocking|detour|detours|delay|delays|backup|backed up|clear|hazard|hazards|ice|icy|slick|slippery|snowy|snow-covered|plowed|plowing)\b/i;
 const PLOW_STATUS_RE =
   /\b(?:where (?:are|is) (?:the )?|track(?:ing)? (?:the )?|county )?plows?\b|\bplow(?:ed|ing)\b/i;
 const SCHOOL_DISTRICT_RE =
@@ -79,8 +92,21 @@ const WATER_NOTICE_TITLE_RE =
   /\b(?:boil[\s-]?water|drinking water|public water|water advisory|water main|water service|water outage|water quality)\b/i;
 
 export function wantsRoadStatus(query: string): boolean {
+  // A road number plus “open” is normally a live operations question. It is
+  // not one when “open” describes a planning process, and generic project or
+  // design questions belong in civic search. A project can still route live
+  // when the person names an immediate operational impact, such as delays
+  // today or a closure right now.
+  if (ROAD_PROCESS_OPEN_RE.test(query)) return false;
+  if (
+    ROAD_PROJECT_CONTEXT_RE.test(query) &&
+    !(ROAD_IMMEDIATE_CONTEXT_RE.test(query) && ROAD_OPERATIONAL_RE.test(query))
+  ) {
+    return false;
+  }
   return (
     (ROAD_NOUN_RE.test(query) && ROAD_STATUS_RE.test(query)) ||
+    ROAD_PROBLEM_RE.test(query) ||
     PLOW_STATUS_RE.test(query)
   );
 }

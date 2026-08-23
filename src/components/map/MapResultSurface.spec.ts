@@ -26,6 +26,7 @@ describe("MapResultSurface", () => {
     expect(html).toContain('type="button"');
     expect(html).toContain('aria-label="Close Gravel and Grind"');
     expect(html).not.toContain('aria-modal="true"');
+    expect(html).not.toContain("map-result-handle");
   });
 
   it("keeps global Escape and deterministic focus restoration in one close path", () => {

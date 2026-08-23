@@ -9,6 +9,14 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import { nearbyReachBounds } from "./mapNearbyScope";
 import { mapCameraPadding } from "./mapCameraPadding";
 import { CAM_EASE, FREDERICK_COUNTY_BOUNDS, RADIUS_M } from "./constants";
+import {
+  mapCameraDuration,
+  prefersReducedMotion,
+} from "@/lib/motion";
+
+// Keep the existing map-local import surface while the implementation lives
+// in the app-wide motion budget beside Save-Data handling.
+export { prefersReducedMotion };
 
 export type CameraSnapshot = {
   getZoom: () => number;
@@ -75,14 +83,6 @@ export function scrubInstant(scrubHour: number): Date {
   return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
 }
 
-/** True when the viewer asked for reduced motion. The CSS `*` gate can't
- *  reach Mapbox's JS-driven camera, so camera moves check this and pass
- *  duration:0 (instant, no glide). */
-export function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined"
-    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-}
-
 /** Keep the county outline clear of whichever edge owns the map instrument.
  * Mobile is bottom-mounted; desktop is top-mounted. A manual refit measures
  * the live controls while first paint uses the same responsive fallback. */
@@ -129,7 +129,7 @@ export function fitNearbyRadius(map: MapboxMap, origin: LngLat): void {
   map.fitBounds(nearbyReachBounds(origin, RADIUS_M), {
     padding: countyFitPadding(),
     maxZoom: 14.5,
-    duration: prefersReducedMotion() ? 0 : 900,
+    duration: mapCameraDuration("reframe"),
     easing: CAM_EASE,
     essential: true,
   });

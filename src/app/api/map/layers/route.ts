@@ -53,13 +53,15 @@ import {
   getCountySnowRoutes,
 } from "@/lib/integrations/fcSnowCommand";
 import { mapPinPlaces } from "@/lib/map/placePins";
-import { withDeadlineFallback } from "@/lib/promise-deadline";
+import { withDeadlineOutcome } from "@/lib/promise-deadline";
 import {
   canonicalMapLayerGroupSearch,
   EMPTY_DEFERRED_BROWSE_LAYERS,
+  mapLayerGroupHasVisibleData,
   parseMapLayerGroups,
   type DeferredBrowseLayers,
   type MapLayerGroup,
+  type MapLayerSourceHealth,
 } from "@/components/map/deferredBrowseLayers";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
@@ -71,8 +73,30 @@ export const maxDuration = 15;
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
 };
+const DEGRADED_SHARED_CACHE =
+  "public, s-maxage=30, stale-while-revalidate=60";
 const MAP_LAYER_RATE_LIMIT = 60;
 const MAP_LAYER_RATE_WINDOW_SECONDS = 60;
+
+const SITUATION_SOURCE_LABELS: Record<string, string> = {
+  nws: "National Weather Service",
+  fcps: "Frederick County Public Schools",
+  "mdot-chart": "Maryland traffic incidents",
+  "frederick-scanner": "Frederick Scanner",
+  firstenergy: "Power outages",
+  pulsepoint: "Fire and rescue incidents",
+  airnow: "AirNow",
+};
+
+const ROAD_SOURCE_LABELS: Record<string, string> = {
+  workZones: "Maryland work zones",
+  speeds: "Traffic speeds",
+  travelTimes: "Travel times",
+  messages: "Highway messages",
+  weatherStations: "Road weather stations",
+  roadConditions: "Road conditions",
+  snowEmergency: "Snow emergency status",
+};
 
 /**
  * Optional browse-map context, split by intent. A plain request returns only
@@ -128,7 +152,35 @@ export async function GET(request: Request) {
   const now = new Date();
   const groups = parseMapLayerGroups(canonicalGroup);
   const wants = (group: MapLayerGroup) => groups.has(group);
+  const sourceFailures = new Map<MapLayerGroup, Set<string>>();
+  const noteSourceFailure = (
+    affectedGroups: readonly MapLayerGroup[],
+    label: string,
+  ) => {
+    for (const group of affectedGroups) {
+      if (!wants(group)) continue;
+      const labels = sourceFailures.get(group) ?? new Set<string>();
+      labels.add(label);
+      sourceFailures.set(group, labels);
+    }
+  };
+  const trackedSource = async <T,>(
+    affectedGroups: readonly MapLayerGroup[],
+    label: string,
+    promise: Promise<T>,
+    deadlineMs: number,
+    fallback: T,
+  ): Promise<T> => {
+    const outcome = await withDeadlineOutcome(promise, deadlineMs);
+    if (outcome.status === "fulfilled") return outcome.value;
+    noteSourceFailure(affectedGroups, label);
+    return fallback;
+  };
   const needsSignals = wants("signals") || wants("roads");
+  const signalGroups = [
+    ...(wants("signals") ? (["signals"] as const) : []),
+    ...(wants("roads") ? (["roads"] as const) : []),
+  ];
   const needsPlaces = wants("context") || wants("amenities");
   const allPlaces = needsPlaces ? mapPinPlaces(now) : [];
 
@@ -153,72 +205,133 @@ export async function GET(request: Request) {
     eventSnapshot,
   ] = await Promise.all([
     needsSignals
-      ? withDeadlineFallback<CurrentSituationSnapshot | null>(
+      ? trackedSource<CurrentSituationSnapshot | null>(
+          signalGroups,
+          "Current conditions",
           getCurrentSituationSnapshot(),
           4_500,
           null,
         )
       : Promise.resolve(null),
     needsSignals
-      ? withDeadlineFallback<RoadIntelligenceSnapshot | null>(
+      ? trackedSource<RoadIntelligenceSnapshot | null>(
+          signalGroups,
+          "Maryland road conditions",
           getRoadIntelligenceSnapshot(),
           4_500,
           null,
         )
       : Promise.resolve(null),
     needsSignals
-      ? withDeadlineFallback(marketsOpenToday(now), 4_500, [])
+      ? trackedSource(signalGroups, "Farmers markets", marketsOpenToday(now), 4_500, [])
       : Promise.resolve([]),
     wants("amenities")
-      ? withDeadlineFallback(getPublicCountyParkAssets(), 4_500, null)
+      ? trackedSource(["amenities"], "County park amenities", getPublicCountyParkAssets(), 4_500, null)
       : Promise.resolve(null),
     wants("roads")
-      ? withDeadlineFallback(getCountyFloodContext(), 4_500, null)
+      ? trackedSource(["roads"], "County flood context", getCountyFloodContext(), 4_500, null)
       : Promise.resolve(null),
     wants("roads")
-      ? withDeadlineFallback(getCountySnowRoutes(now), 4_500, null)
+      ? trackedSource(["roads"], "County snow routes", getCountySnowRoutes(now), 4_500, null)
       : Promise.resolve(null),
     wants("roads")
-      ? withDeadlineFallback(getFixItIssues(30), 4_500, [])
+      ? trackedSource(["roads"], "Community road reports", getFixItIssues(30), 4_500, [])
       : Promise.resolve([]),
     wants("amenities")
-      ? withDeadlineFallback(fetchMapillaryTrash(), 3_000, [])
+      ? trackedSource(["amenities"], "Mapped trash cans", fetchMapillaryTrash(), 3_000, [])
       : Promise.resolve([]),
     wants("outdoors")
-      ? withDeadlineFallback(getFrederickTrailShapes(), 4_000, EMPTY_FC)
+      ? trackedSource(["outdoors"], "County trails", getFrederickTrailShapes(), 4_000, EMPTY_FC)
       : Promise.resolve(EMPTY_FC),
     wants("transit")
-      ? withDeadlineFallback(
+      ? trackedSource(
+          ["transit"],
+          "Transit routes",
           getFrederickTransitRouteShapes(),
           4_000,
           EMPTY_FC,
         )
       : Promise.resolve(EMPTY_FC),
     wants("boundaries")
-      ? withDeadlineFallback(getMunicipalBoundaries(), 3_000, EMPTY_FC)
+      ? trackedSource(["boundaries"], "Municipal boundaries", getMunicipalBoundaries(), 3_000, EMPTY_FC)
       : Promise.resolve(EMPTY_FC),
     wants("amenities")
-      ? withDeadlineFallback(getFrederickWaterSites(), 3_000, [])
+      ? trackedSource(["amenities"], "USGS water gauges", getFrederickWaterSites(), 3_000, [])
       : Promise.resolve([]),
     wants("amenities")
-      ? withDeadlineFallback(getEvChargingStations(), 3_500, [])
+      ? trackedSource(["amenities"], "EV charging stations", getEvChargingStations(), 3_500, [])
       : Promise.resolve([]),
     wants("outdoors")
-      ? withDeadlineFallback(getHistoricCemeteries(), 3_000, [])
+      ? trackedSource(["outdoors"], "Historic cemeteries", getHistoricCemeteries(), 3_000, [])
       : Promise.resolve([]),
     wants("context") || wants("amenities")
-      ? withDeadlineFallback(getFieldAmenities(), 3_000, [])
+      ? trackedSource(
+          ["context", "amenities"],
+          "Radius field notes",
+          getFieldAmenities(),
+          3_000,
+          [],
+        )
       : Promise.resolve([]),
     wants("amenities")
-      ? withDeadlineFallback(getCommunityReports(), 3_000, [])
+      ? trackedSource(["amenities"], "Community reports", getCommunityReports(), 3_000, [])
       : Promise.resolve([]),
     wants("parking")
-      ? withDeadlineFallback(occupancyByGarageSlug(), 3_000, new Map())
+      ? trackedSource(["parking"], "Parking occupancy", occupancyByGarageSlug(), 3_000, new Map())
       : Promise.resolve(new Map()),
     wants("events")
-      ? withDeadlineFallback(loadTodayEventSnapshot(now), 1_200, null)
+      ? trackedSource(["events"], "Event schedule", loadTodayEventSnapshot(now), 2_500, null)
       : Promise.resolve(null),
   ]);
+
+  if (situationSnapshot) {
+    for (const source of Object.values(situationSnapshot.sources)) {
+      if (source.availability !== "available" || source.freshness !== "fresh") {
+        noteSourceFailure(
+          signalGroups,
+          SITUATION_SOURCE_LABELS[source.source] ?? source.source,
+        );
+      }
+    }
+  }
+  if (roadIntelligence) {
+    for (const source of roadIntelligence.summary.unavailable) {
+      noteSourceFailure(
+        signalGroups,
+        ROAD_SOURCE_LABELS[source] ?? source,
+      );
+    }
+  }
+  if (
+    wants("amenities") &&
+    countyParkAssets &&
+    countyParkAssets.availability !== "available"
+  ) {
+    noteSourceFailure(["amenities"], "County park amenities");
+  }
+  if (
+    wants("roads") &&
+    countyFloodContext &&
+    countyFloodContext.availability !== "available"
+  ) {
+    noteSourceFailure(["roads"], "County flood context");
+  }
+  if (
+    wants("roads") &&
+    countySnowRoutes &&
+    countySnowRoutes.availability !== "available"
+  ) {
+    noteSourceFailure(["roads"], "County snow routes");
+  }
+  if (wants("events")) {
+    if (!eventSnapshot) {
+      noteSourceFailure(["events"], "Event schedule");
+    } else if (eventSnapshot.sourceHealth.degraded) {
+      // Event health can carry detailed server diagnostics upstream. The map
+      // needs only a safe source label, never a database or driver message.
+      noteSourceFailure(["events"], "Event schedule");
+    }
+  }
 
   const incidents = situationSnapshot
     ? selectMapRoadPins(situationSnapshot).official
@@ -471,11 +584,35 @@ export async function GET(request: Request) {
           ).filter((segment) => segment.trend === "longer").length,
         }
       : null,
+    sourceHealth: {},
   };
+
+  const sourceHealth: Partial<
+    Record<MapLayerGroup, MapLayerSourceHealth>
+  > = {};
+  for (const group of groups) {
+    const unavailable = [...(sourceFailures.get(group) ?? [])].sort();
+    sourceHealth[group] = {
+      status:
+        unavailable.length === 0
+          ? "current"
+          : mapLayerGroupHasVisibleData(group, payload)
+            ? "partial"
+            : "unavailable",
+      unavailable,
+    };
+  }
+  payload.sourceHealth = sourceHealth;
+
+  const degraded = Object.values(sourceHealth).some(
+    (health) => health?.status !== "current",
+  );
 
   return NextResponse.json(payload, {
     headers: {
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900",
+      "Cache-Control": degraded
+        ? DEGRADED_SHARED_CACHE
+        : "public, s-maxage=300, stale-while-revalidate=900",
       "X-Radius-Map-Groups": [...groups].sort().join(","),
     },
   });

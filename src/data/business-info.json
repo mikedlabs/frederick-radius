@@ -455,20 +455,6 @@
       "fetchedAt": "2026-05-31T18:17:54.235Z"
     }
   },
-  "mackies-southern-bbq": {
-    "known_for": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
-    "hours_text": "Sunday 11:00 AM - 07:00 PM, Monday Closed, Tuesday–Saturday 11:00 AM - 07:00 PM",
-    "notable": "This family-owned barbecue business operates a food truck in Olney and offers dine-in service and event catering. A portion of every sale supports local schools and first responders.",
-    "name": "Mackies Southern BBQ",
-    "source": {
-      "url": "https://www.mackiesbarbecue.com/",
-      "fetchedAt": "2026-05-31T18:17:58.141Z"
-    },
-    "commerce_source": {
-      "url": "http://www.mackiessouthernbarbecue.net/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
-    }
-  },
   "the-station-market-and-cafe": {
     "known_for": "The Station is a farm-to-table vegetarian cafe using local ingredients in its pastries, soups, and other dishes.",
     "hours_text": "Mon Closed, Tue Closed, Wed 09:00 am – 04:00 pm, Thu 09:00 am – 04:00 pm, Fri 09:00 am – 05:00 pm, Sat 09:00 am – 05:00 pm, Sun 09:00 am – 04:00 pm",
@@ -2454,7 +2440,7 @@
       }
     ],
     "hours_text": "Frederick location: Tues-Sat 12pm-8pm. Urbana location: Mon-Sat 11am-7pm.",
-    "known_for": "Key City Tattoo offers custom tattoo services at two locations in Frederick, Maryland, with multiple artists available at each shop.",
+    "known_for": "Key City Tattoo's Monocacy Village shop offers custom tattoos by its Frederick artists.",
     "notable": "Piercing services are available only at the Urbana location.",
     "source": {
       "url": "https://www.keycitytattoos.com/",
@@ -2543,7 +2529,7 @@
   },
   "cloud-jammer": {
     "name": "Cloud Jammer",
-    "known_for": "Cloud Jammer sells vape products including e-juice, nicotine, glass pieces, vape mods, batteries, and accessories across multiple locations in Pennsylvania and Maryland since 2014.",
+    "known_for": "Cloud Jammer's North Market Street shop carries vape juice, salt nicotine, glass pieces, batteries, and other vape accessories.",
     "source": {
       "url": "https://www.cloud-jammervapes.com/",
       "fetchedAt": "2026-08-01T09:50:46.051Z",

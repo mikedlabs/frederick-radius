@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   readJsonBodyWithLimit: vi.fn(),
   getDb: vi.fn(),
   verifyMemberCookie: vi.fn(),
+  recordSearchMiss: vi.fn(),
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -16,6 +17,9 @@ vi.mock("@/lib/origin-check", () => ({
 }));
 vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
 vi.mock("@/lib/beta-gate", () => ({ verifyMemberCookie: mocks.verifyMemberCookie }));
+vi.mock("@/lib/telemetry/searchMiss", () => ({
+  recordSearchMiss: mocks.recordSearchMiss,
+}));
 
 import { POST } from "./route";
 
@@ -55,6 +59,7 @@ function fakeDb({
   return {
     db: { select: selectMock, insert: insertMock },
     insertMock,
+    memberLookupMock: limitMock,
     valuesMock,
     onConflictDoUpdateMock,
   };
@@ -185,6 +190,23 @@ describe("POST /api/track guards", () => {
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
+  it("does not bank a search miss when the analytics opt-out cookie is set", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "search_empty",
+        props: { query: "private medical search" },
+      },
+    });
+
+    const res = await POST(request("{}", "fr_analytics_optout=1"));
+
+    expect(res.status).toBe(204);
+    expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
+    expect(mocks.verifyMemberCookie).not.toHaveBeenCalled();
+    expect(mocks.getDb).not.toHaveBeenCalled();
+  });
+
   it("fails closed with 503 when the database is unconfigured", async () => {
     mocks.getDb.mockReturnValue(null);
     const res = await POST(request());
@@ -196,6 +218,24 @@ describe("POST /api/track guards", () => {
     mocks.getDb.mockReturnValue(db);
     const res = await POST(request());
     expect(res.status).toBe(204);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not bank a search miss for a persisted opted-out member", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "search_empty",
+        props: { query: "private medical search" },
+      },
+    });
+    const { db, insertMock } = fakeDb({ member: { opted_out: true } });
+    mocks.getDb.mockReturnValue(db);
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(204);
+    expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
   });
 
@@ -226,6 +266,24 @@ describe("POST /api/track guards", () => {
     mocks.getDb.mockReturnValue(db);
     const res = await POST(request());
     expect(res.status).toBe(204);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not bank a search miss for an unknown signed member", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "search_empty",
+        props: { query: "private medical search" },
+      },
+    });
+    const { db, insertMock } = fakeDb({ member: null });
+    mocks.getDb.mockReturnValue(db);
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(204);
+    expect(mocks.recordSearchMiss).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
   });
 
@@ -291,7 +349,7 @@ describe("POST /api/track guards", () => {
         props: { query: "std clinic near me", category: "health" },
       },
     });
-    const { db, valuesMock } = fakeDb({ member: { opted_out: false } });
+    const { db, memberLookupMock, valuesMock } = fakeDb({ member: { opted_out: false } });
     mocks.getDb.mockReturnValue(db);
     const res = await POST(request());
     expect(res.status).toBe(204);
@@ -299,5 +357,30 @@ describe("POST /api/track guards", () => {
     // The categorical prop survives; the typed query never lands in the log.
     expect(written.props).toEqual({ category: "health" });
     expect(written.props).not.toHaveProperty("query");
+    expect(mocks.recordSearchMiss).toHaveBeenCalledWith("std clinic near me", "search");
+    expect(memberLookupMock.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.recordSearchMiss.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("banks a settled anonymous search miss without creating a member event", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        event: "search_empty",
+        path: "/today",
+        props: { query: "wheelchair accessible patio" },
+      },
+    });
+    mocks.verifyMemberCookie.mockResolvedValue(null);
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(204);
+    expect(mocks.recordSearchMiss).toHaveBeenCalledWith(
+      "wheelchair accessible patio",
+      "search",
+    );
+    expect(mocks.getDb).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 {
-  "_doc": "Venue registry for scripts/ingest-venue-events.ts. Each venue declares a `method` for how its events are collected, chosen by inspecting the live site (May 2026): `feed` = a structured Squarespace ?format=json events collection, parsed deterministically with NO model call (exact + stable + free); `image` = the calendar is published only as a graphic, read with Claude vision from `imageUrl`; `render` = JS-rendered or 403s a bare fetch, so the page is loaded in a headless browser (Playwright) and the text handed to the model; `fetch` = static HTML handed to the model; `bandsintown`/`render` aggregator pages are treated as render. Social-only sources (Instagram/Facebook) are NOT scraped — see docs/EXTRACTION_PLATFORM.md. The agent validates at fetch time and never fabricates: a failed fetch leaves prior data untouched.",
+  "_doc": "Venue registry for scripts/ingest-venue-events.ts. Each venue declares a `method` for how its events are collected: `feed` = a structured Squarespace ?format=json events collection, parsed deterministically with no model call; `weinberg` = the official Weinberg calendar's bounded Load More endpoint, parsed deterministically and filtered by its own venue taxonomy; `image` = the calendar is published only as a graphic, read with Claude vision from `imageUrl`; `render` = JS-rendered or 403s a bare fetch, so the page is loaded in a headless browser (Playwright) and the text handed to the model; `fetch` = static HTML handed to the model. Social-only sources (Instagram/Facebook) are not scraped. The agent validates completeness at fetch time and never fabricates: a failed or partial fetch leaves prior data untouched.",
   "venues": [
     {
       "slug": "banyan",
@@ -15,11 +15,12 @@
       "slug": "weinberg-center",
       "name": "Weinberg Center for the Arts",
       "category": "theater",
-      "method": "render",
+      "method": "weinberg",
+      "venueFilter": "weinberg-center",
       "urls": [
-        "https://weinbergcenter.org/performances/"
+        "https://weinbergcenter.org/performances/?venue=weinberg-center"
       ],
-      "note": "Historic 1926 theater. 403s a bare fetch → render. Also covers New Spire Arts programming."
+      "note": "Historic 1926 theater. Read every card through the official site's bounded Load More endpoint, filtered to Weinberg Center. This deterministic path does not use a model or a discovery provider."
     },
     {
       "slug": "sky-stage",
@@ -36,11 +37,12 @@
       "slug": "new-spire",
       "name": "New Spire Arts",
       "category": "theater",
-      "method": "render",
+      "method": "weinberg",
+      "venueFilter": "new-spire-arts",
       "urls": [
-        "https://weinbergcenter.org/our-venues/new-spire-arts/"
+        "https://weinbergcenter.org/performances/?venue=new-spire-arts"
       ],
-      "note": "15 W. Patrick St. Managed by the Weinberg Center; programming listed there."
+      "note": "15 W. Patrick St. Managed by the Weinberg Center. Read every card through the official site's bounded Load More endpoint, filtered to New Spire Arts."
     },
     {
       "slug": "bushwallers",
