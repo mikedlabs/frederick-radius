@@ -32,6 +32,15 @@ export type UsageReservation = {
   count: number;
 };
 
+/** Internal guardrail rows share the atomic counter table but are not provider
+ * SKUs. These namespaces only prevent public and scheduled routes from
+ * spending without a shared daily boundary. */
+export type UsageBudgetNamespace =
+  | PaidUpstream
+  | "budget_google_place_enrich_basic"
+  | "budget_google_place_enrich_experience"
+  | "budget_google_business_status";
+
 export type UsageIntervalLease = {
   acquired: boolean;
 };
@@ -93,7 +102,7 @@ export async function reserveUsageIntervalLease(
  * serverless workers share one real limit instead of racing process memory.
  */
 export async function reserveDailyUsage(
-  upstream: PaidUpstream,
+  upstream: UsageBudgetNamespace,
   limit: number,
 ): Promise<UsageReservation | null> {
   if (!Number.isSafeInteger(limit) || limit <= 0) return null;

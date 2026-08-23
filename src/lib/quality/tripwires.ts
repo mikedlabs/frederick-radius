@@ -26,6 +26,8 @@ import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import HOURS_REFRESH from "@/data/places-hours-refresh.json" with { type: "json" };
 import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
+import { reserveDailyUsage } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -96,40 +98,57 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
   if (metadataAnomaly) return [metadataAnomaly];
   const step = Math.max(1, Math.floor(rows.length / sample));
   const picks = Array.from({ length: sample }, (_, i) => rows[Math.min(i * step, rows.length - 1)]);
+  if (picks.length === 0) return [];
 
-  const probes = await Promise.all(
-    picks.map(async ([slug, v]) => {
-      const url = photoUrl(v.photo_names![0], 80);
-      if (!url) return { configured: false, failure: null };
-      try {
-        const res = await fetch(url, {
-          redirect: "follow",
-          cache: "no-store",
-          signal: AbortSignal.timeout(8_000),
-        });
-        return {
-          configured: true,
-          failure: res.ok ? null : `${slug}:${res.status}`,
-        };
-      } catch {
-        return { configured: true, failure: `${slug}:fetch-error` };
-      }
-    }),
+  // Probe one deterministic sample per day, rotating across the catalog. A
+  // health check is billable and must not consume six of the 25 user-facing
+  // requests before anyone opens the app.
+  const pick = picks[Math.floor(Date.now() / 86_400_000) % picks.length];
+  const [slug, row] = pick;
+  const url = photoUrl(row.photo_names![0], 80);
+  // No Google key in this environment means there is nothing to measure.
+  if (!url) return [];
+
+  const reservation = await reserveDailyUsage(
+    "google_photo",
+    googlePhotoDailyCap(),
   );
-  // No Google key in this environment — there is nothing to measure.
-  if (probes.some((probe) => !probe.configured)) return [];
-  const failures = probes
-    .map((probe) => probe.failure)
-    .filter((failure): failure is string => Boolean(failure));
-  const failed = failures.length;
-  if (failed * 2 < picks.length) return [];
-  return [
-    {
+  if (!reservation) {
+    return [{
+      source: "google-photo-budget",
+      kind: "infrastructure_unavailable",
+      detail:
+        "The photo watchdog could not reserve its one-call allowance. The photo proxy is failing closed to Radius artwork until the usage-counter database is reachable.",
+    }];
+  }
+  if (!reservation.reserved) {
+    return [{
+      source: "google-photos",
+      kind: "provider_budget_exhausted",
+      detail:
+        "The shared Google photo allowance is exhausted for today. Google-backed thumbnails are using Radius artwork until the Eastern-day counter resets.",
+    }];
+  }
+
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (response.ok) return [];
+    return [{
       source: "google-photos",
       kind: "photo_rot",
-      detail: `${failed}/${picks.length} sampled photo names failed upstream (${failures.join(", ")}) — the dataset's photo references have rotated; thumbnails are on the self-heal path or the placeholder. Regenerate photo names.`,
-    },
-  ];
+      detail: `The sampled photo name failed upstream (${slug}:${response.status}). The reference may have rotated; the app is using its placeholder.`,
+    }];
+  } catch {
+    return [{
+      source: "google-photos",
+      kind: "photo_rot",
+      detail: `The sampled photo name could not be fetched (${slug}:fetch-error). The app is using its placeholder.`,
+    }];
+  }
 }
 
 /** The /transit zero-routes class: the upstream schema changed and the

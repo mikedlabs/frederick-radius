@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getPlaceDetails: vi.fn(),
   googlePlacesConfigured: vi.fn(),
   googleStatusToOperational: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/loaders/places", () => ({
@@ -17,6 +18,9 @@ vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
   googlePlacesConfigured: mocks.googlePlacesConfigured,
   googleStatusToOperational: mocks.googleStatusToOperational,
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import { GET } from "./route";
@@ -47,6 +51,7 @@ describe("GET /api/cron/business-status", () => {
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.BUSINESS_STATUS_CRON = "1";
     mocks.googlePlacesConfigured.mockReturnValue(true);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
     mocks.decoratePlace.mockImplementation((value) => value);
     mocks.googleStatusToOperational.mockImplementation((status: string) =>
       status === "CLOSED_PERMANENTLY"
@@ -91,9 +96,17 @@ describe("GET /api/cron/business-status", () => {
       "ChIJCanonicalCafe123",
       "status",
     );
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_business_status",
+      40,
+    );
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getPlaceDetails.mock.invocationCallOrder[0],
+    );
     expect(body).toMatchObject({
       catalog: 1,
       checked: 1,
+      budgetExhausted: false,
       mismatches: [
         {
           slug: "canonical-cafe",
@@ -102,6 +115,25 @@ describe("GET /api/cron/business-status", () => {
         },
       ],
     });
+  });
+
+  it("stops before Google when the shared allowance is exhausted", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("daily-cap", "ChIJDailyStatusCap123"),
+    ]);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 40 });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      catalog: 1,
+      checked: 0,
+      budgetExhausted: true,
+      mismatches: [],
+    });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 
   it("fails before a paid call when two public slugs share a provider identity", async () => {

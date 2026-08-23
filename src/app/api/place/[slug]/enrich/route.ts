@@ -20,7 +20,6 @@ import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import {
   getPlaceDetails,
   resolveAndEnrich,
-  type GoogleFieldSet,
   type PlaceEnrichment,
   type GooglePhotoAttribution,
   type GooglePlaceFeature,
@@ -40,6 +39,7 @@ import {
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
 import { isValidCoord } from "@/lib/geo";
 import { patchRecord, type Overrides } from "@/lib/overrides";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 
 // Wrong-business quarantine (UX audit P0): these slugs were bound to a
 // DIFFERENT business's Google listing, and the base record's stored
@@ -81,6 +81,36 @@ type EnrichResponse = {
 
 const EMPTY: EnrichResponse = { photos: [], hours: [] };
 type EnrichMode = "basic" | "experience";
+const DEFAULT_BASIC_DAILY_CAP = 10;
+const MAX_BASIC_DAILY_CAP = 80;
+const DEFAULT_EXPERIENCE_DAILY_CAP = 5;
+const MAX_EXPERIENCE_DAILY_CAP = 20;
+
+function boundedDailyCap(
+  raw: string | undefined,
+  safeDefault: number,
+  maximum: number,
+): number {
+  const value = raw?.trim();
+  if (!value || !/^\d+$/.test(value)) return safeDefault;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) return safeDefault;
+  return Math.min(maximum, Math.max(1, parsed));
+}
+
+function enrichmentDailyCap(fields: EnrichMode): number {
+  return fields === "experience"
+    ? boundedDailyCap(
+        process.env.GOOGLE_PLACE_EXPERIENCE_DAILY_CAP,
+        DEFAULT_EXPERIENCE_DAILY_CAP,
+        MAX_EXPERIENCE_DAILY_CAP,
+      )
+    : boundedDailyCap(
+        process.env.GOOGLE_PLACE_ENRICH_DAILY_CAP,
+        DEFAULT_BASIC_DAILY_CAP,
+        MAX_BASIC_DAILY_CAP,
+      );
+}
 
 // Coalesce simultaneous requests for the same slug/field set inside one warm
 // server process. The result is deleted as soon as it settles, so this avoids
@@ -89,7 +119,7 @@ const IN_FLIGHT = new Map<string, Promise<EnrichResponse>>();
 
 async function enrichSlug(
   slug: string,
-  fields: GoogleFieldSet,
+  fields: EnrichMode,
 ): Promise<EnrichResponse> {
   const rawPlace = PLACE_BY_SLUG[slug];
   // A human coordinate correction must be allowed to rescue a source row, but
@@ -106,6 +136,19 @@ async function enrichSlug(
   ) {
     return EMPTY;
   }
+
+  // Reserve only after local eligibility checks and inside the in-flight
+  // coalescer, so invalid slugs and duplicate warm-worker requests do not use
+  // the allowance. Database uncertainty intentionally falls back to the
+  // shipped place record instead of allowing an unbounded provider request.
+  const budgetNamespace = fields === "experience"
+    ? "budget_google_place_enrich_experience"
+    : "budget_google_place_enrich_basic";
+  const reservation = await reserveDailyUsage(
+    budgetNamespace,
+    enrichmentDailyCap(fields),
+  );
+  if (!reservation?.reserved) return EMPTY;
 
   const data =
     p.google_place_id && /^ChIJ/.test(p.google_place_id)
@@ -159,7 +202,7 @@ async function enrichSlug(
   };
 }
 
-function enrichOnce(slug: string, fields: GoogleFieldSet): Promise<EnrichResponse> {
+function enrichOnce(slug: string, fields: EnrichMode): Promise<EnrichResponse> {
   const key = `${slug}:${fields}`;
   const existing = IN_FLIGHT.get(key);
   if (existing) return existing;
