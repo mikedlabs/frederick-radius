@@ -11,7 +11,8 @@
  */
 
 import { unstable_cache } from "next/cache";
-import { meterUsage } from "@/lib/usage-meter";
+import { googleRoutesDailyElementCap } from "@/lib/google-routes-budget";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 
 const URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix";
 const ROUTES_REQUEST_TIMEOUT_MS = 6_000;
@@ -44,10 +45,20 @@ async function computeMatrixUncached(
   const k = key();
   if (!k) throw new Error("Google Routes is not configured");
 
-  // Meter at the upstream boundary so every count represents a Google call.
-  // Shared callers reach this boundary only on cache misses; private callers
-  // reach it after an explicit user action and are never persisted.
-  meterUsage("google_routes_matrix");
+  // Google bills a matrix by origin × destination elements, not by HTTP
+  // request. Reserve the full element count atomically at the actual upstream
+  // boundary, after shared-cache hits have already returned. A missing counter
+  // or exhausted allowance fails closed to the caller's existing straight-line
+  // fallback instead of letting a database incident reopen spend.
+  const elements = destinations.length; // exactly one origin in this adapter
+  const reservation = await reserveDailyUsage(
+    "google_routes_matrix",
+    googleRoutesDailyElementCap(),
+    elements,
+  );
+  if (!reservation?.reserved) {
+    throw new Error("Google Routes daily element allowance unavailable");
+  }
   const res = await fetch(URL, {
     method: "POST",
     headers: {

@@ -131,8 +131,32 @@ describe("GET /api/cron/business-status", () => {
       catalog: 1,
       checked: 0,
       budgetExhausted: true,
+      usageMeterUnavailable: false,
       mismatches: [],
     });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("returns an unhealthy 503 when the shared counter is unavailable", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("meter-unavailable", "ChIJStatusMeterUnavailable123"),
+    ]);
+    mocks.reserveDailyUsage.mockResolvedValue(null);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      enabled: true,
+      healthy: false,
+      catalog: 1,
+      checked: 0,
+      budgetExhausted: false,
+      usageMeterUnavailable: true,
+      mismatches: [],
+    });
+    expect(body.error).toContain("usage counter is unavailable");
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   getPlaceDetails: vi.fn(),
   googlePlacesConfigured: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/loaders/placeRefreshIdentities", () => ({
@@ -20,6 +21,9 @@ vi.mock("@/lib/db/client", () => ({
 vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
   googlePlacesConfigured: mocks.googlePlacesConfigured,
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import { GET } from "./route";
@@ -34,6 +38,18 @@ function slugForCycle(day = cycleDay) {
     if (hoursRefreshCycleDay(slug) === day) return slug;
   }
   throw new Error("Unable to build a deterministic hours test slug.");
+}
+
+function slugsForCycle(count: number, day = cycleDay) {
+  const slugs: string[] = [];
+  for (let index = 0; index < 10_000 && slugs.length < count; index++) {
+    const slug = `hours-route-bucket-${index}`;
+    if (hoursRefreshCycleDay(slug) === day) slugs.push(slug);
+  }
+  if (slugs.length !== count) {
+    throw new Error(`Unable to build ${count} deterministic hours test slugs.`);
+  }
+  return slugs;
 }
 
 function request(query = "") {
@@ -72,7 +88,9 @@ describe("GET /api/cron/hours-refresh", () => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.HOURS_REFRESH_CRON = "1";
+    delete process.env.GOOGLE_HOURS_REFRESH_DAILY_CAP;
     mocks.googlePlacesConfigured.mockReturnValue(true);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
     mocks.placeRefreshIdentities.mockReturnValue([
       {
         slug: slugForCycle(),
@@ -85,6 +103,7 @@ describe("GET /api/cron/hours-refresh", () => {
     vi.useRealTimers();
     delete process.env.CRON_SECRET;
     delete process.env.HOURS_REFRESH_CRON;
+    delete process.env.GOOGLE_HOURS_REFRESH_DAILY_CAP;
   });
 
   it("checks migration 0024 before making a paid Google call", async () => {
@@ -184,6 +203,13 @@ describe("GET /api/cron/hours-refresh", () => {
       "ChIJ-hours-route-test",
       "hours",
     );
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      300,
+    );
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getPlaceDetails.mock.invocationCallOrder[0],
+    );
     expect(storage.values).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: slugForCycle(),
@@ -230,5 +256,131 @@ describe("GET /api/cron/hours-refresh", () => {
       "ChIJ-hours-backfill-test",
       "hours",
     );
+  });
+
+  it("shares one daily allowance across authenticated cycleDay replays", async () => {
+    const backfillDay = (cycleDay + 1) % HOURS_REFRESH_CYCLE_DAYS;
+    const backfillSlug = slugForCycle(backfillDay);
+    mocks.getDb.mockReturnValue(db());
+    mocks.placeRefreshIdentities.mockReturnValue([
+      {
+        slug: backfillSlug,
+        google_place_id: "ChIJ-hours-replay-test",
+      },
+    ]);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 300 });
+
+    const response = await GET(request(`?cycleDay=${backfillDay}`));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      cycleMode: "backfill",
+      paidAttempts: 0,
+      written: 0,
+      budgetExhausted: true,
+      dailyCap: 300,
+    });
+    expect(body.error).toContain("retries and cycleDay replays remain blocked");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      300,
+    );
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("rejects a configured cap below the whole deterministic bucket before reserving", async () => {
+    const slugs = slugsForCycle(2);
+    mocks.getDb.mockReturnValue(db());
+    mocks.placeRefreshIdentities.mockReturnValue(
+      slugs.map((slug, index) => ({
+        slug,
+        google_place_id: `ChIJ-hours-cap-preflight-${index}`,
+      })),
+    );
+    process.env.GOOGLE_HOURS_REFRESH_DAILY_CAP = "1";
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      eligible: 2,
+      targeted: 0,
+      paidAttempts: 0,
+      budgetExhausted: false,
+      dailyCap: 1,
+    });
+    expect(body.error).toContain("fit the whole bucket");
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("never reports a partially exhausted bucket as healthy or successful", async () => {
+    const slugs = slugsForCycle(2);
+    mocks.getDb.mockReturnValue(db());
+    mocks.placeRefreshIdentities.mockReturnValue(
+      slugs.map((slug, index) => ({
+        slug,
+        google_place_id: `ChIJ-hours-partial-cap-${index}`,
+      })),
+    );
+    mocks.reserveDailyUsage
+      .mockResolvedValueOnce({ reserved: true, count: 299 })
+      .mockResolvedValueOnce({ reserved: false, count: 300 });
+    mocks.getPlaceDetails.mockResolvedValue({
+      weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+      business_status: "OPERATIONAL",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      targeted: 2,
+      paidAttempts: 1,
+      written: 1,
+      budgetExhausted: true,
+      notAttempted: 1,
+    });
+    expect(mocks.getPlaceDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed before Google when the shared counter is unavailable", async () => {
+    mocks.getDb.mockReturnValue(db());
+    mocks.reserveDailyUsage.mockResolvedValue(null);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      paidAttempts: 0,
+      budgetExhausted: false,
+      dailyCap: 300,
+    });
+    expect(body.error).toContain("usage counter is unavailable");
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("honors a lower configured cap and clamps accidental increases", async () => {
+    mocks.getDb.mockReturnValue(db());
+    process.env.GOOGLE_HOURS_REFRESH_DAILY_CAP = "9999";
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 400 });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(body.dailyCap).toBe(400);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "budget_google_hours_refresh",
+      400,
+    );
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 });

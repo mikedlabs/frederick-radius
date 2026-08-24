@@ -104,11 +104,47 @@ describe("daily paid-usage reservations", () => {
     expect(mocks.sql).toHaveBeenCalledOnce();
     const [strings, ...values] = mocks.sql.mock.calls[0] ?? [];
     const statement = Array.from(strings as TemplateStringsArray).join("?");
-    expect(values).toEqual(["firecrawl_visit_frederick", 12]);
+    expect(values).toEqual(["firecrawl_visit_frederick", 1, 1, 1, 12]);
     expect(statement).toContain("on conflict (day, upstream)");
-    expect(statement).toContain("where usage_counters.count < ?");
+    expect(statement).toContain("where usage_counters.count + ? <= ?");
     expect(statement).toContain("returning count");
     expect(statement).toContain("America/New_York");
+  });
+
+  it("uses the same atomic Eastern-day row for every hours-refresh invocation", async () => {
+    mocks.sql.mockResolvedValue([{ count: "209" }]);
+
+    await expect(
+      reserveDailyUsage("budget_google_hours_refresh", 300),
+    ).resolves.toEqual({ reserved: true, count: 209 });
+
+    const [strings, ...values] = mocks.sql.mock.calls[0] ?? [];
+    const statement = Array.from(strings as TemplateStringsArray).join("?");
+    expect(values).toEqual(["budget_google_hours_refresh", 1, 1, 1, 300]);
+    expect(statement).toContain("America/New_York");
+    expect(statement).toContain("on conflict (day, upstream)");
+    expect(statement).toContain("where usage_counters.count + ? <= ?");
+  });
+
+  it("reserves matrix elements as one all-or-nothing increment", async () => {
+    mocks.sql.mockResolvedValue([{ count: "42" }]);
+
+    await expect(
+      reserveDailyUsage("google_routes_matrix", 100, 8),
+    ).resolves.toEqual({ reserved: true, count: 42 });
+
+    const [strings, ...values] = mocks.sql.mock.calls[0] ?? [];
+    const statement = Array.from(strings as TemplateStringsArray).join("?");
+    expect(values).toEqual(["google_routes_matrix", 8, 8, 8, 100]);
+    expect(statement).toContain("where usage_counters.count + ? <= ?");
+  });
+
+  it("denies an increment larger than the cap before touching the database", async () => {
+    await expect(
+      reserveDailyUsage("google_routes_matrix", 5, 6),
+    ).resolves.toEqual({ reserved: false, count: 5 });
+    expect(mocks.getSql).not.toHaveBeenCalled();
+    expect(mocks.sql).not.toHaveBeenCalled();
   });
 
   it("denies the call when the atomic statement returns no row at the cap", async () => {
@@ -124,6 +160,18 @@ describe("daily paid-usage reservations", () => {
     async (limit) => {
       await expect(
         reserveDailyUsage("firecrawl_visit_frederick", limit),
+      ).resolves.toBeNull();
+
+      expect(mocks.getSql).not.toHaveBeenCalled();
+      expect(mocks.sql).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([0, -1, 1.5, Number.NaN])(
+    "fails closed before touching the database for an invalid increment (%s)",
+    async (increment) => {
+      await expect(
+        reserveDailyUsage("google_routes_matrix", 100, increment),
       ).resolves.toBeNull();
 
       expect(mocks.getSql).not.toHaveBeenCalled();

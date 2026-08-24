@@ -67,7 +67,7 @@ export default function CommunityNotes() {
         <Church className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
       )}
       <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{note.lead}</span>
-      <Link href={note.href} className="tap-44-y inline-flex items-center font-semibold" style={{ color: "var(--app-brand-press)" }}>
+      <Link href={note.href} className="inline-flex min-h-11 items-center font-semibold" style={{ color: "var(--app-brand-press)" }}>
         {note.ctaLabel} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
       <button
@@ -75,7 +75,7 @@ export default function CommunityNotes() {
         onClick={dismiss}
         aria-label="Hide community notes"
         title="Hide community notes"
-        className="tap-44 ml-0.5 inline-flex items-center"
+        className="ml-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />

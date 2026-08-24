@@ -101,8 +101,8 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
   if (picks.length === 0) return [];
 
   // Probe one deterministic sample per day, rotating across the catalog. A
-  // health check is billable and must not consume six of the 25 user-facing
-  // requests before anyone opens the app.
+  // health check is billable and must not spend six user-facing requests just
+  // to prove the route works. One rotating probe is enough to detect drift.
   const pick = picks[Math.floor(Date.now() / 86_400_000) % picks.length];
   const [slug, row] = pick;
   const url = photoUrl(row.photo_names![0], 80);

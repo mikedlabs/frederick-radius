@@ -80,6 +80,7 @@ export async function GET(request: Request) {
   const mismatches: Array<{ slug: string; name: string; current: string; google: string }> = [];
   let checked = 0;
   let budgetExhausted = false;
+  let usageMeterUnavailable = false;
 
   for (const p of targets) {
     // The per-run batch alone cannot stop a retry or manual invocation from
@@ -89,7 +90,11 @@ export async function GET(request: Request) {
       "budget_google_business_status",
       BATCH,
     );
-    if (!reservation?.reserved) {
+    if (!reservation) {
+      usageMeterUnavailable = true;
+      break;
+    }
+    if (!reservation.reserved) {
       budgetExhausted = true;
       break;
     }
@@ -103,12 +108,31 @@ export async function GET(request: Request) {
     }
   }
 
+  if (usageMeterUnavailable) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay,
+        catalog: allTargets.length,
+        checked,
+        budgetExhausted: false,
+        usageMeterUnavailable: true,
+        mismatches,
+        error:
+          "The shared business-status usage counter is unavailable; no Google call ran without an atomic reservation.",
+      },
+      { status: 503 },
+    );
+  }
+
   return NextResponse.json({
     enabled: true,
     cycleDay,
     catalog: allTargets.length,
     checked,
     budgetExhausted,
+    usageMeterUnavailable: false,
     mismatches,
     note: "Add closed places to the denylist or run npm run refresh:business-status to refresh the override.",
   });

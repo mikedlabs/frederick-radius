@@ -59,7 +59,7 @@ describe("Google photo tripwire daily budget", () => {
     await expect(photoTripwire(2)).resolves.toEqual([]);
 
     expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 25);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 1_500);
     expect(mocks.fetch).toHaveBeenCalledOnce();
   });
 

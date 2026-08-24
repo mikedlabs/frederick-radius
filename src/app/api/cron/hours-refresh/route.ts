@@ -17,7 +17,8 @@
  *
  * PAID and OFF by default, same contract as the business-status cron:
  * no-ops unless HOURS_REFRESH_CRON is "1", requires the Google key and
- * a reachable database, and caps the batch to bound cost.
+ * a reachable database, and shares one atomic Eastern-day allowance across
+ * scheduled runs, retries, and authenticated cycleDay backfills.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -36,6 +37,8 @@ import {
 } from "@/lib/hours-refresh-targets";
 import { isGooglePlaceId } from "@/lib/provenance";
 import { monitorCronResponse } from "@/lib/observability/cron-monitor";
+import { reserveDailyUsage } from "@/lib/usage-meter";
+import { googleHoursRefreshDailyCap } from "@/lib/google-hours-refresh-budget";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -165,6 +168,38 @@ async function runHoursRefresh(request: Request) {
       { status: 503 },
     );
   }
+  const dailyCap = googleHoursRefreshDailyCap();
+
+  // A deterministic cycle bucket must fit inside the shared daily allowance
+  // before we reserve even one call. Otherwise every run would refresh the
+  // same prefix, exhaust the allowance, and strand the same tail forever.
+  // This preflight also makes a too-low environment override loud and free.
+  if (eligibleTargets.length > dailyCap) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay: today,
+        cycleMode: cycle.mode,
+        catalog: places.length,
+        validGoogleIds: validGooglePlaces.length,
+        invalidGoogleIds,
+        eligible: eligibleTargets.length,
+        targeted: 0,
+        paidAttempts: 0,
+        written: 0,
+        withHours: 0,
+        budgetExhausted: false,
+        dailyCap,
+        error:
+          `This deterministic hours bucket has ${eligibleTargets.length} targets, ` +
+          `but GOOGLE_HOURS_REFRESH_DAILY_CAP resolves to ${dailyCap}. ` +
+          "Raise the cap to fit the whole bucket before retrying; no paid calls were made.",
+      },
+      { status: 503 },
+    );
+  }
+
   const targets = eligibleTargets.slice(0, BATCH_CAP);
   const deferred = eligibleTargets.length - targets.length;
 
@@ -199,6 +234,9 @@ async function runHoursRefresh(request: Request) {
   const refreshedAt = new Date();
   let written = 0;
   let withHours = 0;
+  let paidAttempts = 0;
+  let budgetExhausted = false;
+  let usageMeterUnavailable = false;
   const failures: string[] = [];
 
   // A six-wide pool keeps a 300-second function from timing out on the full
@@ -208,9 +246,37 @@ async function runHoursRefresh(request: Request) {
     const batch = targets.slice(i, i + CONCURRENCY);
     const outcomes = await Promise.all(
       batch.map(async (p) => {
+        // The per-run target cap does not protect against a replay, retry, or
+        // authenticated cycleDay backfill. Reserve each provider attempt from
+        // one atomic Eastern-day counter before calling Google. Counter
+        // uncertainty fails closed so a database incident cannot reopen spend.
+        const reservation = await reserveDailyUsage(
+          "budget_google_hours_refresh",
+          dailyCap,
+        );
+        if (!reservation) {
+          return {
+            ok: false,
+            withHours: false,
+            budget: "unavailable" as const,
+          };
+        }
+        if (!reservation.reserved) {
+          return {
+            ok: false,
+            withHours: false,
+            budget: "exhausted" as const,
+          };
+        }
         try {
           const details = await getPlaceDetails(p.google_place_id as string, "hours");
-          if (!details) return { ok: false, withHours: false };
+          if (!details) {
+            return {
+              ok: false,
+              withHours: false,
+              budget: "reserved" as const,
+            };
+          }
           await db
             .insert(placeHoursRefresh)
             .values({
@@ -232,19 +298,58 @@ async function runHoursRefresh(request: Request) {
           return {
             ok: true,
             withHours: Boolean(details.weekday_hours?.length),
+            budget: "reserved" as const,
           };
         } catch {
-          return { ok: false, withHours: false };
+          return {
+            ok: false,
+            withHours: false,
+            budget: "reserved" as const,
+          };
         }
       }),
     );
     outcomes.forEach((outcome, index) => {
+      if (outcome.budget === "unavailable") {
+        usageMeterUnavailable = true;
+        return;
+      }
+      if (outcome.budget === "exhausted") {
+        budgetExhausted = true;
+        return;
+      }
+      paidAttempts++;
       if (outcome.ok) {
         written++;
         if (outcome.withHours) withHours++;
       }
       else failures.push(batch[index].slug);
     });
+    if (usageMeterUnavailable || budgetExhausted) break;
+  }
+
+  if (usageMeterUnavailable) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay: today,
+        cycleMode: cycle.mode,
+        catalog: places.length,
+        validGoogleIds: validGooglePlaces.length,
+        invalidGoogleIds,
+        eligible: eligibleTargets.length,
+        targeted: targets.length,
+        paidAttempts,
+        written,
+        withHours,
+        budgetExhausted: false,
+        dailyCap,
+        error:
+          "The shared hours-refresh usage counter is unavailable for one or more targets; no Google call ran without an atomic reservation.",
+      },
+      { status: 503 },
+    );
   }
 
   const health = assessHoursRefreshRun({
@@ -253,10 +358,12 @@ async function runHoursRefresh(request: Request) {
     withHours,
     deferred,
   });
+  const healthy = !budgetExhausted && health.healthy;
+  const status = budgetExhausted ? 503 : health.status;
   return NextResponse.json(
     {
       enabled: true,
-      healthy: health.healthy,
+      healthy,
       cycleDay: today,
       cycleMode: cycle.mode,
       catalog: places.length,
@@ -264,17 +371,31 @@ async function runHoursRefresh(request: Request) {
       invalidGoogleIds,
       eligible: eligibleTargets.length,
       targeted: targets.length,
+      paidAttempts,
       written,
       withHours,
+      budgetExhausted,
+      dailyCap,
+      notAttempted: Math.max(0, targets.length - paidAttempts),
       failed: failures.length,
       failures: failures.slice(0, 10),
-      ...(health.error ? { error: health.error } : {}),
-      note: health.healthy
-        ? cycle.mode === "backfill"
-          ? "Backfill bucket persisted. Run npm run refresh:hours to materialize it into places-hours-refresh.json."
-          : "Run npm run refresh:hours to pull the table into places-hours-refresh.json."
-        : "Check the Google Places key and the database write role before the next paid run.",
+      ...(budgetExhausted
+        ? {
+            error:
+              `The shared Eastern-day Google hours allowance reached ${dailyCap}; ` +
+              "retries and cycleDay replays remain blocked until the next Eastern day.",
+          }
+        : health.error
+          ? { error: health.error }
+          : {}),
+      note: budgetExhausted
+        ? "The daily spend guard held. Wait for the next Eastern day instead of replaying this paid bucket."
+        : health.healthy
+          ? cycle.mode === "backfill"
+            ? "Backfill bucket persisted. Run npm run refresh:hours to materialize it into places-hours-refresh.json."
+            : "Run npm run refresh:hours to pull the table into places-hours-refresh.json."
+          : "Check the Google Places key and the database write role before the next paid run.",
     },
-    { status: health.status },
+    { status },
   );
 }

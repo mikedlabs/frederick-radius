@@ -39,7 +39,8 @@ export type UsageBudgetNamespace =
   | PaidUpstream
   | "budget_google_place_enrich_basic"
   | "budget_google_place_enrich_experience"
-  | "budget_google_business_status";
+  | "budget_google_business_status"
+  | "budget_google_hours_refresh";
 
 export type UsageIntervalLease = {
   acquired: boolean;
@@ -94,27 +95,40 @@ export async function reserveUsageIntervalLease(
 }
 
 /**
- * Atomically reserve one paid call under a hard daily ceiling.
+ * Atomically reserve one or more billable units under a hard daily ceiling.
  *
  * Unlike best-effort metering, this fails closed: a caller must not spend when
  * the database is unavailable, the counter table is missing, or the cap is
  * already exhausted. The INSERT ... ON CONFLICT predicate makes concurrent
  * serverless workers share one real limit instead of racing process memory.
+ * The optional increment is for element-priced products such as route
+ * matrices; the whole increment is accepted or rejected in one statement.
  */
 export async function reserveDailyUsage(
   upstream: UsageBudgetNamespace,
   limit: number,
+  increment = 1,
 ): Promise<UsageReservation | null> {
-  if (!Number.isSafeInteger(limit) || limit <= 0) return null;
+  if (
+    !Number.isSafeInteger(limit) ||
+    limit <= 0 ||
+    !Number.isSafeInteger(increment) ||
+    increment <= 0
+  ) return null;
+  if (increment > limit) return { reserved: false, count: limit };
   try {
     const sql = getSql();
     if (!sql) return null;
     const rows = await sql<Array<{ count: number | string }>>`
       insert into usage_counters (day, upstream, count)
-      values ((now() at time zone 'America/New_York')::date, ${upstream}, 1)
+      values (
+        (now() at time zone 'America/New_York')::date,
+        ${upstream},
+        ${increment}
+      )
       on conflict (day, upstream)
-      do update set count = usage_counters.count + 1
-      where usage_counters.count < ${limit}
+      do update set count = usage_counters.count + ${increment}
+      where usage_counters.count + ${increment} <= ${limit}
       returning count
     `;
     const count = Number(rows[0]?.count);

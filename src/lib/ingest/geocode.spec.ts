@@ -231,11 +231,13 @@ describe("trustedCachedCoordinate", () => {
 describe("googleGeocode network boundary", () => {
   afterEach(() => {
     delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_ENABLED;
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
-  it("returns disabled without a key or network request", async () => {
+  it("returns disabled when a Places key exists but geocoding was not enabled", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-key";
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -247,6 +249,7 @@ describe("googleGeocode network boundary", () => {
 
   it("classifies HTTP quota failures as system outcomes", async () => {
     process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -278,6 +281,7 @@ describe("googleGeocode network boundary", () => {
     "classifies $reason provider failures as system outcomes",
     async ({ httpStatus, apiStatus, reason }) => {
       process.env.GOOGLE_PLACES_API_KEY = "test-key";
+      process.env.GOOGLE_GEOCODING_ENABLED = "1";
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue(
@@ -299,6 +303,7 @@ describe("googleGeocode network boundary", () => {
 
   it("classifies a network rejection without turning it into an address miss", async () => {
     process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new TypeError("network unavailable")),
@@ -312,6 +317,7 @@ describe("googleGeocode network boundary", () => {
 
   it("aborts an upstream request after eight seconds", async () => {
     process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",

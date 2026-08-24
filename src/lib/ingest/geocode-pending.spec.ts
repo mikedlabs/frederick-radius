@@ -34,13 +34,18 @@ function queryText(strings: TemplateStringsArray): string {
 function createSql(
   pending: PendingRow[] = [BASE_EVENT],
   cacheRows: Array<{ lat: number | string; lng: number | string; source: string }> = [],
+  cacheRowsByAddress: ReadonlyMap<
+    string,
+    Array<{ lat: number | string; lng: number | string; source: string }>
+  > = new Map(),
 ) {
   return vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
-    void values;
     const query = queryText(strings);
     if (query.includes("select e.id")) return Promise.resolve(pending);
     if (query.includes("select lat, lng, source from venue_geocache")) {
-      return Promise.resolve(cacheRows);
+      return Promise.resolve(
+        cacheRowsByAddress.get(String(values[0])) ?? cacheRows,
+      );
     }
     return Promise.resolve([]);
   });
@@ -77,10 +82,12 @@ function googlePayload(
 describe("geocodePending", () => {
   beforeEach(() => {
     process.env.GOOGLE_PLACES_API_KEY = "test-google-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
   });
 
   afterEach(() => {
     delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_ENABLED;
     vi.unstubAllGlobals();
   });
 
@@ -245,7 +252,7 @@ describe("geocodePending", () => {
   });
 
   it("does not queue or call the network when Google is disabled", async () => {
-    delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_ENABLED;
     const sql = createSql();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -261,6 +268,53 @@ describe("geocodePending", () => {
     });
     expect(matchingCalls(sql, "insert into unparseable_locations")).toHaveLength(0);
     expect(matchingCalls(sql, "update ingested_events")).toHaveLength(0);
+  });
+
+  it("keeps applying later trusted cache matches while Google is disabled", async () => {
+    delete process.env.GOOGLE_GEOCODING_ENABLED;
+    const cachedEvent: PendingRow = {
+      ...BASE_EVENT,
+      id: "event-cached",
+      address: "2 Cached Street, Frederick, MD",
+      source_uid: "source-event-cached",
+    };
+    const cachedNorm = normalizeForCache(cachedEvent.address);
+    const sql = createSql(
+      [BASE_EVENT, cachedEvent],
+      [],
+      new Map([
+        [
+          cachedNorm,
+          [{
+            lat: "39.413700",
+            lng: "-77.410900",
+            source: VERIFIED_CATALOG_CACHE_SOURCE,
+          }],
+        ],
+      ]),
+    );
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await geocodePending(sql as never, 2);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      fromCache: 1,
+      fromApi: 0,
+      failed: 0,
+      status: "degraded",
+      degradedReason: "disabled",
+      budgetStopped: 1,
+    });
+    const updates = matchingCalls(sql, "update ingested_events");
+    expect(updates).toHaveLength(1);
+    expect(updates[0].slice(1)).toEqual([
+      39.4137,
+      -77.4109,
+      cachedEvent.id,
+    ]);
+    expect(matchingCalls(sql, "insert into unparseable_locations")).toHaveLength(0);
   });
 
   it("does not start a Google call without a full route-budget window", async () => {

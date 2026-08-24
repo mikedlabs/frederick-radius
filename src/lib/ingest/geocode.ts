@@ -9,6 +9,20 @@ const GEOCODE_TIMEOUT_MS = 8_000;
 const GEOCODE_CALL_BUDGET_MS = GEOCODE_TIMEOUT_MS + RATE_DELAY_MS + 500;
 const GEOCODE_ROUTE_RESERVE_MS = 5_000;
 
+/**
+ * Google place lookups and event-address geocoding are separate data uses.
+ * A Places key must never silently enable durable Google geocode storage just
+ * because another feature needs photos or hours. Keep this legacy provider
+ * off unless an operator deliberately accepts its separate policy and cost
+ * contract; ingestion can still use reviewed catalog/cache coordinates.
+ */
+export function googleEventGeocodingEnabled(): boolean {
+  return (
+    process.env.GOOGLE_GEOCODING_ENABLED === "1" &&
+    Boolean(process.env.GOOGLE_PLACES_API_KEY)
+  );
+}
+
 export const VERIFIED_GOOGLE_CACHE_SOURCE = "google-verified-v1";
 export const VERIFIED_CATALOG_CACHE_SOURCE = "catalog-verified-v1";
 
@@ -332,7 +346,10 @@ export async function reconcilePublishedGeocodes(
 export async function googleGeocode(
   address: string,
 ): Promise<GoogleGeocodeOutcome> {
+  if (!googleEventGeocodingEnabled()) return { kind: "disabled" };
   const key = process.env.GOOGLE_PLACES_API_KEY;
+  // The gate above proves a non-empty key. Keep this narrow guard so the URL
+  // builder remains type-safe if environment access changes later.
   if (!key) return { kind: "disabled" };
 
   const controller = new AbortController();
@@ -395,7 +412,7 @@ export async function geocodePending(
   limit = 500,
   options: GeocodePendingOptions = {},
 ): Promise<GeocodeStats> {
-  const googleEnabled = Boolean(process.env.GOOGLE_PLACES_API_KEY);
+  const googleEnabled = googleEventGeocodingEnabled();
   const stats: GeocodeStats = {
     fromCache: 0,
     fromApi: 0,
@@ -469,9 +486,14 @@ export async function geocodePending(
       if (cachedCoordinate) {
         outcome = { kind: "match", coordinate: cachedCoordinate };
         stats.fromCache++;
+      } else if (!googleEnabled) {
+        // Google is an optional last resort, not a prerequisite for applying
+        // reviewed local coordinates. Defer only this uncached address and
+        // keep walking the queue: a later row may already have a trusted
+        // catalog/cache match that should still publish while Google is off.
+        outcome = { kind: "disabled" };
       } else {
         if (
-          googleEnabled &&
           options.deadlineAt !== undefined &&
           options.deadlineAt - Date.now() < GEOCODE_CALL_BUDGET_MS
         ) {
@@ -516,8 +538,8 @@ export async function geocodePending(
     if (outcome.kind === "disabled") {
       stats.status = "degraded";
       stats.degradedReason = "disabled";
-      stats.budgetStopped = pending.length - index;
-      break;
+      stats.budgetStopped++;
+      continue;
     }
 
     if (outcome.kind === "reject") {

@@ -1,9 +1,12 @@
-// 25/day remains below the current 1,000-request monthly free allowance in a
-// 31-day month. Production can lower this further, while the immutable maximum
-// prevents an accidental environment edit from reopening the original spend.
-const DEFAULT_GOOGLE_PHOTO_DAILY_CAP = 25;
+// This is a hard spike breaker, not the app's normal photo target. The live
+// counter's 30-day p95 was 1,285 attempts/day on 2026-08-23; 1,500 therefore
+// preserves ordinary browsing while bounding a bot, retry loop, or accidental
+// eager render. Lowering this sharply would make legitimate business imagery
+// disappear late in the day. Reduce normal usage by replacing high-traffic
+// Google media with owned/licensed photos, not by silently degrading the UI.
+const DEFAULT_GOOGLE_PHOTO_DAILY_CAP = 1_500;
 const MIN_GOOGLE_PHOTO_DAILY_CAP = 1;
-const MAX_GOOGLE_PHOTO_DAILY_CAP = 100;
+const MAX_GOOGLE_PHOTO_DAILY_CAP = 2_000;
 
 /**
  * One shared ceiling for every Google photo-media fetch, including public

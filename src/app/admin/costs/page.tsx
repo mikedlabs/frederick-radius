@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { gte } from "drizzle-orm";
 import { getDb, getSql } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
-import type { PaidUpstream } from "@/lib/usage-meter";
+import type { UsageBudgetNamespace } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
+import { googleHoursRefreshDailyCap } from "@/lib/google-hours-refresh-budget";
+import { googlePlaceEnrichmentDailyCap } from "@/lib/google-place-enrichment-budget";
+import { googleRoutesDailyElementCap } from "@/lib/google-routes-budget";
 import {
   AdminShell,
   SectionLabel,
@@ -38,15 +42,17 @@ export const dynamic = "force-dynamic";
  */
 
 type MeteredUpstreamBase = {
-  key: PaidUpstream;
+  key: UsageBudgetNamespace;
   label: string;
   note: string;
+  dailyCap?: number;
 };
 
 type UnitEstimateUpstream = MeteredUpstreamBase & {
   billing: "unit-estimate";
   per1000: number;
   freeMonthly?: number;
+  rateLabel?: string;
 };
 
 type PlanCreditUpstream = MeteredUpstreamBase & {
@@ -59,9 +65,13 @@ type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
 /** Unit prices are estimates, not bills. Capped-attempt services deliberately do
  * not receive a made-up dollar conversion. */
 const UPSTREAMS: MeteredUpstream[] = [
-  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
+  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, freeMonthly: 1_000, dailyCap: googlePhotoDailyCap(), note: "Places Photo SKU. Each no-store proxy request can reach Google. The configured aggregate cap is a spike breaker shared by public images and the health probe." },
+  { key: "budget_google_place_enrich_basic", label: "Google place sheet refresh", billing: "unit-estimate", per1000: 35, rateLabel: "$20–$35", dailyCap: googlePlaceEnrichmentDailyCap("basic"), note: "One deliberate, uncached basic refresh. A known Place ID uses Place Details Enterprise ($20/1k); a missing ID uses Text Search Enterprise ($35/1k). The dollar estimate conservatively uses the higher rate and does not pretend the two SKU free tiers are one pool." },
+  { key: "budget_google_place_enrich_experience", label: "Google place experience", billing: "unit-estimate", per1000: 40, rateLabel: "$25–$40", dailyCap: googlePlaceEnrichmentDailyCap("experience"), note: "One user-requested rich context lookup. A known Place ID uses Enterprise + Atmosphere ($25/1k); identity search uses Text Search Enterprise + Atmosphere ($40/1k). The estimate uses the higher rate." },
+  { key: "budget_google_business_status", label: "Google business status", billing: "unit-estimate", per1000: 17, freeMonthly: 5_000, dailyCap: 40, note: "Nightly Place Details Pro status checks. The shared counter is reserved before Google, so retries cannot reopen the fixed 40-call Eastern-day allowance." },
+  { key: "budget_google_hours_refresh", label: "Google hours refresh", billing: "unit-estimate", per1000: 20, freeMonthly: 1_000, dailyCap: googleHoursRefreshDailyCap(), note: "Place Details Enterprise hours checks. One shared Eastern-day counter covers the scheduled bucket, retries, and authenticated cycleDay backfills; counter uncertainty blocks the paid call." },
   { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
-  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Place-sheet travel time runs only after an explicit tap. Each estimate uses two 1×1 matrices (walk and traffic-aware drive); device origins are rounded and never stored in Radius's persistent cache." },
+  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, freeMonthly: 5_000, dailyCap: googleRoutesDailyElementCap(), note: "Matrix elements, conservatively priced at the Pro rate and free tier. A place-sheet estimate uses one walking and one traffic-aware driving element after an explicit tap; device origins are never stored in Radius's persistent cache." },
   { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
   { key: "mapbox_matrix", label: "Mapbox travel matrix", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Mapbox bills each returned matrix element. Within reach caches its 2–9-place shortlist for five minutes or one day, while map-search walking enrichment stays no-store." },
@@ -79,6 +89,7 @@ const UPSTREAMS: MeteredUpstream[] = [
 
 const BILLING_LINKS: Array<{ label: string; href: string }> = [
   { label: "Google Cloud billing", href: "https://console.cloud.google.com/billing" },
+  { label: "Google Maps pricing", href: "https://developers.google.com/maps/billing-and-pricing/pricing" },
   { label: "Vercel AI Gateway usage", href: "https://vercel.com/dashboard/ai" },
   { label: "Anthropic fallback usage", href: "https://console.anthropic.com/settings/usage" },
   { label: "Mapbox statistics", href: "https://account.mapbox.com/statistics" },
@@ -191,7 +202,7 @@ export default async function CostsAdmin() {
     const projectedEst = estimatedMonthlyCost(u, projectedCalls);
     // Same alarm rule as the desk's cost sentinel: real volume, 3x the median.
     const atDailyCap =
-      u.billing === "plan-credit" && todayCalls >= u.dailyCap;
+      u.dailyCap !== undefined && todayCalls >= u.dailyCap;
     const hot =
       atDailyCap ||
       (todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily));
@@ -279,9 +290,17 @@ export default async function CostsAdmin() {
                       )}
                     </div>
                     <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                      today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
+                      today {d1.toLocaleString()}
+                      {u.billing === "unit-estimate" && u.dailyCap !== undefined && (
+                        <span> / {u.dailyCap.toLocaleString()} cap</span>
+                      )}
+                      {" · "}7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
                       {u.billing === "unit-estimate" ? (
-                        <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                        <span style={{ color: "var(--app-ink-3)" }}>
+                          {u.rateLabel
+                            ? ` · ${u.rateLabel}/1k`
+                            : ` · ~$${u.per1000}/1k`}
+                        </span>
                       ) : (
                         <span style={{ color: "var(--app-ink-3)" }}> · recovery attempts · hard cap {u.dailyCap}/day</span>
                       )}

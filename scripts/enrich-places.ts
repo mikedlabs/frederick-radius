@@ -28,6 +28,7 @@ import {
   parseManualGoogleRun,
   selectRotatingManualBatch,
 } from "./lib/manual-google-run";
+import { enrichPlacesLiveCommand } from "./lib/enrich-places-command";
 
 const OUT = new URL("../src/data/places-enrichment.json", import.meta.url).pathname;
 const ATTEMPTS = new URL("../audit/google-enrichment-attempts.json", import.meta.url).pathname;
@@ -200,7 +201,12 @@ async function main() {
   if (run.dryRun) {
     console.log(`  DRY RUN — nothing called, $0 spent.`);
     console.log(
-      `  To execute: npm run enrich -- ${dfpThin ? "--dfp-thin " : all ? "--all " : ""}--live --confirm --limit N\n`,
+      `  To execute: ${enrichPlacesLiveCommand({
+        slugs: slugs ? [...slugs] : null,
+        needsEnrichment,
+        dfpThin,
+        all,
+      }, run.limit)}\n`,
     );
     process.exit(0);
   }

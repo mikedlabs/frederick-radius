@@ -250,7 +250,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     telephone: place.phone,
     email: place.email,
     url: place.website,
-    image: absoluteSiteUrl(place.google_photo_url ?? place.hero_image),
+    // Structured-data crawlers do not reliably send a browser Referer. Point
+    // them at Radius-owned share art instead of the protected Google media
+    // proxy, which deliberately rejects unattributed paid requests.
+    image: absoluteSiteUrl(`/api/og?type=place&slug=${place.slug}`),
     priceRange: place.price_band ? "$".repeat(place.price_band) : undefined,
     openingHoursSpecification: openingHoursJsonLd(place.hours),
   };

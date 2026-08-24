@@ -28,4 +28,29 @@ describe("admin cost visibility", () => {
     );
     expect(source).toContain('href: "https://www.firecrawl.dev/app"');
   });
+
+  it("accounts for every guarded Google Places path", () => {
+    for (const key of [
+      "google_photo",
+      "budget_google_place_enrich_basic",
+      "budget_google_place_enrich_experience",
+      "budget_google_business_status",
+      "budget_google_hours_refresh",
+    ]) {
+      expect(source, key).toContain(`key: "${key}"`);
+    }
+
+    expect(source).toContain("freeMonthly: 1_000");
+    expect(source).toContain('rateLabel: "$20–$35"');
+    expect(source).toContain('rateLabel: "$25–$40"');
+    expect(source).toContain("googleHoursRefreshDailyCap()");
+    expect(source).toContain("googleRoutesDailyElementCap()");
+  });
+
+  it("shows configured cap utilization and a cap-reached state for unit-estimate rows", () => {
+    expect(source).toContain("dailyCap: googlePhotoDailyCap()");
+    expect(source).toContain("u.dailyCap !== undefined && todayCalls >= u.dailyCap");
+    expect(source).toContain("/ {u.dailyCap.toLocaleString()} cap");
+    expect(source).toContain('month.atDailyCap ? "daily cap reached"');
+  });
 });
