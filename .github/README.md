@@ -6,7 +6,7 @@ The repository uses a small protected path from reviewed code to production.
 
 - `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks from one shared production build on each PR.
 - `style.yml` enforces the public editorial rules.
-- `ux-audit.yml` runs the broader weekly browser audit from one production build.
+- `ux-audit.yml` runs the broader browser audit when an owner explicitly dispatches it.
 
 Vercel owns the post-merge build and deployment from `main`. GitHub does not
 rebuild that same reviewed commit a second time. The deployment-status canary

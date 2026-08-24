@@ -1,11 +1,6 @@
 name: Mobile performance budget
 
 on:
-  schedule:
-    # Weekly, off the top of the hour. PRs keep the small resilience browser
-    # gate; this heavier six-route Lighthouse pass measures the deployed app
-    # through the same production CDN and serverless path visitors use.
-    - cron: "43 9 * * 1"
   workflow_dispatch:
 
 concurrency:
