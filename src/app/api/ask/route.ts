@@ -1,4 +1,3 @@
-import { meterUsage } from "@/lib/usage-meter";
 import { NextResponse, after, type NextRequest } from "next/server";
 import { askFrederick } from "@/lib/ask/answer";
 import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
@@ -420,7 +419,6 @@ export async function POST(req: NextRequest) {
     { timeoutMs: 1_800 },
   );
   const result = withAskResponsePresentation(routedResult, query);
-  if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.
   if (result.configured !== false && (!result.sources || result.sources.length === 0)) {
     after(() => recordSearchMiss(query, "ask"));

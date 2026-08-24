@@ -4,9 +4,12 @@
  * Prerequisites:
  *   1. Apply drizzle/0025_radius_search_documents.sql and
  *      drizzle/0033_radius_search_embedding_optional.sql by hand in Supabase.
- *   2. Configure DATABASE_URL. OPENAI_API_KEY is optional; without it, the
- *      command still builds the complete full-text index.
- *   3. Run: npm run build:radius-search
+ *   2. Configure DATABASE_URL. The command always builds the complete
+ *      full-text index.
+ *   3. Keep scheduled vectors off unless migration 0017's atomic counter is
+ *      verified, then set the semantic switch, a positive daily document
+ *      allowance, and OPENAI_API_KEY. A key alone never starts paid work.
+ *   4. Run: npm run build:radius-search
  */
 import "dotenv/config";
 import { closeDb } from "@/lib/db/client";

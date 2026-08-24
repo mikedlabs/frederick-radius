@@ -11,6 +11,12 @@ import { openai } from "@ai-sdk/openai";
 import type { TransactionSql } from "postgres";
 import { getSql } from "@/lib/db/client";
 import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
+import {
+  radiusSearchEmbeddingDailyDocumentLimit,
+  radiusSearchSemanticConfigured,
+  radiusSearchSemanticRequested,
+  reserveRadiusSearchEmbeddingDocuments,
+} from "@/lib/ask/search-index-budget";
 
 const DEFAULT_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
@@ -46,6 +52,8 @@ export type RadiusSearchRefreshResult = {
   embeddingWarning?: {
     code:
       | "provider_unavailable"
+      | "budget_unavailable"
+      | "budget_exhausted"
       | "invalid_configuration"
       | "invalid_dimensions"
       | "embedding_write_failed";
@@ -298,12 +306,21 @@ export async function refreshRadiusSearchIndex({
       },
     ]),
   );
-  const embeddingEnabled = Boolean(process.env.OPENAI_API_KEY);
+  const embeddingRequested = radiusSearchSemanticRequested();
+  const embeddingDailyLimit =
+    radiusSearchEmbeddingDailyDocumentLimit();
+  const embeddingEnabled = radiusSearchSemanticConfigured();
   const requestedEmbeddingModel = embeddingModelName();
   const embeddingConfigurationWarning:
     | RadiusSearchRefreshResult["embeddingWarning"]
     | undefined =
-    embeddingEnabled && requestedEmbeddingModel !== DEFAULT_MODEL
+    embeddingRequested && !embeddingEnabled
+      ? {
+          code: "invalid_configuration",
+          message:
+            "Optional semantic vectors were requested but remain off because the direct OpenAI credential or positive scheduled embedding allowance is missing. Full-text search is current.",
+        }
+      : embeddingEnabled && requestedEmbeddingModel !== DEFAULT_MODEL
       ? {
           code: "invalid_configuration",
           message:
@@ -335,8 +352,8 @@ export async function refreshRadiusSearchIndex({
     );
 
     // Write searchable text before doing any optional paid work. If content
-    // changed, clear the now-stale vector; a later run with OPENAI_API_KEY can
-    // backfill it even though the content hash will already match.
+    // changed, clear the now-stale vector; a later explicitly enabled semantic
+    // run can backfill it even though the content hash will already match.
     try {
       await sql`
         insert into public.radius_search_documents
@@ -392,7 +409,7 @@ export async function refreshRadiusSearchIndex({
             !current.hasEmbedding
           );
         }),
-      ].slice(0, limit)
+      ].slice(0, Math.min(limit, embeddingDailyLimit))
     : [];
 
   for (
@@ -408,6 +425,25 @@ export async function refreshRadiusSearchIndex({
     const hashes = batch.map((document) => document.contentHash);
     let embeddings: number[][];
     let tokens = 0;
+    const reservation = await reserveRadiusSearchEmbeddingDocuments(
+      batch.length,
+    );
+    if (!reservation) {
+      embeddingWarning = {
+        code: "budget_unavailable",
+        message:
+          "Full-text search was updated. Optional vectors stayed off because the shared daily counter could not confirm a reservation.",
+      };
+      break;
+    }
+    if (!reservation.reserved) {
+      embeddingWarning = {
+        code: "budget_exhausted",
+        message:
+          "Full-text search was updated. The optional vector allowance is used for today; remaining vectors can continue after the Eastern-day reset.",
+      };
+      break;
+    }
     const controller = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -425,7 +461,7 @@ export async function refreshRadiusSearchIndex({
           model: openai.embedding(requestedEmbeddingModel),
           values: batch.map((document) => document.content),
           maxParallelCalls: 2,
-          maxRetries: 2,
+          maxRetries: 0,
           abortSignal: controller.signal,
         }),
         deadline,
