@@ -19,6 +19,7 @@ import { PLACE_BY_SLUG } from "@/data/places";
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import {
   getPlaceDetails,
+  googlePlacesConfigured,
   resolveAndEnrich,
   type PlaceEnrichment,
   type GooglePhotoAttribution,
@@ -193,6 +194,15 @@ export async function GET(
 ) {
   if (!isSameOriginRequest(req)) {
     return new Response("Forbidden", { status: 403 });
+  }
+
+  // Keys alone are not authority to call Google. Check the shared written-
+  // approval/runtime/configuration gate before touching either the request
+  // limiter or the durable daily paid-call allowance.
+  if (!googlePlacesConfigured()) {
+    return NextResponse.json(EMPTY, {
+      headers: { "Cache-Control": "private, no-store, max-age=0" },
+    });
   }
   const mode: EnrichMode = new URL(req.url).searchParams.get("mode") === "experience"
     ? "experience"

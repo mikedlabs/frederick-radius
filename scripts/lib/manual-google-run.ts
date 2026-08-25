@@ -1,3 +1,5 @@
+import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
+
 export type ManualGoogleRun = {
   live: boolean;
   confirmed: boolean;
@@ -114,7 +116,6 @@ export function parseManualGoogleRun(
   if (live && explicitDryRun) {
     throw new Error("A planning flag cannot be combined with --live.");
   }
-
   const limitIndex = args.indexOf("--limit");
   if (limitIndex >= 0 && config.legacyLimit !== undefined) {
     throw new Error("Use either the positional limit or --limit, not both.");
@@ -141,6 +142,11 @@ export function parseManualGoogleRun(
   if (limit > config.maxLimit) {
     throw new Error(
       `--limit cannot exceed the immutable ${config.maxLimit}-request run ceiling.`,
+    );
+  }
+  if (live && !googleMapsPlatformRuntimeEnabled()) {
+    throw new Error(
+      "Paid Google execution is on policy hold. Record reviewed written authorization with the exact GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL value and set GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1 before a live run.",
     );
   }
 

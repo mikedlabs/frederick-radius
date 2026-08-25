@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getPlaceDetails: vi.fn(),
+  googlePlacesConfigured: vi.fn(),
   isOverPaidRequestBudget: vi.fn(),
   isRateLimited: vi.fn(),
   isSameOriginRequest: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@/data/places", () => ({
 vi.mock("@/data/places-overrides.json", () => ({ default: { patch: {} } }));
 vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
+  googlePlacesConfigured: mocks.googlePlacesConfigured,
   resolveAndEnrich: mocks.resolveAndEnrich,
 }));
 vi.mock("@/lib/origin-check", () => ({
@@ -64,6 +66,7 @@ describe("place enrichment shared daily budgets", () => {
     vi.stubEnv("GOOGLE_PLACE_ENRICH_DAILY_CAP", "");
     vi.stubEnv("GOOGLE_PLACE_EXPERIENCE_DAILY_CAP", "");
     mocks.isSameOriginRequest.mockReturnValue(true);
+    mocks.googlePlacesConfigured.mockReturnValue(true);
     mocks.isOverPaidRequestBudget.mockResolvedValue(false);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
@@ -93,6 +96,21 @@ describe("place enrichment shared daily budgets", () => {
       mocks.getPlaceDetails.mock.invocationCallOrder[0],
     );
     expect(mocks.getPlaceDetails).toHaveBeenCalledWith("ChIJtest", "basic");
+  });
+
+  it("checks the Google policy/config hold before rate limits or paid reservations", async () => {
+    mocks.googlePlacesConfigured.mockReturnValue(false);
+
+    const response = await GET(request(), params);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ photos: [], hours: [] });
+    expect(mocks.googlePlacesConfigured).toHaveBeenCalledOnce();
+    expect(mocks.isOverPaidRequestBudget).not.toHaveBeenCalled();
+    expect(mocks.isRateLimited).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+    expect(mocks.resolveAndEnrich).not.toHaveBeenCalled();
   });
 
   it("uses the tighter experience allowance", async () => {
@@ -142,6 +160,51 @@ describe("place enrichment shared daily budgets", () => {
       expect(mocks.resolveAndEnrich).not.toHaveBeenCalled();
     },
   );
+
+  it("fails closed when the shared allowance cannot be checked", async () => {
+    mocks.reserveDailyUsage.mockRejectedValue(new Error("database unavailable"));
+
+    const response = await GET(request(), params);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ photos: [], hours: [] });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+    expect(mocks.resolveAndEnrich).not.toHaveBeenCalled();
+  });
+
+  it("coalesces simultaneous requests before reserving paid usage", async () => {
+    let finishLookup!: (value: {
+      weekday_hours: never[];
+      photo_names: never[];
+      photo_attributions: never[];
+      business_status: "OPERATIONAL";
+    }) => void;
+    mocks.getPlaceDetails.mockReturnValue(
+      new Promise((resolve) => {
+        finishLookup = resolve;
+      }),
+    );
+
+    const first = GET(request(), params);
+    const second = GET(request(), params);
+
+    await vi.waitFor(() => {
+      expect(mocks.getPlaceDetails).toHaveBeenCalledOnce();
+    });
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+
+    finishLookup({
+      weekday_hours: [],
+      photo_names: [],
+      photo_attributions: [],
+      business_status: "OPERATIONAL",
+    });
+    const responses = await Promise.all([first, second]);
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+    expect(mocks.getPlaceDetails).toHaveBeenCalledOnce();
+  });
 
   it("does not reserve for an unknown slug", async () => {
     const response = await GET(request(), {
